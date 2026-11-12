@@ -73,3 +73,16 @@ menu_faixa, command_palette, context_menu, cards, hover, tooltip, barras_cartoes
 
 ## PRÓXIMO
 Smoke do dono da onda 3. Depois onda 4: faixa única sem a barra do SO, testada no KWin.
+
+## Smoke do dono (12/11) e curas
+Tudo OK salvo dois passos:
+- **3** — o clique (não só o Enter) tem de escolher, e a ação tem de abrir na **List**, destacada (abria na vista
+  lembrada, Try it). Cura: `InputMapDoc::show_action` (`ph2d-input-map-editor/src/doc.rs`: `set_view(List)`,
+  `kb.open`, foco na `ListHit::Row`, `list.reveal` → `view_list/rows.rs::paint_rows` rola até ela ficar ao meio);
+  `ph2d-app-input-map::frame` chama-a. O clique já escolhia (teste `o_clique_num_resultado_novo_escolhe_como_o_enter`).
+- **6** — o chip não aparecia com o RATO: o Down numa linha folha da barra fechava o menu e o `Click` chegava sem
+  cascata, sem contar. Cura: `menu_cascade::down_is_of_the_menu` = toda linha de um menu da barra aberto (quem fecha
+  é o `close_on_row_click` no Up, a porta do Enter). Teste `o_clique_de_rato_numa_linha_conta_como_escolha_pelo_menu`
+  (Down/Up reais pelo `dispatch_pointer`). As fotos da onda 3 usavam o teclado — o script passou a usar o rato.
+Fotos: `onda3_2b_clique_jump_abre_a_list.png`, `onda3_7_chip.png` (três cliques de rato). Testes por nome verdes
+(editor-core lib 399 + it 34, registry-init 52, input-map-editor 9). **Re-smoke dos passos 3 e 6 por fazer.**

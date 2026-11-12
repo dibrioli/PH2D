@@ -124,3 +124,30 @@ fn na_busca_vazia_os_menus_vem_primeiro() {
         "ferramentas antes dos menus: {titles:?}"
     );
 }
+
+/// ⭐ **O CLIQUE escolhe como o Enter** (smoke do dono 12/11: «o click e não apenas o enter»):
+/// cada fonte nova, clicada com a busca aberta, chega à execução.
+#[test]
+fn o_clique_num_resultado_novo_escolhe_como_o_enter() {
+    let mut h = hero();
+    let jump = h.input_map.id("jump").expect("o mapa de fábrica tem jump");
+    let row = NodeId(0x0B1E_C7);
+    h.store.set_scene_objects(vec![(row, "Player".into())]);
+    let field = NodeId(0x52);
+    h.store.begin_card_directory_frame();
+    h.store.card_painting(NodeId(0x51), "Platform Player");
+    h.store.card_field_painted("Air Jumps", field, 0.0);
+    for id in [action_item(jump), row, field] {
+        crate::screens::hero::global_palette::open(&mut h);
+        h.apply_event(crate::interaction::WidgetEvent::Click(id));
+        assert!(
+            !h.store.command_palette_open(),
+            "o clique em {id:?} não fechou a busca"
+        );
+        crate::screens::hero::global_palette::drain(&mut h);
+        assert!(
+            h.menu_memory.recent().first() == Some(&id),
+            "o clique em {id:?} não chegou à execução"
+        );
+    }
+}

@@ -56,9 +56,9 @@ pub fn frame(
     if open {
         tab.open();
     }
-    // A busca escolheu uma ação: a vista Keyboard abre-a.
+    // A busca escolheu uma ação: a vista List abre-a, destacada e à vista.
     if let Some(a) = focus {
-        tab.doc.kb.open = Some(a);
+        tab.doc.show_action(a);
     }
     let swapped = tab.doc.begin_frame(&hero.input_map);
     let edits = tab.doc.take_pending();

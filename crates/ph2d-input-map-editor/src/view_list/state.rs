@@ -78,6 +78,8 @@ pub struct ListState {
     pub(crate) text_stops: Vec<(ph2d_a11y::NodeId, Vec<(usize, f32)>)>,
     /// O arrasto de selecção num campo de texto: o campo e a âncora (o byte do Down).
     pub text_drag: Option<(ph2d_a11y::NodeId, usize)>,
+    /// A ação a trazer à vista na próxima pintura (a busca da faixa escolheu-a).
+    pub reveal: Option<ActionId>,
 }
 
 impl ListState {

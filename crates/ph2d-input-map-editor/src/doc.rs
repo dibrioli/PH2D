@@ -135,6 +135,15 @@ impl InputMapDoc {
         self.view
     }
 
+    /// ⭐ **A busca da faixa escolheu a ação `a`** (dono 12/11): a vista List, a ação aberta, a linha com o foco
+    /// (destacada) e rolada até à vista.
+    pub fn show_action(&mut self, a: ph2d_input::ActionId) {
+        self.set_view(View::List);
+        self.kb.open = Some(a);
+        self.list.reveal = Some(a);
+        self.ui.focus = Some(crate::ids::ListHit::Row(a).id());
+    }
+
     /// Trocar de vista desarma a escuta da aba: a próxima tecla na vista nova nunca vira ligação em silêncio.
     pub fn set_view(&mut self, view: View) {
         self.tryit.reread |= view == View::TryIt && self.view != view;

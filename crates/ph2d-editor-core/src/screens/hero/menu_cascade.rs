@@ -51,12 +51,14 @@ pub fn level_of_row(store: &WidgetStore, id: NodeId) -> Option<usize> {
 }
 
 /// **O Down em `id` é do menu aberto (não o fecha)?** — a única porta do despacho para cá. A linha
-/// que abre um submenu é do menu (o pai fica, o filho abre ao lado); num menu da barra, também a
-/// linha indisponível (o clique chega ao verbo, que recusa).
+/// que abre um submenu é do menu (o pai fica, o filho abre ao lado); num menu da barra, TODA linha
+/// dele: quem fecha é o clique ao soltar ([`super::menu_bar::close_on_row_click`]), a mesma porta do
+/// Enter — senão o rato fechava no Down e a escolha pelo menu chegava sem menu (o chip que ensina o
+/// atalho nunca contava um clique de rato, smoke do dono 12/11).
 #[must_use]
 pub fn down_is_of_the_menu(store: &WidgetStore, kind: ContextMenuKind, id: NodeId) -> bool {
     (opens_submenu(id) && level_of_row(store, id).is_some())
-        || (super::menu_bar::is_bar_menu(kind) && store.menu_row_is_unavailable(id))
+        || (super::menu_bar::is_bar_menu(kind) && level_of_row(store, id).is_some())
 }
 
 /// A cascata aberta é da barra (nasceu do «Menu» ou de um dos cinco)?

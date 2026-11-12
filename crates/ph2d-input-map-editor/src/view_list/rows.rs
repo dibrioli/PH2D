@@ -59,6 +59,19 @@ pub(super) fn paint_rows(
     let total: f32 = actions.iter().map(|a| row_h(a) + m::FIELD_ROW_GAP).sum();
     doc.list.scroll_max = (total - list_h).max(0.0);
     doc.list.scroll = doc.list.scroll.clamp(0.0, doc.list.scroll_max);
+    // A ação que a busca da faixa escolheu: fora da vista, a lista rola até ela ficar ao meio.
+    if let Some(want) = doc.list.reveal.take()
+        && let Some(i) = actions.iter().position(|a| a.id == want)
+    {
+        let top: f32 = actions[..i]
+            .iter()
+            .map(|a| row_h(a) + m::FIELD_ROW_GAP)
+            .sum();
+        let h = row_h(&actions[i]);
+        if top < doc.list.scroll || top + h > doc.list.scroll + list_h {
+            doc.list.scroll = (top - (list_h - h) * 0.5).clamp(0.0, doc.list.scroll_max);
+        }
+    }
     // A barra do cartão quando a lista rola; as linhas encolhem para ela não tapar o lixo.
     let view = Rect::new(area.x, area.y, area.w, list_h);
     let bar = scrollbar_is_needed(total, list_h);

@@ -64,6 +64,10 @@ foto onda3_1_busca_vazia "$JW" "$JH"
 escreve jump
 foto onda3_2_busca_jump
 
+# 2b — o CLIQUE na linha «jump» (não só o Enter): a aba abre na List, com jump destacado
+xdotool mousemove 640 103; sleep 0.4; xdotool click 1; sleep 1.5
+foto onda3_2b_clique_jump_abre_a_list "$JW" "$JH"
+
 # 3 — um objeto da cena; Enter seleciona-o
 busca player
 foto onda3_3_busca_player
@@ -91,11 +95,14 @@ tecla alt
 tecla Right Down Down Right
 foto onda3_6_open_recent
 
-# 7 — três vezes Edit ▸ Undo PELO MENU: o chip ensina o atalho
+# 7 — três vezes Edit ▸ Undo PELO MENU, com o RATO (a mão do dono): o chip ensina o atalho
+PX=965 PY=600
+vai() { local x=$1 y=$2 n=${3:-8} i; for i in $(seq 1 "$n"); do xdotool mousemove $((PX + (x - PX) * i / n)) $((PY + (y - PY) * i / n)); sleep 0.15; done; PX=$x PY=$y; sleep 0.6; }
 for _ in 1 2 3; do
   fecha
-  tecla alt
-  tecla Down Right Return
+  vai 45 11 4; xdotool click 1; sleep 1      # «Menu»
+  vai 60 67 6; vai 300 67 6                   # Edit ▸ Undo (só pairar)
+  xdotool click 1; sleep 1.5
 done
 sleep 1
 foto onda3_7_chip 1930 120

@@ -101,3 +101,57 @@ fn o_x_fecha_para_sempre_e_nunca_ha_dois_chips() {
         "um clique fora do menu contou como escolha pelo menu"
     );
 }
+
+/// ⭐ **O CLIQUE DE RATO conta como o Enter** (smoke do dono 12/11: o chip não apareceu): o Down numa
+/// linha do menu não o fecha, e o Up (o `Click`) chega com o menu aberto.
+/// Mutação: voltar o `down_is_of_the_menu` a só as linhas-cascata ⇒ o Down fecha, não conta, sangra.
+#[test]
+fn o_clique_de_rato_numa_linha_conta_como_escolha_pelo_menu() {
+    use crate::interaction::{HitIndex, dispatch_pointer};
+    use crate::zones::Rect;
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    let mut hero = HeroScreen::new(NodeId(1));
+    // Um segundo entre cliques: o mesmo instante seria um duplo clique.
+    let ev = |kind, t: u128| PointerEvent {
+        x: 10.0,
+        y: 10.0,
+        pressure: 1.0,
+        kind,
+        source: PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: t * 1_000_000_000,
+    };
+    for n in 1..=3 {
+        hero.store.open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::MenuBarEdit,
+        });
+        let mut hits = HitIndex::default();
+        hits.register(ids::TOOL_UNDO, Rect::new(0.0, 0.0, 100.0, 20.0));
+        let arena = bumpalo::Bump::new();
+        let down = dispatch_pointer(
+            &mut hero.store,
+            &hits,
+            ev(PointerKind::Down, u128::from(n)),
+            &arena,
+        )
+        .to_vec();
+        assert!(hero.store.context_menu().is_some(), "o Down fechou o menu");
+        let up = dispatch_pointer(
+            &mut hero.store,
+            &hits,
+            ev(PointerKind::Up, u128::from(n)),
+            &arena,
+        )
+        .to_vec();
+        for e in down.into_iter().chain(up) {
+            hero.apply_event(e);
+        }
+        assert_eq!(hero.menu_memory.menu_picks(ids::TOOL_UNDO), n);
+    }
+    assert_eq!(
+        hero.store.teach_chip().map(|c| c.key.as_str()),
+        Some("Ctrl+Z")
+    );
+}

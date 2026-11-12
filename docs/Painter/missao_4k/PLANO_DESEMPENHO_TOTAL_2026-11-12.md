@@ -29,3 +29,25 @@ de vermelhos antes × depois). Do DONO, fora do plano: B14.2 (luz cheia no gesto
 ## Estado
 
 (cada onda acrescenta aqui o commit, a tabela A×B e o que ficou aberto, com o porquê)
+
+**Onda 1 (12/11, feita):** `d9bd722622` envio sem cópia (Filbert Ctrl+Z 63,6 → 50,1 · Wet toque 61,8 → 50,6) ·
+`b5f4a90128` `62bb7c2efa` `3848f195aa` curas do Wet (o preparo vale 15 ms no 1.º toque, mesmo binário; controlo
+vermelho) · portão `the_shell_folds_the_window_the_tool_reports_dirty` reancorado (3 mutações). Tabelas r12/r13/p1 em
+`medicoes/REGRESSOES_TOQUE_E_UNDO_2026-11-11.md`. Aberto: Wet Ctrl+Z ~46–48 (o `poe` serial dos tiles em
+`Registo::restaura`, `reconta_teto`/`reconta_real`, `FotoDoMotor::de/repoe`); Filbert toque ~62.
+
+**Onda 2 (em curso):** p1 mostrou que o W9 (1 340 ms) e o D1 (Color mixing largo) já não passam de 60 ms; o que resta
+é o W5 (Flat Bristle `]`×10 = Size 240): um quadro de **1 055 ms** com o fio da UI a 0 % (espera o depósito no pool).
+`c572c293e2`: mistura espectral com memo + `ph2d-pigment` num pedaço no smoke + pow da opacidade fora do laço =
+662 → 590 G instruções por ronda do `mede_o_dab … Flat Bristle 240` (−10,9 %), hash `fe1a4c3dc2e7193a` igual.
+Em voo: agente β (vetorizar a mistura ao bit, worktree `.ph2d-ag-beta`), agente α (cortes ao bit no caminho das
+sub-amostras, worktree `.ph2d-ag-alfa`). Por decidir: tirar o depósito do quadro (a UI deixa de congelar; a tinta
+aparece com atraso) — arquitectura do `offthread`.
+
+**Achados a seguir:** W6 parado depois de `]`×10 com CPU 492 % (pool, sem entrada; perfilar com binário de
+símbolos) · vermelho HERDADO `o_meio_viaja_do_controlo_ao_deposito` (ph2d-wet-paint): verde no `main` `bc4a6ce930`,
+vermelho em `4381ee6d4a` — bissecção em curso.
+
+**Ferramentas desta onda:** binários com símbolos em `CARGO_TARGET_DIR=/home/enio/Documentos/Projetos/.ph2d-perf-target`
+com `CARGO_PROFILE_SMOKE_STRIP=none CARGO_PROFILE_SMOKE_DEBUG=line-tables-only` (o perf não grava pilha aqui: paranoid
+2; usar `perf annotate -l` para a linha). Matriz por bash (zsh não parte `"a b"`): roteiros no scratch da janela.

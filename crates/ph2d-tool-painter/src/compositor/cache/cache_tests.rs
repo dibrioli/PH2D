@@ -319,7 +319,7 @@ fn o_arrasto_de_ajustes_com_resumo_e_a_rota_sem_resumo_ao_bit() {
             .enumerate()
         {
             let (x, y) = (i as u32 % w, i as u32 / w);
-            if (x / 64 + y / 3 + semente) % 3 != 0 {
+            if !(x / 64 + y / 3 + semente).is_multiple_of(3) {
                 *p = [0; 4];
             }
         }

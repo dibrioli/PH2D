@@ -40,7 +40,7 @@ fn esparsa(img: &mut LayerImage, w: u32, k: u32) {
         .enumerate()
     {
         let (x, y) = (i as u32 % w, i as u32 / w);
-        if (x / 64 + y / 9 + k) % 4 != 0 || x % 64 > 50 {
+        if !(x / 64 + y / 9 + k).is_multiple_of(4) || x % 64 > 50 {
             p[3] = 0;
         }
     }

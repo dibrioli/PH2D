@@ -14,7 +14,7 @@ use super::{Ctx, backtrace, corner_weight};
 use crate::grid::SolverScratch;
 use crate::par::Rows;
 use rayon::prelude::*;
-use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::atomic::AtomicUsize;
 
 /// Linhas de saída por bloco; `0` = a rota por linha de antes (sondas e o oráculo). Produto: 16.
 #[doc(hidden)]

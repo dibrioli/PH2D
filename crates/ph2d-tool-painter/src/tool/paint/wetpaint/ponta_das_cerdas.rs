@@ -30,10 +30,10 @@ pub(super) struct PontaDasCerdas {
     px_cel: f64,
     /// O desvio de um fio de desvio `1` (px): [`ALCANCE`] da meia-corda.
     meia: f64,
-    /// `comprimento_do_fio(k, rho) − 1` dos fios `k0..` que a silhueta alcança, contado 1× por dab (o hash era por
-    /// célula); fora da faixa, a conta directa — ao bit.
+    /// O deslocamento (células, [`Self::passo`]) de `comprimento_do_fio(k, rho) − 1` dos fios `k0..` que a silhueta
+    /// alcança, contado 1× por dab (o hash e as duas divisões eram por célula); fora da faixa, a conta directa — ao bit.
     k0: i32,
-    desvios: Vec<f64>,
+    passos: Vec<[f64; 2]>,
 }
 
 impl PontaDasCerdas {
@@ -65,17 +65,19 @@ impl PontaDasCerdas {
             }
         }
         let (k0, k1) = fios.faixa(alcance_px.max(px_cel));
-        Some(Self {
+        let mut p = Self {
             fios,
             rho,
             centro,
             px_cel,
             meia: ALCANCE * a.max(0.5 * px_cel),
             k0,
-            desvios: (k0..=k1)
-                .map(|k| FiosNoDab::comprimento_do_fio(k, rho) - 1.0)
-                .collect(),
-        })
+            passos: Vec::new(),
+        };
+        p.passos = (k0..=k1)
+            .map(|k| p.passo(FiosNoDab::comprimento_do_fio(k, rho) - 1.0))
+            .collect();
+        Some(p)
     }
 
     /// O maior deslocamento da pegada (px): `|desvio| ≤ ρ` nas duas leis.
@@ -103,11 +105,11 @@ impl PontaDasCerdas {
     /// [`Self::recorta`] com o fio da célula já achado ([`Self::fio_da_celula`]).
     #[inline]
     pub(super) fn recorta_no_fio(&self, sil: CellFn<'_>, cx: i32, cy: i32, fio: i32) -> f64 {
-        let desvio = usize::try_from(fio - self.k0)
+        let passo = usize::try_from(fio - self.k0)
             .ok()
-            .and_then(|i| self.desvios.get(i).copied())
-            .unwrap_or_else(|| FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0);
-        self.desloca(sil, cx, cy, desvio)
+            .and_then(|i| self.passos.get(i).copied())
+            .unwrap_or_else(|| self.passo(FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0));
+        self.desloca_por(sil, cx, cy, passo)
     }
 
     /// ⭐ **A ponta que ESFARELA** (W3 K3b, `docs/Painter/Pinceis/W3_K3b_cerda.md`): o desvio de cada célula sai do GRÃO
@@ -120,13 +122,21 @@ impl PontaDasCerdas {
 
     /// A silhueta lida no ponto deslocado `desvio · meia` ao longo do traço (bilinear sub-célula).
     fn desloca(&self, sil: CellFn<'_>, cx: i32, cy: i32, desvio: f64) -> f64 {
+        self.desloca_por(sil, cx, cy, self.passo(desvio))
+    }
+
+    /// O deslocamento (células) do ponto lido por um desvio `desvio · meia` ao longo do traço.
+    fn passo(&self, desvio: f64) -> [f64; 2] {
         let desvio = self.meia * desvio;
         let n = self.fios.normal();
         let t = [n[1], -n[0]];
-        let q = [
-            f64::from(cx) - t[0] * desvio / self.px_cel,
-            f64::from(cy) - t[1] * desvio / self.px_cel,
-        ];
+        [t[0] * desvio / self.px_cel, t[1] * desvio / self.px_cel]
+    }
+
+    /// [`Self::desloca`] com o [`Self::passo`] já contado.
+    #[inline]
+    fn desloca_por(&self, sil: CellFn<'_>, cx: i32, cy: i32, passo: [f64; 2]) -> f64 {
+        let q = [f64::from(cx) - passo[0], f64::from(cy) - passo[1]];
         let (x0, y0) = (q[0].floor(), q[1].floor());
         let (fx, fy) = (q[0] - x0, q[1] - y0);
         let (x0, y0) = (x0 as i32, y0 as i32);

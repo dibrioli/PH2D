@@ -183,6 +183,8 @@ pub(super) fn pousa_o_dab(
         sess.engine.sim.semente_do_po = (z ^ (z >> 31)) as u32;
     }
     let inv_r = 1.0 / d.radius_px.max(0.01);
+    // A contagem da sonda (B14c), lida 1× por dab: desligada, as leituras da silhueta não pagam a carga por célula.
+    let conta = crate::wet_diag::CONTA_SIL.load(std::sync::atomic::Ordering::Relaxed);
     // ⚠️ A silhueta é avaliada em espaço de CANVAS, sempre — só
     // AMOSTRADA por célula. É por isso que a razão da grade não muda a
     // forma do pincel, apenas quão fino o fluido a resolve: o `t` sai
@@ -227,22 +229,26 @@ pub(super) fn pousa_o_dab(
         let sy = grid_map::cell_subsample_px(cy, ratio, 0, lado);
         fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r)
     };
-    let fora_t = move |t: f32, folga: f32, desliza: f32| -> bool {
-        lips.is_some_and(|l| {
-            t - l * (0.5 * lado + folga) * std::f32::consts::SQRT_2 * inv_r - desliza >= 1.001
-        })
+    // A margem de quem corta com `folga` px por eixo, contada 1× por dab (era por célula): `t − margem − desliza`.
+    let margem =
+        move |folga: f32| lips.map(|l| l * (0.5 * lado + folga) * std::f32::consts::SQRT_2 * inv_r);
+    let fora_t = move |t: f32, margem: Option<f32>, desliza: f32| -> bool {
+        margem.is_some_and(|a| t - a - desliza >= 1.001)
     };
-    let fora = move |cx: i32, cy: i32, folga: f32, desliza: f32| -> bool {
-        lips.is_some() && fora_t(t_do_centro(cx, cy), folga, desliza)
+    let fora = move |cx: i32, cy: i32, margem: Option<f32>, desliza: f32| -> bool {
+        margem.is_some() && fora_t(t_do_centro(cx, cy), margem, desliza)
     };
+    let margem0 = margem(0.0);
     let sil = |cx: i32, cy: i32| -> f64 {
         // Com `aa_n = 1` o único sub-ponto do AA é o centro de `fora` (`lado = aa_step`): o mesmo `t`, contado 1×.
         let t0 = (aa_n == 1).then(|| t_do_centro(cx, cy));
-        if t0.map_or_else(|| fora(cx, cy, 0.0, 0.0), |t| fora_t(t, 0.0, 0.0)) {
+        if t0.map_or_else(|| fora(cx, cy, margem0, 0.0), |t| fora_t(t, margem0, 0.0)) {
             return 0.0;
         }
-        crate::wet_diag::conta_sil(2, 1);
-        crate::wet_diag::conta_sil(3, u64::from(aa_n) * u64::from(aa_n));
+        if conta {
+            crate::wet_diag::conta_sil(2, 1);
+            crate::wet_diag::conta_sil(3, u64::from(aa_n) * u64::from(aa_n));
+        }
         let mut acc = 0.0f32;
         for j in 0..aa_n {
             let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
@@ -266,7 +272,7 @@ pub(super) fn pousa_o_dab(
                 };
             }
         }
-        if acc == 0.0 {
+        if conta && acc == 0.0 {
             crate::wet_diag::conta_sil(5, 1);
         }
         f64::from(acc * aa_inv)
@@ -390,7 +396,9 @@ pub(super) fn pousa_o_dab(
         (None, _) => sil(cx, cy),
     };
     let sil = |cx: i32, cy: i32| {
-        crate::wet_diag::conta_sil(1, 1);
+        if conta {
+            crate::wet_diag::conta_sil(1, 1);
+        }
         sil_da_ponta(cx, cy)
     };
     // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
@@ -417,11 +425,12 @@ pub(super) fn pousa_o_dab(
         let limiar = 1.001 + f64::from(desliza) + a * f64::from(inv_r);
         corte_das_linhas::CorteDasLinhas::nova(&fp_raio, limiar, d.center, inv_r, ratio, lado)
     });
+    let margem_ponta = margem(folga_ponta);
     let fora_motor = |cx: i32, cy: i32| -> bool {
         corte_motor
             .as_ref()
             .and_then(|c| c.decide(cx, cy))
-            .unwrap_or_else(|| fora(cx, cy, folga_ponta, desliza))
+            .unwrap_or_else(|| fora(cx, cy, margem_ponta, desliza))
     };
     // Com a memo, ela guarda também o `0` de `fora`: a 2.ª leitura da célula (o depósito, o pente, o grão) não paga o
     // corte. A contagem do motor continua a das leituras não cortadas (`v ≠ 0` só sai de quem passou o corte).
@@ -430,7 +439,9 @@ pub(super) fn pousa_o_dab(
             if fora_motor(cx, cy) {
                 return 0.0;
             }
-            crate::wet_diag::conta_sil(0, 1);
+            if conta {
+                crate::wet_diag::conta_sil(0, 1);
+            }
             return sil(cx, cy);
         };
         let v = m.ou(
@@ -440,9 +451,7 @@ pub(super) fn pousa_o_dab(
                 if fora_motor(cx, cy) { 0.0 } else { sil(cx, cy) }
             },
         );
-        if crate::wet_diag::CONTA_SIL.load(std::sync::atomic::Ordering::Relaxed)
-            && (v != 0.0 || !fora_motor(cx, cy))
-        {
+        if conta && (v != 0.0 || !fora_motor(cx, cy)) {
             crate::wet_diag::conta_sil(0, 1);
         }
         v

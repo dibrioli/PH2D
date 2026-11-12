@@ -6,7 +6,7 @@ use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_editor_core::gizmo::{PointHandle, PointHandleKind};
 use ph2d_editor_core::project::ProjectSettings;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::jump_arc::{ArcWorld, JumpArc, JumpArcs};
+use ph2d_physics_ecs::jump_arc::{ArcWorld, JumpArc, JumpArcs, TouchKind};
 use ph2d_physics_ecs::{PhysicsSettings, PlatformPlayer, arc_world};
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
@@ -18,6 +18,8 @@ const HOVER_PX: f32 = 9.0; // LITERAL-PX-OK: alvo de hover, o mesmo do ponto da 
 const NOME_W_PX: f32 = 140.0; // LITERAL-PX-OK: chrome de overlay
 const LABEL_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 const LABEL_FONT_PX: f32 = 11.0; // LITERAL-PX-OK: o mesmo do readout das juntas
+/// A opacidade do corpo-fantasma no choque: lê-se como «onde ele ficaria», atrás da curva.
+const FANTASMA_ALFA: f32 = 0.6; // LITERAL-PX-OK: opacidade do contorno-fantasma
 
 /// As quatro curvas, pela ordem de pintura (as finas antes da forte).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -59,6 +61,21 @@ pub struct Desenho {
     pub arcos: JumpArcs,
     /// A velocidade máxima do player (m/s): o readout da alça.
     pub speed: f32,
+    /// A forma principal do player na pose de arranque: o corpo-fantasma de um choque.
+    pub corpo: Option<(ph2d_shape_handles::Pose, ph2d_shape_handles::Medida)>,
+}
+
+/// Uma marca do fim de uma curva, em mundo.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Marca {
+    /// O pé pousa: um anel no pouso.
+    Pouso { curva: Curva, at: [f32; 2] },
+    /// A cabeça ou o lado batem: o corpo-fantasma na pose de paragem e o ponto tocado.
+    Choque {
+        curva: Curva,
+        corpo: ph2d_shape_handles::Pose,
+        contacto: [f32; 2],
+    },
 }
 
 impl Desenho {
@@ -68,8 +85,27 @@ impl Desenho {
         add(self.chao, self.arcos.full.apex)
     }
 
-    /// Onde cada curva pousa (o toque no terreno), em mundo.
-    pub fn pousos(&self) -> impl Iterator<Item = (Curva, [f32; 2])> + '_ {
+    /// Como cada curva acaba no terreno: anel no pouso, corpo-fantasma no choque (sem forma
+    /// principal não há corpo a desenhar, e o choque fica com o anel).
+    pub fn marcas(&self) -> impl Iterator<Item = Marca> + '_ {
+        self.arcos_por_curva().filter_map(|(curva, a)| {
+            let t = a.touch?;
+            let at = add(self.chao, t.at);
+            Some(match (t.kind, self.corpo) {
+                (TouchKind::Bump, Some((pose, _))) => Marca::Choque {
+                    curva,
+                    corpo: ph2d_shape_handles::Pose {
+                        t: add(pose.t, t.at),
+                        ..pose
+                    },
+                    contacto: add(self.chao, t.contact),
+                },
+                _ => Marca::Pouso { curva, at },
+            })
+        })
+    }
+
+    fn arcos_por_curva(&self) -> impl Iterator<Item = (Curva, &JumpArc)> + '_ {
         [
             (Curva::Standing, &self.arcos.standing),
             (Curva::Short, &self.arcos.short),
@@ -77,20 +113,12 @@ impl Desenho {
         .into_iter()
         .chain(self.arcos.air.iter().map(|a| (Curva::Air, a)))
         .chain(std::iter::once((Curva::Full, &self.arcos.full)))
-        .filter_map(|(c, a)| a.touch.map(|t| (c, add(self.chao, t))))
     }
 
     /// Cada curva com o seu tipo, em mundo.
     pub fn curvas(&self) -> impl Iterator<Item = (Curva, Vec<[f32; 2]>)> + '_ {
         let em_mundo = |a: &JumpArc| a.points.iter().map(|p| add(self.chao, *p)).collect();
-        [
-            (Curva::Standing, &self.arcos.standing),
-            (Curva::Short, &self.arcos.short),
-        ]
-        .into_iter()
-        .chain(self.arcos.air.iter().map(|a| (Curva::Air, a)))
-        .chain(std::iter::once((Curva::Full, &self.arcos.full)))
-        .map(move |(c, a)| (c, em_mundo(a)))
+        self.arcos_por_curva().map(move |(c, a)| (c, em_mundo(a)))
     }
 }
 
@@ -131,12 +159,19 @@ pub fn desenho(
         up,
         &mut arcos,
     );
+    let corpo = ph2d_physics_ecs::main_shape(sim.world(), player).and_then(|m| {
+        Some((
+            ph2d_shape_handles::Pose::de(sim.world(), m)?,
+            ph2d_shape_handles::Medida::da_forma(sim.world(), m)?,
+        ))
+    });
     Some(Desenho {
         player,
         chao,
         mundo,
         arcos,
         speed: p.speed,
+        corpo,
     })
 }
 
@@ -239,20 +274,7 @@ pub fn draw(
             .inner_mut()
             .stroke(&stroke, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
     }
-    // A marca do pouso: um anel pequeno na cor da curva, onde ela toca o terreno.
-    let raio = f64::from(Spacing::Xs.px());
-    for (c, at) in d.pousos() {
-        let cor = ph2d_editor_core::paint::resolve(c.cor(), theme);
-        let (x, y) = camera.world_to_screen(at, window);
-        let anel = ph2d_vector::Circle::new((f64::from(x), f64::from(y)), raio);
-        scene.inner_mut().stroke(
-            &Stroke::new(fino),
-            Affine::IDENTITY,
-            &Brush::Solid(cor),
-            None,
-            &anel,
-        );
-    }
+    pinta_marcas(d, fino, forte, traco, camera, window, theme, scene);
     let rotulo =
         |texto: &str, at: (f32, f32), cor: ColorToken, scene: &mut VectorScene, text: &mut _| {
             let rect = ph2d_editor_core::zones::Rect::new(
@@ -295,6 +317,66 @@ pub fn draw(
         );
     } else if let Some(c) = sob_o_cursor(d, camera, window, pointer) {
         rotulo(ph2d_i18n::tr(c.chave()), pointer, c.cor(), scene, text);
+    }
+}
+
+/// O fim de cada curva: no pouso, um anel do tamanho de uma alça; no choque, o contorno-fantasma
+/// do corpo na pose de paragem (tracejado, sem preenchimento) e um ponto onde ele toca.
+#[allow(clippy::too_many_arguments)]
+fn pinta_marcas(
+    d: &Desenho,
+    fino: f64,
+    forte: f64,
+    traco: [f64; 2],
+    camera: &Camera2d,
+    window: WindowSize,
+    theme: Theme,
+    scene: &mut VectorScene,
+) {
+    let ecra = |p: [f32; 2]| {
+        let (x, y) = camera.world_to_screen(p, window);
+        (f64::from(x), f64::from(y))
+    };
+    for m in d.marcas() {
+        match m {
+            Marca::Pouso { curva, at } => {
+                let cor = ph2d_editor_core::paint::resolve(curva.cor(), theme);
+                let anel = ph2d_vector::Circle::new(ecra(at), f64::from(Spacing::Md.px()));
+                scene.inner_mut().stroke(
+                    &Stroke::new(forte),
+                    Affine::IDENTITY,
+                    &Brush::Solid(cor),
+                    None,
+                    &anel,
+                );
+            }
+            Marca::Choque {
+                curva,
+                corpo,
+                contacto,
+            } => {
+                let cor = ph2d_editor_core::paint::resolve(curva.cor(), theme);
+                if let Some((_, medida)) = d.corpo {
+                    let contorno =
+                        ph2d_shape_handles::tinta::contorno(&corpo, &medida, camera, window);
+                    scene.inner_mut().stroke(
+                        &Stroke::new(fino).with_dashes(0.0, traco),
+                        Affine::IDENTITY,
+                        &Brush::Solid(cor.with_alpha(FANTASMA_ALFA)),
+                        None,
+                        &contorno,
+                    );
+                }
+                let ponto = ph2d_vector::Circle::new(ecra(contacto), f64::from(Spacing::Xs.px()));
+                scene.inner_mut().fill(
+                    ph2d_vector::Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(cor),
+                    None,
+                    &ponto,
+                );
+            }
+        }
     }
 }
 

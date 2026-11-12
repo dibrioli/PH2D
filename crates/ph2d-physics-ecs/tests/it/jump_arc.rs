@@ -5,7 +5,7 @@ use crate::platform_scene::{pose, scene};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, PlayerInput};
-use ph2d_platformer::arc::{JumpArc, jump_arcs};
+use ph2d_platformer::arc::{JumpArc, TouchKind, jump_arcs};
 use ph2d_platformer::feel::Feel;
 
 /// O que se compara de um pulo: o ápice (acima do arranque, para o lado), o tempo no ar e o alcance.
@@ -363,9 +363,16 @@ fn pouso_real(pts: &[[f32; 2]], h: f32) -> (usize, f32, f32) {
 }
 
 fn confere_pouso(nome: &str, arco: &JumpArc, pts: &[[f32; 2]], h_esperada: f32) {
-    let t = arco
+    let toque = arco
         .touch
         .unwrap_or_else(|| panic!("{nome}: a curva não tocou o terreno"));
+    assert_eq!(toque.kind, TouchKind::Land, "{nome}: o pé pousa, não bate");
+    assert!(
+        (toque.contact[1] - h_esperada).abs() < 0.02,
+        "{nome}: o contacto não está na superfície {:?}",
+        toque.contact
+    );
+    let t = toque.at;
     let tique = arco.points.len() - 1;
     let (i, x, assenta) = pouso_real(pts, t[1]);
     eprintln!(
@@ -439,7 +446,17 @@ fn a_curva_para_na_parede() {
         },
         true,
     );
-    let t = arco.touch.expect("a curva não tocou a parede");
+    let toque = arco.touch.expect("a curva não tocou a parede");
+    assert_eq!(
+        toque.kind,
+        TouchKind::Bump,
+        "a parede bate no lado: {toque:?}"
+    );
+    assert!(
+        (toque.contact[0] - face).abs() < 0.02,
+        "o contacto está na face da parede: {toque:?}"
+    );
+    let t = toque.at;
     let real = pts.iter().map(|p| p[0]).fold(f32::MIN, f32::max);
     eprintln!("parede: desenho {t:?} · jogo encosta em x {real:.3}");
     // A cápsula (raio 0,2) encosta na face: o centro fica a 0,2 dela.
@@ -449,6 +466,26 @@ fn a_curva_para_na_parede() {
     );
     assert!((t[0] - real).abs() < 0.11, "desenho {} × jogo {real}", t[0]);
     assert!(t[1] > 0.0, "a parede pega-o no ar: {t:?}");
+}
+
+/// (d) Um teto baixo por cima: a cabeça bate nele e a curva pára por CHOQUE, com o contacto NO teto.
+#[test]
+fn o_teto_baixo_para_a_curva_por_choque_com_o_contacto_no_teto() {
+    // O fundo do teto, acima do pé (o chão de `platform_scene` tem o topo em 0,5).
+    let fundo = 1.6;
+    let (arco, _) = terreno(
+        |sim, x| {
+            caixa(sim, x - 3.0, x + 6.0, 0.5 + fundo + 0.4, 0.4);
+        },
+        true,
+    );
+    let toque = arco.touch.expect("a curva não tocou o teto");
+    assert_eq!(toque.kind, TouchKind::Bump, "a cabeça bate: {toque:?}");
+    assert!(
+        (toque.contact[1] - fundo).abs() < 0.02,
+        "o contacto está no fundo do teto: {toque:?}"
+    );
+    assert!(toque.at[1] < fundo, "o pé fica abaixo do teto: {toque:?}");
 }
 
 /// Sonda: o custo de UMA chamada do desenho (lei + corte no terreno) na cena (a), com Air Jumps 1.

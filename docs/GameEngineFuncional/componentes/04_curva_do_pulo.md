@@ -157,7 +157,8 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
 - **Custo medido:** `launch_speed` 0,20 µs por chamada; lei + corte **54,3 µs** por chamada com 3 formas e Air
   Jumps 1 — 2 chamadas por quadro, só com a curva ligada e o relógio parado. Escala com o número de formas: se
   um nível grande o mostrar, cache por (config, pose, versão das formas).
-- **Visto nas fotos (para o smoke):** o anel do Short fica no ar, ~0,2 m antes e abaixo do canto da «Platform High»:
-  o anel marca o PÉ, e quem bate é o topo da cápsula (pé + 0,8 m) contra o canto de baixo — leitura certa da lei,
-  mas pode ler-se como «parou do nada». O pulo do ar sai pela direita da vista (pousa além dos 13 m, atrás do
+- **Pouso × choque (resolvido 12/11):** o corte diz COMO parou (`ArcTouch { at, contact, kind }`: pouso se a normal
+  da superfície tocada olha para cima dentro do `max_slope`, senão choque); no pouso o anel tem o raio `Spacing::Md`
+  com traço forte, no choque o painel pinta o contorno-fantasma tracejado da forma principal na pose de paragem e um
+  ponto no contacto — o Short já não «pára do nada»: o fantasma encosta na quina da «Platform High». O pulo do ar sai pela direita da vista (pousa além dos 13 m, atrás do
   Inspector) e a vista é larga (16 m: o smoke centra no Player selecionado).

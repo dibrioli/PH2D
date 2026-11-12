@@ -10,10 +10,12 @@
 
 use ph2d_ecs::{Entity, World};
 use ph2d_physics::{LayerMatrix, PlacedShape, sweep_path};
-use ph2d_platformer::arc::{JumpArc, JumpArcs};
+use ph2d_platformer::arc::{ArcTouch, JumpArc, JumpArcs, TouchKind};
 
 use crate::seam::ColliderPose;
-use crate::{Collider, FormaDesligada, OneWayPlatform, PhysicsSettings, RigidBody, parts};
+use crate::{
+    Collider, FormaDesligada, OneWayPlatform, PhysicsSettings, PlatformPlayer, RigidBody, parts,
+};
 
 /// A forma `e` posta no mundo (a pose autorada, a escala e o offset), ou `None` sem pose.
 fn placed(world: &World, e: Entity, col: &Collider) -> Option<PlacedShape> {
@@ -73,13 +75,26 @@ fn body_from_foot(world: &World, player: Entity, chao: [f32; 2]) -> Option<Place
     Some(p)
 }
 
-/// Corta `arc` (pontos relativos a `chao`) no primeiro toque; marca o ponto em `touch`.
+/// **Pouso × choque**: o toque é um pouso quando a superfície olha para cima dentro do limite de
+/// rampa do player (`normal·up > cos(max_slope)`, a mesma pergunta da perna); senão a cabeça ou o
+/// lado bateram.
+#[must_use]
+pub fn touch_kind(normal: [f32; 2], up: [f32; 2], max_slope_cos: f32) -> TouchKind {
+    if normal[0] * up[0] + normal[1] * up[1] > max_slope_cos {
+        TouchKind::Land
+    } else {
+        TouchKind::Bump
+    }
+}
+
+/// Corta `arc` (pontos relativos a `chao`) no primeiro toque; marca o ponto e o tipo em `touch`.
 fn cut(
     arc: &mut JumpArc,
     chao: [f32; 2],
     body: Option<&PlacedShape>,
     terrain: &[PlacedShape],
     up: [f32; 2],
+    slope_cos: f32,
 ) {
     let world_pts: Vec<[f32; 2]> = arc
         .points
@@ -94,7 +109,11 @@ fn cut(
     let at = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
     arc.points.truncate(hit.segment + 1);
     arc.points.push(at);
-    arc.touch = Some(at);
+    arc.touch = Some(ArcTouch {
+        at,
+        contact: [hit.contact[0] - chao[0], hit.contact[1] - chao[1]],
+        kind: touch_kind(hit.normal, up, slope_cos),
+    });
 }
 
 /// **Corta todas as curvas de `player` no terreno da cena.** `chao` é o pé do arranque, em mundo.
@@ -108,11 +127,20 @@ pub fn cut_on_terrain(
 ) {
     let terrain = solid_terrain(world, settings, player);
     let body = body_from_foot(world, player, chao);
+    // Sem o componente, o limite de rampa de fábrica.
+    let slope_cos = world
+        .get::<PlatformPlayer>(player)
+        .map_or_else(
+            || PlatformPlayer::default().config(),
+            PlatformPlayer::config,
+        )
+        .walk
+        .max_slope_cos();
     for arc in std::iter::once(&mut arcs.full)
         .chain(std::iter::once(&mut arcs.short))
         .chain(std::iter::once(&mut arcs.standing))
         .chain(arcs.air.iter_mut())
     {
-        cut(arc, chao, body.as_ref(), &terrain, up);
+        cut(arc, chao, body.as_ref(), &terrain, up, slope_cos);
     }
 }

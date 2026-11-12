@@ -31,8 +31,27 @@ pub struct JumpArc {
     pub apex_time: f32,
     /// Até voltar à linha do arranque.
     pub air_time: f32,
-    /// Onde a curva TOCA o terreno (o último ponto), se um corte o achou; a lei pura deixa `None`.
-    pub touch: Option<Vec2>,
+    /// Onde e como a curva TOCA o terreno (o último ponto), se um corte o achou; a lei pura deixa `None`.
+    pub touch: Option<ArcTouch>,
+}
+
+/// Como a curva parou no terreno.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TouchKind {
+    /// O pé pousa: a superfície olha para cima, dentro do limite de rampa.
+    Land,
+    /// A cabeça ou o lado batem (teto, quina, parede): o corpo pára no ar.
+    Bump,
+}
+
+/// O fim de uma curva cortada no terreno.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ArcTouch {
+    /// O pé na paragem (o último ponto da curva), relativo ao arranque.
+    pub at: Vec2,
+    /// O ponto tocado NA superfície, relativo ao arranque.
+    pub contact: Vec2,
+    pub kind: TouchKind,
 }
 
 /// Todas as curvas que o canvas mostra.

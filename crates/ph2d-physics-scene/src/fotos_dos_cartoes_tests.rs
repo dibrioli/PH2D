@@ -61,6 +61,8 @@ struct Toques {
     full: Option<[f32; 2]>,
     short: Option<[f32; 2]>,
     standing: Option<[f32; 2]>,
+    /// Como o Short parou (a quina da Platform High bate na cabeça).
+    short_kind: Option<ph2d_physics_ecs::jump_arc::TouchKind>,
 }
 
 fn toques(sim: &mut SimWorld, caso: CasoFisica) -> Toques {
@@ -79,13 +81,15 @@ fn toques(sim: &mut SimWorld, caso: CasoFisica) -> Toques {
     ];
     let mut a = p.jump_arcs(mundo);
     ph2d_physics_ecs::arc_terrain::cut_on_terrain(w, &s, e, chao, up, &mut a);
-    let m =
-        |a: &ph2d_physics_ecs::jump_arc::JumpArc| a.touch.map(|t| [chao[0] + t[0], chao[1] + t[1]]);
+    let m = |a: &ph2d_physics_ecs::jump_arc::JumpArc| {
+        a.touch.map(|t| [chao[0] + t.at[0], chao[1] + t.at[1]])
+    };
     Toques {
         chao,
         full: m(&a.full),
         short: m(&a.short),
         standing: m(&a.standing),
+        short_kind: a.short.touch.map(|t| t.kind),
     }
 }
 
@@ -115,6 +119,11 @@ fn a_foto_do_terreno_desce_ao_chao_e_pousa_na_plataforma_alta() {
     assert!(
         sh[0] < ALTA_X[0] && sh[1] > t.chao[1] && sh[1] < ALTA_TOPO,
         "o Short pára no ar, na parede da Platform High (o pé abaixo do topo dela): {sh:?}"
+    );
+    assert_eq!(
+        t.short_kind,
+        Some(ph2d_physics_ecs::jump_arc::TouchKind::Bump),
+        "o Short pára por CHOQUE: a foto pinta o corpo-fantasma"
     );
 }
 

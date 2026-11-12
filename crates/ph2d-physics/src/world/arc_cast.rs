@@ -29,6 +29,10 @@ pub struct PlacedShape {
 pub struct PathHit {
     pub segment: usize,
     pub fraction: f32,
+    /// O ponto tocado NA superfície do obstáculo, em mundo (o pé ou o corpo).
+    pub contact: [f32; 2],
+    /// A normal da superfície no toque, unitária, a sair do obstáculo (contra o sondador).
+    pub normal: [f32; 2],
 }
 
 struct Prepared {
@@ -102,7 +106,13 @@ pub fn sweep_path(
             a[0].max(b[0]).max(b[0] + off[0]) + pad,
             a[1].max(b[1]).max(b[1] + off[1]) + pad,
         ];
-        let mut best: Option<f32> = None;
+        // (tempo, contacto, normal) do primeiro impacto deste segmento.
+        let mut best: Option<(f32, [f32; 2], [f32; 2])> = None;
+        let mut keep = |t: f32, contact: [f32; 2], n: Vector| {
+            if best.is_none_or(|b| t < b.0) {
+                best = Some((t, contact, [n.x, n.y]));
+            }
+        };
         for o in obs.iter().filter(|o| overlap(lo, hi, o)) {
             if o.one_way && !descending {
                 continue;
@@ -114,7 +124,8 @@ pub fn sweep_path(
                 let approaching = n.x * d[0] + n.y * d[1] < 0.0;
                 let from_above = !o.one_way || n.x * up[0] + n.y * up[1] > 0.0;
                 if approaching && from_above && hit.time_of_impact > 0.0 {
-                    best = Some(best.map_or(hit.time_of_impact, |t| t.min(hit.time_of_impact)));
+                    let t = hit.time_of_impact;
+                    keep(t, [a[0] + d[0] * t, a[1] + d[1] * t], n);
                 }
             }
             // O corpo: paredes e tetos. A mão única só a perna a pisa.
@@ -133,15 +144,19 @@ pub fn sweep_path(
                     // A normal do corpo, em mundo: aponta para o obstáculo quando se aproxima.
                     let n = pose.rotation * hit.normal1;
                     if n.x * d[0] + n.y * d[1] > 0.0 {
-                        best = Some(best.map_or(hit.time_of_impact, |t| t.min(hit.time_of_impact)));
+                        let at = o.pose.transform_point(hit.witness2);
+                        let n2 = (o.pose.rotation * hit.normal2).normalize_or_zero();
+                        keep(hit.time_of_impact, [at.x, at.y], n2);
                     }
                 }
             }
         }
-        if let Some(t) = best {
+        if let Some((t, contact, normal)) = best {
             return Some(PathHit {
                 segment: k,
                 fraction: t.clamp(0.0, 1.0),
+                contact,
+                normal,
             });
         }
     }

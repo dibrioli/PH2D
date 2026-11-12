@@ -29,6 +29,19 @@ thread_local! {
     static ARRANGE_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
     /// A pending "the Containers LIST" request. See [`request_containers_tab`].
     static CONTAINERS_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
+    /// A pending "tick «Edit curves on canvas»" request (a smoke scene). See [`request_curves_on_canvas`].
+    static CURVES_REQUESTED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// **Ask the panel to tick «Edit curves on canvas»** on its next paint — a smoke scene that opens
+/// with the curves already editable. Dropped by a hidden panel, like the tab requests.
+pub fn request_curves_on_canvas() {
+    CURVES_REQUESTED.with(|c| c.set(true));
+}
+
+/// Consume a pending curves request.
+pub(crate) fn take_curves_request() -> bool {
+    CURVES_REQUESTED.with(|c| c.replace(false))
 }
 
 /// Ask the panel to fit its time view to the extent of the keys on the next

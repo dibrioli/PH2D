@@ -157,6 +157,33 @@ fn a_linear_segment_shows_handles_at_a_third_of_the_chord() {
     assert!(perto(alca(&v, 0.0, false).key, [3.0, 1.5]));
 }
 
+/// O arco de mundo do objeto em `[t0, t1]`, amostrado.
+fn arco(w: &World, doc: &TimelineDoc, e: u64, t0: f64, t1: f64) -> Vec<[f32; 2]> {
+    const N: usize = 200;
+    (0..=N)
+        .map(|k| at(w, doc, e, t0 + (t1 - t0) * k as f64 / N as f64))
+        .collect()
+}
+
+/// Hausdorff entre duas polilinhas: zero = a mesma FORMA, em qualquer ritmo.
+fn hausdorff(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
+    let lado = |p: &[[f32; 2]], q: &[[f32; 2]]| {
+        p.iter()
+            .map(|&x| {
+                q.windows(2)
+                    .map(|s| dist_seg(x, s[0], s[1]))
+                    .fold(f32::INFINITY, f32::min)
+            })
+            .fold(0.0, f32::max)
+    };
+    lado(a, b).max(lado(b, a))
+}
+
+fn cubica_amostrada(k: [[f32; 2]; 4]) -> Vec<[f32; 2]> {
+    (0..=200).map(|i| bez(k, i as f32 / 200.0)).collect()
+}
+
+/// Arrastar a alça: o objeto vira caminho (uma linha «Position») e o arco é a cúbica pelo ponteiro.
 #[test]
 fn dragging_the_out_handle_makes_the_path_the_cubic_through_the_pointer() {
     let (w, mut st, e) = simples(false);
@@ -164,33 +191,41 @@ fn dragging_the_out_handle_makes_the_path_the_cubic_through_the_pointer() {
     let c2 = alca(&antes, 0.0, false).at;
     let q = [0.5, 2.5];
     assert!(drag_alca(&mut st, &w, e, rt(0.0), rt(1.0), true, q));
-    let k = [[0.0, 0.0], q, c2, [3.0, 1.5]];
-    for u in [0.25, 0.5, 0.75] {
-        let p = at(&w, &st.doc, e, f64::from(u));
-        assert!(
-            perto(p, bez(k, u)),
-            "u={u}: o caminho {p:?}, a cúbica {:?}",
-            bez(k, u)
-        );
-    }
-    let depois = alcas(true, true, &w, &st.doc, Some(e));
-    assert!(
-        perto(alca(&depois, 0.0, true).at, q),
-        "a alça segue o ponteiro"
+    let d = hausdorff(
+        &arco(&w, &st.doc, e, 0.0, 1.0),
+        &cubica_amostrada([[0.0, 0.0], q, c2, [3.0, 1.5]]),
     );
+    assert!(d < 1e-2, "o arco afastou-se {d} da cúbica pelo ponteiro");
     assert!(
-        perto(alca(&depois, 0.0, false).at, c2),
-        "a alça in não se moveu"
+        st.doc.binding_for(e, PropKind::TranslationX).is_none(),
+        "X e Y viraram Position"
+    );
+    let pos = st
+        .doc
+        .binding_for(e, PropKind::Position)
+        .expect("uma linha Position")
+        .target;
+    let a0 = st.doc.path_anchor(pos, 0).expect("a âncora");
+    assert!(perto(
+        [
+            a0.anchor[0] + a0.out_handle[0],
+            a0.anchor[1] + a0.out_handle[1]
+        ],
+        q
+    ));
+    assert!(
+        alcas(true, true, &w, &st.doc, Some(e)).is_empty(),
+        "agora quem desenha é o caminho"
     );
 }
 
+/// Entortar um segmento não mexe na FORMA dos outros (o eixo Y tem uma chave a mais em 0,5).
 #[test]
-fn a_missing_x_key_is_born_at_the_sampled_value_and_the_rest_does_not_move() {
+fn bending_one_segment_keeps_the_shape_of_the_rest() {
     let curvo = Interp::bezier_w(1.0 / 3.0, 1.5, 2.0 / 3.0, -0.5);
     for x_interp in [Interp::Linear, curvo] {
         let (w, mut st, e) = cena(x_interp);
-        let fora: Vec<_> = [0.6, 0.75, 0.9, 1.0].map(|t| at(&w, &st.doc, e, t)).into();
-        let x_meio = at(&w, &st.doc, e, 0.5)[0];
+        let fora = arco(&w, &st.doc, e, 0.5, 1.0);
         assert!(drag_alca(
             &mut st,
             &w,
@@ -200,21 +235,8 @@ fn a_missing_x_key_is_born_at_the_sampled_value_and_the_rest_does_not_move() {
             true,
             [1.5, 3.0]
         ));
-        let b = st
-            .doc
-            .binding_for(e, PropKind::TranslationX)
-            .unwrap()
-            .target;
-        let k = st.doc.active_clip().track(b).unwrap().keys().to_vec();
-        let nova = k
-            .iter()
-            .find(|k| k.t == rt(0.5))
-            .expect("a chave de X em 0,5");
-        assert_eq!(nova.value, AnimValue::Float(x_meio), "{x_interp:?}");
-        for (t, p) in [0.6, 0.75, 0.9, 1.0].into_iter().zip(fora) {
-            let agora = at(&w, &st.doc, e, t);
-            assert!(perto(agora, p), "{x_interp:?} t={t}: {p:?} → {agora:?}");
-        }
+        let d = hausdorff(&fora, &arco(&w, &st.doc, e, 0.5, 1.0));
+        assert!(d < 1e-2, "{x_interp:?}: o resto do arco afastou-se {d}");
     }
 }
 
@@ -222,18 +244,20 @@ fn a_missing_x_key_is_born_at_the_sampled_value_and_the_rest_does_not_move() {
 fn under_a_moved_and_rotated_parent_the_handle_follows_the_pointer_in_world() {
     let (w, mut st, e) = simples(true);
     let antes = alcas(true, true, &w, &st.doc, Some(e));
-    let c2 = alca(&antes, 0.0, false).at;
+    let (k0, c2, k1) = (
+        alca(&antes, 0.0, true).key,
+        alca(&antes, 0.0, false).at,
+        alca(&antes, 0.0, false).key,
+    );
     let q = [4.0, 1.0];
     assert!(drag_alca(&mut st, &w, e, rt(0.0), rt(1.0), true, q));
-    let depois = alcas(true, true, &w, &st.doc, Some(e));
-    assert!(perto(alca(&depois, 0.0, true).at, q), "{depois:?}");
-    assert!(perto(alca(&depois, 0.0, false).at, c2));
-    let k0 = alca(&depois, 0.0, true).key;
-    let k1 = alca(&depois, 0.0, false).key;
-    let p = at(&w, &st.doc, e, 0.5);
+    let d = hausdorff(
+        &arco(&w, &st.doc, e, 0.0, 1.0),
+        &cubica_amostrada([k0, q, c2, k1]),
+    );
     assert!(
-        perto(p, bez([k0, q, c2, k1], 0.5)),
-        "o mundo é a cúbica: {p:?}"
+        d < 1e-2,
+        "no mundo o arco é a cúbica pelo ponteiro: afastou-se {d}"
     );
 }
 
@@ -329,4 +353,104 @@ fn with_the_checkbox_off_the_key_diamonds_are_not_offered_either() {
         "controlo positivo"
     );
     assert_eq!(hit(false), None);
+}
+
+fn dist_seg(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let l2 = dx * dx + dy * dy;
+    let u = if l2 > 0.0 {
+        (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (p[0] - a[0] - u * dx).hypot(p[1] - a[1] - u * dy)
+}
+
+/// ⭐ Item 13 (dono 10/11): entortar o arco no canvas e depois escolher um easing na Timeline
+/// NÃO pode mudar a forma do arco — só o ritmo ao longo dele (dono 12/11, modelo After Effects).
+#[test]
+fn choosing_an_easing_after_bending_the_arc_keeps_the_arc() {
+    use ph2d_anim::{Easing, EasingFamily, EasingMode};
+    use ph2d_timeline::{TimelineIntent, apply_intent};
+    let ease = Interp::Eased(Easing {
+        family: EasingFamily::Cubic,
+        mode: EasingMode::InOut,
+    });
+    // Os dois gestos de easing do painel: a seleção que o arrasto deixou, e a coluna inteira em 0 s.
+    for coluna in [false, true] {
+        let (w, mut st, e) = simples(false);
+        assert!(drag_alca(
+            &mut st,
+            &w,
+            e,
+            rt(0.0),
+            rt(1.0),
+            true,
+            [0.5, 2.5]
+        ));
+        let torto = st.doc.clone();
+        let intents = if coluna {
+            ph2d_panel_timeline::presets::column(
+                &st,
+                ph2d_panel_timeline::presets::Preset::Eased(match ease {
+                    Interp::Eased(x) => x,
+                    _ => unreachable!(),
+                }),
+                0.0,
+            )
+        } else {
+            vec![TimelineIntent::SetSelectedInterp { interp: ease }]
+        };
+        let mut ph = ph2d_core::Playhead::default();
+        for i in intents {
+            apply_intent(&mut st, &mut ph, i);
+        }
+        let d = hausdorff(
+            &arco(&w, &torto, e, 0.0, 1.0),
+            &arco(&w, &st.doc, e, 0.0, 1.0),
+        );
+        assert!(
+            d < 1e-2,
+            "coluna={coluna}: o arco afastou-se {d} do que o canvas entortou"
+        );
+        // E o ritmo mudou mesmo (senão o easing seria um botão morto): no meio do tempo o objeto
+        // não está onde estava.
+        let (m0, m1) = (at(&w, &torto, e, 0.25), at(&w, &st.doc, e, 0.25));
+        assert!(
+            !perto(m0, m1),
+            "coluna={coluna}: o easing não mudou o ritmo"
+        );
+    }
+}
+
+/// O caminho (âncoras e tangentes) obedece à MESMA caixa «Edit curves on canvas» que as alças; sem
+/// cartões (`PH2D_CARDS=0`) não há a caixa e ele fica como antes.
+/// *Mutação: `caminho_visivel` devolver `true` ⇒ vermelho.*
+#[test]
+fn the_path_obeys_the_curves_checkbox_like_the_handles() {
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    let (w, mut st, e) = simples(false);
+    assert!(drag_alca(
+        &mut st,
+        &w,
+        e,
+        rt(0.0),
+        rt(1.0),
+        true,
+        [0.5, 2.5]
+    ));
+    let cam = Camera2d::default();
+    let (sx, sy) = cam.world_to_screen([3.0, 1.5], window());
+    let hit = |curves| {
+        motion_path_hit_with_keys(true, curves, &w, &st.doc, Some(e), &cam, window(), sx, sy)
+    };
+    let ancora = |g: Option<MotionPathGrab>| matches!(g, Some(MotionPathGrab::Anchor { i: 1, .. }));
+    force_cards_on_this_thread(Some(true));
+    let (com, sem) = (hit(true), hit(false));
+    force_cards_on_this_thread(Some(false));
+    let classico = hit(false);
+    force_cards_on_this_thread(None);
+    assert!(ancora(com), "controlo positivo: {com:?}");
+    assert_eq!(sem, None, "caixa desmarcada: nada agarra");
+    assert!(ancora(classico), "sem cartões, como antes: {classico:?}");
 }

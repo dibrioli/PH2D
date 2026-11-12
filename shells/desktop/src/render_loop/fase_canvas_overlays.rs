@@ -24,17 +24,7 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        // A TRAJETÓRIA do selecionado (ADR-0141) e as chaves de X/Y (doc 17 item 7). ⚠️ Só na aba
-        // Keys (Enio, 2026-07-31): o MESMO `keys_mode` que sola o clip — arch-gate
-        // `the_motion_path_is_offered_only_on_the_keys_tab`.
-        ph2d_app_motion::motion_path_overlay::draw(
-            self.timeline.keys_mode,
-            &self.timeline.doc,
-            hero.gizmo.iter_selected().next(),
-            camera,
-            window_size,
-            vector_scene,
-        );
+        // Trajetória, chaves e alças: só na aba Keys (`the_motion_path_is_offered_only_on_the_keys_tab`).
         ph2d_app_motion::motion_key_points::draw(
             self.timeline.keys_mode,
             ph2d_panel_timeline::state::curves_on_canvas(),

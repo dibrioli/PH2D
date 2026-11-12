@@ -273,8 +273,9 @@ impl crate::App {
             .hero_screen
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
-        let Some((target, d)) = ph2d_app_motion::motion_path_overlay::motion_path_curve_hit(
+        let Some((target, d)) = ph2d_app_motion::motion_key_points::curve_hit(
             self.timeline.keys_mode,
+            ph2d_panel_timeline::state::curves_on_canvas(),
             &self.timeline.doc,
             selected,
             &gfx.camera,

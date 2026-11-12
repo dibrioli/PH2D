@@ -31,6 +31,7 @@ const DOORS: &[&str] = &[
     "motion_path_hit_with_keys(",
     "motion_key_points::draw(",
     "motion_path_curve_hit(",
+    "motion_key_points::curve_hit(",
     "anchor_screen(",
     "tangent_screen(",
 ];
@@ -185,7 +186,11 @@ fn the_paint_and_the_click_read_the_same_curves_checkbox() {
         let Ok(src) = std::fs::read_to_string(path) else {
             continue;
         };
-        for door in ["motion_path_hit_with_keys(", "motion_key_points::draw("] {
+        for door in [
+            "motion_path_hit_with_keys(",
+            "motion_key_points::draw(",
+            "motion_key_points::curve_hit(",
+        ] {
             let mut from = 0;
             while let Some(off) = src[from..].find(door) {
                 let open = from + off + door.len() - 1;
@@ -204,8 +209,8 @@ fn the_paint_and_the_click_read_the_same_curves_checkbox() {
         }
     }
     assert_eq!(
-        seen, 2,
-        "controle positivo: uma porta de pintar e uma de agarrar"
+        seen, 3,
+        "controle positivo: uma porta de pintar, uma de agarrar e a do duplo-clique na curva"
     );
 }
 

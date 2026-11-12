@@ -47,6 +47,9 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     if state::take_arrange_tab_request() {
         state::set_tab(state, crate::tab::Tab::Arrange);
     }
+    if state::take_curves_request() {
+        state.curves_on_canvas = true;
+    }
     // A LISTA: a trilha cai antes, como no toque na aba em que se está (`event.rs`).
     if state::take_containers_tab_request() {
         state::pop_to_depth(0);
@@ -121,6 +124,7 @@ fn release_everything_a_hidden_panel_must_not_hold(
     let _ = state::take_keys_tab_request();
     let _ = state::take_arrange_tab_request();
     let _ = state::take_containers_tab_request();
+    let _ = state::take_curves_request();
     // ...nor is it inside a container. The trail survives (it comes back where it was),
     // but a hidden panel must not leave the shell driving a container's interior.
     state::publish_scene_root(true);

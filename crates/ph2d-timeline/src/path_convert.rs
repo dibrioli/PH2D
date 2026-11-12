@@ -10,10 +10,10 @@
 //! **Separate → Path.** Os dois eixos têm keys em tempos **independentes** — é a razão
 //! de o modo existir (o X chega antes do Y, e isso é *overlap*). Uma trajetória tem uma
 //! âncora por instante, então a conversão toma a **união** dos tempos e amostra as duas
-//! curvas em cada um. Onde só um eixo tinha key, o outro é amostrado no meio da curva
-//! dele — o valor está certo, mas a **tangente** daquela curva não sobrevive: uma
-//! Bézier em X e outra em Y não se compõem numa tangente espacial mais um ease
-//! temporal. O que se perde são os *eases*, e a conversão os CONTA.
+//! curvas em cada um. A **forma** atravessa (dono 12/11): cada segmento vira a cúbica
+//! espacial pelas amostras em 0, ⅓, ⅔ e 1, exata para Linear e para a BezierW de terços que
+//! o canvas escreve. O que se perde é o **ritmo** de cada eixo (nasce constante ao longo do
+//! caminho), e a conversão CONTA os eases que o levavam.
 //!
 //! **Path → Separate.** Exata nas keys e diferente entre elas: o caminho curva, e duas
 //! tracks escalares só reproduziriam essa curva com beziers próprios que a conversão
@@ -29,8 +29,30 @@
 use ph2d_anim::{AnimValue, AttributeEvaluator, Interp, RationalTime};
 
 use crate::doc::TimelineDoc;
-use crate::path::MotionPath;
+use crate::path::{MotionPath, PathAnchor, TangentKind};
 use crate::prop::PropKind;
+
+/// A BezierW cujos tempos estão nos terços: o ritmo é linear e ela só guarda a FORMA do arco.
+fn so_forma(i: Interp) -> bool {
+    const TERCO: f64 = 1.0 / 3.0;
+    const TOL: f64 = 1e-6;
+    matches!(i, Interp::BezierW { x1, x2, .. } if (x1 - TERCO).abs() < TOL && (x2 - 2.0 * TERCO).abs() < TOL)
+}
+
+/// `Smooth` quando as duas alças existem e são colineares e opostas; senão `Corner`.
+fn tipo_das_alcas(a: [f32; 2], b: [f32; 2]) -> TangentKind {
+    let (la, lb) = (a[0].hypot(a[1]), b[0].hypot(b[1]));
+    if la <= f32::EPSILON || lb <= f32::EPSILON {
+        return TangentKind::Corner;
+    }
+    let cruz = (a[0] * b[1] - a[1] * b[0]) / (la * lb);
+    let ponto = (a[0] * b[0] + a[1] * b[1]) / (la * lb);
+    if cruz.abs() < 1e-3 && ponto < 0.0 {
+        TangentKind::Smooth
+    } else {
+        TangentKind::Corner
+    }
+}
 
 /// **How a NEW position key should be authored for one entity** — the question
 /// `K` and auto-key ask before touching an object's position ([ADR-0141]).
@@ -67,127 +89,252 @@ pub struct ConversionReport {
     pub dropped_eases: usize,
 }
 
-impl TimelineDoc {
-    /// **Separate → Path**: as duas tracks escalares de `entity` viram uma trajetória
-    /// mais uma track de distância. Devolve `None` se não há nenhuma das duas.
-    ///
-    /// As tracks de origem são **removidas** — dois modos ao mesmo tempo seriam dois
-    /// autores da mesma pose, e o de trás venceria em silêncio.
-    pub fn separate_to_path(&mut self, entity: u64) -> Option<ConversionReport> {
-        let (tx, ty) = (
-            self.binding_for(entity, PropKind::TranslationX)?.target,
-            self.binding_for(entity, PropKind::TranslationY)
-                .map(|b| b.target),
-        );
-        let clip = self.active_clip();
-        let track_x = clip.track(tx)?;
-        let track_y = ty.and_then(|t| clip.track(t));
+/// O plano Separate → Path de um clip: `None` se ele não tem chave de X nem de Y.
+fn plano_separado(
+    clip: &ph2d_anim::Clip,
+    c: usize,
+    alvos: [Option<ph2d_anim::AnimTarget>; 2],
+    repouso: [f32; 2],
+) -> Option<PlanoDoClip> {
+    let [track_x, track_y] = alvos.map(|t| t.and_then(|t| clip.track(t)));
+    // A UNIÃO dos instantes: um eixo pode ter key onde o outro não tem, e é
+    // precisamente essa liberdade que a trajetória não expressa.
+    let mut times: Vec<RationalTime> = [track_x, track_y]
+        .into_iter()
+        .flatten()
+        .flat_map(|tr| tr.keys().iter().map(|k| k.t))
+        .collect();
+    let contadas = times.len();
+    times.sort_unstable();
+    times.dedup();
+    if times.is_empty() {
+        return None;
+    }
+    let unmatched_times = times.len() * 2 - contadas;
 
-        // A UNIÃO dos instantes: um eixo pode ter key onde o outro não tem, e é
-        // precisamente essa liberdade que a trajetória não expressa.
-        let mut times: Vec<RationalTime> = track_x.keys().iter().map(|k| k.t).collect();
-        let in_x = times.len();
-        if let Some(ty) = track_y {
-            times.extend(ty.keys().iter().map(|k| k.t));
-        }
-        times.sort_unstable();
-        times.dedup();
-        if times.is_empty() {
-            return None;
-        }
-        let in_y = track_y.map_or(0, |t| t.keys().len());
-        let unmatched_times = times.len() * 2 - in_x - in_y;
-
-        // O ease que não atravessa: contado ANTES de as tracks morrerem.
-        let eased = |tr: &ph2d_anim::Track| {
-            tr.keys()
-                .iter()
-                .filter(|k| !matches!(k.interp, Interp::Linear | Interp::Hold | Interp::Nearest))
-                .count()
-        };
-        let dropped_eases = eased(track_x) + track_y.map_or(0, eased);
-
-        let sample = |tr: Option<&ph2d_anim::Track>, t: f64| -> f32 {
-            match tr.map(|tr| tr.sample(t)) {
-                Some(AnimValue::Float(v)) => v,
-                _ => 0.0,
-            }
-        };
-        let pts: Vec<[f32; 2]> = times
+    // O ease que não atravessa: contado ANTES de as tracks morrerem. A BezierW de terços
+    // (a que o canvas escreve) só guarda FORMA, que a trajetória carrega: não conta.
+    let eased = |tr: &ph2d_anim::Track| {
+        tr.keys()
             .iter()
-            .map(|t| {
-                let s = t.to_seconds();
-                [sample(Some(track_x), s), sample(track_y, s)]
-            })
-            .collect();
+            .filter(|k| !matches!(k.interp, Interp::Linear | Interp::Hold | Interp::Nearest))
+            .filter(|k| !so_forma(k.interp))
+            .count()
+    };
+    let dropped_eases = [track_x, track_y].into_iter().flatten().map(eased).sum();
 
-        // Fora com as duas, e a trajetória entra pela porta única do K — uma âncora por
-        // instante, re-suavizando à medida que cresce.
-        self.unbind(entity, PropKind::TranslationX);
-        self.unbind(entity, PropKind::TranslationY);
-        let target = self.bind(entity, PropKind::Position);
-        for (t, p) in times.iter().zip(pts) {
-            self.add_path_key(target, *t, p);
+    let sample = |tr: Option<&ph2d_anim::Track>, rest: f32, t: f64| -> f32 {
+        match tr.map(|tr| tr.sample(t)) {
+            Some(AnimValue::Float(v)) => v,
+            _ => rest,
         }
-        Some(ConversionReport {
+    };
+    let xy = |t: f64| {
+        [
+            sample(track_x, repouso[0], t),
+            sample(track_y, repouso[1], t),
+        ]
+    };
+    let parado = |tr: Option<&ph2d_anim::Track>, t: RationalTime| {
+        tr.and_then(|tr| tr.keys().iter().rev().find(|k| k.t <= t))
+            .is_some_and(|k| matches!(k.interp, Interp::Hold | Interp::Nearest))
+    };
+    // A FORMA atravessa (dono 12/11, item 13): cada segmento vira a cúbica espacial que passa
+    // pelas amostras em 0, ⅓, ⅔ e 1 — exata quando os dois eixos são cúbicos no tempo (Linear e
+    // a BezierW de terços do canvas). Um segmento parado (Hold) fica reto, sem alças.
+    let mut anchors: Vec<PathAnchor> = times
+        .iter()
+        .map(|t| PathAnchor::corner(xy(t.to_seconds())))
+        .collect();
+    let mut held = vec![false; times.len()];
+    for i in 0..times.len().saturating_sub(1) {
+        if parado(track_x, times[i]) || parado(track_y, times[i]) {
+            held[i] = true;
+            continue;
+        }
+        let (a, b) = (times[i].to_seconds(), times[i + 1].to_seconds());
+        let p = [0.0, 1.0, 2.0, 3.0].map(|k| xy(a + (b - a) * k / 3.0));
+        let ctl = |w: [f32; 4]| [0, 1].map(|j| (0..4).map(|k| w[k] * p[k][j]).sum::<f32>() / 6.0);
+        let (c1, c2) = (ctl([-5.0, 18.0, -9.0, 2.0]), ctl([2.0, -9.0, 18.0, -5.0]));
+        anchors[i].out_handle = [c1[0] - p[0][0], c1[1] - p[0][1]];
+        anchors[i + 1].in_handle = [c2[0] - p[3][0], c2[1] - p[3][1]];
+    }
+    for a in &mut anchors {
+        a.kind = tipo_das_alcas(a.in_handle, a.out_handle);
+    }
+    Some(PlanoDoClip {
+        clip: c,
+        report: ConversionReport {
             keys: times.len(),
             unmatched_times,
             dropped_eases,
-        })
+        },
+        times,
+        anchors,
+        held,
+    })
+}
+
+/// A conversão de UM clip, calculada antes de qualquer track morrer.
+struct PlanoDoClip {
+    clip: usize,
+    times: Vec<RationalTime>,
+    anchors: Vec<PathAnchor>,
+    held: Vec<bool>,
+    report: ConversionReport,
+}
+
+fn soma(a: ConversionReport, b: ConversionReport) -> ConversionReport {
+    ConversionReport {
+        keys: a.keys + b.keys,
+        unmatched_times: a.unmatched_times + b.unmatched_times,
+        dropped_eases: a.dropped_eases + b.dropped_eases,
+    }
+}
+
+impl TimelineDoc {
+    /// **Separate → Path**: as duas tracks escalares de `entity` viram uma trajetória
+    /// mais uma track de distância, em **todo clip** que as anima (converter só o ativo
+    /// deixaria órfãs as tracks dos outros, e o objeto pararia de andar neles). Devolve
+    /// `None` (e não muda nada) se nenhum clip tem chave de X ou Y.
+    ///
+    /// As tracks de origem são **removidas** — dois modos ao mesmo tempo seriam dois
+    /// autores da mesma pose, e o de trás venceria em silêncio. Um eixo sem track num clip
+    /// vale o repouso do binding; sem repouso capturado, `repouso`.
+    pub fn separate_to_path_with_rest(
+        &mut self,
+        entity: u64,
+        repouso: [f32; 2],
+    ) -> Option<ConversionReport> {
+        let eixo = |doc: &Self, prop, fallback: f32| {
+            doc.binding_for(entity, prop)
+                .map(|b| (Some(b.target), b.rest.unwrap_or(fallback)))
+                .unwrap_or((None, fallback))
+        };
+        let (tx, rx) = eixo(self, PropKind::TranslationX, repouso[0]);
+        let (ty, ry) = eixo(self, PropKind::TranslationY, repouso[1]);
+        let planos: Vec<PlanoDoClip> = (0..self.clips().len())
+            .filter_map(|c| plano_separado(&self.clips()[c].clip, c, [tx, ty], [rx, ry]))
+            .collect();
+        if planos.is_empty() {
+            return None;
+        }
+        let ativo = self.active_index();
+        for c in 0..self.clips().len() {
+            self.set_active(c);
+            for t in [tx, ty].into_iter().flatten() {
+                self.active_clip_mut().remove_track(t);
+            }
+        }
+        self.set_active(ativo);
+        self.unbind(entity, PropKind::TranslationX);
+        self.unbind(entity, PropKind::TranslationY);
+        let target = self.bind(entity, PropKind::Position);
+        let mut report = ConversionReport::default();
+        for plano in planos {
+            self.set_active(plano.clip);
+            for (t, h) in plano.times.iter().zip(&plano.held) {
+                let interp = if *h { Interp::Hold } else { Interp::Linear };
+                self.upsert_key(
+                    entity,
+                    PropKind::Position,
+                    *t,
+                    AnimValue::Float(0.0),
+                    interp,
+                );
+            }
+            self.set_active_path(target, MotionPath::new(plano.anchors));
+            self.rewrite_path_key_values(target);
+            report = soma(report, plano.report);
+        }
+        self.set_active(ativo);
+        Some(report)
     }
 
-    /// **Path → Separate**: a trajetória vira duas tracks escalares, exatas nas keys.
+    /// [`Self::separate_to_path_with_rest`] sem um repouso de fora (o do binding, ou zero).
+    pub fn separate_to_path(&mut self, entity: u64) -> Option<ConversionReport> {
+        self.separate_to_path_with_rest(entity, [0.0, 0.0])
+    }
+
+    /// **Path → Separate**: a trajetória vira duas tracks escalares, exatas nas keys, em
+    /// **todo clip** que anima a Position de `entity`.
     ///
     /// A trajetória e a track de distância são **removidas** — pela mesma razão do
     /// caminho inverso. Devolve `None` sem um binding Position com caminho e keys.
     pub fn path_to_separate(&mut self, entity: u64) -> Option<ConversionReport> {
-        let b = self.binding_for(entity, PropKind::Position)?;
-        let target = b.target;
-        // ⚠️ Pela porta de RESOLUÇÃO (`path_for`), não pela crua: converter é transformar
-        // *o que o objeto faz na tela* em duas tracks escalares, e o que ele faz sai da
-        // trajetória que o avaliador usa. Um clip que só cronometra sobre a jornada de
-        // outro tem uma conversão legítima a oferecer.
-        let path = self.path_for(target)?.clone();
-        let track = self.active_clip().track(target)?;
-        if track.keys().is_empty() {
-            return None;
-        }
-        // Onde o objeto está em cada key — pela MESMA composição que o apply faz, senão
-        // a conversão poria o objeto num sítio e o apply o desenharia noutro.
-        let samples: Vec<(RationalTime, [f32; 2], Interp)> = track
-            .keys()
-            .iter()
-            .filter_map(|k| {
-                let AnimValue::Float(s) = k.value else {
-                    return None;
-                };
-                path.at(f64::from(s)).map(|p| (k.t, p.point, k.interp))
-            })
-            .collect();
-        let dropped_eases = samples
-            .iter()
-            .filter(|(_, _, i)| !matches!(i, Interp::Linear | Interp::Hold | Interp::Nearest))
-            .count();
-
-        self.unbind(entity, PropKind::Position);
-        for (t, p, interp) in &samples {
-            for (prop, v) in [
-                (PropKind::TranslationX, p[0]),
-                (PropKind::TranslationY, p[1]),
-            ] {
-                // O ease É preservado aqui: um ease em DISTÂNCIA aplicado aos dois
-                // eixos reproduz o timing, porque a distância é monótona. O que não
-                // sobrevive é a FORMA entre as keys, e é isso que o relatório conta.
-                self.insert_key(entity, prop, *t, AnimValue::Float(v), *interp);
+        let target = self.binding_for(entity, PropKind::Position)?.target;
+        let ativo = self.active_index();
+        let mut planos = Vec::new();
+        for c in 0..self.clips().len() {
+            self.set_active(c);
+            // ⚠️ Pela porta de RESOLUÇÃO (`path_for`), não pela crua: converter é transformar
+            // *o que o objeto faz na tela* em duas tracks escalares, e o que ele faz sai da
+            // trajetória que o avaliador usa. Um clip que só cronometra sobre a jornada de
+            // outro tem uma conversão legítima a oferecer.
+            let Some(path) = self.path_for(target).cloned() else {
+                continue;
+            };
+            let Some(track) = self.active_clip().track(target) else {
+                continue;
+            };
+            // Onde o objeto está em cada key — pela MESMA composição que o apply faz, senão
+            // a conversão poria o objeto num sítio e o apply o desenharia noutro.
+            let samples: Vec<(RationalTime, [f32; 2], Interp)> = track
+                .keys()
+                .iter()
+                .filter_map(|k| {
+                    let AnimValue::Float(s) = k.value else {
+                        return None;
+                    };
+                    path.at(f64::from(s)).map(|p| (k.t, p.point, k.interp))
+                })
+                .collect();
+            if !samples.is_empty() {
+                planos.push((c, samples));
             }
         }
-        Some(ConversionReport {
-            keys: samples.len(),
-            // Os dois eixos nascem com os MESMOS instantes: a trajetória não sabe
-            // expressar tempos independentes, então não há nada a desemparelhar.
-            unmatched_times: 0,
-            dropped_eases,
-        })
+        if planos.is_empty() {
+            self.set_active(ativo);
+            return None;
+        }
+        for c in 0..self.clips().len() {
+            self.set_active(c);
+            self.active_clip_mut().remove_track(target);
+            self.take_active_path(target);
+        }
+        self.set_active(ativo);
+        self.unbind(entity, PropKind::Position);
+        let mut report = ConversionReport::default();
+        for (c, samples) in planos {
+            self.set_active(c);
+            for (t, p, interp) in &samples {
+                for (prop, v) in [
+                    (PropKind::TranslationX, p[0]),
+                    (PropKind::TranslationY, p[1]),
+                ] {
+                    // O ease É preservado aqui: um ease em DISTÂNCIA aplicado aos dois
+                    // eixos reproduz o timing, porque a distância é monótona. O que não
+                    // sobrevive é a FORMA entre as keys, e é isso que o relatório conta.
+                    self.insert_key(entity, prop, *t, AnimValue::Float(v), *interp);
+                }
+            }
+            let dropped_eases = samples
+                .iter()
+                .filter(|(_, _, i)| !matches!(i, Interp::Linear | Interp::Hold | Interp::Nearest))
+                .count();
+            report = soma(
+                report,
+                ConversionReport {
+                    keys: samples.len(),
+                    // Os dois eixos nascem com os MESMOS instantes: a trajetória não sabe
+                    // expressar tempos independentes, então não há nada a desemparelhar.
+                    unmatched_times: 0,
+                    dropped_eases,
+                },
+            );
+        }
+        self.set_active(ativo);
+        Some(report)
     }
 
     /// A trajetória de `entity`, se ele estiver em modo Path — o que o painel pergunta

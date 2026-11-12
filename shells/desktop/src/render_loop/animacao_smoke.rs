@@ -2,9 +2,11 @@
 //! tem «andar» (gira também a Espada, filha) e «pular»; o Inimigo mexe-se pela Animação da Cena e
 //! ouve o sinal «land» do marcador do quadro 24 (Signal Actions; doc Timeline 17, B5). `=2`: o
 //! Inimigo e o ▾ da Timeline aberto. `=4`: o Herói com a Signal Action «Play Clip» e a «Bandeira»,
-//! sprite com SKEW (`=5`: seleccionada; `=6`: sem rotação, com a Caixa, as duas seleccionadas).
+//! sprite com SKEW (`=5`: seleccionada; `=6`: sem rotação, com a Caixa, as duas seleccionadas). `=7`: o
+//! arco do «pular» entortado e com easing (`motion_key_handles::smoke_7`).
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_app_motion::motion_key_handles as alcas;
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, Name, Transform};
 use ph2d_editor_core::panel::PanelHostInternal;
@@ -156,6 +158,13 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.set_loop(0.0, 2.0);
         self.playhead.play();
+        alcas::smoke_7(
+            &mut self.timeline,
+            &mut self.playhead,
+            gfx.sim.world(),
+            heroi,
+            pular,
+        );
         // `=3`: o «andar» do Herói e o «Main» da Cena com Autoplay, e a cena a CORRER como pelo Play
         // da barra de cima (onda 4, item 1). Em `=1` nada vem marcado — como no Godot.
         if nivel == "3" {

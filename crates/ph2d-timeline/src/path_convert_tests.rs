@@ -248,3 +248,124 @@ fn set_position_mode_converts_an_animated_object() {
         "converter um objeto animado tem de CRIAR a trajetória, não só marcar"
     );
 }
+
+/// ⭐ **Separate → Path guarda a FORMA** (dono 12/11, item 13): o arco que o canvas entortou em X/Y
+/// (BezierW de terços) é o MESMO arco depois da conversão — só o ritmo ao longo dele muda.
+/// *Mutação: voltar a pôr as âncoras pelo `add_path_key` (Auto Bezier) ⇒ vermelho.*
+#[test]
+fn converting_keeps_the_shape_the_canvas_bent() {
+    let mut w = World::new();
+    let e = w.spawn(Transform::default()).id();
+    let mut doc = TimelineDoc::new();
+    let terco = 1.0 / 3.0;
+    for (prop, v1, dy1, dy2) in [
+        (PropKind::TranslationX, 3.0_f32, 0.5, -1.0),
+        (PropKind::TranslationY, 0.0, 2.5, 1.0),
+    ] {
+        doc.insert_key(
+            e.to_bits(),
+            prop,
+            s(0.0),
+            AnimValue::Float(0.0),
+            Interp::bezier_w(terco, dy1, 2.0 * terco, dy2),
+        );
+        doc.insert_key(
+            e.to_bits(),
+            prop,
+            s(1.0),
+            AnimValue::Float(v1),
+            Interp::Linear,
+        );
+        doc.insert_key(
+            e.to_bits(),
+            prop,
+            s(2.0),
+            AnimValue::Float(v1 + 2.0),
+            Interp::Linear,
+        );
+    }
+    let arco = |w: &mut World, doc: &mut TimelineDoc| -> Vec<[f32; 2]> {
+        (0..=400)
+            .map(|k| {
+                apply_from_doc(w, doc, 2.0 * f64::from(k) / 400.0);
+                pos(w, e)
+            })
+            .collect()
+    };
+    let antes = arco(&mut w, &mut doc);
+    let r = doc.separate_to_path(e.to_bits()).expect("converteu");
+    assert_eq!(r.dropped_eases, 0, "a BezierW de terços só guardava forma");
+    let depois = arco(&mut w, &mut doc);
+    let dist = |p: [f32; 2], q: &[[f32; 2]]| {
+        q.iter()
+            .map(|x| (x[0] - p[0]).hypot(x[1] - p[1]))
+            .fold(f32::INFINITY, f32::min)
+    };
+    let h = antes
+        .iter()
+        .map(|&p| dist(p, &depois))
+        .chain(depois.iter().map(|&p| dist(p, &antes)))
+        .fold(0.0, f32::max);
+    assert!(h < 2e-2, "a forma afastou-se {h} na conversão");
+}
+
+/// **A conversão passa por TODO clip do objeto** (o herói do smoke anda em «andar» só em X e pula
+/// em «pular» em X e Y): converter com «pular» aberto não pode deixar «andar» parado.
+/// *Mutação: converter só o clip ativo ⇒ vermelho.*
+#[test]
+fn converting_carries_every_clip_of_the_object() {
+    let mut w = World::new();
+    let e = w
+        .spawn(Transform::from_translation(ph2d_core::Vec2::new(0.0, 0.7)))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    let andar = doc.add_clip("andar".into());
+    doc.set_active(andar);
+    for (t, v) in [(0.0, -3.0_f32), (1.0, -1.0), (2.0, -3.0)] {
+        doc.insert_key(
+            e,
+            PropKind::TranslationX,
+            s(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    let pular = doc.add_clip("pular".into());
+    doc.set_active(pular);
+    for (prop, k) in [
+        (
+            PropKind::TranslationX,
+            [(0.0, -3.0_f32), (1.0, -1.0)].as_slice(),
+        ),
+        (
+            PropKind::TranslationY,
+            [(0.0, 0.0), (0.5, 1.5), (1.0, 0.0)].as_slice(),
+        ),
+    ] {
+        for &(t, v) in k {
+            doc.insert_key(e, prop, s(t), AnimValue::Float(v), Interp::Linear);
+        }
+    }
+    let em = |doc: &TimelineDoc, clip: usize, t: f64| {
+        let mut d = doc.clone();
+        d.set_active(clip);
+        let p = crate::pose_at(&w, &d, e, t).expect("pose").translation;
+        [p.x, p.y]
+    };
+    let antes: Vec<_> = [0.0, 0.5, 1.0, 1.5, 2.0].map(|t| em(&doc, andar, t)).into();
+    doc.separate_to_path_with_rest(e, [0.0, 0.7])
+        .expect("converteu");
+    assert_eq!(
+        doc.active_index(),
+        pular,
+        "a conversão devolve o clip aberto"
+    );
+    for (t, p) in [0.0, 0.5, 1.0, 1.5, 2.0].into_iter().zip(antes) {
+        let q = em(&doc, andar, t);
+        assert!(
+            (q[0] - p[0]).abs() < 1e-3 && (q[1] - p[1]).abs() < 1e-3,
+            "em «andar», t={t}: {p:?} → {q:?}"
+        );
+    }
+}

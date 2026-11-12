@@ -1,6 +1,6 @@
 # ADR-0141 — Motion path: a posição é UM canal com trajetória, e eixos separados são um MODO
 
-**Status:** proposto — aguardando aceite do Enio (nada é construído antes)
+**Status:** ACEITO pelo Enio em 2026-11-12 (plano 17 da Timeline, item 13, opção A: a forma do caminho vive no canvas, a linha «Position» só dá o ritmo). Emenda de 12/11 abaixo, em «Emenda — item 13».
 **Data:** 2026-07-23 · **Linha:** `line/anim`
 **Pesquisa:** [`docs/Timeline/05_pesquisa_motion_path.md`](../../Timeline/05_pesquisa_motion_path.md)
 **Plano:** [`docs/Timeline/06_plano_motion_path.md`](../../Timeline/06_plano_motion_path.md)
@@ -290,3 +290,12 @@ ela.
 | **Track 2D nova em `ph2d-anim`** | Duplicaria graph editor, weighted tangents, roving e speed graph para o novo tipo; a §2 entrega tudo isso de graça mantendo a track escalar |
 | **Path como objeto do Vector, ligado por constraint** (Blender/Moho) | É a feature de *Follow Path*, com dono e ciclo de vida próprios; não é o motion path do AE, e não fecha a linha da tabela de pesquisa |
 | **Substituir `TranslationX/Y` por `Position`** | Quebra todo documento salvo e deleta o modo que a Harmony recomenda para rigging |
+
+---
+
+## Emenda — item 13 do plano 17 (2026-11-12, aceite do Enio)
+
+- **§5 emendado:** entortar o arco no canvas («Edit curves on canvas») é o gesto explícito que diz *esta posição é um caminho*: num objeto em X/Y separados o primeiro arrasto da alça converte para Path no mesmo passo de undo, e a alça passa a ser a tangente da âncora. A forma deixa de poder viver no easing por eixo (era o dano: escolher um easing trocava a `BezierW` inteira e o arco sumia).
+- **Separate → Path guarda a FORMA:** cada segmento vira a cúbica espacial pelas amostras em 0, ⅓, ⅔, 1 (exata para Linear e para a BezierW de terços), em vez do Auto Bezier de antes. O que se perde é o ritmo por eixo, e o relatório conta-o.
+- **A conversão passa por todo clip** do objeto, nos dois sentidos (antes só o ativo, e as tracks dos outros ficavam órfãs).
+- Desenho e testes: [plano 17 § «13 — desenho medido e feito»](../../Timeline/17_plano_funcoes_novas.md).

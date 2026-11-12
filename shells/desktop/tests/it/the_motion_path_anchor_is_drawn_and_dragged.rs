@@ -20,13 +20,16 @@ fn the_render_loop_draws_the_trajectory_for_the_selected_object() {
     // O QUADRO emendado (OBRA 2 da `line/render-loop`): o desenho da trajetória mudou-se para a `fase_canvas_overlays`
     // (P5l), e o toggle mora no dreno, que é a próxima grande a sair — os dois leem a mesma lente.
     let rl = crate::frame_text::render_frame();
+    // Dono 12/11 (item 13): a trajetória pinta-se pela MESMA porta dos losangos e das alças
+    // (`motion_key_points::draw` chama o `motion_path_overlay::draw`), que lê a caixa «Edit curves
+    // on canvas» do clique.
     assert!(
-        rl.contains("motion_path_overlay::draw"),
-        "a `render_loop` não chama `motion_path_overlay::draw` — a trajetória existe no \
+        rl.contains("motion_key_points::draw"),
+        "a `render_loop` não chama `motion_key_points::draw` — a trajetória existe no \
          documento e não na tela"
     );
     let at = rl
-        .find("motion_path_overlay::draw")
+        .find("motion_key_points::draw")
         .expect("a chamada de desenho");
     let call = &rl[at..(at + 400).min(rl.len())];
     assert!(
@@ -254,8 +257,8 @@ fn the_double_click_on_the_curve_inserts_a_point() {
         .expect("o handler");
     let body = &disp[body_at..(body_at + 1600).min(disp.len())];
     assert!(
-        body.contains("motion_path_curve_hit"),
-        "o handler não usa o hit-test COMPARTILHADO da curva (`motion_path_curve_hit`)"
+        body.contains("motion_key_points::curve_hit"),
+        "o handler não usa o hit-test COMPARTILHADO da curva (`motion_key_points::curve_hit`)"
     );
     assert!(
         body.contains("insert_path_anchor_at"),

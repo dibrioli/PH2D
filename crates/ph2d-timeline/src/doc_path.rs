@@ -251,7 +251,7 @@ impl TimelineDoc {
     /// [`Self::add_path_key`]) e **uma** resposta para "que número a key guarda". Duas
     /// cópias divergem, e o sintoma é o objeto a andar os números de uma curva que já
     /// não existe.
-    fn rewrite_path_key_values(&mut self, target: AnimTarget) -> bool {
+    pub(crate) fn rewrite_path_key_values(&mut self, target: AnimTarget) -> bool {
         if !self.is_position_target(target) {
             return false;
         }

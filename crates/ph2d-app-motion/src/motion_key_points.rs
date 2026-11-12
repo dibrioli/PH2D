@@ -148,6 +148,30 @@ pub fn local_for_world(
     Some([l.x, l.y])
 }
 
+/// O caminho Path (fita, âncoras, tangentes) aparece com «Edit curves on canvas» marcada, como as
+/// alças do arco (dono 10/11); sem cartões (`PH2D_CARDS=0`) não há a caixa e ele aparece como antes.
+#[must_use]
+pub fn caminho_visivel(curves: bool) -> bool {
+    curves || !ph2d_editor_core::panel::cards::ferramenta::cards_on()
+}
+
+/// O duplo-clique na CURVA do caminho (inserir ponto), pela mesma porta do desenho.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn curve_hit(
+    keys_tab: bool,
+    curves: bool,
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+    camera: &Camera2d,
+    window: WindowSize,
+    x: f32,
+    y: f32,
+) -> Option<(ph2d_timeline::AnimTarget, f64)> {
+    let caminho = keys_tab && caminho_visivel(curves);
+    crate::motion_path_overlay::motion_path_curve_hit(caminho, doc, selected, camera, window, x, y)
+}
+
 /// O hit-test do caminho Path (âncoras e alças), depois o dos pontos de chave e, com `curves`
 /// («Edit curves on canvas»), o das alças do arco ([`crate::motion_key_handles`]).
 #[allow(clippy::too_many_arguments)]
@@ -163,8 +187,9 @@ pub fn motion_path_hit_with_keys(
     x: f32,
     y: f32,
 ) -> Option<MotionPathGrab> {
+    let caminho = keys_tab && caminho_visivel(curves);
     if let Some(g) =
-        crate::motion_path_overlay::motion_path_hit(keys_tab, doc, selected, camera, window, x, y)
+        crate::motion_path_overlay::motion_path_hit(caminho, doc, selected, camera, window, x, y)
     {
         return Some(g);
     }
@@ -335,6 +360,14 @@ pub fn draw(
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Fill, Stroke};
+    crate::motion_path_overlay::draw(
+        keys_tab && caminho_visivel(curves),
+        doc,
+        selected,
+        camera,
+        window,
+        vector_scene,
+    );
     let pts = key_points(keys_tab && curves, world, doc, selected);
     let Some(entity) = selected.filter(|_| !pts.is_empty()) else {
         return;

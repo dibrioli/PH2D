@@ -1,18 +1,14 @@
 //! ⭐ **As alças que entortam o arco entre chaves de posição** (dono 10/11: curvas espaciais editam-se
 //! no CANVAS, com «Edit curves on canvas» ligada na Timeline e a aba Keys).
 //!
-//! A lei: cada chave de X/Y guarda o easing do segmento que SAI dela. Com
-//! `Interp::BezierW { x1: 1/3, x2: 2/3 }` o tempo é LINEAR no parâmetro, logo o caminho entre duas chaves
-//! é EXATAMENTE a cúbica espacial `K0, K0 + (dy1x, dy1y), K1 + (dy2x, dy2y), K1` (espaço local).
-//!
-//! **Onde a alça está** lê-se do MESMO amostrador do caminho: `C1 = P(ta) + P'(ta⁺)·Δ/3`,
-//! `C2 = P(tb) − P'(tb⁻)·Δ/3`, com a derivada lateral de 4 pontos igualmente espaçados dentro do
-//! segmento — exata para polinómios até grau 3 (BezierW 1/3–2/3 e Linear), uma boa leitura nos outros.
-//! **Arrastar** garante chave de X e Y em `ta` e `tb` (a que falta nasce no valor amostrado, sem mexer
-//! no movimento fora do segmento) e escreve em `ta`, por canal, a BezierW cujo controlo é o ponteiro
-//! e cujo OUTRO lado fica onde estava.
+//! Num objeto ainda em X/Y separados, **onde a alça está** lê-se do MESMO amostrador do caminho:
+//! `C1 = P(ta) + P'(ta⁺)·Δ/3`, `C2 = P(tb) − P'(tb⁻)·Δ/3`, com a derivada lateral de 4 pontos
+//! igualmente espaçados dentro do segmento — exata para polinómios até grau 3.
+//! **Arrastar** converte o objeto em caminho (dono 12/11, item 13: a forma mora no caminho, o easing
+//! da linha «Position» é só o ritmo) e move a tangente da âncora; daí em diante o objeto é desenhado
+//! e agarrado pelo overlay do caminho ([`crate::motion_path_overlay`]).
 
-use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_anim::RationalTime;
 use ph2d_ecs::World;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
@@ -61,10 +57,6 @@ fn cubica(f: &dyn Fn(f64) -> Option<[f32; 2]>, ta: f64, tb: f64) -> Option<[[f64
     }
     let c = |w: [f64; 4]| [0, 1].map(|i| (0..4).map(|k| w[k] * p[k][i]).sum::<f64>() / DIV_PESOS);
     Some([p[0], c(PESOS_C1), c(PESOS_C2), p[3]])
-}
-
-fn local_of(world: &World, doc: &TimelineDoc, e: u64) -> impl Fn(f64) -> Option<[f32; 2]> {
-    move |t| pose_at(world, doc, e, t).map(|x| [x.translation.x, x.translation.y])
 }
 
 fn world_of(world: &World, doc: &TimelineDoc, e: u64) -> impl Fn(f64) -> Option<[f32; 2]> {
@@ -156,80 +148,12 @@ fn longe_da_chave(camera: &Camera2d, window: WindowSize, a: &Alca) -> bool {
     f64::from(cx - kx).hypot(f64::from(cy - ky)) >= crate::motion_path_overlay::TANGENT_MIN_PX
 }
 
-fn curvo(i: Interp) -> bool {
-    matches!(
-        i,
-        Interp::Eased(_) | Interp::Bezier { .. } | Interp::BezierW { .. }
-    )
-}
-
-/// A BezierW 1/3–2/3 que reproduz o canal `axis` de `f` em `[a, b]` (exata para cúbica no tempo).
-fn bezier_w_de(f: &dyn Fn(f64) -> Option<[f32; 2]>, axis: usize, a: f64, b: f64) -> Option<Interp> {
-    let [k0, c1, c2, k1] = cubica(f, a, b)?;
-    Some(Interp::bezier_w(
-        1.0 / 3.0,
-        c1[axis] - k0[axis],
-        2.0 / 3.0,
-        c2[axis] - k1[axis],
-    ))
-}
-
-/// Garante a chave do canal `prop` em `t`, no valor amostrado, sem mudar o movimento: num segmento
-/// curvo, as duas metades ganham a BezierW que reproduz a original; Linear/Hold copiam-se (exato).
-fn garante_chave(
-    state: &mut TimelineState,
-    world: &World,
-    e: u64,
-    prop: PropKind,
-    t: RationalTime,
-) {
-    let axis = usize::from(prop == PropKind::TranslationY);
-    let clip = state.doc.active_clip();
-    let track = state
-        .doc
-        .binding_for(e, prop)
-        .and_then(|b| clip.track(b.target));
-    let keys = track.map(|tr| tr.keys().to_vec()).unwrap_or_default();
-    if keys.iter().any(|k| k.t == t) {
-        return;
-    }
-    let prev = keys.iter().rev().find(|k| k.t < t).copied();
-    let next = keys.iter().find(|k| k.t > t).copied();
-    let f = local_of(world, &state.doc, e);
-    let Some(v) = f(t.to_seconds()).map(|p| p[axis]) else {
-        return;
-    };
-    let ts = t.to_seconds();
-    let (antes, depois) = match prev {
-        Some(p) if curvo(p.interp) => (
-            bezier_w_de(&f, axis, p.t.to_seconds(), ts),
-            next.and_then(|n| bezier_w_de(&f, axis, ts, n.t.to_seconds())),
-        ),
-        Some(p) => (None, Some(p.interp)),
-        None => (None, None),
-    };
-    drop(f);
-    let (target, _) = state.doc.upsert_key(
-        e,
-        prop,
-        t,
-        AnimValue::Float(v),
-        depois.unwrap_or(Interp::Linear),
-    );
-    if let (Some(p), Some(i)) = (prev, antes)
-        && let Some(tr) = state.doc.active_clip_mut().track_mut(target)
-        && let Some(id) = tr
-            .keys()
-            .iter()
-            .position(|k| k.t == p.t)
-            .and_then(|ix| tr.key_id(ix))
-    {
-        tr.set_interp(id, i);
-    }
-}
-
 /// Leva a alça do segmento `[ta, tb]` (lado `out`) ao ponto de mundo `p`. `true` = o documento mudou.
-#[allow(clippy::too_many_arguments)]
+///
+/// ⭐ Dono 12/11 (item 13, o modelo After Effects): a forma do arco mora no CAMINHO, nunca no
+/// easing de X e de Y. Um objeto ainda em X/Y separados vira caminho no primeiro arrasto (a forma
+/// atravessa, [`TimelineDoc::separate_to_path`]) e a alça passa a ser a tangente da âncora — o easing
+/// da linha «Position» fica só com o ritmo ao longo dele. Tudo no mesmo passo de undo do gesto.
 pub fn drag_alca(
     state: &mut TimelineState,
     world: &World,
@@ -239,55 +163,35 @@ pub fn drag_alca(
     out: bool,
     p: [f32; 2],
 ) -> bool {
-    let (sa, sb) = (ta.to_seconds(), tb.to_seconds());
-    let Some([_, mut c1, mut c2, _]) = cubica(&local_of(world, &state.doc, entity), sa, sb) else {
-        return false;
-    };
-    let Some(alvo) = local_for_world(world, &state.doc, entity, if out { sa } else { sb }, p)
+    // O eixo que nunca foi animado vale o que o objeto tem agora (o repouso dele).
+    let repouso = pose_at(world, &state.doc, entity, ta.to_seconds())
+        .map_or([0.0, 0.0], |x| [x.translation.x, x.translation.y]);
+    let convertido = !has_path(&state.doc, entity)
+        && state
+            .doc
+            .separate_to_path_with_rest(entity, repouso)
+            .is_some();
+    let t = if out { ta } else { tb };
+    let Some(target) = state
+        .doc
+        .binding_for(entity, PropKind::Position)
+        .map(|b| b.target)
     else {
-        return false;
+        return convertido;
     };
-    let alvo = [f64::from(alvo[0]), f64::from(alvo[1])];
-    if out {
-        c1 = alvo;
-    } else {
-        c2 = alvo;
-    }
-    let mut mudou = false;
-    for (axis, prop) in [(0, PropKind::TranslationX), (1, PropKind::TranslationY)] {
-        garante_chave(state, world, entity, prop, ta);
-        garante_chave(state, world, entity, prop, tb);
-        let Some(target) = state.doc.binding_for(entity, prop).map(|b| b.target) else {
-            continue;
-        };
-        let Some(tr) = state.doc.active_clip_mut().track_mut(target) else {
-            continue;
-        };
-        let valor = |t: RationalTime| {
-            tr.keys()
-                .iter()
-                .position(|k| k.t == t)
-                .and_then(|i| match tr.keys()[i].value {
-                    AnimValue::Float(v) => Some((i, f64::from(v))),
-                    _ => None,
-                })
-        };
-        let (Some((ia, v0)), Some((_, v1))) = (valor(ta), valor(tb)) else {
-            continue;
-        };
-        let Some(id) = tr.key_id(ia) else {
-            continue;
-        };
-        let novo = Interp::bezier_w(1.0 / 3.0, c1[axis] - v0, 2.0 / 3.0, c2[axis] - v1);
-        if tr.keys()[ia].interp != novo {
-            tr.set_interp(id, novo);
-            mudou = true;
-        }
-        if axis == 0 {
-            state.selection.set_single(SelectedKey { target, key: id });
-        }
-    }
-    mudou
+    let Some(local) = local_for_world(world, &state.doc, entity, t.to_seconds(), p) else {
+        return convertido;
+    };
+    let Some((i, id)) = state.doc.active_clip().track(target).and_then(|tr| {
+        let i = tr.keys().iter().position(|k| k.t == t)?;
+        Some((i, tr.key_id(i)?))
+    }) else {
+        return convertido;
+    };
+    let antes = state.doc.path_anchor(target, i);
+    state.doc.move_path_tangent(target, i, out, local);
+    state.selection.set_single(SelectedKey { target, key: id });
+    convertido || state.doc.path_anchor(target, i) != antes
 }
 
 fn rgba(token: ColorToken) -> [f32; 4] {
@@ -365,3 +269,34 @@ pub fn draw(
 #[cfg(test)]
 #[path = "motion_key_handles_tests.rs"]
 mod tests;
+
+/// `PH2D_ANIMACAO_SMOKE=7` (item 13): o pulo do Herói (clip `pular`) com o arco da subida ENTORTADO
+/// pela alça (o gesto do canvas, que converte X/Y numa linha «Position») e um easing Cubic In-Out
+/// escolhido depois, como o dono faz à mão; a caixa «Edit curves on canvas» marcada, a tocar.
+/// A foto mostra que a forma ficou e só o ritmo mudou. No-op nos outros níveis.
+pub fn smoke_7(
+    state: &mut TimelineState,
+    playhead: &mut ph2d_core::Playhead,
+    world: &World,
+    heroi: u64,
+    pular: usize,
+) {
+    use ph2d_anim::{Easing, EasingFamily, EasingMode, Interp};
+    if std::env::var("PH2D_ANIMACAO_SMOKE").as_deref() != Ok("7") {
+        return;
+    }
+    state.doc.set_active(pular);
+    let (t0, t1) = (
+        RationalTime::from_seconds(0.0),
+        RationalTime::from_seconds(0.5),
+    );
+    if drag_alca(state, world, heroi, t0, t1, true, [-3.4, 1.3]) {
+        let interp = Interp::Eased(Easing {
+            family: EasingFamily::Cubic,
+            mode: EasingMode::InOut,
+        });
+        let intent = ph2d_timeline::TimelineIntent::SetSelectedInterp { interp };
+        ph2d_timeline::apply_intent(state, playhead, intent);
+    }
+    ph2d_panel_timeline::state::request_curves_on_canvas();
+}

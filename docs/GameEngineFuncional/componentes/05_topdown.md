@@ -1,6 +1,6 @@
 # Top-Down Player
 
-**Estado: `em conversa`** (12/11). A ficha vai ao dono antes da obra.
+**Estado: `fechado`** (12/11). Versão A escolhida pelo dono; smoke do dono OK em 12/11. Handoff: [`HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-12_TOPDOWN.md`](../handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-12_TOPDOWN.md).
 
 Estudos lidos:
 - crítica `critica_ph2d.html#topdown`, §1–§7, com o «Vale rever?» do Facing.
@@ -86,3 +86,18 @@ Base: `main` `4f46a3573c`.
 - Teste de clique real em cada controle novo, e de animação (abrir e fechar) na dobra More.
 - O cartão escreve no componente e a ponte lê. Um gate por campo, com a mutação vista a vermelho.
 - Cena `PH2D_GAME_SMOKE=24`: um herói de vista de cima, selecionado, que anda ao Play, com fotos.
+
+## O que foi construído
+
+Versão A, nos cartões da casa. Commits e provas no [handoff](../handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-12_TOPDOWN.md).
+
+- **Cartão:** Speed, Directions e Facing à vista; dobra More fechada com resumo («No easing · Top-Down view»); botão «Turn on» no aviso «Default Controls is off: nothing moves this object until a script or a node does.». Rótulos novos: Speed up, Slow down, Turn, Hit recovery (os nomes de script não mudaram).
+- **Cena `PH2D_GAME_SMOKE=24`:** o herói visto de cima (folha de fábrica `boneco_de_cima.svg`, 6×2, idle 4 · walk 6), montado por peças, selecionado, anda ao Play; a imagem gira com o corpo (gate a 45/90/0°).
+
+| Cartão | More aberto |
+|---|---|
+| [![cartão](fotos_05/24_cartao_zoom.png)](fotos_05/24_cartao_zoom.png) | [![more](fotos_05/24_more_aberto_zoom.png)](fotos_05/24_more_aberto_zoom.png) |
+| **Default Controls desligado** | **Play, diagonal** |
+| [![off](fotos_05/24_controles_desligados_zoom.png)](fotos_05/24_controles_desligados_zoom.png) | [![play](fotos_05/24_play_diagonal_zoom.png)](fotos_05/24_play_diagonal_zoom.png) |
+
+Aberto: foto do herói andando só para cima (o roteiro aperta → e ↑ juntas; o 90° está provado por teste).

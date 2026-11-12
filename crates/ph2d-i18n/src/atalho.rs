@@ -49,7 +49,7 @@ pub(crate) fn da_tabela(sistema: Sistema, key: &str) -> &'static str {
     let texto = crate::tabela(key);
     match atalho_em(sistema, texto) {
         Cow::Borrowed(s) => s,
-        Cow::Owned(s) => {
+        Cow::Owned(dita) => {
             static FEITAS: std::sync::Mutex<
                 std::collections::BTreeMap<&'static str, &'static str>,
             > = std::sync::Mutex::new(std::collections::BTreeMap::new());
@@ -58,7 +58,7 @@ pub(crate) fn da_tabela(sistema: Sistema, key: &str) -> &'static str {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             feitas
                 .entry(texto)
-                .or_insert_with(|| Box::leak(s.into_boxed_str()))
+                .or_insert_with(|| Box::leak(dita.into_boxed_str()))
         }
     }
 }

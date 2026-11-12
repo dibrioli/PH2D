@@ -107,7 +107,7 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "init.rs",
         "Ctrl+Q",
         "o ATALHO de sair na linha de arranque do terminal, dito pelo sistema pela porta `ph2d_i18n::atalho` \
-         (Cmd+Q no macOS) — nome de tecla, não frase, e nunca pintado",
+         (a tecla Command, no macOS) — nome de tecla, não frase, e nunca pintado",
     ),
     (
         "render_loop/autokey_pass.rs",

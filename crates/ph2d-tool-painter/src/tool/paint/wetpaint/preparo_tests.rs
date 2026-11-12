@@ -172,3 +172,25 @@ fn fora_do_wet_o_preparo_larga_a_grade() {
     liga_no_teste(false);
     assert!(!pronto);
 }
+
+/// O 1.º toque: o preparo arma-se quando a tela e o Wet ficam prontos, SEM tique (a shell não o dá antes do 1.º gesto).
+#[test]
+fn o_preparo_fica_pronto_sem_tique_antes_do_primeiro_toque() {
+    liga_no_teste(false);
+    let referencia = pinta(&mut tool("Wet Wash"));
+    liga_no_teste(true);
+    let mut t = tool("Wet Wash");
+    let mut pronto = false;
+    for _ in 0..1000 {
+        if t.preparo_pronto() {
+            pronto = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert!(pronto, "sem tique o preparo nunca correu: o 1.º toque nasce o motor na hora");
+    let tela = pinta(&mut t);
+    assert_eq!(usados_no_teste(), (1, 1), "o 1.º toque não usou o preparo");
+    liga_no_teste(false);
+    assert!(tela == referencia, "o preparo armado sem tique mudou os bytes");
+}

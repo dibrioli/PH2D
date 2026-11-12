@@ -206,6 +206,25 @@ mod tests {
         );
     }
 
+    /// O undo vivo deixa de zerar o fluxo antes do `repoe` (ver `FotoDoMotor::repoe_o_fluxo_de`): o `repoe` não pode ler
+    /// o que o plano tinha — lixo, zeros ou de outro comprimento dão o mesmo bit.
+    #[test]
+    fn o_repoe_nao_le_o_que_o_plano_tinha() {
+        let (s, rows) = (150, 70);
+        let a = PlanoEmTiles::de(&plano(s, rows), s, None);
+        let volta = |mut v: Vec<f32>| {
+            a.repoe(&mut v);
+            v.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+        };
+        let zeros = volta(vec![0.0; s * rows]);
+        assert_eq!(volta(vec![7.0; s * rows]), zeros);
+        assert_eq!(volta(vec![f32::NAN; s * rows + 9]), zeros);
+        assert_eq!(volta(Vec::new()), zeros);
+        let mut v = vec![3.0; 5];
+        PlanoEmTiles::de(&[], s, None).repoe(&mut v);
+        assert!(v.is_empty(), "a foto vazia esvazia o plano");
+    }
+
     #[test]
     #[should_panic(expected = "é de outra grade")]
     fn um_plano_de_outra_grade_e_recusado() {

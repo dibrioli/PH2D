@@ -6,26 +6,8 @@
 //! é medida nesse rectângulo — a proporção dele — e escrita na da janela com a mesma escala e o centro
 //! deslocado. Com o canvas a ocupar a janela (o palco) é a identidade.
 
-/// ⭐ **O rectângulo do JOGO dentro do canvas** (plano GEF 17 D-F): o maior com a proporção do formato do jogo,
-/// centrado. É nele que a vista do jogo se mede e se encaixa — o editor, o palco e a moldura pela MESMA conta.
-#[must_use]
-pub fn caixa_do_jogo(canvas: [f32; 4], formato: ph2d_editor_core::GameFormat) -> [f32; 4] {
-    let a = formato.aspect();
-    if canvas[2] <= 0.0 || canvas[3] <= 0.0 || a.is_nan() || a <= 0.0 {
-        return canvas;
-    }
-    let (w, h) = if canvas[2] / canvas[3] > a {
-        (canvas[3] * a, canvas[3])
-    } else {
-        (canvas[2], canvas[2] / a)
-    };
-    [
-        canvas[0] + (canvas[2] - w) * 0.5,
-        canvas[1] + (canvas[3] - h) * 0.5,
-        w,
-        h,
-    ]
-}
+// A caixa do jogo e o palco que alarga moram com a moldura e as tarjas (Input Map, 11/11).
+pub use ph2d_camera_frame::palco::{area_do_palco, caixa_do_jogo, centro_no_palco};
 
 /// O tamanho com que a janela do jogo abre (pontos lógicos): o formato ampliado até caber em [`CAIXA_DA_JANELA`];
 /// uma consola antiga amplia por um inteiro (píxeis nítidos).

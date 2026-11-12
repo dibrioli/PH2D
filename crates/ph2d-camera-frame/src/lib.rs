@@ -19,6 +19,7 @@ use ph2d_editor_core::CameraFieldEdit;
 use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 
 mod gestos;
+pub mod palco;
 pub mod tinta;
 pub use gestos::*;
 

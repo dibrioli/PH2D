@@ -113,8 +113,21 @@ impl crate::App {
         if self.game_camera_preview
             && let Some(v) = vista_da_cena
         {
+            // O palco ALARGA (`ph2d_camera_frame::palco`): a caixa fica, a cerca mede a área visível.
+            let palco = hero_screen.as_ref().is_some_and(|h| h.view.palco_do_jogo);
+            let area = ph2d_app_game::encaixe::area_do_palco(visivel, formato);
+            let limites =
+                palco.then(|| ph2d_camera_frame::palco::limites_da_activa(sim.world_mut()));
+            let c = ph2d_app_game::encaixe::centro_no_palco(
+                limites.flatten().as_ref(),
+                v.center,
+                camera_report.center,
+                v.height_world,
+                canvas,
+                area,
+            );
             let (centro, altura) =
-                ph2d_app_game::encaixe::na_janela(v.center, v.height_world, janela, canvas);
+                ph2d_app_game::encaixe::na_janela(c, v.height_world, janela, canvas);
             camera.center = centro;
             camera.height_world = altura;
             camera.cull_mask = v.cull_mask;

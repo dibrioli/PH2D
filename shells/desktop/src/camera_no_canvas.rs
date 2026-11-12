@@ -147,7 +147,8 @@ impl crate::App {
         })
     }
 
-    /// As tarjas do formato do jogo no palco (plano GEF 17): ali o canvas é a janela inteira.
+    /// As tarjas do palco (plano GEF 17): ali o canvas é a janela inteira; o palco alarga e só uma consola
+    /// antiga as tem (`ph2d_camera_frame::palco`).
     pub(crate) fn tarjas_do_palco(&mut self) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -158,7 +159,7 @@ impl crate::App {
         let w = gfx.surface.size();
         #[allow(clippy::cast_precision_loss)]
         let canvas = [0.0, 0.0, w.width as f32, w.height as f32];
-        let caixa = ph2d_app_game::encaixe::caixa_do_jogo(canvas, hero.project.game_format);
+        let caixa = ph2d_app_game::encaixe::area_do_palco(canvas, hero.project.game_format);
         ph2d_camera_frame::tinta::tarjas(&mut gfx.vector_scene, canvas, caixa, gfx.theme);
     }
 

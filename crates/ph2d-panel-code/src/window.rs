@@ -23,11 +23,14 @@ pub(crate) struct Window {
     pub col: usize,
 }
 
+/// A chave de uma janela: a linha, o degrau da coluna esquerda, as colunas à vista, o tecto e o tab.
+type Key = (usize, usize, usize, usize, usize);
+
 /// As janelas já resolvidas (o passeio da linha até à coluna custa a linha inteira).
 #[derive(Default)]
 pub(crate) struct WindowMemo {
     rev: u64,
-    seen: Vec<((usize, usize, usize, usize, usize), Window)>,
+    seen: Vec<(Key, Window)>,
 }
 
 /// Quantas janelas a memória guarda (as filas cortadas à vista de um quadro cabem folgadas).

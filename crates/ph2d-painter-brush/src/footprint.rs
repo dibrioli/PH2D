@@ -548,7 +548,7 @@ impl FootprintDeform {
     /// The deformed radial distance `length(apply([u, v]))` — the falloff index for an elliptical dab.
     /// At identity this is the plain `sqrt(u² + v²)`. Rotation alone preserves it (a circle is
     /// rotation-invariant); only the flatten makes it elliptical.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn falloff_t(&self, u: f32, v: f32) -> f32 {
         let d = self.apply([u, v]);

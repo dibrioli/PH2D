@@ -168,6 +168,7 @@ impl TabelaDosFios {
         (self.k0, self.k0 + self.v.len() as i32 - 1)
     }
 
+    #[inline]
     fn do_fio(&self, f: &FiosNoDab, k: i32) -> DoFio {
         usize::try_from(k - self.k0)
             .ok()
@@ -198,6 +199,7 @@ impl FiosNoDab {
 
     /// [`Self::no_ponto`] com o que é do FIO lido da tabela `t` do dab ([`Self::tabela`]) — a mesma conta, ao bit.
     #[must_use]
+    #[inline]
     pub fn no_ponto_em(&self, d: [f64; 2], t: &TabelaDosFios) -> Ponto {
         self.no_ponto_por(d, |k| {
             let x = t.do_fio(self, k);
@@ -205,6 +207,7 @@ impl FiosNoDab {
         })
     }
 
+    #[inline]
     fn no_ponto_por(&self, d: [f64; 2], do_fio: impl Fn(i32) -> (f64, f64)) -> Ponto {
         let f = &self.fios;
         let n = self.normal;
@@ -259,6 +262,7 @@ impl FiosNoDab {
     /// relevo CONTÍNUO através dos fios (W3b, [`crate::bristles_relevo::entre`]): o fio de [`Self::no_ponto`]
     /// é um degrau, e um degrau de altura num traço inclinado é uma escada (doc 50_medicao).
     #[must_use]
+    #[inline]
     pub fn entre_fios(&self, d: [f64; 2]) -> ([i32; 2], f64) {
         let n = self.normal;
         let q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
@@ -276,12 +280,14 @@ impl FiosNoDab {
 
     /// A normal do traço neste dab (unitária) — a tangente é `[n₁, −n₀]`.
     #[must_use]
+    #[inline]
     pub fn normal(&self) -> [f64; 2] {
         self.normal
     }
 
     /// O fio do ponto a `d` px do centro do dab (o de [`Self::no_ponto`], sem a conta do ganho).
     #[must_use]
+    #[inline]
     pub fn fio_no_ponto(&self, d: [f64; 2]) -> i32 {
         let n = self.normal;
         let q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
@@ -369,6 +375,7 @@ impl FiosNoDab {
 
     /// O fio em `u` (larguras de fio na normal): o `k` com `fronteira(k) ≤ u < fronteira(k + 1)`. Cada fronteira
     /// anda no máximo meia largura (`onda ≤ ONDA_MAX < 1`), então ela é crescente e o fio é um dos três vizinhos.
+    #[inline]
     fn fio(&self, u: f64) -> i32 {
         let k0 = u.floor() as i32;
         if self.fios.onda.clamp(0.0, ONDA_MAX) == 0.0 {
@@ -384,6 +391,7 @@ impl FiosNoDab {
     }
 
     /// A fronteira de baixo do fio `k` (larguras de fio na normal): `k`, mais a onda dela.
+    #[inline]
     fn fronteira(&self, k: i32) -> f64 {
         let f = &self.fios;
         let onda = f.onda.clamp(0.0, ONDA_MAX);

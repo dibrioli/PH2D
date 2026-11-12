@@ -56,6 +56,8 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/anim_card.rs",
     // A NONA: o cartão CONSTRAINTS, pela mesma lei.
     "crates/ph2d-i18n/src/constraints.rs",
+    // A DÉCIMA: a aba Input Map à frente (a acção aberta em cartões), pela mesma lei.
+    "crates/ph2d-i18n/src/inspector_input_map.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

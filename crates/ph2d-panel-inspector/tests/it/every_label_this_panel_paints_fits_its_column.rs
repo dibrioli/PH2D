@@ -212,6 +212,10 @@ fn the_painter_borrows_the_slack_the_control_does_not_need() {
             h: 8000.0,
         };
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        // As dobras do player nascem fechadas (GEF 03): o campo que se mede mora dentro delas.
+        for id in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
+            host.set_collapsed(id, false);
+        }
         let mut state = InspectorState::default();
         set_current_inspector_player(Some(crate::seam_player::player()));
         let rects = host.paint_with_layout::<InspectorPanel>(&mut state, layout, viewport);

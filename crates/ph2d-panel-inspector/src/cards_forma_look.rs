@@ -203,12 +203,18 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
     for (id, nome) in ids::INSP_SHAPE_PIVOT.into_iter().zip(NOMES_DO_PIVOT) {
         crate::cards_sprite::botao(store, id, nome);
     }
+    // O X/Y do pivô é número de mundo: o passo passa pela porta px/m (e o censo vê o campo pintado).
+    let (_, passo) = crate::unidade_mundo::no_campo(
+        &ids::INSP_SHAPE_PIVOT_XY,
+        Some(ph2d_editor_core::widget::Unit::Meters),
+        PASSO_M,
+    );
     for id in ids::INSP_SHAPE_PIVOT_XY {
         store.mark_card_field(
             id,
             ph2d_editor_core::widget::card_field::CardFieldSpec {
-                step: PASSO_M,
-                scrub: PASSO_M,
+                step: passo,
+                scrub: passo,
                 default: Some(0.0),
             },
         );

@@ -24,7 +24,7 @@ use crate::seam_physics::{as_part, with_body};
 
 const ENTIDADE: u64 = 0xABCD_1234;
 
-fn pose(scale: [f32; 2]) -> InspectorTransformInfo {
+pub(crate) fn pose(scale: [f32; 2]) -> InspectorTransformInfo {
     InspectorTransformInfo {
         entity_bits: ENTIDADE,
         translation: [0.0, 0.0],

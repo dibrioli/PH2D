@@ -54,6 +54,8 @@ fn limpa() {
     set_current_inspector_anchor(None);
     set_current_inspector_tween(None);
     ph2d_panel_inspector::set_current_inspector_anim(None);
+    ph2d_panel_inspector::set_cards_on(false);
+    ph2d_panel_inspector::set_current_inspector_transform(None);
 }
 
 fn fabrica() -> InspectorFactoryInfo {
@@ -192,6 +194,29 @@ fn fixturas() -> Vec<Fixtura> {
                 let mut p = crate::seam_physics::as_part();
                 p.offset = [0.25, -0.5];
                 p.walk_belt = 0.75;
+                set_current_inspector_physics(Some(p));
+            }),
+        ),
+        (
+            "physics_forma_look",
+            Box::new(|| {
+                // O Look da forma de colisão (GEF02 onda 8): o pivô X/Y em metros a partir do centro.
+                // O cartão Look só existe na lista de cartões.
+                ph2d_panel_inspector::set_cards_on(true);
+                ph2d_panel_inspector::set_current_inspector_transform(Some(
+                    crate::o_cartao_da_fisica::pose([1.0, 1.0]),
+                ));
+                let mut p = crate::seam_physics::as_part();
+                p.shape_of = "Torso".into();
+                p.offset = [0.25, -0.5];
+                p.walk_belt = 0.75;
+                p.look = ph2d_editor_core::ShapeLookFacts {
+                    on: true,
+                    // Custom: só aí os campos X/Y do pivô estão à vista.
+                    ponto: None,
+                    metros: [0.25, -0.5],
+                    ..ph2d_editor_core::ShapeLookFacts::NONE
+                };
                 set_current_inspector_physics(Some(p));
             }),
         ),

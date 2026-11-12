@@ -25,6 +25,10 @@ const HALF_W: f32 = 0.2;
 const UNDER: f32 = FLOAT_HEIGHT + 0.5 + 1.2;
 /// O pico de um pulo SEM obstáculo nenhum, medido nesta fixture.
 const FREE_PEAK: f32 = 0.833;
+/// A geometria (beirada, pico, tabela) foi medida com `v0 = √(2·g·2)` = 6,264 m/s; a lei do ápice
+/// real (GEF 04) dá esse MESMO `v0` a 2,1056 m (`launch_speed_custa_pouco`). Com 2,0 o arranque
+/// cai a 6,097 e o pulo cortado no tique 3 sobe 0,766: a cabeça mal roça a beirada.
+const OLD_LAW_JUMP_HEIGHT: f32 = 2.1056;
 
 struct Rig {
     sim: SimWorld,
@@ -60,6 +64,7 @@ fn rig(clip: f32, reach: f32, air: f32) -> Rig {
         if n.as_str() == "Player" {
             p.corner_reach = reach;
             p.air_acceleration = air;
+            p.jump_height = OLD_LAW_JUMP_HEIGHT;
         }
     }
     Rig {

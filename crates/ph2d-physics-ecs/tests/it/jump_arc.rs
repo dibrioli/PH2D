@@ -108,7 +108,7 @@ fn caso(feel: Option<Feel>, como: Como) -> (Medido, Medido) {
         let mut e = sim.world_mut().entity_mut(player);
         let mut p = e.get_mut::<PlatformPlayer>().unwrap();
         if let Some(f) = feel {
-            p.set_feel(f, w);
+            p.set_feel(f);
         }
         p.config()
     };
@@ -146,11 +146,107 @@ fn o_arco_do_desenho_e_o_do_jogo() {
             let ok = (a.apex_up - j.apex_up).abs() < 0.02
                 && (a.apex_side - j.apex_side).abs() < 0.11
                 && a.air_ticks.abs_diff(j.air_ticks) <= 1
-                && (a.reach - j.reach).abs() < 0.1;
+                // O pouso é o tique em que se cruza POUSO: ±1 tique, logo um tique de corrida.
+                && (a.reach - j.reach).abs() < 0.11;
             if !ok {
                 falhas.push(format!("{feel:?} {nome}"));
             }
         }
     }
     assert!(falhas.is_empty(), "o desenho mente em: {falhas:?}");
+}
+
+/// O player REAL na ponte: segura o pulo, e no ápice do do chão solta um tique e volta a premir
+/// (o pulo do ar). Devolve a subida de cada um, medida do próprio arranque.
+fn subidas_do_jogo(feel: Option<Feel>, air_h: f32) -> (f32, f32, f32, f32) {
+    let (mut sim, mut bridge, player) = scene(0.0, -20.0);
+    let (h, ah) = {
+        let mut e = sim.world_mut().entity_mut(player);
+        let mut p = e.get_mut::<PlatformPlayer>().unwrap();
+        if let Some(f) = feel {
+            p.set_feel(f);
+        }
+        p.air_jumps = 1;
+        p.air_jump_height = air_h;
+        (p.jump_height, p.air_jump_height)
+    };
+    let mut tick = 0_u64;
+    let mut passo = |sim: &mut SimWorld, bridge: &mut PhysicsBridge, jump: bool| {
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                jump,
+                ..PlayerInput::default()
+            },
+        );
+        tick += 1;
+        bridge.dispatch(sim, true, tick);
+        pose(sim).1
+    };
+    for _ in 0..60 {
+        passo(&mut sim, &mut bridge, false);
+    }
+    let y0 = pose(&sim).1;
+    let (mut topo, mut antes) = (y0, y0);
+    loop {
+        let y = passo(&mut sim, &mut bridge, true);
+        if y < antes {
+            break;
+        }
+        topo = topo.max(y);
+        antes = y;
+    }
+    let y1 = passo(&mut sim, &mut bridge, false);
+    let mut topo_ar = y1;
+    for _ in 0..200 {
+        topo_ar = topo_ar.max(passo(&mut sim, &mut bridge, true));
+    }
+    (topo - y0, h, topo_ar - y1, ah)
+}
+
+/// A alça escreve o ápice pedido, ao centímetro, em qualquer sensação: cima = `jump_height`
+/// (é o ápice), lado = `speed`. O desenho é o jogo (gate acima), então o desenho basta.
+#[test]
+fn a_alca_poe_o_apice_onde_foi_pedido() {
+    let mut falhas = Vec::new();
+    for feel in [
+        None,
+        Some(Feel::Floaty),
+        Some(Feel::Snappy),
+        Some(Feel::Heavy),
+    ] {
+        let (mut sim, bridge, player) = scene(0.0, -20.0);
+        let w = ph2d_physics_ecs::arc_world(&bridge.settings(), 1.0);
+        let mut e = sim.world_mut().entity_mut(player);
+        let mut p = e.get_mut::<PlatformPlayer>().unwrap();
+        if let Some(f) = feel {
+            p.set_feel(f);
+        }
+        p.pull_apex(2.0, 2.6, w);
+        let a = p.jump_arcs(w).full.apex;
+        if (a[1] - 2.6).abs() >= 0.02 || (a[0] - 2.0).abs() >= 0.02 {
+            falhas.push(format!("{feel:?}: ápice {a:?}"));
+        }
+    }
+    assert!(falhas.is_empty(), "a alça erra o alvo [2, 2.6]: {falhas:?}");
+}
+
+/// ⭐ GEF 04, «altura que mente»: o campo Jump Height (e o Air Jump Height) é o ápice REAL do
+/// jogo, em qualquer sensação — a lei resolve o arranque pelas fases de gravidade.
+#[test]
+fn o_pulo_do_jogo_sobe_a_jump_height() {
+    let mut falhas = Vec::new();
+    for feel in [
+        None,
+        Some(Feel::Floaty),
+        Some(Feel::Snappy),
+        Some(Feel::Heavy),
+    ] {
+        let (sobe, h, sobe_ar, ah) = subidas_do_jogo(feel, 1.5);
+        eprintln!("{feel:?}: chão {sobe:.4} (Jump Height {h}) · ar {sobe_ar:.4} (Air {ah})");
+        if (sobe - h).abs() >= 0.02 || (sobe_ar - ah).abs() >= 0.02 {
+            falhas.push(format!("{feel:?}: chão {sobe:.3}/{h} ar {sobe_ar:.3}/{ah}"));
+        }
+    }
+    assert!(falhas.is_empty(), "o campo mente: {falhas:?}");
 }

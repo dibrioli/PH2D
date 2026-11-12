@@ -128,8 +128,7 @@ impl crate::App {
         }
         // §14 Platform Player (W5): escreve o componente no lugar; o undo por-diff captura o passo.
         for &(bits, edit) in &player_edits {
-            let s = physics.settings();
-            ph2d_app_physics::inspector::player::apply_player_edit_in(sim, bits, edit, &s);
+            ph2d_app_physics::inspector::player::apply_player_edit(sim, bits, edit);
         }
         // §13 Pulley Wheel (W-Pulley W1). Toda edição é de COMPONENTE — não
         // há aqui o par estrutural da §12 (criar/apagar uma roldana é criar

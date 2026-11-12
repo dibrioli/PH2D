@@ -7,13 +7,12 @@
 //! velocidade vertical no instante do toque e conforme onde na mola o
 //! personagem estava. O artista não pensa em newtons — ele pensa *"este pulo
 //! alcança aquela plataforma"*, e o número que ele digita tem de ser essa
-//! frase. A conversão é `v₀ = √(2·|g|·h)`, feita **uma vez**, no salto.
+//! frase. A conversão é [`crate::launch_speed`], feita **uma vez**, no salto.
 //!
-//! ⚠️ **E a altura é a de gravidade NEUTRA.** Os multiplicadores abaixo existem
-//! precisamente para dobrá-la, então prometer que ela é invariante seria mentir:
-//! `peak_gravity < 1` sobe MAIS (é o que alongar significa) e `cut_gravity`
-//! corta. O gate da altura autorada roda com os multiplicadores em `1.0`, que é
-//! o controle, e os outros medem quanto cada um a move.
+//! ⚠️ **E a altura é a do ÁPICE REAL** (GEF 04): a conversão inverte as fases de
+//! gravidade do botão preso (takeoff · neutra · peak), então o pulo inteiro sobe
+//! `jump_height` com qualquer sensação. Só o `cut_gravity` (soltar cedo) baixa —
+//! é o pulo curto.
 //!
 //! # ⚠️ O ÁPICE tem duas escolas, e elas são OPOSTAS
 //!
@@ -44,7 +43,7 @@ use crate::{GroundSample, Motor, Vec2};
 /// **Os knobs** — módulo irmão, re-exportado (ver o doc dele).
 #[path = "jump_config.rs"]
 mod jump_config;
-pub use jump_config::{JumpConfig, PlatformLift, takeoff_rise};
+pub use jump_config::{JumpConfig, PlatformLift, launch_speed, takeoff_rise};
 
 /// O estado VIVO de um pulo — o que o tick anterior deixou.
 ///
@@ -411,7 +410,7 @@ pub fn jump_step(
 
     if can_reach_ground && !next.airborne && wants_to_jump {
         let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
-        let v0 = (2.0 * g * cfg.jump_height.max(0.0)).sqrt();
+        let v0 = crate::launch_speed(cfg, g, cfg.jump_height, next.waterborne, dt);
         next.airborne = true;
         next.cut = false;
         // ⚠️ **Os dois são CONSUMIDOS**, e por razões diferentes: o coyote
@@ -462,7 +461,7 @@ pub fn jump_step(
         && wants_to_jump
     {
         let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
-        let v0 = (2.0 * g * w.height.max(0.0)).sqrt();
+        let v0 = crate::launch_speed(cfg, g, w.height, next.waterborne, dt);
         next.airborne = true;
         next.cut = false;
         // Os dois relógios são consumidos pela MESMA razão da decolagem do chão:
@@ -512,7 +511,7 @@ pub fn jump_step(
     // envelhece quando um quarto apoio aparecer.
     if next.air_jumps_left > 0 && wants_to_jump {
         let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
-        let v0 = (2.0 * g * cfg.air_jump_height.max(0.0)).sqrt();
+        let v0 = crate::launch_speed(cfg, g, cfg.air_jump_height, next.waterborne, dt);
         next.air_jumps_left -= 1;
         next.airborne = true;
         next.cut = false;

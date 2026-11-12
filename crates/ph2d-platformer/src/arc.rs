@@ -235,39 +235,6 @@ pub fn jump_arcs(cfg: &PlayerConfig, w: ArcWorld) -> JumpArcs {
     }
 }
 
-/// O `jump_height` cujo ápice simulado sobe `apex` metros (bisseção; o ápice cresce com a altura).
-/// `None` se o mundo não deixa ninguém subir (gravidade nula) ou o alvo não é positivo.
-#[must_use]
-pub fn height_for_apex(cfg: &PlayerConfig, w: ArcWorld, apex: f32) -> Option<f32> {
-    if !(apex > 0.0 && apex.is_finite()) {
-        return None;
-    }
-    let up = up_of_gravity(w.gravity);
-    let rise = |h: f32| {
-        let mut c = *cfg;
-        c.jump.jump_height = h;
-        dot(full_arc(&c, w).apex, up)
-    };
-    let (mut lo, mut hi) = (0.0_f32, apex.max(0.01));
-    let mut grow = 0;
-    while rise(hi) < apex {
-        hi *= 2.0;
-        grow += 1;
-        if grow > 30 {
-            return None;
-        }
-    }
-    for _ in 0..32 {
-        let mid = 0.5 * (lo + hi);
-        if rise(mid) < apex {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    Some(hi)
-}
-
 /// A velocidade que leva o ápice a `ahead` metros para o lado (o tempo até ao topo só depende da
 /// vertical). `None` se o ápice é instantâneo.
 #[must_use]

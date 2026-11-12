@@ -84,11 +84,95 @@ pub fn takeoff_rise(lift: PlatformLift, rel_up: f32, ground_up: f32) -> f32 {
     }
 }
 
+/// **A velocidade de arranque cujo ápice REAL sobe `height` metros** sob as fases de gravidade
+/// do próprio pulo (botão preso, sem corte): `takeoff_gravity` acima de
+/// `max(peak_speed, takeoff_speed)`, `1` até `peak_speed`, `peak_gravity` no topo (ficha GEF 04,
+/// «altura que mente»). Duas partes: a inversa FECHADA de `h = Σ (v_alto² − v_baixo²)/(2·g·k)`
+/// (cada faixa é aceleração constante) e três correcções de secante sobre o tique discreto
+/// ([`discrete_apex`]: a fase lê a velocidade do INÍCIO do tique), porque a contínua erra 2,5 cm
+/// a 2 m. Custo medido em `launch_speed_custa_pouco`. `neutral` (o fluido tem o corpo e a
+/// modelagem cala) devolve `√(2·g·h)`.
+#[must_use]
+pub fn launch_speed(cfg: &JumpConfig, g: f32, height: f32, neutral: bool, dt: f32) -> f32 {
+    let h = height.max(0.0);
+    if neutral || !(g > 0.0 && g.is_finite()) || h == 0.0 {
+        return (2.0 * g.max(0.0) * h).sqrt();
+    }
+    let mut v = continuous_launch_speed(cfg, g, h);
+    if !(dt > 0.0 && dt.is_finite()) {
+        return v;
+    }
+    for _ in 0..3 {
+        let a = discrete_apex(cfg, g, v, dt);
+        if a.is_nan() || a <= 0.0 {
+            break;
+        }
+        v *= (h / a).sqrt();
+    }
+    v
+}
+
+fn phase_scale(cfg: &JumpConfig, v: f32) -> f32 {
+    if v > cfg.peak_speed {
+        if v > cfg.takeoff_speed {
+            cfg.takeoff_gravity
+        } else {
+            1.0
+        }
+    } else {
+        cfg.peak_gravity
+    }
+}
+
+fn continuous_launch_speed(cfg: &JumpConfig, g: f32, h: f32) -> f32 {
+    let ps = cfg.peak_speed.max(0.0);
+    let ts = cfg.takeoff_speed.max(ps);
+    // Escala ≤ 0 nunca trava a subida: o mínimo positivo mantém a inversa finita.
+    let k = |x: f32| x.max(1e-3);
+    let bands = [
+        (0.0, ps, k(cfg.peak_gravity)),
+        (ps, ts, 1.0),
+        (ts, f32::INFINITY, k(cfg.takeoff_gravity)),
+    ];
+    let mut left = h;
+    for (lo, hi, k) in bands {
+        let cap = (hi * hi - lo * lo) / (2.0 * g * k);
+        if left <= cap {
+            return (lo * lo + 2.0 * g * k * left).sqrt();
+        }
+        left -= cap;
+    }
+    0.0
+}
+
+/// O ápice do pulo no relógio do jogo: o tique do salto só com o mundo, depois a gravidade da
+/// fase (lida no início do tique) mais a do mundo, exacta dentro do tique. Máximo sobre os fins
+/// de tique, que é o que a pose mostra.
+#[must_use]
+pub fn discrete_apex(cfg: &JumpConfig, g: f32, v0: f32, dt: f32) -> f32 {
+    let (mut v, mut p, mut top) = (v0, 0.0_f32, 0.0_f32);
+    for tick in 0..100_000 {
+        let extra = if tick == 0 {
+            0.0
+        } else {
+            (phase_scale(cfg, v) - 1.0) * g
+        };
+        v -= extra * dt;
+        p += v * dt - 0.5 * g * dt * dt;
+        v -= g * dt;
+        top = top.max(p);
+        if v <= 0.0 && p < top {
+            break;
+        }
+    }
+    top
+}
+
 /// Como o personagem PULA.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct JumpConfig {
-    /// A altura de um pulo COMPLETO, metros acima do ponto de decolagem, **com
-    /// gravidade neutra** (ver o aviso do módulo).
+    /// A altura de um pulo COMPLETO, metros acima do ponto de decolagem: o ápice
+    /// REAL do botão preso, com as fases de gravidade ([`launch_speed`]).
     pub jump_height: f32,
 
     /// **QUANTOS pulos o personagem tem DEPOIS de sair do chão** (`W-MultiJump`)

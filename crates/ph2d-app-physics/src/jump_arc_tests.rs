@@ -83,23 +83,23 @@ fn arrastar_a_alca_poe_o_apice_sob_o_cursor() {
 
 #[test]
 fn a_caixa_e_o_feel_do_cartao_chegam_ao_componente_e_ao_canvas() {
-    use crate::inspector::player::apply_player_edit_in;
+    use crate::inspector::player::apply_player_edit;
     use ph2d_editor_core::screens::hero::PlayerFieldEdit as E;
     let (mut sim, e) = cena(false);
     let bits = e.to_bits();
-    apply_player_edit_in(&mut sim, bits, E::ShowJumpArc(true), &s());
+    apply_player_edit(&mut sim, bits, E::ShowJumpArc(true));
     assert!(
         desenho(&sim, &s(), Some(bits), true).is_some(),
         "marcar liga a curva"
     );
-    apply_player_edit_in(&mut sim, bits, E::ShowJumpArc(false), &s());
+    apply_player_edit(&mut sim, bits, E::ShowJumpArc(false));
     assert!(
         desenho(&sim, &s(), Some(bits), true).is_none(),
         "desmarcar desliga"
     );
-    apply_player_edit_in(&mut sim, bits, E::ShowJumpArc(true), &s());
+    apply_player_edit(&mut sim, bits, E::ShowJumpArc(true));
     let antes = desenho(&sim, &s(), Some(bits), true).unwrap().apice();
-    apply_player_edit_in(&mut sim, bits, E::Feel(2), &s());
+    apply_player_edit(&mut sim, bits, E::Feel(2));
     let p = sim.world().get::<PlatformPlayer>(e).unwrap();
     let heavy = ph2d_physics_ecs::jump_feel::Feel::Heavy.gravity();
     assert_eq!(

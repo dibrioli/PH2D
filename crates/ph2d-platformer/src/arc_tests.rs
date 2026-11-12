@@ -22,8 +22,8 @@ fn rise(a: &JumpArc) -> f32 {
 #[test]
 fn o_arco_inteiro_sobe_a_altura_e_volta_ao_chao() {
     let a = full_arc(&cfg(), W);
-    // Com Peak G 0,5 o topo alonga: um pouco acima dos 2 m autorados (2,04 m simulados).
-    assert!((2.0..2.1).contains(&rise(&a)), "ápice {}", rise(&a));
+    // A lei resolve o arranque pelas fases: o ápice É a Jump Height (era 2,04 com v0 neutro).
+    assert!((rise(&a) - 2.0).abs() < 0.02, "ápice {}", rise(&a));
     assert!(
         a.points.last().unwrap()[1] <= 0.0,
         "termina na linha dos pés"
@@ -71,10 +71,9 @@ fn a_esquerda_e_o_espelho() {
 #[test]
 fn a_alca_cai_no_apice() {
     let mut c = cfg();
-    let h = height_for_apex(&c, W, 3.0).expect("há solução");
-    c.jump.jump_height = h;
+    c.jump.jump_height = 3.0;
     let a = full_arc(&c, W);
-    assert!((rise(&a) - 3.0).abs() < 0.01, "ápice {}", rise(&a));
+    assert!((rise(&a) - 3.0).abs() < 0.02, "ápice {}", rise(&a));
     let s = speed_for_apex(&c, W, 5.0).expect("há tempo até ao topo");
     c.walk.speed = s;
     assert!((full_arc(&c, W).apex[0] - 5.0).abs() < 0.01);
@@ -86,8 +85,7 @@ fn sem_gravidade_ninguem_resolve() {
         gravity: [0.0, 0.0],
         ..W
     };
-    assert!(height_for_apex(&cfg(), w, 2.0).is_none());
-    assert!(height_for_apex(&cfg(), W, 0.0).is_none());
+    assert!(speed_for_apex(&cfg(), w, 2.0).is_none());
     let a = full_arc(&cfg(), w);
     assert!(a.points.len() <= MAX_ARC_TICKS + 1, "o teto segura");
 }
@@ -96,11 +94,11 @@ fn sem_gravidade_ninguem_resolve() {
 fn a_sensacao_conserva_a_altura_e_se_reconhece() {
     for f in Feel::ALL {
         let mut c = cfg();
-        let before = rise(&full_arc(&c, W));
-        apply_feel(&mut c, f, W);
+        apply_feel(&mut c, f);
         assert_eq!(feel_of(&c.jump), Some(f));
+        assert_eq!(c.jump.jump_height, 2.0, "{f:?}: a altura fica");
         let after = rise(&full_arc(&c, W));
-        assert!((after - before).abs() < 0.01, "{f:?}: {before} → {after}");
+        assert!((after - 2.0).abs() < 0.02, "{f:?}: ápice {after}");
     }
     assert_eq!(feel_of(&cfg().jump), None, "o padrão de hoje não é nenhuma");
 }
@@ -108,7 +106,7 @@ fn a_sensacao_conserva_a_altura_e_se_reconhece() {
 #[test]
 fn mexer_num_numero_apaga_a_sensacao() {
     let mut c = cfg();
-    apply_feel(&mut c, Feel::Heavy, W);
+    apply_feel(&mut c, Feel::Heavy);
     c.jump.fall_gravity += 0.1;
     assert_eq!(feel_of(&c.jump), None);
 }
@@ -117,11 +115,42 @@ fn mexer_num_numero_apaga_a_sensacao() {
 fn as_tres_sensacoes_se_distinguem_pelo_tempo_no_ar() {
     let air = |f| {
         let mut c = cfg();
-        apply_feel(&mut c, f, W);
+        apply_feel(&mut c, f);
         full_arc(&c, W).air_time
     };
     let (fl, sn, he) = (air(Feel::Floaty), air(Feel::Snappy), air(Feel::Heavy));
     assert!(fl > sn && sn > he, "Floaty {fl} > Snappy {sn} > Heavy {he}");
+}
+
+/// A lei nova (GEF 04): o ápice do pulo inteiro e o de cada pulo do ar = a altura escrita, para
+/// as três sensações, o padrão e alturas de 0,5 a 2,5 m. O resto é o erro do sub-passo do mundo
+/// (`−v0·dt/(2·substeps)`, a lei não vê os sub-passos): 2,3 cm a 6 m com 4 sub-passos.
+#[test]
+fn o_apice_e_a_altura_escrita_em_todas_as_sensacoes() {
+    let mut falhas = Vec::new();
+    for feel in [
+        None,
+        Some(Feel::Floaty),
+        Some(Feel::Snappy),
+        Some(Feel::Heavy),
+    ] {
+        for h in [0.5_f32, 1.0, 2.0, 2.5] {
+            let mut c = cfg();
+            if let Some(f) = feel {
+                apply_feel(&mut c, f);
+            }
+            c.jump.jump_height = h;
+            c.jump.air_jump_height = 0.5 * h;
+            c.jump.air_jumps = 1;
+            let arcs = jump_arcs(&c, W);
+            let ground = rise(&arcs.full);
+            let air = rise(&arcs.air[0]) - arcs.air[0].points[0][1];
+            if (ground - h).abs() >= 0.02 || (air - 0.5 * h).abs() >= 0.02 {
+                falhas.push(format!("{feel:?} h={h}: chão {ground:.3} ar {air:.3}"));
+            }
+        }
+    }
+    assert!(falhas.is_empty(), "o ápice mente: {falhas:?}");
 }
 
 /// Sonda de custo: as curvas são simuladas DUAS vezes por quadro (alça e desenho).

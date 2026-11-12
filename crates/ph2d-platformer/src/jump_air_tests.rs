@@ -105,7 +105,7 @@ fn the_air_jump_reaches_its_own_authored_height() {
     };
     let rel_up = -3.0;
     let s = tap(&cfg, falling, None, rel_up);
-    let v0 = (2.0 * 9.81 * 0.5_f32).sqrt();
+    let v0 = crate::launch_speed(&cfg, 9.81, 0.5, false, DT);
     assert!(
         (s.motor.boost[1] - (v0 - rel_up)).abs() < 1.0e-3,
         "o boost tem de ser v0(air) - rel_up = {:.4}: {:?}",

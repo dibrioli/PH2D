@@ -229,9 +229,14 @@ fn the_wall_jump_survives_a_gap_the_waist_falls_into() {
     );
 }
 
+/// O arranque deste gate foi medido com a lei velha (`v0 = √(2·g·2)` = 6,264 m/s); a lei do ápice
+/// real (GEF 04) dá esse MESMO `v0` a 2,1056 m (`launch_speed_custa_pouco`). Com 2,0 o arranque cai
+/// a 6,097 m/s e o controle muda de trajectória: chega à parede no ápice e sobe 12 m (BUG aberto).
+const OLD_LAW_WALL_JUMP_HEIGHT: f32 = 2.1056;
+
 /// Desce até a fresta e aperta pulo; devolve quanto subiu a partir dali.
 fn wall_jump_rise(gap: f32) -> f32 {
-    let mut r = rig_gapped(3.0, 2.0, gap);
+    let mut r = rig_gapped(3.0, OLD_LAW_WALL_JUMP_HEIGHT, gap);
     r.bridge.set_player_input(r.player, into_wall());
     let mut t = 0u64;
     while t < 400 && pose(&r.sim).1 > GAP_CENTER {

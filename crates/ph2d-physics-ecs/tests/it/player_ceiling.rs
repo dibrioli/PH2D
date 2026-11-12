@@ -44,10 +44,14 @@ fn ceiling(sim: &mut SimWorld, bottom: f32) {
 }
 
 /// O personagem destes gates: pula alto o bastante para alcançar o teto.
+///
+/// A tabela de tetos foi medida com `v0 = √(2·g·1,2)` = 4,852 m/s; a lei do ápice real (GEF 04)
+/// dá esse MESMO `v0` a 1,3146 m (`launch_speed_custa_pouco`). Com 1,2 o teto de 2,15 sai do
+/// alcance e a margem silenciosa deixa de ter batida.
 fn jumper(corner_reach: f32) -> PlatformPlayer {
     PlatformPlayer {
         float_height: FLOAT,
-        jump_height: 1.2,
+        jump_height: 1.3146,
         corner_reach,
         ..PlatformPlayer::default()
     }

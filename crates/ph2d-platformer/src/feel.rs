@@ -1,10 +1,9 @@
 //! **A SENSAÇÃO do pulo** — Floaty · Snappy · Heavy: seis gravidades de uma vez, sem mexer na
-//! altura que o artista puxou (a altura re-resolve-se pelo ápice, [`crate::arc::height_for_apex`]).
+//! altura que o artista puxou (`jump_height` É o ápice real, [`crate::launch_speed`]).
 //! Valores e porquê: `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md` §Valores.
 
 use crate::JumpConfig;
 use crate::PlayerConfig;
-use crate::arc::{ArcWorld, full_arc, height_for_apex};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Feel {
@@ -79,16 +78,8 @@ pub fn feel_of(j: &JumpConfig) -> Option<Feel> {
     Feel::ALL.into_iter().find(|f| f.gravity() == g)
 }
 
-/// Escreve a sensação e re-resolve `jump_height` (e `air_jump_height`, na mesma proporção) para o
-/// ápice do pulo inteiro ficar onde estava.
-pub fn apply_feel(cfg: &mut PlayerConfig, feel: Feel, w: ArcWorld) {
-    let up_apex = |c: &PlayerConfig| {
-        let a = full_arc(c, w).apex;
-        let up = crate::arc::up_of_gravity(w.gravity);
-        a[0] * up[0] + a[1] * up[1]
-    };
-    let before = up_apex(cfg);
-    let old_h = cfg.jump.jump_height;
+/// Escreve a sensação. As alturas ficam: a lei resolve o arranque para o ápice real de cada uma.
+pub fn apply_feel(cfg: &mut PlayerConfig, feel: Feel) {
     let g = feel.gravity();
     let j = &mut cfg.jump;
     j.takeoff_gravity = g.takeoff_gravity;
@@ -97,10 +88,4 @@ pub fn apply_feel(cfg: &mut PlayerConfig, feel: Feel, w: ArcWorld) {
     j.peak_speed = g.peak_speed;
     j.fall_gravity = g.fall_gravity;
     j.cut_gravity = g.cut_gravity;
-    if let Some(h) = height_for_apex(cfg, w, before) {
-        cfg.jump.jump_height = h;
-        if old_h > 0.0 {
-            cfg.jump.air_jump_height *= h / old_h;
-        }
-    }
 }

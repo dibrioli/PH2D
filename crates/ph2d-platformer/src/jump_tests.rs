@@ -20,9 +20,8 @@ fn ground() -> GroundSample {
     }
 }
 
-/// **A altura vira velocidade UMA vez, pela fórmula.**
-///
-/// `v₀ = √(2·g·h)`: com `h = 2` e `g = 9,81` são 6,264 m/s.
+/// **A altura vira velocidade UMA vez, pela lei do ápice real** ([`crate::launch_speed`]; GEF 04:
+/// era `√(2·g·h)` = 6,264 m/s, que com Peak G 0,5 subia 2,04 m).
 #[test]
 fn the_takeoff_speed_comes_from_the_authored_height() {
     let cfg = JumpConfig::STARTING_POINT;
@@ -39,10 +38,10 @@ fn the_takeoff_speed_comes_from_the_authored_height() {
         DT,
         DRY,
     );
-    let expected = (2.0 * 9.81 * 2.0_f32).sqrt();
+    let expected = crate::launch_speed(&cfg, 9.81, 2.0, false, DT);
     assert!(
         (s.motor.boost[1] - expected).abs() < 1.0e-3,
-        "o boost tem de ser v0 = sqrt(2gh) = {expected:.4}: {:?}",
+        "o boost tem de ser v0 = launch_speed = {expected:.4}: {:?}",
         s.motor.boost
     );
     assert!(s.state.airborne, "decolou");
@@ -58,7 +57,7 @@ fn the_takeoff_speed_comes_from_the_authored_height() {
 #[test]
 fn jumping_while_already_rising_reaches_the_same_height() {
     let cfg = JumpConfig::STARTING_POINT;
-    let v0 = (2.0 * 9.81 * 2.0_f32).sqrt();
+    let v0 = crate::launch_speed(&cfg, 9.81, 2.0, false, DT);
     for start in [0.0_f32, 2.0, -1.0] {
         let s = jump_step(
             &cfg,
@@ -482,5 +481,41 @@ fn under_water_rising_and_falling_cost_the_same() {
     assert_eq!(
         up_leg.motor.accel, down_leg.motor.accel,
         "subir e descer tem de custar o mesmo, ou o ciclo bombeia"
+    );
+}
+
+/// Sonda de custo de [`crate::launch_speed`] (uma vez por decolagem) e o ápice real da lei velha
+/// (`v0 = √(2·g·h)`): a régua com que as fixturas de geometria da ponte se re-afinaram
+/// (`platform_corner`, `platform_wall`, `player_ceiling`). Correr com `--ignored --nocapture`.
+#[test]
+#[ignore = "sonda: imprime o custo"]
+fn launch_speed_custa_pouco() {
+    let cfg = JumpConfig::STARTING_POINT;
+    for h in [1.2_f32, 2.0] {
+        let old_v0 = (2.0 * 9.81 * h).sqrt();
+        let old_apex = super::jump_config::discrete_apex(&cfg, 9.81, old_v0, DT);
+        let back = crate::launch_speed(&cfg, 9.81, old_apex, false, DT);
+        eprintln!(
+            "h={h}: v0 velho {old_v0:.4} · ápice velho {old_apex:.4} · v0 novo nele {back:.4}"
+        );
+    }
+    let mut best = f64::MAX;
+    for _ in 0..5 {
+        let t = std::time::Instant::now();
+        for i in 0..2000 {
+            let h = 0.5 + (i % 20) as f32 * 0.1;
+            std::hint::black_box(crate::launch_speed(
+                std::hint::black_box(&cfg),
+                9.81,
+                std::hint::black_box(h),
+                false,
+                DT,
+            ));
+        }
+        best = best.min(t.elapsed().as_secs_f64() / 2000.0);
+    }
+    eprintln!(
+        "launch_speed: {:.2} µs por chamada (mínimo de 5 blocos)",
+        best * 1e6
     );
 }

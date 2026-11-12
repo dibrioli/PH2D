@@ -54,6 +54,26 @@ fn clica(hero: &mut HeroScreen, id: NodeId, nome: &str) {
     }
 }
 
+/// Abre *File* e carrega na cascata `sub` (Import ▸ / Export ▸) pelo ponteiro.
+fn abre_file_sub(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, sub: NodeId) {
+    hero.store.open_context_menu(ContextMenuRequest {
+        x: 40.0,
+        y: 40.0,
+        kind: ContextMenuKind::MenuBarFile,
+    });
+    pinta(hero, ts);
+    clica(hero, sub, "File ▸ cascata");
+    let aberto = hero.store.context_menu().map(|r| r.kind);
+    assert!(
+        matches!(
+            aberto,
+            Some(ContextMenuKind::MenuBarFileImport | ContextMenuKind::MenuBarFileExport)
+        ),
+        "a cascata não abriu o submenu: {aberto:?}"
+    );
+    pinta(hero, ts);
+}
+
 #[test]
 fn a_linha_do_menu_file_pede_o_comando() {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -63,38 +83,41 @@ fn a_linha_do_menu_file_pede_o_comando() {
         let mut hero = HeroScreen::new(NodeId(1));
         pinta(&mut hero, &mut ts);
         hero.store.set_pixel_file_menu(Some(true));
-        hero.store.open_context_menu(ContextMenuRequest {
-            x: 40.0,
-            y: 40.0,
-            kind: ContextMenuKind::MenuBarFile,
-        });
-        pinta(&mut hero, &mut ts);
+        abre_file_sub(&mut hero, &mut ts, ids::MENUBAR_FILE_EXPORT_MENU);
         clica(&mut hero, ids::CTX_MENU_EXPORT_SVG, "Export SVG (controlo)");
         assert!(hero.file_menu.export_svg);
     }
-    for (id, nome, a) in [
-        (ids::CTX_MENU_PIXEL_OPEN, "Open", PixelFileAction::Open),
+    // ⭐ Desde 12/11 (dono) as linhas moram em File ▸ Import e File ▸ Export: o ponteiro abre File,
+    //    carrega na cascata, e só então na folha.
+    let (imp, exp) = (ids::MENUBAR_FILE_IMPORT_MENU, ids::MENUBAR_FILE_EXPORT_MENU);
+    for (sub, id, nome, a) in [
+        (imp, ids::CTX_MENU_PIXEL_OPEN, "Open", PixelFileAction::Open),
         (
+            imp,
             ids::CTX_MENU_PIXEL_IMPORT_SHEET,
             "Import",
             PixelFileAction::ImportSheet,
         ),
         (
+            exp,
             ids::CTX_MENU_PIXEL_EXPORT_AS,
             "Export As",
             PixelFileAction::ExportAs,
         ),
         (
+            exp,
             ids::CTX_MENU_PIXEL_EXPORT_SHEET,
             "Export Sheet",
             PixelFileAction::ExportSheet,
         ),
         (
+            exp,
             ids::CTX_MENU_PIXEL_EXPORT_TILESET,
             "Export Tileset",
             PixelFileAction::ExportTileset,
         ),
         (
+            exp,
             ids::CTX_MENU_PIXEL_REPEAT_EXPORT,
             "Repeat",
             PixelFileAction::RepeatExport,
@@ -103,12 +126,7 @@ fn a_linha_do_menu_file_pede_o_comando() {
         let mut hero = HeroScreen::new(NodeId(1));
         pinta(&mut hero, &mut ts);
         hero.store.set_pixel_file_menu(Some(true));
-        hero.store.open_context_menu(ContextMenuRequest {
-            x: 40.0,
-            y: 40.0,
-            kind: ContextMenuKind::MenuBarFile,
-        });
-        pinta(&mut hero, &mut ts);
+        abre_file_sub(&mut hero, &mut ts, sub);
         clica(&mut hero, id, nome);
         assert_eq!(hero.store.take_pixel_file_request(), Some(a), "{nome}");
         assert!(

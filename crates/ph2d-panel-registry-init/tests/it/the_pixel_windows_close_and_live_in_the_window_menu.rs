@@ -69,6 +69,24 @@ fn clica(hero: &mut HeroScreen, id: NodeId, nome: &str) {
     }
 }
 
+/// Abre *Window* e carrega na linha *Pixel ▸* pelo ponteiro: desde 12/11 (dono) as janelas do Pixel
+/// moram no submenu, que SUBSTITUI o menu no mesmo sítio.
+fn abre_window_pixel(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
+    hero.store.open_context_menu(ContextMenuRequest {
+        x: 40.0,
+        y: 40.0,
+        kind: ContextMenuKind::MenuBarWindow,
+    });
+    assenta(hero, ts);
+    clica(hero, ids::MENUBAR_WINDOW_PIXEL_MENU, "Window ▸ Pixel");
+    assert_eq!(
+        hero.store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::MenuBarWindowPixel),
+        "a linha Pixel ▸ não abriu o submenu"
+    );
+    assenta(hero, ts);
+}
+
 const PASSOS: [&str; 4] = [
     "pixel.history.initial",
     "pixel.history.pencil",
@@ -147,7 +165,7 @@ fn o_x_fecha_cada_janela() {
     }
 }
 
-/// A linha do menu *Window* abre e fecha cada janela, e a marca segue a verdade.
+/// A linha do menu *Window ▸ Pixel* abre e fecha cada janela, e a marca segue a verdade.
 #[test]
 fn a_linha_do_menu_window_alterna_cada_janela() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
@@ -163,12 +181,7 @@ fn a_linha_do_menu_window_alterna_cada_janela() {
         let mut hero = HeroScreen::new(NodeId(1));
         assenta(&mut hero, &mut ts);
         for esperado in [true, false] {
-            hero.store.open_context_menu(ContextMenuRequest {
-                x: 40.0,
-                y: 40.0,
-                kind: ContextMenuKind::MenuBarWindow,
-            });
-            assenta(&mut hero, &mut ts);
+            abre_window_pixel(&mut hero, &mut ts);
             clica(&mut hero, linha, painel);
             assert_eq!(hero.is_panel_visible(painel), esperado, "{painel}");
             assenta(&mut hero, &mut ts);
@@ -217,12 +230,7 @@ fn a_marca_do_menu_e_a_janela_no_ecra_mesmo_sem_nada_a_mostrar() {
         );
         let mut hero = HeroScreen::new(NodeId(1));
         assenta(&mut hero, &mut ts);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x: 40.0,
-            y: 40.0,
-            kind: ContextMenuKind::MenuBarWindow,
-        });
-        assenta(&mut hero, &mut ts);
+        abre_window_pixel(&mut hero, &mut ts);
         clica(&mut hero, linha, painel);
         assenta(&mut hero, &mut ts);
         assert!(

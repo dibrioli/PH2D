@@ -10,6 +10,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::interaction::{ContextMenuKind, WidgetEvent};
 use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::pixel_panel::{PixelFileAction as A, PixelRequest as R};
+use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
 use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_EXPORT};
 use ph2d_editor_core::{ToastQueue, ids};
 use ph2d_panel_pixel_export::canal::{self, Pedido};
@@ -87,11 +88,19 @@ impl Palco {
         self.hero.panel_visibility.get(PANEL_PIXEL_EXPORT).copied() == Some(true)
     }
 
+    /// A linha está pintada no submenu do File onde mora (Import ▸ ou Export ▸, dono 12/11)?
     fn menu_visivel(&self, id: ph2d_editor_core::NodeId) -> bool {
-        !self
-            .hero
-            .store
-            .menu_row_is_hidden(ContextMenuKind::MenuBarFile, id)
+        [
+            ContextMenuKind::MenuBarFileImport,
+            ContextMenuKind::MenuBarFileExport,
+        ]
+        .into_iter()
+        .find(|&k| menu_rows(k).iter().any(|r| r.0 == id))
+        .is_some_and(|k| !self.hero.store.menu_row_is_hidden(k, id))
+    }
+
+    fn menu_cinza(&self, id: ph2d_editor_core::NodeId) -> bool {
+        self.hero.store.menu_row_is_unavailable(id)
     }
 
     fn tecla(&mut self, code: KeyCode, ctrl: bool, shift: bool, alt: bool) {
@@ -113,9 +122,11 @@ fn gif() -> Export {
     })
 }
 
-/// As linhas só existem em Draw; o Repeat fica apagado até haver o que repetir.
+/// As linhas estão sempre no File ▸ Import/Export, mas só ACESAS em Draw (fora dele ficam
+/// cinzentas, dono 12/11: o menu é o catálogo do que o app sabe fazer); o Repeat fica apagado até
+/// haver o que repetir.
 #[test]
-fn o_menu_file_so_mostra_as_linhas_em_draw() {
+fn o_menu_file_mostra_as_linhas_sempre_e_so_as_acende_em_draw() {
     let mut p = Palco::novo("menu");
     let linhas = [
         ids::CTX_MENU_PIXEL_OPEN,
@@ -125,6 +136,10 @@ fn o_menu_file_so_mostra_as_linhas_em_draw() {
         ids::CTX_MENU_PIXEL_REPEAT_EXPORT,
     ];
     assert!(linhas.iter().all(|&l| p.menu_visivel(l)), "em Draw");
+    assert!(
+        linhas[..4].iter().all(|&l| !p.menu_cinza(l)),
+        "em Draw elas acendem"
+    );
     assert!(
         p.hero
             .store
@@ -141,8 +156,28 @@ fn o_menu_file_so_mostra_as_linhas_em_draw() {
     );
     let _ = p.hero.gizmo.mode.leave();
     p.quadro();
-    assert!(linhas.iter().all(|&l| !p.menu_visivel(l)), "fora do Draw");
-    assert!(p.menu_visivel(ids::CTX_MENU_EXPORT_SVG), "as outras ficam");
+    assert!(
+        linhas.iter().all(|&l| p.menu_visivel(l)),
+        "fora do Draw continuam no menu"
+    );
+    assert!(
+        linhas.iter().all(|&l| p.menu_cinza(l)),
+        "fora do Draw, cinzentas"
+    );
+    assert!(
+        p.hero
+            .apply_event(WidgetEvent::Click(ids::CTX_MENU_PIXEL_EXPORT_AS)),
+        "o clique numa cinzenta é consumido"
+    );
+    assert_eq!(
+        p.hero.store.take_pixel_file_request(),
+        None,
+        "cinzenta não age"
+    );
+    assert!(
+        p.menu_visivel(ids::CTX_MENU_EXPORT_SVG) && !p.menu_cinza(ids::CTX_MENU_EXPORT_SVG),
+        "o Export SVG fica no File ▸ Export, aceso"
+    );
 }
 
 /// Cada linha do menu abre a sua janela pelo clique real.

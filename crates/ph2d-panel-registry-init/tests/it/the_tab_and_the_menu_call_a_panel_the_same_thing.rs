@@ -18,7 +18,7 @@
 //! sabe que o pill `TOPBAR_TOKENS` fala do painel `"tokens"`.
 
 use ph2d_editor_core::interaction::ContextMenuKind;
-use ph2d_editor_core::screens::hero::{menu_bar, menu_rows};
+use ph2d_editor_core::screens::hero::menu_bar;
 
 #[test]
 fn the_tab_and_the_menu_call_a_panel_the_same_thing() {
@@ -33,12 +33,17 @@ fn the_tab_and_the_menu_call_a_panel_the_same_thing() {
 
     // Onde um id de módulo pode aparecer rotulado. ⚠️ A *View* também nomeia dois painéis
     // (`Hierarchy` / `Inspector`), e deixá-la de fora perderia metade da população.
-    let menus = [ContextMenuKind::MenuBarWindow, ContextMenuKind::MenuBarView];
+    // ⭐ Pelas FOLHAS (12/11): Window ▸ Audio/Pixel e Help ▸ Developer também nomeiam painéis.
+    let menus = [
+        ContextMenuKind::MenuBarWindow,
+        ContextMenuKind::MenuBarView,
+        ContextMenuKind::MenuBarHelp,
+    ];
 
     let mut disagree = Vec::new();
     let mut checked = 0usize;
     for kind in menus {
-        for (row_id, label, _) in menu_rows::menu_rows(kind) {
+        for (row_id, label, _) in &menu_bar::leaf_rows(kind) {
             let label = label.tr();
             let Some((_, truth)) = menu_bar::MODULE_TRUTHS.iter().find(|(id, _)| id == row_id)
             else {

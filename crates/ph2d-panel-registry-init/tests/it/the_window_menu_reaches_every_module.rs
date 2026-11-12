@@ -20,11 +20,15 @@
 //! botões mortos. *Um gate escrito de uma camada deixa a outra por medir, e as duas metades desta
 //! costura vivem em camadas diferentes de propósito.*
 //!
-//! *Mutação que sangra:* apagar uma linha da tabela `menu_rows(MenuBarWindow)` (o módulo fica
+//! ⭐ Desde 12/11 (dono) os módulos moram também em submenus (*Window ▸ Audio/Pixel*) e as
+//! ferramentas de quem faz o app em *Help ▸ Developer*: o censo pergunta pelas FOLHAS
+//! (`menu_bar::leaf_rows`), que atravessam as cascatas.
+//!
+//! *Mutação que sangra:* apagar uma linha das tabelas de `leaf_rows(MenuBarWindow)` (o módulo fica
 //! inalcançável e o gate da contagem cai), ou apagar o braço `TOPBAR_*` de um `event.rs` de painel.
 
 use ph2d_editor_core::interaction::{ContextMenuKind, WidgetEvent};
-use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+use ph2d_editor_core::screens::hero::menu_bar::leaf_rows;
 use ph2d_editor_core::{HeroScreen, NodeId};
 
 fn hero() -> HeroScreen {
@@ -39,14 +43,18 @@ fn hero() -> HeroScreen {
 /// de propósito, então um id que só chegue lá conta como morto, e é exactamente isso que se quer.
 #[test]
 fn every_window_menu_row_reaches_a_consumer() {
-    let rows = menu_rows(ContextMenuKind::MenuBarWindow);
+    // As folhas de Window e as de Help ▸ Developer (que moravam em Window até 12/11).
+    let rows: Vec<_> = leaf_rows(ContextMenuKind::MenuBarWindow)
+        .into_iter()
+        .chain(leaf_rows(ContextMenuKind::MenuBarHelpDeveloper))
+        .collect();
     assert!(
         rows.len() >= 12,
         "o menu Window encolheu para {} linhas — um módulo ficou sem porta",
         rows.len()
     );
     let mut dead = Vec::new();
-    for (id, label, _) in rows {
+    for (id, label, _) in &rows {
         // ⚠️ Um `hero` por linha: um toggle deixa estado atrás de si, e o segundo clique da mesma
         // sessão mediria o caminho de FECHO em vez do de abertura.
         let mut h = hero();
@@ -144,14 +152,14 @@ fn the_four_panel_rows_move_their_mark_too() {
     }
 }
 
-/// P6l: a linha *Pixel Preview* existe no menu Window e abre a janela Preview — e só ela (não o
+/// P6l: a linha *Pixel Preview* existe no menu Window (em *Window ▸ Pixel* desde 12/11) e abre a janela Preview — e só ela (não o
 /// painel PIXEL, que é a linha vizinha).
 #[test]
 fn the_pixel_preview_row_exists_and_toggles_only_the_preview_window() {
     use ph2d_editor_core::screens::hero::{PANEL_PIXEL, PANEL_PIXEL_PREVIEW};
     let id = ph2d_editor_core::ids::TOPBAR_PIXEL_PREVIEW;
     assert!(
-        menu_rows(ContextMenuKind::MenuBarWindow)
+        leaf_rows(ContextMenuKind::MenuBarWindow)
             .iter()
             .any(|(r, ..)| *r == id),
         "o menu Window perdeu a linha Pixel Preview"

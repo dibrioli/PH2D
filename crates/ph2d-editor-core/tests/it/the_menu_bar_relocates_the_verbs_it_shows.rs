@@ -389,10 +389,19 @@ fn both_bars_swallow_every_pixel_they_paint() {
 #[test]
 fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
     let mut covered = 0usize;
+    // ⭐ As FOLHAS (`leaf_rows`), porque desde 12/11 os módulos moram também em submenus
+    //    (Window ▸ Audio/Pixel, Help ▸ Developer). E a linha-cascata nunca mostra estado.
+    for (row, _) in menu_bar::CASCADES {
+        assert!(
+            !menu_bar::row_is_marked_by_button_state(row),
+            "uma linha-cascata não é alternância"
+        );
+    }
+    let modules = module_rows();
     for kind in MENUS.iter().map(|(_, _, k)| *k) {
-        for (id, label, _) in menu_rows(kind) {
+        for (id, label, _) in &menu_bar::leaf_rows(kind) {
             let label = label.tr();
-            let is_toggle = kind == ContextMenuKind::MenuBarWindow
+            let is_toggle = modules.contains(id)
                 || *id == ids::RAIL_SHOW_HIERARCHY
                 || *id == ids::RAIL_SHOW_INSPECTOR
                 || *id == ids::MENUBAR_VIEW_RULERS
@@ -417,7 +426,7 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
     // literal aqui obriga uma linha de UI a editar o gate de outra pessoa a cada painel novo, e o
     // sinal que isso produz (*"o teu painel partiu um gate"*) é ruído com cara de defeito.
     // A grandeza que este gate quer mesmo é *«toda linha do Window, mais as três de fora»*.
-    let expected = menu_rows(ContextMenuKind::MenuBarWindow).len() + OUTSIDE_WINDOW_TOGGLES;
+    let expected = modules.len() + OUTSIDE_WINDOW_TOGGLES;
     assert_eq!(
         covered, expected,
         "esperadas {expected} linhas de alternância, vi {covered}"
@@ -432,6 +441,22 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
 /// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
 /// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
 const OUTSIDE_WINDOW_TOGGLES: usize = 6;
+
+/// As linhas que são VERBOS dentro do menu *Window*: abrem uma coisa, não alternam um painel.
+/// ⚠️ O *Input Map* abre uma ABA central (dono 12/11) — não tem marca de estado nenhuma a mostrar.
+const WINDOW_VERBS: [NodeId; 1] = [ids::CTX_MENU_SETTINGS_INPUT_MAP];
+
+/// ⭐ **Os toggles de módulo**: as folhas de *Window* (pelos submenus Audio/Pixel) e de
+/// *Help ▸ Developer* (as ferramentas de quem faz o app, que até 12/11 moravam em *Window*), menos
+/// os verbos. Derivado das tabelas — um painel novo entra sozinho.
+fn module_rows() -> Vec<NodeId> {
+    menu_bar::leaf_rows(ContextMenuKind::MenuBarWindow)
+        .into_iter()
+        .chain(menu_bar::leaf_rows(ContextMenuKind::MenuBarHelpDeveloper))
+        .map(|(id, ..)| id)
+        .filter(|id| !WINDOW_VERBS.contains(id))
+        .collect()
+}
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]
@@ -559,8 +584,9 @@ fn every_topbar_verb_has_a_door_that_is_not_the_legacy_key() {
     );
     let rows: Vec<NodeId> = MENUS
         .iter()
-        .flat_map(|(_, _, k)| menu_rows(*k))
-        .map(|(id, ..)| *id)
+        // ⭐ Pelas FOLHAS: desde 12/11 meia barra mora em submenus (File ▸ Export, Help ▸ …).
+        .flat_map(|(_, _, k)| menu_bar::leaf_rows(*k))
+        .map(|(id, ..)| id)
         .chain(ph2d_editor_core::screens::hero::transport_bar::BOTOES.map(|(id, _)| id))
         .chain([ph2d_editor_core::screens::hero::transport_bar::CONTROLS.0])
         .collect();
@@ -637,7 +663,14 @@ fn clicking_a_toggle_row_moves_its_mark() {
     use ph2d_editor_core::widget::ButtonState;
     let mut stuck = Vec::new();
     let mut moved = Vec::new();
-    for (id, label, _) in menu_rows(ContextMenuKind::MenuBarWindow) {
+    let labels: Vec<_> = menu_bar::leaf_rows(ContextMenuKind::MenuBarWindow)
+        .into_iter()
+        .chain(menu_bar::leaf_rows(ContextMenuKind::MenuBarHelpDeveloper))
+        .collect();
+    for (id, label, _) in &labels {
+        if WINDOW_VERBS.contains(id) {
+            continue; // abre uma aba, não alterna nada
+        }
         let label = label.tr();
         let truth = menu_bar::MODULE_TRUTHS
             .iter()

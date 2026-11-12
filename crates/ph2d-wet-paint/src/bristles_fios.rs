@@ -207,13 +207,27 @@ impl FiosNoDab {
         })
     }
 
+    /// [`Self::no_ponto_em`] com o FIO já achado ([`Self::fio_no_ponto`] no mesmo `d`, guardado pelo chamador) — a
+    /// mesma conta sem a divisão pela largura, ao bit.
+    #[must_use]
+    #[inline]
+    pub fn no_ponto_no_fio(&self, d: [f64; 2], fio: i32, t: &TabelaDosFios) -> Ponto {
+        self.no_fio_por(d, fio, |k| {
+            let x = t.do_fio(self, k);
+            (x.span, x.ganho)
+        })
+    }
+
     #[inline]
     fn no_ponto_por(&self, d: [f64; 2], do_fio: impl Fn(i32) -> (f64, f64)) -> Ponto {
+        self.no_fio_por(d, self.fio_no_ponto(d), do_fio)
+    }
+
+    #[inline]
+    fn no_fio_por(&self, d: [f64; 2], fio: i32, do_fio: impl Fn(i32) -> (f64, f64)) -> Ponto {
         let f = &self.fios;
         let n = self.normal;
         let mut q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
-        let l = q[0] * n[0] + q[1] * n[1];
-        let fio = self.fio(l / f.largura_px.max(0.25));
         let (span, ganho) = do_fio(fio);
         if f.span_px != 0.0 {
             q = [q[0] - n[0] * span, q[1] - n[1] * span];

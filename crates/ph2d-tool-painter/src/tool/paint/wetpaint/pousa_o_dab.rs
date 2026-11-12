@@ -342,6 +342,14 @@ pub(super) fn pousa_o_dab(
         alc,
         &sil,
     );
+    // O fio de cada célula, achado 1× e relido pela ponta, pelas cerdas e pela cor dos fios (a mesma `FiosNoDab`: com
+    // `fios_dab`, a da ponta é ela). Por linha, a última célula ([`super::sil_memo::FioPorLinha`]), ao bit.
+    let fio_linha = fios_dab.map(|_| {
+        let m =
+            meia[0].max(meia[1]) + ponta.as_ref().map_or(0.0, |p| p.alcance_px()) / px_cel + 2.0;
+        super::sil_memo::FioPorLinha::nova(cell_y, m)
+    });
+    let fio_linha = fio_linha.as_ref();
     // A bilinear da ponta lê a silhueta BASE em quatro células por célula: guardada à parte (B14c), cada célula da
     // janela do motor deslocada do maior desvio é avaliada UMA vez, ao byte.
     let memo_base = ponta.as_ref().filter(|_| com_memo_base()).map(|p| {
@@ -373,7 +381,12 @@ pub(super) fn pousa_o_dab(
             );
             p.recorta_pelo_grao(&sil_base, cx, cy, f64::from(u))
         }
-        (Some(p), None) => p.recorta(&sil_base, cx, cy),
+        (Some(p), None) => match fio_linha {
+            Some(m) => {
+                p.recorta_no_fio(&sil_base, cx, cy, m.ou(cx, cy, || p.fio_da_celula(cx, cy)))
+            }
+            None => p.recorta(&sil_base, cx, cy),
+        },
         (None, _) => sil(cx, cy),
     };
     let sil = |cx: i32, cy: i32| {
@@ -471,7 +484,8 @@ pub(super) fn pousa_o_dab(
         move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
             let c = cor.map_or([base[0], base[1], base[2], 1.0], |c| c(cx, cy, queda));
             let dc = [f64::from(cx) - centro_x, f64::from(cy) - centro_y];
-            let fio = f.no_ponto_em(dc.map(|v| v * px_cel), t).fio;
+            let fio = |q: [f64; 2]| f.fio_no_ponto(q.map(|v| v * px_cel));
+            let fio = fio_linha.map_or_else(|| fio(dc), |m| m.ou(cx, cy, || fio(dc)));
             let rgb = usize::try_from(fio - k0)
                 .ok()
                 .and_then(|i| do_fio.get(i).copied())
@@ -525,9 +539,11 @@ pub(super) fn pousa_o_dab(
             let Some(f) = fios_dab else {
                 return tapete(dc);
             };
-            let p = match tabela {
-                Some(t) => f.no_ponto_em(dc.map(|v| v * px_por_celula), t),
-                None => f.no_ponto(dc.map(|v| v * px_por_celula)),
+            let q = dc.map(|v| v * px_por_celula);
+            let p = match (tabela, fio_linha) {
+                (Some(t), Some(m)) => f.no_ponto_no_fio(q, m.ou(cx, cy, || f.fio_no_ponto(q)), t),
+                (Some(t), None) => f.no_ponto_em(q, t),
+                (None, _) => f.no_ponto(q),
             };
             p.ganho * tapete(p.q.map(|v| v / px_por_celula))
         }

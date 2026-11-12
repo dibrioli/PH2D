@@ -94,6 +94,50 @@ impl SilMemo {
     }
 }
 
+/// O FIO da última célula lida em cada linha de um dab: a ponta, as cerdas e a cor dos fios pedem-no na MESMA célula,
+/// uma após outra (o motor lê silhueta → padrão → grão → cor por célula). A chave `cx` vai no mesmo `u64` do fio:
+/// uma leitura nunca casa o fio de outra célula, em qualquer ordem de threads — o fio é puro, então ao bit.
+pub(super) struct FioPorLinha {
+    y0: i32,
+    v: Vec<AtomicU64>,
+}
+
+impl FioPorLinha {
+    const VAZIA: u64 = (i32::MIN as u32 as u64) << 32;
+
+    /// As linhas `y ± meia` (células).
+    pub(super) fn nova(y: f64, meia: f64) -> Self {
+        let a = meia.ceil() as i32 + 1;
+        Self {
+            y0: y.round() as i32 - a,
+            v: (0..2 * a + 1)
+                .map(|_| AtomicU64::new(Self::VAZIA))
+                .collect(),
+        }
+    }
+
+    /// O fio de `(cx, cy)`: o guardado na linha, ou `fio()` (e guarda-o); fora das linhas, `fio()`.
+    #[inline]
+    pub(super) fn ou(&self, cx: i32, cy: i32, fio: impl FnOnce() -> i32) -> i32 {
+        let Some(s) = usize::try_from(cy - self.y0)
+            .ok()
+            .and_then(|j| self.v.get(j))
+        else {
+            return fio();
+        };
+        let v = s.load(Ordering::Relaxed);
+        if (v >> 32) as u32 == cx as u32 {
+            return v as u32 as i32;
+        }
+        let f = fio();
+        s.store(
+            (u64::from(cx as u32) << 32) | u64::from(f as u32),
+            Ordering::Relaxed,
+        );
+        f
+    }
+}
+
 impl Drop for SilMemo {
     fn drop(&mut self) {
         let c = std::mem::take(&mut self.c);

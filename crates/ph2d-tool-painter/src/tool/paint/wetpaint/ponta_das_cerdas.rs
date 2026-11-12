@@ -88,11 +88,21 @@ impl PontaDasCerdas {
     /// pode depender do tamanho da célula (arredondado a células inteiras, a 2 px por célula o pente lia 0,44 da
     /// altura a 1 px no lugar de 0,5).
     pub(super) fn recorta(&self, sil: CellFn<'_>, cx: i32, cy: i32) -> f64 {
-        let d = [
+        self.recorta_no_fio(sil, cx, cy, self.fio_da_celula(cx, cy))
+    }
+
+    /// O fio da célula `(cx, cy)` — o mesmo `FiosNoDab::fio_no_ponto` das cerdas e da cor dos fios do dab.
+    #[inline]
+    pub(super) fn fio_da_celula(&self, cx: i32, cy: i32) -> i32 {
+        self.fios.fio_no_ponto([
             (f64::from(cx) - self.centro[0]) * self.px_cel,
             (f64::from(cy) - self.centro[1]) * self.px_cel,
-        ];
-        let fio = self.fios.fio_no_ponto(d);
+        ])
+    }
+
+    /// [`Self::recorta`] com o fio da célula já achado ([`Self::fio_da_celula`]).
+    #[inline]
+    pub(super) fn recorta_no_fio(&self, sil: CellFn<'_>, cx: i32, cy: i32, fio: i32) -> f64 {
         let desvio = usize::try_from(fio - self.k0)
             .ok()
             .and_then(|i| self.desvios.get(i).copied())

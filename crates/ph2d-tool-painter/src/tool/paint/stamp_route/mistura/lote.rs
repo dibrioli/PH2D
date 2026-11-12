@@ -1,7 +1,7 @@
 //! O LOTE da mistura opaca (`stamp_dabs_mistura_opaca`): a pegada de cada dab e a película em ordem — a lei do
 //! módulo [`super`].
 
-use super::{Region, pegada_do_dab, pelicula};
+use super::{Region, pegada_com_forma, pegada_do_dab, pelicula};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::mistura_opaca::{Carimbo, Pegada, ReservatorioOpaco};
 use ph2d_painter_brush::{BrushSpec, Dab};
@@ -157,8 +157,14 @@ impl PainterTool {
         let juntas = textured
             || ph2d_painter_brush::mistura_opaca::PEGADAS_LOCAIS_SEM_GRAO
                 .load(std::sync::atomic::Ordering::Relaxed);
-        let locais =
-            !pixel && camadas_do_shape.is_none() && rampa.is_none() && !shape_active && juntas;
+        // Com o Shape (o Oil Paint, o Gouache: as cerdas) também, missão 4K onda 3.
+        let com_forma = ph2d_painter_brush::mistura_opaca::PEGADAS_LOCAIS_COM_FORMA
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let locais = !pixel
+            && camadas_do_shape.is_none()
+            && rampa.is_none()
+            && (!shape_active || com_forma)
+            && (juntas || shape_active);
         // As máscaras da TELA inteira (33 MB cada a 4K) só servem à rota em série; a das pegadas locais solta-as.
         let mut mascara = std::mem::take(&mut self.paint.mistura_opaca.pegada);
         let mut liso = std::mem::take(&mut self.paint.mistura_opaca.pegada_lisa);
@@ -175,6 +181,28 @@ impl PainterTool {
                 liso.resize(n4, 0);
             }
         }
+        let pega = |(spec, basis, forma): &(
+            BrushSpec,
+            Option<ph2d_painter_brush::texture::TexDabBasis>,
+            Option<ph2d_painter_brush::texture::TexDabBasis>,
+        ),
+                    d: &Dab| match forma {
+            Some(sb) => pegada_com_forma(
+                spec,
+                basis.as_ref(),
+                ph2d_painter_brush::ShapeInput {
+                    basis: sb,
+                    image: shape_image.as_ref(),
+                    ramp_lut: shape_ramp_lut,
+                },
+                d,
+                w,
+                h,
+                image.as_ref(),
+                po,
+            ),
+            None => pegada_do_dab(spec, basis.as_ref(), d, w, h, image.as_ref(), po),
+        };
         let mut pegadas: Option<(Vec<_>, Vec<_>)> = locais.then(|| {
             let bases: Vec<_> = dabs
                 .iter()
@@ -182,15 +210,29 @@ impl PainterTool {
                 .map(|(i, d)| {
                     let spec = brush.at_dab(d);
                     let rng = dab_rng.enter(&groups, i);
+                    let fp = spec.dab_footprint_of(d);
+                    // A ordem do stream é a da rota em série: o Shape, depois o Grain.
+                    let forma = shape_active.then(|| {
+                        ph2d_painter_brush::texture::shape_basis(
+                            &spec.shape,
+                            &mut *rng,
+                            [w as f32, h as f32],
+                            fp,
+                            ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                                arc_len: d.arc_len,
+                                unit_px: d.stroke_radius_px,
+                            },
+                        )
+                    });
                     let basis = textured.then(|| {
                         ph2d_painter_brush::texture::dab_basis(
                             &spec.texture,
                             rng,
                             [w as f32, h as f32],
-                            spec.dab_footprint_of(d),
+                            fp,
                         )
                     });
-                    (spec, basis)
+                    (spec, basis, forma)
                 })
                 .collect();
             let pegadas = (0..dabs.len())
@@ -200,7 +242,7 @@ impl PainterTool {
                         && i > 0
                         && dabs[i - 1].center == dabs[i].center
                         && groups.get(i - 1) == groups.get(i);
-                    (!copia).then(|| pegada_do_dab(&bases[i], &dabs[i], w, h, image.as_ref(), po))
+                    (!copia).then(|| pega(&bases[i], &dabs[i]))
                 })
                 .collect();
             (bases, pegadas)
@@ -234,7 +276,7 @@ impl PainterTool {
                 }
                 let pre = pre[i]
                     .take()
-                    .unwrap_or_else(|| pegada_do_dab(&bases[i], d, w, h, image.as_ref(), po));
+                    .unwrap_or_else(|| pega(&bases[i], d));
                 let Some((local, Some(r), r2)) = pre else {
                     continue;
                 };

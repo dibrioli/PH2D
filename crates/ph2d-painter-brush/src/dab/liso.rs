@@ -94,6 +94,49 @@ pub fn pegada_textured_masked_po_com_liso(
     saida.map(|p| (p, r, r2))
 }
 
+/// [`super::stamp_dab_textured_masked_po`] (com o Shape, sem máscara do traço nem força) sobre o VAZIO, numa
+/// [`super::PegadaLocal`] do tamanho da caixa do dab, sem a pegada lisa: os mesmos bytes que ela deixa num buffer da
+/// tela a zeros (a rota da mistura com o Shape, missão 4K onda 3). `None` = o dab não toca a tela.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn pegada_local(
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
+    dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
+) -> Option<(super::PegadaLocal, Option<DirtyRect>)> {
+    let mut saida = None;
+    let (r, _) = stamp_dab_inner_com::<u8>(
+        &mut [],
+        None,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        false,
+        tex,
+        image,
+        shape,
+        None,
+        None,
+        None,
+        po,
+        dab_rotation,
+        PARALLEL_MIN_AREA,
+        capsula,
+        Some(&mut saida),
+    );
+    saida.map(|p| (p, r))
+}
+
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub(super) fn stamp_dab_inner<M: crate::Tecto>(

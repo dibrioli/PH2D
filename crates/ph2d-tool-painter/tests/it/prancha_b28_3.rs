@@ -236,3 +236,20 @@ fn a_pelicula_por_linhas_da_a_tela_das_faixas_ao_bit() {
         }
     }
 }
+
+/// Missão 4K onda 3: as pegadas do lote COM o Shape (as cerdas) em buffers locais, em paralelo entre os dabs, dão a tela
+/// da rota em série na máscara da tela AO BIT — Oil Paint, Gouache, Thick Oil Paint e Dry Gouache, nos 3 fundos.
+#[test]
+fn a_pegada_local_com_forma_da_a_tela_da_rota_em_serie_ao_bit() {
+    use ph2d_painter_brush::mistura_opaca::PEGADAS_LOCAIS_COM_FORMA;
+    for nome in ["Oil Paint", "Gouache", "Thick Oil Paint", "Dry Gouache"] {
+        for qual in 0..3u8 {
+            PEGADAS_LOCAIS_COM_FORMA.store(false, Ordering::Relaxed);
+            let (antes, _) = cena_r(nome, 640, 360, qual, true, 40.0);
+            PEGADAS_LOCAIS_COM_FORMA.store(true, Ordering::Relaxed);
+            let (depois, _) = cena_r(nome, 640, 360, qual, true, 40.0);
+            let n = antes.iter().zip(&depois).filter(|(a, b)| a != b).count();
+            assert_eq!(n, 0, "{nome} fundo {qual}: {n} bytes mudaram");
+        }
+    }
+}

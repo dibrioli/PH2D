@@ -609,7 +609,9 @@ pub use bands::{PARALLEL_MIN_AREA, band_count};
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
 pub(crate) use bands::{parallel_band_cached, parallel_band_stamp};
 use liso::stamp_dab_inner;
-pub use liso::{pegada_textured_masked_po_com_liso, stamp_dab_textured_masked_po_com_liso};
+pub use liso::{
+    pegada_local, pegada_textured_masked_po_com_liso, stamp_dab_textured_masked_po_com_liso,
+};
 pub use mascarado::{
     stamp_dab_masked_tecto, stamp_dab_textured_masked, stamp_dab_textured_masked_po,
     stamp_dab_textured_masked_po_largo, stamp_dab_textured_masked_with,

@@ -13,7 +13,8 @@
 //! preset). `PH2D_SONDA_ABLA="k=v;k=v,k2=v2"` = variantes do 1.º pincel com chaves do motor trocadas
 //! (`brush.<campo>` para o pincel; `brush.<objeto>.<campo>` para um campo de um objeto, ex.
 //! `brush.mistura_opaca.meia_definicao=true`). `PH2D_SONDA_PELICULA=faixas` = a película do Wet blend na
-//! partição de antes (`mistura_opaca::PELICULA_POR_LINHAS`).
+//! partição de antes (`mistura_opaca::PELICULA_POR_LINHAS`). `PH2D_SONDA_FORMA=serie` = as pegadas com o Shape na rota em
+//! série (`mistura_opaca::PEGADAS_LOCAIS_COM_FORMA`).
 
 use crate::exame_bancada::{Fonte, Pincel, pinceis};
 use ph2d_editor_core::Tool;
@@ -186,6 +187,9 @@ fn sonda_custo_no_app() {
     let rodadas: usize = std::env::var("PH2D_SONDA_RODADAS").map_or(3, |v| v.parse().unwrap());
     let mut ps = pinceis(&spec);
     ablacoes(&mut ps);
+    if std::env::var("PH2D_SONDA_FORMA").is_ok_and(|v| v == "serie") {
+        ph2d_painter_brush::mistura_opaca::PEGADAS_LOCAIS_COM_FORMA.store(false, Ordering::Relaxed);
+    }
     if std::env::var("PH2D_SONDA_PELICULA").is_ok_and(|v| v == "faixas") {
         ph2d_painter_brush::mistura_opaca::PELICULA_POR_LINHAS.store(false, Ordering::Relaxed);
     }

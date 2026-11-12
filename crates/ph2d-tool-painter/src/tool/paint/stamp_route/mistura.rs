@@ -260,7 +260,8 @@ fn pelicula(
 /// A pegada do dab `d` (só o Grain, ou nada) num buffer da caixa dele: o kernel da rota normal, a branco, força 1,
 /// Flow 1.
 fn pegada_do_dab(
-    (spec, basis): &(BrushSpec, Option<ph2d_painter_brush::texture::TexDabBasis>),
+    spec: &BrushSpec,
+    basis: Option<&ph2d_painter_brush::texture::TexDabBasis>,
     d: &Dab,
     w: u32,
     h: u32,
@@ -283,7 +284,7 @@ fn pegada_do_dab(
         d.center,
         &branco,
         1.0,
-        basis.as_ref(),
+        basis,
         image,
         spec.dab_rotor(d),
         d.capsula(&branco),
@@ -291,4 +292,101 @@ fn pegada_do_dab(
         // Sem o Grain, o dente e o pó a pegada lisa é a própria máscara: a película lê-a como sem ela.
         basis.is_some() || spec.dente.is_some() || po.is_some(),
     )
+}
+
+/// A pegada de um dab com o SHAPE (e o Grain, se houver) num buffer próprio — o que a rota em série deixa nas máscaras
+/// da tela: a máscara (o kernel a branco com o Shape, o Grain e o pó) e a lisa SEM eles (a queda, sem dente nem pó),
+/// as duas na UNIÃO das caixas (missão 4K onda 3). `Some((local, Some(união), lisa))` só se a máscara pinta.
+#[allow(clippy::too_many_arguments)]
+fn pegada_com_forma(
+    spec: &BrushSpec,
+    basis: Option<&ph2d_painter_brush::texture::TexDabBasis>,
+    forma: ph2d_painter_brush::ShapeInput<'_>,
+    d: &Dab,
+    w: u32,
+    h: u32,
+    image: Option<&ph2d_painter_brush::texture::ImageMask>,
+    po: Option<ph2d_painter_brush::texture::PoDoPapel<'_>>,
+) -> Option<(
+    ph2d_painter_brush::PegadaLocal,
+    Option<ph2d_painter_brush::DirtyRect>,
+    Option<ph2d_painter_brush::DirtyRect>,
+)> {
+    use ph2d_painter_brush::DirtyRect;
+    let branco = BrushSpec {
+        color: [1.0; 3],
+        flow: 1.0,
+        blend: ph2d_painter_brush::BrushBlend::default(),
+        ..*spec
+    };
+    let (m, r) = ph2d_painter_brush::pegada_local(
+        w,
+        h,
+        d.center,
+        &branco,
+        1.0,
+        basis,
+        image,
+        Some(forma),
+        spec.dab_rotor(d),
+        d.capsula(&branco),
+        po,
+    )?;
+    let r = r?;
+    let plano = BrushSpec {
+        texture: Default::default(),
+        dente: None,
+        ..branco
+    };
+    let lisa = ph2d_painter_brush::pegada_local(
+        w,
+        h,
+        d.center,
+        &plano,
+        1.0,
+        None,
+        None,
+        None,
+        spec.dab_rotor(d),
+        d.capsula(&branco),
+        None,
+    );
+    let r2 = lisa.as_ref().and_then(|l| l.1);
+    let u = r2.map_or(r, |r2| {
+        let (x0, y0) = (r.x.min(r2.x), r.y.min(r2.y));
+        DirtyRect {
+            x: x0,
+            y: y0,
+            w: (r.x + r.w).max(r2.x + r2.w) - x0,
+            h: (r.y + r.h).max(r2.y + r2.h) - y0,
+        }
+    });
+    // O buffer `v` da caixa `de` na caixa `u` (a zeros fora dela).
+    let na_uniao = |v: Vec<u8>, de: DirtyRect| -> Vec<u8> {
+        if de == u {
+            return v;
+        }
+        let mut o = vec![0u8; (u.w * u.h * 4) as usize];
+        let n = (de.w * 4) as usize;
+        for y in 0..de.h {
+            let a = ((y * de.w) * 4) as usize;
+            let b = (((de.y + y - u.y) * u.w + (de.x - u.x)) * 4) as usize;
+            o[b..b + n].copy_from_slice(&v[a..a + n]);
+        }
+        o
+    };
+    let mascara = na_uniao(m.mascara, m.caixa);
+    let liso = match lisa {
+        Some((l, Some(_))) => na_uniao(l.mascara, l.caixa),
+        _ => vec![0u8; (u.w * u.h * 4) as usize],
+    };
+    Some((
+        ph2d_painter_brush::PegadaLocal {
+            caixa: u,
+            mascara,
+            liso,
+        },
+        Some(u),
+        r2.map(|_| u),
+    ))
 }

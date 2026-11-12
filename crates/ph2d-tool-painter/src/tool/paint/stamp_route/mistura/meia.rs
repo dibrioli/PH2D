@@ -243,7 +243,7 @@ impl PainterTool {
                     && metades[i - 1].center == metades[i].center
                     && groups.get(i - 1) == groups.get(i);
                 (!copia)
-                    .then(|| pegada_do_dab(&bases[i], &metades[i], w2, h2, image.as_ref(), None))
+                    .then(|| pegada_do_dab(&bases[i].0, bases[i].1.as_ref(), &metades[i], w2, h2, image.as_ref(), None))
             })
             .collect();
         let antes = |i: usize| media(&base, w, h, w2, i);
@@ -270,7 +270,7 @@ impl PainterTool {
             }
             let pre = pegadas[i]
                 .take()
-                .unwrap_or_else(|| pegada_do_dab(&bases[i], d, w2, h2, image.as_ref(), None));
+                .unwrap_or_else(|| pegada_do_dab(&bases[i].0, bases[i].1.as_ref(), d, w2, h2, image.as_ref(), None));
             let Some((local, Some(r), r2)) = pre else {
                 continue;
             };

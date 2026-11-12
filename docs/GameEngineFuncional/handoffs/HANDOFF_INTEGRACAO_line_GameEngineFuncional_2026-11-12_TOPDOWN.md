@@ -90,3 +90,19 @@ Mecanismo no código e nas mensagens dos commits; aqui só o que o integrador pr
 - **Wall jump (GEF02 / [BUGS_physics.md Bug #11](../../Physics/BUGS_physics.md)):** com wall jump height ~1,9–2,0 o controle «parede sólida» de `platform_wall` é atirado ~23 m/s ao topo da parede (y≈12,9). É da ponte, não da lei do pulo; as fixturas seguram `OLD_LAW_WALL_JUMP_HEIGHT`.
 - `layer_override` por forma NÃO é lido pelo corte da curva (`arc_terrain.rs` usa a camada da forma principal).
 - Tecto da shell: reconte pelo integrador (§4).
+
+## Adendo — Smoke do dono 12/11 — números e sombra
+
+Commits `adcd392fc7..HEAD` (5, só a curva do pulo, GEF 04):
+
+- `7ac5a60521` — a curva lê-se em fundo claro: halo sob linhas, pontos e texto. Helper partilhado `crates/ph2d-editor-core/src/paint_halo.rs` (`stroke_com_halo`, `fill_com_halo`, `paint_text_centered_com_halo`); tokens `BgScrim` · `OUTLINE_SHADOW_ALPHA`, `StrokeToken::Thin`. `JumpApex` ganha braço próprio em `gizmo/point.rs`; o readout passa a `ObjPlayer`.
+- `48afab6f40` — o número da alça e o do cartão são o mesmo. Mecanismo: o rapier aplica a gravidade a CADA iteração do solver (4 sub-passos × 4 iterações = 16 passos por tique), logo a queda por tique é `g·dt²·(n+1)/(2n)`. A lei e o arco passam a integrar esses passos: `JumpConfig::world_steps` (`DEFAULT_WORLD_STEPS` = 16), `ArcWorld::solver_iterations`, `ph2d_physics_ecs::world_steps`. Desenho e jogo ficam a ≤ 0,3 mm de `jump_height` (antes 1,984 / 1,996 para 2,00). Gates apertados a 1 mm (4 sensações × 0,5/1/2/2,5 m). O readout `{:.0}` cortava decimais em metros: agora `curva_do_pulo_numero::numero_da_alca`. Mutações (lei sem passos, arco sem iterações, readout `{:.0}`, fábrica 4) ⇒ vermelho.
+- `e175a655da` — o readout da alça formata por `numero_da_alca`.
+- `b4d52331de` — teste do texto pintado (`ouve_o_texto` público): o readout desenhado a arrastar é o texto do campo Jump Height.
+- `092c7995a6` — a foto `fisica_player_pulo` rola o Inspector ao cartão Platform Player (janela de 1040 px). O nome da foto precisa do prefixo `fisica_`; nome desconhecido falha calado (ABERTO).
+
+### ABERTO para o INTEGRADOR / GEF02
+
+- **Ponte (proibida a esta linha):** em `bridge/player.rs`, depois de `let mut cfg = cfg.config();`, pôr `cfg.jump.world_steps = crate::world_steps(&self.settings());` — e o mesmo em `components/player_arc.rs` (`jump_arcs`). Sem isso, um projeto com sub-passos/iterações fora da fábrica volta a errar a Jump Height (desenho e jogo seguem iguais entre si, ambos com 16).
+- Menor: abaixo de ~1 m a perna do jogo apanha o corpo antes da linha de pouso (pouso desenhado 2 tiques depois; 49×47 a 0,5 m).
+- Foto com nome sem prefixo `fisica_` falha calado.

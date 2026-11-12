@@ -20,6 +20,17 @@ pub struct MenuChain {
     /// «Esta linha é de um menu aberto?» — a pergunta mora em `screens::hero::menu_cascade` (as
     /// tabelas de linhas); o hero instala-a aqui para o despacho não depender do ecrã.
     linha_de_menu: Option<fn(&WidgetStore, NodeId) -> bool>,
+    /// A mira a caminho do submenu ([`MenuAim`]).
+    pub aim: MenuAim,
+}
+
+/// ⭐ **A MIRA** (o «menu-aim» da Amazon/macOS): o rasto curto do ponteiro e a troca adiada.
+#[derive(Clone, Debug, Default)]
+pub struct MenuAim {
+    /// As últimas posições do ponteiro, a mais velha primeiro.
+    pub rasto: std::collections::VecDeque<[f32; 2]>,
+    /// A linha onde o ponteiro parou a caminho do filho: abre-se se ele ficar lá até o prazo.
+    pub pendente: Option<(NodeId, f64)>,
 }
 
 impl MenuChain {
@@ -27,10 +38,16 @@ impl MenuChain {
     pub(in crate::interaction) fn solta(&mut self) {
         self.pais.clear();
         self.ponta = None;
+        self.aim = MenuAim::default();
     }
 }
 
 impl WidgetStore {
+    /// A mira da cascata (rasto e troca adiada) — de `screens::hero::menu_cascade`.
+    pub fn menu_aim(&mut self) -> &mut MenuAim {
+        &mut self.menu_chain.aim
+    }
+
     /// Instala a pergunta [`Self::is_open_menu_row`] (o hero, ao nascer).
     pub fn set_menu_row_probe(&mut self, probe: fn(&WidgetStore, NodeId) -> bool) {
         self.menu_chain.linha_de_menu = Some(probe);
@@ -85,6 +102,8 @@ impl WidgetStore {
         };
         let mut pais: Vec<_> = self.menu_pais().iter().copied().take(depth).collect();
         pais.push((pai, row));
+        // O rasto da mira recomeça: o vértice velho apontaria do sítio de onde se veio.
+        self.menu_chain.aim = MenuAim::default();
         self.context_menu = Some(req);
         self.menu_chain.pais = pais;
         self.menu_chain.ponta = Some(req);

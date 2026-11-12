@@ -210,30 +210,69 @@ fn toda_linha_com_seta_abre_um_nivel_e_so_elas() {
     assert_eq!(vistos, CASCADES.len() + 2 + 13);
 }
 
-/// A diagonal a caminho do filho passa por cima das irmãs sem trocar de submenu.
+/// ⭐ A diagonal a caminho do filho passa por cima das irmãs sem trocar de submenu — com o rato
+/// REAL, que anda aos degraus de 1 px (um passo (0, 1) sozinho apontava para fora e trocava: o
+/// defeito do smoke do dono, 12/11). Parado numa irmã, ela abre depois da espera; descer a direito
+/// pela lista troca logo.
 #[test]
 fn a_diagonal_para_o_filho_nao_troca_de_submenu() {
     let mut p = Palco::novo();
     p.clica(ids::MENUBAR_W);
     p.paira(ids::MENUBAR_FILE);
     let (fx, fy) = p.centro(ids::MENUBAR_FILE);
-    // Do File, em diagonal para dentro do menu File, passando sobre a linha Edit da raiz.
-    let (ex, ey) = p.centro(ids::MENUBAR_EDIT);
+    let edit = p.hero.hit_index.rect_for(ids::MENUBAR_EDIT).expect("Edit");
     let alvo = p.centro(ids::CTX_MENU_SAVE);
-    p.ponteiro(PointerKind::Move, fx, fy);
-    let meio = (ex + (alvo.0 - fx) * 0.4, ey);
-    assert_eq!(
-        p.hero.hit_index.hit(meio.0, meio.1),
-        Some(ids::MENUBAR_EDIT)
+    // Degraus de 1 px, x e y alternados na proporção da diagonal (Bresenham), até ao filho.
+    let (dx, dy) = (alvo.0 - fx, alvo.1 - fy);
+    let (mut x, mut y) = (fx, fy);
+    let mut passou_pela_irma = false;
+    while x < alvo.0 {
+        // O eixo que ficou para trás da recta anda 1 px.
+        if (y - fy) * dx < (x - fx) * dy {
+            y += 1.0;
+        } else {
+            x += 1.0;
+        }
+        p.ponteiro(PointerKind::Move, x, y);
+        passou_pela_irma |= p.hero.store.hot_id() == Some(ids::MENUBAR_EDIT);
+        assert_eq!(
+            p.cadeia(),
+            [K::MenuBarRoot, K::MenuBarFile],
+            "trocou a meio, em ({x}, {y})"
+        );
+    }
+    assert!(
+        passou_pela_irma,
+        "precondição: a diagonal cruza a linha Edit"
     );
-    p.ponteiro(PointerKind::Move, meio.0, meio.1);
+    // Parado na irmã: antes da espera nada muda; depois dela, a irmã abre o dela.
+    let mut p = Palco::novo();
+    p.clica(ids::MENUBAR_W);
+    p.paira(ids::MENUBAR_FILE);
+    p.ponteiro(PointerKind::Move, fx + 4.0, fy + 2.0);
+    p.ponteiro(PointerKind::Move, fx + 8.0, edit.y + 2.0);
     assert_eq!(
         p.cadeia(),
         [K::MenuBarRoot, K::MenuBarFile],
-        "trocou a meio"
+        "trocou sem esperar"
     );
-    // Um movimento VERTICAL sobre a irmã troca.
-    p.ponteiro(PointerKind::Move, meio.0, meio.1 + 1.0);
+    p.hero.tick_motion(ESPERA_S * 0.5);
+    assert_eq!(p.cadeia(), [K::MenuBarRoot, K::MenuBarFile]);
+    p.hero.tick_motion(ESPERA_S);
+    assert_eq!(
+        p.cadeia(),
+        [K::MenuBarRoot, K::MenuBarEdit],
+        "parado na irmã, ela não abriu"
+    );
+    // Descer a direito pela lista (para longe do filho) troca sem esperar.
+    let mut p = Palco::novo();
+    p.clica(ids::MENUBAR_W);
+    p.paira(ids::MENUBAR_FILE);
+    let mut y = fy;
+    while y < edit.y + edit.h * 0.5 {
+        y += 1.0;
+        p.ponteiro(PointerKind::Move, edit.x + 10.0, y);
+    }
     assert_eq!(p.cadeia(), [K::MenuBarRoot, K::MenuBarEdit]);
 }
 

@@ -106,18 +106,29 @@ fn level_rect(hero: &HeroScreen, kind: ContextMenuKind) -> Option<Rect> {
     )
 }
 
-/// ⭐ **O ponteiro vai A CAMINHO do filho?** — dentro do triângulo entre onde estava e a borda
-/// próxima do filho (com uma linha de folga). A diagonal por cima das irmãs não troca de submenu.
+/// Quantas posições o rasto guarda: o vértice do triângulo é a mais velha. Uma amostra só não chega
+/// — um rato real anda aos degraus de 1 px, e um degrau vertical (0, 1) cai fora de qualquer
+/// triângulo (o defeito do smoke do dono, 12/11).
+const RASTO: usize = 4;
+
+/// Quanto o ponteiro parado numa irmã espera antes de ela abrir o submenu dela, em segundos: o
+/// token de duração da casa (240 ms; o «delay» do jQuery menu-aim e do macOS anda pelos 300).
+const ESPERA_S: f64 = ph2d_tokens::Duration::Default.secs() as f64;
+
+/// ⭐ **O ponteiro vai A CAMINHO do filho?** — dentro do triângulo entre onde estava (o mais velho
+/// do rasto) e a borda próxima do filho, com folga de duas linhas em cima e em baixo. A diagonal por
+/// cima das irmãs não troca de submenu.
 fn aiming(antes: [f32; 2], agora: [f32; 2], filho: Rect) -> bool {
     if antes == agora {
-        return false;
+        return true;
     }
     let x = if filho.x >= antes[0] {
         filho.x
     } else {
         filho.x + filho.w
     };
-    let (a, b) = ([x, filho.y - ROW_H_PX], [x, filho.y + filho.h + ROW_H_PX]);
+    let folga = ROW_H_PX * 2.0;
+    let (a, b) = ([x, filho.y - folga], [x, filho.y + filho.h + folga]);
     let lado = |p: [f32; 2], q: [f32; 2], r: [f32; 2]| {
         (p[0] - r[0]) * (q[1] - r[1]) - (q[0] - r[0]) * (p[1] - r[1])
     };
@@ -132,7 +143,8 @@ fn aiming(antes: [f32; 2], agora: [f32; 2], filho: Rect) -> bool {
 }
 
 /// ⭐ **O ponteiro mexeu-se com a cascata aberta**: a linha sob ele abre o submenu dela, ou fecha
-/// os níveis abaixo do dela. `antes` é onde o ponteiro estava antes deste evento.
+/// os níveis abaixo do dela — salvo se ele vai a caminho do submenu aberto: aí a troca espera
+/// [`ESPERA_S`] parado na linha ([`tick`]). `antes` é onde o ponteiro estava antes deste evento.
 pub fn pointer(hero: &mut HeroScreen, antes: Option<[f32; 2]>, event: PointerEvent) {
     if event.kind == PointerKind::Down {
         hero.store.menu_alt_disarm();
@@ -141,27 +153,75 @@ pub fn pointer(hero: &mut HeroScreen, antes: Option<[f32; 2]>, event: PointerEve
         return;
     }
     let chain = bar_chain(&hero.store);
+    if chain.is_empty() {
+        return;
+    }
+    let agora = [event.x, event.y];
+    let aim = hero.store.menu_aim();
+    if aim.rasto.is_empty()
+        && let Some(a) = antes
+    {
+        aim.rasto.push_back(a);
+    }
+    let vertice = aim.rasto.front().copied();
+    aim.rasto.push_back(agora);
+    while aim.rasto.len() > RASTO {
+        aim.rasto.pop_front();
+    }
     let Some(hot) = hero.store.hot_id() else {
         return;
     };
-    let Some(level) = level_of_row(&hero.store, hot).filter(|_| !chain.is_empty()) else {
+    let Some(level) = level_of_row(&hero.store, hot) else {
+        hero.store.menu_aim().pendente = None;
         return;
     };
     if hero.store.menu_open_row(level) == Some(hot) {
         // De volta à linha-mãe: o filho dela fica, os netos saem.
+        hero.store.menu_aim().pendente = None;
         hero.store.close_submenus_below(level + 1);
         return;
     }
-    if let (Some(filho), Some(antes)) = (chain.get(level + 1), antes)
+    if let (Some(filho), Some(v)) = (chain.get(level + 1), vertice)
         && let Some(r) = level_rect(hero, filho.kind)
-        && aiming(antes, [event.x, event.y], r)
+        && aiming(v, agora, r)
     {
+        // A caminho do filho: a irmã só abre se o ponteiro ficar nela.
+        let aim = hero.store.menu_aim();
+        if aim.pendente.map(|(id, _)| id) != Some(hot) {
+            aim.pendente = Some((hot, ESPERA_S));
+        }
         return;
     }
+    troca(hero, hot, level);
+}
+
+/// A linha `hot` do nível `level` toma a vez: abre o submenu dela, ou fecha os de baixo.
+fn troca(hero: &mut HeroScreen, hot: NodeId, level: usize) {
+    hero.store.menu_aim().pendente = None;
     if opens_submenu(hot) && !hero.store.menu_row_is_unavailable(hot) {
         hero.apply_event(WidgetEvent::Click(hot));
     } else {
         hero.store.close_submenus_below(level);
+    }
+}
+
+/// O relógio da mira (uma vez por quadro, `dt` de parede): o ponteiro que ficou [`ESPERA_S`] numa
+/// irmã a caminho do filho troca para ela.
+pub fn tick(hero: &mut HeroScreen, dt: f64) {
+    let Some((row, falta)) = hero.store.menu_aim().pendente else {
+        return;
+    };
+    let falta = falta - dt;
+    if falta > 0.0 {
+        hero.store.menu_aim().pendente = Some((row, falta));
+        return;
+    }
+    hero.store.menu_aim().pendente = None;
+    if hero.store.hot_id() == Some(row)
+        && let Some(level) = level_of_row(&hero.store, row)
+        && hero.store.menu_open_row(level) != Some(row)
+    {
+        troca(hero, row, level);
     }
 }
 

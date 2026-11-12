@@ -37,7 +37,7 @@ pub use notes_ops::NoteDrag;
 mod menu_chain_ops;
 mod number_scrub;
 mod panel_ops;
-pub use menu_chain_ops::MenuChain;
+pub use menu_chain_ops::{MenuAim, MenuChain};
 mod picker_pin_ops;
 mod scroll_state;
 mod section_prefs_ops;

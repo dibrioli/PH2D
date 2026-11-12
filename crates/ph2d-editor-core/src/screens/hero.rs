@@ -431,6 +431,7 @@ impl HeroScreen {
     /// load-bearing — mora no irmão [`live::tick`].
     pub fn tick_motion(&mut self, dt: f64) {
         live::tick(self, dt);
+        menu_cascade::tick(self, dt);
     }
 
     pub fn new(id: NodeId) -> Self {

@@ -165,7 +165,7 @@ impl CodeView {
                 while i < n {
                     let line = first + i;
                     let (ls, le) = (t.byte_of_line(line), t.line_end(line));
-                    let w = self.windows.window(&t, rev, line, left, cap, self.tab);
+                    let w = self.windows.window(t, rev, line, left, cap, self.tab);
                     block.push((r + i, ls, le, w));
                     i += 1;
                     if w.start > ls || w.end < le {

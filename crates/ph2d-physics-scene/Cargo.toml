@@ -18,6 +18,8 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # GEF 05: a cena 24 arruma as gavetas do Inspector (Image/Animation fechadas, o Top-Down à vista).
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# GEF 05: as regras «tecla de andar segura → walk» nomeiam as ações do mapa.
+ph2d-input = { path = "../ph2d-input" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-shape-handles = { path = "../ph2d-shape-handles" }

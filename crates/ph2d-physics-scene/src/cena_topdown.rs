@@ -1,13 +1,14 @@
 //! **A cena do Top-Down Player** (`PH2D_GAME_SMOKE=24`, ficha GEF 05): um jogo visto de cima — o chão, três
-//! paredes para ver o deslize e o herói de fábrica com o mover de vista de cima e Facing = Move. Montada SÓ com
-//! peças: o «Static Body» e a «Sprite» do menu Add e o `+` do Inspector (as portas vêm da composição).
+//! paredes para ver o deslize e o herói de fábrica VISTO DE CIMA (`TOPDOWN_HERO_ART`, olha para +X) com o mover
+//! de vista de cima e Facing = Move. Montada SÓ com peças: o «Static Body» e a «Sprite» do menu Add, o `+` do
+//! Inspector (as portas vêm da composição) e as regras de animação «Key held → walk» do cartão Animation.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, ZIndexOverride};
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::registry::hash_node_id;
 use ph2d_editor_core::{NodeId, ids};
-use ph2d_physics_ecs::{Collider, ColliderShape, TopDownPlayer};
+use ph2d_physics_ecs::{AnimRule, AnimRules, AnimWhen, Collider, ColliderShape, TopDownPlayer};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::rotation::{self, RotationMode};
 
@@ -79,9 +80,10 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     }
     let heroi = (p.imagem)(sim);
     arruma(sim, heroi, HEROI, INICIO);
-    if let Err(e) = ph2d_render::veste_o_heroi(sim.world_mut(), heroi) {
+    if let Err(e) = ph2d_render::veste_o_heroi_de_cima(sim.world_mut(), heroi) {
         eprintln!("[game-smoke] =24 a folha do herói: {e}");
     }
+    sim.world_mut().entity_mut(heroi).insert(regras_de_andar());
     if let Err(e) = (p.anexa)(sim, heroi.to_bits(), "ph2d::physics::TopDownPlayer") {
         eprintln!("[game-smoke] =24 o Top-Down Player: {e}");
     }
@@ -97,6 +99,29 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
          numa parede e ele desliza ao longo dela."
     );
     heroi
+}
+
+/// As teclas de andar do Top-Down Player (o mapa do projecto).
+pub const ACOES_DE_ANDAR: [&str; 4] = [
+    ph2d_input::PLAYER_MOVE_LEFT,
+    ph2d_input::PLAYER_MOVE_RIGHT,
+    ph2d_input::PLAYER_MOVE_UP,
+    ph2d_input::PLAYER_MOVE_DOWN,
+];
+
+/// ⭐ **Anda enquanto uma tecla de andar está segura**: uma regra «Key held → walk» por tecla; soltas todas, o
+/// tocador volta ao clip de entrada (`idle`) — `ph2d_physics_ecs::segura_regra`, sem código novo.
+#[must_use]
+pub fn regras_de_andar() -> AnimRules {
+    AnimRules(
+        ACOES_DE_ANDAR
+            .iter()
+            .map(|a| AnimRule {
+                when: AnimWhen::Action((*a).to_owned()),
+                play: ph2d_render::TOPDOWN_HERO_WALK.to_owned(),
+            })
+            .collect(),
+    )
 }
 
 /// O instante das fotos do cartão (`PH2D_GAME_SMOKE_FOTO`, ficha GEF 05); sem a variável a cena é a do dono.

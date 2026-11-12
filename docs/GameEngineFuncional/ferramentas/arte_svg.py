@@ -5,7 +5,8 @@ brancos com pupila, sem contorno.
     python3 -I docs/GameEngineFuncional/ferramentas/arte_svg.py <poses.json do boneco_blender.py> <pasta de saída>
 
 Escreve `boneco.svg` (a folha 8 × 4: parado · correr · saltar · cair, e agachado · a andar agachado nas células
-livres das linhas 2 e 3, cada desenho na pose que o Blender deu),
+livres das linhas 2 e 3, cada desenho na pose que o Blender deu), `boneco_de_cima.svg` (6 × 2: parado · a andar,
+o mesmo boneco VISTO DE CIMA, olhando para +X — o Top-Down Player da cena 24, GEF 05),
 `chao.svg`, `plataforma.svg`, `terra.svg` (azulejos que repetem sem costura), `moeda.svg` (6 × 1, a girar) e
 `bandeira.svg` (4 × 1, a ondular), e o fundo do plano 11: `nuvens.svg` e `montes.svg` (repetem na horizontal). Só `fill` e caminhos absolutos — nada de `transform`, `stroke`, `opacity` ou
 `clipPath` —, para o SVG abrir no PH2D como vetor editável e rasterizar igual em qualquer leitor.
@@ -185,6 +186,66 @@ def boneco(poses):
     return svg(COLS * CEL, ROWS * CEL, corpo, "boneco de fábrica 8×4 (idle·run·jump·fall · crouch·crouch_walk)")
 
 
+# ---------------------------------------------------------------- o boneco VISTO DE CIMA (GEF 05)
+
+# A folha 6 × 2: parado (4 quadros, linha 0) · a andar (6 quadros, linha 1). Desenho original, no idioma do
+# boneco de lado: capacete de vidro com o brilho em cima à esquerda, cabeça verde, olhos na frente, ombros
+# verde-meio com o tampo claro, pés verde-escuro. Olha para a DIREITA (+X, o ângulo 0 do motor).
+TD_COLS, TD_ROWS = 6, 2
+TD_PARADO, TD_ANDAR = 4, 6
+
+
+def boneco_de_cima():
+    corpo = []
+    quadros = [("idle", 0, i) for i in range(TD_PARADO)] + [("walk", 1, i) for i in range(TD_ANDAR)]
+    for nome, row, i in quadros:
+        ox, oy = i * CEL, row * CEL
+        andar = nome == "walk"
+        # O andar começa a meio passo: com seis quadros, sin(i·60°) repetiria o 2.º no 3.º.
+        fase = 2 * math.pi * (i + 0.5 * andar) / (TD_ANDAR if andar else TD_PARADO)
+        giro = math.radians(7) * math.sin(fase) if andar else 0.0
+
+        def mundo(p, ox=ox, oy=oy):
+            return (ox + (0.5 + p[0]) * CEL, oy + (0.5 - p[1]) * CEL)
+
+        def roda(p, a=giro):
+            c, s = math.cos(a), math.sin(a)
+            return mundo((p[0] * c - p[1] * s, p[0] * s + p[1] * c))
+
+        g = [f'<g id="topdown_{nome}_{i}">']
+        # Os pés: o esquerdo (v > 0) e o direito alternam à frente e atrás, a sair do capacete.
+        passo = 0.16 * math.sin(fase) if andar else 0.0
+        for lado, du in ((1, passo), (-1, -passo)):
+            a, b = (du - 0.05, lado * 0.12), (du + 0.07, lado * 0.12)
+            g.append(capsula(mundo(a), mundo(b), 0.05 * CEL).svg(lambda p: p, P["verde_meio"]))
+        # Os ombros, mais largos que o capacete (giram com o passo, como quem balança os braços).
+        folego = 0.01 * math.sin(fase) if not andar else 0.0
+        g.append(rrect(-0.03, 0, 0.21, 0.62 + folego, 0.1).svg(roda, P["verde_meio"]))
+        g.append(rrect(-0.045, 0.012, 0.13, 0.54 + folego, 0.065).svg(roda, P["verde_claro"]))
+        # O capacete e a cabeça dentro dele.
+        g.append(elipse(0.02, 0, 0.215, 0.215).svg(mundo, P["vidro_escuro"]))
+        g.append(elipse(0.008, 0.012, 0.19, 0.19).svg(mundo, P["vidro"]))
+        g.append(rrect(0.04, 0, 0.22, 0.26, 0.085).svg(mundo, P["verde_meio"]))
+        g.append(rrect(0.028, 0.008, 0.18, 0.22, 0.07).svg(mundo, P["verde_claro"]))
+        # Os olhos na FRENTE (o lado +X): é isto que diz para onde ele olha. Pisca no último quadro parado.
+        pisca = not andar and i == TD_PARADO - 1
+        for v in (0.058, -0.058):
+            g.append(elipse(0.12, v, 0.034, 0.007 if pisca else 0.038).svg(mundo, P["branco"]))
+            if not pisca:
+                g.append(elipse(0.138, v, 0.017, 0.021).svg(mundo, P["olho"]))
+        # O brilho do vidro, em cima à esquerda como no boneco de lado.
+        g.append(elipse(-0.1, 0.115, 0.05, 0.02, math.radians(42)).svg(mundo, P["branco"]))
+        g.append(elipse(-0.045, 0.16, 0.013, 0.013).svg(mundo, P["branco"]))
+        g.append("</g>")
+        corpo.extend(g)
+    return svg(
+        TD_COLS * CEL,
+        TD_ROWS * CEL,
+        corpo,
+        "boneco de fábrica visto de cima 6×2 (idle·walk), olha para +X",
+    )
+
+
 # ---------------------------------------------------------------- o cenário (y para BAIXO, unidades = SVG)
 
 def ident(p):
@@ -348,6 +409,7 @@ def main():
     os.makedirs(out, exist_ok=True)
     arte = {
         "boneco.svg": boneco(poses),
+        "boneco_de_cima.svg": boneco_de_cima(),
         "chao.svg": svg(100, 100, azulejo(100), "chão 1×1 m (repete na horizontal)"),
         "plataforma.svg": svg(100, 50, azulejo(50, base_escura=True), "plataforma 1×0,5 m (repete na horizontal)"),
         "terra.svg": svg(100, 100, azulejo(100, com_relva=False), "terra 1×1 m (repete nos dois eixos)"),

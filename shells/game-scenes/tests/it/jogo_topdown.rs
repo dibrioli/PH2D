@@ -2,7 +2,7 @@
 //! pergunta da ficha — a imagem GIRA com a pose do corpo quando Facing ≠ None?
 
 use ph2d_app_game::smoke::topdown;
-use ph2d_ecs::{Entity, GlobalTransform, Name, SimWorld, Transform};
+use ph2d_ecs::{Entity, GlobalTransform, Name, SimWorld, SpriteAnimator, Transform};
 use ph2d_physics_ecs::{BodyKind, PhysicsBridge, PlayerInput, RigidBody, TopDownPlayer};
 use ph2d_render::{RenderInstance, Sprite};
 use ph2d_topdown::rotation::{self, RotationMode};
@@ -13,7 +13,7 @@ fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {
     q.iter(w).find(|(_, n)| n.0 == nome).map(|(e, _)| e)
 }
 
-/// A cena tem o herói de fábrica com o mover de vista de cima, corpo Kinematic com forma, Facing = Move, e as
+/// A cena tem o herói de fábrica VISTO DE CIMA com o mover de vista de cima, corpo Kinematic com forma, Facing = Move, e as
 /// três paredes estáticas.
 #[test]
 fn a_cena_24_monta_o_heroi_de_vista_de_cima_pelas_pecas() {
@@ -34,8 +34,12 @@ fn a_cena_24_monta_o_heroi_de_vista_de_cima_pelas_pecas() {
     assert_eq!(
         w.get::<Sprite>(heroi).map(|s| s.source),
         Some(ph2d_render::SpriteSource::Atlas {
-            key: ph2d_render::HERO_SHEET_KEY
+            key: ph2d_render::TOPDOWN_HERO_KEY
         })
+    );
+    assert_eq!(
+        w.get::<ph2d_physics_ecs::AnimRules>(heroi),
+        Some(&topdown::regras_de_andar())
     );
     for (nome, _, _) in topdown::PAREDES {
         let e = por_nome(&mut sim, nome).unwrap_or_else(|| panic!("{nome}"));
@@ -108,4 +112,43 @@ fn com_facing_move_a_imagem_desenhada_vira_para_onde_anda() {
         fim.x,
         fim.y
     );
+}
+
+/// O tocador do herói depois de um quadro das regras com `teclas` seguras.
+fn toca(sim: &mut SimWorld, heroi: Entity, teclas: &[&str]) -> String {
+    let premidas = teclas.iter().map(|t| (*t).to_owned()).collect();
+    let outbox = ph2d_runtime::SignalOutbox::new();
+    ph2d_app_game::personagem::anima_personagens(
+        sim.world_mut(),
+        &PhysicsBridge::new(),
+        &premidas,
+        &outbox,
+    );
+    let a = sim.world().get::<SpriteAnimator>(heroi).expect("tocador");
+    a.current.clone()
+}
+
+/// ⭐ **Parado respira, a andar anda**: com qualquer tecla de andar segura (e na diagonal, duas) o herói toca
+/// `walk`; soltas, volta a `idle` no mesmo quadro — só as regras «Key held» da cena, sem código novo.
+/// (Mutação: sem as regras ⇒ fica em `idle` e reprova.)
+#[test]
+fn o_heroi_de_cima_anda_com_a_tecla_e_para_sem_ela() {
+    let mut sim = SimWorld::new();
+    let heroi = crate::comp::montar(&mut sim, topdown::CENA);
+    let (idle, walk) = (
+        ph2d_render::TOPDOWN_HERO_IDLE,
+        ph2d_render::TOPDOWN_HERO_WALK,
+    );
+    assert_eq!(toca(&mut sim, heroi, &[]), idle);
+    for teclas in topdown::ACOES_DE_ANDAR
+        .iter()
+        .map(|a| vec![*a])
+        .chain([vec![
+            ph2d_input::PLAYER_MOVE_RIGHT,
+            ph2d_input::PLAYER_MOVE_UP,
+        ]])
+    {
+        assert_eq!(toca(&mut sim, heroi, &teclas), walk, "{teclas:?}");
+        assert_eq!(toca(&mut sim, heroi, &[]), idle, "soltar {teclas:?}");
+    }
 }

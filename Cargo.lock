@@ -10957,6 +10957,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-input",
  "ph2d-physics-ecs",
  "ph2d-physics-outline",
  "ph2d-render",

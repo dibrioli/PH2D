@@ -170,9 +170,23 @@ pub const ROCK_ART: FactoryArt = FactoryArt {
     texels_per_m: 128,
 };
 
+/// A folha do boneco VISTO DE CIMA (6 × 2; ver [`super::hero_topdown`]) — o Top-Down Player da cena 24.
+pub const TOPDOWN_HERO_ART: FactoryArt = FactoryArt {
+    key: super::TOPDOWN_HERO_KEY,
+    name: "asset.factory.hero_top_down",
+    svg: include_bytes!("fabrica/boneco_de_cima.svg"),
+    px: [
+        super::TOPDOWN_HERO_CELL_PX * super::TOPDOWN_HERO_COLS,
+        super::TOPDOWN_HERO_CELL_PX * super::TOPDOWN_HERO_ROWS,
+    ],
+    grid: [super::TOPDOWN_HERO_COLS, super::TOPDOWN_HERO_ROWS],
+    tile: false,
+    texels_per_m: super::TOPDOWN_HERO_CELL_PX,
+};
+
 /// Toda a arte de fábrica, na ordem em que entra no atlas. ⚠️ Arte nova entra no FIM (gate
 /// `as_artes_antigas_sao_as_de_antes`).
-pub const FACTORY_ART: [FactoryArt; 9] = [
+pub const FACTORY_ART: [FactoryArt; 10] = [
     HERO_ART,
     GROUND_TILE,
     PLATFORM_TILE,
@@ -182,6 +196,7 @@ pub const FACTORY_ART: [FactoryArt; 9] = [
     CLOUDS_TILE,
     HILLS_TILE,
     ROCK_ART,
+    TOPDOWN_HERO_ART,
 ];
 
 /// Milissegundos por célula da moeda e da bandeira (laços uniformes).

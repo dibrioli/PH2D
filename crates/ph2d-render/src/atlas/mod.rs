@@ -69,6 +69,7 @@ mod demo;
 mod fabrica;
 mod gpu_ops;
 mod hero_sheet;
+mod hero_topdown;
 mod region;
 mod renasce;
 
@@ -76,7 +77,12 @@ pub use fabrica::{
     BACKGROUND_TEXELS_PER_M, CLOUDS_TILE, CLOUDS_TILE_KEY, COIN_FRAME_MS, COIN_SHEET,
     COIN_SHEET_KEY, DIRT_TILE, DIRT_TILE_KEY, FACTORY_ART, FLAG_FRAME_MS, FLAG_SHEET,
     FLAG_SHEET_KEY, FactoryArt, GROUND_TILE, GROUND_TILE_KEY, HERO_ART, HILLS_TILE, HILLS_TILE_KEY,
-    PLATFORM_TILE, PLATFORM_TILE_KEY, ROCK_ART, ROCK_KEY, factory_image, factory_pixels,
+    PLATFORM_TILE, PLATFORM_TILE_KEY, ROCK_ART, ROCK_KEY, TOPDOWN_HERO_ART, factory_image,
+    factory_pixels,
+};
+pub use hero_topdown::{
+    TOPDOWN_HERO_CELL_PX, TOPDOWN_HERO_COLS, TOPDOWN_HERO_IDLE, TOPDOWN_HERO_KEY,
+    TOPDOWN_HERO_ROWS, TOPDOWN_HERO_TAGS, TOPDOWN_HERO_WALK, veste_o_heroi_de_cima,
 };
 
 /// A imagem `size` repetida `copies` (`[colunas, linhas]`) vezes, lado a lado — o que

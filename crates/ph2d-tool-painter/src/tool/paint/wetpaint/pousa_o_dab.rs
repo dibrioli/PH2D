@@ -396,7 +396,7 @@ pub(super) fn pousa_o_dab(
             fp_raio.falloff_t(n[1] as f32 * a, -n[0] as f32 * a) * 1.001,
         )
     });
-    // O corte do motor por LINHA ([`corte_das_linhas`]): fora do intervalo da linha, `fora` sem o `falloff_t`, ao bit.
+    // O corte do motor por LINHA ([`corte_das_linhas`]): fora do intervalo e no miolo, sem o `falloff_t`, ao bit.
     let corte_motor = lips.map(|l| {
         let a = f64::from(l)
             * (0.5 * f64::from(lado) + f64::from(folga_ponta))
@@ -405,7 +405,10 @@ pub(super) fn pousa_o_dab(
         corte_das_linhas::CorteDasLinhas::nova(&fp_raio, limiar, d.center, inv_r, ratio, lado)
     });
     let fora_motor = |cx: i32, cy: i32| -> bool {
-        corte_motor.as_ref().is_some_and(|c| c.fora(cx, cy)) || fora(cx, cy, folga_ponta, desliza)
+        corte_motor
+            .as_ref()
+            .and_then(|c| c.decide(cx, cy))
+            .unwrap_or_else(|| fora(cx, cy, folga_ponta, desliza))
     };
     // Com a memo, ela guarda também o `0` de `fora`: a 2.ª leitura da célula (o depósito, o pente, o grão) não paga o
     // corte. A contagem do motor continua a das leituras não cortadas (`v ≠ 0` só sai de quem passou o corte).

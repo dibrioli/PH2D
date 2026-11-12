@@ -584,7 +584,25 @@ impl FootprintDeform {
         };
         let f0 = faixa(c, s * v, limiar)?;
         let f1 = faixa(-s, c * v, limiar / m)?;
-        let raio = limiar / ((1.0 - q) + q * std::f64::consts::FRAC_1_SQRT_2);
+        let e = self.elipse_na_linha(
+            v,
+            limiar / ((1.0 - q) + q * std::f64::consts::FRAC_1_SQRT_2),
+        )?;
+        let lo = f0[0].max(f1[0]).max(e[0]);
+        let hi = f0[1].min(f1[1]).min(e[1]);
+        (lo <= hi).then_some([lo, hi])
+    }
+
+    /// Um SUBCONJUNTO, em `f64`, do intervalo de `u` onde o [`Self::falloff_t`] exacto da linha `v` fica abaixo de
+    /// `limiar` (curva plana): `t ≤ |f|₂` (a quina só encolhe a norma).
+    #[must_use]
+    pub fn falloff_t_abaixo_na_linha_de_certeza(&self, v: f64, limiar: f64) -> Option<[f64; 2]> {
+        self.elipse_na_linha(v, limiar)
+    }
+
+    /// `|f|₂ < raio` na linha `v`, em `u` (a quadrática da pegada plana).
+    fn elipse_na_linha(&self, v: f64, raio: f64) -> Option<[f64; 2]> {
+        let (c, s, m, _) = self.termos_f64();
         let qa = c * c + m * m * s * s;
         let qb = 2.0 * s * c * v * (1.0 - m * m);
         let qc = v * v * (s * s + m * m * c * c) - raio * raio;
@@ -593,9 +611,7 @@ impl FootprintDeform {
             return None;
         }
         let rd = disc.sqrt();
-        let lo = f0[0].max(f1[0]).max((-qb - rd) / (2.0 * qa));
-        let hi = f0[1].min(f1[1]).min((-qb + rd) / (2.0 * qa));
-        (lo <= hi).then_some([lo, hi])
+        Some([(-qb - rd) / (2.0 * qa), (-qb + rd) / (2.0 * qa)])
     }
 
     /// O maior `|v|` com alguma linha de [`Self::falloff_t_abaixo_na_linha`] não vazia (a elipse dela), em `f64`.

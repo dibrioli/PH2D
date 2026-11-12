@@ -278,11 +278,11 @@ mod extent_tests {
 mod corte_por_linha_tests {
     use super::super::*;
 
-    /// O intervalo da linha (B14.3) é um SUPERCONJUNTO: todo ponto com `falloff_t < limiar` cai dentro dele, e
-    /// nenhuma linha acima da meia altura tem algum — achatamento, ângulo e quina varridos (um corpus redondo não mede).
+    /// O intervalo da linha (B14.3) é um SUPERCONJUNTO (e o de certeza um SUBCONJUNTO): todo ponto com `falloff_t <
+    /// limiar` cai dentro dele, todo o do miolo fica abaixo, e nenhuma linha acima da meia altura tem algum — achatamento, ângulo e quina varridos (um corpus redondo não mede).
     #[test]
     fn o_intervalo_da_linha_contem_todo_ponto_abaixo_do_limiar() {
-        let (mut dentro, mut casos) = (0, 0);
+        let (mut dentro, mut miolo, mut casos) = (0, 0, 0);
         for flatten in [0.0_f32, 0.5, DAB_FLATTEN_MAX] {
             for angle in [0_u16, 17, 90, 233] {
                 for quina in [0.0_f32, 0.4, 1.0] {
@@ -297,6 +297,15 @@ mod corte_por_linha_tests {
                         }
                         for i in 0..=320 {
                             let u = -3.0 + 6.0 * i as f32 / 320.0;
+                            let certeza =
+                                fp.falloff_t_abaixo_na_linha_de_certeza(f64::from(v), limiar);
+                            if certeza.is_some_and(|[a, b]| (a..=b).contains(&f64::from(u))) {
+                                miolo += 1;
+                                assert!(
+                                    f64::from(fp.falloff_t(u, v)) < limiar * (1.0 + 1e-6),
+                                    "u {u} no miolo e t acima (flatten {flatten}, ângulo {angle}°, quina {quina})"
+                                );
+                            }
                             if f64::from(fp.falloff_t(u, v)) < limiar {
                                 dentro += 1;
                                 let [lo, hi] =
@@ -316,6 +325,10 @@ mod corte_por_linha_tests {
         assert!(
             dentro > 1000,
             "o corpus quase não tem pontos dentro: {dentro}"
+        );
+        assert!(
+            miolo > 1000,
+            "o corpus quase não tem pontos no miolo: {miolo}"
         );
     }
 }

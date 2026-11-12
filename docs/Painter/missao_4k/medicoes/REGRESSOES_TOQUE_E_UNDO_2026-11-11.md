@@ -96,3 +96,25 @@ curas do Wet entram na linha: `b5f4a90128` · `62bb7c2efa` · `3848f195aa`.
 | D1 Round Mixing `]`×10 | nenhum | o Color mixing largo não passa de 60 ms |
 | Wet · Filbert · W6 | 62–93 (toque, Ctrl+Z) | os da onda 1 |
 | W6 parado depois de `]`×10 | CPU **492 %** de um núcleo durante 5 s | achado: trabalho de fundo sem entrada (por perfilar) |
+
+## rf (12/11, 03:35–04:11) — a matriz FINAL da janela: base `4381ee6d4a` × HEAD `a5fcd15668`
+
+Mesmo target (`.ph2d-bis-4k-target`), os dois binários construídos em série; 9 cenas × 2 × 4 blocos intercalados (pares
+invertidos) = 72 corridas; carga 1,7–65 (mediana 16,7: outra sessão a integrar). Mínimo / mediana, ms (CPU em % de um núcleo):
+
+| cena | toque | traço p95 | soltar | Ctrl+Z | outro |
+|---|---|---|---|---|---|
+| Wet 4K | 62,9/66,2 → **50,7/51,6** | 17,1/18,4 → 13,8/15,1 | 22,1 → 21,7 | 49,9/50,0 → **34,0/36,1** | |
+| Filbert 4K | 71,8/82,0 → 67,3/74,3 | 23,2/36,4 → 28,9/30,3 | 36,0 → 38,0 | 61,9/66,1 → **48,1/52,0** | |
+| Impasto 4K | 14,1 → 12,1 | 14,0 → 12,3 | 19,8 → 19,0 | 14,9 → 15,0 | |
+| Filbert 1080p | 28,7 → 25,2 | 22,9 → 21,1 | 29,8/39,5 → **20,0/23,5** | 37,0/40,5 → **25,1/28,6** | |
+| Wet + Óleo Real 4K | 68,6/70,5 → **55,6/57,6** | 15,1 → 15,0 | 33,2 → 27,9 | 64,7/67,2 → **46,8/50,8** | água 40 Hz nos dois |
+| W5 Flat Bristle `]`×10 | 44,3/45,4 → **31,0/32,2** | 25,1/564 → 14,8/434 | (régua sem soltar fiável) | 88,4/95,7 → **47,9/51,0** | água 16,1 → 39,7 Hz (mín.) |
+| W6 Wet `]`×10 | 64,1/68,1 → **51,7/52,0** | 13,9 → 13,9 | 21,9 → 18,9 | 48,1/50,0 → **32,9/36,5** | CPU parado 283/468 → **147/160** |
+| W9 Bristle 16·4000 | 55,9/58,0 → **30,7/46,2** | 23,0 → 23,2 | 41,8 → 39,8 | 62,7/66,0 → **49,2/52,6** | |
+| D1 Round Mixing `]`×10 | 23,0 → 22,0 | 12,9 → 14,2 | 12,0 → 11,0 | 15,0 → 15,0 | |
+
+Leitura: o toque do Wet/Óleo/W5/W6/W9 cai 12–25 ms (envio sem cópia + preparo + mistura e cerdas mais baratas + a
+miniatura fora do pool da tela); o Ctrl+Z do Wet chega ao alvo de 33 ms (34,0 · W6 32,9) e o do Filbert/Óleo cai 13–18 ms
+(troca de tiles, restauro no pool); o W5 continua a ter quadros de ~0,4–0,6 s no traço (o depósito do Flat 240 é ~0,4 s por
+dab: aberto, ver o handoff); D1 e Impasto iguais (já não eram problema). Matriz: `$SP/matriz2.sh` com `@KNOBS@TECLAS@nome`.

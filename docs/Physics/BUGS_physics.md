@@ -17,6 +17,7 @@
 | [8](#bug-8--os-players-pulavam-e-andavam-sozinhos-e-a-física-estava-imóvel) | **Os players pulavam e andavam sozinhos** — e a física estava IMÓVEL | `shells/desktop` (o caminho da ENTRADA) | ✅ Resolvido (smoke aprovado) | 2026-08-12 |
 | [9](#bug-9--o-leque-de-sensores-driftava-do-corpo-e-a-geometria-estava-certa) | **O leque de sensores driftava do corpo** — e a geometria estava certa | `ph2d-physics-ecs` (a ÂNCORA da leitura) | ✅ Resolvido (smoke aprovado) | 2026-08-12 |
 | [10](#bug-10--na-2ª-vida-o-herói-andava-e-rodava-sozinho-e-nada-o-empurrava) | **Na 2.ª vida o herói andava e rodava sozinho** — e nada o empurrava | `ph2d-app-physics` (a GRAVAÇÃO da fita) | ✅ Resolvido (pendente smoke) | 2026-10-05 |
+| [11](#bug-11--o-wall-jump-com-altura-19-20-atira-o-controle-ao-topo-da-parede) | **O wall jump com altura ~1,9–2,0 atira o controle ao topo da parede** | `ph2d-physics-ecs` (a ponte) | 🔴 ABERTO — linha GEF02 | 2026-11-12 |
 
 **Anteriores, catalogados no tracker** (mesma classe — *a causa enganava* — mas escritos por wave,
 lá, e não repetidos aqui):
@@ -1217,3 +1218,15 @@ num tique); CONTROLOS: um tique por quadro, e a fita esquecida no recomeço.
    preenchido) não é ao sobrescrever. O gate tem de ter as DUAS corridas.
 3. **O arnês sem a fita não podia ver o defeito** — *um arnês que não corre o que o quadro corre não afirma
    nada sobre o quadro*; a sonda negativa foi o que mandou procurar o que faltava nele.
+
+---
+
+## Bug #11 — O wall jump com altura ~1,9–2,0 atira o controle ao topo da parede
+
+**Marcado para a linha GEF02** (ponte). Achado em 12/11 por `f3a92736ab` (a lei do pulo passou a pôr o ápice real = Jump Height) e **NÃO curado**.
+
+**Sintoma:** em `platform_wall` (`crates/ph2d-physics-ecs/tests/it/platform_wall.rs`), `the_wall_jump_survives_a_gap_the_waist_falls_into` / `wall_jump_rise(0.0)`: com Jump Height 2,0 o arranque cai a 6,097 m/s (era 6,264 com a lei velha em 2,0) e o controle «parede sólida» chega à parede perto do ápice e é atirado a ~23 m/s até o topo (y≈12,9 m, subida ≈ 12 m), em vez de ~2,16 m.
+
+**Contorno atual:** as fixturas usam `OLD_LAW_WALL_JUMP_HEIGHT = 2.1056` (o mesmo `v0` de 6,264 m/s); com isso o gate passa (parede sólida 2,162 m). Mexer na constante reproduz o defeito.
+
+**Por fazer:** reproduzir com Jump Height 1,9–2,0 e achar quem aplica o impulso (suspeita: o wall jump lido no ápice, quando a velocidade vertical é ~0). A causa NÃO está medida.

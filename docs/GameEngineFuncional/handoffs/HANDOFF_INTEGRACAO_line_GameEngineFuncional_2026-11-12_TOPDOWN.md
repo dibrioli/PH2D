@@ -57,5 +57,36 @@ Colado da saída (merge-base `4f46a3573c`, 8 commits, 70 arquivos):
 ## 7. ABERTO
 
 - Tecto da shell: reconte pelo integrador (§4).
-- Herdados da curva do pulo ([handoff](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)): a curva termina nos pés e não segue o terreno; Jump Height 2,00 × ápice 2,04.
+- Herdados da curva do pulo ([handoff](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)): ~~a curva termina nos pés e não segue o terreno~~ e ~~Jump Height 2,00 × ápice 2,04~~ — FECHADOS na rodada de 12/11 (adendo abaixo).
+- Defeito do wall jump (GEF02, adendo §A.3) · `layer_override` por forma não lido pelo corte da curva (§A.2).
 - Seguinte na fila: Projectile Motion ([plano](../23_refundacao_plano.md)).
+
+## Adendo — Rodada dos abertos (12/11) · `git log --oneline 3ee0bd34f4..HEAD`
+
+Mecanismo no código e nas mensagens dos commits; aqui só o que o integrador precisa.
+
+### A.1 Commits
+
+- `c6c0848c00` — `HORARIO_24` com trechos só ←/↓/↑ (11 gestos); gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda`; `fotos_05` refeitas no app.
+- `9c1f51706b` — `scripts/collision-surface.sh`: a sonda dos espelhos `ph2d-render`/`ph2d-script` (`so_ecs.len() + K`) era CEGA (`val()` não lia `+`, desde `be050b8807`, 07/11, já no main). Prova `scripts/processo.prova.d/C.sh`. **O integrador beneficia:** a coluna destes espelhos passa a valer.
+- `f3a92736ab` — **LEI DO PULO MUDOU (contrato partilhado):** `launch_speed` (`ph2d-platformer/src/jump_config.rs`) resolve `v0` para o ápice real = `jump_height` (forma fechada por bandas de gravidade + 3 secantes contra `discrete_apex`; 0,20 µs/chamada). `apply_feel` só escreve gravidades; `set_feel` sem argumento de mundo; `apply_player_edit_in` fundido em `apply_player_edit`; `height_for_apex` saiu. Gates novos `o_pulo_do_jogo_sobe_a_jump_height`, `a_alca_poe_o_apice_onde_foi_pedido` (`ph2d-physics-ecs/tests/it/jump_arc.rs`). Fixturas `platform_corner`/`player_ceiling`/`platform_wall` levadas ao ápice velho (`OLD_LAW_JUMP_HEIGHT` 2,1056 e 1,3146) para manterem o mesmo `v0`. Resíduo: a lei não vê os sub-passos do mundo (erro ~`v0·dt/(2·substeps)`, < 2 cm até 2,5 m). **Merge:** outra linha que meça o pulo contra Jump Height antiga reconta.
+- `1979ca5c5d` — ordem das cenas: `CENAS = topdown::CENA` com `const assert topdown::CENA == input_map::ULTIMA + 1` (`ULTIMA` contada de `CODIGOS`); culpado `e0b66565dd`. Mutações: `CENAS = CENA + 1` ⇒ vermelho; 19.º código na aba ⇒ não compila.
+- `ced6a4ac0a` — a curva pousa no terreno: lei simula abaixo do arranque (`MAX_FALL_M` 24, `air_time` = volta à linha); varredura sem mundo `crates/ph2d-physics/src/world/arc_cast.rs` (`sweep_path`); corte pela verdade do ECS em `crates/ph2d-physics-ecs/src/arc_terrain.rs` (fora de `bridge/`; exclui sensores, forma desligada, o player e as peças dele; matriz de camadas pela forma principal; Outline = caixa da imagem). Custo 54,3 µs/chamada (3 formas, Air Jumps 1), 2×/quadro só com a curva ligada e o relógio parado; sem cache (cachear por config+pose+versão das formas se um nível grande mostrar).
+- `f591d5a3a2` — fotos da curva no terreno (`PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno`) e ficha 04.
+- `ef83e62d9b` — pouso × choque (normal vs max slope), contorno-fantasma do corpo no choque, anéis `Spacing::Md`. **`JumpArc.touch` mudou de tipo.**
+
+### A.2 Prova de fecho
+
+- Verificador 1× (antes de `f591d5a3a2`/`ef83e62d9b`): build smoke ✓ · fmt ✓ · `clippy --workspace -D warnings` ✓ · censos 13/13 e 135/135 ✓ · `processo.prova.sh` ✓ · `collision-surface` sem ✗ ✓ · 25 grupos de testes por nome ✓. `ef83e62d9b`: fmt+clippy das 5 crates ✓ e testes por nome.
+- `PROJECT_SCHEMA` não muda (nada gravado novo).
+
+### A.3 Smokes
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && cargo build --profile smoke -p ph2d-host-desktop && PH2D_GAME_SMOKE=24 PH2D_GAME_SMOKE_DRIVE=editor ./target/smoke/ph2d-host-desktop` — Play: só ←, só ↓, só ↑ depois da diagonal. Errado: herói preso numa seta ou fora do sentido.
+2. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && PH2D_GAME_SMOKE=4 PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno ./target/smoke/ph2d-host-desktop` — a curva pousa na plataforma/chão, para na parede, corpo-fantasma onde a cabeça ou o lado batem. Errado: a curva atravessa o terreno ou termina nos pés no ar.
+
+### A.4 ABERTO (depois da rodada)
+
+- **Wall jump (GEF02 / [BUGS_physics.md Bug #11](../../Physics/BUGS_physics.md)):** com wall jump height ~1,9–2,0 o controle «parede sólida» de `platform_wall` é atirado ~23 m/s ao topo da parede (y≈12,9). É da ponte, não da lei do pulo; as fixturas seguram `OLD_LAW_WALL_JUMP_HEIGHT`.
+- `layer_override` por forma NÃO é lido pelo corte da curva (`arc_terrain.rs` usa a camada da forma principal).
+- Tecto da shell: reconte pelo integrador (§4).

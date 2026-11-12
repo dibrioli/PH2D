@@ -47,9 +47,6 @@ pub(crate) struct AppGfx {
     /// Empty until a cooked texture is loaded (e.g. the `PH2D_KTX2_SMOKE`
     /// harness).
     pub(crate) logical_texture_map: LogicalTextureMap,
-    /// M6 — true when the atlas was composed from real PNG files (vs the
-    /// procedural dummy fallback). Surfaced in window title.
-    pub(crate) atlas_is_real: bool,
     /// M7 — Luau VM with placeholder script loaded. Per-frame gc_step
     /// keeps the GC budget warm; set/get bindings ready for follow-up
     /// gameplay work.

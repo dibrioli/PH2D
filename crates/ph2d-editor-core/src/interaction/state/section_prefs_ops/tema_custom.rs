@@ -80,6 +80,8 @@ impl WidgetStore {
             && self.section_prefs.custom.is_none())
             || (id == crate::ids::CTX_MENU_PIXEL_REPEAT_EXPORT
                 && self.pixel_file_menu() != Some(true))
+            // As do Pixel no File ▸ Import/Export sem um Pixel Sprite em Draw: cinzentas, nunca somem.
+            || (self.pixel_file_menu().is_none() && Self::pixel_file_action(id).is_some())
     }
 }
 

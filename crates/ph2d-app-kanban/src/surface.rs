@@ -158,32 +158,32 @@ impl DocumentSurface for KanbanDocs {
             DocCommand {
                 id: CMD_NEW,
                 label: tr("kanban.cmd.new").to_owned(),
-                menu: DocMenu::File,
+                menu: DocMenu::New,
             },
             DocCommand {
                 id: CMD_FROM,
                 label: tr("kanban.w6.cmd.new_from").to_owned(),
-                menu: DocMenu::File,
+                menu: DocMenu::New,
             },
             DocCommand {
                 id: CMD_HOME,
                 label: tr("kanban.cmd.home").to_owned(),
-                menu: DocMenu::File,
+                menu: DocMenu::Plan,
             },
             DocCommand {
                 id: CMD_JOIN,
                 label: tr("kanban.share.join_caption").to_owned(),
-                menu: DocMenu::File,
+                menu: DocMenu::Plan,
             },
             DocCommand {
                 id: Self::CMD_IMPORT,
                 label: tr("kanban.import.cmd_import").to_owned(),
-                menu: DocMenu::File,
+                menu: DocMenu::Import,
             },
             DocCommand {
                 id: Self::CMD_EXPORT,
                 label: tr("kanban.import.cmd_export").to_owned(),
-                menu: DocMenu::File,
+                menu: DocMenu::Export,
             },
         ]
     }

@@ -130,7 +130,7 @@ impl DocumentSurface for SfxLabDocs {
         let mut out = vec![DocCommand {
             id: CMD_NEW_SOUND,
             label: tr("sfxlab.cmd.new").to_owned(),
-            menu: DocMenu::File,
+            menu: DocMenu::New,
         }];
         out.extend(
             self.nomes
@@ -139,7 +139,7 @@ impl DocumentSurface for SfxLabDocs {
                 .map(|n| DocCommand {
                     id: cmd_abrir(n),
                     label: tr_with("sfxlab.cmd.open", &[("name", n)]),
-                    menu: DocMenu::File,
+                    menu: DocMenu::Audio,
                 }),
         );
         out

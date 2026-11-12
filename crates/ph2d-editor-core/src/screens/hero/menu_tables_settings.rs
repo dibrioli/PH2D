@@ -25,11 +25,7 @@ pub(super) const SETTINGS_MENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_SETTINGS_MOTION, "chrome.menu.motion"),
     menu_row(ids::CTX_MENU_SETTINGS_LIGHT, "chrome.menu.light_2d"),
     menu_row(ids::CTX_MENU_SETTINGS_RECOVERY, "chrome.menu.recovery"),
-    // ⚠️ NÃO é uma categoria: abre a janela do Input Map (a casa que o Godot lhe dá; «…» = janela).
-    // ⛔ **A NOTAR NO SMOKE:** o laço deste menu põe um `ChevronRight` em cada linha por
-    // ser `SettingsMenu`, e um chevron promete um submenu que esta linha não tem. Se o Enio
-    // o vir como errado, a cura é o laço perguntar pela LINHA e não pelo tipo do menu.
-    menu_row(ids::CTX_MENU_SETTINGS_INPUT_MAP, "chrome.menu.input_map"),
+    // O Input Map saiu daqui para Window (dono 12/11): era a única linha sem submenu e levava «›».
 ];
 
 // Pixels-per-meter submenu — 5 presets (retro 16 · Unity 32 · Godot 100 · HD 256 · 4K 1024).

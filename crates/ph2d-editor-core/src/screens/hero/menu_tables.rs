@@ -157,27 +157,39 @@ pub(super) const THEME_SELECTOR_ROWS: &[MenuRow] = &[
 // `TOPBAR_MOTION` que o pill levava, e o `motion_toggle` continua a ser quem o despacha.
 // ⇒ um verbo, um id, um handler — e nenhuma segunda tabela a divergir da primeira.
 /// As linhas de `ContextMenuKind::MenuBarFile`.
+// ⭐ **Arrumado em grupos e submenus** (dono 12/11, `docs/BarraDeMenus/01_plano.md`): oito linhas,
+// os mesmos verbos. Os divisores vêm de `menu_bar::GROUP_BREAKS`; as cascatas de `menu_bar::CASCADES`.
+// Os comandos de família (Kanban, Planner, Som) entram nos submenus pelo `DocMenu`, não aqui.
 pub(super) const MENU_BAR_FILE_ROWS: &[MenuRow] = &[
-    menu_row(ids::MENUBAR_FILE_NEW, "chrome.menu.new_image_cmd_n"),
-    menu_row(ids::MENUBAR_FILE_SCENES, "chrome.menu.scenes"),
+    menu_row(ids::MENUBAR_FILE_NEW_MENU, "chrome.menu.new_submenu"),
     menu_row(ids::CTX_MENU_OPEN_PROJECT, "chrome.menu.open_project_cmd_o"),
-    menu_row(ids::CTX_MENU_IMPORT, "chrome.menu.import_cmd_shift_i"),
+    menu_row(ids::MENUBAR_FILE_SCENES, "chrome.menu.scenes"),
     menu_row(ids::CTX_MENU_SAVE, "chrome.menu.save_cmd_s"),
     menu_row(ids::CTX_MENU_SAVE_AS, "chrome.menu.save_as_cmd_shift_s"),
-    // ⭐ **Export SVG…** (report do Enio, 2026-09-04: *«funções criadas por outros módulos
-    // não aparecem na UI»*). ⚠️ Ele **existe desde 2026-09-02** — a `line/Vector`
-    // acrescentou-o ao `SaveMenu`, que era o menu do pill `TOPBAR_SAVE`; esta barra tinha
-    // substituído o pill dois dias antes, e o merge das duas linhas foi **limpo**: nenhuma
-    // tocou na linha da outra, e o verbo ficou a existir num menu que já não tem botão.
-    // *Duas linhas a mexer na mesma superfície fundem sem conflito e uma delas evapora.*
-    // ⇒ o gate `the_bar_relocated_every_row_of_the_menus_it_replaced` apanha o próximo.
-    menu_row(ids::CTX_MENU_EXPORT_SVG, "chrome.menu.export_svg"),
-    // O Pixel (P9b): só com um Pixel Sprite em Draw (`menu_row_is_hidden`).
-    menu_row(ids::CTX_MENU_PIXEL_OPEN, "chrome.menu.pixel_open"),
+    menu_row(ids::MENUBAR_FILE_IMPORT_MENU, "chrome.menu.import_submenu"),
+    menu_row(ids::MENUBAR_FILE_EXPORT_MENU, "chrome.menu.export_submenu"),
+];
+
+/// As linhas de `ContextMenuKind::MenuBarFileNew` (+ New Kanban e New Sound, pelas famílias).
+pub(super) const MENU_BAR_FILE_NEW_ROWS: &[MenuRow] =
+    &[menu_row(ids::MENUBAR_FILE_NEW, "chrome.menu.new_image_cmd_n")];
+
+/// As linhas de `ContextMenuKind::MenuBarFileImport` (+ Import from Trello, pelo Kanban). As do
+/// Pixel ficam CINZENTAS sem um Pixel Sprite em Draw (`menu_row_is_unavailable`): nunca somem.
+pub(super) const MENU_BAR_FILE_IMPORT_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_IMPORT, "chrome.menu.import_cmd_shift_i"),
     menu_row(
         ids::CTX_MENU_PIXEL_IMPORT_SHEET,
         "chrome.menu.pixel_import_sheet",
     ),
+    menu_row(ids::CTX_MENU_PIXEL_OPEN, "chrome.menu.pixel_open"),
+];
+
+/// As linhas de `ContextMenuKind::MenuBarFileExport` (+ Export Kanban, pelo Kanban).
+pub(super) const MENU_BAR_FILE_EXPORT_ROWS: &[MenuRow] = &[
+    // ⭐ **Export SVG…** (report do Enio, 2026-09-04): o gate
+    // `the_bar_relocated_every_row_of_the_menus_it_replaced` garante que ele tem porta.
+    menu_row(ids::CTX_MENU_EXPORT_SVG, "chrome.menu.export_svg"),
     menu_row(ids::CTX_MENU_PIXEL_EXPORT_AS, "chrome.menu.pixel_export_as"),
     menu_row(
         ids::CTX_MENU_PIXEL_EXPORT_SHEET,
@@ -257,15 +269,54 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
 // esta barra, o único caminho até eles era a tecla `F9` — que é um interruptor de
 // bissecção, não uma porta de produto.
 /// As linhas de `ContextMenuKind::MenuBarWindow`.
+// ⭐ **Arrumado** (dono 12/11): Input Map e Assets em cima (abas e bibliotecas), os painéis de mundo,
+// e os submenus Audio · Pixel · Plan. As ferramentas de quem faz o app foram para Help ▸ Developer.
 pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
-    menu_row(ids::TOPBAR_MOTION, "chrome.menu.motion_nodes"),
+    // O Input Map é uma aba central; morava em Edit ▸ Preferences ▸ (a 14.ª linha). Mesmo id.
+    menu_row(ids::CTX_MENU_SETTINGS_INPUT_MAP, "chrome.menu.input_map"),
+    // ⭐⭐⭐ **A BIBLIOTECA** (report do Enio, 2026-09-05: *«vc não colocou nenhum meio de abrir a
+    // janela de assets»*). O censo `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` vela.
+    menu_row(ids::TOPBAR_RIGHT_ASSETS, "chrome.menu.assets"),
     menu_row(ids::TOPBAR_PHYSICS, "chrome.menu.physics"),
-    // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4). ⚠️ Vizinho da Física porque os dois são painéis de
-    // MUNDO — e é a **única** porta do painel num projecto **sem** tag nenhuma, que é onde o
-    // artista carrega em *+ New* para fazer a primeira.
+    // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4): a **única** porta do painel num projecto sem tag nenhuma.
     menu_row(ids::TOPBAR_TAGS, "chrome.menu.tags"),
+    // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09): a única porta numa cena sem ossos.
+    menu_row(ids::TOPBAR_SKELETON, "chrome.menu.bones"),
     // As MACROS (ADR-0186, W5d): a única porta do painel, que nasce fechado.
     menu_row(ids::TOPBAR_MACROS, "chrome.menu.macros"),
+    menu_row(ids::TOPBAR_MOTION, "chrome.menu.motion_nodes"),
+    menu_row(ids::TOPBAR_GRID_SETTINGS, "chrome.menu.grid_settings"),
+    menu_row(ids::MENUBAR_WINDOW_AUDIO_MENU, "chrome.menu.audio_submenu"),
+    menu_row(ids::MENUBAR_WINDOW_PIXEL_MENU, "chrome.menu.pixel_submenu"),
+    menu_row(ids::MENUBAR_WINDOW_PLAN_MENU, "chrome.menu.plan_submenu"),
+];
+
+/// As linhas de `ContextMenuKind::MenuBarWindowAudio` (+ os sons abertos, pelo SFX Lab).
+pub(super) const MENU_BAR_WINDOW_AUDIO_ROWS: &[MenuRow] = &[
+    menu_row(ids::TOPBAR_AUDIO_MIXER, "chrome.menu.audio_mixer"),
+    menu_row(ids::TOPBAR_AUDIO_EDITOR, "chrome.menu.audio_editor"),
+];
+
+/// `ContextMenuKind::MenuBarWindowPlan`: só linhas de família (Kanban, Planner), pelo `DocMenu`.
+pub(super) const MENU_BAR_WINDOW_PLAN_ROWS: &[MenuRow] = &[];
+
+/// As linhas de `ContextMenuKind::MenuBarHelp`.
+pub(super) const MENU_BAR_HELP_ROWS: &[MenuRow] = &[
+    menu_row(ids::MENUBAR_HELP_COMMANDS, "chrome.menu.commands_cmd_k"),
+    menu_row(ids::MENUBAR_HELP_DEVELOPER_MENU, "chrome.menu.developer_submenu"),
+];
+
+/// As linhas de `ContextMenuKind::MenuBarHelpDeveloper` — as ferramentas de quem faz o app.
+pub(super) const MENU_BAR_HELP_DEVELOPER_ROWS: &[MenuRow] = &[
+    menu_row(ids::TOPBAR_TOKENS, "chrome.menu.design_tokens"),
+    menu_row(ids::TOPBAR_AUTHORED, "chrome.menu.authored_ui"),
+    menu_row(ids::TOPBAR_WIDGET_GALLERY, "chrome.menu.widget_gallery"),
+    // ⭐ A BANCADA (`ph2d-panel-widget-lab`): a galeria diz o que o editor É; esta o que pode ser.
+    menu_row(ids::TOPBAR_WIDGET_LAB, "chrome.menu.widget_lab"),
+];
+
+/// As linhas de `ContextMenuKind::MenuBarWindowPixel`.
+pub(super) const MENU_BAR_WINDOW_PIXEL_ROWS: &[MenuRow] = &[
     // O PIXEL (ADR-0196): abre sozinho no Pixel Sprite ▸ Edit; esta é a porta fora dele.
     menu_row(ids::TOPBAR_PIXEL, "chrome.menu.pixel"),
     // A janela Preview do Pixel (P5): F7 e Shift+Enter abrem-na em Draw; esta é a porta à vista.
@@ -277,38 +328,6 @@ pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     menu_row(ids::TOPBAR_PIXEL_KEYS, "panel.pixel_keys.title"),
     menu_row(ids::TOPBAR_PIXEL_PREFS, "panel.pixel_prefs.title"),
     menu_row(ids::TOPBAR_PIXEL_LINT, "panel.pixel_lint.title"),
-    // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09: *«o Menu Windows deve receber a opção
-    // de Bones»*). ⚠️ Vizinho da Física porque os dois são painéis de MUNDO — e é a única
-    // porta do painel numa cena **sem** ossos, que é onde o artista carrega em *Create*
-    // para fazer o primeiro.
-    menu_row(ids::TOPBAR_SKELETON, "chrome.menu.bones"),
-    menu_row(ids::TOPBAR_AUDIO_MIXER, "chrome.menu.audio_mixer"),
-    menu_row(ids::TOPBAR_AUDIO_EDITOR, "chrome.menu.audio_editor"),
-    menu_row(ids::TOPBAR_TOKENS, "chrome.menu.design_tokens"),
-    menu_row(ids::TOPBAR_AUTHORED, "chrome.menu.authored_ui"),
-    menu_row(ids::TOPBAR_WIDGET_GALLERY, "chrome.menu.widget_gallery"),
-    // ⭐ A BANCADA. ⚠️ Vizinha da galeria na lista porque é onde o leitor a procura, e
-    // **separada dela** porque a galeria diz o que o editor É e esta diz o que ele pode
-    // vir a ser (`ph2d-panel-widget-lab`, doc-comment do `lib.rs`).
-    menu_row(ids::TOPBAR_WIDGET_LAB, "chrome.menu.widget_lab"),
-    menu_row(ids::TOPBAR_GRID_SETTINGS, "chrome.menu.grid_settings"),
-    // ⭐⭐⭐ **A BIBLIOTECA** (report do Enio, 2026-09-05: *«vc não colocou nenhum meio de
-    // abrir a janela de assets»* — e ele estava certo).
-    //
-    // ⛔⛔ **A porta foi CLASSIFICADA COMO LIXO por um motivo que expirou no mesmo dia.**
-    // A `line/UIUX` tirou os 29 pills (a pedido dele) e pôs este id no `NO_DOOR_PENDING`
-    // com a razão *«MORTO PRE-EXISTENTE: … SEM consumidor nenhum no repo inteiro»* — que
-    // **era verdade quando ela varreu**, e deixou de ser horas depois, quando a
-    // `line/components` lhe deu o navegador de assets como consumidor. As duas linhas
-    // compilaram, o merge não teve conflito, e o app ficou com um painel vivo, registado,
-    // despachado e **inalcançável**.
-    //
-    // ⚠️ *É o §0.0 com um MOTIVO no lugar do número: quem torna alcançável o que uma nota
-    // declarou morto tem de reconferir a nota* — e quem a escreveu não tinha como saber.
-    // ⭐ O censo `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` **apanhou-o**:
-    // a metade de obsolescência dele recusou a entrada no instante em que esta linha
-    // nasceu.
-    menu_row(ids::TOPBAR_RIGHT_ASSETS, "chrome.menu.assets"),
 ];
 
 /// As linhas de `ContextMenuKind::SaveMenu`.

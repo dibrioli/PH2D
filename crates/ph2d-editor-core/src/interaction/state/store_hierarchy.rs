@@ -232,9 +232,8 @@ impl WidgetStore {
                     || (id == crate::ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE
                         && of != Some(ph2d_component_desc::ObjectKind::Vector))
             }
-            crate::interaction::ContextMenuKind::MenuBarFile => {
-                self.pixel_file_menu().is_none() && Self::pixel_file_action(id).is_some()
-            }
+            // As linhas do Pixel no File já não SOMEM sem um Pixel Sprite: ficam cinzentas
+            // (`menu_row_is_unavailable`, dono 12/11 — o menu é o catálogo do que o app sabe fazer).
             _ => false,
         }
     }

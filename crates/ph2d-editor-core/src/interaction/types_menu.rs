@@ -117,8 +117,23 @@ pub enum ContextMenuKind {
     /// Ver [`Self::MenuBarFile`]. Hospeda os **toggles de módulo** — os treze que, entre a
     /// retirada da barra de pills (2026-08-30) e esta barra, só a tecla `F9` alcançava.
     MenuBarWindow,
-    /// Ver [`Self::MenuBarFile`]. O **transporte** — e ele existe porque o *Reset* (rebobinar)
-    /// não tinha porta nenhuma depois de os pills saírem.
+    /// Ver [`Self::MenuBarFile`]. *Help* — a paleta e o submenu de quem faz o app.
+    MenuBarHelp,
+    /// Os SUBMENUS da barra (onda 1 da `line/BarraDeMenus`): cada um abre-se pela linha-cascata do
+    /// menu pai, na tabela [`crate::screens::hero::menu_bar::CASCADES`].
+    MenuBarFileNew,
+    /// Ver [`Self::MenuBarFileNew`].
+    MenuBarFileImport,
+    /// Ver [`Self::MenuBarFileNew`].
+    MenuBarFileExport,
+    /// Ver [`Self::MenuBarFileNew`].
+    MenuBarWindowAudio,
+    /// Ver [`Self::MenuBarFileNew`].
+    MenuBarWindowPixel,
+    /// Ver [`Self::MenuBarFileNew`]. Só linhas de família (Kanban, Planner).
+    MenuBarWindowPlan,
+    /// Ver [`Self::MenuBarFileNew`].
+    MenuBarHelpDeveloper,
     /// Clicked the TOPBAR theme cluster. Menu offers the 4 theme
     /// options plus 3 corner-radius scale presets (Sharp / Default
     /// / Round) — the standardized way to switch chrome look.
@@ -472,6 +487,14 @@ impl ContextMenuKind {
         Self::MenuBarEdit,
         Self::MenuBarView,
         Self::MenuBarWindow,
+        Self::MenuBarHelp,
+        Self::MenuBarFileNew,
+        Self::MenuBarFileImport,
+        Self::MenuBarFileExport,
+        Self::MenuBarWindowAudio,
+        Self::MenuBarWindowPixel,
+        Self::MenuBarWindowPlan,
+        Self::MenuBarHelpDeveloper,
         Self::ThemeSelector,
         Self::SaveMenu,
         Self::OpenMenu,

@@ -81,7 +81,16 @@ pub struct KeyInput<'a> {
 /// O menu da barra onde um comando de documento entra.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocMenu {
-    File,
+    /// *File ▸ New* (New Kanban, New Sound…).
+    New,
+    /// *File ▸ Import* (Import from Trello…).
+    Import,
+    /// *File ▸ Export* (Export Kanban…).
+    Export,
+    /// *Window ▸ Plan* — lugares para abrir (Kanbans, Planner, Inbox…), não arquivos (dono 12/11).
+    Plan,
+    /// *Window ▸ Audio* — os sons do SFX Lab.
+    Audio,
     Edit,
     /// No menu PRÓPRIO da aba (o editor de scripts, 13 §4 item 11): a barra do app não o lista; a
     /// paleta `Ctrl+K` sim.

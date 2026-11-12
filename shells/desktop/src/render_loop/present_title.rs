@@ -2,7 +2,7 @@
 //! quatro passagens. Filho por `#[path]` (OBRA 3 da `line/render-bodies`): o `run_present_phase` chama-o no sítio
 //! exacto do bloco, e ele re-deriva o `gfx` e a janela, que o início do quadro já verificou.
 
-use crate::{AppGfx, SPRITE_COUNT};
+use crate::AppGfx;
 use ph2d_host::PlatformHost;
 
 impl crate::App {
@@ -14,17 +14,7 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-        let AppGfx {
-            asset_db,
-            surface,
-            atlas_is_real,
-            script,
-            theme,
-            zen,
-            toasts,
-            tools,
-            ..
-        } = gfx;
+        let AppGfx { surface, toasts, .. } = gfx;
         // A placa sem memória avisa no TÍTULO, o único texto que ela não desenha; na volta, um resize
         // ao mesmo tamanho refaz os alvos da janela que nasceram sob recusa (F35 §2).
         if let Some(sem) = ph2d_gpu::memoria::sem_memoria_mudou() {
@@ -36,25 +26,15 @@ impl crate::App {
         // actually changes — winit set_title triggers a platform call.
         // Com a janela do jogo aberta o host é ela, e o título dela é o do jogo (`janela_do_jogo`).
         if self.title_dirty && self.undo.janela_do_jogo.is_none() {
-            let tool_label = tools.active().map(|t| t.label()).unwrap_or("none");
+            // O título responde «que projeto é este?» e mais nada: as medidas de obra que moravam
+            // aqui (sprites, atlas, tema, ferramenta) saíram com a barra de menus (dono, 12/11;
+            // `docs/BarraDeMenus/01_plano.md`). fps e contagens vivem na barra de baixo.
             let title = format!(
-                "{}PH2D — {} | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
-                 | script={} | theme={:?} | zen={} | toasts={} | tool={}",
-                // **O NOME DO FICHEIRO**, e não a lista de milestones que morava aqui: a barra de
-                // título é o único sítio do app que responde *«que projeto é este?»*, e a resposta
-                // dela era «M5+M6+M7+M11+M12 demo» — verdade sobre o binário, e sobre nada que o
-                // artista tenha aberto.
+                "{}{} — PH2D",
                 ph2d_editor_core::aviso_da_placa::prefixo_do_titulo(
                     ph2d_gpu::memoria::sem_memoria()
                 ),
                 crate::project_io::title_name(self.recovery.project_path.as_deref()),
-                if *atlas_is_real { "PNG" } else { "dummy" },
-                asset_db.len_assets(),
-                if script.is_some() { "ok" } else { "off" },
-                theme,
-                if zen.is_active() { "on" } else { "off" },
-                toasts.len(),
-                tool_label,
             );
             host.window().set_title(&title);
             self.title_dirty = false;

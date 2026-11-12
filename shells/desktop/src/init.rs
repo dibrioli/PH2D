@@ -113,7 +113,7 @@ pub(crate) fn build_initial_state(
     ph2d_gpu::pass_profiler::init(&gpu.device, &gpu.queue);
     let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
-    let (asset_db, mut logical_texture_map, atlas_is_real, motion_default_uv, renderer) =
+    let (asset_db, mut logical_texture_map, _atlas_is_real, motion_default_uv, renderer) =
         subsystems::boot_assets_and_renderer(handler, &surface);
 
     let (hero_live_enabled, sim, present, prop_state, worklist, hero_live) =
@@ -159,7 +159,6 @@ pub(crate) fn build_initial_state(
         view: ph2d_app_vec::view_request::ViewState::default(),
         asset_db,
         logical_texture_map,
-        atlas_is_real,
         script,
         theme,
         zen,

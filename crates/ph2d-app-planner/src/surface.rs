@@ -611,7 +611,7 @@ impl DocumentSurface for PlannerDocs {
         .map(|(id, key)| DocCommand {
             id,
             label: tr(key).to_owned(),
-            menu: DocMenu::File,
+            menu: DocMenu::Plan,
         })
         .collect()
     }

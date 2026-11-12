@@ -120,10 +120,20 @@ pub fn paint_context_menu_overlay(
     // `menu_rows::menu_rows`.
     // ⭐ Uma linha que não vale para ESTE alvo não se pinta, e o que não se pinta não entra no
     // `hit_index` — a lista que se vê e a que o clique acerta são a mesma (`menu_row_is_hidden`).
+    // ⭐ Os menus da BARRA lêem-se em grupos: um risco antes de cada linha de
+    //   `menu_bar::GROUP_BREAKS` (nunca antes da primeira) — o mesmo `MenuRow::Divider` do contribuído.
+    let da_barra = super::menu_bar::is_bar_menu(req.kind);
     let rows: Vec<MenuRow<'_>> = statics
         .iter()
         .filter(|&&(id, ..)| !store.menu_row_is_hidden(req.kind, id))
-        .map(|&(id, key, swatch)| MenuRow::Item(id, key.tr(), swatch))
+        .enumerate()
+        .flat_map(|(i, &(id, key, swatch))| {
+            let risco = (da_barra && i > 0 && super::menu_bar::GROUP_BREAKS.contains(&id))
+                .then_some(MenuRow::Divider);
+            risco
+                .into_iter()
+                .chain(std::iter::once(MenuRow::Item(id, key.tr(), swatch)))
+        })
         .chain(contrib.iter().map(|e| {
             match (e.node_id(), e.label()) {
                 (Some(id), Some(label)) => MenuRow::Item(id, label, None),
@@ -315,14 +325,37 @@ pub fn paint_context_menu_overlay(
             glyph_x
         };
         let text_y = r.y + (r.h - TypeToken::Sm.px()) * 0.5;
+        // ⭐ **O atalho numa COLUNA à direita** (dono 12/11): o rótulo traz «Save · Ctrl+S» e o
+        //   corte sai da MESMA porta da paleta (`shortcut_column`), nunca de uma segunda tabela.
+        let coluna = crate::widget::command_palette::shortcut_column(label);
+        let (nome, atalho) = crate::widget::command_palette::split_shortcut(&coluna);
+        let fim_do_texto = r.x + r.w - pad_x;
+        let fim_do_nome = match atalho {
+            Some(k) => {
+                let kw = text_system.prefix_width(k, TypeToken::Sm.px());
+                let kx = fim_do_texto - kw;
+                paint_text(
+                    text_system,
+                    scene,
+                    k,
+                    kx,
+                    text_y,
+                    TypeToken::Sm.px(),
+                    kw,
+                    superficie.cor(ColorToken::Text3),
+                );
+                kx - Spacing::Md.px()
+            }
+            None => fim_do_texto,
+        };
         paint_text(
             text_system,
             scene,
-            label,
+            nome,
             text_x,
             text_y,
             TypeToken::Sm.px(),
-            (r.x + r.w - text_x - pad_x).max(0.0),
+            (fim_do_nome - text_x).max(0.0),
             superficie.cor(if indisponivel {
                 ColorToken::Text3
             } else if is_current {
@@ -331,11 +364,12 @@ pub fn paint_context_menu_overlay(
                 ColorToken::Text2
             }),
         );
-        // Cascade indicator on the SettingsMenu rows — real
-        // `IconId::ChevronRight` glyph at the right edge, replacing
-        // the Unicode U+25B6 / U+203A trailing character. Enio
-        // 2026-05-25: "usando emojis e não ícones".
-        if matches!(req.kind, ContextMenuKind::SettingsMenu) {
+        // Cascade indicator — real `IconId::ChevronRight` glyph at the right edge (Enio
+        // 2026-05-25: "usando emojis e não ícones"). ⭐ Só onde HÁ submenu (dono 12/11): as
+        // categorias das Preferências e as cascatas da barra (`menu_bar::CASCADES`).
+        if matches!(req.kind, ContextMenuKind::SettingsMenu)
+            || super::menu_bar::cascade_of(*id).is_some()
+        {
             let chev = Rect::new(r.x + r.w - pad_x - icon_size, icon_y, icon_size, icon_size);
             paint_icon(
                 scene,

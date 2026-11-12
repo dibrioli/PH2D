@@ -61,7 +61,7 @@ use ph2d_vector::VectorScene;
 pub const MENU_BAR_H: f32 = ROW_H_PX;
 
 /// ⭐ **A TABELA** — título, id, e o menu que ele abre. A fonte única desta barra.
-pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 4] = [
+pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
     (
         ids::MENUBAR_FILE,
         TextKey::new("chrome.menu_bar.file"),
@@ -82,15 +82,93 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 4] = [
         TextKey::new("chrome.menu_bar.window"),
         ContextMenuKind::MenuBarWindow,
     ),
+    (
+        ids::MENUBAR_HELP,
+        TextKey::new("chrome.menu_bar.help"),
+        ContextMenuKind::MenuBarHelp,
+    ),
 ];
+
+/// ⭐ **AS CASCATAS** — a linha que abre um submenu e o submenu que ela abre (onda 1, dono 12/11).
+///
+/// Uma tabela, quatro consumidores: o despacho (`chrome::menu_bar` abre o submenu ancorado na
+/// linha), o fecho antecipado ([`close_on_row_click`] deixa-as de fora), o pintor (o «›» só nelas)
+/// e [`leaf_rows`] (a paleta e os censos atravessam a cascata até às folhas).
+pub const CASCADES: [(NodeId, ContextMenuKind); 7] = [
+    (ids::MENUBAR_FILE_NEW_MENU, ContextMenuKind::MenuBarFileNew),
+    (ids::MENUBAR_FILE_IMPORT_MENU, ContextMenuKind::MenuBarFileImport),
+    (ids::MENUBAR_FILE_EXPORT_MENU, ContextMenuKind::MenuBarFileExport),
+    (ids::MENUBAR_WINDOW_AUDIO_MENU, ContextMenuKind::MenuBarWindowAudio),
+    (ids::MENUBAR_WINDOW_PIXEL_MENU, ContextMenuKind::MenuBarWindowPixel),
+    (ids::MENUBAR_WINDOW_PLAN_MENU, ContextMenuKind::MenuBarWindowPlan),
+    (
+        ids::MENUBAR_HELP_DEVELOPER_MENU,
+        ContextMenuKind::MenuBarHelpDeveloper,
+    ),
+];
+
+/// O submenu que esta linha abre, se é uma cascata da barra.
+#[must_use]
+pub fn cascade_of(id: NodeId) -> Option<ContextMenuKind> {
+    CASCADES
+        .iter()
+        .find_map(|(row, kind)| (*row == id).then_some(*kind))
+}
+
+/// Este menu é da barra — um dos cinco títulos ou um submenu deles?
+#[must_use]
+pub fn is_bar_menu(kind: ContextMenuKind) -> bool {
+    MENUS.iter().any(|(_, _, k)| *k == kind) || CASCADES.iter().any(|(_, k)| *k == kind)
+}
+
+/// ⭐ **OS GRUPOS** — a linha ANTES da qual o menu da barra pinta um divisor. Um menu de 9 linhas
+/// lê-se de relance em grupos; um de 18 sem separador, não (Apple HIG, Blender, Godot).
+pub const GROUP_BREAKS: [NodeId; 8] = [
+    // File: abrir · gravar · trazer/levar
+    ids::CTX_MENU_SAVE,
+    ids::MENUBAR_FILE_IMPORT_MENU,
+    // Edit: desfazer · preferências
+    ids::MENUBAR_EDIT_PREFERENCES,
+    // View: painéis · régua e enquadrar · aparência e arrumação
+    ids::MENUBAR_VIEW_RULERS,
+    ids::MENUBAR_VIEW_THEME,
+    // Window: abas · painéis de mundo · submenus
+    ids::TOPBAR_PHYSICS,
+    ids::MENUBAR_WINDOW_AUDIO_MENU,
+    // Help: a paleta · quem faz o app
+    ids::MENUBAR_HELP_DEVELOPER_MENU,
+];
+
+/// **Todas as folhas** de um menu da barra: as linhas estáticas dele e, por cada cascata, as do
+/// submenu (recursivo), sem as próprias linhas-cascata. É o que a paleta e os censos de alcance
+/// perguntam — «este verbo tem porta na barra?» — depois de as linhas terem ido para submenus.
+#[must_use]
+pub fn leaf_rows(kind: ContextMenuKind) -> Vec<crate::ids::MenuRow> {
+    let mut out = Vec::new();
+    for &row in super::menu_rows::menu_rows(kind) {
+        match cascade_of(row.0) {
+            Some(sub) => out.extend(leaf_rows(sub)),
+            None => out.push(row),
+        }
+    }
+    out
+}
 
 /// Os ids de linha que **esta** barra trouxe — os que nenhum outro botão do app alcançava.
 ///
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 12] = [
+pub const OWN_ROWS: [NodeId; 20] = [
     ids::MENUBAR_FILE_NEW,
+    ids::MENUBAR_FILE_NEW_MENU,
+    ids::MENUBAR_FILE_IMPORT_MENU,
+    ids::MENUBAR_FILE_EXPORT_MENU,
+    ids::MENUBAR_WINDOW_AUDIO_MENU,
+    ids::MENUBAR_WINDOW_PIXEL_MENU,
+    ids::MENUBAR_WINDOW_PLAN_MENU,
+    ids::MENUBAR_HELP_COMMANDS,
+    ids::MENUBAR_HELP_DEVELOPER_MENU,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
     ids::MENUBAR_VIEW_THEME,
@@ -422,18 +500,15 @@ pub fn paint_menu_bar(
         pinta_titulo(text_system, scene, title, r, fg);
         hit_index.register(id, r);
     }
-    // ⭐⭐⭐ **AS ABAS DE LAYOUT ocupam o vazio à direita** (decisões D7 e D3) — ver `layout_tabs`.
-    // ⚠️ Depois dos títulos e com o `menus_end_x` deles: as abas recusam-se a pintar se não
-    // couberem sem os tocar.
     let menus_end_x = menu_rects(bar, text_system)
         .iter()
         .map(|(_, _, r)| r.x + r.w)
         .fold(bar.x, f32::max);
     // ⭐⭐ **AS ABAS DE DOCUMENTO** (MiroClone) no vazio entre os menus e as abas de layout.
     let gap = super::document_tabs::gap_px();
-    let layout_start = super::layout_tabs::tab_rects(bar, menus_end_x, text_system)
-        .first()
-        .map_or(bar.x + bar.w, |(_, r)| r.x);
+    // ⛔ As abas de layout (Scene · Draw · Vector · Flip · Animate · Nodes) SAÍRAM da faixa (dono
+    //    12/11, `docs/BarraDeMenus/01_plano.md`): o lado direito é do transporte e das abas de doc.
+    let layout_start = bar.x + bar.w;
     // ⭐ Os botões do jogo mandam no centro; as abas de documento ficam com o vão à esquerda deles.
     let botoes = super::transport_bar::rects(bar, menus_end_x, layout_start);
     let docs_end = botoes.first().map_or(layout_start, |(_, _, r)| r.x);
@@ -443,16 +518,6 @@ pub fn paint_menu_bar(
         menus_end_x + gap,
         docs_end - gap,
         docs,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    super::layout_tabs::paint(
-        bar,
-        menus_end_x,
-        store.active_layout(),
         scene,
         text_system,
         theme,
@@ -477,18 +542,22 @@ pub fn close_on_row_click(hero: &mut super::HeroScreen, event: WidgetEvent) {
     let Some(kind) = hero.store.context_menu().map(|r| r.kind) else {
         return;
     };
-    if !MENUS.iter().any(|(_, _, k)| *k == kind) {
+    if !is_bar_menu(kind) {
         return;
     }
     if id == ids::MENUBAR_EDIT_PREFERENCES
         || id == ids::MENUBAR_VIEW_THEME
         || id == ids::MENUBAR_FILE_SCENES
+        || cascade_of(id).is_some()
+        // A linha cinzenta não faz nada — nem fechar o menu (o verbo recusa; ver `io_menu`).
+        || hero.store.menu_row_is_unavailable(id)
     {
         return;
     }
     if super::menu_rows::menu_rows(kind)
         .iter()
         .any(|(rid, ..)| *rid == id)
+        || hero.store.doc_menu_rows(kind).any(|(rid, _)| rid == id)
     {
         hero.store.close_context_menu();
     }

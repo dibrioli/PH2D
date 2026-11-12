@@ -243,7 +243,11 @@ pub fn follow_surfaces(hero: &mut HeroScreen) {
         .into_iter()
         .filter_map(|c| {
             let menu = match c.menu {
-                DocMenu::File => K::MenuBarFile,
+                DocMenu::New => K::MenuBarFileNew,
+                DocMenu::Import => K::MenuBarFileImport,
+                DocMenu::Export => K::MenuBarFileExport,
+                DocMenu::Plan => K::MenuBarWindowPlan,
+                DocMenu::Audio => K::MenuBarWindowAudio,
                 DocMenu::Edit => K::MenuBarEdit,
                 DocMenu::Tab => return None,
             };

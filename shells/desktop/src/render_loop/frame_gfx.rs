@@ -124,7 +124,6 @@ impl<'a> FrameGfx<'a> {
             canvas_zoom,
             view,
             asset_db,
-            atlas_is_real: _,
             script,
             particles,
             health_bars,

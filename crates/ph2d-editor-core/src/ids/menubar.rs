@@ -118,3 +118,26 @@ pub const MENUBAR_RUN_WINDOW: NodeId = hash_node_id("menubar_run_window");
 pub const MENUBAR_RUN_FULLSCREEN: NodeId = hash_node_id("menubar_run_fullscreen");
 /// **Play in the Editor**, na barra — escolhe [`crate::game_stage::GameStage::Editor`] e joga.
 pub const MENUBAR_RUN_EDITOR: NodeId = hash_node_id("menubar_run_editor");
+
+// ── A barra arrumada (line/BarraDeMenus, onda 1, dono 12/11) ──────────────────────────────────
+// Só os ids que não existiam: o título Help, as linhas que ABREM um submenu (cascata) e o
+// «Commands…». Os verbos dentro dos submenus continuam com o id de sempre.
+
+/// Título *Help*.
+pub const MENUBAR_HELP: NodeId = hash_node_id("menubar_help");
+/// *File ▸ New* — abre o submenu dos «New».
+pub const MENUBAR_FILE_NEW_MENU: NodeId = hash_node_id("menubar_file_new_menu");
+/// *File ▸ Import* — abre o submenu dos jeitos de trazer coisa de fora.
+pub const MENUBAR_FILE_IMPORT_MENU: NodeId = hash_node_id("menubar_file_import_menu");
+/// *File ▸ Export* — abre o submenu das exportações (sempre as mesmas, cinzentas quando não servem).
+pub const MENUBAR_FILE_EXPORT_MENU: NodeId = hash_node_id("menubar_file_export_menu");
+/// *Window ▸ Audio*.
+pub const MENUBAR_WINDOW_AUDIO_MENU: NodeId = hash_node_id("menubar_window_audio_menu");
+/// *Window ▸ Pixel*.
+pub const MENUBAR_WINDOW_PIXEL_MENU: NodeId = hash_node_id("menubar_window_pixel_menu");
+/// *Window ▸ Plan* — os lugares do Kanban e do Planner.
+pub const MENUBAR_WINDOW_PLAN_MENU: NodeId = hash_node_id("menubar_window_plan_menu");
+/// *Help ▸ Commands…* — abre a paleta `Ctrl+K`.
+pub const MENUBAR_HELP_COMMANDS: NodeId = hash_node_id("menubar_help_commands");
+/// *Help ▸ Developer* — as ferramentas de quem faz o app.
+pub const MENUBAR_HELP_DEVELOPER_MENU: NodeId = hash_node_id("menubar_help_developer_menu");

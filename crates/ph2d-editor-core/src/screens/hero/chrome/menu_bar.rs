@@ -29,7 +29,16 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // As duas linhas que abrem outra COISA. ⚠️ Elas estão excluídas do fecho antecipado
     // (`menu_bar::close_on_row_click`) exactamente por isto — o `cascade_anchor` lê o menu que
     // ainda está aberto para saber de onde a cascata sai.
-    let cascade = if id == ids::MENUBAR_EDIT_PREFERENCES {
+    // *Help ▸ Commands…* — a paleta `Ctrl+K`, que nada na tela mostrava (dono 12/11).
+    if id == ids::MENUBAR_HELP_COMMANDS {
+        hero.store.close_context_menu();
+        crate::screens::hero::global_palette::open(hero);
+        return true;
+    }
+    let cascade = if let Some(sub) = crate::screens::hero::menu_bar::cascade_of(id) {
+        // As cascatas da barra (New ▸, Export ▸, Audio ▸, Developer ▸…) — uma tabela só.
+        sub
+    } else if id == ids::MENUBAR_EDIT_PREFERENCES {
         ContextMenuKind::SettingsMenu
     } else if id == ids::MENUBAR_VIEW_THEME {
         ContextMenuKind::ThemeSelector

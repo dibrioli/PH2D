@@ -1,21 +1,25 @@
-//! ⭐ **A pilha da aba de scripts** (auditoria de layout 11/11, janela 1280×720): o código em cima,
-//! depois o quadro do depurador, a Bancada e a faixa de baixo. Cada cartão diz a altura que quer e o
-//! mínimo a que encolhe ([`Want`]); quando a aba não chega, encolhem pela ordem — a Bancada, o
-//! depurador, a faixa — até ao mínimo de cada um, para o código guardar [`CODE_LEAST_ROWS`] linhas.
-//! Antes cada cartão tirava o seu terço sem olhar para os outros: o código ia a zero e a Bancada,
-//! posta de baixo, caía por cima do depurador, posto de cima.
+//! ⭐ **A pilha da aba de scripts** (auditoria de layout 11/11): o código em cima, depois o quadro do
+//! depurador, a Bancada e a faixa de baixo. O código tem a prioridade, como num IDE: cada cartão diz a
+//! altura que quer, o mínimo a que encolhe e o cabeçalho ([`Want`]); quando a aba não chega, três
+//! degraus, cada um pela ordem Bancada → depurador → faixa — (1) até ao mínimo, (2) até ao cabeçalho
+//! (o título dobrado, a barra com Continue, só as abas), (3) os cartões saem (Bancada, faixa e por
+//! fim o depurador, cuja barra é a última a ir) até o código guardar [`CODE_LEAST_ROWS`] linhas; sem
+//! espaço nem para isso o código fica com a aba toda. Em TODA a altura os rects de [`tab`] não se
+//! cruzam nem saem da aba (a janela de 900×560 punha a Bancada por cima do depurador e o código a 0).
 
+use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{Spacing, row_pitch_px};
 
-/// Quantas linhas o código guarda, por pequena que seja a aba (o que os cartões deixam abaixo disto
-/// sai deles, não do código).
+/// Quantas linhas o código guarda enquanto os cartões ainda têm de onde ceder.
 pub const CODE_LEAST_ROWS: usize = 4;
 
-/// A altura que um cartão quer e o mínimo a que encolhe (`h == 0` = o cartão não está).
+/// A altura que um cartão quer, o mínimo a que encolhe e o cabeçalho a que cai por último
+/// (`h == 0` = o cartão não está).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Want {
     pub h: f32,
     pub least: f32,
+    pub head: f32,
 }
 
 /// O mínimo do cartão do código: a busca (`find_h`, 0 = fechada), [`CODE_LEAST_ROWS`] linhas e o
@@ -25,21 +29,95 @@ pub fn code_least(find_h: f32) -> f32 {
     find_h + row_pitch_px() * CODE_LEAST_ROWS as f32 + Spacing::Sm.px() * 2.0
 }
 
-/// As alturas de `wants` (pela ordem em que encolhem) numa aba de altura `avail` que deixa
-/// `code_least` ao código; cada cartão presente custa também um `gap`. Sem espaço nem para os
-/// mínimos, ficam os mínimos (o código fica com o resto, nunca negativo).
-#[must_use]
-pub fn fit<const N: usize>(avail: f32, code_least: f32, gap: f32, wants: [Want; N]) -> [f32; N] {
-    let mut hs = wants.map(|w| w.h.max(0.0));
-    let used: f32 = hs.iter().filter(|h| **h > 0.0).map(|h| h + gap).sum();
-    let mut over = used - (avail - code_least).max(0.0);
-    for (h, w) in hs.iter_mut().zip(wants) {
-        if over <= 0.0 {
-            break;
+/// O que cada cartão presente custa: a sua altura e um `gap`.
+fn cost(hs: &[f32], gap: f32) -> f32 {
+    hs.iter().filter(|h| **h > 0.0).map(|h| h + gap).sum()
+}
+
+/// Os degraus 1 e 2 sobre os cartões `on`; devolve as alturas e o que ainda sobra de `room`
+/// (negativo = não coube).
+fn squeeze<const N: usize>(
+    room: f32,
+    gap: f32,
+    wants: &[Want; N],
+    on: [bool; N],
+) -> ([f32; N], f32) {
+    let mut hs: [f32; N] = std::array::from_fn(|i| if on[i] { wants[i].h.max(0.0) } else { 0.0 });
+    let mut over = cost(&hs, gap) - room;
+    for floor in [|w: &Want| w.least, |w: &Want| w.head] {
+        for (h, w) in hs.iter_mut().zip(wants) {
+            if over <= 0.0 {
+                break;
+            }
+            let cut = over.min((*h - floor(w).min(*h)).max(0.0));
+            *h -= cut;
+            over -= cut;
+            if cut > 0.0 && *h <= 0.0 {
+                over -= gap;
+            }
         }
-        let cut = over.min((*h - w.least.min(*h)).max(0.0));
-        *h -= cut;
-        over -= cut;
     }
-    hs
+    (hs, -over)
+}
+
+/// As alturas de `wants` (pela ordem em que encolhem) numa aba de altura `avail` que deixa
+/// `code_least` ao código; `drop` = a ordem em que saem no 3.º degrau. Cada cartão presente custa
+/// também um `gap`; a soma nunca passa de `avail`.
+#[must_use]
+pub fn fit<const N: usize>(
+    avail: f32,
+    code_least: f32,
+    gap: f32,
+    wants: [Want; N],
+    drop: [usize; N],
+) -> [f32; N] {
+    let room = (avail - code_least).max(0.0);
+    let mut on = wants.map(|w| w.h > 0.0);
+    for i in drop {
+        let (hs, left) = squeeze(room, gap, &wants, on);
+        if left >= 0.0 {
+            return hs;
+        }
+        on[i] = false;
+    }
+    [0.0; N]
+}
+
+/// Os rects da aba: o código em cima e, por baixo, cada cartão presente depois de um `gap`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Placed {
+    pub code: Rect,
+    pub debug: Option<Rect>,
+    pub bench: Option<Rect>,
+    /// A faixa de baixo (`h == 0` = saiu: não pinta nem recebe cliques).
+    pub band: Rect,
+}
+
+/// A pilha da aba `area`: as alturas de [`fit`] para a Bancada, o depurador e a faixa (saem a
+/// Bancada, a faixa e por fim o depurador), postas por baixo do código.
+#[must_use]
+pub fn tab(area: Rect, code_least: f32, gap: f32, [bench, debug, band]: [Want; 3]) -> Placed {
+    let [b, d, f] = fit(area.h, code_least, gap, [bench, debug, band], [0, 2, 1]);
+    let code = Rect::new(
+        area.x,
+        area.y,
+        area.w,
+        (area.h - cost(&[b, d, f], gap)).max(0.0),
+    );
+    let mut y = code.y + code.h;
+    let mut next = |h: f32| {
+        (h > 0.0).then(|| {
+            let r = Rect::new(area.x, y + gap, area.w, h);
+            y += gap + h;
+            r
+        })
+    };
+    let (debug, bench) = (next(d), next(b));
+    let band = next(f).unwrap_or(Rect::new(area.x, area.y + area.h, area.w, 0.0));
+    Placed {
+        code,
+        debug,
+        bench,
+        band,
+    }
 }

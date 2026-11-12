@@ -446,8 +446,9 @@ fn ao_vivo_a_tabela_tem_o_traco_e_o_clique_abre_o_grafico() {
     assert_eq!(m.docs().cursor_of(id).map(|c| c.0), Some(6), "a linha 7");
 }
 
-/// Auditoria 11/11 (1280×720): numa aba curta, parado, o código guarda as suas linhas e o quadro cabe
-/// entre ele e a faixa (antes o código ia a zero e os cartões caíam uns por cima dos outros).
+/// Auditoria 11/11 (1280×720 e 900×560): em toda a altura da aba, parado, os cartões não se cruzam
+/// nem saem dela, e com espaço para os cabeçalhos o código guarda as suas linhas e a barra do quadro
+/// fica (antes o código ia a zero e a Bancada caía por cima do depurador).
 #[test]
 fn numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam() {
     let (m, id) = aberto(MOVE);
@@ -455,7 +456,11 @@ fn numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam() {
     m.cena();
     vai(&mut m, id, 7);
     m.tecla(id, Key::F(9), Modifiers::default(), None);
-    for h in [400.0, 340.0, 300.0] {
+    let (rh, sm) = (ph2d_tokens::row_pitch_px(), ph2d_tokens::Spacing::Sm.px());
+    let row = ph2d_tokens::ROW_H_PX;
+    let heads = rh + row * 2.0 + sm * 4.0 + ph2d_panel_code::cards::margin() * 3.0;
+    let least = ph2d_panel_code::stack::code_least(0.0);
+    for h in (120..=720).step_by(20).map(|h| h as f32) {
         let curta = ph2d_editor_core::zones::Rect { h, ..crate::AREA };
         for _ in 0..3 {
             m.quadro();
@@ -463,11 +468,21 @@ fn numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam() {
             m.cena();
         }
         let [_, code, band] = m.docs().card_rects(id).expect("cartões");
-        let v = m.docs().debug_view_of(id).expect("quadro").clone();
-        let card = v.painted.card.expect("o Stopped");
-        let least = ph2d_panel_code::stack::code_least(0.0);
-        assert!(h < 400.0 || code.h >= least - 0.5, "{code:?}");
-        let ok = card.y >= code.y + code.h && card.y + card.h <= band.y + 0.5;
-        assert!(ok, "{h}: {code:?} {card:?} {band:?}");
+        let card = m.docs().debug_view_of(id).expect("quadro").painted.card;
+        let (top, bottom) = (curta.y, curta.y + h + 0.5);
+        assert!(
+            code.y >= top && band.y + band.h <= bottom,
+            "{h}: {code:?} {band:?}"
+        );
+        if let Some(c) = card {
+            let ok = c.h > 0.0 && c.y >= code.y + code.h && c.y + c.h <= band.y + 0.5;
+            assert!(ok, "{h}: {code:?} {c:?} {band:?}");
+        }
+        if band.y + band.h - code.y >= least + heads {
+            assert!(
+                code.h >= least - 0.5 && card.is_some(),
+                "{h}: {code:?} {card:?}"
+            );
+        }
     }
 }

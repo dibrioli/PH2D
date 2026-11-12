@@ -110,6 +110,15 @@ impl BancadaView {
         }
     }
 
+    /// O que a Bancada pede à pilha da aba ([`crate::stack`]): a altura para `who` em `avail`, o
+    /// mínimo e o cabeçalho (o título, como dobrada).
+    #[must_use]
+    pub fn bench_want(&self, who: &Who, avail: f32) -> crate::stack::Want {
+        let (h, least) = (self.bench_height(who, avail), self.bench_least());
+        let head = Spacing::Sm.px() * 2.0 + ROW_H_PX;
+        crate::stack::Want { h, least, head }
+    }
+
     /// A altura do cartão da grelha (e do mapa ao lado) para `who`, com `avail` de altura na coluna
     /// do documento: dobrada, só o título; aberta, o cabeçalho e uma linha por objecto, até um terço
     /// em linhas inteiras (o resto rola).

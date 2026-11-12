@@ -195,6 +195,7 @@ impl ConsoleView {
             return crate::stack::Want {
                 h: third,
                 least: third,
+                head: third,
             };
         }
         let h = if self.tab == BandTab::Problems {
@@ -209,8 +210,9 @@ impl ConsoleView {
         };
         crate::stack::Want {
             h,
-            least: ROW_H_PX * 2.0,
-        } // LITERAL-PX-OK: o cabeçalho e uma linha
+            least: ROW_H_PX * 2.0, // LITERAL-PX-OK: o cabeçalho e uma linha
+            head: ROW_H_PX,
+        }
     }
 
     /// Rola `dy` px o separador à mostra (positivo = para trás no tempo / para cima na lista).

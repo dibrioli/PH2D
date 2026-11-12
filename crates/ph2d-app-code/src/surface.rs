@@ -112,10 +112,7 @@ impl DocumentSurface for CodeDocs {
         let typing = self.list.focus.is_none();
         let assist = self.intel.assist();
         let body = self.code_body(id, doc_r);
-        let bench_h = ph2d_panel_code::stack::Want {
-            h: self.bench.bench_height(&who, body.h),
-            least: self.bench.bench_least(),
-        };
+        let bench_h = self.bench.bench_want(&who, body.h);
         self.paint_bar(id, doc_r, scene, text, theme);
         let mut bench = None;
         if let Some((doc, store)) = self.split(id) {

@@ -140,6 +140,15 @@ impl DebugCardView {
         rh + Spacing::Sm.px() * 2.0 + if c.error.is_some() { rh } else { 0.0 }
     }
 
+    /// O que o quadro de `c` pede à pilha da aba ([`crate::stack`]): a altura, o mínimo e o
+    /// cabeçalho — a barra com Continue, sem a linha do erro.
+    #[must_use]
+    pub fn want(&self, c: &DebugCard, area: Rect) -> crate::stack::Want {
+        let head = ph2d_tokens::row_pitch_px() + Spacing::Sm.px() * 2.0;
+        let (h, least) = (self.height(c, area), Self::least(c));
+        crate::stack::Want { h, least, head }
+    }
+
     /// A altura do quadro de `c` na aba `area`.
     #[must_use]
     pub fn height(&self, c: &DebugCard, area: Rect) -> f32 {

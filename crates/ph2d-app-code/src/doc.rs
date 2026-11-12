@@ -426,26 +426,13 @@ impl CodeDoc {
     /// Os dois cartões da direita: o código (com a busca e a barra de estado) em cima, a faixa de
     /// baixo (Console | Problems) em baixo, com o vão de [`crate::cards::margin`] entre eles.
     pub(crate) fn cards(&self, area: Rect, console_open: bool) -> (Rect, Rect) {
-        let g = crate::cards::margin();
-        let [bench, debug, band] = self.stack(area, console_open);
-        let card: f32 = [bench, debug]
-            .iter()
-            .filter(|h| **h > 0.0)
-            .map(|h| h + g)
-            .sum();
-        let code = Rect::new(area.x, area.y, area.w, (area.h - band - g - card).max(0.0));
-        let console = Rect::new(area.x, area.y + area.h - band, area.w, band);
-        (code, console)
+        let s = self.stack(area, console_open);
+        (s.code, s.band)
     }
 
     /// O cartão da Bancada (a grelha e o mapa), por cima da faixa de baixo (`None` = nenhum).
     pub(crate) fn bench_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
-        let (h, (_, band)) = (
-            self.stack(area, console_open)[0],
-            self.cards(area, console_open),
-        );
-        let y = band.y - crate::cards::margin() - h;
-        (h > 0.0).then(|| Rect::new(area.x, y, area.w, h))
+        self.stack(area, console_open).bench
     }
 
     #[allow(clippy::too_many_arguments)]

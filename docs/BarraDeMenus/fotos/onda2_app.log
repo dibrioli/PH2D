@@ -1,0 +1,39 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Ctrl+Q to exit)…
+MESA: info: vulkan: No DRI3 support detected - required for presentation
+Note: you can probably enable DRI3 in your Xorg config
+[ph2d-gpu] surface present mode: Fifo
+[   345ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   482ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   483ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   998ms] M11: VelloPass initialized (1024×768 intermediate)
+[  1119ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[  1134ms] PR 8: tool registry built (14 manifests, installed in editor)
+[  1167ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[  1259ms] lifecycle: Foreground
+[  1259ms] resize: 1024x768 @ 1.00x scale
+warn: dropped 1.117s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Immediate
+[  2988ms] resize: 1930x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[hero] unhandled key event: Blur(NodeId(18009971842849429247))
+[ph2d-gpu] surface present mode → Immediate
+[ 72940ms] resize: 1400x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[ph2d-gpu] surface present mode → Immediate
+[ 76077ms] resize: 1200x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[ph2d-gpu] surface present mode → Immediate
+[ 79242ms] resize: 1000x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[ph2d-gpu] surface present mode → Immediate
+[ 82220ms] resize: 800x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[ph2d-gpu] surface present mode → Immediate
+[ 85251ms] resize: 700x600 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[ph2d-gpu] surface present mode → Immediate
+[ 88285ms] resize: 500x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo

@@ -299,6 +299,10 @@ if [ "$1" = perf ]; then
   # M2 (11/11): FUNDO=blocos|branco troca o papel pelo fundo da matriz (o rótulo ganha o fundo).
   [ -n "$FUNDO" ] && EXTRA=(PH2D_COMPOSITE_PILHA=0 "PH2D_COMPOSITE_FUNDO=$FUNDO" "PH2D_COMPOSITE_TELA=$TELA") && TAG="${TAG}_$FUNDO"
   [ "$PIN" != omissão ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
+  # 12/11: os knobs do Tuning e o `]` × n como na matriz (W5/W9 perfilados no caso B); o rótulo leva-os.
+  [ -n "$KNOBS" ] && EXTRA+=("PH2D_COMPOSITE_KNOBS=$KNOBS") && TAG="${TAG}_$(echo "$KNOBS" | tr -cd 'A-Za-z0-9')"
+  [ "${TECLAS:-0}" -gt 0 ] && TAG="${TAG}_t$TECLAS"
+  [ -n "$ROT" ] && TAG="${ROT}_$TAG"
   PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
     MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
   Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
@@ -322,6 +326,10 @@ if [ "$1" = perf ]; then
       | tr '\n' ' ' > "$P/$TAG.placa"
     DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 2>/dev/null; sleep 4
     DISPLAY=$D xdotool windowfocus --sync $WIN 2>/dev/null
+    if [ "${TECLAS:-0}" -gt 0 ]; then
+      DISPLAY=$D xdotool mousemove 560 300; sleep 0.3
+      for _ in $(seq 1 "$TECLAS"); do DISPLAY=$D xdotool key bracketright; sleep 0.05; done; sleep 1
+    fi
     marca parado0_ini; sleep 5; marca parado0_fim
     DISPLAY=$D xdotool mousemove 560 460; sleep 0.3
     marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4

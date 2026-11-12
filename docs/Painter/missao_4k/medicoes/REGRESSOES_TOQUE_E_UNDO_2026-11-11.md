@@ -56,3 +56,43 @@ O wgpu-core 30.0.1 copia para o staging com `pending_writes.lock()` preso: `writ
 - **Ctrl+Z não confinado** (`a95be6612d`): só as camadas cujo `Arc` mudou re-sobem à placa (era 33 MB por camada).
   A cena desta matriz tem uma camada pintada: o ganho não aparece aqui; aparece com N camadas (o B42 abre 64).
 - **Aberto** (a seguir neste ficheiro): o envio sem cópia dos planos da luz e o toque/Ctrl+Z do Wet.
+
+## r12 (12/11, 00:42–01:12) — envio sem cópia e as curas do Wet
+
+Mesmo target (`.ph2d-bis-4k-target`), três binários construídos em série: base `4381ee6d4a` (HEAD da linha, com o laço
+a pedido) · `887f234eec` = base + envio sem cópia · `4c375d37f0` = + `dd4d9207b6` `ca6bf04bf1` `04ca713600` (cherry-pick).
+n=5 blocos intercalados (pares invertidos), 60 corridas, carga mediana 1,9 (blocos 3–4 com 9–46: outra sessão).
+Mínimo / mediana:
+
+| cena | base | +envio | +envio+Wet |
+|---|---|---|---|
+| Filbert 4K toque | 67,0 / 78,7 | **62,6** / 66,4 | 63,4 / 71,5 |
+| Filbert 4K Ctrl+Z | 63,6 / 66,2 | **50,1** / 52,0 | 50,1 / 55,0 |
+| Wet 4K toque | 61,8 / 62,9 | **50,6** / 52,3 | 50,8 / 51,4 |
+| Wet 4K Ctrl+Z | 47,0 / 48,0 | 48,1 / 48,9 | 46,0 / 49,9 |
+| Impasto 4K toque / Ctrl+Z | 12,0 / 13,9 | 11,9 / 14,1 | 12,1 / 13,9 |
+| Filbert 1080p toque / Ctrl+Z | 28,2 / 34,9 | 26,1 / 37,0 | 25,7 / 36,0 |
+
+- **Envio sem cópia: ganho** (Filbert Ctrl+Z −13,5, Wet toque −11,2, Filbert toque −4,4) ⇒ comitado `d9bd722622`.
+- **Curas do Wet: ambíguas** — Ctrl+Z −2,1 no mínimo e +1,0 na mediana; toque igual. O preparo mede-se no MESMO
+  binário com `PH2D_TOQUE_PREPARADO=0` (r13, abaixo).
+
+## r13 (12/11, 01:20–01:26) — o preparo do toque no MESMO binário
+
+`4c375d37f0`, Wet 4K, `PH2D_TOQUE_PREPARADO=1` × `=0`, 6 pares intercalados (carga 2,5–11, outra sessão a compilar).
+Toque: ligado **51,3** / 52,0 × desligado **66,7** / 67,8 — o preparo vale **15 ms** no 1.º toque. Na base o tique
+já o corria antes do toque (o roteiro mexe o rato: há quadros), por isso r12 não o vê; `ca6bf04bf1` garante-o
+quando NÃO há quadro antes do gesto (o laço a pedido, `899f2d2e71`: sem evento não há quadro nem `on_tick`), p. ex.
+abrir o documento e tocar sem passar o rato. Controlo: sem as três chamadas de `arma_o_preparo_do_toque` o teste
+`o_preparo_fica_pronto_sem_tique_antes_do_primeiro_toque` fica vermelho. Ctrl+Z igual (48,0 × 49,0). As três
+curas do Wet entram na linha: `b5f4a90128` · `62bb7c2efa` · `3848f195aa`.
+
+## Perfil p1 (12/11, 01:26–01:29, `4c375d37f0`, modo `perf`, quadros > 60 ms)
+
+| cena | quadros lentos | leitura |
+|---|---|---|
+| W5 Flat Bristle `]`×10 | **1 055 ms no mouse-up** · 102 no Ctrl+Z | o pior caso que resta: o depósito da lâmina larga (B14.3) |
+| W9 Bristle 16·4000 | 62 no toque · 63 no Ctrl+Z | o soltar de 1 340 ms de 10/11 já não existe |
+| D1 Round Mixing `]`×10 | nenhum | o Color mixing largo não passa de 60 ms |
+| Wet · Filbert · W6 | 62–93 (toque, Ctrl+Z) | os da onda 1 |
+| W6 parado depois de `]`×10 | CPU **492 %** de um núcleo durante 5 s | achado: trabalho de fundo sem entrada (por perfilar) |

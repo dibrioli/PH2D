@@ -576,6 +576,7 @@ fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
             "{onde}: a luz do repouso"
         );
         t.set_wet_agua_viva(false);
+        quadros(&mut t, 2);
         assenta(&mut t);
         let solto = t.canvas_rgba.to_vec();
         quadros(&mut t, 30);

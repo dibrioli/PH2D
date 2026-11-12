@@ -14,14 +14,12 @@ APP="$RAIZ/target/smoke/ph2d-host-desktop"
 [ -x "$APP" ] || { echo "falta o binário de smoke: cargo build -p ph2d-host-desktop --profile smoke" >&2; exit 2; }
 T=$(mktemp -d /tmp/conduz_posse.XXXX)
 mkdir -p "$T/home"
-DSP=:79
-Xvfb $DSP -screen 0 1280x800x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XV=$!
+# Ecrã livre escolhido pelo Xvfb (`-displayfd`): nenhum número fixo a colidir com outra sessão.
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1280x800x24 "$T/xvfb.log" || exit 2
 AP=
 fim() { [ -n "$AP" ] && kill "$AP" 2>/dev/null; kill "$XV" 2>/dev/null; [ -z "${GUARDA:-}" ] && rm -rf "$T"; }
 trap fim EXIT
-sleep 1
-export DISPLAY=$DSP
 LOG="$T/posse.log"
 MARCAS="$T/marcas.log"   # um ficheiro por escritor: dois processos no mesmo ficheiro escrevem um por cima do outro
 (cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY=$DSP HOME="$T/home" XDG_SESSION_TYPE=x11 PH2D_CODE_SMOKE=6 \

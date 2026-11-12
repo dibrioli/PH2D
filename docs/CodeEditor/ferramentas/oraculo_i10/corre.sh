@@ -14,13 +14,11 @@
 #   Só teclado (Ctrl+G linha:coluna) — nenhuma coordenada de clique.
 set -euo pipefail
 
-D="${I10_DISPLAY:-:118}"
-[ "$D" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 OUT="${1:-$(mktemp -d /tmp/oraculo_i10.XXXX)}"
 mkdir -p "$OUT/raw"
 T=$(mktemp -d /tmp/i10.XXXX)
 chmod 700 "$T"
-export DISPLAY="$D"
 unset WAYLAND_DISPLAY
 
 XVFB_PID=""
@@ -39,12 +37,12 @@ abre() { xdotool key ctrl+p; sleep 0.8; xdotool type --delay 40 "$1"; sleep 0.8;
 {
   echo "# oráculo I10 — $(date -u +%Y-%m-%dT%H:%MZ) — loadavg: $(cat /proc/loadavg)"
   echo "# code --version: $(code --version | paste -sd ' ' -)"
-  echo "# display: Xvfb $D 1600x1000x24"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24"
 } >"$OUT/passos.txt"
 
-timeout 900 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XVFB_PID=$!
-sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 900 || exit 2
+D=$DSP; XVFB_PID=$XV
 
 # Cada cena num VS Code NOVO sobre ficheiros novos: um passo que falha não contamina o seguinte.
 N=0

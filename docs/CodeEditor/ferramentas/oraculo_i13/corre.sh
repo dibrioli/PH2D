@@ -32,8 +32,7 @@
 #   o título da janela (o «●» do sujo) e o ficheiro em DISCO depois de cada passo.
 set -euo pipefail
 
-D="${ORACULO_DISPLAY:-:123}"
-[ "$D" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 R=$(cd "$(dirname "$0")/../../../.." && pwd)
 ST="${STYLUA:-$HOME/.cache/ph2d/stylua/2.5.2/stylua}"
 CFG="$R/crates/ph2d-code-format/ph2d-format.toml"
@@ -45,7 +44,6 @@ SO="${ORACULO_SO:-1a 1b 1c 1d 2a 2b 3a 3b 4a 4b 5a 5b 6a 6b 7 8 9 10}"
 mkdir -p "$OUT/raw" "$OUT/cli"
 T=$(mktemp -d /tmp/i13.XXXX)
 chmod 700 "$T"
-export DISPLAY="$D"
 unset WAYLAND_DISPLAY
 
 XVFB_PID=""
@@ -76,7 +74,7 @@ shot() {
   echo "# oráculo I13 — $(date -u +%Y-%m-%dT%H:%MZ) — loadavg: $(cat /proc/loadavg)"
   echo "# code --version: $(code --version | paste -sd ' ' -)"
   echo "# stylua: $("$ST" --version) ($ST) · config: $CFG"
-  echo "# display: Xvfb $D 1600x1000x24"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24"
 } >"$OUT/passos.txt"
 
 # --- A extensão: o .vsix do Open VSX, conferido por sha256; a triagem de licença por ARTEFACTO.
@@ -106,9 +104,9 @@ for f in bob recuo aspas erro ok; do
   set +e; "$ST" --config-path "$CFG" - <"$FX/$f.luau" >"$OUT/cli/$f.fmt.luau" 2>"$OUT/cli/$f.err"; echo $? >"$OUT/cli/$f.exit"; set -e
 done
 
-timeout 1800 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XVFB_PID=$!
-sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 1800 || exit 2
+D=$DSP; XVFB_PID=$XV
 
 # Cada cena num VS Code NOVO. $1 = a fixture aberta.
 N=0

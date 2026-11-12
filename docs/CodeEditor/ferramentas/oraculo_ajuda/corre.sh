@@ -13,7 +13,7 @@
 #   Grava em <saida>: amostras.txt (o veredito em texto, por OCR) e *_c.png (recortes). Fotos de ecrã inteiro em
 #   /tmp/oraculo_ajuda_raw.XXXX (dito no fim) — não entram no repo.
 #
-# ⛔ Regras (as do oraculo_acabamento/corre.sh): Xvfb PRIVADO :118 (recusa :0); foto = `import -window root` (NUNCA
+# ⛔ Regras (as do oraculo_acabamento/corre.sh): Xvfb PRIVADO num ecrã livre (`xvfb_livre.sh`); foto = `import -window root` (NUNCA
 #   `spectacle`); dbus privado sem pastas de serviços; Godot com XDG_* próprios, x11 + opengl3; cada processo sob
 #   `timeout`, parado pelo PID que ESTE script lançou.
 # ⚠️ O Godot só reconhece o nome do Ctrl+clique se o rato MEXER com o Ctrl já carregado (medido 19/10: keydown com o
@@ -23,8 +23,7 @@
 # em x = 604 + 8c (tab = 4). Lista de scripts: item i (0..) em y = 166 + 22i. Histórico ‹ › em (1231,96) e (1255,96).
 set -euo pipefail
 
-D="${AJUDA_DISPLAY:-:118}"
-[ "$D" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 AQUI=$(cd "$(dirname "$0")" && pwd)
 
 if [ -z "${AJUDA_DENTRO:-}" ]; then
@@ -45,7 +44,7 @@ BC
 fi
 
 OUT="$1"; T="$AJUDA_T"; RAW="$AJUDA_RAW"
-export DISPLAY="$D" XDG_RUNTIME_DIR="$T"
+export XDG_RUNTIME_DIR="$T"
 unset WAYLAND_DISPLAY
 A="$OUT/amostras.txt"
 PIDS=()
@@ -94,12 +93,13 @@ alvo() { # rótulo linha coluna comprimento
 {
   echo "# oráculo página de ajuda (Ctrl+clique → referência da classe) — $(date -u +%Y-%m-%dT%H:%MZ) — loadavg: $(cat /proc/loadavg)"
   echo "# godot: $(LC_ALL=C pacman -Q godot) ; $(LC_ALL=C pacman -Qi godot | grep -E '^Licenses' | sed 's/ *: /: /')"
-  echo "# display: Xvfb $D 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em $RAW"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em $RAW"
   echo "# script: $AQUI/ajuda.gd ; textos por OCR (tesseract) — o recorte nomeado é a prova"
 } >"$A"
 
-timeout 850 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-PIDS+=($!); sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 850 || exit 2
+D=$DSP; PIDS+=("$XV")
 G="$T/gd"; mkdir -p "$G/proj" "$G/home" "$G/cfg" "$G/data" "$G/cache"
 printf 'config_version=5\n\n[application]\nconfig/name="oraculo_ajuda"\n\n[rendering]\nrenderer/rendering_method="gl_compatibility"\n' >"$G/proj/project.godot"
 cp "$AQUI/ajuda.gd" "$G/proj/ajuda.gd"

@@ -36,16 +36,14 @@ cat >"$P/main.tscn" <<'EOP'
 
 [node name="Parallax2D" type="Parallax2D" parent="."]
 EOP
-DSP=:78
+# Ecrã livre escolhido pelo Xvfb (`-displayfd`): nenhum número fixo a colidir com outra sessão.
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" || exit 2
 G=(env -i HOME="$T/home" PATH=/usr/bin:/bin LANG=en_US.UTF-8 DISPLAY=$DSP XDG_CONFIG_HOME="$T/cfg"
   XDG_DATA_HOME="$T/data" XDG_CACHE_HOME="$T/cache" SONDA_DIR="$T/sonda")
-export DISPLAY=$DSP
-Xvfb $DSP -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XV=$!
 ED=
 fim() { [ -n "$ED" ] && kill "$ED" 2>/dev/null; kill "$XV" 2>/dev/null; rm -rf "$T"; }
 trap fim EXIT
-sleep 1
 timeout 120 "${G[@]}" godot --headless --editor --quit --path "$P" >"$T/import.log" 2>&1
 "${G[@]}" timeout 300 godot --editor --path "$P" res://main.tscn --position 0,0 --resolution 1600x1000 >"$T/editor.log" 2>&1 &
 ED=$!

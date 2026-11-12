@@ -10,14 +10,12 @@ APP="$RAIZ/target/smoke/ph2d-host-desktop"
 [ -x "$APP" ] || { echo "falta o binário de smoke" >&2; exit 2; }
 CENA=$1; PRE=$2; shift 2
 T=$(mktemp -d /tmp/olha_cena.XXXX); mkdir -p "$T/home"
-DSP=:85
-Xvfb $DSP -screen 0 1600x900x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XV=$!
+# Ecrã livre escolhido pelo Xvfb (`-displayfd`): nenhum número fixo a colidir com outra sessão.
+. "$(dirname "${BASH_SOURCE[0]}")/./xvfb_livre.sh"
+xvfb_livre 1600x900x24 "$T/xvfb.log" || exit 2
 AP=
 fim() { [ -n "$AP" ] && kill "$AP" 2>/dev/null; kill "$XV" 2>/dev/null; rm -rf "$T"; }
 trap fim EXIT
-sleep 1
-export DISPLAY=$DSP
 (cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY=$DSP HOME="$T/home" XDG_SESSION_TYPE=x11 "$CENA" \
   timeout 120 "$APP" >"$T/app.log" 2>&1) &
 AP=$!

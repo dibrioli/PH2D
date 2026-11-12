@@ -17,7 +17,7 @@
 #   ACAB_SO="vs vs11y gd" escolhe as fases (por omissão as três).
 #
 # ⛔ Regras (copiadas do oraculo_i8b/corre.sh — o dono já foi prejudicado por cada uma):
-#   - Xvfb PRIVADO :118 (recusa :0); foto = `import -window root` (NUNCA `spectacle`); xdotool no Xvfb.
+#   - Xvfb PRIVADO num ecrã livre (`xvfb_livre.sh`); foto = `import -window root` (NUNCA `spectacle`); xdotool no Xvfb.
 #     O `import` NÃO fotografa o cursor do rato: a régua dele é o cursor_nome.c (XFixes: nome, tamanho,
 #     hotspot e hash dos pixels; o nome vem VAZIO nestes dois apps, por isso a tabela de equivalência
 #     hash → I-beam / mão / seta é medida no início, sobre texto, item da árvore e menu, e gravada como imagem).
@@ -32,9 +32,7 @@
 # coluna c em x = 423 + 8,4c. Godot: linha n em y = 134 + 25(n-1), coluna c em x = 604 + 8c (tab = 4).
 set -euo pipefail
 
-D=":118"
-[ "${ACAB_DISPLAY:-$D}" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
-D="${ACAB_DISPLAY:-$D}"
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 AQUI=$(cd "$(dirname "$0")" && pwd)
 
 # ── fora: a sessão dbus privada ─────────────────────────────────────────────────────────────────────
@@ -59,7 +57,7 @@ fi
 OUT="$1"; T="$ACAB_T"; RAW="$ACAB_RAW"
 SO="${ACAB_SO:-vs vs11y gd}"
 quer() { [[ " $SO " == *" $1 "* ]]; }
-export DISPLAY="$D" XDG_RUNTIME_DIR="$T"
+export XDG_RUNTIME_DIR="$T"
 unset WAYLAND_DISPLAY
 A="$OUT/amostras.txt"
 
@@ -92,13 +90,14 @@ pousa() { xdotool mousemove $(($1 - 2)) "$2"; sleep 0.2; xdotool mousemove "$1" 
   echo "# godot: $(LC_ALL=C pacman -Q godot)"
   echo "# pacman: $(LC_ALL=C pacman -Qi godot visual-studio-code-bin 2>/dev/null | grep -E '^(Name|Version|Licenses) ' | sed 's/ *: /: /' | paste -sd ';' -)"
   echo "# licenças: VS Code = binário Microsoft, só CORRIDO; Godot = MIT"
-  echo "# display: Xvfb $D 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em $RAW"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em $RAW"
   echo "# estados do (A): 0sem = rato parado 1,5 s sem Ctrl · 1k01 = 0,1 s depois de keydown ctrl (rato parado)"
   echo "#   · 2k15 = 1,5 s depois · 3mexeu = Ctrl carregado e +2 px · 4solto = 0,6 s depois de keyup · depois = +1 px sem Ctrl"
 } >"$A"
 
-timeout 1400 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-PIDS+=($!); sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 1400 || exit 2
+D=$DSP; PIDS+=("$XV")
 timeout 1350 /usr/lib/at-spi-bus-launcher --launch-immediately >"$T/atspi.log" 2>&1 &
 PIDS+=($!); sleep 1.5
 timeout 1350 /usr/lib/at-spi2-registryd >"$T/registryd.log" 2>&1 &

@@ -15,7 +15,7 @@
 #   - as MARCAS dos buracos: a cor de fundo de cada coluna da linha 1 (moda da célula) + riscas verticais.
 #   - a sessão VIVA: lê-se pelo passo seguinte (um Tab numa sessão morta INDENTA: o texto e a Col mudam).
 #
-# ⛔ Regras (copiadas do oraculo_acabamento/corre.sh): Xvfb PRIVADO :119 (recusa :0); foto = `import -window root`
+# ⛔ Regras (copiadas do oraculo_acabamento/corre.sh): Xvfb PRIVADO num ecrã livre (`xvfb_livre.sh`); foto = `import -window root`
 #   (NUNCA `spectacle`); `code` com `env -i`, HOME / --user-data-dir / --extensions-dir próprios e XDG_RUNTIME_DIR
 #   curto; sessão dbus PRIVADA sem pastas de serviços; cada processo sob `timeout`; pára-se pelo PID lançado aqui.
 #
@@ -23,9 +23,7 @@
 # coluna c em x = 423 + 8,4c (as do oraculo_acabamento, mesma disposição).
 set -euo pipefail
 
-D=":119"
-[ "${SNIP_DISPLAY:-$D}" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
-D="${SNIP_DISPLAY:-$D}"
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 AQUI=$(cd "$(dirname "$0")" && pwd)
 
 if [ -z "${SNIP_DENTRO:-}" ]; then
@@ -48,7 +46,7 @@ fi
 OUT="$1"; T="$SNIP_T"; RAW="$SNIP_RAW"
 SO="${SNIP_SO:-A B B2 C C2 D D2 D3 V2 V3}"
 quer() { [[ " $SO " == *" $1 "* ]]; }
-export DISPLAY="$D" XDG_RUNTIME_DIR="$T"
+export XDG_RUNTIME_DIR="$T"
 unset WAYLAND_DISPLAY
 A="$OUT/amostras.txt"
 P="${SNIP_PAUSA:-1.2}"          # pausa depois de cada tecla (a máquina está carregada: load ~20+)
@@ -64,7 +62,7 @@ shot() { import -window root "$RAW/$1.png"; }
   echo "# code --version: $(code --version | paste -sd ' ' -)"
   echo "# pacman: $(LC_ALL=C pacman -Qi visual-studio-code-bin 2>/dev/null | grep -E '^(Name|Version|Licenses) ' | sed 's/ *: /: /' | paste -sd ';' -)"
   echo "# licença: VS Code = binário Microsoft, só CORRIDO"
-  echo "# display: Xvfb $D 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em $RAW"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em $RAW"
   echo "# snippets de utilizador (ficheiro .code-snippets, sem scope): zfora = f(\${1:a}, \${2:b}, \${3:c})\$0 · zdentro = g(\${1:x}, \${2:y})\$0"
   echo "# régua: sel = CLIPBOARD depois de Ctrl+C (emptySelectionClipboard=false: <vazia> = selecção vazia) · barra = OCR"
   echo "#   · marcas = cor de fundo (moda) de cada coluna da linha 1, c0 = 1.º carácter · bordas = riscas verticais claras"
@@ -72,8 +70,9 @@ shot() { import -window root "$RAW/$1.png"; }
   echo "#   (fundo do editor #121314 · realce da linha actual #242526 só com selecção vazia · par de parênteses #2b4957)"
 } >"$A"
 
-timeout 1400 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-PIDS+=($!); sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 1400 || exit 2
+D=$DSP; PIDS+=("$XV")
 
 V="$T/vs"; mkdir -p "$V/home" "$V/ud/User/snippets" "$V/ext" "$V/ws"
 : >"$V/ws/s.txt"

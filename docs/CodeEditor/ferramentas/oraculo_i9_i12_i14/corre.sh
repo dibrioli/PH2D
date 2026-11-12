@@ -19,14 +19,12 @@
 #   A barra de estado («Ln 3, Col 9 (5 selected)») é a régua do cursor e da selecção em cada foto.
 set -euo pipefail
 
-D="${ORACULO_DISPLAY:-:119}"
-[ "$D" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 OUT="${1:-$(mktemp -d /tmp/oraculo_i9_i12_i14.XXXX)}"
 SO="${ORACULO_SO:-1 2 3 4 5 6}"
 mkdir -p "$OUT/raw"
 T=$(mktemp -d /tmp/i9.XXXX)
 chmod 700 "$T"
-export DISPLAY="$D"
 unset WAYLAND_DISPLAY
 
 XVFB_PID=""
@@ -46,12 +44,12 @@ quer() { [[ " $SO " == *" $1 "* ]]; }
 {
   echo "# oráculo I9+I12+I14 — $(date -u +%Y-%m-%dT%H:%MZ) — loadavg: $(cat /proc/loadavg)"
   echo "# code --version: $(code --version | paste -sd ' ' -)"
-  echo "# display: Xvfb $D 1600x1000x24"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24"
 } >"$OUT/passos.txt"
 
-timeout 1200 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XVFB_PID=$!
-sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 1200 || exit 2
+D=$DSP; XVFB_PID=$XV
 
 # Cada cena num VS Code NOVO: um passo que falha não contamina o seguinte. $1 = valor de
 # editor.inlayHints.enabled.

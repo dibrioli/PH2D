@@ -14,14 +14,12 @@ RAIZ=$(git -C "$AQUI" rev-parse --show-toplevel)
 APP="$RAIZ/target/smoke/ph2d-host-desktop"
 [ -x "$APP" ] || { echo "falta o binário de smoke: cargo build -p ph2d-host-desktop --profile smoke" >&2; exit 2; }
 T=$(mktemp -d /tmp/conduz_arrastar.XXXX); mkdir -p "$T/home"
-DSP=:81
-Xvfb $DSP -screen 0 1280x800x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XV=$!
+# Ecrã livre escolhido pelo Xvfb (`-displayfd`): nenhum número fixo a colidir com outra sessão.
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1280x800x24 "$T/xvfb.log" || exit 2
 AP=
 fim() { [ -n "$AP" ] && kill "$AP" 2>/dev/null; kill "$XV" 2>/dev/null; rm -rf "$T"; }
 trap fim EXIT
-sleep 1
-export DISPLAY=$DSP
 (cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY=$DSP HOME="$T/home" XDG_SESSION_TYPE=x11 PH2D_CODE_SMOKE=7 \
   timeout 240 "$APP" >"$T/app.log" 2>&1) &
 AP=$!

@@ -9,7 +9,7 @@
 #   Grava raw/*.png (ecrã inteiro), *_c.png (recortes) e amostras.txt (cor #RRGGBB de cada ponto medido).
 #
 # ⛔ Regras (o dono já foi prejudicado por cada uma):
-#   - Tudo corre num Xvfb PRIVADO (:117 por omissão, I8B_DISPLAY muda); nunca no ecrã do dono, nunca `spectacle`.
+#   - Tudo corre num Xvfb PRIVADO (num ecrã livre, `xvfb_livre.sh`); nunca no ecrã do dono, nunca `spectacle`.
 #     Foto = `import -window root` do Xvfb; rato e teclas = `xdotool` com DISPLAY do Xvfb (o XTest funciona
 #     no Xvfb; na Xwayland de um `kwin --virtual` NÃO funciona — ver docs/Components/ferramentas/fotografa_cena.sh).
 #   - O VS Code do dono está aberto e as variáveis VSCODE_IPC_HOOK* da janela do agente apontam para ELE: o
@@ -22,13 +22,11 @@
 # e do Godot 4.7.2; outra versão pode mover o balão — confira as fotos raw/ antes de ler amostras.txt.
 set -euo pipefail
 
-D="${I8B_DISPLAY:-:117}"
-[ "$D" = ":0" ] && { echo "recuso: :0 é o ecrã do dono" >&2; exit 2; }
+D=  # o ecrã: o Xvfb escolhe-o livre (`xvfb_livre`, abaixo)
 OUT="${1:-$(mktemp -d /tmp/oraculo_i8b.XXXX)}"
 mkdir -p "$OUT/raw"
 T=$(mktemp -d /tmp/i8b.XXXX)          # curto de propósito (socket do VS Code)
 chmod 700 "$T"
-export DISPLAY="$D"
 unset WAYLAND_DISPLAY
 
 XVFB_PID=""
@@ -46,12 +44,12 @@ hover() { xdotool mousemove 1200 800; sleep 0.8; xdotool mousemove $(($1 - 2)) "
   echo "# code --version: $(code --version | paste -sd ' ' -)"
   echo "# godot --version: $(godot --version)"
   echo "# pacman: $(LC_ALL=C pacman -Qi godot visual-studio-code-bin 2>/dev/null | grep -E '^(Name|Version|Licenses) ' | sed 's/ *: /: /' | paste -sd ';' -)"
-  echo "# display: Xvfb $D 1600x1000x24"
+  echo "# display: Xvfb livre (-displayfd) 1600x1000x24"
 } >"$OUT/amostras.txt"
 
-timeout 900 Xvfb "$D" -screen 0 1600x1000x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XVFB_PID=$!
-sleep 1.5
+. "$(dirname "${BASH_SOURCE[0]}")/../xvfb_livre.sh"
+xvfb_livre 1600x1000x24 "$T/xvfb.log" 900 || exit 2
+D=$DSP; XVFB_PID=$XV
 
 # ───────────────────────── VS Code ─────────────────────────
 V="$T/vs"; mkdir -p "$V/home" "$V/ud/User" "$V/ext" "$V/ws"

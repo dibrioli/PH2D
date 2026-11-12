@@ -21,14 +21,12 @@ APP="$RAIZ/target/smoke/ph2d-host-desktop"
 [ -x "$APP" ] || { echo "falta o binário de smoke" >&2; exit 2; }
 T=$(mktemp -d /tmp/fotos_q3.XXXX)
 mkdir -p "$T/home"
-DSP=:$((60 + CENA + PASSO))  # uma tela por cena e passo: corridas em paralelo não se cruzam
-Xvfb "$DSP" -screen 0 1930x1040x24 -nolisten tcp >"$T/xvfb.log" 2>&1 &
-XV=$!
-AP=
-fim() { [ -n "$AP" ] && kill "$AP" 2>/dev/null; kill "$XV" 2>/dev/null; rm -rf "$T"; }
+AP= XV=
+fim() { [ -n "$AP" ] && kill "$AP" 2>/dev/null; [ -n "$XV" ] && kill "$XV" 2>/dev/null; rm -rf "$T"; }
 trap fim EXIT
-sleep 1
-export DISPLAY=$DSP
+# Ecrã livre escolhido pelo Xvfb (corridas em paralelo e outras sessões não se cruzam).
+. "$RAIZ/docs/CodeEditor/ferramentas/xvfb_livre.sh"
+xvfb_livre 1930x1040x24 "$T/xvfb.log" || exit 2
 (cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY="$DSP" HOME="$T/home" XDG_SESSION_TYPE=x11 \
   PH2D_CODE_SMOKE="$CENA" PH2D_CODE_SMOKE_PASSO="$PASSO" timeout 120 "$APP" >"$T/app.log" 2>&1) &
 AP=$!

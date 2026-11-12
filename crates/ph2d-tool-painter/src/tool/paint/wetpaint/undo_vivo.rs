@@ -24,6 +24,8 @@ mod casco_tests;
 mod prancha_b02_tests;
 pub(crate) use casco::Cascos;
 pub(super) use casco::casco_de;
+pub(super) mod fases;
+use fases::marca;
 mod foto;
 mod orla;
 pub(crate) use foto::FotoDoMotor;
@@ -264,10 +266,12 @@ impl PainterTool {
         } else {
             self.undo.chave_do_topo().checked_sub(1)?
         };
+        marca("pintor antes do solta");
         self.wetpaint_guard();
         let sess = self.paint.wetpaint.session.as_mut()?;
         sess.antes_do_passo.iter().find(|p| p.chave == chave)?;
         sess.bring_home();
+        marca("solta: guard + bring_home");
         let pode = if refaz {
             sess.engine.can_redo()
         } else {
@@ -283,6 +287,7 @@ impl PainterTool {
             p.antes.clone()
         };
         let sess = self.paint.wetpaint.session.take()?;
+        marca("solta: foto");
         Some(SessaoNoUndo(sess, foto, refaz, chave))
     }
 
@@ -290,16 +295,20 @@ impl PainterTool {
     /// fotografia), presa à tela restaurada.
     pub(crate) fn wet_volta_do_undo(&mut self, solta: SessaoNoUndo, aplicou: bool) {
         let SessaoNoUndo(mut sess, foto, refaz, chave) = solta;
+        marca("pintor: undo.undo + restore_model");
         if aplicou {
             sess.bring_home();
+            marca("volta: bring_home");
             if !refaz {
                 // O «depois» que o redo devolve: o motor drena o passo em voo no undo, a fotografia no mesmo
                 // instante — e só quando o undo se aplica (drenar antes mudava o ritmo da água à toa).
                 sess.engine.drain_step();
+                marca("volta: drain_step");
                 let atual = Arc::clone(&sess.base);
                 let i = sess.antes_do_passo.iter().position(|p| p.chave == chave);
                 if let Some(p) = i.map(|i| &mut sess.antes_do_passo[i]) {
                     p.depois = Some(FotoDoMotor::de(&sess.engine, Some(&p.antes)));
+                    marca("volta: FotoDoMotor::de");
                     p.base_depois = Some(atual);
                     sess.base = Arc::clone(&p.base_antes);
                     p.congelada_depois = sess.congelada.take();
@@ -336,7 +345,9 @@ impl PainterTool {
                 feito,
                 "o histórico do motor tinha o passo (verificado ao soltar)"
             );
+            marca("volta: caixa + motor undo/redo");
             foto.repoe(&mut sess.engine);
+            marca("volta: repoe");
             // Uma imagem no ar é de antes do restauro: aplicada, punha a tela de outro passo por cima, e nada a corrigia.
             // Fora do sujo do motor (a caixa do restauro e o que já estava por compor) a grade é a mesma.
             match sess.engine.dirty {
@@ -348,6 +359,7 @@ impl PainterTool {
                 }
                 Dirty::Clean => {}
             }
+            marca("volta: otica");
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
             self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
             sess.stroke_open = false;
@@ -362,6 +374,7 @@ impl PainterTool {
             if let Some(tela) = antes.filter(|t| **t != *self.canvas_rgba) {
                 self.wet_enterra_como_passo(&mut sess, &tela, None);
             }
+            marca("volta: tela_antes");
             // A tela restaurada já é a verdade. ⛔ Medido: recompor a tela inteira com células enterradas re-ilumina a
             // orla delas (3 862 px); a orla só se recalcula sob o pincel seguinte.
             if sess.enterrou {
@@ -379,6 +392,7 @@ impl PainterTool {
                     self.wet_congela(&mut sess, None);
                 }
             }
+            marca("volta: planos_em_dia + congela");
         }
         // Uma sessão que o restore fez nascer (não devia: o restore acaba-as) perde para a que estava viva.
         self.paint.wetpaint.session = Some(sess);

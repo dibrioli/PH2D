@@ -586,6 +586,8 @@ mod foto_em_tiles;
 #[path = "wetpaint/redo_relevo_tests.rs"]
 mod redo_relevo_tests;
 #[cfg(test)]
+mod sonda_fases_ctrl_z_tests; // as fases do Ctrl+Z da tinta viva a 4K
+#[cfg(test)]
 #[path = "wetpaint/sonda_lote_tests.rs"]
 mod sonda_lote_tests;
 #[cfg(test)]

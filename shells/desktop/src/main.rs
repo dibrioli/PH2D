@@ -7,34 +7,6 @@
 //! Desktop shell — winit 0.30 + wgpu + ECS + sprite render + M6+M7+M12.
 //!
 //! Run with: `cargo run -p ph2d-host-desktop`
-//!
-//! Layered subsystems (each gated to keep the demo bootable even if
-//! one fails — never crash the shell over an integration-demo issue):
-//! - **M5** SpriteRenderer + 1000-sprite Vogel spiral with bouncing motion
-//! - **M6** AssetDb loads 16 real PNG files from `assets/sprites/` (auto-
-//!   generated on first launch) and composes them into a 256×256
-//!   RGBA8 atlas. Falls back to procedural dummy if anything fails.
-//! - **M7** ScriptHost with placeholder Luau script; per-frame gc_step
-//!   keeps the GC budget warm for future script-driven gameplay.
-//! - **M12** editor data layer: `ZenMode` (Tab toggle), `ToastQueue`
-//!   (T key adds info toast), theme switch (M key flips Dark↔Light),
-//!   and a `FloatingPanel` (Procreate-style selection demo). Visible
-//!   via window title since Vello widget paint requires sharing the
-//!   wgpu Surface with the sprite pipeline (see `integration.rs`).
-//!
-//! M8 add-on (gamepad path):
-//! - gilrs adapter (`gilrs_adapter` module) pumps gamepad events into
-//!   [`ph2d_input::InputState`] each frame, BEFORE sim tick.
-//! - Connection / button / axis events log to the terminal at the
-//!   `[Nms]` timestamp prefix used by the rest of the shell.
-//! - Axis logs filter dead-zone jitter (only `|value| > 0.25`).
-//! - Pencil events are wired through the abstraction but not produced
-//!   by this shell (iPad shell will, in M9+).
-//!
-//! Out of scope here:
-//! - **M8 → ScriptHost**: `InputState` lives on `App`, but routing into
-//!   `ph2d.input` Luau snapshot is a follow-up.
-//! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
 mod active_tool_mirror;
 pub(crate) use ph2d_app_vec::align_live;
@@ -1021,10 +993,7 @@ fn main() {
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::new();
-    println!(
-        "PH2D desktop shell starting (close window or {} to exit)…",
-        ph2d_i18n::atalho::atalho("Ctrl+Q")
-    );
+    init::banner();
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
 }

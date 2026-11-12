@@ -104,7 +104,7 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são DADO.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
-        "main.rs",
+        "init.rs",
         "Ctrl+Q",
         "o ATALHO de sair na linha de arranque do terminal, dito pelo sistema pela porta `ph2d_i18n::atalho` \
          (Cmd+Q no macOS) — nome de tecla, não frase, e nunca pintado",

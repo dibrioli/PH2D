@@ -287,3 +287,33 @@ O tecto da shell e o de `ph2d-app-components` em `architecture_the_shell_only_sh
     //! Um HUD já é conduzido pelo [`crate::hud_bridge`], e dois motores sobre o mesmo `Transform`
     //! escreveriam um por cima do outro. *A raiz de um HUD é a paralaxe com fracção `0`, e quem a
     //! implementa é aquela ponte.*
+
+## `shells/desktop/src/main.rs:11`
+
+    //! Layered subsystems (each gated to keep the demo bootable even if
+    //! one fails — never crash the shell over an integration-demo issue):
+    //! - **M5** SpriteRenderer + 1000-sprite Vogel spiral with bouncing motion
+    //! - **M6** AssetDb loads 16 real PNG files from `assets/sprites/` (auto-
+    //!   generated on first launch) and composes them into a 256×256
+    //!   RGBA8 atlas. Falls back to procedural dummy if anything fails.
+    //! - **M7** ScriptHost with placeholder Luau script; per-frame gc_step
+    //!   keeps the GC budget warm for future script-driven gameplay.
+    //! - **M12** editor data layer: `ZenMode` (Tab toggle), `ToastQueue`
+    //!   (T key adds info toast), theme switch (M key flips Dark↔Light),
+    //!   and a `FloatingPanel` (Procreate-style selection demo). Visible
+    //!   via window title since Vello widget paint requires sharing the
+    //!   wgpu Surface with the sprite pipeline (see `integration.rs`).
+    //!
+    //! M8 add-on (gamepad path):
+    //! - gilrs adapter (`gilrs_adapter` module) pumps gamepad events into
+    //!   [`ph2d_input::InputState`] each frame, BEFORE sim tick.
+    //! - Connection / button / axis events log to the terminal at the
+    //!   `[Nms]` timestamp prefix used by the rest of the shell.
+    //! - Axis logs filter dead-zone jitter (only `|value| > 0.25`).
+    //! - Pencil events are wired through the abstraction but not produced
+    //!   by this shell (iPad shell will, in M9+).
+    //!
+    //! Out of scope here:
+    //! - **M8 → ScriptHost**: `InputState` lives on `App`, but routing into
+    //!   `ph2d.input` Luau snapshot is a follow-up.
+    //! - **M11** Vello text/widget overlay — needs surface-sharing pass.

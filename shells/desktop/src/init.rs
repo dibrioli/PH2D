@@ -396,3 +396,11 @@ fn boot_hero_screen(
     let _ = Lifecycle::Foreground; // exercise import; lifecycle hook fires from caller.
     hero_screen
 }
+
+/// A linha de arranque no terminal (o atalho de sair vem da tabela do SO).
+pub(crate) fn banner() {
+    println!(
+        "PH2D desktop shell starting (close window or {} to exit)…",
+        ph2d_i18n::atalho::atalho("Ctrl+Q")
+    );
+}

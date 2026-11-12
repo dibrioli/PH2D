@@ -59,3 +59,13 @@
 2. Pause. Clique o primeiro «Run & jump»: abrem-se por baixo as faixas Base (walk, jump) e Upper body (swing), em 1–3 s, dentro de uma moldura laranja. O segundo «Run & jump» (4–6 s) mostra o mesmo, esmaecido.
 3. Arraste «jump» dentro: a cópia esmaecida mexe junto. Ctrl+Z devolve. Esc fecha.
    Errado se: a irmã esmaecida deixa-se arrastar; a edição de dentro cai em tempo errado (deslocada); o Ctrl+Z não desfaz; as faixas de baixo ficam cobertas.
+
+## Smoke do dono — OK (11/11), depois de `b4d9296668`
+
+- Correções do smoke (plano 17, «Onda 4 — respostas do dono ao smoke»): a instância acompanha o comprimento do container;
+  a marca verde/vermelha mede da posição ORIGINAL; `PH2D_ANIMACAO_SMOKE=0` desliga a cena.
+- O undo que levava à aba Keys não voltou com a cena limpa (`PH2D_NEST_SMOKE=4` só). O log mostrou só
+  `[undo] ⛔ o documento MUDOU em ["world"] e o passo foi SUPRIMIDO — sem entrada neste quadro` (a cena a tocar escreve o
+  mundo sem gesto; funde-se no passo seguinte — esperado).
+- Aberto: `reset_trail` sem chamador na shell; foto `43_a_moldura_acompanha.png` não tirada (placa ocupada).
+- Fila do plano 17 acabou na onda 4. A onda 5 (11–13) só por ordem do dono. Linha não integrada; nunca push.

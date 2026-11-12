@@ -576,5 +576,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// (Bug #71); tirar o `meio_do_dente` de `height_at` devolve os de antes ao bit.
 /// Regravado 09/11 (era `0xa302_b939_db67_365e` · `0x5180_1609_f93c_f777`): o papel morde a tinta pelo Relief × Tooth
 /// (`60c3bfcb6f`, dono 08/11 «usar o Tooth»); bisseção: `bc6167c6f2` dá os de antes, `60c3bfcb6f` estes.
-const CLEAR_GLASS_05: u64 = 0xac49_1cf4_5ba7_e3fb;
-const CLEAR_GLASS_1: u64 = 0x2ebc_2040_0011_d3fb;
+/// Regravado (B32.1 espectral) 12/11 (era `0xac49_1cf4_5ba7_e3fb` · `0x2ebc_2040_0011_d3fb`): o Wet mistura pela
+/// lei espectral de 10 bandas (`00f3ca1751`, decisão 7a do dono); com `PH2D_WET_MISTURA=km` voltam os de antes.
+const CLEAR_GLASS_05: u64 = 0x6f35_8929_a88e_2278;
+const CLEAR_GLASS_1: u64 = 0xb41f_d227_f619_2c77;

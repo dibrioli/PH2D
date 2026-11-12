@@ -591,7 +591,9 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
 /// a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada com a lei SECA); e a 01/11 pela E4
 /// `7a4bc540b7` (ADR-0197 §1.1, dono: Pigment + Water = só a diluição, Volume = só a quantidade): bissecção de
 /// árvore inteira — o pai `0eaf6fa1ed` dá os dois hashes antigos, a E4 e o HEAD `e8f35b5710` os dois novos
-/// (`docs/Painter/Arquitetura/E10d3_vermelhos_antigos.md` §3).
+/// (`docs/Painter/Arquitetura/E10d3_vermelhos_antigos.md` §3). Regravado 12/11 (era `0xed70_5054_b74a_3349` ·
+/// `0x99a8_bc53_e3aa_d95f`): o papel deixou de se repetir a 256 px (B33.1 `93013c9134`, lei aprovada, muda todo
+/// pincel com papel); bissecção: o pai dá os de antes, `93013c9134` estes.
 #[test]
 fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
     let fnv = |b: &[u8]| {
@@ -611,7 +613,7 @@ fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
     eprintln!("[smooth] razão 1: {:#018x} · razão 2: {:#018x}", h[0], h[1]);
     assert_eq!(
         h,
-        [0xed70_5054_b74a_3349u64, 0x99a8_bc53_e3aa_d95f],
+        [0x4ae4_6ae9_ebba_cd04u64, 0x3582_59a5_bc64_8b48],
         "o zero mudou a tela (razão 1, razão 2)"
     );
 }

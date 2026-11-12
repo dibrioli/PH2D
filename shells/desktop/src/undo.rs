@@ -35,9 +35,7 @@ const UNDO_CAP: usize = 256;
 /// as geometrias, que vivem fora do ECS. Juntos são o projeto inteiro exceto os
 /// pixels dos sprites (estáveis, não mudam a cada ação — o save os anexa à parte).
 ///
-/// `FlipDoc` é determinístico (Vec/BTreeMap/ids monotônicos), então — ao contrário
-/// do `WorldSnapshot` — não precisa de `canonicalize`: capturar o mesmo estado
-/// duas vezes dá `FlipDoc`s iguais e o diff de undo não registra passo espúrio.
+/// `FlipDoc` é determinístico: sem `canonicalize`, não há passo espúrio no diff.
 #[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ProjectState {
     pub(crate) world: WorldSnapshot,

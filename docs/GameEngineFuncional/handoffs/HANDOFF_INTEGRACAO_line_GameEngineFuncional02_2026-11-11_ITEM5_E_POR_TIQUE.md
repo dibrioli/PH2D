@@ -34,11 +34,11 @@ SUPERFÍCIE DE COLISÃO — line/GameEngineFuncional02 contra main
   ADR: último no disco 0200, próximo livre 0201; esta linha não cria ADR
   Cargo.lock: nenhum '+name' externo novo (arestas internas: ph2d-shape-handles→ph2d-anim/libm/ph2d-inspector-ordering, ph2d-app-macros→ph2d-shape-handles, ph2d-panel-physics)
   MARCADORES DE CONFLITO: nenhum
-  ✗ TETOS DE LOC: 703/700 editor-core/src/screens/hero/paint.rs · 997/600 shells/desktop/src/main.rs · 601/600 shells/desktop/src/undo.rs
+  ✗ TETOS DE LOC: 997/600 shells/desktop/src/main.rs
   ✗ SONDA CEGA em ph2d-render, ph2d-script (bug de caminho do script, «—» também na base; não é desta linha)
 ```
 
-Tetos de LOC (leitura): `main.rs` 1 031 (base) → 997, só encolheu; `paint.rs` 700 → **703** (+3, onda 10) e `undo.rs` 599 → **601** (+2, onda 10) passam do teto do script — o integrador confirma se o gate os pega; a cura é cortar comentário nesses dois, nunca subir o número.
+Tetos de LOC (leitura): `main.rs` 1 031 (base) → 997, só encolheu; `paint.rs` 699/700 e `undo.rs` 599/600 depois do corte de comentários no fecho (a onda 10 os pusera em 703 e 601).
 
 **Contadores como DELTA** (o integrador RECONTA: `python3 scripts/schema-recount.py`):
 

@@ -43,7 +43,7 @@ janela estreita. Binário de smoke compilado no HEAD `f68b8985f7`.
 Tudo OK salvo o passo 3 (a diagonal até ao submenu trocava de menu). Curado em `778bb14824`: o vértice da mira é a
 posição de 4 amostras atrás (o rato real anda aos degraus de 1 px; um degrau (0, 1) caía fora do triângulo), folga de
 duas linhas, e o ponteiro parado na irmã troca após `Duration::Default` (240 ms) pelo `tick_motion`. Teste
-`a_diagonal_para_o_filho_nao_troca_de_submenu` com degraus de 1 px; mutação `RASTO=1` reprova. **Re-smoke do passo 3 pendente.**
+`a_diagonal_para_o_filho_nao_troca_de_submenu` com degraus de 1 px; mutação `RASTO=1` reprova. **Re-smoke do passo 3: OK (dono, 12/11). Onda 2 aprovada.**
 
 ## Aberto / decisões
 - Busca vazia: Tools e ~30 painéis vêm antes dos comandos dos menus (ordem herdada). Candidato: menus primeiro.

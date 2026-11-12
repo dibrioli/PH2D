@@ -653,7 +653,8 @@ fn mede_o_caminho_da_cpu_alem_do_orcamento() {
                     let s = p.wrapping_mul(37).wrapping_add(seed.wrapping_mul(11));
                     [s as u8, (s >> 3) as u8, (s >> 5) as u8, 255]
                 })
-                .collect();
+                .collect::<Vec<u8>>()
+                .into();
             src.insert(
                 id,
                 LayerImage {

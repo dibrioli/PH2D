@@ -118,7 +118,7 @@ fn compoe(f: &Fixtura, c: &Corrida) -> Vec<u8> {
     let img = |px: &[u8]| LayerImage {
         width: f.w,
         height: f.h,
-        rgba8: px.to_vec(),
+        rgba8: px.to_vec().into(),
     };
     src.insert(base, img(f.base));
     src.insert(topo, img(f.topo));

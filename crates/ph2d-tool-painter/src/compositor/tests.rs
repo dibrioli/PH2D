@@ -4,7 +4,7 @@ fn solid(w: u32, h: u32, rgba: [u8; 4]) -> LayerImage {
     LayerImage {
         width: w,
         height: h,
-        rgba8: rgba.repeat((w * h) as usize),
+        rgba8: rgba.repeat((w * h) as usize).into(),
     }
 }
 
@@ -216,8 +216,8 @@ fn clipping_layer_paints_only_where_base_is_opaque() {
     s.get_mut(clip).unwrap().clipping = true;
     let mut src = MapPixelSource::default();
     let mut bimg = LayerImage::transparent(w, h);
-    bimg.rgba8[0..4].copy_from_slice(&[0, 200, 0, 255]); // left opaque green
-    bimg.rgba8[4..8].copy_from_slice(&[0, 0, 0, 0]); // right transparent
+    bimg.rgba8_mut()[0..4].copy_from_slice(&[0, 200, 0, 255]); // left opaque green
+    bimg.rgba8_mut()[4..8].copy_from_slice(&[0, 0, 0, 0]); // right transparent
     src.insert(base, bimg);
     src.insert(clip, solid(w, h, [200, 0, 0, 255])); // opaque red everywhere
     let out = composite(&s, &src, w, h);
@@ -238,8 +238,8 @@ fn consecutive_clipping_layers_share_one_base() {
     s.get_mut(c2).unwrap().clipping = true;
     let mut src = MapPixelSource::default();
     let mut bimg = LayerImage::transparent(w, h);
-    bimg.rgba8[0..4].copy_from_slice(&[10, 10, 10, 255]); // left opaque
-    bimg.rgba8[4..8].copy_from_slice(&[0, 0, 0, 0]); // right transparent
+    bimg.rgba8_mut()[0..4].copy_from_slice(&[10, 10, 10, 255]); // left opaque
+    bimg.rgba8_mut()[4..8].copy_from_slice(&[0, 0, 0, 0]); // right transparent
     src.insert(base, bimg);
     src.insert(c1, solid(w, h, [0, 0, 0, 0])); // c1 transparent (no cover)
     src.insert(c2, solid(w, h, [200, 0, 0, 255])); // c2 opaque red
@@ -268,14 +268,14 @@ fn dirty_rect_matches_full_recompose() {
     let mut b = LayerImage::transparent(w, h);
     let mut t = LayerImage::transparent(w, h);
     for i in 0..(w * h) as usize {
-        b.rgba8[i * 4] = (i * 11 % 256) as u8;
-        b.rgba8[i * 4 + 1] = (i * 7 % 256) as u8;
-        b.rgba8[i * 4 + 2] = (i * 5 % 256) as u8;
-        b.rgba8[i * 4 + 3] = 255;
-        t.rgba8[i * 4] = (i * 13 % 256) as u8;
-        t.rgba8[i * 4 + 1] = (i * 3 % 256) as u8;
-        t.rgba8[i * 4 + 2] = (i * 17 % 256) as u8;
-        t.rgba8[i * 4 + 3] = 200;
+        b.rgba8_mut()[i * 4] = (i * 11 % 256) as u8;
+        b.rgba8_mut()[i * 4 + 1] = (i * 7 % 256) as u8;
+        b.rgba8_mut()[i * 4 + 2] = (i * 5 % 256) as u8;
+        b.rgba8_mut()[i * 4 + 3] = 255;
+        t.rgba8_mut()[i * 4] = (i * 13 % 256) as u8;
+        t.rgba8_mut()[i * 4 + 1] = (i * 3 % 256) as u8;
+        t.rgba8_mut()[i * 4 + 2] = (i * 17 % 256) as u8;
+        t.rgba8_mut()[i * 4 + 3] = 200;
     }
     src.insert(bottom, b);
     src.insert(top, t);
@@ -318,10 +318,10 @@ fn dirty_rect_matches_full_with_a_mask() {
     let mut t = LayerImage::transparent(w, h);
     let mut m = LayerImage::transparent(w, h);
     for i in 0..(w * h) as usize {
-        b.rgba8[i * 4..i * 4 + 4].copy_from_slice(&[(i * 11 % 256) as u8, 40, 40, 255]);
-        t.rgba8[i * 4..i * 4 + 4].copy_from_slice(&[200, (i * 7 % 256) as u8, 0, 255]);
+        b.rgba8_mut()[i * 4..i * 4 + 4].copy_from_slice(&[(i * 11 % 256) as u8, 40, 40, 255]);
+        t.rgba8_mut()[i * 4..i * 4 + 4].copy_from_slice(&[200, (i * 7 % 256) as u8, 0, 255]);
         let g = (i * 37 % 256) as u8; // a varying grayscale mask
-        m.rgba8[i * 4..i * 4 + 4].copy_from_slice(&[g, g, g, 255]);
+        m.rgba8_mut()[i * 4..i * 4 + 4].copy_from_slice(&[g, g, g, 255]);
     }
     src.insert(bottom, b);
     src.insert(top, t);
@@ -368,14 +368,14 @@ fn dirty_rect_matches_full_with_group_and_blend() {
     let mut bimg = LayerImage::transparent(w, h);
     let mut cimg = LayerImage::transparent(w, h);
     for i in 0..(w * h) as usize {
-        bimg.rgba8[i * 4] = (i * 11 % 256) as u8;
-        bimg.rgba8[i * 4 + 1] = (i * 7 % 256) as u8;
-        bimg.rgba8[i * 4 + 2] = (i * 5 % 256) as u8;
-        bimg.rgba8[i * 4 + 3] = 255;
-        cimg.rgba8[i * 4] = (i * 13 % 256) as u8;
-        cimg.rgba8[i * 4 + 1] = (i * 3 % 256) as u8;
-        cimg.rgba8[i * 4 + 2] = (i * 17 % 256) as u8;
-        cimg.rgba8[i * 4 + 3] = 200;
+        bimg.rgba8_mut()[i * 4] = (i * 11 % 256) as u8;
+        bimg.rgba8_mut()[i * 4 + 1] = (i * 7 % 256) as u8;
+        bimg.rgba8_mut()[i * 4 + 2] = (i * 5 % 256) as u8;
+        bimg.rgba8_mut()[i * 4 + 3] = 255;
+        cimg.rgba8_mut()[i * 4] = (i * 13 % 256) as u8;
+        cimg.rgba8_mut()[i * 4 + 1] = (i * 3 % 256) as u8;
+        cimg.rgba8_mut()[i * 4 + 2] = (i * 17 % 256) as u8;
+        cimg.rgba8_mut()[i * 4 + 3] = 200;
     }
     src.insert(base, bimg);
     src.insert(child, cimg);
@@ -457,10 +457,10 @@ fn varied(w: u32, h: u32, seed: u32) -> LayerImage {
     let mut img = LayerImage::transparent(w, h);
     for i in 0..(w * h) as usize {
         let i = i as u32;
-        img.rgba8[(i * 4) as usize] = ((i * 11 + seed * 3) % 256) as u8;
-        img.rgba8[(i * 4 + 1) as usize] = ((i * 7 + seed * 5) % 256) as u8;
-        img.rgba8[(i * 4 + 2) as usize] = ((i * 5 + seed * 13) % 256) as u8;
-        img.rgba8[(i * 4 + 3) as usize] = 255;
+        img.rgba8_mut()[(i * 4) as usize] = ((i * 11 + seed * 3) % 256) as u8;
+        img.rgba8_mut()[(i * 4 + 1) as usize] = ((i * 7 + seed * 5) % 256) as u8;
+        img.rgba8_mut()[(i * 4 + 2) as usize] = ((i * 5 + seed * 13) % 256) as u8;
+        img.rgba8_mut()[(i * 4 + 3) as usize] = 255;
     }
     img
 }

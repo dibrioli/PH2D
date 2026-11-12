@@ -97,7 +97,7 @@ fn planos(t: &PainterTool) -> (Option<RtLayerId>, Vec<(RtLayerId, Vec<u8>)>) {
             } else {
                 t.images
                     .get(&id)
-                    .map(|i| i.rgba8.clone())
+                    .map(|i| i.rgba8.as_ref().clone())
                     .unwrap_or_default()
             };
             (id, p)

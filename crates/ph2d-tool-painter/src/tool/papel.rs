@@ -315,7 +315,7 @@ impl PainterTool {
         } else if let Some(img) = self.images.get(&fundo) {
             let mut img = img.as_ref().clone();
             let (iw, ih) = (img.width as usize, img.height as usize);
-            separa_o_branco(&mut img.rgba8, iw, ih);
+            separa_o_branco(img.rgba8_mut(), iw, ih);
             self.images.insert(fundo, Arc::new(img));
         }
         self.bump_layer_pixels(Some(fundo));

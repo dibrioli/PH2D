@@ -23,18 +23,18 @@ fn pilha(meio: Option<AdjustmentKind>) -> (LayerStack, MapPixelSource, [LayerId;
         LayerImage {
             width: w,
             height: h,
-            rgba8: AZUL.repeat(2),
+            rgba8: AZUL.repeat(2).into(),
         },
     );
     let mut b = LayerImage::transparent(w, h);
-    b.rgba8[0..4].copy_from_slice(&[0, 200, 0, 255]);
+    b.rgba8_mut()[0..4].copy_from_slice(&[0, 200, 0, 255]);
     src.insert(base, b);
     src.insert(
         recorte,
         LayerImage {
             width: w,
             height: h,
-            rgba8: VERMELHO.repeat(2),
+            rgba8: VERMELHO.repeat(2).into(),
         },
     );
     (s, src, [fundo, base, recorte, adj])

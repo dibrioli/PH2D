@@ -174,7 +174,7 @@ fn reescreve(
                 Arc::new(LayerImage {
                     width: w,
                     height: h,
-                    rgba8: novos,
+                    rgba8: Arc::new(novos),
                 }),
             );
         }

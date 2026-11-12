@@ -76,7 +76,7 @@ fn desfoca(w: u32, h: u32, entrada: &[u8], raio: f32) -> Vec<u8> {
         LayerImage {
             width: w,
             height: h,
-            rgba8: entrada.to_vec(),
+            rgba8: entrada.to_vec().into(),
         },
     );
     composite(&s, &src, w, h)

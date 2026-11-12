@@ -79,7 +79,7 @@ ph2d-color = { path = "../ph2d-color" }
 # A porta tipada das imagens da ponta (`&[SrgbRgba]`) volta a bytes sem cópia (`cast_slice`), como nas tools irmãs.
 bytemuck = { version = "1", features = ["derive"] }
 # serde for PainterParams + the layer model serialization.
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "rc"] }
 # O preset do Wet Painter (`tool/paint/wetpaint_preset.rs`): o formato `*.ph2d-brush.png` e o JSON
 # dos campos do pincel (`serde_json` já está no grafo).
 ph2d-brush-presets = { path = "../ph2d-brush-presets" }

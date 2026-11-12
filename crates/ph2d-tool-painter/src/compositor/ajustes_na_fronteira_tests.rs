@@ -25,7 +25,7 @@ fn variada(seed: u32, opaca: bool) -> LayerImage {
     LayerImage {
         width: W,
         height: H,
-        rgba8: v,
+        rgba8: v.into(),
     }
 }
 
@@ -93,7 +93,7 @@ fn um_ajuste_definido_em_luz_ve_a_luz() {
         LayerImage {
             width: 1,
             height: 1,
-            rgba8: vec![128, 128, 128, 255],
+            rgba8: vec![128, 128, 128, 255].into(),
         },
     );
     let out = composite(&s, &src, 1, 1);

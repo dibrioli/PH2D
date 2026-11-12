@@ -372,7 +372,7 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
         Arc::new(LayerImage {
             width: 8,
             height: 8,
-            rgba8: rgba(seed).as_ref().clone(),
+            rgba8: rgba(seed).as_ref().clone().into(),
         }),
     )]
     .into_iter()

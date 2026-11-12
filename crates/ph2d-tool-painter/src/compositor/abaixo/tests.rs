@@ -87,7 +87,7 @@ fn composite_below_antigo(
 fn tinta(w: u32, h: u32, semente: u32) -> LayerImage {
     let mut img = LayerImage::transparent(w, h);
     let mut x = semente.wrapping_mul(2_654_435_761).wrapping_add(1);
-    for p in img.rgba8.as_chunks_mut::<4>().0 {
+    for p in img.rgba8_mut().as_chunks_mut::<4>().0 {
         x ^= x << 13;
         x ^= x >> 17;
         x ^= x << 5;
@@ -218,7 +218,7 @@ fn mede_o_composite_below_4k() {
         LayerImage {
             width: w,
             height: h,
-            rgba8: vec![255; (w * h * 4) as usize],
+            rgba8: vec![255; (w * h * 4) as usize].into(),
         },
     );
     for k in 1..3u32 {
@@ -264,7 +264,7 @@ fn mede_o_salto_alfa_zero_4k() {
             LayerImage {
                 width: w,
                 height: h,
-                rgba8: vec![255; (w * h * 4) as usize],
+                rgba8: vec![255; (w * h * 4) as usize].into(),
             },
         );
         for k in 1..3u32 {
@@ -273,7 +273,13 @@ fn mede_o_salto_alfa_zero_4k() {
             if cena == "vazias" {
                 img = LayerImage::transparent(w, h);
             } else if cena == "tracos" {
-                for (i, p) in img.rgba8.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+                for (i, p) in img
+                    .rgba8_mut()
+                    .as_chunks_mut::<4>()
+                    .0
+                    .iter_mut()
+                    .enumerate()
+                {
                     let (x, y) = (i as u32 % w, i as u32 / w);
                     p[3] = if (x / 48 + y / 48 + k) % 10 == 0 {
                         255

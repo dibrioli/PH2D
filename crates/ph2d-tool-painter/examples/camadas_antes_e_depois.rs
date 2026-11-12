@@ -101,7 +101,7 @@ fn main() {
             LayerImage {
                 width: W,
                 height: H,
-                rgba8: px,
+                rgba8: px.into(),
             },
         );
     };

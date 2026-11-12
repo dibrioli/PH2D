@@ -123,10 +123,10 @@ fn sonda_fases_da_troca_de_camada_a_4k() {
         // `carrega_a_tela_da_activa` aberta em duas: a posse do plano e a troca da tela (o diário).
         let t0 = std::time::Instant::now();
         let img = t.images.remove(&alvo).expect("a outra camada tem plano");
-        let buf = crate::tool::internal::own_image(img).rgba8;
+        let buf = crate::tool::internal::own_image(img);
         f[2].push(ms(t0));
         let t0 = std::time::Instant::now();
-        t.instala_a_tela_do_restauro(Arc::new(buf)); // a porta da troca, sem o diário (B18.3)
+        t.instala_a_tela_do_restauro(buf); // a porta da troca, sem o diário (B18.3)
         t.layers.set_active(alvo);
         f[6].push(ms(t0));
         let t0 = std::time::Instant::now();
@@ -162,16 +162,16 @@ fn sonda_copia_serial_contra_blocos_a_4k() {
         let img = Arc::new(crate::compositor::LayerImage {
             width: w,
             height: h,
-            rgba8: vec![77u8; (w * h * 4) as usize],
+            rgba8: vec![77u8; (w * h * 4) as usize].into(),
         });
         let (mut serie, mut blocos) = (vec![], vec![]);
         for _ in 0..15 {
             let t0 = std::time::Instant::now();
-            let c = img.as_ref().clone();
+            let c = img.rgba8.as_ref().clone();
             serie.push(ms(t0));
             drop(c);
             let t0 = std::time::Instant::now();
-            let c = crate::tool::internal::copia_a_imagem(&img);
+            let c = crate::plane_copy::par_clone(&img.rgba8);
             blocos.push(ms(t0));
             drop(c);
         }

@@ -21,6 +21,7 @@
 use crate::layers::{LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH};
 use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// One encoded channel `[0, 1]` → byte (`round`), the exact inverse of [`decode_byte`] on every byte
 /// (gate `the_byte_round_trip_is_the_identity`).
@@ -37,8 +38,10 @@ pub(crate) fn encode_byte(v: f32) -> u8 {
 pub struct LayerImage {
     pub width: u32,
     pub height: u32,
-    /// `width * height * 4` bytes, row-major RGBA8.
-    pub rgba8: Vec<u8>,
+    /// `width * height * 4` bytes, row-major RGBA8. Partilhado (B18.1): clonar a imagem — duplicar a camada,
+    /// o instantâneo do desfazer, a coleta para o disco — é um refcount; quem escreve faz `Arc::make_mut`.
+    /// No disco é o mesmo `Vec<u8>` de sempre (serde `rc`).
+    pub rgba8: Arc<Vec<u8>>,
 }
 
 impl LayerImage {
@@ -48,8 +51,13 @@ impl LayerImage {
         Self {
             width,
             height,
-            rgba8: vec![0u8; (width as usize) * (height as usize) * 4],
+            rgba8: Arc::new(vec![0u8; (width as usize) * (height as usize) * 4]),
         }
+    }
+
+    /// The pixels to write: copies them first only when someone else shares the plane.
+    pub fn rgba8_mut(&mut self) -> &mut Vec<u8> {
+        Arc::make_mut(&mut self.rgba8)
     }
 }
 

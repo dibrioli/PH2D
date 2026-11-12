@@ -50,7 +50,7 @@ fn pixels_de(t: &PainterTool, id: RtLayerId) -> Vec<u8> {
     } else {
         t.images
             .get(&id)
-            .map_or_else(|| vec![0u8; N * 4], |i| i.rgba8.clone())
+            .map_or_else(|| vec![0u8; N * 4], |i| i.rgba8.as_ref().clone())
     }
 }
 
@@ -291,7 +291,7 @@ fn a_mascara_que_falha_nao_duplica_a_activa() {
         Arc::new(crate::compositor::LayerImage {
             width: LADO,
             height: LADO,
-            rgba8: Vec::new(),
+            rgba8: Vec::new().into(),
         }),
     );
     assert!(!t.apply_mask(m), "a máscara curta é recusada");

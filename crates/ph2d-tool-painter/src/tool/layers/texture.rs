@@ -76,7 +76,7 @@ impl PainterTool {
                 Arc::new(LayerImage {
                     width: w,
                     height: h,
-                    rgba8: buf,
+                    rgba8: Arc::new(buf),
                 }),
             );
         }

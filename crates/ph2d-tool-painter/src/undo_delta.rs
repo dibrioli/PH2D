@@ -532,8 +532,9 @@ impl StoredImages {
                     if c.rgba8.len() != win.plane_len {
                         return None;
                     }
-                    let mut rgba8 = c.rgba8.clone();
-                    win.blit(if want_before { before } else { after }, &mut rgba8);
+                    let mut rgba8 = Arc::clone(&c.rgba8);
+                    let px: &mut Vec<u8> = Arc::make_mut(&mut rgba8);
+                    win.blit(if want_before { before } else { after }, px);
                     out.insert(
                         *k,
                         Arc::new(LayerImage {

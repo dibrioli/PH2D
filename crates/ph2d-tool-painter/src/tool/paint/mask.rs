@@ -163,7 +163,7 @@ impl PainterTool {
                     Arc::new(crate::compositor::LayerImage {
                         width: w,
                         height: h,
-                        rgba8: scratch,
+                        rgba8: Arc::new(scratch),
                     }),
                 );
                 Some(mask_id)
@@ -180,7 +180,7 @@ impl PainterTool {
                         let m = crate::compositor::mask_value(&scratch, i);
                         for c in 0..3 {
                             let base = f32::from(img.rgba8[i * 4 + c]);
-                            img.rgba8[i * 4 + c] = (base * m).round().clamp(0.0, 255.0) as u8;
+                            img.rgba8_mut()[i * 4 + c] = (base * m).round().clamp(0.0, 255.0) as u8;
                         }
                     }
                 }

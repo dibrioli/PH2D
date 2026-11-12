@@ -132,7 +132,7 @@ impl PainterTool {
             images: self
                 .images
                 .iter()
-                .map(|(k, v)| (*k, crate::tool::internal::copia_a_imagem(v)))
+                .map(|(k, v)| (*k, LayerImage::clone(v)))
                 .collect(),
             // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
             // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.

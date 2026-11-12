@@ -60,7 +60,7 @@ fn pilha(w: u32, h: u32, bg: &[u8]) -> (LayerStack, MapPixelSource) {
         LayerImage {
             width: w,
             height: h,
-            rgba8: bg.to_vec(),
+            rgba8: bg.to_vec().into(),
         },
     );
     let a = s.add_raster("aneis", w, h).unwrap();

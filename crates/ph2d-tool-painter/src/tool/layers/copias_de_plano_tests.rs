@@ -1,6 +1,5 @@
-//! B18.1/B18.2: trocar, duplicar e colher o documento copiam cada plano inteiro em BLOCOS paralelos
-//! ([`crate::plane_copy::par_clone`]) — os mesmos bytes que a cópia serial, e a duplicata continua
-//! independente da origem (cópia na escrita).
+//! B18.1/B18.2: trocar, duplicar e colher o documento NÃO copiam plano de camada — o `rgba8` é um
+//! `Arc` partilhado (o mesmo endereço) — e a duplicata continua independente da origem (cópia na escrita).
 
 use super::super::*;
 
@@ -45,26 +44,23 @@ fn pixeis(t: &PainterTool, id: RtLayerId) -> Vec<u8> {
     if t.layers.active() == Some(id) {
         t.canvas_rgba.as_ref().clone()
     } else {
-        t.images[&id].rgba8.clone()
+        t.images[&id].rgba8.as_ref().clone()
     }
 }
 
-/// Trocar de camada leva cada plano ao bit, e a troca copia pela rota em blocos (a do `flush` e a da
-/// posse do plano que o undo partilha): o contador sobe — uma cópia serial de volta reprova aqui.
+/// Trocar de camada não copia plano nenhum: a camada que sai guarda o endereço da tela, e a tela nova é
+/// o endereço do plano da que entra. Cada plano continua ao bit.
 #[test]
-fn trocar_de_camada_copia_em_blocos_e_guarda_os_pixeis_ao_bit() {
+fn trocar_de_camada_nao_copia_plano_e_guarda_os_pixeis_ao_bit() {
     let (mut t, a, b) = documento();
+    let tela_b = Arc::as_ptr(&t.canvas_rgba);
+    let plano_a = Arc::as_ptr(&t.images[&a].rgba8);
     let _ = copiaram_em_blocos();
     t.select_layer(a);
     let sitios = copiaram_em_blocos();
-    assert!(
-        copiou(&sitios, "layers/mutate.rs"),
-        "o flush voltou à cópia serial: {sitios:?}"
-    );
-    assert!(
-        copiou(&sitios, "tool/internal.rs"),
-        "a posse voltou à cópia serial: {sitios:?}"
-    );
+    assert!(sitios.is_empty(), "a troca copiou um plano: {sitios:?}");
+    assert_eq!(Arc::as_ptr(&t.images[&b].rgba8), tela_b, "o flush copiou");
+    assert_eq!(Arc::as_ptr(&t.canvas_rgba), plano_a, "a posse copiou");
     t.select_layer(b);
     t.select_layer(a);
     assert_eq!(pixeis(&t, a), ruido(7));
@@ -78,9 +74,11 @@ fn a_camada_duplicada_e_independente_da_origem() {
     let _ = copiaram_em_blocos();
     let nova = t.duplicate_layer(a).expect("duplicata");
     let sitios = copiaram_em_blocos();
-    assert!(
-        copiou(&sitios, "layers/estrutura.rs"),
-        "a duplicata voltou à cópia serial: {sitios:?}"
+    assert!(sitios.is_empty(), "duplicar copiou um plano: {sitios:?}");
+    assert_eq!(
+        Arc::as_ptr(&t.canvas_rgba),
+        Arc::as_ptr(&t.images[&a].rgba8),
+        "a duplicata não partilha o plano da origem"
     );
     assert_eq!(t.layers.active(), Some(nova));
     assert_eq!(pixeis(&t, nova), ruido(7));
@@ -115,12 +113,19 @@ fn o_documento_colhido_e_o_da_copia_serial_ao_byte() {
         .filter(|f| f.ends_with("tool/persist.rs"))
         .count();
     // tela + relevo + material + vidro; a cobertura (`u8`, 2 MB) fica abaixo do limiar e copia-se em
-    // série pela mesma porta; as imagens copiam-se em `internal.rs`.
+    // série pela mesma porta; as imagens das camadas partilham o plano (B18.1), nenhuma cópia.
     assert_eq!(
         em_persist, 4,
         "a colheita voltou à cópia serial: {sitios:?}"
     );
-    assert!(copiou(&sitios, "tool/internal.rs"));
+    assert!(!copiou(&sitios, "tool/internal.rs"));
+    for (id, img) in &novo.images {
+        assert_eq!(
+            Arc::as_ptr(&img.rgba8),
+            Arc::as_ptr(&t.images[id].rgba8),
+            "a colheita copiou"
+        );
+    }
     // ORÁCULO — o corpo de antes do B18.2: `as_ref().clone()` de cada plano.
     let serial = |t: &PainterTool| crate::tool::persist::PaintedDocument {
         id: 0,
@@ -162,4 +167,38 @@ fn o_documento_colhido_e_o_da_copia_serial_ao_byte() {
         postcard::to_allocvec(&novo).expect("postcard"),
         postcard::to_allocvec(&velho).expect("postcard"),
     );
+}
+
+/// O formato gravado de uma imagem de camada é o do `Vec<u8>` de antes do B18.1, byte a byte
+/// (postcard e JSON): o `Arc` é só partilha em memória.
+#[test]
+fn a_imagem_partilhada_grava_os_mesmos_bytes_que_o_vec() {
+    #[derive(serde::Serialize)]
+    struct Antiga {
+        width: u32,
+        height: u32,
+        rgba8: Vec<u8>,
+    }
+    let px = ruido(5)[..4 * 7 * 3].to_vec();
+    let nova = crate::compositor::LayerImage {
+        width: 7,
+        height: 3,
+        rgba8: px.clone().into(),
+    };
+    let antiga = Antiga {
+        width: 7,
+        height: 3,
+        rgba8: px,
+    };
+    assert_eq!(
+        postcard::to_allocvec(&nova).unwrap(),
+        postcard::to_allocvec(&antiga).unwrap()
+    );
+    assert_eq!(
+        serde_json::to_string(&nova).unwrap(),
+        serde_json::to_string(&antiga).unwrap()
+    );
+    let volta: crate::compositor::LayerImage =
+        postcard::from_bytes(&postcard::to_allocvec(&antiga).unwrap()).unwrap();
+    assert!(volta == nova);
 }

@@ -199,7 +199,8 @@ impl PainterTool {
                 Arc::new(LayerImage {
                     width: w,
                     height: h,
-                    rgba8: crate::plane_copy::par_clone(&self.canvas_rgba),
+                    // B18.1: a camada que sai partilha o plano; quem escrever nele depois faz o fork.
+                    rgba8: Arc::clone(&self.canvas_rgba),
                 }),
             );
         }

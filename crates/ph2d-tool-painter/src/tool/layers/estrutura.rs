@@ -28,7 +28,7 @@ impl PainterTool {
     /// Faz de `id` a activa com a tela DELA (transparente se não tem): tira-a de `images`.
     pub(crate) fn carrega_a_tela_da_activa(&mut self, id: RtLayerId) {
         let buf = self.tira_a_tela_de(id);
-        self.replace_canvas(Arc::new(buf));
+        self.replace_canvas(buf);
         self.layers.set_active(id);
     }
 
@@ -38,16 +38,16 @@ impl PainterTool {
     /// `before` ELIDIDO o faz, e o desta porta nunca o é.
     pub(crate) fn carrega_a_tela_da_troca(&mut self, id: RtLayerId) {
         let buf = self.tira_a_tela_de(id);
-        self.instala_a_tela_do_restauro(Arc::new(buf));
+        self.instala_a_tela_do_restauro(buf);
         self.layers.set_active(id);
     }
 
-    fn tira_a_tela_de(&mut self, id: RtLayerId) -> Vec<u8> {
+    fn tira_a_tela_de(&mut self, id: RtLayerId) -> Arc<Vec<u8>> {
         let (w, h) = self.source_size;
         self.images
             .remove(&id)
-            .map(|img| own_image(img).rgba8)
-            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4])
+            .map(own_image)
+            .unwrap_or_else(|| Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]))
     }
 
     /// Os mapas por camada perdem as chaves das camadas que já não existem.
@@ -107,8 +107,8 @@ impl PainterTool {
         let src_pixels = self
             .images
             .get(&id)
-            .map(|img| crate::plane_copy::par_clone(&img.rgba8))
-            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+            .map(|img| Arc::clone(&img.rgba8))
+            .unwrap_or_else(|| Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]));
         let Some(new_id) = self.layers.duplicate(id) else {
             // Cap: a activa volta à tela (o invariante «a activa nunca está em images»).
             if let Some(a) = self.layers.active() {
@@ -132,7 +132,9 @@ impl PainterTool {
         if self.tintas_molhadas.contains(&id) {
             self.tintas_molhadas.insert(new_id);
         }
-        self.replace_canvas(Arc::new(src_pixels));
+        // Sem a captura do diário (2,5 ms a 4K): o `undo_before` forte segura a tela e o commit logo a
+        // seguir zera o diário — o mesmo contrato da troca (`carrega_a_tela_da_troca`).
+        self.instala_a_tela_do_restauro(src_pixels);
         self.commit_structural_edit(undo_before);
         self.wet_acorda_da_camada();
         self.reset_selection_to(new_id);
@@ -181,11 +183,12 @@ impl PainterTool {
         let Some(parent_img) = self.images.get_mut(&parent).map(Arc::make_mut) else {
             return false;
         };
+        let parent_px = Arc::make_mut(&mut parent_img.rgba8);
         for idx in 0..n {
             let v = crate::compositor::mask_value(&mask_px, idx);
             let cov = if inverted { 1.0 - v } else { v };
-            let a = parent_img.rgba8[idx * 4 + 3] as f32;
-            parent_img.rgba8[idx * 4 + 3] = (a * cov).round().clamp(0.0, 255.0) as u8;
+            let a = parent_px[idx * 4 + 3] as f32;
+            parent_px[idx * 4 + 3] = (a * cov).round().clamp(0.0, 255.0) as u8;
         }
         let was_active = self.layers.active();
         self.layers.remove(mask_id);

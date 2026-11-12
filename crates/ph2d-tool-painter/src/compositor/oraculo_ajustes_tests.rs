@@ -106,7 +106,7 @@ fn compoe(w: u32, h: u32, base: &[u8], topo: &[u8], ajuste: Option<&str>) -> Vec
     let img = |px: &[u8]| LayerImage {
         width: w,
         height: h,
-        rgba8: px.to_vec(),
+        rgba8: px.to_vec().into(),
     };
     src.insert(b, img(base));
     src.insert(t, img(topo));

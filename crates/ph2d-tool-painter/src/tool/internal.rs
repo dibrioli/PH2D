@@ -39,18 +39,8 @@ impl LayerPixelSource for ToolPixelSource<'_> {
     }
 }
 
-/// Take a layer's pixels out of the shared store: free when nobody else holds them (the common case), a
-/// copy when an undo snapshot does. The copy-on-write the `Arc` buys — see [`ToolPixelSource::images`].
-/// A cópia é em blocos paralelos (B18.1: a troca de camada a 4K pagava 8,7 ms na cópia serial).
-pub(crate) fn own_image(img: Arc<LayerImage>) -> LayerImage {
-    Arc::try_unwrap(img).unwrap_or_else(|shared| copia_a_imagem(&shared))
-}
-
-/// Uma [`LayerImage`] copiada pelo [`crate::plane_copy::par_clone`] — os mesmos bytes, em blocos paralelos.
-pub(crate) fn copia_a_imagem(img: &LayerImage) -> LayerImage {
-    LayerImage {
-        width: img.width,
-        height: img.height,
-        rgba8: crate::plane_copy::par_clone(&img.rgba8),
-    }
+/// Take a layer's pixels out of the shared store WITHOUT copying (B18.1): the plane stays shared with an
+/// undo snapshot that holds it, and the first write forks it (`fork_par_raw`).
+pub(crate) fn own_image(img: Arc<LayerImage>) -> Arc<Vec<u8>> {
+    Arc::try_unwrap(img).map_or_else(|shared| Arc::clone(&shared.rgba8), |i| i.rgba8)
 }

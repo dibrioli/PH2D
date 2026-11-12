@@ -13,7 +13,7 @@ const H: u32 = 47;
 
 fn imagem(semente: u32, alfa: bool) -> LayerImage {
     let mut img = LayerImage::transparent(W, H);
-    for (i, p) in img.rgba8.chunks_mut(4).enumerate() {
+    for (i, p) in img.rgba8_mut().chunks_mut(4).enumerate() {
         let (x, y) = (i as u32 % W, i as u32 / W);
         let v = (x * 37 + y * 101 + semente * 53) ^ (x * y + semente);
         p[0] = (v % 251) as u8;

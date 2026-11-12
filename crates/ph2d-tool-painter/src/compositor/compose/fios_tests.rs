@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 fn tinta(w: u32, h: u32, semente: u32) -> LayerImage {
     let mut img = LayerImage::transparent(w, h);
     let mut x = semente.wrapping_mul(2_654_435_761).wrapping_add(1);
-    for p in img.rgba8.as_chunks_mut::<4>().0 {
+    for p in img.rgba8_mut().as_chunks_mut::<4>().0 {
         x ^= x << 13;
         x ^= x >> 17;
         x ^= x << 5;

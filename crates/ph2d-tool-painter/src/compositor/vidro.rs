@@ -180,7 +180,7 @@ mod tests {
             LayerImage {
                 width: w,
                 height: h,
-                rgba8: rgba,
+                rgba8: rgba.into(),
             },
         );
         let vidros: Vidros = [(base, Arc::new(plano))].into_iter().collect();

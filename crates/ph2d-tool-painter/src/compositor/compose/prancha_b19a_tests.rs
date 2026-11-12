@@ -42,7 +42,13 @@ pub(super) fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
 
 pub(super) fn camada(w: u32, h: u32, f: impl Fn(u32, u32) -> Option<[u8; 4]>) -> LayerImage {
     let mut img = LayerImage::transparent(w, h);
-    for (i, p) in img.rgba8.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+    for (i, p) in img
+        .rgba8_mut()
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .enumerate()
+    {
         if let Some(c) = f(i as u32 % w, i as u32 / w) {
             p.copy_from_slice(&c);
         }
@@ -73,7 +79,7 @@ fn recorte(w: u32, h: u32, bg: &[u8], caso: u8) -> (Vec<u8>, Vec<u8>) {
             LayerImage {
                 width: w,
                 height: h,
-                rgba8: bg.to_vec(),
+                rgba8: bg.to_vec().into(),
             },
         );
         let base = com_base.then(|| {
@@ -171,7 +177,7 @@ fn sombras(w: u32, h: u32, bg: &[u8]) -> (Vec<u8>, Vec<u8>) {
         LayerImage {
             width: w,
             height: h,
-            rgba8: bg.to_vec(),
+            rgba8: bg.to_vec().into(),
         },
     );
     let rd = s.add_raster("ruido", w, h).unwrap();

@@ -91,7 +91,7 @@ impl crate::App {
             sim.world(),
             selected_now,
         );
-        self.timeline.flags.auto_key &= !ph2d_panel_timeline::take_done(|| active_playhead.pause());
+        self.timeline.flags.auto_key &= !ph2d_panel_timeline::take_done(active_playhead);
         let gesto = active_playhead.is_playing() || !self.timeline_intents.is_empty();
         let sessao = ph2d_panel_timeline::sessao(vista_keys, gesto); // «Done» (doc 17 item 9)
         self.timeline.animating = sessao;

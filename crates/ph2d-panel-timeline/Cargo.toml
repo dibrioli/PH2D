@@ -40,6 +40,10 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 # Quem ouve um sinal (doc 17 item 8): os tipos da lista «Heard by», folha de dados sem deps.
 ph2d-signal-ends = { path = "../ph2d-signal-ends" }
 
+# `Playhead` — o Done pára a agulha e leva-a ao início (`animando::take_done`); os testes de costura
+# também a usam para `apply_intent`/`rebuild`.
+ph2d-core = { path = "../ph2d-core" }
+
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate.
 ph2d-label-census = { path = "../ph2d-label-census" }
@@ -53,9 +57,6 @@ bumpalo = { version = "3", features = ["collections"] }
 # (`pub(crate)`, logo so alcancavel de dentro desta crate). Dev-dep de caminho interno: o `src/`
 # nao a toca, entao continua machete-safe.
 ph2d-text = { path = "../ph2d-text" }
-# `Playhead` — the seam tests drive `apply_intent`/`rebuild` to build a real
-# document + snapshot (the same objects the shell publishes).
-ph2d-core = { path = "../ph2d-core" }
 
 [lints]
 workspace = true

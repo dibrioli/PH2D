@@ -33,37 +33,43 @@ fn done_parks_and_resume_animates_again() {
     assert!(!animating() && !parked(), "o painel escondido larga tudo");
 }
 
-/// O Done avisa a shell UMA vez (ela desliga o Auto Key); sem clique, nada.
-/// *Mutação: `done` sem o `FEITO` ⇒ o Auto Key fica ligado depois do Done.*
+/// O Done avisa a shell UMA vez (ela desliga o Auto Key), pára a agulha e leva-a ao início (dono
+/// 12/11); sem clique, a agulha fica onde está.
+/// *Mutação: `done` sem o `FEITO` ⇒ o Auto Key fica ligado; `take_done` sem o `rewind` ⇒ a agulha fica.*
 #[test]
 fn done_tells_the_shell_once_to_turn_auto_key_off() {
-    let _ = take_done(|| ());
+    let mut agulha = ph2d_core::Playhead::default();
+    let _ = take_done(&mut agulha);
+    agulha.seek(1.5);
+    agulha.play();
+    assert!(!take_done(&mut agulha), "sem clique não há aviso");
     assert!(
-        !take_done(|| panic!("sem clique não se pausa")),
-        "sem clique não há aviso"
+        agulha.is_playing() && agulha.time() == 1.5,
+        "sem clique a agulha segue"
     );
     done();
-    let mut pausou = false;
-    assert!(take_done(|| pausou = true), "o Done avisa a shell");
-    assert!(pausou, "e pausa a agulha");
-    assert!(!take_done(|| ()), "e só uma vez");
+    assert!(take_done(&mut agulha), "o Done avisa a shell");
+    assert!(!agulha.is_playing(), "e pausa a agulha");
+    assert_eq!(agulha.time(), 0.0, "e leva-a ao início");
+    assert!(!take_done(&mut agulha), "e só uma vez");
     larga();
 }
 
 /// O Done com a agulha a TOCAR (dono 11/11): pausada antes da `sessao`, ela não é gesto e o Done fica.
-/// *Mutação: `take_done` sem chamar `para` ⇒ a agulha continua, o gesto desfaz o Done.*
+/// *Mutação: `take_done` sem o `pause` ⇒ a agulha continua, o gesto desfaz o Done.*
 #[test]
 fn done_while_playing_stays_done() {
     larga();
     let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     publica(true);
-    let mut tocando = true;
-    assert_eq!(sessao(true, tocando).0, cartoes);
+    let mut agulha = ph2d_core::Playhead::default();
+    agulha.play();
+    assert_eq!(sessao(true, agulha.is_playing()).0, cartoes);
     done();
     publica(true);
-    let _ = take_done(|| tocando = false);
+    let _ = take_done(&mut agulha);
     assert!(
-        !sessao(true, tocando).0,
+        !sessao(true, agulha.is_playing()).0,
         "o Done pára a sessão mesmo a tocar"
     );
     assert_eq!(parked(), cartoes);

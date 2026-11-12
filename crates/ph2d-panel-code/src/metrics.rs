@@ -61,7 +61,7 @@ impl Metrics {
         line_count: usize,
     ) -> (Self, Option<DigitFont>) {
         let font_px = code_font_px();
-        let line_h = ao_pixel(font_px * LineHeight::Normal.ratio()).max(1.0);
+        let (line_h, top_pad, status_h) = vertical();
         let layout = cache.shape_loose(ts, DIGITS, font_px);
         let advance = layout.width() / DIGITS.len() as f32;
         let (height, baseline) = layout.lines().next().map_or((font_px, font_px), |l| {
@@ -86,15 +86,23 @@ impl Metrics {
             fold_w,
             gutter_w,
             text_pad: Spacing::Xs.px(),
-            top_pad: Spacing::Md.px(),
-            status_h: ao_pixel(
-                ph2d_text::displayed_font_px(TypeToken::Sm.px()) * LineHeight::Normal.ratio()
-                    + Spacing::Sm.px(),
-            ),
+            top_pad,
+            status_h,
             caret_w: StrokeToken::Thick.px(),
         };
         (m, digit_font(&layout))
     }
+}
+
+/// As medidas verticais da vista, que não dependem da fonte: a altura da linha, o respiro de cima e
+/// a barra de estado.
+pub(crate) fn vertical() -> (f32, f32, f32) {
+    let line_h = ao_pixel(code_font_px() * LineHeight::Normal.ratio()).max(1.0);
+    let status_h = ao_pixel(
+        ph2d_text::displayed_font_px(TypeToken::Sm.px()) * LineHeight::Normal.ratio()
+            + Spacing::Sm.px(),
+    );
+    (line_h, Spacing::Md.px(), status_h)
 }
 
 fn digit_font(layout: &Layout<Ink>) -> Option<DigitFont> {

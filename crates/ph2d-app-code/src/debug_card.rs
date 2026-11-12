@@ -20,7 +20,7 @@ impl CodeDoc {
             .as_ref()
             .map(|c| self.debug.view.want(c, area));
         let band = self.console_view.want(open, area.h);
-        let code = code_least(self.find.bar_height(), self.view.metrics());
+        let code = code_least(self.find.bar_height());
         let wants = [self.bench_h, debug.unwrap_or_default(), band];
         tab(area, code, crate::cards::margin(), wants)
     }

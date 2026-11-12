@@ -152,7 +152,7 @@ fn o_minimo_do_codigo_mostra_as_suas_linhas_inteiras() {
     );
     let m = *v.metrics();
     for find_h in [0.0, 30.0] {
-        let card = Rect::new(0.0, 0.0, 600.0, code_least(find_h, &m));
+        let card = Rect::new(0.0, 0.0, 600.0, code_least(find_h));
         let well = ph2d_panel_code::cards::code_well(card, find_h);
         pinta(&mut v, &buf, &mut ts, well, &Deco::default());
         let tr = v.text_rect();
@@ -229,7 +229,7 @@ fn na_janela_de_900x560_cabem_o_codigo_a_barra_e_a_faixa_pedida() {
         Rect::new(0.0, 0.0, 600.0, 400.0),
         &Deco::default(),
     );
-    let code = code_least(0.0, v.metrics());
+    let code = code_least(0.0);
     let gap = ph2d_panel_code::cards::margin();
     let bar = ph2d_tokens::row_pitch_px() + ph2d_tokens::Spacing::Sm.px() * 2.0;
     let band = ph2d_tokens::ROW_H_PX * 2.0;

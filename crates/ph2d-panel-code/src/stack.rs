@@ -24,12 +24,13 @@ pub struct Want {
     pub asked: bool,
 }
 
-/// O mínimo do cartão do código em [`CODE_LEAST_ROWS`] linhas INTEIRAS à vista (com as métricas `m`
-/// da vista): o recuo do poço ([`crate::cards::code_well`]), a busca (`find_h`, 0 = fechada), o
-/// respiro de cima, as linhas e a barra de estado.
+/// O mínimo do cartão do código em [`CODE_LEAST_ROWS`] linhas INTEIRAS à vista: o recuo do poço
+/// ([`crate::cards::code_well`]), a busca (`find_h`, 0 = fechada), o respiro de cima, as linhas e a
+/// barra de estado (as medidas verticais da vista, [`crate::metrics`]).
 #[must_use]
-pub fn code_least(find_h: f32, m: &crate::metrics::Metrics) -> f32 {
-    crate::cards::well_pad() + find_h + m.top_pad + m.line_h * CODE_LEAST_ROWS as f32 + m.status_h
+pub fn code_least(find_h: f32) -> f32 {
+    let (line_h, top_pad, status_h) = crate::metrics::vertical();
+    crate::cards::well_pad() + find_h + top_pad + line_h * CODE_LEAST_ROWS as f32 + status_h
 }
 
 /// O que cada cartão presente custa: a sua altura e um `gap`.

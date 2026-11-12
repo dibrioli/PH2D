@@ -165,7 +165,7 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
     let horario: &[(u32, Gesto)] = match nivel {
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
-        topdown::CENA => &HORARIO_24, // → e ↑: a diagonal até à parede de cima, e desliza
+        topdown::CENA => &HORARIO_24, // ↗ e desliza, depois só ←, só ↓ e só ↑
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
         _ => &HORARIO_1,
@@ -208,12 +208,20 @@ pub const HORARIO_5: [(u32, Gesto); 5] = [
     (270, Gesto::Esquerda(false)),
     (1500, Gesto::Para),
 ];
-pub const HORARIO_24: [(u32, Gesto); 5] = [
+/// A cena 24: ↗ até à parede de cima e desliza ao canto; só ← ao longo dela; só ↓ para abrir espaço; só ↑ de
+/// volta à parede (o gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda` mede cada trecho).
+pub const HORARIO_24: [(u32, Gesto); 11] = [
     (120, Gesto::Direita(true)),
     (121, Gesto::Salta(true)),
-    (300, Gesto::Salta(false)),
-    (301, Gesto::Direita(false)),
-    (600, Gesto::Para),
+    (240, Gesto::Salta(false)),
+    (241, Gesto::Direita(false)),
+    (250, Gesto::Esquerda(true)),
+    (310, Gesto::Esquerda(false)),
+    (320, Gesto::Abaixa(true)),
+    (395, Gesto::Abaixa(false)),
+    (405, Gesto::Salta(true)),
+    (480, Gesto::Salta(false)),
+    (560, Gesto::Para),
 ];
 /// Onde o salto do nível 2 sai (afinado pelo gate `o_nivel_2_anda_salta_cai_e_anima`).
 pub const QUADRO_DO_SALTO: u32 = 190;

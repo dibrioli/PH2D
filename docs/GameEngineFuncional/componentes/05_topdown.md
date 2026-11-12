@@ -99,5 +99,7 @@ Versão A, nos cartões da casa. Commits e provas no [handoff](../handoffs/HANDO
 | [![cartão](fotos_05/24_cartao_zoom.png)](fotos_05/24_cartao_zoom.png) | [![more](fotos_05/24_more_aberto_zoom.png)](fotos_05/24_more_aberto_zoom.png) |
 | **Default Controls desligado** | **Play, diagonal** |
 | [![off](fotos_05/24_controles_desligados_zoom.png)](fotos_05/24_controles_desligados_zoom.png) | [![play](fotos_05/24_play_diagonal_zoom.png)](fotos_05/24_play_diagonal_zoom.png) |
+| **Play, só ←** | **Play, só ↑** |
+| [![esquerda](fotos_05/24_play_esquerda_zoom.png)](fotos_05/24_play_esquerda_zoom.png) | [![cima](fotos_05/24_play_cima_zoom.png)](fotos_05/24_play_cima_zoom.png) |
 
-Aberto: foto do herói andando só para cima (o roteiro aperta → e ↑ juntas; o 90° está provado por teste).
+O Play do smoke (`PH2D_GAME_SMOKE_DRIVE=editor`, `HORARIO_24`): ↗ até à parede de cima e desliza ao canto, só ←, só ↓ e só ↑ de volta à parede, livre em cada trecho (gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda`). Fotos inteiras: [↗](fotos_05/24_play_diagonal.png) · [←](fotos_05/24_play_esquerda.png) · [↑](fotos_05/24_play_cima.png) · [↑ junto à parede](fotos_05/24_play_cima_02.png). Os recortes são do app, ampliados 3×.

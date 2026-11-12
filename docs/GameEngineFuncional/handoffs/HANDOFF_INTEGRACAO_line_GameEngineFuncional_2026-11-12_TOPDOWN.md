@@ -56,7 +56,6 @@ Colado da saída (merge-base `4f46a3573c`, 8 commits, 70 arquivos):
 
 ## 7. ABERTO
 
-- Foto real do herói andando só para cima não existe: o roteiro `HORARIO_24` só aperta → e ↑ juntas; o 90° está provado por teste (gate do giro).
 - Tecto da shell: reconte pelo integrador (§4).
 - Herdados da curva do pulo ([handoff](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)): a curva termina nos pés e não segue o terreno; Jump Height 2,00 × ápice 2,04.
 - Seguinte na fila: Projectile Motion ([plano](../23_refundacao_plano.md)).

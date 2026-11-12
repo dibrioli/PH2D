@@ -152,3 +152,102 @@ fn o_heroi_de_cima_anda_com_a_tecla_e_para_sem_ela() {
         assert_eq!(toca(&mut sim, heroi, &[]), idle, "soltar {teclas:?}");
     }
 }
+
+/// Um quadro do horário do Play: as setas seguras, a pose e o ângulo desenhado.
+struct Quadro {
+    quadro: u32,
+    setas: std::collections::BTreeSet<ph2d_app_game::smoke::Seta>,
+    onde: ph2d_core::Vec2,
+    graus: f32,
+}
+
+/// Corre o horário `HORARIO_24` (o do `PH2D_GAME_SMOKE_DRIVE=editor`) pela ponte, um tique por quadro desde o Play.
+fn corre_o_horario(sim: &mut SimWorld, heroi: Entity) -> Vec<Quadro> {
+    use ph2d_app_game::smoke::{Gesto, Seta, gesto_no_quadro};
+    use ph2d_editor_core::game_stage::GameStage;
+    let mut bridge = PhysicsBridge::new();
+    let mut setas = std::collections::BTreeSet::new();
+    let mut fora = Vec::new();
+    for quadro in 61..=600_u32 {
+        match gesto_no_quadro(topdown::CENA, GameStage::Editor, quadro) {
+            Some(Gesto::Para) => break,
+            Some(g) => {
+                if let Some((s, desce)) = g.seta() {
+                    if desce {
+                        setas.insert(s);
+                    } else {
+                        setas.remove(&s);
+                    }
+                }
+            }
+            None => {}
+        }
+        let tem = |s| f32::from(u8::from(setas.contains(&s)));
+        bridge.set_player_input(
+            heroi,
+            PlayerInput {
+                drive: tem(Seta::Direita) - tem(Seta::Esquerda),
+                drive_y: tem(Seta::Cima) - tem(Seta::Baixo),
+                ..PlayerInput::default()
+            },
+        );
+        bridge.dispatch(sim, true, u64::from(quadro));
+        let onde = sim
+            .world()
+            .get::<Transform>(heroi)
+            .expect("pose")
+            .translation;
+        fora.push(Quadro {
+            quadro,
+            setas: setas.clone(),
+            onde,
+            graus: angulo_desenhado(sim, heroi).to_degrees(),
+        });
+    }
+    fora
+}
+
+/// ⭐ **O Play do smoke anda SÓ para cima (e só para a esquerda)**, livre, depois da diagonal: em cada trecho de uma
+/// seta só, passado o giro, a imagem olha para onde anda e cada quadro avança — nenhuma parede o pára antes de se ver o
+/// andar. (Mutação: sem os trechos ← e ↑ do `HORARIO_24` ⇒ nenhum quadro com uma seta só e reprova.)
+#[test]
+fn o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda() {
+    use ph2d_app_game::smoke::Seta;
+    let mut sim = SimWorld::new();
+    let heroi = crate::comp::montar(&mut sim, topdown::CENA);
+    let q = corre_o_horario(&mut sim, heroi);
+    let encostou = q
+        .iter()
+        .filter(|f| f.setas.len() == 2)
+        .map(|f| f.onde.y)
+        .fold(f32::MIN, f32::max);
+    assert!(
+        encostou > 1.0,
+        "a diagonal chega à parede de cima: y = {encostou}"
+    );
+    for (seta, graus, passo) in [
+        (Seta::Cima, 90.0_f32, ph2d_core::Vec2::new(0.0, 1.0)),
+        (Seta::Esquerda, 180.0, ph2d_core::Vec2::new(-1.0, 0.0)),
+    ] {
+        let trecho: Vec<_> = q
+            .iter()
+            .filter(|f| f.setas.len() == 1 && f.setas.contains(&seta))
+            .collect();
+        assert!(trecho.len() >= 45, "{seta:?}: {} quadros", trecho.len());
+        let (a, b) = (trecho[15].quadro, trecho[trecho.len() - 1].quadro);
+        for par in trecho[15..].windows(2) {
+            let (f0, f1) = (par[0], par[1]);
+            let d = (f1.onde - f0.onde).dot(passo);
+            assert!(
+                d > 0.05,
+                "{seta:?} q{}: parado ou ao contrário ({:?} → {:?})",
+                f1.quadro,
+                f0.onde,
+                f1.onde
+            );
+            let erro = ((f1.graus - graus + 540.0).rem_euclid(360.0) - 180.0).abs();
+            assert!(erro < 0.5, "{seta:?} q{}: olha a {}°", f1.quadro, f1.graus);
+        }
+        println!("[horario-24] só {seta:?}: livre e a {graus}° de q{a} a q{b}");
+    }
+}

@@ -2,18 +2,18 @@ gilrs: initialized; no gamepads connected yet
 audio: Default Audio Device @ 48000 Hz, 2 ch, F32
 PH2D desktop shell starting (close window or Ctrl+Q to exit)…
 [ph2d-gpu] surface present mode: Fifo
-[   271ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
-[   294ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
-[   294ms] M7: ScriptHost initialized (placeholder script loaded)
+[   277ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   305ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   305ms] M7: ScriptHost initialized (placeholder script loaded)
 [ph2d] theme = dark
-[   302ms] M11: VelloPass initialized (1024×768 intermediate)
-[   307ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
-[   321ms] PR 8: tool registry built (14 manifests, installed in editor)
-[   351ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
-[   360ms] lifecycle: Foreground
-[   360ms] resize: 1024x768 @ 1.00x scale
+[   315ms] M11: VelloPass initialized (1024×768 intermediate)
+[   323ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   337ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   370ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   379ms] lifecycle: Foreground
+[   379ms] resize: 1024x768 @ 1.00x scale
 [game-smoke] =24 um jogo visto de cima: o herói (Hero) tem o Top-Down Player com Facing = Move e está selecionado. Play (F5): as setas andam em 8 direções e a imagem vira para onde anda; encoste na diagonal numa parede e ele desliza ao longo dela.
 [ph2d-gpu] surface present mode → Immediate
-[   369ms] resize: 1930x1012 @ 1.00x scale
-warn: dropped 0.217s of sim time (max_substeps cap)
+[   390ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.250s of sim time (max_substeps cap)
 [ph2d-gpu] surface present mode → Fifo

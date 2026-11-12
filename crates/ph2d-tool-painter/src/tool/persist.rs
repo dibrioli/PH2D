@@ -52,55 +52,12 @@ pub struct PaintedDocument {
     /// `185 → 186` do `PROJECT_SCHEMA`).
     pub vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
     /// As camadas com tinta do **Wet Paint** (`PainterTool::tintas_molhadas`): sem elas, reabrir o
-    /// quadro mostraria o dente do papel por cima da tinta do Wet, que já o traz desenhado. ⚠️ O
-    /// ÚLTIMO campo (degrau `217 → 218`): bytes de antes leem-se dentro de [`LeituraSemTintas`].
-    #[serde(deserialize_with = "le_as_tintas_molhadas")]
+    /// quadro mostraria o dente do papel por cima da tinta do Wet, que já o traz desenhado (degrau
+    /// `217 → 218`).
     pub tintas_molhadas: std::collections::BTreeSet<RtLayerId>,
     /// O fator de aparência do documento ([`crate::tool::fator_aparencia`], B34): nasce do tamanho e não muda.
-    /// Degrau do `PROJECT_SCHEMA` do B34; os bytes da macro v1 (sem tintas) também não o têm.
-    #[serde(deserialize_with = "le_o_fator")]
+    /// Degrau do `PROJECT_SCHEMA` do B34 (`232 → 233`) e a versão 3 do documento da macro.
     pub fator_aparencia: f32,
-}
-
-thread_local! {
-    /// Quantos [`LeituraSemTintas`] estão abertos nesta thread.
-    static SEM_TINTAS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-}
-
-/// **Âmbito de leitura dos bytes ANTERIORES às `tintas_molhadas`** (`PROJECT_SCHEMA <= 217`, a versão
-/// 1 do documento da macro): enquanto o guarda vive, todo [`PaintedDocument`] desserializado nesta
-/// thread nasce sem a marca e não lê byte nenhum para ela — o campo é o último, e o seguinte é o
-/// documento seguinte. O precedente é o `ph2d_vec_scene::WireLayout`: lê-se o anterior sem tipo congelado.
-#[must_use = "o âmbito fecha quando o guarda cai"]
-pub struct LeituraSemTintas(());
-
-impl LeituraSemTintas {
-    pub fn enter() -> Self {
-        SEM_TINTAS.with(|c| c.set(c.get() + 1));
-        Self(())
-    }
-}
-
-impl Drop for LeituraSemTintas {
-    fn drop(&mut self) {
-        SEM_TINTAS.with(|c| c.set(c.get() - 1));
-    }
-}
-
-fn le_as_tintas_molhadas<'de, D: serde::Deserializer<'de>>(
-    d: D,
-) -> Result<std::collections::BTreeSet<RtLayerId>, D::Error> {
-    if SEM_TINTAS.with(std::cell::Cell::get) > 0 {
-        return Ok(std::collections::BTreeSet::new());
-    }
-    serde::Deserialize::deserialize(d)
-}
-
-fn le_o_fator<'de, D: serde::Deserializer<'de>>(d: D) -> Result<f32, D::Error> {
-    if SEM_TINTAS.with(std::cell::Cell::get) > 0 {
-        return Ok(1.0);
-    }
-    serde::Deserialize::deserialize(d)
 }
 
 /// **O documento pintado como os esquemas ANTERIORES ao papel o guardavam** — o tipo das migrações

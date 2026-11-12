@@ -19,19 +19,15 @@ use std::collections::BTreeMap;
 pub const VERSAO: u64 = 1;
 
 /// A versão do formato posicional do [`PaintedDocument`] dentro do estado inicial. Sobe junto com o
-/// degrau do `PROJECT_SCHEMA` que mudar o documento (o gate acusa).
-pub const VERSAO_DO_DOCUMENTO: u64 = 2;
+/// degrau do `PROJECT_SCHEMA` que mudar o documento (o gate acusa). 3 = o `fator_aparencia` no fim (B34.1).
+/// Sem leitor das anteriores: não existem projetos antigos (CLAUDE.md §0.11).
+pub const VERSAO_DO_DOCUMENTO: u64 = 3;
 
-/// A versão do documento sem as `tintas_molhadas` (o `PROJECT_SCHEMA <= 217`).
-const DOCUMENTO_SEM_TINTAS: u64 = 1;
-
-/// O documento `bytes` gravado na versão `vd` — a actual, ou a anterior sem as tintas do Wet.
+/// O documento `bytes` gravado na versão `vd`: só a actual se lê.
 pub(super) fn le_o_documento(bytes: &[u8], vd: u64) -> Result<PaintedDocument, ErroDoInicial> {
-    let _sem = match vd {
-        VERSAO_DO_DOCUMENTO => None,
-        DOCUMENTO_SEM_TINTAS => Some(crate::LeituraSemTintas::enter()),
-        _ => return Err(ErroDoInicial::DocumentoNoutroFormato(vd)),
-    };
+    if vd != VERSAO_DO_DOCUMENTO {
+        return Err(ErroDoInicial::DocumentoNoutroFormato(vd));
+    }
     postcard::from_bytes(bytes).map_err(|e| ErroDoInicial::Documento(e.to_string()))
 }
 

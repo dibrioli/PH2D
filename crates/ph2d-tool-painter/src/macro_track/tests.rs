@@ -265,7 +265,7 @@ fn o_motor_anda_ate_a_marca_e_recusa_a_inalcancavel() {
 /// ⚠️ **O documento do estado inicial é POSTCARD (posicional)**: um campo novo no `PaintedDocument`
 /// (ou no `LayerStack`) muda os bytes e um estado inicial antigo deixaria de se ler — ou leria errado.
 /// Esta impressão digital prende o formato à [`super::inicial::VERSAO_DO_DOCUMENTO`]: mudou, suba a
-/// versão (e escreva a leitura da anterior) e só então troque o número aqui.
+/// versão e só então troque o número aqui. Sem leitor da anterior (CLAUDE.md §0.11): ela recusa-se.
 #[test]
 fn o_documento_da_macro_tem_a_versao_do_seu_formato() {
     let mut t = PainterTool::default();
@@ -277,41 +277,19 @@ fn o_documento_da_macro_tem_a_versao_do_seu_formato() {
     });
     assert_eq!(
         (super::inicial::VERSAO_DO_DOCUMENTO, fnv),
-        (2, IMPRESSAO_DO_DOCUMENTO_V2),
+        (3, IMPRESSAO_DO_DOCUMENTO_V3),
         "o formato do documento mudou ({fnv:#018x}): suba `VERSAO_DO_DOCUMENTO`"
     );
-}
-
-/// A impressão do `PaintedDocument` da versão 2 (as `tintas_molhadas` no fim, 2026-11-08).
-const IMPRESSAO_DO_DOCUMENTO_V2: u64 = 0x656b_67ef_c237_fd90;
-
-/// A impressão do `PaintedDocument` da versão 1 (medida em 2026-10-13, base `757afebd58`).
-const IMPRESSAO_DO_DOCUMENTO_V1: u64 = 0xf6e6_904f_ffdb_a430;
-
-/// ⭐ **Um documento da versão 1 ainda se lê**: os bytes da 2 sem o último (o conjunto vazio) TÊM a
-/// impressão medida em 13/10 — são a 1 de verdade —, e lidos como 1 voltam o mesmo documento, sem marca.
-#[test]
-fn um_documento_da_versao_1_le_se_sem_as_tintas_molhadas() {
-    let mut t = PainterTool::default();
-    t.set_source((0..4 * 4 * 4).map(|i| (i * 7) as u8).collect(), 4, 4);
-    let doc = t.documento_vivo(5);
-    assert!(doc.tintas_molhadas.is_empty());
-    let b = postcard::to_allocvec(&doc).expect("serializa");
-    assert_eq!(b.last(), Some(&0), "o conjunto vazio é o byte 0 no fim");
-    let v1 = &b[..b.len() - 1];
-    let fnv = v1.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &x| {
-        (h ^ u64::from(x)).wrapping_mul(0x0100_0000_01b3)
-    });
+    assert_eq!(super::inicial::le_o_documento(&b, 3), Ok(doc));
     assert_eq!(
-        fnv, IMPRESSAO_DO_DOCUMENTO_V1,
-        "os bytes cortados não são a versão 1"
-    );
-    assert_eq!(super::inicial::le_o_documento(v1, 1), Ok(doc));
-    assert!(
-        super::inicial::le_o_documento(v1, 2).is_err(),
-        "lidos como 2 faltaria o último campo"
+        super::inicial::le_o_documento(&b, 2),
+        Err(super::inicial::ErroDoInicial::DocumentoNoutroFormato(2)),
+        "a versão anterior não se lê"
     );
 }
+
+/// A impressão do `PaintedDocument` da versão 3 (o `fator_aparencia` no fim, B34.1 `602f277f35`, 2026-11-11).
+const IMPRESSAO_DO_DOCUMENTO_V3: u64 = 0x227b_81b4_002d_bafd;
 
 /// ⭐ **Um estado inicial de ANTES da W6c** (sem `meio`, `modo`, `pinceis`, `ligados`,
 /// `falloff_armado`, `metodo_por_meio` nem `tela` no JSON das configurações) lê-se como Wet Paint e

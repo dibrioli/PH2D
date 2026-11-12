@@ -184,6 +184,44 @@ impl PainterTool {
     /// Clip `canvas_rgba` to the active selection: revert each texel toward `orig` by `1 - coverage`, so an
     /// edit that wrote outside the selection is undone (feathered edges blend). No-op without a selection.
     /// Used by paths that bypass the per-dab stamp gate — the Fill flood and (via the scratch) the Mask.
+    /// [`Self::clip_canvas_to_selection`] restricted to `caixa`, with `orig` = [`copia_a_caixa`] of it:
+    /// the same bytes when nothing outside `caixa` was written (B40.A5).
+    pub(super) fn clip_canvas_to_selection_na_caixa(
+        &mut self,
+        orig: &[u8],
+        caixa: crate::compositor::Region,
+    ) {
+        if !self.selection_restricts_paint() {
+            return;
+        }
+        let mask = Arc::clone(&self.paint.selection_mask);
+        let w = self.source_size.0 as usize;
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+            Some(caixa),
+        );
+        let (cx, cy, cw) = (caixa.x as usize, caixa.y as usize, caixa.w as usize);
+        for y in 0..caixa.h as usize {
+            for x in 0..cw {
+                let i = (cy + y) * w + cx + x;
+                let keep = f32::from(mask[i]) / 255.0;
+                if keep >= 1.0 {
+                    continue;
+                }
+                let (b, ob) = (i * 4, (y * cw + x) * 4);
+                for c in 0..4 {
+                    let painted = f32::from(buf[b + c]);
+                    let o = f32::from(orig[ob + c]);
+                    buf[b + c] = (painted * keep + o * (1.0 - keep))
+                        .round()
+                        .clamp(0.0, 255.0) as u8;
+                }
+            }
+        }
+    }
+
     pub(super) fn clip_canvas_to_selection(&mut self, orig: &[u8]) {
         if !self.selection_restricts_paint() {
             return;
@@ -211,4 +249,14 @@ impl PainterTool {
             }
         }
     }
+}
+
+/// The rows of `caixa` from a `w`-wide RGBA8 plane, packed (`caixa.w * caixa.h * 4` bytes).
+pub(super) fn copia_a_caixa(plano: &[u8], w: u32, caixa: crate::compositor::Region) -> Vec<u8> {
+    let (w, cx, cw) = (w as usize, caixa.x as usize, caixa.w as usize);
+    let mut out = Vec::with_capacity(cw * caixa.h as usize * 4);
+    for y in caixa.y as usize..(caixa.y + caixa.h) as usize {
+        out.extend_from_slice(&plano[(y * w + cx) * 4..(y * w + cx + cw) * 4]);
+    }
+    out
 }

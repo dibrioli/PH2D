@@ -11,6 +11,8 @@ use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
 #[cfg(test)]
 mod aguada_tests; // B25.3: o mapa das cópias da aguada não vaza para o lote seguinte
 mod mascara; // a rota do pincel Mask — filho por LOC
+#[cfg(test)]
+mod mascara_selecao_tests; // B40.A5: o Mask com seleção recorta só a caixa dos dabs
 pub(super) mod mistura;
 #[cfg(test)]
 mod mistura_memoria_tests; // B28.4: as pegadas locais não guardam a máscara da tela // a mistura opaca do Digital (só com o modo ligado)

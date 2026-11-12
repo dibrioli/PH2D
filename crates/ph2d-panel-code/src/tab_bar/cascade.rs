@@ -312,6 +312,22 @@ impl<M: Copy + PartialEq> TabBar<M> {
         self.auto = Some((k, dir, now));
     }
 
+    /// O nível `level` pintou-se com a rolagem `s` em `0..=max` (`max = 0`: não rola): a auto-rolagem
+    /// dele pára no limite para onde ia (deixa de pedir quadros).
+    pub(super) fn auto_limit(&mut self, level: usize, s: f32, max: f32) {
+        if let Some((k, dir, _)) = self.auto
+            && k == level
+            && (if dir < 0.0 { s <= 0.0 } else { s >= max })
+        {
+            self.auto = None;
+        }
+    }
+
+    /// O rato saiu da janela: nenhum `hover_move_at` virá fora da seta, e a auto-rolagem pára.
+    pub fn pointer_left(&mut self) {
+        self.auto = None;
+    }
+
     /// O Esc fecha um nível: o submenu mais fundo, senão o menu. `true` = fechou algo.
     pub fn escape(&mut self) -> bool {
         let mut c = self.chain();

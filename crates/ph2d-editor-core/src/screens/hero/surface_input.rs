@@ -141,6 +141,15 @@ pub fn drop_files(hero: &mut HeroScreen, x: f32, y: f32, paths: &[std::path::Pat
         .is_some_and(|(f, id)| f.drop_files(id, x, y, paths))
 }
 
+/// O rato saiu da janela: a aba de família activa sabe-o ([`DocumentSurface::pointer_leave`]).
+///
+/// [`DocumentSurface::pointer_leave`]: crate::doc_surface::DocumentSurface::pointer_leave
+pub fn pointer_leave(hero: &mut HeroScreen) {
+    if let Some((f, id)) = hero.documents.active_surface_mut() {
+        f.pointer_leave(id);
+    }
+}
+
 pub(super) fn pointer_move(
     hero: &mut HeroScreen,
     input: Input<'_>,

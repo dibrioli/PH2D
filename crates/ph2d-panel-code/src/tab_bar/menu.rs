@@ -337,6 +337,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
             let view = Rect::new(popup.x, popup.y + rh, popup.w, popup.h - rh * 2.0);
             let max = rh * items.len() as f32 - view.h;
             let s = self.scroll_to(level, max);
+            self.auto_limit(level, s, max);
             let up = Rect::new(popup.x, popup.y, popup.w, rh);
             let down = Rect::new(popup.x, view.y + view.h, popup.w, rh);
             laid.arrows = Some((up, down));
@@ -344,6 +345,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
             (view, view.y - s)
         } else {
             self.scroll_to(level, 0.0);
+            self.auto_limit(level, 0.0, 0.0);
             (popup, popup.y + pad * 0.5)
         };
         push_popover_clip(view, scene);

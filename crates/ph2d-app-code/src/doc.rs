@@ -406,8 +406,7 @@ impl CodeDoc {
             .find_map(|b| self.syntax.matching_bracket(t, b).map(|m| (b, m)))
     }
 
-    /// As três faixas da aba: a barra de busca em cima, o código, a faixa de baixo (Console e
-    /// Problems).
+    /// As três faixas da aba: a busca em cima, o código, a faixa de baixo (Console e Problems).
     pub fn layout(&self, area: Rect, console_open: bool) -> (Option<Rect>, Rect, Rect) {
         let find_h = self.find.bar_height();
         let (card, console) = self.cards(area, console_open);

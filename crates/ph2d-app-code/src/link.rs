@@ -228,8 +228,7 @@ fn undone(
     }
 }
 
-/// O texto da biblioteca muda por um passo ligado: a aba do script concorda com ele, e a cena
-/// recarrega.
+/// Um passo ligado muda o texto da biblioteca: a aba do script concorda, e a cena recarrega.
 fn set_library(
     docs: &mut CodeDocs,
     script: ScriptId,

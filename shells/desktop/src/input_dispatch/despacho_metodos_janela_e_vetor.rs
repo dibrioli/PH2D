@@ -123,6 +123,13 @@ impl crate::App {
         }
     }
 
+    /// O rato saiu da janela: a aba de família activa larga o que seguia o rato parado.
+    pub(crate) fn on_cursor_left(&mut self) {
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            ph2d_editor_core::screens::hero::surface_input::pointer_leave(hero);
+        }
+    }
+
     pub(crate) fn on_dropped_file(&mut self, path: std::path::PathBuf) {
         // M14.7 polish (7.3 fix): winit fires `DroppedFile` once PER
         // FILE on macOS but the events arrive across multiple loop

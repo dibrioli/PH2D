@@ -214,6 +214,10 @@ pub trait DocumentSurface: Any {
     ) -> bool;
     /// Movimento (com ou sem botão). `true` = tomado.
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool;
+    /// O rato saiu da janela (nenhum movimento virá até voltar): quem segue o rato parado larga-o.
+    fn pointer_leave(&mut self, id: u64) {
+        let _ = id;
+    }
     /// Roda sobre a área (`shift` = o Shift premido: rolar na horizontal). `true` = tomada.
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool;
     /// Uma tecla premida ou solta ([`KeyInput`]).

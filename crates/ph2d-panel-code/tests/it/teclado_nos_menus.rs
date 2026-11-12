@@ -198,3 +198,39 @@ fn o_rato_parado_na_seta_rola_o_menu_pelo_relogio() {
     pinta_em(&mut bar, at, &mut ts, 1_000 * ms);
     assert!(bar.scroll[0] < s, "a ▲ volta");
 }
+
+/// A auto-rolagem pára (e deixa de pedir quadros) no limite da rolagem e quando o rato sai da janela
+/// sem passar por fora da seta.
+#[test]
+fn a_auto_rolagem_para_no_limite_e_quando_o_rato_sai_da_janela() {
+    let mut ts = TextSystem::without_system_fonts();
+    let at = (600.0, Rect::new(0.0, 0.0, 900.0, 200.0), 30);
+    let mut bar = TabBar::<u8> {
+        open: Some(0),
+        ..TabBar::default()
+    };
+    pinta_em(&mut bar, at, &mut ts, 0);
+    let (up, down) = bar.painted.arrows.expect("controlo: rola");
+    let c = |r: Rect| (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let ms = 1_000_000u128;
+    let (x, y) = c(down);
+    assert!(bar.hover_move_at(x, y, 0));
+    pinta_em(&mut bar, at, &mut ts, 100 * ms);
+    assert!(bar.auto_rolling(), "controlo: a meio, rola");
+    pinta_em(&mut bar, at, &mut ts, 60_000 * ms);
+    let fim = bar.scroll[0];
+    assert!(fim > 0.0, "controlo: chegou ao fim");
+    assert!(!bar.auto_rolling(), "no fim da ▼: pára de pedir quadros");
+    let (x, y) = c(up);
+    assert!(bar.hover_move_at(x, y, 60_000 * ms));
+    pinta_em(&mut bar, at, &mut ts, 60_100 * ms);
+    assert!(
+        bar.auto_rolling() && bar.scroll[0] < fim,
+        "controlo: a ▲ rola"
+    );
+    bar.pointer_left();
+    assert!(!bar.auto_rolling(), "o rato saiu da janela: pára");
+    let s = bar.scroll[0];
+    pinta_em(&mut bar, at, &mut ts, 61_000 * ms);
+    assert_eq!(bar.scroll[0], s, "parado depois de sair");
+}

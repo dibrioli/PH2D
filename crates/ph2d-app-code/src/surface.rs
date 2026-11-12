@@ -173,6 +173,10 @@ impl DocumentSurface for CodeDocs {
         self.bar.auto_rolling()
     }
 
+    fn pointer_leave(&mut self, _id: u64) {
+        self.bar.pointer_left();
+    }
+
     fn floats_at(&self, _id: u64, x: f32, y: f32) -> bool {
         self.bar.floats_at(x, y)
     }

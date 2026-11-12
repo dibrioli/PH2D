@@ -618,7 +618,6 @@ pub(crate) use ph2d_editor_core::tool::{is_image_edit_tool, palette_visible_tool
 // cursor_pos::live_cursor_in_window + image_import::import_images_grid
 // moved to input_handlers.rs (Wave 3.2 stage B).
 // keymap::winit_to_editor_keycode moved to input_dispatch.rs (PR 9b).
-// theme::parse_theme_env moved to init.rs (PR 9c).
 use winit_host::LoggingHandler;
 
 use ph2d_core::{FixedStep, Playhead, Vec2, install_panic_hook, panic};
@@ -966,6 +965,7 @@ impl ApplicationHandler for App {
             | WindowEvent::Touch(_)
                 if ph2d_app_painter::macro_track::caminho::a_cena_conduz_o_ponteiro() => {}
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
+            WindowEvent::CursorLeft { .. } => self.on_cursor_left(),
             WindowEvent::MouseWheel { delta, .. } => self.on_wheel_event(delta),
             WindowEvent::PinchGesture { delta, .. } => self.on_pinch_gesture(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),

@@ -255,8 +255,7 @@ impl CodeDocs {
         open_items(&self.bar, state, self.debug.game_stop)
     }
 
-    /// A `k`-ésima escolha do menu aberto (o smoke): as linhas que valem e, no lugar de um submenu, as
-    /// escolhas dele, pela ordem. `Some(mãe)` = está num submenu.
+    /// A `k`-ésima escolha do menu aberto (o smoke), pela ordem de [`MenuItem::leaves`].
     pub(crate) fn tab_leaf(&self, id: u64, k: usize) -> Option<Leaf> {
         MenuItem::leaves(&self.tab_items(id)).get(k).copied()
     }

@@ -31,7 +31,9 @@
 //! e a razão é a mesma: a trajetória é uma coisa que se **edita**, e só se edita o que
 //! está na mão.
 
+use crate::motion_key_points::world_for_local;
 use ph2d_anim::{AnimValue, AttributeEvaluator};
+use ph2d_ecs::World;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_timeline::{AnimTarget, PropKind, TimelineDoc};
@@ -199,6 +201,7 @@ fn active_path(
 /// algo seria inventar uma. Todas essas perguntas são de [`active_path`].
 pub fn marks(
     keys_tab: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -227,7 +230,8 @@ pub fn marks(
         let AnimValue::Float(s) = track.sample(t) else {
             return None;
         };
-        path.at(f64::from(s)).map(|k| k.point)
+        let p = path.at(f64::from(s))?.point;
+        Some(world_for_local(world, doc, b.entity, t, p))
     };
 
     let (t0, t1) = (first.t.to_seconds(), last.t.to_seconds());
@@ -312,7 +316,8 @@ pub fn marks(
     let mut tan_lines = BezPath::new();
     let mut tan_tips = BezPath::new();
     let mut any_tan = false;
-    for (_, _, _, anchor_pt, tip) in tangent_screen(keys_tab, doc, selected, camera, window) {
+    for (_, _, _, anchor_pt, tip) in tangent_screen(keys_tab, world, doc, selected, camera, window)
+    {
         tan_lines.move_to(anchor_pt);
         tan_lines.line_to(tip);
         push_circle(&mut tan_tips, tip, TANGENT_TIP_R);
@@ -354,7 +359,7 @@ pub fn marks(
     // 4. AS ÂNCORAS — o que translada a curva, pela MESMA porta que o hit-test consulta.
     let mut anchors = BezPath::new();
     let mut any_anchor = false;
-    for (_, _, p) in anchor_screen(keys_tab, doc, selected, camera, window) {
+    for (_, _, p) in anchor_screen(keys_tab, world, doc, selected, camera, window) {
         push_square(&mut anchors, p, ANCHOR_HALF);
         any_anchor = true;
     }
@@ -392,6 +397,7 @@ pub fn marks(
 /// distância: a âncora é a coisa que o artista pôs ali, e a distância é derivada dela.
 pub fn anchor_screen(
     keys_tab: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -404,7 +410,9 @@ pub fn anchor_screen(
         .iter()
         .enumerate()
         .map(|(i, a)| {
-            let (sx, sy) = camera.world_to_screen(a.anchor, window);
+            let t = anchor_time(doc, b.target, i);
+            let w = world_for_local(world, doc, b.entity, t, a.anchor);
+            let (sx, sy) = camera.world_to_screen(w, window);
             (b.target, i, Point::new(f64::from(sx), f64::from(sy)))
         })
         .collect()
@@ -422,6 +430,7 @@ pub fn anchor_screen(
 /// coisa que o artista molda, e o objeto seguir a curva é derivado dela.
 pub fn tangent_screen(
     keys_tab: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -436,9 +445,11 @@ pub fn tangent_screen(
     };
     let mut out = Vec::new();
     for (i, a) in path.anchors().iter().enumerate() {
-        let anchor_pt = to_screen(a.anchor);
+        let t = anchor_time(doc, b.target, i);
+        let w = |p: [f32; 2]| world_for_local(world, doc, b.entity, t, p);
+        let anchor_pt = to_screen(w(a.anchor));
         for (out_side, h) in [(false, a.in_handle), (true, a.out_handle)] {
-            let tip = to_screen([a.anchor[0] + h[0], a.anchor[1] + h[1]]);
+            let tip = to_screen(w([a.anchor[0] + h[0], a.anchor[1] + h[1]]));
             if anchor_pt.distance(tip) >= TANGENT_MIN_PX {
                 out.push((b.target, i, out_side, anchor_pt, tip));
             }
@@ -454,8 +465,10 @@ pub fn tangent_screen(
 /// *"o que está sob o cursor?"*. O filtro de [`TANGENT_MIN_PX`] em [`tangent_screen`]
 /// já mantém as pontas fora do alvo da âncora, então perto do quadrado a âncora vence e
 /// na ponta a alça vence, sem regra de prioridade a manter.
+#[allow(clippy::too_many_arguments)]
 pub fn motion_path_hit(
     keys_tab: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -471,10 +484,10 @@ pub fn motion_path_hit(
             best = Some((dist2, grab));
         }
     };
-    for (target, i, p) in anchor_screen(keys_tab, doc, selected, camera, window) {
+    for (target, i, p) in anchor_screen(keys_tab, world, doc, selected, camera, window) {
         consider(d2(p), MotionPathGrab::Anchor { target, i });
     }
-    for (target, i, out, _, tip) in tangent_screen(keys_tab, doc, selected, camera, window) {
+    for (target, i, out, _, tip) in tangent_screen(keys_tab, world, doc, selected, camera, window) {
         consider(d2(tip), MotionPathGrab::Tangent { target, i, out });
     }
     best.map(|(_, g)| g)
@@ -489,8 +502,10 @@ pub fn motion_path_hit(
 /// esteja onde estiver o cursor). Então a distância volta pra TELA e se confere que o
 /// cursor está mesmo em cima da curva, dentro de [`CURVE_HIT_R_PX`] — senão um duplo-clique
 /// no vazio inseriria um ponto.
+#[allow(clippy::too_many_arguments)]
 pub fn motion_path_curve_hit(
     keys_tab: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -499,19 +514,31 @@ pub fn motion_path_curve_hit(
     y: f32,
 ) -> Option<(AnimTarget, f64)> {
     // Âncora/alça vence: sobre uma delas, o clique não conta como "na curva".
-    if motion_path_hit(keys_tab, doc, selected, camera, window, x, y).is_some() {
+    if motion_path_hit(keys_tab, world, doc, selected, camera, window, x, y).is_some() {
         return None;
     }
     let (b, path) = active_path(doc, selected, keys_tab)?;
     if path.len() < 2 {
         return None;
     }
+    // O pai posado no instante da 1.ª chave: o mesmo referencial em que a curva é desenhada
+    // enquanto o pai não se move durante o clip.
+    let t = anchor_time(doc, b.target, 0);
     let w = camera.screen_to_world((x, y), window);
-    let d = path.project([w[0], w[1]])?;
-    let on = path.at(d)?.point;
+    let local = crate::motion_key_points::local_for_world(world, doc, b.entity, t, [w[0], w[1]])?;
+    let d = path.project(local)?;
+    let on = world_for_local(world, doc, b.entity, t, path.at(d)?.point);
     let (sx, sy) = camera.world_to_screen(on, window);
     let dist2 = (f64::from(sx) - f64::from(x)).powi(2) + (f64::from(sy) - f64::from(y)).powi(2);
     (dist2 <= CURVE_HIT_R_PX * CURVE_HIT_R_PX).then_some((b.target, d))
+}
+
+/// O instante (s) da chave `i` da track Position do clip ativo — o da âncora `i`; sem a chave, 0.
+pub(crate) fn anchor_time(doc: &TimelineDoc, target: AnimTarget, i: usize) -> f64 {
+    doc.active_clip()
+        .track(target)
+        .and_then(|tr| tr.keys().get(i))
+        .map_or(0.0, |k| k.t.to_seconds())
 }
 
 /// Um losango de meia-largura `half` centrado em `c`. Losango e não círculo: um ponto
@@ -561,6 +588,7 @@ const STEP_COS_SIN: (f64, f64) = (0.866_025_403_784_438_6, 0.5); // cos30°, sin
 /// Pinta. No-op quando [`marks`] não devolve nada.
 pub fn draw(
     keys_tab: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -571,7 +599,7 @@ pub fn draw(
     // A ordem de pintura é o PAPEL de cada marca, não a ordem em que `marks` a empurrou:
     // glow por baixo, a ponta da alça por cima. Estável, então bandas de mesma camada
     // mantêm a ordem em que nasceram.
-    let mut ms = marks(keys_tab, doc, selected, camera, window);
+    let mut ms = marks(keys_tab, world, doc, selected, camera, window);
     ms.sort_by_key(|m| m.role.layer());
     for m in ms {
         vector_scene.inner_mut().stroke(

@@ -387,12 +387,15 @@ impl TimelineDoc {
     /// and a stray binding of the other mode is cleared here.
     ///
     /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
-    pub fn set_position_mode(&mut self, entity: u64, to_path: bool) {
+    ///
+    /// `repouso` = o valor LOCAL do objeto no mundo, para o eixo sem binding nem repouso capturado
+    /// ([`Self::separate_to_path_with_rest`]); o intent com mundo o lê do `Transform`.
+    pub fn set_position_mode(&mut self, entity: u64, to_path: bool, repouso: [f32; 2]) {
         if to_path {
             // Converts if X/Y carried keys; a no-op (returns `None`) if they were
             // empty markers or absent. Either way, clear any X/Y binding left and
             // mark Path with an (empty, if fresh) Position binding.
-            self.separate_to_path(entity);
+            self.separate_to_path_with_rest(entity, repouso);
             self.unbind(entity, PropKind::TranslationX);
             self.unbind(entity, PropKind::TranslationY);
             self.bind(entity, PropKind::Position);

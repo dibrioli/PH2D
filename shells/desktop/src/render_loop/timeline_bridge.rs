@@ -15,7 +15,7 @@ use ph2d_core::Playhead;
 use ph2d_ecs::World;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_timeline::{
-    PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_intent, apply_scene,
+    PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_intent_in, apply_scene,
 };
 
 /// ⚠️ **A AUTORIA de chaves mudou-se para o irmão** ([`super::timeline_bridge_keys`]) quando este
@@ -169,7 +169,7 @@ pub(crate) fn run(
     let mut jumped = false;
     for intent in intents.drain(..) {
         jumped |= intent.is_seek();
-        apply_intent(timeline, playhead, intent);
+        apply_intent_in(world, timeline, playhead, intent);
     }
     // Publicado para o SEGUNDO produtor (a ponte de Motion, mais abaixo no quadro).
     signals.jumped = jumped;

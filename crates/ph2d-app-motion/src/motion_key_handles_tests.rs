@@ -454,3 +454,83 @@ fn the_path_obeys_the_curves_checkbox_like_the_handles() {
     assert_eq!(sem, None, "caixa desmarcada: nada agarra");
     assert!(ancora(classico), "sem cartões, como antes: {classico:?}");
 }
+
+/// O caminho Path é LOCAL (vira `Transform.translation`): sob um pai movido, rodado e escalado, o
+/// overlay pinta e agarra cada âncora onde o OBJETO está no instante da chave, a ponta da alça onde
+/// o ponteiro a deixou, e arrastar uma âncora ou alça a um ponto de mundo põe-na lá (mundo → local).
+#[test]
+fn under_a_moved_and_rotated_parent_the_path_is_painted_grabbed_and_dragged_in_world() {
+    use crate::motion_path_overlay::{anchor_screen, motion_path_hit, tangent_screen};
+    let (w, mut st, e) = simples(true);
+    let q = [4.0, 1.0];
+    assert!(drag_alca(&mut st, &w, e, rt(0.0), rt(1.0), true, q));
+    let cam = Camera2d::default();
+    let tela = |p: [f32; 2]| {
+        let (x, y) = cam.world_to_screen(p, window());
+        (f64::from(x), f64::from(y))
+    };
+    let px =
+        |a: ph2d_vector::Point, b: (f64, f64)| (a.x - b.0).abs() < 1e-2 && (a.y - b.1).abs() < 1e-2;
+    let ponta = |doc: &TimelineDoc, i: usize, out: bool| {
+        tangent_screen(true, &w, doc, Some(e), &cam, window())
+            .into_iter()
+            .find(|x| x.1 == i && x.2 == out)
+            .map(|x| x.4)
+    };
+    let ancoras = anchor_screen(true, &w, &st.doc, Some(e), &cam, window());
+    assert_eq!(ancoras.len(), 2, "duas âncoras: {ancoras:?}");
+    for (i, t) in [(0usize, 0.0), (1, 1.0)] {
+        let (p, o) = (ancoras[i].2, tela(at(&w, &st.doc, e, t)));
+        assert!(
+            px(p, o),
+            "âncora {i} pintada em {p:?}; o objeto está em {o:?}"
+        );
+        let g = motion_path_hit(
+            true,
+            &w,
+            &st.doc,
+            Some(e),
+            &cam,
+            window(),
+            p.x as f32,
+            p.y as f32,
+        );
+        assert!(
+            matches!(g, Some(MotionPathGrab::Anchor { i: j, .. }) if j == i),
+            "âncora {i} não se agarra onde está pintada: {g:?}"
+        );
+    }
+    let tip = ponta(&st.doc, 0, true).expect("a alça de saída da âncora 0");
+    assert!(
+        px(tip, tela(q)),
+        "a ponta pintada em {tip:?}; o ponteiro a deixou em {:?}",
+        tela(q)
+    );
+
+    let target = ancoras[1].0;
+    let alvo = [5.0, -2.0];
+    assert!(drag_grab(
+        &mut st,
+        &w,
+        MotionPathGrab::Anchor { target, i: 1 },
+        alvo
+    ));
+    let fim = at(&w, &st.doc, e, 1.0);
+    assert!(
+        perto(fim, alvo),
+        "arrastei a âncora a {alvo:?}; o objeto foi a {fim:?}"
+    );
+    let q2 = [3.0, 3.0];
+    let alca_in = MotionPathGrab::Tangent {
+        target,
+        i: 1,
+        out: false,
+    };
+    assert!(drag_grab(&mut st, &w, alca_in, q2));
+    let tip = ponta(&st.doc, 1, false).expect("a alça de entrada da âncora 1");
+    assert!(
+        px(tip, tela(q2)),
+        "a ponta arrastada a {:?} ficou em {tip:?}",
+        tela(q2)
+    );
+}

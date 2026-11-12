@@ -33,11 +33,11 @@ fn the_trajectory_is_offered_only_on_the_keys_tab() {
 
     // --- ABA KEYS: a trajetória inteira é oferecida. ---
     assert!(
-        !marks(true, &doc, Some(e), &cam, win).is_empty(),
+        !marks(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win).is_empty(),
         "a fixture não contém o fenômeno: nada é desenhado nem na aba Keys"
     );
-    let anchors = super::anchor_screen(true, &doc, Some(e), &cam, win);
-    let tangents = super::tangent_screen(true, &doc, Some(e), &cam, win);
+    let anchors = super::anchor_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
+    let tangents = super::tangent_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
     assert!(!anchors.is_empty(), "sem âncora a enumerar na aba Keys");
     assert!(!tangents.is_empty(), "sem alça a enumerar na aba Keys");
 
@@ -46,7 +46,17 @@ fn the_trajectory_is_offered_only_on_the_keys_tab() {
     let a = anchors[0].2;
     let (hx, hy) = (a.x as f32, a.y as f32);
     assert!(
-        super::motion_path_hit(true, &doc, Some(e), &cam, win, hx, hy).is_some(),
+        super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            hx,
+            hy
+        )
+        .is_some(),
         "a âncora desenhada não é agarrável nem na aba Keys"
     );
     let on_curve = (0..1000)
@@ -57,27 +67,57 @@ fn the_trajectory_is_offered_only_on_the_keys_tab() {
             )
         })
         .find(|&(x, y)| {
-            super::motion_path_curve_hit(true, &doc, Some(e), &cam, win, x, y).is_some()
+            super::motion_path_curve_hit(
+                true,
+                &ph2d_ecs::World::new(),
+                &doc,
+                Some(e),
+                &cam,
+                win,
+                x,
+                y,
+            )
+            .is_some()
         })
         .expect("algum ponto de tela cai sobre a curva na aba Keys");
 
     // --- FORA DELA (Arrange, um container, ou o painel fechado): nada. ---
     assert!(
-        marks(false, &doc, Some(e), &cam, win).is_empty(),
+        marks(false, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win).is_empty(),
         "a trajetória foi DESENHADA fora da aba Keys"
     );
     assert!(
-        super::anchor_screen(false, &doc, Some(e), &cam, win).is_empty()
-            && super::tangent_screen(false, &doc, Some(e), &cam, win).is_empty(),
+        super::anchor_screen(false, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win).is_empty()
+            && super::tangent_screen(false, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win)
+                .is_empty(),
         "há âncora/alça a enumerar fora da aba Keys — o desenho some e o alvo fica"
     );
     assert!(
-        super::motion_path_hit(false, &doc, Some(e), &cam, win, hx, hy).is_none(),
+        super::motion_path_hit(
+            false,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            hx,
+            hy
+        )
+        .is_none(),
         "o ponto que agarra a âncora na aba Keys ainda agarra fora dela"
     );
     assert!(
-        super::motion_path_curve_hit(false, &doc, Some(e), &cam, win, on_curve.0, on_curve.1)
-            .is_none(),
+        super::motion_path_curve_hit(
+            false,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            on_curve.0,
+            on_curve.1
+        )
+        .is_none(),
         "o duplo-clique ainda insere âncora na curva fora da aba Keys"
     );
 }
@@ -132,9 +172,9 @@ fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
 
     // O clip que AUTOROU a trajetória: tudo presente. CONTROLE POSITIVO — sem isto, um
     // conjunto vazio nos dois clips passaria por "não vaza".
-    let a_marks = marks(true, &doc, Some(e), &cam, win).len();
-    let a_anchors = super::anchor_screen(true, &doc, Some(e), &cam, win);
-    let a_tangents = super::tangent_screen(true, &doc, Some(e), &cam, win);
+    let a_marks = marks(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win).len();
+    let a_anchors = super::anchor_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
+    let a_tangents = super::tangent_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
     assert!(
         a_marks > 0 && a_anchors.len() == 2 && !a_tangents.is_empty(),
         "o clip que anima a trajetória a desenha: marks={a_marks} âncoras={} alças={}",
@@ -144,7 +184,17 @@ fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
     let on_anchor = a_anchors[0].2;
     let (hx, hy) = (on_anchor.x as f32, on_anchor.y as f32);
     assert!(
-        super::motion_path_hit(true, &doc, Some(e), &cam, win, hx, hy).is_some(),
+        super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            hx,
+            hy
+        )
+        .is_some(),
         "e a âncora dele é agarrável"
     );
     // ⚠️ O ponto SOBRE A CURVA é pedido ao próprio produto (uma varredura em px de tela até
@@ -158,7 +208,17 @@ fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
             )
         })
         .find(|&(x, y)| {
-            super::motion_path_curve_hit(true, &doc, Some(e), &cam, win, x, y).is_some()
+            super::motion_path_curve_hit(
+                true,
+                &ph2d_ecs::World::new(),
+                &doc,
+                Some(e),
+                &cam,
+                win,
+                x,
+                y,
+            )
+            .is_some()
         })
         .expect("algum ponto de tela cai sobre a curva no clip que a anima");
 
@@ -167,21 +227,41 @@ fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
     doc.set_active(b);
 
     assert!(
-        marks(true, &doc, Some(e), &cam, win).is_empty(),
+        marks(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win).is_empty(),
         "nada é DESENHADO num clip que não anima a trajetória"
     );
     assert!(
-        super::anchor_screen(true, &doc, Some(e), &cam, win).is_empty()
-            && super::tangent_screen(true, &doc, Some(e), &cam, win).is_empty(),
+        super::anchor_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win).is_empty()
+            && super::tangent_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win)
+                .is_empty(),
         "e não há âncora nem alça a enumerar"
     );
     assert!(
-        super::motion_path_hit(true, &doc, Some(e), &cam, win, hx, hy).is_none(),
+        super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            hx,
+            hy
+        )
+        .is_none(),
         "nem a agarrar: o ponto que pegava a âncora no clip A não pega nada aqui"
     );
     assert!(
-        super::motion_path_curve_hit(true, &doc, Some(e), &cam, win, on_curve.0, on_curve.1)
-            .is_none(),
+        super::motion_path_curve_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            on_curve.0,
+            on_curve.1
+        )
+        .is_none(),
         "nem a curva: o duplo-clique no ponto que ACERTAVA a curva no clip A não insere \
          âncora numa trajetória que este clip não anima"
     );

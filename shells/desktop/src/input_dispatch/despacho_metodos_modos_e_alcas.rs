@@ -215,6 +215,7 @@ impl crate::App {
         // tipo de alça é propriedade do NÓ, não da alça.
         let Some(MotionPathGrab::Anchor { target, i }) = motion_path_hit(
             self.timeline.keys_mode,
+            gfx.sim.world(),
             &self.timeline.doc,
             selected,
             &gfx.camera,
@@ -276,6 +277,7 @@ impl crate::App {
         let Some((target, d)) = ph2d_app_motion::motion_key_points::curve_hit(
             self.timeline.keys_mode,
             ph2d_panel_timeline::state::curves_on_canvas(),
+            gfx.sim.world(),
             &self.timeline.doc,
             selected,
             &gfx.camera,
@@ -295,10 +297,8 @@ impl crate::App {
     /// Leva o que foi agarrado (âncora ou alça) para o cursor. No-op (`false`) sem um
     /// arrasto vivo — a mesma disciplina de early-return das alças do vetor.
     ///
-    /// Porta ÚNICA de cada gesto: `move_path_anchor` translada, `move_path_tangent` molda,
-    /// `drag_grab` escreve as chaves de X/Y (ponto ou alça do arco).
+    /// Porta ÚNICA de cada gesto: `drag_grab` (mundo → local pelo pai do objeto).
     pub(super) fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
-        use ph2d_app_motion::motion_path_overlay::MotionPathGrab;
         let Some(grab) = self.motion_shell.path_drag else {
             return false;
         };
@@ -306,26 +306,8 @@ impl crate::App {
             return false;
         };
         let w = gfx.camera.screen_to_world((x, y), gfx.scene_window());
-        match grab {
-            MotionPathGrab::Anchor { target, i } => {
-                let Some(mut a) = self.timeline.doc.path_anchor(target, i) else {
-                    return false;
-                };
-                a.anchor = [w[0], w[1]];
-                self.timeline.doc.move_path_anchor(target, i, a)
-            }
-            MotionPathGrab::Tangent { target, i, out } => {
-                self.timeline
-                    .doc
-                    .move_path_tangent(target, i, out, [w[0], w[1]])
-            }
-            g => ph2d_app_motion::motion_key_points::drag_grab(
-                &mut self.timeline,
-                gfx.sim.world(),
-                g,
-                [w[0], w[1]],
-            ),
-        }
+        let world = gfx.sim.world();
+        ph2d_app_motion::motion_key_points::drag_grab(&mut self.timeline, world, grab, w)
     }
 
     /// Arrasta a alça do PATTERN (Start/End, W4) armada para o cursor — no-op sem uma armada.

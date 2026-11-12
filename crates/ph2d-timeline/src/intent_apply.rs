@@ -35,7 +35,7 @@ pub(crate) mod intent_loop_sync;
 mod intent_settle;
 use crate::intent_apply_path;
 use intent_loop_sync::{LengthTarget, apply_length, sync_loop};
-pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
+pub use intent_loop_sync::{loop_whole_active_clip, sync_container_loop, sync_transport_loop};
 /// The release-time absorb of a streamed key drag — sibling module under the LOC cap.
 #[path = "intent_absorb.rs"]
 mod intent_absorb;
@@ -150,7 +150,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         }
         I::ToggleAutoOrient { entity } => intent_apply_path::toggle_orient(state, entity),
         I::ConvertPositionMode { entity, to_path } => {
-            intent_apply_path::convert_mode(state, entity, to_path);
+            intent_apply_path::convert_mode(state, entity, to_path, [0.0, 0.0]);
         }
         I::MoveSelectedKeys { delta_seconds } => {
             // Rationalize the offset ONCE (whole frames stay whole), then clamp the

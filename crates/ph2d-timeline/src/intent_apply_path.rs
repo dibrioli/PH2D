@@ -44,8 +44,32 @@ pub(super) fn toggle_orient(state: &mut TimelineState, entity: u64) {
 /// [`crate::TimelineDoc::set_position_mode`], que **converte** um objeto com animação
 /// e **marca** um objeto fresco (binding vazio no modo escolhido) — então o toggle
 /// per-objeto gruda mesmo antes da 1ª key. Uma linha, um objeto.
-pub(super) fn convert_mode(state: &mut TimelineState, entity: u64, to_path: bool) {
+pub(super) fn convert_mode(
+    state: &mut TimelineState,
+    entity: u64,
+    to_path: bool,
+    repouso: [f32; 2],
+) {
     edit(state, |doc, _| {
-        doc.set_position_mode(entity, to_path);
+        doc.set_position_mode(entity, to_path, repouso);
     });
+}
+
+/// [`crate::apply_intent`] com o MUNDO: o *Convert to Motion Path* lê o repouso do eixo que nunca
+/// foi animado do `Transform` do objeto (sem mundo ele valia zero: um objeto em (5, 3) animado só em
+/// X saltava para Y = 0). O resto delega.
+pub fn apply_intent_in(
+    world: &ph2d_ecs::World,
+    state: &mut TimelineState,
+    playhead: &mut ph2d_core::Playhead,
+    intent: crate::TimelineIntent,
+) {
+    if let crate::TimelineIntent::ConvertPositionMode { entity, to_path } = intent {
+        let repouso = ph2d_ecs::Entity::try_from_bits(entity)
+            .and_then(|e| world.get::<ph2d_ecs::Transform>(e))
+            .map_or([0.0, 0.0], |x| [x.translation.x, x.translation.y]);
+        convert_mode(state, entity, to_path, repouso);
+        return;
+    }
+    crate::apply_intent(state, playhead, intent);
 }

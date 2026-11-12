@@ -162,9 +162,10 @@ fn the_anchor_press_runs_before_the_generic_picking() {
 /// estável e ERRADO: a curva nova na tela, o objeto andando os números da velha.
 #[test]
 fn the_drag_writes_through_the_documents_single_door() {
-    let disp = crate::input_text::dispatch();
+    // O arrasto mora na porta única do canvas (`drag_grab`, mundo → local pelo pai).
+    let disp = include_str!("../../../../crates/ph2d-app-motion/src/motion_key_points.rs");
     assert!(
-        disp.contains("move_path_anchor(target, i, a)"),
+        disp.contains("state.doc.move_path_anchor(target, i, a)"),
         "o arrasto de ÂNCORA não escreve por `TimelineDoc::move_path_anchor` — se ele \
          mexe no `MotionPath` direto, as keys ficam com as distâncias da curva antiga"
     );

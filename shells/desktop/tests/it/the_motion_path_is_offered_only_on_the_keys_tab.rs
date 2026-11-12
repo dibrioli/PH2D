@@ -286,5 +286,8 @@ fn the_canvas_guard_counts_the_pivot_as_part_of_the_gizmo() {
         "a guarda do clique no canvas não conta o pivô como gizmo: o ponto da curva sobre o centro do \
          objeto fica inalcançável"
     );
-    assert!(!b.contains("gizmo_kind_for_id"), "a porta que exclui o pivô voltou");
+    assert!(
+        !b.contains("gizmo_kind_for_id"),
+        "a porta que exclui o pivô voltou"
+    );
 }

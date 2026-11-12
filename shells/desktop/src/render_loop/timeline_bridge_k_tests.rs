@@ -4,6 +4,7 @@
 //! cap; the transport half stays there.
 
 use super::*;
+use ph2d_timeline::apply_intent;
 
 #[test]
 fn k_keys_scene_props_at_the_entity_remapped_clock() {

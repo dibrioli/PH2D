@@ -148,6 +148,60 @@ pub fn local_for_world(
     Some([l.x, l.y])
 }
 
+/// O ponto de MUNDO de um valor local `p` do objeto no instante `t`: a composição com o pai posado
+/// nesse instante — o caminho inverso de [`local_for_world`], e a porta por onde o caminho Path
+/// (local, vira `Transform.translation`) chega ao canvas. Sem pai (ou sem a entidade) = `p`.
+#[must_use]
+pub fn world_for_local(
+    world: &World,
+    doc: &TimelineDoc,
+    entity: u64,
+    t: f64,
+    p: [f32; 2],
+) -> [f32; 2] {
+    let Some(e) = Entity::try_from_bits(entity) else {
+        return p;
+    };
+    let parent = ph2d_ecs::parent_world_transform_with(world, e, &mut Vec::new(), &|elo| {
+        pose_at(world, doc, elo.to_bits(), t)
+    });
+    let mut local = Transform::IDENTITY;
+    local.translation.x = p[0];
+    local.translation.y = p[1];
+    let w = Transform::compose(parent, local).translation;
+    [w.x, w.y]
+}
+
+/// Leva a âncora `i` (ou a ponta da sua alça `out`) do caminho Path ao ponto de mundo `p`, pelo
+/// pai posado no instante da chave `i` (o mesmo do desenho). `true` = o documento mudou.
+fn drag_path(
+    state: &mut TimelineState,
+    world: &World,
+    target: ph2d_timeline::AnimTarget,
+    i: usize,
+    tangent: Option<bool>,
+    p: [f32; 2],
+) -> bool {
+    let Some(b) = state.doc.bindings().iter().find(|b| b.target == target) else {
+        return false;
+    };
+    let entity = b.entity;
+    let t = crate::motion_path_overlay::anchor_time(&state.doc, target, i);
+    let Some(local) = local_for_world(world, &state.doc, entity, t, p) else {
+        return false;
+    };
+    match tangent {
+        None => {
+            let Some(mut a) = state.doc.path_anchor(target, i) else {
+                return false;
+            };
+            a.anchor = local;
+            state.doc.move_path_anchor(target, i, a)
+        }
+        Some(out) => state.doc.move_path_tangent(target, i, out, local),
+    }
+}
+
 /// O caminho Path (fita, âncoras, tangentes) aparece com «Edit curves on canvas» marcada, como as
 /// alças do arco (dono 10/11); sem cartões (`PH2D_CARDS=0`) não há a caixa e ele aparece como antes.
 #[must_use]
@@ -161,6 +215,7 @@ pub fn caminho_visivel(curves: bool) -> bool {
 pub fn curve_hit(
     keys_tab: bool,
     curves: bool,
+    world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -169,7 +224,9 @@ pub fn curve_hit(
     y: f32,
 ) -> Option<(ph2d_timeline::AnimTarget, f64)> {
     let caminho = keys_tab && caminho_visivel(curves);
-    crate::motion_path_overlay::motion_path_curve_hit(caminho, doc, selected, camera, window, x, y)
+    crate::motion_path_overlay::motion_path_curve_hit(
+        caminho, world, doc, selected, camera, window, x, y,
+    )
 }
 
 /// O hit-test do caminho Path (âncoras e alças), depois o dos pontos de chave e, com `curves`
@@ -188,9 +245,9 @@ pub fn motion_path_hit_with_keys(
     y: f32,
 ) -> Option<MotionPathGrab> {
     let caminho = keys_tab && caminho_visivel(curves);
-    if let Some(g) =
-        crate::motion_path_overlay::motion_path_hit(caminho, doc, selected, camera, window, x, y)
-    {
+    if let Some(g) = crate::motion_path_overlay::motion_path_hit(
+        caminho, world, doc, selected, camera, window, x, y,
+    ) {
         return Some(g);
     }
     let entity = selected?;
@@ -214,8 +271,8 @@ pub fn motion_path_hit_with_keys(
         })
 }
 
-/// **A porta única do arrasto** de um ponto de chave ou de uma alça do arco; as outras pegas
-/// (Path) não são daqui (`false`).
+/// **A porta única do arrasto** de tudo o que o canvas agarra: ponto de chave, alça do arco, e a
+/// âncora/alça do caminho Path (mundo → local pelo pai, [`drag_path`]).
 pub fn drag_grab(
     state: &mut TimelineState,
     world: &World,
@@ -230,7 +287,10 @@ pub fn drag_grab(
             tb,
             out,
         } => crate::motion_key_handles::drag_alca(state, world, entity, ta, tb, out, p),
-        MotionPathGrab::Anchor { .. } | MotionPathGrab::Tangent { .. } => false,
+        MotionPathGrab::Anchor { target, i } => drag_path(state, world, target, i, None, p),
+        MotionPathGrab::Tangent { target, i, out } => {
+            drag_path(state, world, target, i, Some(out), p)
+        }
     }
 }
 
@@ -362,6 +422,7 @@ pub fn draw(
     use ph2d_vector::{Affine, Brush, Color, Fill, Stroke};
     crate::motion_path_overlay::draw(
         keys_tab && caminho_visivel(curves),
+        world,
         doc,
         selected,
         camera,

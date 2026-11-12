@@ -156,7 +156,6 @@ impl crate::App {
             hero.set_panel_visible("hierarchy", true);
         }
         self.playhead.rewind();
-        self.playhead.set_loop(0.0, 2.0);
         self.playhead.play();
         alcas::smoke_7(
             &mut self.timeline,
@@ -165,6 +164,7 @@ impl crate::App {
             heroi,
             pular,
         );
+        ph2d_timeline::loop_whole_active_clip(&mut self.timeline.doc, &mut self.playhead);
         // `=3`: o «andar» do Herói e o «Main» da Cena com Autoplay, e a cena a CORRER como pelo Play
         // da barra de cima (onda 4, item 1). Em `=1` nada vem marcado — como no Godot.
         if nivel == "3" {

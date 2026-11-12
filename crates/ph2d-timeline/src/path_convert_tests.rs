@@ -203,8 +203,8 @@ fn converting_nothing_is_refused() {
 fn two_objects_can_sit_in_different_modes() {
     use crate::PositionKeyMode;
     let mut doc = TimelineDoc::new();
-    doc.set_position_mode(1, true); // objeto 1 → Path
-    doc.set_position_mode(2, false); // objeto 2 → Separate
+    doc.set_position_mode(1, true, [0.0, 0.0]); // objeto 1 → Path
+    doc.set_position_mode(2, false, [0.0, 0.0]); // objeto 2 → Separate
     assert_eq!(doc.position_key_mode(1, true), PositionKeyMode::Path);
     assert_eq!(doc.position_key_mode(2, true), PositionKeyMode::Separate);
     // Um terceiro, fresco, toma o default (Path) — sem ter sido tocado.
@@ -218,12 +218,12 @@ fn set_position_mode_marks_a_fresh_object_and_toggles_cleanly() {
     use crate::PositionKeyMode;
     let mut doc = TimelineDoc::new();
     // fresco → Separate: nasce marcado, sem trajetória.
-    doc.set_position_mode(1, false);
+    doc.set_position_mode(1, false, [0.0, 0.0]);
     assert_eq!(doc.position_key_mode(1, true), PositionKeyMode::Separate);
     assert!(doc.position_path(1).is_none());
     assert!(doc.binding_for(1, PropKind::TranslationX).is_some());
     // alterna para Path: os eixos somem, vira trajetória.
-    doc.set_position_mode(1, true);
+    doc.set_position_mode(1, true, [0.0, 0.0]);
     assert_eq!(doc.position_key_mode(1, true), PositionKeyMode::Path);
     assert!(doc.binding_for(1, PropKind::TranslationX).is_none());
     assert!(doc.binding_for(1, PropKind::TranslationY).is_none());
@@ -237,7 +237,7 @@ fn set_position_mode_converts_an_animated_object() {
     use crate::PositionKeyMode;
     let (_, e, mut doc) = separate(); // X/Y animados em tempos diferentes
     let bits = e.to_bits();
-    doc.set_position_mode(bits, true); // Separate → Path
+    doc.set_position_mode(bits, true, [0.0, 0.0]); // Separate → Path
     assert_eq!(doc.position_key_mode(bits, true), PositionKeyMode::Path);
     assert!(
         doc.binding_for(bits, PropKind::TranslationX).is_none(),
@@ -366,6 +366,50 @@ fn converting_carries_every_clip_of_the_object() {
         assert!(
             (q[0] - p[0]).abs() < 1e-3 && (q[1] - p[1]).abs() < 1e-3,
             "em «andar», t={t}: {p:?} → {q:?}"
+        );
+    }
+}
+
+/// **Convert to Motion Path pelo intent usa a pose REAL** (o mundo): um objeto em (5, 3) animado
+/// só em X não tem binding Y, e sem o mundo a conversão punha o caminho em Y = 0.
+#[test]
+fn the_convert_intent_keeps_the_real_pose_of_the_axis_that_was_never_animated() {
+    let mut w = World::new();
+    let e = w
+        .spawn(Transform::from_translation(ph2d_core::Vec2::new(5.0, 3.0)))
+        .id();
+    let bits = e.to_bits();
+    let mut st = crate::TimelineState::default();
+    for (t, v) in [(0.0, 5.0_f32), (1.0, 9.0)] {
+        st.doc.insert_key(
+            bits,
+            PropKind::TranslationX,
+            s(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    let ts = [0.0, 0.25, 0.5, 1.0];
+    let pose = |doc: &TimelineDoc, t: f64| {
+        let p = crate::pose_at(&w, doc, bits, t).expect("pose").translation;
+        [p.x, p.y]
+    };
+    let antes: Vec<[f32; 2]> = ts.iter().map(|&t| pose(&st.doc, t)).collect();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let intent = crate::TimelineIntent::ConvertPositionMode {
+        entity: bits,
+        to_path: true,
+    };
+    crate::apply_intent_in(&w, &mut st, &mut ph, intent);
+    assert!(
+        st.doc.binding_for(bits, PropKind::Position).is_some(),
+        "virou caminho"
+    );
+    for (t, a) in ts.iter().zip(&antes) {
+        let d = pose(&st.doc, *t);
+        assert!(
+            (d[0] - a[0]).abs() < 1e-3 && (d[1] - a[1]).abs() < 1e-3,
+            "em t = {t} o objeto estava em {a:?} e a conversão o pôs em {d:?}"
         );
     }
 }

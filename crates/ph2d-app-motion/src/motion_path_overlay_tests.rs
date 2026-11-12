@@ -108,7 +108,14 @@ fn the_spacing_of_the_dots_is_the_speed() {
         ),
         (2.0, 20.0, Interp::Linear),
     ]);
-    let out = marks(true, &doc, Some(e), &camera(), window());
+    let out = marks(
+        true,
+        &ph2d_ecs::World::new(),
+        &doc,
+        Some(e),
+        &camera(),
+        window(),
+    );
     // O grupo dos PONTOS: um losango por quadro, 4 vértices cada.
     let dots = &only(&out, MarkRole::Dot).path;
     let vs = points(dots);
@@ -135,7 +142,14 @@ fn the_spacing_of_the_dots_is_the_speed() {
 #[test]
 fn a_constant_speed_track_draws_evenly_spaced_dots() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
-    let out = marks(true, &doc, Some(e), &camera(), window());
+    let out = marks(
+        true,
+        &ph2d_ecs::World::new(),
+        &doc,
+        Some(e),
+        &camera(),
+        window(),
+    );
     let centres: Vec<f64> = points(&only(&out, MarkRole::Dot).path)
         .chunks(4)
         .map(|c| c[0].0)
@@ -157,7 +171,7 @@ fn a_constant_speed_track_draws_evenly_spaced_dots() {
 fn the_marks_keep_their_screen_size_at_any_zoom() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let side = |cam: &Camera2d| -> f64 {
-        let out = marks(true, &doc, Some(e), cam, window());
+        let out = marks(true, &ph2d_ecs::World::new(), &doc, Some(e), cam, window());
         let vs = points(&only(&out, MarkRole::Anchor).path); // as âncoras
         (vs[1].0 - vs[0].0).abs()
     };
@@ -178,7 +192,14 @@ fn the_marks_keep_their_screen_size_at_any_zoom() {
     // ...e o CONTROLE: a câmera de fato mudou alguma coisa, senão o gate acima
     // compararia dois desenhos idênticos.
     let anchor_x = |cam: &Camera2d| {
-        points(&only(&marks(true, &doc, Some(e), cam, window()), MarkRole::Anchor).path)[0].0
+        points(
+            &only(
+                &marks(true, &ph2d_ecs::World::new(), &doc, Some(e), cam, window()),
+                MarkRole::Anchor,
+            )
+            .path,
+        )[0]
+        .0
     };
     let (p_close, p_far) = (anchor_x(&close), anchor_x(&far));
     assert!(
@@ -194,11 +215,27 @@ fn the_marks_keep_their_screen_size_at_any_zoom() {
 fn nothing_is_drawn_when_there_is_no_trajectory_to_show() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     assert!(
-        marks(true, &doc, None, &camera(), window()).is_empty(),
+        marks(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            None,
+            &camera(),
+            window()
+        )
+        .is_empty(),
         "sem seleção"
     );
     assert!(
-        marks(true, &doc, Some(e + 1), &camera(), window()).is_empty(),
+        marks(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e + 1),
+            &camera(),
+            window()
+        )
+        .is_empty(),
         "outro objeto selecionado"
     );
 
@@ -208,13 +245,29 @@ fn nothing_is_drawn_when_there_is_no_trajectory_to_show() {
         no_path.clear_clip_path(no_path.active_index(), t);
     }
     assert!(
-        marks(true, &no_path, Some(e2), &camera(), window()).is_empty(),
+        marks(
+            true,
+            &ph2d_ecs::World::new(),
+            &no_path,
+            Some(e2),
+            &camera(),
+            window()
+        )
+        .is_empty(),
         "binding sem caminho"
     );
 
     let (empty, e3) = doc_with(&[]);
     assert!(
-        marks(true, &empty, Some(e3), &camera(), window()).is_empty(),
+        marks(
+            true,
+            &ph2d_ecs::World::new(),
+            &empty,
+            Some(e3),
+            &camera(),
+            window()
+        )
+        .is_empty(),
         "caminho sem key nenhuma: não há percurso, só geometria"
     );
 }
@@ -224,7 +277,14 @@ fn nothing_is_drawn_when_there_is_no_trajectory_to_show() {
 #[test]
 fn the_overlay_groups_are_tagged_by_role() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
-    let out = marks(true, &doc, Some(e), &camera(), window());
+    let out = marks(
+        true,
+        &ph2d_ecs::World::new(),
+        &doc,
+        Some(e),
+        &camera(),
+        window(),
+    );
     // O glow, a fita, os pontos e as âncoras existem cada um por seu papel.
     let glow = only(&out, MarkRole::Glow);
     assert!(
@@ -254,11 +314,26 @@ fn the_overlay_groups_are_tagged_by_role() {
 fn pressing_the_drawn_square_grabs_that_very_anchor() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let (cam, win) = (camera(), window());
-    let squares = points(&only(&marks(true, &doc, Some(e), &cam, win), MarkRole::Anchor).path);
+    let squares = points(
+        &only(
+            &marks(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win),
+            MarkRole::Anchor,
+        )
+        .path,
+    );
     // Quatro vértices por quadrado; o centro é a média do 1º e do 3º (cantos opostos).
     for (i, c) in squares.chunks(4).enumerate() {
         let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
-        let hit = super::motion_path_hit(true, &doc, Some(e), &cam, win, cx as f32, cy as f32);
+        let hit = super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            cx as f32,
+            cy as f32,
+        );
         assert_eq!(
             anchor_of(hit),
             Some(i),
@@ -274,16 +349,32 @@ fn pressing_the_drawn_square_grabs_that_very_anchor() {
 fn the_grab_has_a_radius_and_a_far_click_passes_through() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let (cam, win) = (camera(), window());
-    let c = points(&only(&marks(true, &doc, Some(e), &cam, win), MarkRole::Anchor).path);
+    let c = points(
+        &only(
+            &marks(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win),
+            MarkRole::Anchor,
+        )
+        .path,
+    );
     let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
 
     assert!(
-        super::motion_path_hit(true, &doc, Some(e), &cam, win, cx as f32, (cy + 3.0) as f32)
-            .is_some()
+        super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            cx as f32,
+            (cy + 3.0) as f32
+        )
+        .is_some()
     );
     assert!(
         super::motion_path_hit(
             true,
+            &ph2d_ecs::World::new(),
             &doc,
             Some(e),
             &cam,
@@ -295,7 +386,19 @@ fn the_grab_has_a_radius_and_a_far_click_passes_through() {
         "um clique a 40 px da âncora foi agarrado — a trajetória está roubando o canvas"
     );
     // E sem seleção não há o que pegar, do mesmo jeito que não há o que desenhar.
-    assert!(super::motion_path_hit(true, &doc, None, &cam, win, cx as f32, cy as f32).is_none());
+    assert!(
+        super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            None,
+            &cam,
+            win,
+            cx as f32,
+            cy as f32
+        )
+        .is_none()
+    );
 }
 
 /// Com duas âncoras dentro do alvo vence a **mais próxima**, nunca a primeira da lista:
@@ -309,7 +412,7 @@ fn the_nearest_anchor_wins_not_the_first_one_listed() {
         ..camera()
     };
     let win = window();
-    let pts = super::anchor_screen(true, &doc, Some(e), &cam, win);
+    let pts = super::anchor_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
     let (a, b) = (pts[0].2, pts[1].2);
     assert!(
         (a.x - b.x).abs() < 2.0 * super::HIT_R_PX,
@@ -318,7 +421,16 @@ fn the_nearest_anchor_wins_not_the_first_one_listed() {
         (a.x - b.x).abs()
     );
     // Um clique colado na SEGUNDA tem de dar a segunda.
-    let hit = super::motion_path_hit(true, &doc, Some(e), &cam, win, b.x as f32, b.y as f32);
+    let hit = super::motion_path_hit(
+        true,
+        &ph2d_ecs::World::new(),
+        &doc,
+        Some(e),
+        &cam,
+        win,
+        b.x as f32,
+        b.y as f32,
+    );
     assert_eq!(anchor_of(hit), Some(1));
     let _ = &mut doc;
 }
@@ -352,7 +464,7 @@ pub(super) fn doc_shaped() -> (TimelineDoc, u64) {
 fn a_shaped_anchor_draws_a_grabbable_tangent_handle() {
     let (doc, e) = doc_shaped();
     let (cam, win) = (camera(), window());
-    let groups = marks(true, &doc, Some(e), &cam, win);
+    let groups = marks(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
     // Com alças, os papéis de linha e de ponta de tangente aparecem.
     assert!(
         !all(&groups, MarkRole::TangentLine).is_empty(),
@@ -360,7 +472,7 @@ fn a_shaped_anchor_draws_a_grabbable_tangent_handle() {
     );
     let tips_group = only(&groups, MarkRole::TangentTip);
 
-    let tips = super::tangent_screen(true, &doc, Some(e), &cam, win);
+    let tips = super::tangent_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &cam, win);
     assert!(
         !tips.is_empty(),
         "a âncora moldada não ofereceu alça nenhuma"
@@ -394,8 +506,16 @@ fn a_shaped_anchor_draws_a_grabbable_tangent_handle() {
             tip.y
         );
         // E apertar no centro desenhado agarra AQUELA alça (a porta única, pelos dois lados).
-        let hit =
-            super::motion_path_hit(true, &doc, Some(e), &cam, win, tip.x as f32, tip.y as f32);
+        let hit = super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &cam,
+            win,
+            tip.x as f32,
+            tip.y as f32,
+        );
         assert_eq!(
             hit,
             Some(MotionPathGrab::Tangent {
@@ -422,13 +542,23 @@ fn a_tiny_tangent_is_not_offered_so_it_does_not_steal_the_anchor() {
     };
     let win = window();
     assert!(
-        super::tangent_screen(true, &doc, Some(e), &far, win).is_empty(),
+        super::tangent_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &far, win).is_empty(),
         "uma alça de ~2 px foi oferecida — vai competir com o quadrado da âncora"
     );
     // ...e a âncora continua agarrável (é o que o mínimo protege).
-    let a = super::anchor_screen(true, &doc, Some(e), &far, win)[1].2;
+    let a = super::anchor_screen(true, &ph2d_ecs::World::new(), &doc, Some(e), &far, win)[1].2;
     assert!(
-        super::motion_path_hit(true, &doc, Some(e), &far, win, a.x as f32, a.y as f32).is_some(),
+        super::motion_path_hit(
+            true,
+            &ph2d_ecs::World::new(),
+            &doc,
+            Some(e),
+            &far,
+            win,
+            a.x as f32,
+            a.y as f32
+        )
+        .is_some(),
         "com a alça de fora, o clique na âncora tem de pegar a âncora"
     );
 }
@@ -453,7 +583,14 @@ fn the_ribbon_is_hotter_where_the_object_is_faster() {
         ),
         (2.0, 20.0, Interp::Linear),
     ]);
-    let out = marks(true, &doc, Some(e), &camera(), window());
+    let out = marks(
+        true,
+        &ph2d_ecs::World::new(),
+        &doc,
+        Some(e),
+        &camera(),
+        window(),
+    );
     // (x do meio do segmento, calor=canal verde) por todas as bandas da fita.
     let mut samples: Vec<(f64, f32)> = Vec::new();
     for m in all(&out, MarkRole::Ribbon) {
@@ -485,7 +622,14 @@ fn the_ribbon_is_hotter_where_the_object_is_faster() {
 #[test]
 fn a_constant_speed_track_paints_a_uniform_ribbon() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
-    let out = marks(true, &doc, Some(e), &camera(), window());
+    let out = marks(
+        true,
+        &ph2d_ecs::World::new(),
+        &doc,
+        Some(e),
+        &camera(),
+        window(),
+    );
     let bands = all(&out, MarkRole::Ribbon);
     assert!(!bands.is_empty(), "sem fita");
     let greens: Vec<f32> = bands.iter().map(|m| m.rgba[1]).collect();

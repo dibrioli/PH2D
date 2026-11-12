@@ -89,3 +89,13 @@ pub(crate) fn apply_length(
         _ => sync_loop(&state.doc, playhead, state.keys_mode),
     }
 }
+
+/// **Laça o clip ATIVO inteiro** (`[0, clip_end_seconds]`) nas duas vistas, no DOCUMENTO, e arma o
+/// relógio com ele. Para as cenas de smoke que tocam um clip em laço: um laço posto só no `Playhead`
+/// cai na primeira borda de vista ([`crate::arm_view_loop`] rearma do documento; medido 12/11).
+pub fn loop_whole_active_clip(doc: &mut TimelineDoc, playhead: &mut Playhead) {
+    let range = Some((0.0, doc.clip_end_seconds(doc.active_index())));
+    doc.set_active_loop_for(true, range);
+    doc.set_active_loop_for(false, range);
+    sync_loop(doc, playhead, false);
+}

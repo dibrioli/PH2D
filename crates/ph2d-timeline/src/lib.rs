@@ -128,7 +128,10 @@ pub use graph::{
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::TimelineIntent;
-pub use intent_apply::{apply_intent, snap_time, sync_container_loop, sync_transport_loop};
+pub use intent_apply::{
+    apply_intent, loop_whole_active_clip, snap_time, sync_container_loop, sync_transport_loop,
+};
+pub use intent_apply_path::apply_intent_in;
 pub use nest::{
     EMPTY_CONTAINER_SECONDS, MAX_CONTAINERS, NamedContainer, StackHost, container_bar_seconds,
 };

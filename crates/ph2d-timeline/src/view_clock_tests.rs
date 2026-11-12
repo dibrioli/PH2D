@@ -176,3 +176,34 @@ fn a_clip_inside_a_container_is_mapped_through_the_instance() {
         Err(KeyRefusal::PlaysTwice)
     );
 }
+
+/// **Um laço posto SÓ no relógio perde-se na primeira borda de vista** (smoke `ANIMACAO=1|7`,
+/// 12/11): o `Playhead` é a cópia viva do laço do DOCUMENTO, e o `arm_view_loop` rearma-o do
+/// documento ao entrar na aba Keys. Medido: o laço `(0, 2)` do relógio vira `None` e a agulha passa
+/// de 10 s; o laço autorado no documento sobrevive e a agulha fica dentro dele.
+#[test]
+fn a_loop_set_only_on_the_clock_is_lost_on_the_view_edge_and_the_documents_survives() {
+    let correr = |no_doc: bool| {
+        let mut st = three_second_clip();
+        let (mut editor, mut clip) = paused();
+        st.doc.set_clip_length_override(0, Some(2.0));
+        if no_doc {
+            crate::loop_whole_active_clip(&mut st.doc, &mut editor);
+        } else {
+            editor.set_loop(0.0, 2.0);
+        }
+        editor.play();
+        st.keys_mode = true;
+        arm_view_loop(&mut st, &mut editor, &mut clip);
+        for _ in 0..(12.0 / DT) as usize {
+            editor.advance();
+        }
+        (editor.loop_range(), editor.time())
+    };
+    let (laco, t) = correr(false);
+    assert_eq!(laco, None, "medição: o laço só do relógio caiu na borda");
+    assert!(t > 10.0, "medição: a agulha correu solta até {t}");
+    let (laco, t) = correr(true);
+    assert_eq!(laco, Some((0.0, 2.0)), "o laço do documento sobrevive");
+    assert!(t <= 2.0, "a agulha volta ao início do laço: {t}");
+}

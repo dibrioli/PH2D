@@ -303,6 +303,42 @@ fn segs<'a>(e: &Escolha<'a>) -> Vec<ph2d_editor_core::panel::cards::Seg<'a>> {
         .collect()
 }
 
+/// ⭐ **A caixa que liga e desliga uma dobra**, sem rótulo, no cabeçalho dela (a habilidade do Platform
+/// Player, dono 10/11): `caixa` é a aresta do cabeçalho, não a altura de uma linha — por isso a sua
+/// altura está nomeada em `a_marca_tem_a_altura_da_linha`. Alvo, hover e visto são os do cartão.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn caixa_de_cabecalho(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    id: NodeId,
+    caixa: ph2d_editor_core::zones::Rect,
+    ligada: bool,
+) {
+    hit_index.register(id, caixa);
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        let hover = store.hover_live(id) > 0.0;
+        ph2d_editor_core::widget::paint_card_check(scene, ink, caixa, ligada, hover);
+        return;
+    }
+    let valor = if ligada {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    ph2d_editor_core::widget::paint_checkbox(
+        &ph2d_editor_core::widget::Checkbox::new(id, "")
+            .visual(store.checkbox_visual(id))
+            .value(valor),
+        caixa,
+        scene,
+        text_system,
+        theme,
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

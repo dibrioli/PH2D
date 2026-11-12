@@ -140,26 +140,9 @@ impl Pintor<'_> {
             y + ph2d_editor_core::widget::card_ink::card_body().map_or(0.0, |_| Spacing::Sm.px());
         let lado = h.min(TypeToken::Sm.px() + Spacing::Xs.px());
         let caixa = Rect::new(self.x, topo + (h - lado) * 0.5, lado, lado);
-        self.hit.register(caixa_id, caixa);
-        let hover = self.store.hover_live(caixa_id) > 0.0;
-        if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
-            ph2d_editor_core::widget::paint_card_check(self.scene, ink, caixa, ligada, hover);
-        } else {
-            let valor = if ligada {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            };
-            ph2d_editor_core::widget::paint_checkbox(
-                &ph2d_editor_core::widget::Checkbox::new(caixa_id, "")
-                    .visual(self.store.checkbox_visual(caixa_id))
-                    .value(valor),
-                caixa,
-                self.scene,
-                self.text,
-                self.theme,
-            );
-        }
+        super::rows::caixa_de_cabecalho(
+            self.scene, self.text, self.theme, self.hit, self.store, caixa_id, caixa, ligada,
+        );
         let dx = lado + Spacing::Sm.px();
         let texto = if ligada {
             self.resumo(resumo)

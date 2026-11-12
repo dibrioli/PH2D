@@ -190,7 +190,9 @@ pub(crate) use ritmo::{
 
 #[path = "rows_par.rs"]
 mod par;
-pub(super) use par::{Campo, Escolha, caixa_row, par_row, seg_par_row, seg_row_misto};
+pub(super) use par::{
+    Campo, Escolha, caixa_de_cabecalho, caixa_row, par_row, seg_par_row, seg_row_misto,
+};
 
 /// A labelled number box, seeded from the store (which `sync` mirrors from
 /// the snapshot). Returns the next `y`.

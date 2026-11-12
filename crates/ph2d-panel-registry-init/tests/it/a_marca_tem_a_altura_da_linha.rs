@@ -289,7 +289,17 @@ fn diag_que_altura_tem_cada_marca() {
 ///
 /// Hoje vazia: o botão grande de *Snap* do `grid_snap` saiu com o painel em cartões, onde o Snap é
 /// uma caixa com a altura da linha (o corpo de `PH2D_CARDS=0` guarda-o, e esta régua pinta cartões).
-const FORA_COM_NOME: &[(&str, ph2d_editor_core::NodeId, f32)] = &[];
+const FORA_COM_NOME: &[(&str, ph2d_editor_core::NodeId, f32)] = &[
+    // A caixa de cada HABILIDADE do Platform Player (dono 10/11, versão B): vive no cabeçalho da
+    // dobra, ao lado do chevron, com a aresta do cabeçalho (`Sm + Xs` = 16) — uma marca de dobra,
+    // não uma linha de formulário. Passa pela porta `rows::caixa_de_cabecalho`.
+    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[0], 16.0),
+    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[1], 16.0),
+    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[2], 16.0),
+    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[3], 16.0),
+    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[4], 16.0),
+    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[5], 16.0),
+];
 
 /// ⭐⭐ **A PORTA da isenção** — `(painel, id)`, e é um par por uma razão medida.
 ///

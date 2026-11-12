@@ -266,7 +266,7 @@ impl FootprintDeform {
     /// Apply to a footprint unit coord `[u, v]` (pixel offset ÷ radius): rotate by `-angle` into the
     /// ellipse frame, then stretch the minor axis. The falloff reads [`Self::falloff_t`]; the Shape /
     /// Grain samplers feed `apply(f)` into their own Size/rotation/offset.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn apply(&self, p: [f32; 2]) -> [f32; 2] {
         if self.is_identity() {

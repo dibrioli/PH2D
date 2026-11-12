@@ -57,10 +57,10 @@ impl Trail {
             // Uma linha toda na cor base (e limpa) é ponto fixo da limpeza com `clean ≤ 1`: `f32(b) + (b − f32(b))·k`
             // fica em `[f32(b), b]` e arredonda de volta a `f32(b)` (R3: a janela do traço largo é quase toda assim).
             let na_base = clean <= 1.0
-                && tr.iter().all(|&v| v == base32[0])
-                && tg.iter().all(|&v| v == base32[1])
-                && tb.iter().all(|&v| v == base32[2])
-                && limpo.as_deref().is_none_or(|w| w.iter().all(|&v| v == 1.0));
+                && toda_igual(tr, base32[0])
+                && toda_igual(tg, base32[1])
+                && toda_igual(tb, base32[2])
+                && limpo.as_deref().is_none_or(|w| toda_igual(w, 1.0));
             if clean > 0.0 && !na_base {
                 for l in 0..tr.len() {
                     tr[l] = (tr[l] as f64 + (base_r - tr[l] as f64) * clean) as f32;
@@ -270,6 +270,17 @@ impl Trail {
             }
         }
     }
+}
+
+/// `v` inteira igual a `b` — o veredicto do `iter().all`, varrido em blocos de 16 sem saída a meio do bloco (o
+/// compilador vectoriza-o; a janela do traço largo é quase toda na cor base e o laço escalar pesava ~3,5 %).
+#[inline]
+fn toda_igual(v: &[f32], b: f32) -> bool {
+    let mut blocos = v.chunks_exact(16);
+    blocos
+        .by_ref()
+        .all(|c| c.iter().fold(true, |a, &x| a & (x == b)))
+        && blocos.remainder().iter().all(|&x| x == b)
 }
 
 /// O que a ponta vê da célula `i`: os pesos `(assentado, suspenso)` da cor que ela apanha. A tinta líquida

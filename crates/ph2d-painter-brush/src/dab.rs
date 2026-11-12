@@ -51,12 +51,29 @@ pub fn silhouette_at(
     center: [f32; 2],
     radius: f32,
 ) -> f32 {
+    silhouette_at_com(spec, spec.queda_do_dab(), shape, t, px, py, center, radius)
+}
+
+/// [`silhouette_at`] com a [`crate::spec::QuedaDoDab`] do dab já lida (o kernel lê-a uma vez por banda).
+#[allow(clippy::too_many_arguments)]
+#[inline]
+#[must_use]
+pub(crate) fn silhouette_at_com(
+    spec: &BrushSpec,
+    queda: crate::spec::QuedaDoDab,
+    shape: Option<ShapeInput<'_>>,
+    t: f32,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+) -> f32 {
     match shape {
         Some(sh) => spec.compose_shape_silhouette(
             shape_value_at(spec, sh, px, py, center, radius),
-            spec.falloff_weight(t),
+            queda.peso(spec, t),
         ),
-        None => spec.falloff_weight(t),
+        None => queda.peso(spec, t),
     }
 }
 
@@ -106,6 +123,7 @@ pub fn silhouette_capsula(
 ) -> f32 {
     silhouette_capsula_com(
         spec,
+        spec.queda_do_dab(),
         shape,
         footprint,
         cap,
@@ -126,6 +144,7 @@ pub fn silhouette_capsula(
 #[inline]
 pub(crate) fn silhouette_capsula_com(
     spec: &BrushSpec,
+    queda: crate::spec::QuedaDoDab,
     shape: Option<ShapeInput<'_>>,
     footprint: crate::footprint::FootprintDeform,
     cap: crate::capsula::Capsula,
@@ -147,7 +166,7 @@ pub(crate) fn silhouette_capsula_com(
         let (o, r) = (s.off, radius * s.escala);
         let inv = 1.0 / r;
         let fp = s.rotor.map_or(footprint, |q| footprint.rotated_by(q));
-        let queda = spec.falloff_weight(fp.falloff_t((dx - o[0]) * inv, (dy - o[1]) * inv));
+        let queda = queda.peso(spec, fp.falloff_t((dx - o[0]) * inv, (dy - o[1]) * inv));
         let (x, forma) = match shape {
             Some(sh) if queda > 0.0 || imagem => {
                 let base;
@@ -504,6 +523,7 @@ fn stamp_dab_inner_com<M: crate::Tecto>(
         x1,
         stride: local.as_ref().map_or(stride, |_| ((x1 - x0) as usize) * 4),
         ox: if local.is_some() { x0 } else { 0 },
+        vazio_local: local.is_some(),
         film_aa,
         lut,
         capsula,

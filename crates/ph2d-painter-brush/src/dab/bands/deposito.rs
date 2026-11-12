@@ -94,14 +94,18 @@ pub(in crate::dab) fn pousa<M: Tecto>(
         if let Some(f) = forca {
             crate::stroke_cover::compoe_forca(&mut f[onde.mi], a);
         }
-        crate::blend_vazio::blend_over_pigment_modo(
-            ctx.spec.blend,
-            prev,
-            color,
-            a,
-            ctx.spec.pigmento(),
-            ctx.spec.blend_sobre_vazio,
-        )
+        if inv.branco_no_vazio && color == [1.0; 3] {
+            super::branco_no_vazio(a)
+        } else {
+            crate::blend_vazio::blend_over_pigment_modo(
+                ctx.spec.blend,
+                prev,
+                color,
+                a,
+                ctx.spec.pigmento(),
+                ctx.spec.blend_sobre_vazio,
+            )
+        }
     };
     dst[i] = encode(out[0]);
     dst[i + 1] = encode(out[1]);

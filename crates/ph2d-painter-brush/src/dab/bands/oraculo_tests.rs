@@ -70,6 +70,7 @@ pub(super) fn stamp_band_antiga(
                 (Some(cap), _) => {
                     let uniao = crate::dab::silhouette_capsula_com(
                         ctx.spec,
+                        ctx.spec.queda_do_dab(),
                         ctx.shape,
                         ctx.footprint,
                         cap,
@@ -133,6 +134,7 @@ pub(super) fn stamp_band_antiga(
                     row + ((px - ctx.ox) as usize) * 4,
                     w,
                     blend,
+                    false,
                 );
             }
             // `w` = dab PROFILE (falloff × silhouette, the build factor); `g` = texture COVERAGE factor
@@ -337,6 +339,7 @@ fn compara(
         x1: 61,
         stride: LADO * 4,
         ox: 0,
+        vazio_local: false,
         film_aa,
         lut: None,
         capsula,
@@ -499,6 +502,7 @@ fn sonda_o_carimbo_com_invariantes_icadas_custa_menos() {
             x1: L as i64,
             stride: L * 4,
             ox: 0,
+            vazio_local: false,
             film_aa: None,
             lut: None,
             capsula: cap,
@@ -531,5 +535,35 @@ fn sonda_o_carimbo_com_invariantes_icadas_custa_menos() {
             "[B26.1] {nome}: antiga {antigo:.3} ms/dab · nova {novo:.3} ms/dab · {:.2}×",
             antigo / novo
         );
+    }
+}
+
+/// Missão 4K onda 3: o atalho do branco sobre o `[0; 4]` da pegada local é a `blend_over_pigment_modo` AO BIT, para
+/// todo `a` de 2²⁴ passos em `(0, 1,5]` e toda mistura de pigmento K–M (o espectral não entra no atalho).
+#[test]
+fn o_branco_no_vazio_e_a_blend_de_sempre_ao_bit() {
+    for mix in [0.0f32, 0.3, 1.0] {
+        for vazio in [false, true] {
+            let p = crate::blend::Pigmento {
+                mix,
+                espectral: false,
+            };
+            for k in 1..=(1u32 << 24) {
+                let a = k as f32 * (1.5 / (1u32 << 24) as f32);
+                let de_sempre = crate::blend_vazio::blend_over_pigment_modo(
+                    crate::BrushBlend::Mix,
+                    [0.0; 4],
+                    [1.0; 3],
+                    a,
+                    p,
+                    vazio,
+                );
+                assert_eq!(
+                    super::branco_no_vazio(a).map(f32::to_bits),
+                    de_sempre.map(f32::to_bits),
+                    "a = {a}, mix {mix}, vazio {vazio}"
+                );
+            }
+        }
     }
 }

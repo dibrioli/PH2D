@@ -680,6 +680,7 @@ pub struct BrushSpec {
 }
 
 mod queries;
+pub use queries::QuedaDoDab;
 
 mod material_e_grao;
 pub use material_e_grao::GraoAplicado;

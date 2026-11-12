@@ -288,5 +288,7 @@ fn pegada_do_dab(
         spec.dab_rotor(d),
         d.capsula(&branco),
         po,
+        // Sem o Grain, o dente e o pó a pegada lisa é a própria máscara: a película lê-a como sem ela.
+        basis.is_some() || spec.dente.is_some() || po.is_some(),
     )
 }

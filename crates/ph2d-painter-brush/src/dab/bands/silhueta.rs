@@ -48,6 +48,7 @@ pub(in crate::dab) fn em(
         (Some(cap), _) => {
             let uniao = crate::dab::silhouette_capsula_com(
                 ctx.spec,
+                inv.queda,
                 ctx.shape,
                 ctx.footprint,
                 cap,
@@ -86,9 +87,10 @@ pub(in crate::dab) fn em(
             t,
             wv,
             [dx, dy],
-            || crate::dab::silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
+            || crate::dab::silhouette_at_com(ctx.spec, inv.queda, ctx.shape, t, px, py, ctx.center, ctx.radius),
             |ox, oy| {
-                ctx.spec.falloff_weight(
+                inv.queda.peso(
+                    ctx.spec,
                     ctx.footprint
                         .falloff_t((dx + ox) * ctx.inv_radius, (dy + oy) * ctx.inv_radius),
                 )
@@ -96,7 +98,7 @@ pub(in crate::dab) fn em(
         ),
         (None, None) => crate::height::film_coverage(
             ctx.spec.deposits_height(),
-            crate::dab::silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
+            crate::dab::silhouette_at_com(ctx.spec, inv.queda, ctx.shape, t, px, py, ctx.center, ctx.radius),
         ),
     };
     Silhueta {

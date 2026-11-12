@@ -43,6 +43,7 @@ fn ctx<'a>(
         x1: 61,
         stride: LADO * 4,
         ox: 0,
+        vazio_local: false,
         film_aa: None,
         lut: None,
         capsula: None,

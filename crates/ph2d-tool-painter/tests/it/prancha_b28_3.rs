@@ -214,3 +214,25 @@ fn a_pegada_local_sem_grao_da_a_tela_da_rota_de_antes_ao_bit() {
         }
     }
 }
+
+/// Missão 4K onda 3: a película do Wet blend pintada uma LINHA por tarefa dá a tela das faixas de ladrilhos AO BIT —
+/// Hard Round (r40 e r100), Wet Wash Mix (a meia definição) e Round Mixing, nos 3 fundos.
+#[test]
+fn a_pelicula_por_linhas_da_a_tela_das_faixas_ao_bit() {
+    use ph2d_painter_brush::mistura_opaca::PELICULA_POR_LINHAS;
+    for (nome, raio) in [
+        ("Hard Round", 40.0),
+        ("Hard Round", 100.0),
+        ("Wet Wash Mix", 100.0),
+        ("Round Mixing", 100.0),
+    ] {
+        for qual in 0..3u8 {
+            PELICULA_POR_LINHAS.store(false, Ordering::Relaxed);
+            let (antes, _) = cena_r(nome, 640, 360, qual, true, raio);
+            PELICULA_POR_LINHAS.store(true, Ordering::Relaxed);
+            let (depois, _) = cena_r(nome, 640, 360, qual, true, raio);
+            let n = antes.iter().zip(&depois).filter(|(a, b)| a != b).count();
+            assert_eq!(n, 0, "{nome} r{raio} fundo {qual}: {n} bytes mudaram");
+        }
+    }
+}

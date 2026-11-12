@@ -42,6 +42,10 @@ pub static AMOSTRA_ESPARSA: std::sync::atomic::AtomicBool =
 /// A pegada SEM Grain do lote também em buffers locais, em paralelo entre os dabs (como a do Grain, Bug #84); `false`
 /// = o kernel em série na máscara da tela inteira (a rota de antes, o oráculo do gate ao bit).
 #[doc(hidden)]
+/// A película do carimbo pinta-se uma LINHA por tarefa (missão 4K onda 3); `false` = uma faixa de ladrilhos por tarefa
+/// (a partição de antes). Os mesmos bytes; só o gate e a medição A×B a viram.
+#[doc(hidden)]
+pub static PELICULA_POR_LINHAS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 pub static PEGADAS_LOCAIS_SEM_GRAO: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(true);
 

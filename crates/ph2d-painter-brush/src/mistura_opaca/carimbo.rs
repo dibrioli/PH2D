@@ -279,120 +279,182 @@ pub fn mistura_opaca_carimbo(
     let tabela_alfa: Option<[f32; 256]> = matches!(pegada, Pegada::Mascara { .. })
         .then(|| std::array::from_fn(|b| alfa_de(f32::from(b as u8) / 255.0)));
     let (plano, trava_alfa) = (tela.plano, tela.trava_alfa);
-    let pinta_faixa = |(ty, linhas, ladrilhos): Faixa<'_>| {
-        let base = ty * ALTO;
-        for y in base.max(y0)..(base + ALTO).min(y1) {
-            for x in x0..x1 {
-                let (wt, byte) = match pegada {
-                    Pegada::Mascara { mascara, .. } => {
-                        let b = mascara[na_mascara(x, y) + 3];
-                        (f32::from(b) / 255.0, Some(b))
-                    }
-                    Pegada::Disco { .. } => (peso(x, y), None),
-                };
-                if wt <= 0.0 {
-                    continue;
-                }
-                // O grão: a razão entre a pegada e a pegada sem ele vai ao tecto; a pegada sem ele é a taxa.
-                let (wt, grao, byte) = match pegada {
-                    Pegada::Mascara {
-                        sem_grao: Some(sg), ..
-                    } => {
-                        let b = sg[na_mascara(x, y) + 3];
-                        let liso = f32::from(b) / 255.0;
-                        if liso > 0.0 {
-                            (liso, (wt / liso).min(1.0), Some(b))
-                        } else {
-                            (wt, 1.0, byte)
-                        }
-                    }
-                    _ => (wt, 1.0, byte),
-                };
-                let tecto = tecto * grao;
-                let alfa = match (&tabela_alfa, byte) {
-                    (Some(t), Some(b)) => t[usize::from(b)],
-                    _ => alfa_de(wt),
-                };
-                if alfa <= 0.0 {
-                    continue;
-                }
-                let i = ((y * w + x) * 4) as usize;
-                let tx = x / LADO;
-                let lw = LADO.min(w - tx * LADO);
-                let ladrilho = ladrilhos[tx as usize]
-                    .as_deref_mut()
-                    .expect("ladrilho da sombra garantido antes do toque");
-                let j = ((y - base) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
-                let px = &mut ladrilho[j..j + POR_TEXEL];
-                if px[4] == SEM_TINTA {
-                    px[4] = arco;
-                }
-                let estado = estado_em(x, y);
-                let tinta = match cor_da_mascara {
-                    Some(mc) => tinta_de(estado.cor, estado.a_eff, {
-                        let mi = na_mascara(x, y);
-                        [mc[mi], mc[mi + 1], mc[mi + 2]].map(|v| f32::from(v) / 255.0)
-                    }),
-                    None => estado.tinta,
-                };
-                let s0 = px[3];
-                let s_livre = s0 * (1.0 - alfa) + corpo * alfa;
-                if s_livre > 0.0 {
-                    for k in 0..3 {
-                        px[k] = (px[k] * s0 * (1.0 - alfa) + tinta[k] * corpo * alfa) / s_livre;
-                    }
-                }
-                px[3] = s_livre.max(s0).min(tecto.max(s0));
-                let pel = [px[0], px[1], px[2], px[3]];
-                let out = if plano {
-                    pel
+    // O TEXEL da película em duas metades — `quanto` (o alfa e o tecto, só lê) e `aplica` (escreve a película e a
+    // tela) — para as duas partições pintarem a MESMA conta: as faixas de ladrilhos e as linhas (missão 4K onda 3).
+    let quanto = |x: u32, y: u32| -> Option<(f32, f32)> {
+        let (wt, byte) = match pegada {
+            Pegada::Mascara { mascara, .. } => {
+                let b = mascara[na_mascara(x, y) + 3];
+                (f32::from(b) / 255.0, Some(b))
+            }
+            Pegada::Disco { .. } => (peso(x, y), None),
+        };
+        if wt <= 0.0 {
+            return None;
+        }
+        // O grão: a razão entre a pegada e a pegada sem ele vai ao tecto; a pegada sem ele é a taxa.
+        let (wt, grao, byte) = match pegada {
+            Pegada::Mascara {
+                sem_grao: Some(sg), ..
+            } => {
+                let b = sg[na_mascara(x, y) + 3];
+                let liso = f32::from(b) / 255.0;
+                if liso > 0.0 {
+                    (liso, (wt / liso).min(1.0), Some(b))
                 } else {
-                    let ant = antes(i).map(|v| f32::from(v) / 255.0);
-                    let sc = pel[3];
-                    if trava_alfa {
-                        let sc = if ant[3] > 0.0 { sc } else { 0.0 };
-                        [
-                            ant[0] + (pel[0] - ant[0]) * sc,
-                            ant[1] + (pel[1] - ant[1]) * sc,
-                            ant[2] + (pel[2] - ant[2]) * sc,
-                            ant[3],
-                        ]
-                    } else {
-                        let a = sc + ant[3] * (1.0 - sc);
-                        if a > 0.0 {
-                            let f = ant[3] * (1.0 - sc);
-                            [
-                                (pel[0] * sc + ant[0] * f) / a,
-                                (pel[1] * sc + ant[1] * f) / a,
-                                (pel[2] * sc + ant[2] * f) / a,
-                                a,
-                            ]
-                        } else {
-                            [0.0; 4]
-                        }
-                    }
-                };
-                let li = (((y - base) * w + x) * 4) as usize;
-                for (dst, v) in linhas[li..li + 4].iter_mut().zip(out.iter()) {
-                    *dst = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    (wt, 1.0, byte)
                 }
             }
+            _ => (wt, 1.0, byte),
+        };
+        let tecto = tecto * grao;
+        let alfa = match (&tabela_alfa, byte) {
+            (Some(t), Some(b)) => t[usize::from(b)],
+            _ => alfa_de(wt),
+        };
+        (alfa > 0.0).then_some((alfa, tecto))
+    };
+    let aplica = |x: u32, y: u32, (alfa, tecto): (f32, f32), px: &mut [f32], saida: &mut [u8]| {
+        let i = ((y * w + x) * 4) as usize;
+        if px[4] == SEM_TINTA {
+            px[4] = arco;
+        }
+        let estado = estado_em(x, y);
+        let tinta = match cor_da_mascara {
+            Some(mc) => tinta_de(estado.cor, estado.a_eff, {
+                let mi = na_mascara(x, y);
+                [mc[mi], mc[mi + 1], mc[mi + 2]].map(|v| f32::from(v) / 255.0)
+            }),
+            None => estado.tinta,
+        };
+        let s0 = px[3];
+        let s_livre = s0 * (1.0 - alfa) + corpo * alfa;
+        if s_livre > 0.0 {
+            for k in 0..3 {
+                px[k] = (px[k] * s0 * (1.0 - alfa) + tinta[k] * corpo * alfa) / s_livre;
+            }
+        }
+        px[3] = s_livre.max(s0).min(tecto.max(s0));
+        let pel = [px[0], px[1], px[2], px[3]];
+        let out = if plano {
+            pel
+        } else {
+            let ant = antes(i).map(|v| f32::from(v) / 255.0);
+            let sc = pel[3];
+            if trava_alfa {
+                let sc = if ant[3] > 0.0 { sc } else { 0.0 };
+                [
+                    ant[0] + (pel[0] - ant[0]) * sc,
+                    ant[1] + (pel[1] - ant[1]) * sc,
+                    ant[2] + (pel[2] - ant[2]) * sc,
+                    ant[3],
+                ]
+            } else {
+                let a = sc + ant[3] * (1.0 - sc);
+                if a > 0.0 {
+                    let f = ant[3] * (1.0 - sc);
+                    [
+                        (pel[0] * sc + ant[0] * f) / a,
+                        (pel[1] * sc + ant[1] * f) / a,
+                        (pel[2] * sc + ant[2] * f) / a,
+                        a,
+                    ]
+                } else {
+                    [0.0; 4]
+                }
+            }
+        };
+        for (dst, v) in saida.iter_mut().zip(out.iter()) {
+            *dst = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
     };
     let colunas = tela.sombra.colunas as usize;
-    let faixas: Vec<_> = tela
-        .buf
-        .chunks_mut((ALTO * w * 4) as usize)
-        .zip(tela.sombra.ladrilhos.chunks_mut(colunas))
-        .enumerate()
-        .skip(ty0 as usize)
-        .take((ty1 - ty0 + 1) as usize)
-        .map(|(ty, (linhas, ladrilhos))| (ty as u32, linhas, ladrilhos))
-        .collect();
-    if paralelo {
-        faixas.into_par_iter().for_each(pinta_faixa);
+    if PELICULA_POR_LINHAS.load(std::sync::atomic::Ordering::Relaxed) {
+        // Uma tarefa por LINHA: as linhas da tela e, de cada ladrilho da caixa, a linha dele.
+        let (tx0, tx1) = (x0 / LADO, (x1 - 1) / LADO);
+        let nt = (tx1 - tx0 + 1) as usize;
+        let mut filas: Vec<Option<&mut [f32]>> = (0..(y1 - y0) as usize * nt).map(|_| None).collect();
+        for (ty, fila) in tela
+            .sombra
+            .ladrilhos
+            .chunks_mut(colunas)
+            .enumerate()
+            .skip(ty0 as usize)
+            .take((ty1 - ty0 + 1) as usize)
+        {
+            for (k, l) in fila[tx0 as usize..=tx1 as usize].iter_mut().enumerate() {
+                let tx = tx0 + k as u32;
+                let lw = LADO.min(w - tx * LADO) as usize;
+                let l = l
+                    .as_deref_mut()
+                    .expect("ladrilho da sombra garantido antes do toque");
+                for (r, linha) in l.chunks_mut(lw * POR_TEXEL).enumerate() {
+                    let y = ty as u32 * ALTO + r as u32;
+                    if (y0..y1).contains(&y) {
+                        filas[(y - y0) as usize * nt + k] = Some(linha);
+                    }
+                }
+            }
+        }
+        let stride = (w * 4) as usize;
+        let pinta_linha = |(r, (linha, lads)): (usize, (&mut [u8], &mut [Option<&mut [f32]>]))| {
+            let y = y0 + r as u32;
+            for x in x0..x1 {
+                let Some(q) = quanto(x, y) else { continue };
+                let tx = x / LADO;
+                let l = lads[(tx - tx0) as usize]
+                    .as_deref_mut()
+                    .expect("a linha do ladrilho");
+                let j = (x - tx * LADO) as usize * POR_TEXEL;
+                let xi = (x * 4) as usize;
+                aplica(x, y, q, &mut l[j..j + POR_TEXEL], &mut linha[xi..xi + 4]);
+            }
+        };
+        let linhas = &mut tela.buf[y0 as usize * stride..y1 as usize * stride];
+        if paralelo {
+            linhas
+                .par_chunks_mut(stride)
+                .zip(filas.par_chunks_mut(nt))
+                .enumerate()
+                .for_each(pinta_linha);
+        } else {
+            linhas
+                .chunks_mut(stride)
+                .zip(filas.chunks_mut(nt))
+                .enumerate()
+                .for_each(pinta_linha);
+        }
     } else {
-        faixas.into_iter().for_each(pinta_faixa);
+        let pinta_faixa = |(ty, linhas, ladrilhos): Faixa<'_>| {
+            let base = ty * ALTO;
+            for y in base.max(y0)..(base + ALTO).min(y1) {
+                for x in x0..x1 {
+                    let Some(q) = quanto(x, y) else { continue };
+                    let tx = x / LADO;
+                    let lw = LADO.min(w - tx * LADO);
+                    let ladrilho = ladrilhos[tx as usize]
+                        .as_deref_mut()
+                        .expect("ladrilho da sombra garantido antes do toque");
+                    let j = ((y - base) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
+                    let li = (((y - base) * w + x) * 4) as usize;
+                    aplica(x, y, q, &mut ladrilho[j..j + POR_TEXEL], &mut linhas[li..li + 4]);
+                }
+            }
+        };
+        let faixas: Vec<_> = tela
+            .buf
+            .chunks_mut((ALTO * w * 4) as usize)
+            .zip(tela.sombra.ladrilhos.chunks_mut(colunas))
+            .enumerate()
+            .skip(ty0 as usize)
+            .take((ty1 - ty0 + 1) as usize)
+            .map(|(ty, (linhas, ladrilhos))| (ty as u32, linhas, ladrilhos))
+            .collect();
+        if paralelo {
+            faixas.into_par_iter().for_each(pinta_faixa);
+        } else {
+            faixas.into_iter().for_each(pinta_faixa);
+        }
     }
     Some(DirtyRect {
         x: x0,

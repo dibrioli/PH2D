@@ -636,16 +636,50 @@ impl BrushSpec {
     /// a curva Custom lê-se pela área dele ([`crate::FalloffCurve::weight_area`]), o resto não o usa.
     #[must_use]
     pub fn falloff_weight_passo(&self, t: f32, passo: f32) -> f32 {
-        let h = self.dureza_do_dab();
+        self.queda_do_dab_passo(passo).peso(self, t)
+    }
+
+    /// A [`QuedaDoDab`] deste spec ao passo de [`Self::falloff_weight`].
+    #[must_use]
+    pub fn queda_do_dab(&self) -> QuedaDoDab {
+        self.queda_do_dab_passo(1.0 / self.clamped_radius())
+    }
+
+    /// A [`QuedaDoDab`] deste spec ao passo `passo` ([`Self::falloff_weight_passo`]).
+    #[must_use]
+    pub fn queda_do_dab_passo(&self, passo: f32) -> QuedaDoDab {
+        QuedaDoDab {
+            h: self.dureza_do_dab(),
+            passo,
+            area: self.falloff == Falloff::Custom && crate::texture::pela_area::ligada(),
+        }
+    }
+}
+
+/// [`BrushSpec::falloff_weight_passo`] com a dureza do dab e a chave da área lidas UMA vez por dab, não por texel
+/// (missão 4K, onda 3): o mesmo `f32`.
+#[derive(Clone, Copy, Debug)]
+pub struct QuedaDoDab {
+    h: f32,
+    passo: f32,
+    area: bool,
+}
+
+impl QuedaDoDab {
+    /// O peso a `t` do `spec` de onde ela saiu.
+    #[inline(always)]
+    #[must_use]
+    pub fn peso(self, spec: &BrushSpec, t: f32) -> f32 {
+        let h = self.h;
         if h >= 1.0 {
             return if t < 1.0 { 1.0 } else { 0.0 };
         }
         let remapped = ((t - h) / (1.0 - h)).clamp(0.0, 1.0);
-        match self.falloff {
-            Falloff::Custom if crate::texture::pela_area::ligada() => {
-                self.custom_falloff.weight_area(remapped, passo / (1.0 - h))
+        match spec.falloff {
+            Falloff::Custom if self.area => {
+                spec.custom_falloff.weight_area(remapped, self.passo / (1.0 - h))
             }
-            Falloff::Custom => self.custom_falloff.weight(remapped),
+            Falloff::Custom => spec.custom_falloff.weight(remapped),
             preset => preset.weight(remapped),
         }
     }

@@ -353,6 +353,8 @@ pub(super) struct DabCtx<'a> {
     pub(super) stride: usize,
     /// A coluna da tela que é a 1.ª do buffer (`0` na tela; a caixa do dab numa [`crate::PegadaLocal`]).
     pub(super) ox: i64,
+    /// O buffer é uma [`crate::PegadaLocal`] nova: cada texel nasce `[0; 4]` e o dab escreve-o uma vez só.
+    pub(super) vazio_local: bool,
     /// Screen-space AA of the film silhouette (BUGS #16) — `None` = single-sample `film_of`,
     /// byte-identical. Hoisted per dab in [`stamp_dab_pixels`].
     pub(super) film_aa: Option<crate::height_film::FilmAa>,
@@ -401,6 +403,17 @@ pub(in crate::dab) struct Invariantes {
     /// B29.1: o texel largo recompõe a tela do pré-traço só sob a source-over pura (Mix, sem pigmento, sem rampa nem
     /// cor do Shape, sem Preserve Alpha) — a cor constante ao longo do traço é de quem dá o [`crate::TexelLargo`].
     pub(in crate::dab) recompoe: bool,
+    /// A queda do dab com a dureza lida uma vez ([`crate::spec::QuedaDoDab`]).
+    pub(in crate::dab) queda: crate::spec::QuedaDoDab,
+    /// O branco em `Mix` sobre o `[0; 4]` da [`crate::PegadaLocal`] (sem pigmento espectral, sem Preserve Alpha): a
+    /// `blend_over` dá `[1, 1, 1, a]` exactos (`a + 0 = a`, `a/a = 1`; o K–M pesa pelo alfa `0`) — [`branco_no_vazio`].
+    pub(in crate::dab) branco_no_vazio: bool,
+}
+
+/// O que a [`crate::blend_vazio::blend_over_pigment_modo`] devolve com [`Invariantes::branco_no_vazio`].
+#[inline(always)]
+pub(in crate::dab) fn branco_no_vazio(a: f32) -> [f32; 4] {
+    [1.0, 1.0, 1.0, a.clamp(0.0, 1.0)]
 }
 
 impl Invariantes {
@@ -414,6 +427,14 @@ impl Invariantes {
         };
         let orla_area = com_mascara && ctx.spec.borda_px > 0.0 && ctx.spec.leis_do_digital();
         Self {
+            branco_no_vazio: ctx.vazio_local
+                && !com_mascara
+                && ctx.spec.blend == crate::BrushBlend::Mix
+                && ctx.spec.color == [1.0; 3]
+                && !ctx.spec.pigmento().espectral
+                && !ctx.preserve_alpha
+                && ctx.ramp.is_none(),
+            queda: ctx.spec.queda_do_dab(),
             c_cap,
             orla_area,
             cor_cap: ctx.capsula.is_some() && ctx.ramp.is_some_and(|r| r.index == RampIndex::Shape),
@@ -475,7 +496,7 @@ pub(super) fn stamp_band<M: crate::Tecto>(
             }
             let col = (px - ctx.ox) as usize;
             if let Some(l) = liso.as_deref_mut() {
-                liso_tocou |= super::liso::escreve(ctx, l, row + col * 4, w, ctx.spec.blend);
+                liso_tocou |= super::liso::escreve(ctx, l, row + col * 4, w, ctx.spec.blend, inv.branco_no_vazio);
             }
             let Some(t) = tinta::em(ctx, &inv, s, px, py) else {
                 continue;

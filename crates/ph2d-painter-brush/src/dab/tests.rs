@@ -855,6 +855,7 @@ fn a_pegada_na_caixa_e_a_da_tela_ao_bit() {
             [1.0, 0.0],
             None,
             None,
+            true,
         )
         .expect("o dab toca a tela");
         assert_eq!((r, r2), (lr, lr2), "as caixas em {centro:?}");

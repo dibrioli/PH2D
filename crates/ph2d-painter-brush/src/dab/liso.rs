@@ -66,12 +66,13 @@ pub fn pegada_textured_masked_po_com_liso(
     dab_rotation: [f32; 2],
     capsula: Option<crate::capsula::Capsula>,
     po: Option<crate::texture::PoDoPapel<'_>>,
+    com_liso: bool,
 ) -> Option<(super::PegadaLocal, Option<DirtyRect>, Option<DirtyRect>)> {
     let mut saida = None;
     let mut liso_vazio: [u8; 0] = [];
     let (r, r2) = stamp_dab_inner_com::<u8>(
         &mut [],
-        Some(&mut liso_vazio),
+        com_liso.then_some(&mut liso_vazio[..]),
         width,
         height,
         center,
@@ -173,6 +174,7 @@ pub(super) fn escreve(
     i: usize,
     w: f32,
     blend: crate::BrushBlend,
+    branco_no_vazio: bool,
 ) -> bool {
     let prev = [
         f32::from(l[i]) / 255.0,
@@ -188,14 +190,18 @@ pub(super) fn escreve(
     if a <= 0.0 {
         return false;
     }
-    let out = crate::blend_vazio::blend_over_pigment_modo(
-        blend,
-        prev,
-        ctx.spec.color,
-        a,
-        ctx.spec.pigmento(),
-        ctx.spec.blend_sobre_vazio,
-    );
+    let out = if branco_no_vazio {
+        super::bands::branco_no_vazio(a)
+    } else {
+        crate::blend_vazio::blend_over_pigment_modo(
+            blend,
+            prev,
+            ctx.spec.color,
+            a,
+            ctx.spec.pigmento(),
+            ctx.spec.blend_sobre_vazio,
+        )
+    };
     for (k, v) in out.iter().enumerate() {
         l[i + k] = super::encode(*v);
     }

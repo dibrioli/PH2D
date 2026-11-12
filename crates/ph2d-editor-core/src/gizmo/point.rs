@@ -456,8 +456,14 @@ pub fn paint_point_gizmo(
                         &ring,
                     );
                 }
-                // Filled dot — the A end, and the top of the jump arc (the standard grabbable dot).
-                PointHandleKind::AnchorA | PointHandleKind::JumpApex => {
+                // O topo da curva do pulo: o mesmo ponto, sobre o halo do overlay (lê no céu claro).
+                PointHandleKind::JumpApex => {
+                    let dot = Circle::new(centre, f64::from(JOINT_ANCHOR_DOT_PX));
+                    let cor = handle_color(view.inert);
+                    crate::paint_halo::fill_com_halo(scene, cor, &dot, theme);
+                }
+                // Filled dot — the A end (the standard grabbable dot).
+                PointHandleKind::AnchorA => {
                     let dot = Circle::new(centre, f64::from(JOINT_ANCHOR_DOT_PX));
                     scene.inner_mut().fill(
                         ph2d_vector::Fill::NonZero,

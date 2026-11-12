@@ -4,13 +4,14 @@
 
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_editor_core::gizmo::{PointHandle, PointHandleKind};
+use ph2d_editor_core::paint_halo as halo;
 use ph2d_editor_core::project::ProjectSettings;
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::jump_arc::{ArcWorld, JumpArc, JumpArcs, TouchKind};
 use ph2d_physics_ecs::{PhysicsSettings, PlatformPlayer, arc_world};
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
-use ph2d_vector::{Affine, BezPath, Brush, Stroke, VectorScene};
+use ph2d_vector::{BezPath, Stroke, VectorScene};
 
 /// Distância ao traço, px de ecrã, em que o nome da curva aparece. A meia largura da alça padrão.
 const HOVER_PX: f32 = 9.0; // LITERAL-PX-OK: alvo de hover, o mesmo do ponto da âncora
@@ -270,9 +271,7 @@ pub fn draw(
             Stroke::new(fino).with_dashes(0.0, traco)
         };
         let path = caminho(&pts, camera, window);
-        scene
-            .inner_mut()
-            .stroke(&stroke, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
+        halo::stroke_com_halo(scene, &stroke, cor, &path, theme);
     }
     pinta_marcas(d, fino, forte, traco, camera, window, theme, scene);
     let rotulo =
@@ -283,13 +282,14 @@ pub fn draw(
                 NOME_W_PX,
                 LABEL_H_PX,
             );
-            ph2d_editor_core::paint::paint_text_centered(
+            halo::paint_text_centered_com_halo(
                 text,
                 scene,
                 texto,
                 rect,
                 LABEL_FONT_PX,
                 ph2d_editor_core::paint::resolve(cor, theme),
+                theme,
             );
         };
     if dragging {
@@ -311,7 +311,7 @@ pub fn draw(
         rotulo(
             &s,
             camera.world_to_screen(d.apice(), window),
-            ColorToken::Text1,
+            Curva::Full.cor(),
             scene,
             text,
         );
@@ -342,13 +342,7 @@ fn pinta_marcas(
             Marca::Pouso { curva, at } => {
                 let cor = ph2d_editor_core::paint::resolve(curva.cor(), theme);
                 let anel = ph2d_vector::Circle::new(ecra(at), f64::from(Spacing::Md.px()));
-                scene.inner_mut().stroke(
-                    &Stroke::new(forte),
-                    Affine::IDENTITY,
-                    &Brush::Solid(cor),
-                    None,
-                    &anel,
-                );
+                halo::stroke_com_halo(scene, &Stroke::new(forte), cor, &anel, theme);
             }
             Marca::Choque {
                 curva,
@@ -359,22 +353,12 @@ fn pinta_marcas(
                 if let Some((_, medida)) = d.corpo {
                     let contorno =
                         ph2d_shape_handles::tinta::contorno(&corpo, &medida, camera, window);
-                    scene.inner_mut().stroke(
-                        &Stroke::new(fino).with_dashes(0.0, traco),
-                        Affine::IDENTITY,
-                        &Brush::Solid(cor.with_alpha(FANTASMA_ALFA)),
-                        None,
-                        &contorno,
-                    );
+                    let traco = Stroke::new(fino).with_dashes(0.0, traco);
+                    let tenue = cor.with_alpha(FANTASMA_ALFA);
+                    halo::stroke_com_halo(scene, &traco, tenue, &contorno, theme);
                 }
                 let ponto = ph2d_vector::Circle::new(ecra(contacto), f64::from(Spacing::Xs.px()));
-                scene.inner_mut().fill(
-                    ph2d_vector::Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(cor),
-                    None,
-                    &ponto,
-                );
+                halo::fill_com_halo(scene, cor, &ponto, theme);
             }
         }
     }

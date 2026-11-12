@@ -77,6 +77,8 @@ pub mod paint;
 pub mod paint_batch;
 /// O voo de um arrasto (sombra, inclinação) — o Kanban e a linha do tempo do Pixel.
 pub mod paint_flight;
+/// O halo escuro sob linhas, pontos e texto de um overlay do canvas (lê em fundo claro e escuro).
+pub mod paint_halo;
 /// Fill primitives born after `paint.rs` hit its frozen LOC ceiling — see the module docs.
 pub mod paint_shapes;
 pub mod panel;

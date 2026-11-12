@@ -3,6 +3,7 @@
 use super::*;
 use ph2d_core::Vec2;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_vector::Brush;
 
 fn cena(show: bool) -> (SimWorld, Entity) {
     let mut sim = SimWorld::new();
@@ -146,4 +147,90 @@ fn o_pouso_pinta_o_anel_e_o_choque_o_corpo_fantasma() {
         (corpo.t[0] - 1.8).abs() < 0.02,
         "o fantasma encosta: {corpo:?}"
     );
+}
+
+/// Pinta a cena (com terreno: anéis, fantasma e ponto) e devolve as ops gravadas e o desenho.
+fn pinta(theme: Theme, sem_marcas: bool) -> (Vec<ph2d_vector::DrawOp>, Desenho) {
+    let (mut sim, e) = cena(true);
+    if !sem_marcas {
+        let pe = 2.0 - PlatformPlayer::default().float_height;
+        caixa(&mut sim, -30.0, 30.0, pe, 1.0);
+        caixa(&mut sim, 2.0, 3.0, pe + 10.0, 10.0);
+    }
+    let d = desenho(&sim, &s(), Some(e.to_bits()), true).unwrap();
+    let mut scene = VectorScene::new();
+    scene.record();
+    draw(
+        Some(&d),
+        true,
+        &ProjectSettings::default(),
+        (0.0, 0.0),
+        &Camera2d::default(),
+        WindowSize {
+            width: 800,
+            height: 600,
+        },
+        theme,
+        &mut scene,
+        &mut ph2d_text::TextSystem::new(),
+    );
+    (scene.take_record(), d)
+}
+
+/// ⭐ Dono 12/11 (smoke GEF 04): *«coloque sombra nas fontes, pontos e linhas, pois em fundos claros não posso
+/// ver»*. Cada primitiva da curva (as quatro linhas, o anel do pouso, o fantasma, o ponto do contacto) sai em par:
+/// o halo escuro primeiro — mesmo caminho, mais largo, o mesmo tracejado — e a tinta por cima. O texto (nome e
+/// readout) usa o mesmo halo (`paint_halo_tests`).
+#[test]
+fn cada_linha_e_ponto_da_curva_sai_sobre_o_seu_halo() {
+    use ph2d_vector::DrawOp;
+    for theme in [Theme::Forge, Theme::Sunstone] {
+        for sem_marcas in [true, false] {
+            let (ops, d) = pinta(theme, sem_marcas);
+            let primitivas = d.curvas().count()
+                + d.marcas()
+                    .map(|m| match m {
+                        Marca::Pouso { .. } => 1,
+                        Marca::Choque { .. } => 2,
+                    })
+                    .sum::<usize>();
+            assert_eq!(
+                ops.len(),
+                2 * primitivas,
+                "{theme:?}: um halo por primitiva ({primitivas}): {} ops",
+                ops.len()
+            );
+            for par in ops.chunks(2) {
+                let DrawOp::Stroke {
+                    style: h,
+                    brush: Brush::Solid(hc),
+                    path: hp,
+                    ..
+                } = &par[0]
+                else {
+                    panic!("o halo vem primeiro, em traço: {:?}", par[0]);
+                };
+                let (tc, tp) = match &par[1] {
+                    DrawOp::Stroke {
+                        style: t,
+                        brush: Brush::Solid(tc),
+                        path,
+                        ..
+                    } => {
+                        assert!(h.width > t.width, "o halo é mais largo");
+                        assert_eq!(h.dash_pattern, t.dash_pattern, "o mesmo tracejado");
+                        (tc, path)
+                    }
+                    DrawOp::Fill {
+                        brush: Brush::Solid(tc),
+                        path,
+                        ..
+                    } => (tc, path),
+                    o => panic!("a tinta: {o:?}"),
+                };
+                assert_eq!(*hc, ph2d_editor_core::paint_halo::cor_do_halo(*tc, theme));
+                assert_eq!(hp, tp, "o halo segue o mesmo caminho");
+            }
+        }
+    }
 }

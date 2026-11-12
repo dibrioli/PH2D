@@ -44,6 +44,17 @@ Em voo: agente β (vetorizar a mistura ao bit, worktree `.ph2d-ag-beta`), agente
 sub-amostras, worktree `.ph2d-ag-alfa`). Por decidir: tirar o depósito do quadro (a UI deixa de congelar; a tinta
 aparece com atraso) — arquitectura do `offthread`.
 
+**Onda 2, 02:10:** β → `ac4730824c` `61c3ceb0bc` (a mistura em SSE, ao bit; oráculo verbatim + prova exaustiva dos
+2³² bits do log2/exp2): −10 % · α → `f67aadf902`…`7babb40720` (6 cortes ao bit no caminho das sub-amostras): −18,5 % ·
+`065e4300a9` a miniatura viva num pool próprio de ¼ dos núcleos (W6: CPU parado 451 → 269 %, traço p95 29 → 16,
+mesmo binário). Alarmes de pincel = a lista de sempre (largura: Oil_Wash, Smear_Wet; miniatura: os 74).
+`ea81d00445`: o vermelho herdado era o teste a pedir Medium 0,5 depois do degrau Water · Oil (`03df88ea8c`).
+Em voo (worktrees `.ph2d-ag-<x>`, base `7babb40720`): α2 (os próximos cortes exatos das cerdas), ε (Ctrl+Z do Wet),
+δ (camadas: B39.A3, B19.10, B18.1–18.3), γ (água com Óleo Real: B11.3, B13.5–13.7).
+**Achado transversal (não é do Painter):** parado, cada quadro gasta ~38 M ciclos no fio da UI — estados dos widgets
+e a11y em BTreeMap (~12 %), o modelo do Quadro (`BoardId`, 4,4 %) numa cena de pintura, `format` por quadro. Vai ao
+handoff para a linha da UI/Editor.
+
 **Achados a seguir:** W6 parado depois de `]`×10 com CPU 492 % (pool, sem entrada; perfilar com binário de
 símbolos) · vermelho HERDADO `o_meio_viaja_do_controlo_ao_deposito` (ph2d-wet-paint): verde no `main` `bc4a6ce930`,
 vermelho em `4381ee6d4a` — bissecção em curso.

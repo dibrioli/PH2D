@@ -90,16 +90,9 @@ impl crate::PainterTool {
         };
         // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
         let mut o = self.paint.wetpaint.oleo_real_valores;
-        // B14.2 (decisão 2 do dono): a luz Simples com o pincel na tela; a Cheia no repouso.
-        let na_tela = self.wet_pincel_na_tela();
-        let simples = na_tela
-            && !crate::wet_diag::LUZ_CHEIA_NO_GESTO.load(std::sync::atomic::Ordering::Relaxed);
-        crate::wet_diag::note_factos(na_tela, simples);
-        o.qualidade = if simples {
-            ph2d_wet_paint::oleo_real::QualidadeDaLuz::Simples
-        } else {
-            ph2d_wet_paint::oleo_real::QualidadeDaLuz::Cheia
-        };
+        // Dono 12/11: a luz do traço (a Simples) é a única luz do Óleo Real — no gesto e no repouso.
+        crate::wet_diag::note_factos(self.wet_pincel_na_tela());
+        o.qualidade = ph2d_wet_paint::oleo_real::QualidadeDaLuz::Simples;
         o.papel = self.papel.map_or([1.0; 3], |p| {
             p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
         });

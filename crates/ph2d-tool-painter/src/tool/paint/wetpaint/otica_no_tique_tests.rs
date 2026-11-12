@@ -503,20 +503,46 @@ fn a_tinta_suave_na_margem_da_caixa_e_a_tela_de_casa_ao_byte() {
     }
 }
 
-/// B14.2 (decisão 2 do dono): com o pincel na tela a luz do Óleo Real é a Simples (a tela difere da Cheia); fora dele
-/// a tela é a Cheia AO BYTE — o que a Simples compôs, em casa ou pelas imagens (Live Water), volta a compor-se.
+/// A tela inteira composta sobre o motor de agora, com o pincel na tela (`na_tela`) ou fora dela.
+fn composta(t: &mut PainterTool, na_tela: bool) -> Vec<u8> {
+    let (gesto, aberto) = (t.paint.wetpaint.live_gesture, sess(t).stroke_open);
+    let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+    s.bring_home();
+    s.engine.mark_dirty_full();
+    s.stroke_open = na_tela && aberto;
+    t.paint.wetpaint.live_gesture = na_tela && gesto;
+    assert_eq!(t.wet_pincel_na_tela(), na_tela, "premissa: o pincel");
+    t.wetpaint_composite();
+    t.paint.wetpaint.live_gesture = gesto;
+    t.paint
+        .wetpaint
+        .session
+        .as_mut()
+        .expect("sessao")
+        .stroke_open = aberto;
+    t.canvas_rgba.to_vec()
+}
+
+fn difere(a: &[u8], b: &[u8]) -> usize {
+    a.iter().zip(b).filter(|(x, y)| x != y).count()
+}
+
+/// Dono 12/11: a luz do traço é a ÚNICA luz do Óleo Real. O mesmo motor composto com o pincel na tela e fora dela dá
+/// o mesmo byte; a tela logo depois do pen-up é a de muitos tiques de repouso e a da recomposição inteira — nada se
+/// recompõe com outra luz ao soltar (fora × Live Water).
 #[test]
-fn a_luz_simples_no_gesto_e_a_cheia_no_repouso() {
+fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
     for (fora, viva) in [(true, false), (true, true), (false, false)] {
         let onde = format!("fora {fora} agua viva {viva}");
         let mut t = cena(fora, 0.0, false);
         assenta(&mut t);
-        confere_com_casa(&mut t, &format!("{onde}: o repouso da cena"));
         let lado = LADO as f32;
         t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
             .expect("o preset");
         t.set_wet_oleo_real_ligado(true);
         t.set_wet_agua_viva(viva);
+        // A luz rasante: a que separava a Cheia da Simples (B14.2).
+        t.paint.wetpaint.oleo_real_valores.altitude = 12f64.to_radians();
         t.set_brush_size_px(16.0);
         t.set_brush_color_srgb8([200, 40, 40]);
         let _ = t.on_canvas_pointer(ponto(lado * 0.2, lado * 0.45, PointerPhase::Down));
@@ -531,39 +557,34 @@ fn a_luz_simples_no_gesto_e_a_cheia_no_repouso() {
         assert_eq!(
             t.factos_da_otica().oleo.qualidade,
             QualidadeDaLuz::Simples,
-            "{onde}: com o pincel na tela a luz é a Cheia"
+            "{onde}: a luz do gesto"
         );
+        let (gesto, repouso) = (composta(&mut t, true), composta(&mut t, false));
         assert!(
-            sess(&t).otica.simples.is_some(),
-            "{onde}: o gesto não compôs com a Simples"
+            gesto.chunks_exact(4).any(|p| p != [255, 255, 255, 255]),
+            "{onde}: premissa: há tinta na tela"
         );
-        if viva {
-            assert!(
-                sess(&t).otica.simples_aplicadas > 0,
-                "{onde}: nenhuma imagem do gesto com a luz Simples"
-            );
-        }
+        assert_eq!(
+            difere(&gesto, &repouso),
+            0,
+            "{onde}: o mesmo motor com o pincel na tela e fora dela"
+        );
         let _ = t.on_canvas_pointer(ponto(lado * 0.8, lado * 0.45, PointerPhase::Up));
         assert_eq!(
             t.factos_da_otica().oleo.qualidade,
-            QualidadeDaLuz::Cheia,
-            "{onde}: o repouso"
+            QualidadeDaLuz::Simples,
+            "{onde}: a luz do repouso"
         );
         t.set_wet_agua_viva(false);
-        quadros(&mut t, 2);
         assenta(&mut t);
-        assert!(
-            sess(&t).otica.simples.is_none(),
-            "{onde}: a luz Simples ficou na tela"
+        let solto = t.canvas_rgba.to_vec();
+        quadros(&mut t, 30);
+        assenta(&mut t);
+        assert_eq!(
+            difere(&solto, &t.canvas_rgba),
+            0,
+            "{onde}: a tela logo depois do pen-up × 30 quadros de repouso"
         );
         confere_com_casa(&mut t, &format!("{onde}: o repouso depois do gesto"));
     }
 }
-
-/// A prancha da luz do gesto (B14.2).
-#[path = "prancha_b14b_tests.rs"]
-mod prancha_b14b;
-
-/// B08c.M2: a dívida Cheia do repouso por faixas.
-#[path = "luz_cheia_faixas_tests.rs"]
-mod luz_cheia_faixas;

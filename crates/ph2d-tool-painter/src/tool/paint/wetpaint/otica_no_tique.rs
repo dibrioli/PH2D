@@ -24,39 +24,11 @@ pub(super) struct OticaDoTique {
     /// A água do passo herdada no pen-down (B14.1): volta ao worker como sujo do PASSO, que o espelho reduz ao que
     /// mudou; pela `divida` era a caixa do fluido inteira.
     pub(super) agua: Option<CaixaCel>,
-    /// B14.2 (decisão 2 do dono): a união das caixas compostas com a luz `Simples` (o pincel na tela); fora do gesto
-    /// recompõem-se com a `Cheia` ([`PainterTool::wet_luz_cheia_no_repouso`]).
-    pub(super) simples: Option<CaixaCel>,
     #[cfg(test)]
     pub(super) aplicadas: u32,
     /// Imagens cuja caixa tocou a `uniao_local`.
     #[cfg(test)]
     pub(super) tocadas: u32,
-    /// Imagens aplicadas com a luz `Simples`.
-    #[cfg(test)]
-    pub(super) simples_aplicadas: u32,
-    /// O A·B de B08c.M2: `Some(usize::MAX)` = a dívida Cheia em casa de uma vez (o caminho antigo).
-    #[cfg(test)]
-    pub(super) faixa_cheia_px: Option<usize>,
-    /// `Some(ZERO)` = uma faixa por quadro (o app a 4K: uma faixa passa do orçamento).
-    #[cfg(test)]
-    pub(super) orcamento_cheia: Option<std::time::Duration>,
-}
-
-/// A dívida Cheia em casa (B08c.M2, [medição](../../../../../../docs/Painter/missao_4k/medicoes/ANTES_DEPOIS.md) §M5):
-/// faixas de `FAIXA_CHEIA_PX` píxeis (no app, Filbert 4K: ~0,36 µs/px ⇒ ~6 ms; as de 64 Ki eram 24 ms) até
-/// `ORCAMENTO_CHEIA` por quadro.
-const FAIXA_CHEIA_PX: usize = 1 << 14;
-const ORCAMENTO_CHEIA: std::time::Duration = std::time::Duration::from_millis(8);
-
-/// As linhas de cima de `c` com no máximo `area` células (pelo menos uma linha) e o resto.
-pub(super) fn faixa_de_cima(c: CaixaCel, area: usize) -> (CaixaCel, Option<CaixaCel>) {
-    let linhas = (area / (c.2 - c.0 + 1)).max(1);
-    let fim = c.1.saturating_add(linhas - 1);
-    if fim >= c.3 {
-        return (c, None);
-    }
-    ((c.0, c.1, c.2, fim), Some((c.0, fim + 1, c.2, c.3)))
 }
 
 pub(super) fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
@@ -82,15 +54,7 @@ impl OticaDoTique {
 
     /// Há sujo tirado do motor que a tela ainda não mostra (uma imagem no ar ou a dívida).
     pub(super) fn pendente(&self) -> bool {
-        self.no_ar.is_some()
-            || self.divida.is_some()
-            || self.agua.is_some()
-            || self.simples.is_some()
-    }
-
-    /// Uma composição (de casa ou imagem) escreveu esta caixa com a luz `Simples`.
-    pub(super) fn luz_simples(&mut self, c: CaixaCel) {
-        self.simples = Some(une(self.simples, c));
+        self.no_ar.is_some() || self.divida.is_some() || self.agua.is_some()
     }
 
     /// O compositor morreu: o que estava no ar e por servir já voltou ao motor (B11.A1).
@@ -99,7 +63,6 @@ impl OticaDoTique {
         self.uniao_local = None;
         self.divida = None;
         self.agua = None;
-        self.simples = None;
     }
 
     fn deve(&mut self, c: CaixaCel) {
@@ -129,11 +92,7 @@ impl WetSession {
             .no_ar
             .map_or(([None, None], None), |e| self.sujo_do_pedido(e));
         let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
-        let simples = self.otica.simples.take();
-        for (x0, y0, x1, y1) in [divida, servido, self.otica.divida, simples]
-            .into_iter()
-            .flatten()
-        {
+        for (x0, y0, x1, y1) in [divida, servido, self.otica.divida].into_iter().flatten() {
             self.engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
         for (x0, y0, x1, y1) in [agua, self.otica.agua].into_iter().flatten() {
@@ -144,75 +103,6 @@ impl WetSession {
 }
 
 impl PainterTool {
-    /// B14.2 (decisão 2 do dono): com o pincel fora da tela, o que a luz `Simples` compôs volta a compor-se com a
-    /// `Cheia` — pelo compositor (a dívida: uma imagem, fora do quadro) ou em casa. Em casa vai por faixas até
-    /// [`ORCAMENTO_CHEIA`] contado desde `t0` (o início do quadro), a seguinte só se o custo da anterior ainda couber, e
-    /// sempre pelo menos uma por chamada com o motor cá (B08c.M2 C2/C3). O tique chama-a duas vezes:
-    /// à entrada (motor cá) e depois de o trazer do worker — com a água a correr ele nunca está cá à entrada.
-    pub(super) fn wet_luz_cheia_no_repouso(&mut self, t0: std::time::Instant) {
-        if self.wet_pincel_na_tela() {
-            return;
-        }
-        let fora = self.wet_otica_fora();
-        let (mut compos, mut custo) = (false, None);
-        loop {
-            let Some(sess) = self.paint.wetpaint.session.as_mut() else {
-                return;
-            };
-            let Some(c) = sess.otica.simples else {
-                return;
-            };
-            if fora {
-                sess.otica.simples = None;
-                sess.otica.deve(c);
-                return;
-            }
-            if !matches!(sess.engine, offthread::EngineSlot::Here(_)) {
-                // Sem esperar: o pedido fica armado e o tique traz o motor (a 2.ª chamada).
-                sess.try_bring_home_now();
-                return;
-            }
-            #[cfg(test)]
-            let (fixa, orcamento) = (
-                sess.otica.faixa_cheia_px,
-                sess.otica.orcamento_cheia.unwrap_or(ORCAMENTO_CHEIA),
-            );
-            #[cfg(not(test))]
-            let (fixa, orcamento) = (None::<usize>, ORCAMENTO_CHEIA);
-            // A próxima faixa só entra se couber no que resta, pelo custo da anterior (o tamanho é fixo: o mesmo
-            // byte por quadro em qualquer máquina; o relógio só decide quantas).
-            if let Some(ultima) = custo.filter(|_| compos)
-                && t0.elapsed() + ultima > orcamento
-            {
-                return;
-            }
-            let r2 = usize::from(sess.ratio).pow(2).max(1);
-            let (c, resto) = faixa_de_cima(c, fixa.unwrap_or(FAIXA_CHEIA_PX) / r2);
-            sess.otica.simples = resto;
-            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
-            sess.engine
-                .merge_dirty_otica(i(c.0), i(c.1), i(c.2), i(c.3));
-            self.paint.wetpaint.composite_pendente = true;
-            let q = std::time::Instant::now();
-            self.wet_compoe_o_pendente();
-            custo = Some(q.elapsed());
-            compos = true;
-        }
-    }
-
-    /// Tiques a 0 ms até a dívida Cheia (B14.2) acabar: a tela do repouso, a da recomposição inteira. As faixas
-    /// cabem em [`ORCAMENTO_CHEIA`] de relógio, então uma cena de teste sem isto media a meio da dívida.
-    #[cfg(test)]
-    pub(crate) fn wet_paga_a_divida_cheia(&mut self) -> usize {
-        let mut q = 0;
-        while (self.paint.wetpaint.session.as_ref()).is_some_and(|s| s.otica.simples.is_some()) {
-            ph2d_editor_core::Tool::on_tick(self, 0.0);
-            q += 1;
-            assert!(q < 1000, "a dívida Cheia não acaba");
-        }
-        q
-    }
-
     /// O gesto está vivo ou o traço do motor aberto (pinceladas sobrepostas, W16) — o `paint.stroke` sai a meio do lote.
     pub(super) fn wet_pincel_na_tela(&self) -> bool {
         let w = &self.paint.wetpaint;
@@ -301,9 +191,6 @@ impl PainterTool {
         #[cfg(test)]
         {
             sess.otica.aplicadas += 1;
-            sess.otica.simples_aplicadas += u32::from(im.oleo.is_some_and(|o| {
-                o.qualidade == ph2d_wet_paint::oleo_real::QualidadeDaLuz::Simples
-            }));
         }
         // A imagem não tira o sujo do motor: o pendente do quadro continua de quem o tinha.
         let pendente = self.paint.wetpaint.composite_pendente;

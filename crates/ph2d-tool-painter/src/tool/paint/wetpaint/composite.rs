@@ -211,9 +211,6 @@ impl PainterTool {
         if !matches!(veu, super::veu::VeuDe::DaImagem(_)) {
             sess.otica.compos_local(caixa_cel);
         }
-        if oleo.is_some_and(|o| o.qualidade == ph2d_wet_paint::oleo_real::QualidadeDaLuz::Simples) {
-            sess.otica.luz_simples(caixa_cel);
-        }
         // A marca do artista (W9): o que a água muda aqui não é do artista — guarda-se a caixa como está.
         let agua_antes: Option<Vec<u8>> = self.undo.marca.ativa().then(|| {
             let mut v = Vec::with_capacity((px1 - px0) * (py1 - py0) * 4);

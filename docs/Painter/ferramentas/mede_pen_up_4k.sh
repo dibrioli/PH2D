@@ -192,8 +192,7 @@ if [ "$1" = faixas ]; then
     # M2 (11/11): a regressão do soltar do Filbert — a mistura espectral (B32.1) × o K–M, o MESMO binário.
     "M1|Filbert:wet|PH2D_WET_MISTURA=espectral|PH2D_WET_MISTURA=km"
     "M2|omissão:water|PH2D_WET_MISTURA=espectral|PH2D_WET_MISTURA=km"
-    # M3: a luz do Óleo Real Simples no gesto e Cheia no repouso (B14.2) × Cheia sempre — o salto no pen-up.
-    "M3|Filbert:wet|PH2D_COMPOSITE_LUZ_GESTO=simples|PH2D_COMPOSITE_LUZ_GESTO=cheia"
+    # M3 saiu (dono 12/11): o Óleo Real tem uma luz só, a do traço — o interruptor `PH2D_COMPOSITE_LUZ_GESTO` já não existe.
     # M4: o Ctrl+Z do Impasto 4K sem interruptor — A e B são o MESMO caminho (a dispersão do binário «depois»).
     "M4|omissão:impasto|PH2D_M4=a|PH2D_M4=b"
     # M5 (M4 do fecho, 11/11): o pen-up do Filbert pelo compositor da óptica (de fábrica) × em casa (a cura C2, faixas).
@@ -503,8 +502,6 @@ if [ "$1" = wet6 ]; then
     MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
   EXTRA=(PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA")
   [ "$PIN" != omissão ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
-  # LUZ_GESTO=cheia (B14b-cont2): a variante A da luz no gesto (a Cheia também com o pincel na tela), o MESMO binário.
-  [ -n "$LUZ_GESTO" ] && EXTRA+=("PH2D_COMPOSITE_LUZ_GESTO=$LUZ_GESTO")
   # O Xvfb da corrida anterior pode ainda segurar o ecrã: sem o socket o app panica no `XOpenDisplay` (medido 10/11).
   for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] || break; sleep 0.25; done
   Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
@@ -564,16 +561,16 @@ if [ "$1" = wet6 ]; then
   exit 0
 fi
 
-# ── ÓTICA (B14b-cont2, 10/11): a luz no gesto, Simples (B) × Cheia (A, LUZ_GESTO=cheia), o MESMO binário, ABBA por
-# rodada; o gesto LONGO do óleo (Dabber + Real Oil, Textured 4K, 3 traços × PASSOS=400, OLEO_ROLA=55). O log da cena
+# ── ÓTICA (B14b-cont2, 10/11): as imagens da óptica por fase (o Óleo Real tem uma luz só desde 12/11: sem A×B);
+# o gesto LONGO do óleo (Dabber + Real Oil, Textured 4K, 3 traços × PASSOS=400, OLEO_ROLA=55). O log da cena
 # conta as imagens da óptica por fase («[otica] gesto k: …»). uso: … mede_pen_up_4k.sh otica <rodadas> [binario]
 # resumo: mede_pen_up_4k.py --otica $S/wet6 (CICLOS=1 grava o perf: G ciclos do rayon por imagem no gesto)
 if [ "$1" = otica ]; then
   BIN=${3:-$R/target/smoke/ph2d-host-desktop}
   for i in $(seq 1 "${2:-2}"); do
-    for v in simples cheia cheia simples; do
+    for v in simples; do
       k=$((${k:-0} + 1))
-      LUZ_GESTO=$([ $v = cheia ] && echo cheia) TRACOS=3 PASSOS=400 OLEO_ROLA=55 SAIDA=$S \
+      TRACOS=3 PASSOS=400 OLEO_ROLA=55 SAIDA=$S \
         bash "$0" wet6 3840x2160 Dabber 0 "$BIN" "otica${k}${v}"
     done
   done

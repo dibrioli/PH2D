@@ -288,10 +288,6 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     if std::env::var_os("PH2D_COMPOSITE_PILHA").is_none_or(|v| v != "0") {
         arma_a_pilha_do_dono(painter);
     }
-    // B14b-cont2, a variante A no MESMO binário: `PH2D_COMPOSITE_LUZ_GESTO=cheia` = a luz Cheia também no gesto.
-    let cheia = std::env::var("PH2D_COMPOSITE_LUZ_GESTO").is_ok_and(|v| v == "cheia");
-    ph2d_tool_painter::wet_diag::LUZ_CHEIA_NO_GESTO
-        .store(cheia, std::sync::atomic::Ordering::Relaxed);
     use ph2d_tool_painter::PaintMedia as Meio;
     match std::env::var("PH2D_COMPOSITE_PAINEL").as_deref() {
         Ok("water") => painter.set_paint_media(Meio::Watercolor),

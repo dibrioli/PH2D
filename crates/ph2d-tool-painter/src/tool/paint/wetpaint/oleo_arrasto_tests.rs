@@ -53,9 +53,6 @@ fn tela_com(w: usize, h: usize, suave: f32) -> PainterTool {
         [30, 60, 190],
     );
     t.on_tick(0.0);
-    // A dívida Cheia (B14.2) paga-se por faixas num orçamento de relógio (C3, `f983140019`): sem pagá-la aqui, a
-    // 2.ª faixa caía ou não no tique medido e a contagem era (0, 2) sob carga.
-    t.wet_paga_a_divida_cheia();
     assert!(t.paint.wetpaint.session.is_some(), "a cena perdeu a sessão");
     t
 }

@@ -359,9 +359,8 @@ fn a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira() {
         }
         t.on_canvas_pointer(p(1.0, PointerPhase::Up));
     };
-    // A tela do REPOUSO: depois do pen-up a luz Simples do gesto ainda se recompõe com a Cheia (B14.2, `afb02a91db`).
+    // A tela do REPOUSO é a do gesto: uma luz só (dono 12/11).
     let confere = |t: &mut PainterTool, passo: &str| {
-        t.wet_paga_a_divida_cheia();
         let viva = t.canvas_rgba.to_vec();
         t.wet_recomposite_full();
         let difs = viva

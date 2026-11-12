@@ -196,6 +196,7 @@ impl ConsoleView {
                 h: third,
                 least: third,
                 head: third,
+                asked: false,
             };
         }
         let h = if self.tab == BandTab::Problems {
@@ -208,10 +209,13 @@ impl ConsoleView {
         } else {
             third
         };
+        // Aberta, o artista pediu-a: guarda o cabeçalho e uma linha, e sai por último.
+        let least = (ROW_H_PX * 2.0).min(h); // LITERAL-PX-OK: o cabeçalho e uma linha
         crate::stack::Want {
             h,
-            least: ROW_H_PX * 2.0, // LITERAL-PX-OK: o cabeçalho e uma linha
-            head: ROW_H_PX,
+            least,
+            head: least,
+            asked: true,
         }
     }
 

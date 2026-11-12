@@ -8,7 +8,6 @@
 //! cruzam nem saem da aba (a janela de 900×560 punha a Bancada por cima do depurador e o código a 0).
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{Spacing, row_pitch_px};
 
 /// Quantas linhas o código guarda enquanto os cartões ainda têm de onde ceder.
 pub const CODE_LEAST_ROWS: usize = 4;
@@ -20,13 +19,17 @@ pub struct Want {
     pub h: f32,
     pub least: f32,
     pub head: f32,
+    /// O artista PEDIU o cartão (a faixa aberta, ou um ⊗/⚠ clicado): não cai abaixo do `least` e sai
+    /// por último — antes dele o corpo do depurador e, sem espaço, a barra dele.
+    pub asked: bool,
 }
 
-/// O mínimo do cartão do código: a busca (`find_h`, 0 = fechada), [`CODE_LEAST_ROWS`] linhas e o
-/// respiro do poço.
+/// O mínimo do cartão do código em [`CODE_LEAST_ROWS`] linhas INTEIRAS à vista (com as métricas `m`
+/// da vista): o recuo do poço ([`crate::cards::code_well`]), a busca (`find_h`, 0 = fechada), o
+/// respiro de cima, as linhas e a barra de estado.
 #[must_use]
-pub fn code_least(find_h: f32) -> f32 {
-    find_h + row_pitch_px() * CODE_LEAST_ROWS as f32 + Spacing::Sm.px() * 2.0
+pub fn code_least(find_h: f32, m: &crate::metrics::Metrics) -> f32 {
+    crate::cards::well_pad() + find_h + m.top_pad + m.line_h * CODE_LEAST_ROWS as f32 + m.status_h
 }
 
 /// O que cada cartão presente custa: a sua altura e um `gap`.
@@ -97,10 +100,12 @@ pub struct Placed {
 }
 
 /// A pilha da aba `area`: as alturas de [`fit`] para a Bancada, o depurador e a faixa (saem a
-/// Bancada, a faixa e por fim o depurador), postas por baixo do código.
+/// Bancada, a faixa e por fim o depurador; a faixa PEDIDA, [`Want::asked`], sai por último), postas
+/// por baixo do código.
 #[must_use]
 pub fn tab(area: Rect, code_least: f32, gap: f32, [bench, debug, band]: [Want; 3]) -> Placed {
-    let [b, d, f] = fit(area.h, code_least, gap, [bench, debug, band], [0, 2, 1]);
+    let order = if band.asked { [0, 1, 2] } else { [0, 2, 1] };
+    let [b, d, f] = fit(area.h, code_least, gap, [bench, debug, band], order);
     let code = Rect::new(
         area.x,
         area.y,

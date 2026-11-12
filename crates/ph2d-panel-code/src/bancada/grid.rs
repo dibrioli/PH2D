@@ -116,7 +116,12 @@ impl BancadaView {
     pub fn bench_want(&self, who: &Who, avail: f32) -> crate::stack::Want {
         let (h, least) = (self.bench_height(who, avail), self.bench_least());
         let head = Spacing::Sm.px() * 2.0 + ROW_H_PX;
-        crate::stack::Want { h, least, head }
+        crate::stack::Want {
+            h,
+            least,
+            head,
+            asked: false,
+        }
     }
 
     /// A altura do cartão da grelha (e do mapa ao lado) para `who`, com `avail` de altura na coluna

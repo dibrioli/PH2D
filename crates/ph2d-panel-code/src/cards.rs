@@ -54,6 +54,20 @@ pub fn well_pad() -> f32 {
     Spacing::Sm.px()
 }
 
+/// O poço do código no seu cartão `card`: recuado [`well_pad`] dos lados e em cima, por baixo da
+/// busca (`find_h`, 0 = fechada).
+#[must_use]
+pub fn code_well(card: Rect, find_h: f32) -> Rect {
+    let p = well_pad();
+    let h = (card.h - p).max(0.0);
+    Rect::new(
+        card.x + p,
+        card.y + p + find_h,
+        (card.w - p * 2.0).max(0.0),
+        (h - find_h).max(0.0),
+    )
+}
+
 fn radius(theme: &Theme) -> f32 {
     frame_radius(*theme, Radius::Sm.px())
 }

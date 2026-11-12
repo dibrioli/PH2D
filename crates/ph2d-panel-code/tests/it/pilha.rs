@@ -7,7 +7,12 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_panel_code::stack::{Placed, Want, fit, tab};
 
 const fn w(h: f32, least: f32, head: f32) -> Want {
-    Want { h, least, head }
+    Want {
+        h,
+        least,
+        head,
+        asked: false,
+    }
 }
 
 /// A Bancada, o depurador e a faixa, nesta ordem (a de [`tab`]).
@@ -125,5 +130,133 @@ fn em_toda_a_altura_os_rects_nao_se_cruzam_nem_saem_e_o_codigo_guarda_o_seu() {
                 assert_eq!(p.code.h, h);
             }
         }
+    }
+}
+
+/// ⛔ O mínimo do código mede-se em LINHAS VISÍVEIS pelo layout real (o poço dentro do cartão, a
+/// busca, o respiro de cima e a barra de estado), não pela fórmula que o próprio mínimo usa.
+#[test]
+fn o_minimo_do_codigo_mostra_as_suas_linhas_inteiras() {
+    use crate::{Deco, pinta, texto, ts};
+    use ph2d_code_buffer::Buffer;
+    use ph2d_panel_code::CodeView;
+    use ph2d_panel_code::stack::{CODE_LEAST_ROWS, code_least};
+    let buf = Buffer::new(&texto(40, 30));
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    pinta(
+        &mut v,
+        &buf,
+        &mut ts,
+        Rect::new(0.0, 0.0, 600.0, 400.0),
+        &Deco::default(),
+    );
+    let m = *v.metrics();
+    for find_h in [0.0, 30.0] {
+        let card = Rect::new(0.0, 0.0, 600.0, code_least(find_h, &m));
+        let well = ph2d_panel_code::cards::code_well(card, find_h);
+        pinta(&mut v, &buf, &mut ts, well, &Deco::default());
+        let tr = v.text_rect();
+        let mut inteiras: Vec<usize> = v
+            .probe_columns()
+            .into_iter()
+            .filter(|(_, mid)| {
+                *mid - m.line_h * 0.5 >= tr.y - 0.01 && *mid + m.line_h * 0.5 <= tr.y + tr.h + 0.01
+            })
+            .map(|(c, _)| buf.text().line_of_byte(c.byte))
+            .collect();
+        inteiras.dedup();
+        assert!(
+            inteiras.len() >= CODE_LEAST_ROWS,
+            "busca {find_h}: {} linhas inteiras à vista em {tr:?} (mínimo {CODE_LEAST_ROWS})",
+            inteiras.len()
+        );
+    }
+}
+
+/// ⛔ A faixa que o artista PEDIU (aberta, ou o ⊗/⚠ da barra de estado clicado) guarda o cabeçalho e
+/// uma linha em toda a altura onde isso cabe: numa aba baixa com o depurador parado o clique no
+/// contador não mostrava nada (a faixa saía antes da barra do depurador). Saem antes a Bancada e o
+/// corpo do depurador; a barra com Continue fica se ainda couber.
+#[test]
+fn a_faixa_pedida_fica_em_toda_a_altura_onde_cabe_o_minimo() {
+    let band = Want {
+        asked: true,
+        ..w(150.0, 56.0, 56.0)
+    };
+    let wants = [WANTS[0], WANTS[1], band];
+    for h in (120..=720).step_by(5).map(|h| h as f32 / 2.0) {
+        let p = tab(Rect::new(0.0, 0.0, 400.0, h), CODE, GAP, wants);
+        if h >= CODE + band.least + GAP {
+            assert!(
+                p.band.h >= band.least - 1e-3,
+                "{h}: a faixa pedida saiu: {p:?}"
+            );
+        }
+        if h >= CODE + band.least + WANTS[1].head + GAP * 2.0 {
+            assert!(p.debug.is_some(), "{h}: a barra do depurador cabe: {p:?}");
+        }
+        if p.debug.is_some_and(|d| d.h > WANTS[1].head) {
+            assert!(
+                p.band.h >= band.least,
+                "{h}: o corpo do depurador antes da faixa: {p:?}"
+            );
+        }
+    }
+    // Controlo: a faixa NÃO pedida sai antes da barra do depurador (a ordem de sempre).
+    let p = tab(
+        Rect::new(0.0, 0.0, 400.0, CODE + 60.0),
+        CODE,
+        GAP,
+        [WANTS[0], WANTS[1], w(150.0, 56.0, 28.0)],
+    );
+    assert!(p.debug.is_some() && p.band.h == 0.0, "{p:?}");
+}
+
+/// A janela de 900×560 (a aba de ≈225 px): o código nas suas linhas, a barra do depurador e a faixa
+/// pedida (cabeçalho e uma linha) cabem juntos — medido com as métricas e os tokens reais.
+#[test]
+fn na_janela_de_900x560_cabem_o_codigo_a_barra_e_a_faixa_pedida() {
+    use crate::{Deco, pinta, texto, ts};
+    use ph2d_code_buffer::Buffer;
+    use ph2d_panel_code::CodeView;
+    use ph2d_panel_code::stack::code_least;
+    let buf = Buffer::new(&texto(4, 20));
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    pinta(
+        &mut v,
+        &buf,
+        &mut ts,
+        Rect::new(0.0, 0.0, 600.0, 400.0),
+        &Deco::default(),
+    );
+    let code = code_least(0.0, v.metrics());
+    let gap = ph2d_panel_code::cards::margin();
+    let bar = ph2d_tokens::row_pitch_px() + ph2d_tokens::Spacing::Sm.px() * 2.0;
+    let band = ph2d_tokens::ROW_H_PX * 2.0;
+    let need = code + bar + band + gap * 2.0;
+    eprintln!(
+        "900x560: código {code} + barra {bar} + faixa {band} + vãos {} = {need}",
+        gap * 2.0
+    );
+    let p = tab(
+        Rect::new(0.0, 0.0, 600.0, 225.0),
+        code,
+        gap,
+        [
+            w(120.0, 40.0, 30.0),
+            w(200.0, 80.0, bar),
+            Want {
+                asked: true,
+                ..w(150.0, band, band)
+            },
+        ],
+    );
+    assert!(p.band.h >= band - 1e-3, "a faixa pedida à vista: {p:?}");
+    assert!(
+        p.code.h >= code - 1e-3,
+        "o código guarda as suas linhas: {p:?}"
+    );
+    if need <= 225.0 {
+        assert!(p.debug.is_some(), "a barra cabe ({need} ≤ 225): {p:?}");
     }
 }

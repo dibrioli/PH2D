@@ -146,7 +146,12 @@ impl DebugCardView {
     pub fn want(&self, c: &DebugCard, area: Rect) -> crate::stack::Want {
         let head = ph2d_tokens::row_pitch_px() + Spacing::Sm.px() * 2.0;
         let (h, least) = (self.height(c, area), Self::least(c));
-        crate::stack::Want { h, least, head }
+        crate::stack::Want {
+            h,
+            least,
+            head,
+            asked: false,
+        }
     }
 
     /// A altura do quadro de `c` na aba `area`.

@@ -410,15 +410,10 @@ impl CodeDoc {
     pub fn layout(&self, area: Rect, console_open: bool) -> (Option<Rect>, Rect, Rect) {
         let find_h = self.find.bar_height();
         let (card, console) = self.cards(area, console_open);
+        let code = crate::cards::code_well(card, find_h);
         let p = crate::cards::well_pad();
-        let card = Rect::new(
-            card.x + p,
-            card.y + p,
-            (card.w - p * 2.0).max(0.0),
-            (card.h - p).max(0.0),
-        );
-        let find = (find_h > 0.0).then(|| Rect::new(card.x, card.y, card.w, find_h.min(card.h)));
-        let code = Rect::new(card.x, card.y + find_h, card.w, (card.h - find_h).max(0.0));
+        let h = find_h.min((card.h - p).max(0.0));
+        let find = (find_h > 0.0).then(|| Rect::new(code.x, card.y + p, code.w, h));
         (find, code, console)
     }
 

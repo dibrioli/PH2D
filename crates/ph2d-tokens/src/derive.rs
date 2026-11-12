@@ -619,7 +619,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         // Premido desce para o preto nos dois temas: o `mono_inv` do `accent-press` clareia no claro.
         "danger-press" => r.error.lerp(Rgb::BLACK, 0.15).color(),
         // A camada de estado neutra: o `mono` com o alfa ESCRITO no `tokens.json` (o do clássico emprestado).
-        "row-hover" => r.mono.with_alpha(f32::from(borrow().a) / 255.0),
+        "row-hover" => crate::row_hover::veil(&r, borrow()),
         // A face da tecla desenhada: o tom ESCRITO no `tokens.json` (o aprovado), emprestado como o do cartão.
         "key-face" => borrow(),
         "key-ink" | "key-legend" => {

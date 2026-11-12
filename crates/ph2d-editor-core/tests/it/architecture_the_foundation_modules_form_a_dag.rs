@@ -61,7 +61,9 @@ const ARESTAS_TOLERADAS: &[(&str, &str, usize, &str)] = &[
         // para `widget` (a galeria também a lê) e trouxe UMA aresta (o `use` dela); o corte foi o
         // `panel_chrome/segmented.rs` juntar no `use` as duas vezes que escrevia o caminho inteiro.
         // 43 → 41 (2026-11-04): os testes do `tool_rail` escreviam quatro vezes o caminho inteiro.
-        41,
+        // 41 → 32 (2026-11-12): o `axis_tests` escrevia onze vezes o caminho inteiro (um `use` só); o `key_mark_tests`
+        // entrou com um `use` e não com dois.
+        32,
         "o SUBSTRATO que os pintores recebem — `HitIndex`, `WidgetStore`, `InteractiveState`, \
          `WidgetEvent`. Cura: o estado de widget (os `*State` + `InteractiveState` + `HitIndex` + \
          `WidgetStore`) desce para um módulo ABAIXO dos pintores, e o `dispatch` fica em cima.",

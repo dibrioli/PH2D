@@ -2,8 +2,9 @@
 //! Crate sumia sobre a arte laranja. A lei mora em `tinta_canvas`; a pintura (`ph2d-app-physics::overlay`) pinta
 //! TODAS as sombras antes das cores.
 
-use ph2d_panel_physics::tinta_canvas::{Marca, Tinta, sombra_do_contorno, tinta_do_contorno};
+use ph2d_panel_physics::tinta_canvas::{sombra_do_contorno, tinta_do_contorno};
 use ph2d_physics_ecs::BodyKind;
+use ph2d_shape_handles::contorno::{Marca, Tinta};
 use ph2d_tokens::Theme;
 
 /// ⭐ Dono 07/11: sombra escura por baixo do contorno da camada (o Crate laranja sobre arte laranja).
@@ -30,7 +31,7 @@ fn cada_contorno_da_camada_tem_uma_sombra_escura_mais_larga_com_o_mesmo_padrao()
                     camada: 3,
                     marca,
                     corpo,
-                    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
+                    tom: ph2d_shape_handles::contorno::TOM_NEUTRO,
                 };
                 let (traco, cor) = tinta_do_contorno(tinta, theme);
                 let (sombra, escura) =

@@ -65,7 +65,7 @@ fn text_scroll(
         _ => 0,
     };
     let border = ph2d_tokens::visuals::Chrome::of(theme).field_focus.width;
-    let mut reserve = if id == ids::SEARCH && !text.is_empty() {
+    let mut reserve = if id == ids::LIST_SEARCH && !text.is_empty() {
         ph2d_editor_core::panel::cards::busca::reserva(r, border)
     } else {
         0.0
@@ -99,7 +99,7 @@ use ph2d_editor_core::widget::ButtonState;
 pub fn shown(doc: &InputMapDoc) -> Vec<ActionId> {
     let q = doc
         .store
-        .text(ids::SEARCH)
+        .text(ids::LIST_SEARCH)
         .unwrap_or("")
         .trim()
         .to_lowercase();
@@ -164,7 +164,7 @@ pub fn paint(
         };
     }
     blink(doc, ids::NEW_NAME);
-    blink(doc, ids::SEARCH);
+    blink(doc, ids::LIST_SEARCH);
     {
         let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, name_w);
         let text = Widget::Text {
@@ -270,22 +270,32 @@ fn paint_search(
         let below = c.full(
             None,
             Widget::Search {
-                id: ids::SEARCH,
+                id: ids::LIST_SEARCH,
                 placeholder: ph,
             },
             r.y,
         );
-        record_stops(doc, ts, ids::SEARCH, ink.theme);
-        let field = doc.hits.rect_for(ids::SEARCH).unwrap_or(r);
-        doc.control(Control::new(ids::SEARCH, field, ControlRole::TextField, ph));
+        record_stops(doc, ts, ids::LIST_SEARCH, ink.theme);
+        let field = doc.hits.rect_for(ids::LIST_SEARCH).unwrap_or(r);
+        doc.control(Control::new(
+            ids::LIST_SEARCH,
+            field,
+            ControlRole::TextField,
+            ph,
+        ));
         // O × só com texto: limpa e o foco fica na busca.
-        if !doc.store.text(ids::SEARCH).unwrap_or("").is_empty() {
+        if !doc.store.text(ids::LIST_SEARCH).unwrap_or("").is_empty() {
             clear_button(doc, scene, clear_box(r), ink);
         }
         return below;
     };
     let ph = tr("input_map_list.search");
-    doc.control(Control::new(ids::SEARCH, r, ControlRole::TextField, ph));
+    doc.control(Control::new(
+        ids::LIST_SEARCH,
+        r,
+        ControlRole::TextField,
+        ph,
+    ));
     // A tecla procurada é o texto do campo, regular (maquete A3): o amarelo fica nas teclas das linhas.
     let label = k.label();
     let x_box = clear_box(r);

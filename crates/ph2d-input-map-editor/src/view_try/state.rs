@@ -21,7 +21,7 @@ pub enum TryHit {
     Forget,
 }
 
-const BASE: NodeId = hash_node_id("input_map_try.target");
+const TRY_BASE: NodeId = hash_node_id("input_map_try.target");
 const STRIDE: u64 = 1 << 20;
 
 impl TryHit {
@@ -36,7 +36,7 @@ impl TryHit {
             Self::Forget => (3, 2),
             Self::Shown(a) => (4, a.0 as u64),
         };
-        NodeId(BASE.0.wrapping_add(kind * STRIDE).wrapping_add(n))
+        NodeId(TRY_BASE.0.wrapping_add(kind * STRIDE).wrapping_add(n))
     }
 }
 

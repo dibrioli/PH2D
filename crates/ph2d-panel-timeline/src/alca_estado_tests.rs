@@ -451,7 +451,10 @@ fn o_cursor_da_faixa_sai_do_alvo_registado() {
             .find(|(_, k)| matches!(k, K::Strip { edge: e, .. } if *e == edge))
             .unwrap_or_else(|| panic!("edge {edge} registado"))
             .1
-            .pointer_look(apertado)
+            .pointer_look(
+                apertado,
+                ph2d_editor_core::panel::cards::ferramenta::cards_on(),
+            )
     };
     for edge in [0u8, 1, 5, 6, EASE_IN_CODE] {
         assert_eq!(olha(edge, false), Some(L::ResizeEw), "edge {edge}");
@@ -459,7 +462,7 @@ fn o_cursor_da_faixa_sai_do_alvo_registado() {
     assert_eq!(olha(2, false), Some(L::Grab));
     assert_eq!(olha(2, true), Some(L::Grabbing));
     assert_eq!(
-        K::Lane.pointer_look(false),
+        K::Lane.pointer_look(false, false),
         None,
         "o fundo da folha: a seta"
     );

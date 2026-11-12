@@ -10,6 +10,7 @@
 //! arm copia o estado DISCRETO e deita fora o `t`.
 
 use super::*;
+use crate::interaction::{InteractiveState, WidgetStore};
 
 /// ⭐ **A pele INTERPOLA — meio caminho não é nenhum dos dois extremos.**
 ///
@@ -39,42 +40,42 @@ fn half_a_hover_is_neither_end_for_every_kind_that_has_the_axis() {
         icon: Some(IconGlyph::Path(&g)),
         ..SkinParam::default()
     };
-    let cases: [(WidgetKind, crate::interaction::InteractiveState); 7] = [
+    let cases: [(WidgetKind, InteractiveState); 7] = [
         (
             WidgetKind::Tag,
-            crate::interaction::InteractiveState::Tag {
+            InteractiveState::Tag {
                 state: crate::widget::TagState::Hovered,
             },
         ),
         (
             WidgetKind::Button,
-            crate::interaction::InteractiveState::Button {
+            InteractiveState::Button {
                 state: crate::widget::ButtonState::Hovered,
             },
         ),
         (
             WidgetKind::IconButton,
-            crate::interaction::InteractiveState::Button {
+            InteractiveState::Button {
                 state: crate::widget::ButtonState::Hovered,
             },
         ),
         (
             WidgetKind::Toggle,
-            crate::interaction::InteractiveState::Toggle {
+            InteractiveState::Toggle {
                 state: crate::widget::ToggleState::Hovered,
                 on: false,
             },
         ),
         (
             WidgetKind::Checkbox,
-            crate::interaction::InteractiveState::Checkbox {
+            InteractiveState::Checkbox {
                 state: crate::widget::CheckboxState::Hovered,
                 value: crate::widget::CheckboxValue::Unchecked,
             },
         ),
         (
             WidgetKind::Slider,
-            crate::interaction::InteractiveState::Slider {
+            InteractiveState::Slider {
                 state: crate::widget::SliderState::Hovered,
                 value: 0.5,
                 orientation: crate::widget::SliderOrientation::Horizontal,
@@ -82,7 +83,7 @@ fn half_a_hover_is_neither_end_for_every_kind_that_has_the_axis() {
         ),
         (
             WidgetKind::TextInput,
-            crate::interaction::InteractiveState::TextInput {
+            InteractiveState::TextInput {
                 state: crate::widget::TextInputState::Hovered,
                 text: String::new(),
                 caret: 0,
@@ -138,10 +139,10 @@ fn half_a_hover_is_neither_end_for_every_kind_that_has_the_axis() {
 fn the_pair_the_store_hands_out_is_the_pair_the_skin_paints() {
     let mut ts = text();
     let id = NodeId(7);
-    let mut store = crate::interaction::WidgetStore::with_capacity(2);
+    let mut store = WidgetStore::with_capacity(2);
     store.register(
         id,
-        crate::interaction::InteractiveState::Button {
+        InteractiveState::Button {
             state: crate::widget::ButtonState::Hovered,
         },
     );
@@ -160,7 +161,7 @@ fn the_pair_the_store_hands_out_is_the_pair_the_skin_paints() {
         Theme::Forge,
     );
 
-    let live = crate::interaction::InteractiveState::Button {
+    let live = InteractiveState::Button {
         state: crate::widget::ButtonState::Hovered,
     };
     let mut by_hand = ph2d_vector::VectorScene::new();

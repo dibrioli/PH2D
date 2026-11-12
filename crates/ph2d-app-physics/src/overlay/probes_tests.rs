@@ -24,7 +24,7 @@ fn probe_marks(
     w: ph2d_host::WindowSize,
 ) -> Vec<(ph2d_vector::BezPath, [f32; 4])> {
     let rgba = |t| match t {
-        ph2d_panel_physics::tinta_canvas::Tinta::Sonda { rgba, .. } => rgba,
+        ph2d_shape_handles::contorno::Tinta::Sonda { rgba, .. } => rgba,
         _ => panic!(),
     };
     marcas(on, m, s, c, w)

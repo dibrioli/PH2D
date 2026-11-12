@@ -347,7 +347,7 @@ pub(crate) fn paint_fantasma(
     ctx.scene.push_clip(&rect_to_vello(banda));
     fill_rounded_rect(ctx.scene, r, raio, fundo);
     let fio = StrokeToken::Thin.px();
-    // FRAME-RAW-OK: o contorno TRACEJADO é a marca do fantasma (`1px dashed` da B4), na cor da fonte.
+    // O contorno TRACEJADO é a marca do fantasma (`1px dashed` da B4), na cor da fonte.
     stroke_rounded_rect_dashed(
         ctx.scene,
         Rect::new(r.x + fio * 0.5, r.y + fio * 0.5, r.w - fio, r.h - fio),

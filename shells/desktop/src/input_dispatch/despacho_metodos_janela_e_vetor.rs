@@ -311,7 +311,10 @@ impl crate::App {
         if let TimelineHitKind::ResizeEdge { edges } = kind {
             return Some(Ok(resize_cursor_for_edges(edges)));
         }
-        let icone = icone_de(Some(kind.pointer_look(preso.is_some())?));
+        let icone = icone_de(Some(kind.pointer_look(
+            preso.is_some(),
+            ph2d_editor_core::panel::cards::ferramenta::cards_on(),
+        )?));
         Some(Figura::da_alca(icone, s.timeline_cursor_tint(id)))
     }
 

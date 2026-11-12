@@ -216,15 +216,16 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
     ),
     (
         "set_texture_layer_ramp_mode",
-        "rerender_texture_layer",
-        "Painter Texture LAYER ramp mode: a Texture layer is pre-rendered, so the setter \
-         re-renders the whole layer (the dependent state the mode change invalidates)",
+        "edita_textura",
+        "Painter Texture LAYER ramp mode: a Texture layer is pre-rendered, so the setter goes through \
+         `edita_textura`, which runs the edit as ONE undo step and then `rerender_texture_layer` (the \
+         dependent state the mode change invalidates)",
     ),
     (
         "set_texture_layer_ramp_alpha_mode",
-        "rerender_texture_layer",
-        "Painter Texture LAYER ramp alpha action: re-renders the pre-rendered layer, like \
-         `set_texture_layer_ramp_mode`",
+        "edita_textura",
+        "Painter Texture LAYER ramp alpha action: re-renders the pre-rendered layer through \
+         `edita_textura`, like `set_texture_layer_ramp_mode`",
     ),
     (
         "set_stroke_op_mode",

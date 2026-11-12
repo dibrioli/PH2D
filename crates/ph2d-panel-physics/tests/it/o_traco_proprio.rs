@@ -1,10 +1,9 @@
 //! ⭐ Dono 10/11: Dash e a largura do stroke no Look da forma. O traço próprio substitui o do tipo do corpo no contorno
 //! e a sombra segue-o; sem ele, o do corpo continua.
 
-use ph2d_panel_physics::tinta_canvas::{
-    Marca, Tinta, Tom, espessura, sombra_do_contorno, tinta_do_contorno, traco_do_corpo,
-};
+use ph2d_panel_physics::tinta_canvas::{sombra_do_contorno, tinta_do_contorno};
 use ph2d_physics_ecs::{BodyKind, Collider, ShapeLook};
+use ph2d_shape_handles::contorno::{Marca, Tinta, Tom, espessura, traco_do_corpo};
 use ph2d_tokens::Theme;
 
 fn tinta(corpo: Option<BodyKind>, tom: Tom) -> Tinta {
@@ -70,7 +69,7 @@ fn o_traco_do_corpo_e_o_que_o_contorno_pinta() {
         } else {
             Marca::Solta
         };
-        let neutro = ph2d_panel_physics::tinta_canvas::TOM_NEUTRO;
+        let neutro = ph2d_shape_handles::contorno::TOM_NEUTRO;
         let t = Tinta::Camada {
             camada: 0,
             marca,

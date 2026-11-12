@@ -252,6 +252,7 @@ fn moldura_controls(
         caixa.w - borda,
         caixa.h - borda,
     );
+    // FRAME-RAW-OK: o filete do Controls casa com o realce do Pause na MESMA barra (onda 4 do InputMap): a tinta vem da barra.
     crate::paint::stroke_rounded_rect(scene, traco, raio - meio, borda, cor(filete));
     cor(if on {
         acento

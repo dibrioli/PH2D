@@ -62,6 +62,7 @@ pub(crate) fn paint(
     let (x0, x1) = (view.x(v.janela.0), view.x(v.janela.1));
     let w = StrokeToken::Default.px();
     ctx.scene.push_clip(&rect_to_vello(time_band));
+    // FRAME-RAW-OK: a moldura laranja É a janela do clipe aberto (o raio já vem do tema), não moldura de controlo.
     stroke_rounded_rect(
         ctx.scene,
         Rect::new(x0, y0, (x1 - x0).max(0.0), y1 + h1 - y0),

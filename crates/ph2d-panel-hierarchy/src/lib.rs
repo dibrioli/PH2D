@@ -25,6 +25,7 @@ pub mod ids;
 mod paint;
 mod populate;
 mod row;
+mod row_badge;
 mod row_components;
 mod row_ink;
 mod row_name;

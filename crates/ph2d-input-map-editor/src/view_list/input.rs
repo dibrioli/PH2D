@@ -34,7 +34,7 @@ pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> 
     let key = match id {
         i if i == ids::NEW_NAME => "input_map_list.new_name_tip",
         i if i == ids::ADD => "input_map_list.add_tip",
-        i if i == ids::SEARCH => "input_map_list.search_tip",
+        i if i == ids::LIST_SEARCH => "input_map_list.search_tip",
         _ => match hit_of(doc, id)? {
             ListHit::Listen(_) => "input_map_list.add_key_tip",
             ListHit::RemoveBinding(..) => "input_map_list.remove_key_tip",
@@ -90,10 +90,10 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
     }
     match hit {
         Some(id) if id == ids::ADD => commit_add(doc),
-        Some(id) if id == ids::NEW_NAME || id == ids::SEARCH => focus(doc, Some(id)),
+        Some(id) if id == ids::NEW_NAME || id == ids::LIST_SEARCH => focus(doc, Some(id)),
         Some(id) if id == ids::SEARCH_CLEAR => {
             doc.list.search_key = None;
-            focus(doc, Some(ids::SEARCH));
+            focus(doc, Some(ids::LIST_SEARCH));
         }
         _ => {
             focus(doc, None);
@@ -363,11 +363,11 @@ pub(crate) fn act(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
     }
     match hit {
         _ if id == ids::ADD => commit_add(doc),
-        _ if id == ids::NEW_NAME || id == ids::SEARCH => focus(doc, Some(id)),
+        _ if id == ids::NEW_NAME || id == ids::LIST_SEARCH => focus(doc, Some(id)),
         _ if id == ids::SEARCH_CLEAR => {
             doc.list.search_key = None;
-            clear_text(doc, ids::SEARCH);
-            focus(doc, Some(ids::SEARCH));
+            clear_text(doc, ids::LIST_SEARCH);
+            focus(doc, Some(ids::LIST_SEARCH));
         }
         Some(ListHit::RemoveBinding(a, n)) => {
             focus(doc, None);
@@ -416,8 +416,8 @@ pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
 /// e as setas seguem para ele.
 pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, writes_text: bool) -> bool {
     if !pressed
-        || doc.store.focus_id() != Some(ids::SEARCH)
-        || !doc.store.text(ids::SEARCH).unwrap_or("").is_empty()
+        || doc.store.focus_id() != Some(ids::LIST_SEARCH)
+        || !doc.store.text(ids::LIST_SEARCH).unwrap_or("").is_empty()
     {
         return false;
     }
@@ -436,7 +436,9 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, writes_tex
         return false;
     }
     doc.list.search_key = Some(key);
-    if let Some(InteractiveState::TextInput { text, caret, .. }) = doc.store.get_mut(ids::SEARCH) {
+    if let Some(InteractiveState::TextInput { text, caret, .. }) =
+        doc.store.get_mut(ids::LIST_SEARCH)
+    {
         text.clear();
         *caret = 0;
     }
@@ -455,7 +457,7 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
     let Some(f) = doc
         .store
         .focus_id()
-        .filter(|f| *f == ids::NEW_NAME || *f == ids::SEARCH)
+        .filter(|f| *f == ids::NEW_NAME || *f == ids::LIST_SEARCH)
     else {
         return false;
     };
@@ -472,7 +474,9 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
             focus(doc, None);
             return true;
         }
-        DocKey::Backspace if f == ids::SEARCH && doc.store.text(f).unwrap_or("").is_empty() => {
+        DocKey::Backspace
+            if f == ids::LIST_SEARCH && doc.store.text(f).unwrap_or("").is_empty() =>
+        {
             doc.list.search_key = None;
             return true;
         }

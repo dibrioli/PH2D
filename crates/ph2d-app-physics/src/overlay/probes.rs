@@ -3,7 +3,7 @@
 //!
 //! O ESTADO lê-se pela intensidade (parado · nada · viu) e por um tique na distância do acerto. Os sensores do
 //! personagem têm cor fixa; o `RaySensor` do objecto veste a cor da sua CAMADA, com a sombra do contorno (emenda 4
-//! da GEF02, dono 08/11; `ph2d_panel_physics::tinta_canvas::Tinta::Sonda`).
+//! da GEF02, dono 08/11; `ph2d_shape_handles::contorno::Tinta::Sonda`).
 //!
 //! Nada aqui deriva geometria: toda posição vem da [`ph2d_physics_ecs::ProbeMark`] que a ponte publica, preenchida
 //! pelas mesmas portas que lançam os raios.
@@ -15,7 +15,7 @@ use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
 use crate::overlay::shapes::shape_outline;
-use ph2d_panel_physics::tinta_canvas::Tinta;
+use ph2d_shape_handles::contorno::Tinta;
 
 /// As marcas do personagem: cor fixa, sem camada.
 fn fixa(v: Vec<(BezPath, [f32; 4])>) -> impl Iterator<Item = (BezPath, Tinta)> {
@@ -55,7 +55,7 @@ const HIT_TICK_PX: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay
 const END_TICK_PX: f64 = 3.0; // LITERAL-PX-OK: chrome de overlay
 
 /// Espessura das marcas de sensor, em px de tela: mais fina que o contorno (um sensor é uma pergunta).
-pub const PROBE_PX: f64 = ph2d_panel_physics::tinta_canvas::SONDA_PX;
+pub const PROBE_PX: f64 = ph2d_shape_handles::contorno::SONDA_PX;
 
 /// A ordem entre as duas espessuras, afirmada em tempo de compilação.
 const _: () = assert!(PROBE_PX < crate::overlay::outline::OUTLINE_PX);

@@ -143,6 +143,7 @@ pub(crate) fn paint(
     if let Some((a, b)) = ruler_trecho::vale(snap, clock) {
         let r = caixa(view.x(a), view.x(b));
         fill_rounded_rect(ctx.scene, r, RAIO, fundo);
+        // FRAME-RAW-OK: o fio da caixa É o trecho entre dois marcadores (a janela do laço), não moldura de controlo.
         stroke_rounded_rect(ctx.scene, r, RAIO, fino, fio);
     }
     // O vão entre dois vizinhos: o clique toca o trecho; sob o ponteiro, o fio da caixa que tocaria.
@@ -155,6 +156,7 @@ pub(crate) fn paint(
             }
             let id = ids::timeline_marker_gap_hit_id(a);
             if EstadoAlca::nos_cartoes(ctx, id) != EstadoAlca::Repouso {
+                // FRAME-RAW-OK: o fio da caixa que o clique tocaria É a mensagem do hover sobre o vão.
                 stroke_rounded_rect(ctx.scene, caixa(xa, xb), RAIO, fino, fio);
             }
             let hit = Rect::new(h0, y, h1 - h0, ROW_H_PX);
@@ -274,6 +276,7 @@ pub(crate) fn pilula(ctx: &mut PaintCtx, theme: Theme, r: Rect, nome: &str) {
     if ctx.host.store().hover_live(id) > 0.0 {
         fill_rounded_rect(ctx.scene, r, raio, fundo);
     }
+    // FRAME-RAW-OK: o fio da pílula do trecho É a marca do laço, na tinta da régua (a mesma da caixa).
     stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Thin.px(), fio);
     let verde = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::LacoDaRegua, theme);
     let cy = r.y + r.h * 0.5;

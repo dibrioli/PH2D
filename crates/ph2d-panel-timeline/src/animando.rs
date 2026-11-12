@@ -157,6 +157,7 @@ pub(crate) fn pilula(ctx: &mut PaintCtx, theme: Theme, r: Rect, texto: &str) {
     };
     let raios = (0.0, raio, raio, 0.0);
     fill_rounded_rect_radii(ctx.scene, botao, raios, resolve(fundo, theme));
+    // FRAME-RAW-OK: o contorno azul É a marca de «animando» (a pílula acesa), não moldura de repouso.
     stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Thin.px(), azul);
     let fg = resolve(ColorToken::AccentFg, theme);
     let texto_done = botao.w - pad * 2.0;

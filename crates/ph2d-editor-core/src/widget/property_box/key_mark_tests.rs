@@ -1,6 +1,7 @@
 //! Gates do losango de animação (plano 34 §6).
 
 use super::*;
+use crate::interaction::HitIndex;
 
 const X: NodeId = NodeId(0xA1);
 const Y: NodeId = NodeId(0xA2);
@@ -158,7 +159,6 @@ fn o_livre_e_um_losango_vazio_como_o_animado() {
 /// (`KEY_MARK_BOX`); sem canal = o ponto inerte, sem alvo.
 #[test]
 fn no_cartao_o_livre_e_losango_e_o_alvo_nao_encolhe() {
-    use crate::interaction::HitIndex;
     use crate::widget::card_ink::CardInk;
     use ph2d_card_stack::metrics as m;
     let pinta = |mark: Option<KeyMark>| {
@@ -249,7 +249,6 @@ const PISO_LIVRE_ANIMADO: f64 = 0.25;
 /// do clássico. *Mutação: `KEY_MARK_GLYPH` 9 → 6, ou o raio 0 (a ponta aguda sai da caixa).*
 #[test]
 fn o_glifo_tem_o_tamanho_da_maquete_e_nao_sai_da_caixa() {
-    use crate::interaction::HitIndex;
     use crate::widget::card_ink::CardInk;
     use ph2d_card_stack::metrics as m;
     let caixa = |s: &VectorScene, mark: KeyMark| {

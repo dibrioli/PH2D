@@ -34,9 +34,9 @@ pub fn fatos(world: &World, e: Entity, col: &Collider, on: bool) -> ShapeLookFac
             (f[0] - l.pivot[0]).abs() < MESMO_PONTO && (f[1] - l.pivot[1]).abs() < MESMO_PONTO
         });
     let corpo = ph2d_physics_ecs::governing_kind(world, e);
-    let traco = ph2d_panel_physics::tinta_canvas::Tom::from(&l)
+    let traco = crate::contorno::Tom::from(&l)
         .traco
-        .unwrap_or_else(|| ph2d_panel_physics::tinta_canvas::traco_do_corpo(col, corpo));
+        .unwrap_or_else(|| crate::contorno::traco_do_corpo(col, corpo));
     ShapeLookFacts {
         on,
         ponto,

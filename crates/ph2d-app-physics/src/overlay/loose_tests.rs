@@ -8,13 +8,13 @@ const SOLTA: Tinta = Tinta::Camada {
     camada: 0,
     marca: Marca::Solta,
     corpo: None,
-    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
+    tom: ph2d_shape_handles::contorno::TOM_NEUTRO,
 };
 const SOLIDA: Tinta = Tinta::Camada {
     camada: 0,
     marca: Marca::Solida,
     corpo: Some(BodyKind::Static),
-    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
+    tom: ph2d_shape_handles::contorno::TOM_NEUTRO,
 };
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, SimWorld, Transform};
@@ -105,7 +105,7 @@ fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
             camada: 5,
             marca: Marca::Solta,
             corpo: None,
-            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
+            tom: ph2d_shape_handles::contorno::TOM_NEUTRO,
         };
         let (traco, cor) = tinta_do_contorno(solta, theme);
         assert!(!traco.dash_pattern.is_empty(), "a solta é tracejada");
@@ -114,7 +114,7 @@ fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
             camada: 5,
             marca: Marca::SensorVazio,
             corpo: Some(BodyKind::Static),
-            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
+            tom: ph2d_shape_handles::contorno::TOM_NEUTRO,
         };
         let (_, sensor) = tinta_do_contorno(vazio, theme);
         assert!(cor.components[3] > 0.0 && cor.components[3] < sensor.components[3]);
@@ -123,7 +123,7 @@ fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
                 camada: 5,
                 marca: Marca::Solida,
                 corpo: Some(BodyKind::Dynamic),
-                tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
+                tom: ph2d_shape_handles::contorno::TOM_NEUTRO,
             },
             theme,
         );

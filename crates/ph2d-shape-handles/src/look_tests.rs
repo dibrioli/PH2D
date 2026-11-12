@@ -244,8 +244,7 @@ fn o_traco_editado_fica_proprio_e_o_cartao_mostra_o_que_o_canvas_pinta() {
     let (mut sim, f) = corpo_com_forma();
     let col = *sim.world().get::<Collider>(f).expect("c");
     let fa = fatos(sim.world(), f, &col, true);
-    let grosso =
-        ph2d_panel_physics::tinta_canvas::espessura(Some(ph2d_physics_ecs::BodyKind::Static));
+    let grosso = crate::contorno::espessura(Some(ph2d_physics_ecs::BodyKind::Static));
     assert_eq!(
         (fa.largura, fa.tracejado, fa.traco_proprio),
         (grosso as f32, false, false)

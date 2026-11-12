@@ -9,7 +9,7 @@ pub const VIEW_TRY: NodeId = hash_node_id("input_map_tab.view.try");
 
 pub const NEW_NAME: NodeId = hash_node_id("input_map_list.new_name");
 pub const ADD: NodeId = hash_node_id("input_map_list.add");
-pub const SEARCH: NodeId = hash_node_id("input_map_list.search");
+pub const LIST_SEARCH: NodeId = hash_node_id("input_map_list.search");
 
 /// Os alvos por acção: a base de cada espécie, mais `acção × STRIDE + n`.
 const STRIDE: u64 = 256;
@@ -18,7 +18,7 @@ const CHIP_PLUS: NodeId = hash_node_id("input_map_list.chip_plus");
 const TRASH: NodeId = hash_node_id("input_map_list.trash");
 const DEAD: NodeId = hash_node_id("input_map_list.dead");
 const PRESS: NodeId = hash_node_id("input_map_list.press");
-const ROW: NodeId = hash_node_id("input_map_list.row");
+const LIST_ROW: NodeId = hash_node_id("input_map_list.row");
 const CHIP: NodeId = hash_node_id("input_map_list.chip");
 const DEAD_HANDLE: NodeId = hash_node_id("input_map_list.dead_handle");
 const PRESS_HANDLE: NodeId = hash_node_id("input_map_list.press_handle");
@@ -56,7 +56,7 @@ impl ListHit {
             Self::Trash(a) => per(TRASH, a, 0),
             Self::Dead(a) => per(DEAD, a, 0),
             Self::Press(a) => per(PRESS, a, 0),
-            Self::Row(a) => per(ROW, a, 0),
+            Self::Row(a) => per(LIST_ROW, a, 0),
             Self::Chip(a, n) => per(CHIP, a, n),
             Self::DeadHandle(a) => per(DEAD_HANDLE, a, 0),
             Self::PressHandle(a) => per(PRESS_HANDLE, a, 0),

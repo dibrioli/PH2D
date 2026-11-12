@@ -391,7 +391,7 @@ pub(crate) fn paint(
         .map(|t| largura_do_titulo(ctx.text_system, t, m::VALUE_PX))
         .fold(larga, f32::max)
         .ceil();
-    let dentro = larga.min((painel.w - m::CARD_PAD_X * 4.0).max(0.0));
+    let dentro = larga.min((painel.w - m::CARD_PAD_X * 4.0).max(0.0)); // LITERAL-PX-OK: quatro folgas do cartão, uma contagem
     let w = dentro + m::CARD_PAD_X * 2.0;
     let x_linha = alca.x + alca.w * 0.5;
     let x = (x_linha - w).min(painel.x + painel.w - w).max(painel.x);

@@ -31,6 +31,8 @@ ph2d-card-stack = { path = "../ph2d-card-stack" }
 # O desenho da curva do pulo (`curva_do_pulo`, GEF 04): o player no mundo e a câmara do canvas.
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-render = { path = "../ph2d-render" }
+# A lei do contorno da forma (`contorno`): a cor e a sombra do canvas são pintadas aqui.
+ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 
 [dev-dependencies]
 # As duas bolas do gate do quadro de «Collides with».

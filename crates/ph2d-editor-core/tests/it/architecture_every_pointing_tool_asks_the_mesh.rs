@@ -390,10 +390,10 @@ fn the_liquify_ring_is_drawn_through_the_art_mesh() {
     );
     // E o quadro tem de lhe dar o mundo de apresentação: sem ele não há malha a perguntar.
     let pai = fonte(OVERLAYS);
+    // Sem espaço em branco: a indentação do argumento muda com o bloco que envolve a chamada.
+    let sem_brancos: String = pai.split_whitespace().collect();
     assert!(
-        pai.contains(
-            "draw_brush_ring(\n        painter,\n        hero,\n        sim,\n        present,"
-        ),
+        sem_brancos.contains("draw_brush_ring(painter,hero,sim,present,"),
         "{OVERLAYS} deixou de passar o mundo de apresentação ao anel do pincel."
     );
 }

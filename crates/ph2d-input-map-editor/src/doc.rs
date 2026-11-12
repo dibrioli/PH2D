@@ -411,7 +411,7 @@ impl InputMapDoc {
         self.list.listen_request.take()
     }
 
-    /// O texto de um campo da aba (`ids::NEW_NAME`, `ids::SEARCH`).
+    /// O texto de um campo da aba (`ids::NEW_NAME`, `ids::LIST_SEARCH`).
     #[must_use]
     pub fn field_text(&self, id: NodeId) -> &str {
         self.store.text(id).unwrap_or("")
@@ -457,7 +457,7 @@ impl InputMapDoc {
 /// O `WidgetStore` da aba: os dois campos de texto do cartão (nome novo e busca).
 fn text_fields() -> WidgetStore {
     let mut s = WidgetStore::with_capacity(4);
-    for id in [ids::NEW_NAME, ids::SEARCH] {
+    for id in [ids::NEW_NAME, ids::LIST_SEARCH] {
         s.register(
             id,
             InteractiveState::TextInput {

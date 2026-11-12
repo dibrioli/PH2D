@@ -34,11 +34,11 @@ pub enum KbHit {
     HThumb,
 }
 
-const BASE: NodeId = hash_node_id("input_map_kb.target");
+const KB_BASE: NodeId = hash_node_id("input_map_kb.target");
 const STRIDE: u64 = 1 << 20;
 
 const fn off(kind: u64, n: u64) -> NodeId {
-    NodeId(BASE.0.wrapping_add(kind * STRIDE).wrapping_add(n))
+    NodeId(KB_BASE.0.wrapping_add(kind * STRIDE).wrapping_add(n))
 }
 
 const fn pad_code(b: Binding) -> u64 {

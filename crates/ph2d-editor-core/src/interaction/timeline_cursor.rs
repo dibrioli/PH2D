@@ -12,8 +12,9 @@ impl TimelineHitKind {
     /// O ponteiro deste alvo: `↔` nas pontas, fades, chaves do loop e a `⟷` da duração; a mão aberta
     /// (fechada quando `apertado`) no que se agarra e move; `None` no fundo (a seta). As bordas do
     /// painel ([`Self::ResizeEdge`]) têm diagonais que [`PointerLook`] não diz: a shell resolve-as.
+    /// `em_cartoes` vem de quem chama (a camada de baixo não conhece o painel): nos cartões o marcador é a alça `↔`.
     #[must_use]
-    pub fn pointer_look(self, apertado: bool) -> Option<PointerLook> {
+    pub fn pointer_look(self, apertado: bool, em_cartoes: bool) -> Option<PointerLook> {
         let mao = if apertado {
             PointerLook::Grabbing
         } else {
@@ -26,9 +27,7 @@ impl TimelineHitKind {
             Self::GraphResize => PointerLook::ResizeNs,
             Self::MarkerGap { .. } => PointerLook::Hand,
             // Nos cartões o marcador é a alça do fade das strips: o mesmo ↔ (dono 10/11).
-            Self::Marker { .. } if crate::panel::cards::ferramenta::cards_on() => {
-                PointerLook::ResizeEw
-            }
+            Self::Marker { .. } if em_cartoes => PointerLook::ResizeEw,
             Self::Strip { edge, .. } | Self::LoopBrace { edge } if edge != CORPO => {
                 PointerLook::ResizeEw
             }
@@ -69,19 +68,31 @@ mod tests {
             edge,
         };
         for edge in [0, 1, 3, 4, 5, 6] {
-            assert_eq!(strip(edge).pointer_look(false), Some(PointerLook::ResizeEw));
+            assert_eq!(
+                strip(edge).pointer_look(false, false),
+                Some(PointerLook::ResizeEw)
+            );
         }
-        assert_eq!(strip(CORPO).pointer_look(false), Some(PointerLook::Grab));
-        assert_eq!(strip(CORPO).pointer_look(true), Some(PointerLook::Grabbing));
+        assert_eq!(
+            strip(CORPO).pointer_look(false, false),
+            Some(PointerLook::Grab)
+        );
+        assert_eq!(
+            strip(CORPO).pointer_look(true, false),
+            Some(PointerLook::Grabbing)
+        );
         let brace = |edge| TimelineHitKind::LoopBrace { edge };
-        assert_eq!(brace(0).pointer_look(false), Some(PointerLook::ResizeEw));
-        assert_eq!(brace(CORPO).pointer_look(true), Some(PointerLook::Grabbing));
+        assert_eq!(
+            brace(0).pointer_look(false, false),
+            Some(PointerLook::ResizeEw)
+        );
+        assert_eq!(
+            brace(CORPO).pointer_look(true, false),
+            Some(PointerLook::Grabbing)
+        );
         let marcador = TimelineHitKind::Marker { index: 0 };
-        crate::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
-        let nos_cartoes = marcador.pointer_look(false);
-        crate::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
-        let classico = marcador.pointer_look(false);
-        crate::panel::cards::ferramenta::force_cards_on_this_thread(None);
+        let nos_cartoes = marcador.pointer_look(false, true);
+        let classico = marcador.pointer_look(false, false);
         assert_eq!(
             nos_cartoes,
             Some(PointerLook::ResizeEw),
@@ -93,13 +104,17 @@ mod tests {
             "a bandeirola do clássico"
         );
         let key = TimelineHitKind::Key { target: 1, key: 2 };
-        assert_eq!(key.pointer_look(false), Some(PointerLook::Grab));
-        assert_eq!(TimelineHitKind::Lane.pointer_look(false), None);
+        assert_eq!(key.pointer_look(false, false), Some(PointerLook::Grab));
+        assert_eq!(TimelineHitKind::Lane.pointer_look(false, false), None);
         let chip = TimelineHitKind::SourceChip { option: 7 };
-        assert_eq!(chip.pointer_look(false), None, "o chip parado é um botão");
-        assert_eq!(chip.pointer_look(true), Some(PointerLook::Grabbing));
         assert_eq!(
-            TimelineHitKind::DurationHandle.pointer_look(false),
+            chip.pointer_look(false, false),
+            None,
+            "o chip parado é um botão"
+        );
+        assert_eq!(chip.pointer_look(true, false), Some(PointerLook::Grabbing));
+        assert_eq!(
+            TimelineHitKind::DurationHandle.pointer_look(false, false),
             Some(PointerLook::ResizeEw)
         );
     }

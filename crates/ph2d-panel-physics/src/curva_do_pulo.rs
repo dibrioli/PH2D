@@ -14,8 +14,8 @@ use ph2d_vector::{Affine, BezPath, Brush, Stroke, VectorScene};
 
 /// Distância ao traço, px de ecrã, em que o nome da curva aparece. A meia largura da alça padrão.
 const HOVER_PX: f32 = 9.0; // LITERAL-PX-OK: alvo de hover, o mesmo do ponto da âncora
-/// Caixa do nome e do readout, px de ecrã.
-const LABEL_W_PX: f32 = 140.0; // LITERAL-PX-OK: chrome de overlay
+/// Caixa flutuante do nome e do readout (não é coluna de rótulo de linha), px de ecrã.
+const NOME_W_PX: f32 = 140.0; // LITERAL-PX-OK: chrome de overlay
 const LABEL_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 const LABEL_FONT_PX: f32 = 11.0; // LITERAL-PX-OK: o mesmo do readout das juntas
 
@@ -222,7 +222,7 @@ pub fn draw(
             let rect = ph2d_editor_core::zones::Rect::new(
                 at.0 + HOVER_PX,
                 at.1 - HOVER_PX - LABEL_H_PX,
-                LABEL_W_PX,
+                NOME_W_PX,
                 LABEL_H_PX,
             );
             ph2d_editor_core::paint::paint_text_centered(

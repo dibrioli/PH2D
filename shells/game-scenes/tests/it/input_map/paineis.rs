@@ -32,6 +32,7 @@ fn mover(m: &mut Mesa, (x, y): (f32, f32)) -> bool {
         text: ts,
         mods: Modifiers::default(),
         now_ns: 0,
+        primary_held: false,
     };
     let took = f.pointer_move(id, input, x, y);
     m.paint_in(CENTRO);
@@ -45,6 +46,7 @@ fn botao(m: &mut Mesa, kind: PointerKind, (x, y): (f32, f32)) -> bool {
         text: ts,
         mods: Modifiers::default(),
         now_ns: 0,
+        primary_held: kind == PointerKind::Down,
     };
     let took = f.pointer(id, input, kind, PointerButton::Primary, x, y);
     m.paint_in(CENTRO);

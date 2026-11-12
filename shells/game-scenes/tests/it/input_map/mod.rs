@@ -142,6 +142,7 @@ impl Mesa {
                 text: ts,
                 mods: Modifiers::default(),
                 now_ns: 0,
+                primary_held: false,
             };
             f.pointer_move(id, input, x, y);
         }
@@ -156,6 +157,7 @@ impl Mesa {
                 text: ts,
                 mods: Modifiers::default(),
                 now_ns: 0,
+                primary_held: false,
             };
             f.pointer(id, input, PointerKind::Up, PointerButton::Primary, 0.0, 0.0);
         }
@@ -263,6 +265,7 @@ impl Mesa {
             text: ts,
             mods: Modifiers::default(),
             now_ns: 0,
+            primary_held: kind == PointerKind::Down,
         };
         f.pointer(id, input, kind, PointerButton::Primary, x, y)
     }

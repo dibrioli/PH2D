@@ -56,6 +56,7 @@ fn a_receita_pede_confirmacao_e_substitui_num_passo() {
                 text: &mut *ts,
                 mods: ph2d_host::Modifiers::default(),
                 now_ns: 0,
+                primary_held: kind == ph2d_host::PointerKind::Down,
             };
             f.pointer(
                 id,

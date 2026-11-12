@@ -33,7 +33,7 @@ impl PainterTool {
     }
 
     /// The slider's own contribution mapped to px: `(norm−0.5)·2·MAX`, `0` at the centred `0.5` track.
-    fn selection_slider_offset_px(&self) -> f32 {
+    pub(super) fn selection_slider_offset_px(&self) -> f32 {
         (self.paint.selection_offset_norm - 0.5) * 2.0 * SEL_OFFSET_MAX_PX
     }
 
@@ -87,7 +87,9 @@ impl PainterTool {
             if src.is_empty() {
                 return;
             }
-            if *src != *self.paint.selection_offset_source {
+            if !Arc::ptr_eq(&src, &self.paint.selection_offset_source)
+                && *src != *self.paint.selection_offset_source
+            {
                 self.paint.selection_offset_source = src;
                 self.paint.selection_offset_curves.clear();
                 self.paint.selection_offset_level_cache.clear();
@@ -223,7 +225,7 @@ impl PainterTool {
                 *out = 255;
             }
         }
-        self.set_selection_offset_source(&crisp);
+        self.set_selection_offset_source(Arc::new(crisp));
         self.apply_selection_offset(); // offset is neutral in ring-stack mode → installs `crisp` verbatim
     }
 
@@ -241,8 +243,8 @@ impl PainterTool {
     /// Refresh the pre-offset source (called by `recompose_selection_mask` after rebuilding the shapes' crisp)
     /// and clear the cached SDF. In ring mode the base is already baked into the shapes, so the recomposed
     /// crisp IS the correct offset source.
-    pub(super) fn set_selection_offset_source(&mut self, crisp: &[u8]) {
-        self.paint.selection_offset_source = Arc::new(crisp.to_vec());
+    pub(super) fn set_selection_offset_source(&mut self, crisp: Arc<Vec<u8>>) {
+        self.paint.selection_offset_source = crisp;
         self.paint.selection_offset_curves.clear();
         self.paint.selection_offset_level_cache.clear();
     }
@@ -274,16 +276,20 @@ impl PainterTool {
         let live = self.selection_slider_offset_px();
         // Neutral fast path: plain mode + centred slider ⇒ the un-offset source verbatim (no SDF needed).
         if !self.paint.selection_offset_active && live == 0.0 {
-            let src = (*self.paint.selection_offset_source).clone();
-            self.set_selection_from_crisp(src);
+            // The source is immutable: share it (B40.A3), never copy 16,8 MB per tick.
+            let src = Arc::clone(&self.paint.selection_offset_source);
+            self.set_selection_from_crisp_arc(src);
             return;
         }
         self.ensure_selection_offset_curves();
-        let mut eff: Vec<u8>;
         if !self.paint.selection_offset_active {
-            // Plain grow/shrink: the corner-true composite at the live level (miter corners; holes shrink).
-            eff = (*self.offset_level_mask_cached(live)).clone();
-        } else {
+            // Plain grow/shrink: the corner-true composite at the live level, shared from the level cache.
+            let eff = self.offset_level_mask_cached(live);
+            self.set_selection_from_crisp_arc(eff);
+            return;
+        }
+        let mut eff: Vec<u8>;
+        {
             // Ring mode: levels = [0, ring1, ring2, …]; band `k` (level[k-1]→level[k]) is PAINT iff `k` even
             // (band 0 = the interior, paint). Plus the LIVE band being swept at index `rings.len()+1`. Same
             // band-parity semantics as the former SDF, on nested corner-true level masks.
@@ -312,7 +318,7 @@ impl PainterTool {
 
     /// Build the corner-true offset contours off the source crisp if empty — trace (+holes) → refit →
     /// grow-calibrate; see [`super::selection_offset_geom`]. The sharp analogue of the former SDF cache.
-    fn ensure_selection_offset_curves(&mut self) {
+    pub(super) fn ensure_selection_offset_curves(&mut self) {
         if !self.paint.selection_offset_curves.is_empty() {
             return;
         }
@@ -328,7 +334,7 @@ impl PainterTool {
     /// The effective mask at `level`, cached per exact level: ring boundaries hit every recompose and the
     /// live level repeats while the slider rests. Pinned levels (0 + the frozen rings) never evict; the
     /// transient live levels keep only the most recent few. Dropped with the source.
-    fn offset_level_mask_cached(&mut self, level: f32) -> Arc<Vec<u8>> {
+    pub(super) fn offset_level_mask_cached(&mut self, level: f32) -> Arc<Vec<u8>> {
         if let Some(m) = self.selection_offset_level_mask(level) {
             return Arc::clone(m);
         }
@@ -358,13 +364,13 @@ impl PainterTool {
 }
 
 /// `(min, max)` of two levels — the band the two boundaries enclose, whichever direction the sweep goes.
-fn ordered(a: f32, b: f32) -> (f32, f32) {
+pub(super) fn ordered(a: f32, b: f32) -> (f32, f32) {
     (a.min(b), a.max(b))
 }
 
 /// Set the shell between two NESTED level masks (`lo` ⊆ `hi`, both `0`/`255` coverage) to selected
 /// (`paint`) or deselected — a pixel is in the band iff the hi-level mask covers it and the lo one doesn't.
-fn paint_band_masks(eff: &mut [u8], lo: &[u8], hi: &[u8], paint: bool) {
+pub(super) fn paint_band_masks(eff: &mut [u8], lo: &[u8], hi: &[u8], paint: bool) {
     let v = if paint { 255 } else { 0 };
     let n = eff.len().min(lo.len()).min(hi.len());
     for i in 0..n {

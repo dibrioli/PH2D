@@ -52,7 +52,15 @@ impl PainterTool {
         if w == 0 || h == 0 || pts.len() < 3 {
             return cov;
         }
-        for yy in 0..h {
+        // Only rows inside the polygon's y-extent can cross an edge (NaN vertices never cross).
+        let (ymin, ymax) = pts
+            .iter()
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(a, b), p| {
+                (a.min(p[1]), b.max(p[1]))
+            });
+        let y0 = (ymin - 1.0).floor().clamp(0.0, h as f32) as usize;
+        let y1 = (ymax + 1.0).ceil().clamp(0.0, h as f32) as usize;
+        for yy in y0..y1 {
             let yc = yy as f32 + 0.5;
             let mut xs: Vec<f32> = Vec::new();
             for i in 0..pts.len() {
@@ -122,8 +130,15 @@ impl PainterTool {
     /// The single funnel for every op that changes WHICH texels are selected (marquee / lasso / flood /
     /// rect seed / invert / list recompose) — so Feather always re-derives from the crisp base.
     pub(super) fn set_selection_from_crisp(&mut self, crisp: Vec<u8>) {
+        self.set_selection_from_crisp_arc(Arc::new(crisp));
+    }
+
+    /// [`Self::set_selection_from_crisp`] sharing an already-immutable buffer (the offset source, a cached
+    /// offset level) instead of copying it (B40.A3). The buffer is never mutated in place: a new content is
+    /// always a new `Arc`, which is what the marching-ants overlay keys on.
+    pub(super) fn set_selection_from_crisp_arc(&mut self, crisp: Arc<Vec<u8>>) {
         self.paint.selection_active = crisp.iter().any(|&v| v > 0);
-        self.paint.selection_crisp = Arc::new(crisp);
+        self.paint.selection_crisp = crisp;
         self.derive_effective();
     }
 

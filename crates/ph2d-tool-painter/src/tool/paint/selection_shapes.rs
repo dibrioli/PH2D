@@ -166,25 +166,39 @@ impl PainterTool {
         // moved — O(A) instead of O(N·A) per frame.
         let entries = self.paint.selection_shapes.clone();
         let old_cache = std::mem::take(&mut self.paint.selection_raster_cache);
-        let mut crisp = vec![0u8; n];
         let mut new_cache: Vec<(SelectionShape, Arc<Vec<u8>>)> = Vec::with_capacity(entries.len());
+        let mut layers: Vec<(Arc<Vec<u8>>, u8)> = Vec::with_capacity(entries.len());
         for (i, e) in entries.iter().enumerate() {
             let raster = match old_cache.get(i) {
                 Some((s, r)) if r.len() == n && shape_coverage_eq(s, &e.shape) => Arc::clone(r),
                 _ => Arc::new(self.rasterize_selection_shape(&e.shape)),
             };
             if raster.len() == n {
-                combine_into(&mut crisp, &raster, e.op);
+                layers.push((Arc::clone(&raster), e.op));
             }
             new_cache.push((e.shape.clone(), raster));
         }
+        drop(old_cache);
         self.paint.selection_raster_cache = new_cache;
+        // Every texel folds the list in order, alone: disjoint row bands give the same byte (B40.A3).
+        let w = self.source_size.0 as usize;
+        let mut crisp = vec![0u8; n];
+        let threads = crate::compositor::parallel_threads(n, n / w);
+        crate::compositor::em_faixas_de_linhas(&mut crisp, w, threads, |band, y| {
+            for (r, op) in &layers {
+                combine_into(band, &r[y * w..][..band.len()], *op);
+            }
+        });
         // The recomposed crisp is the pre-offset SOURCE; the Offset stage (grow/shrink + concentric rings)
         // produces the effective mask installed via `set_selection_from_crisp`. Neutral offset ⇒ identity.
-        self.set_selection_offset_source(&crisp);
+        self.set_selection_offset_source(Arc::new(crisp));
         self.apply_selection_offset();
     }
 }
+
+#[cfg(test)]
+#[path = "selection_recompose_oraculo.rs"]
+mod oraculo;
 
 /// Whether two selection shapes rasterize to the SAME coverage (the raster cache's validity test). Compares
 /// geometry only (the fields the rasterizer reads); `Raster` compares its coverage `Arc` by pointer (O(1),
@@ -308,8 +322,23 @@ pub(super) fn rasterize_ellipse(
     let rx = rx.max(0.5);
     let ry = ry.max(0.5);
     let v = [-u[1], u[0]]; // perpendicular axis
-    for yy in 0..h {
-        for xx in 0..w {
+    // Inside ⇒ |p|·|u| ≤ max(rx, ry): only that box can pass the test (+1 px and 0.1 % of slack for f32).
+    let un = (u[0] * u[0] + u[1] * u[1]).sqrt();
+    let (x0, x1, y0, y1) = if un > 1e-3 {
+        let b = rx.max(ry) / un * 1.001 + 1.0;
+        let span = |c: f32, n: usize| {
+            (
+                (c - b - 1.0).floor().clamp(0.0, n as f32) as usize,
+                (c + b + 1.0).ceil().clamp(0.0, n as f32) as usize,
+            )
+        };
+        let ((x0, x1), (y0, y1)) = (span(center[0], w), span(center[1], h));
+        (x0, x1, y0, y1)
+    } else {
+        (0, w, 0, h)
+    };
+    for yy in y0..y1 {
+        for xx in x0..x1 {
             let px = xx as f32 + 0.5 - center[0];
             let py = yy as f32 + 0.5 - center[1];
             let du = (px * u[0] + py * u[1]) / rx;

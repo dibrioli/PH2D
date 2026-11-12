@@ -37,6 +37,7 @@ pub mod component;
 /// O console dos scripts: `print`, erros de runtime, recusas de recarga (CodeEditor E10).
 pub mod console;
 /// O diagnóstico estruturado de um script (linha, mensagem inteira, pilha).
+mod devices_frame;
 pub mod diagnostic;
 pub mod host;
 pub mod io;

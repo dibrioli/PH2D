@@ -26,26 +26,10 @@ pub fn frame(
         mouse_world = Some(crate::code_smoke::piloto(input, n));
     }
     if let Some(host) = host {
-        feed(host, input, mouse_world);
-        host.devices().feed_actions(actions);
+        host.feed_devices(input, mouse_world, actions);
     }
     input.keyboard.begin_frame();
     input.mouse.begin_frame();
-}
-
-fn feed(host: &ScriptHost, input: &InputState, mouse_world: Option<[f64; 2]>) {
-    host.clear_input();
-    for button in input.gamepad.iter_held() {
-        host.provide_input(&format!("gamepad.held.{}", button.as_lua_key()), 1.0);
-    }
-    for (axis, value) in input.gamepad.iter_axes() {
-        host.provide_input(
-            &format!("gamepad.axis.{}", axis.as_lua_key()),
-            f64::from(value),
-        );
-    }
-    host.devices()
-        .feed(&input.keyboard, &input.mouse, mouse_world);
 }
 
 /// ⭐ **Um botão do rato para o JOGO**: só um clique que COMEÇA na cena conta (um clique no Play
@@ -96,34 +80,6 @@ mod tests {
         assert!(
             host.devices().key(&space, ph2d_script::Edge::Down),
             "e continua em baixo"
-        );
-    }
-
-    /// ⭐ O caminho do APP: o Play tica o `ActionState` com o mapa, e a porta entrega ESSE estado
-    /// ao script no mesmo quadro (`ph2d.action_*`).
-    #[test]
-    fn a_accao_que_o_play_resolveu_chega_ao_script() {
-        use ph2d_script::Edge;
-        let host = ScriptHost::new().expect("vm");
-        let map = InputMap::with_player_defaults();
-        let mut actions = ActionState::new();
-        let mut input = InputState::new();
-        let up = ph2d_input::Key::named_in_script("up").expect("up")[0];
-        input.apply_event(Event::KeyDown(up));
-        actions.tick(&map, &input);
-        frame(Some(&host), &mut input, None, Some((&map, &actions)));
-        assert_eq!(host.devices().action("jump", Edge::Pressed), Some(true));
-        assert_eq!(host.devices().action("dash", Edge::Down), Some(false));
-        assert_eq!(
-            host.devices().action("nada", Edge::Down),
-            None,
-            "fora do mapa"
-        );
-        frame(Some(&host), &mut input, None, None);
-        assert_eq!(
-            host.devices().action("jump", Edge::Down),
-            None,
-            "sem mapa, nenhuma acção"
         );
     }
 

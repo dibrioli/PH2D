@@ -9,6 +9,7 @@ pub mod cards;
 mod chrome;
 pub mod code_text;
 pub mod console;
+pub mod console_store;
 pub mod debug_card;
 mod debug_marks;
 mod display;

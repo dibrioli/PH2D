@@ -12,6 +12,10 @@ authors.workspace = true
 [dependencies]
 ph2d-code-buffer = { path = "../ph2d-code-buffer" }
 ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
+# O console de um script (`console_store`): o `ConsoleLine` do motor, o dono do objecto que falou e os problemas do Play.
+ph2d-script = { path = "../ph2d-script" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-code-assist = { path = "../ph2d-code-assist" }
 # O modelo do quadro do depurador (plano 14) — pinta-o o `debug_card`.
 ph2d-code-debugcard = { path = "../ph2d-code-debugcard" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }

@@ -5,8 +5,9 @@
 use crate::commands::{CMD_RESTART_ASSIST, TabMenu, menu_rows_in, row_state};
 use crate::docs::CodeDocs;
 use crate::help::page_of;
+use ph2d_editor_core::doc_surface::Key;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress, more_menu};
+use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -86,13 +87,8 @@ pub(crate) fn open_items(
     state: crate::commands::CommandState,
     stop: crate::debug::GameStop,
 ) -> Vec<MenuItem> {
-    if bar.more {
-        let more = |m: &TabMenu| (m.more_row(), m.title().into(), menu_items(*m, state, stop));
-        return more_menu(bar.painted.hidden.iter().map(more));
-    }
-    bar.open
-        .map(|m| menu_items(m, state, stop))
-        .unwrap_or_default()
+    let more = |m: TabMenu| (m.more_row(), m.title().into());
+    bar.open_items(|m| menu_items(m, state, stop), more)
 }
 
 /// O que um carregar na barra (fora do menu) pede.
@@ -220,14 +216,11 @@ impl CodeDocs {
             return self.bar.painted.header.contains(x, y).then_some(true);
         };
         match press {
-            BarPress::Menu(MenuPress::Run(cmd)) => {
-                let _ = ph2d_editor_core::doc_surface::DocumentSurface::command(self, id, cmd);
-            }
+            BarPress::Menu(p) => self.bar_run(id, p),
             BarPress::Crumb(l, c) => {
                 let _ = self.tab_go_to(id, l, c);
             }
             BarPress::Gear => self.options.toggle(),
-            BarPress::Menu(MenuPress::Taken) => {}
         }
         Some(true)
     }
@@ -238,17 +231,28 @@ impl CodeDocs {
         self.bar.hover_move_at(x, y, self.clock.0) || self.options.hover(x, y)
     }
 
-    /// O Esc fecha um nível do menu aberto; sem menu, o cartão «Script options» sem alfinete.
-    /// `true` = fechou algo.
-    pub(crate) fn bar_escape(&mut self) -> bool {
-        if self.bar.escape() {
+    /// Uma tecla no menu aberto (o teclado dos menus de sistema); sem menu, o Esc fecha o cartão
+    /// «Script options» sem alfinete. `true` = tomada.
+    pub(crate) fn bar_key(&mut self, id: u64, key: Key) -> bool {
+        if let Some(p) = self.bar.key(&self.tab_items(id), key) {
+            self.bar_run(id, p);
             return true;
         }
-        if self.options.open && !self.options.pinned {
-            self.options.open = false;
-            return true;
+        let close = key == Key::Escape && self.options.open && !self.options.pinned;
+        self.options.open &= !close;
+        close
+    }
+
+    fn bar_run(&mut self, id: u64, p: MenuPress) {
+        if let MenuPress::Run(cmd) = p {
+            let _ = ph2d_editor_core::doc_surface::DocumentSurface::command(self, id, cmd);
         }
-        false
+    }
+
+    fn tab_items(&self, id: u64) -> Vec<MenuItem> {
+        let doc = self.docs.iter().find(|d| d.script.0 == id);
+        let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
+        open_items(&self.bar, state, self.debug.game_stop)
     }
 
     /// A `k`-ésima escolha do menu aberto (o smoke): as linhas que valem e, no lugar de um submenu, as
@@ -258,10 +262,7 @@ impl CodeDocs {
         id: u64,
         k: usize,
     ) -> Option<(ph2d_a11y::NodeId, Option<ph2d_a11y::NodeId>)> {
-        let doc = self.docs.iter().find(|d| d.script.0 == id);
-        let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
-        let items = open_items(&self.bar, state, self.debug.game_stop);
-        MenuItem::leaves(&items).get(k).copied()
+        MenuItem::leaves(&self.tab_items(id)).get(k).copied()
     }
 
     /// O que a barra pintou (os testes clicam por aqui).

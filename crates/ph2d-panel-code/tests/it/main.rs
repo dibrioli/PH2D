@@ -31,6 +31,7 @@ mod respiro;
 mod sobreposicao;
 mod sublinhado;
 mod submenu;
+mod teclado_nos_menus;
 mod transbordo;
 mod valores_ao_vivo;
 mod virtualizacao;

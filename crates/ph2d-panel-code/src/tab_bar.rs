@@ -7,6 +7,7 @@
 //! mecânica (pairar abre, a escolha fecha tudo, Esc fecha um nível) está em [`menu`].
 
 mod cascade;
+mod keys;
 pub mod menu;
 
 use ph2d_a11y::NodeId;
@@ -101,6 +102,8 @@ pub struct TabBar<M> {
     pub last: Option<(f32, f32)>,
     /// Quando chegou o evento anterior do rato (uma pausa longa a meio da mira acaba-a).
     pub moved_at: u128,
+    /// O teclado passou a outro título: a 1.ª linha dele acende-se ao pintar.
+    pub first_pending: bool,
 }
 
 impl<M> Default for TabBar<M> {
@@ -117,6 +120,7 @@ impl<M> Default for TabBar<M> {
             tip: None,
             last: None,
             moved_at: 0,
+            first_pending: false,
         }
     }
 }

@@ -220,6 +220,23 @@ struct Laid {
 }
 
 impl<M: Copy + PartialEq> TabBar<M> {
+    /// As linhas do menu aberto: as do título (`rows`), as do transbordo (cada título escondido como
+    /// um submenu `more(m)` = (linha, nome) com as linhas dele), ou nenhuma.
+    pub fn open_items(
+        &self,
+        rows: impl Fn(M) -> Vec<MenuItem>,
+        more: impl Fn(M) -> (NodeId, String),
+    ) -> Vec<MenuItem> {
+        if self.more {
+            let sub = |&m: &M| {
+                let (id, name) = more(m);
+                (id, name, rows(m))
+            };
+            return more_menu(self.painted.hidden.iter().map(sub));
+        }
+        self.open.map(rows).unwrap_or_default()
+    }
+
     /// Pinta o menu aberto por baixo do título dele, com `items`, e os submenus abertos ao lado (por
     /// cima de tudo: chame-a por último, depois de [`Self::window`]). Sem menu aberto, a dica sob o
     /// rato depois de `pause_ns`.
@@ -244,6 +261,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
             return;
         };
         self.prune(items);
+        self.take_first(items);
         let (w, check_w) = measure(items, ts);
         // Sem janela, o menu fica debaixo do título, sem limite (a barra sozinha dos testes).
         let all = Rect::new(f32::MIN, f32::MIN, f32::INFINITY, f32::INFINITY);

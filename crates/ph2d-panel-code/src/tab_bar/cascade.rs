@@ -57,14 +57,14 @@ impl<M: Copy + PartialEq> TabBar<M> {
             .collect()
     }
 
-    fn set_chain(&mut self, mut c: Vec<NodeId>) {
+    pub(super) fn set_chain(&mut self, mut c: Vec<NodeId>) {
         self.scroll.truncate(c.len() + 1);
         self.sub = (!c.is_empty()).then(|| c.remove(0));
         self.deeper = c;
     }
 
     /// Abre, no nível `level`, o submenu da linha `id` (fecha os mais fundos).
-    fn open_sub(&mut self, level: usize, id: NodeId) {
+    pub(super) fn open_sub(&mut self, level: usize, id: NodeId) {
         let mut c = self.chain();
         c.truncate(level);
         if c.len() == level {
@@ -152,14 +152,14 @@ impl<M: Copy + PartialEq> TabBar<M> {
     }
 
     /// Abre o menu do título `m`, ou o transbordo com `None`.
-    fn open_at(&mut self, m: Option<M>) {
+    pub(super) fn open_at(&mut self, m: Option<M>) {
         self.more = m.is_none();
         self.open = m;
         self.set_chain(Vec::new());
         self.scroll.clear();
     }
 
-    fn close(&mut self) {
+    pub(super) fn close(&mut self) {
         self.open_at(None);
         self.more = false;
         self.hover = None;

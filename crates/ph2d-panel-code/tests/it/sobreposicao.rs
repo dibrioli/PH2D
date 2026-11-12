@@ -20,7 +20,7 @@ const TITLES: [(u8, &str); 6] = [
     (5, "Run"),
 ];
 
-fn id(k: &str) -> NodeId {
+pub(super) fn id(k: &str) -> NodeId {
     ph2d_tool_registry::hash_node_id_runtime(&format!("sobre_{k}"))
 }
 
@@ -55,12 +55,23 @@ fn items_of(m: u8, n: usize) -> Vec<MenuItem> {
             v.push(cmd("Remove All Breakpoints"));
             v
         }
+        2 => vec![
+            cmd("Find A"),
+            MenuItem::Cmd {
+                id: id("Find B"),
+                name: "Find B".into(),
+                keys: String::new(),
+                live: false,
+            },
+            MenuItem::Note("a note".into()),
+            cmd("Find C"),
+        ],
         _ => vec![cmd(&format!("Cmd {m}"))],
     }
 }
 
 /// A barra de `w` px no topo de uma aba, numa janela `win`; o menu do File tem `n` linhas.
-fn pinta(bar: &mut TabBar<u8>, w: f32, win: Rect, n: usize, ts: &mut TextSystem) {
+pub(super) fn pinta(bar: &mut TabBar<u8>, w: f32, win: Rect, n: usize, ts: &mut TextSystem) {
     let (mut scene, theme) = (VectorScene::new(), Theme::default());
     let crumb = Crumb {
         script: "problemas.luau".into(),
@@ -76,7 +87,13 @@ fn pinta(bar: &mut TabBar<u8>, w: f32, win: Rect, n: usize, ts: &mut TextSystem)
         &theme,
     );
     bar.window = Some(win);
-    let items = if bar.more {
+    let items = itens(bar, n);
+    bar.paint_popup(&items, &mut scene, ts, &theme, (0, 0));
+}
+
+/// As linhas do menu aberto (as que [`pinta`] lhe dá).
+pub(super) fn itens(bar: &TabBar<u8>, n: usize) -> Vec<MenuItem> {
+    if bar.more {
         let hidden = bar.painted.hidden.clone();
         let rows = hidden.into_iter().map(|m| {
             let i = usize::from(m);
@@ -85,8 +102,7 @@ fn pinta(bar: &mut TabBar<u8>, w: f32, win: Rect, n: usize, ts: &mut TextSystem)
         more_menu(rows)
     } else {
         bar.open.map(|m| items_of(m, n)).unwrap_or_default()
-    };
-    bar.paint_popup(&items, &mut scene, ts, &theme, (0, 0));
+    }
 }
 
 fn centro(r: Rect) -> (f32, f32) {
@@ -98,7 +114,7 @@ fn dentro(r: Rect, win: Rect) -> bool {
 }
 
 /// Pairar e carregar na linha `k` do nível mais fundo aberto.
-fn row_of(bar: &TabBar<u8>, k: NodeId) -> Rect {
+pub(super) fn row_of(bar: &TabBar<u8>, k: NodeId) -> Rect {
     let p = &bar.painted;
     let rows = p
         .deeper

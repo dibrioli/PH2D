@@ -371,7 +371,8 @@ impl DocumentSurface for CodeDocs {
             paste,
         } = input;
         let esc = key == Key::Escape;
-        if pressed && (self.context_key(key) || (esc && (self.left.cancel() || self.bar_escape())))
+        if pressed
+            && (self.context_key(key) || (esc && self.left.cancel()) || self.bar_key(id, key))
         {
             return KeyOutcome {
                 consumed: true,

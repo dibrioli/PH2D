@@ -534,7 +534,7 @@ pub(super) fn pousa_o_dab(
             let (fx, fy) = (f64::from(cx), f64::from(cy));
             let dc = [fx - centro_x, fy - centro_y];
             let tapete = |q: [f64; 2]| cd.em(q, [fx, fy]);
-            let Some(f) = fios_dab else {
+            let Some(f) = fios_dab.as_ref() else {
                 return tapete(dc);
             };
             let q = dc.map(|v| v * px_por_celula);

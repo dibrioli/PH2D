@@ -126,7 +126,7 @@ fn sonda_fases_da_troca_de_camada_a_4k() {
         let buf = crate::tool::internal::own_image(img).rgba8;
         f[2].push(ms(t0));
         let t0 = std::time::Instant::now();
-        t.replace_canvas(Arc::new(buf));
+        t.instala_a_tela_do_restauro(Arc::new(buf)); // a porta da troca, sem o diário (B18.3)
         t.layers.set_active(alvo);
         f[6].push(ms(t0));
         let t0 = std::time::Instant::now();
@@ -136,14 +136,14 @@ fn sonda_fases_da_troca_de_camada_a_4k() {
         t.wet_acorda_da_camada();
         f[4].push(ms(t0));
         let t0 = std::time::Instant::now();
-        t.invalidate_composite();
+        t.troca_sem_mudar_a_figura();
         f[5].push(ms(t0));
         let _ = t.take_preview_arc();
     }
     let m: Vec<String> = f
         .iter_mut()
         .zip([
-            "snapshot", "flush", "posse", "commit", "acorda", "invalida", "tela",
+            "snapshot", "flush", "posse", "commit", "acorda", "publica", "tela",
         ])
         .map(|(v, n)| {
             let (mi, me) = resumo(v);

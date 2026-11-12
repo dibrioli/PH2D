@@ -49,7 +49,7 @@ pub trait Paint {
 }
 
 #[path = "paint_text.rs"]
-mod text;
+pub(crate) mod text;
 
 #[path = "paint_label_box.rs"]
 mod label_box;

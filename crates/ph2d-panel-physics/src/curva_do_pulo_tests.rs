@@ -234,3 +234,66 @@ fn cada_linha_e_ponto_da_curva_sai_sobre_o_seu_halo() {
         }
     }
 }
+
+thread_local! {
+    static PINTADOS: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn ouve(t: &str, _r: [f32; 4], _corpo: f32) {
+    PINTADOS.with(|v| v.borrow_mut().push(t.to_owned()));
+}
+
+/// ⭐ Dono 12/11 (GEF 04), «os números não são idênticos»: o readout que o DESENHO pinta a arrastar diz o
+/// texto do campo Jump Height — prova o ponto de chamada (`draw` usa `numero_da_alca`), não só a função
+/// (`o_numero_da_alca_e_o_do_campo`).
+#[test]
+fn o_readout_pintado_a_arrastar_e_o_texto_do_campo() {
+    use ph2d_editor_core::project::DisplayUnit;
+    use ph2d_editor_core::widget::format_number;
+    let mut falhas = Vec::new();
+    for h in [2.0_f32, 2.5] {
+        let (mut sim, e) = cena(true);
+        sim.world_mut()
+            .get_mut::<PlatformPlayer>(e)
+            .unwrap()
+            .jump_height = h;
+        let d = desenho(&sim, &s(), Some(e.to_bits()), true).unwrap();
+        for (unit, ppm) in [(DisplayUnit::Pixels, 100.0), (DisplayUnit::Meters, 100.0)] {
+            let project = ProjectSettings {
+                display_unit: unit,
+                pixels_per_meter: ppm,
+                ..ProjectSettings::default()
+            };
+            let campo = format!(
+                "{} {}",
+                format_number(unit.from_meters_f64(f64::from(h), ppm)),
+                unit.suffix()
+            );
+            PINTADOS.with(|v| v.borrow_mut().clear());
+            ph2d_editor_core::paint_halo::ouve_o_texto(Some(ouve));
+            draw(
+                Some(&d),
+                true,
+                &project,
+                (-1000.0, -1000.0),
+                &Camera2d::default(),
+                WindowSize {
+                    width: 800,
+                    height: 600,
+                },
+                Theme::Forge,
+                &mut VectorScene::new(),
+                &mut ph2d_text::TextSystem::new(),
+            );
+            ph2d_editor_core::paint_halo::ouve_o_texto(None);
+            let pintados = PINTADOS.with(|v| v.borrow().clone());
+            let alvo = format!("{campo} high");
+            if pintados.is_empty() || !pintados.iter().all(|t| t.contains(&alvo)) {
+                falhas.push(format!(
+                    "{h} m em {unit:?}: campo «{campo}», pintado {pintados:?}"
+                ));
+            }
+        }
+    }
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}

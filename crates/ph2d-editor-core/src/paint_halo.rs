@@ -9,6 +9,10 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{StrokeToken, Theme};
 use ph2d_vector::{Affine, Brush, Color, Fill, Shape, Stroke, VectorScene};
 
+/// O ouvinte do texto pintado, para um teste de outra crate ler o que o seu pintor escreveu com halo
+/// (o texto vai por `inner_mut`, fora da gravação da cena).
+pub use crate::paint::text::ouve_o_texto;
+
 /// A cor do halo sob uma tinta de cor `cor` (o alfa da tinta passa ao halo: um fantasma tênue tem
 /// um halo tênue).
 #[must_use]

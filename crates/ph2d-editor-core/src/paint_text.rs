@@ -19,14 +19,16 @@ use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
 use std::cell::Cell;
 
 /// Quem ouve o texto pintado: `(texto, [x, y, largura, altura], corpo)`.
-pub(crate) type OuvinteDoTexto = fn(&str, [f32; 4], f32);
+pub type OuvinteDoTexto = fn(&str, [f32; 4], f32);
 
 thread_local! {
     static OUVINTE_DO_TEXTO: Cell<Option<OuvinteDoTexto>> = const { Cell::new(None) };
 }
 
 /// O censo dos cartões instala-se aqui enquanto grava: injectado, porque o `paint` fica abaixo do `widget`.
-pub(crate) fn ouve_o_texto(ouvinte: Option<OuvinteDoTexto>) {
+/// Público para os testes de outras crates lerem o TEXTO que um pintor seu escreveu (o texto vai por
+/// `inner_mut`, fora da gravação da cena).
+pub fn ouve_o_texto(ouvinte: Option<OuvinteDoTexto>) {
     OUVINTE_DO_TEXTO.with(|o| o.set(ouvinte));
 }
 

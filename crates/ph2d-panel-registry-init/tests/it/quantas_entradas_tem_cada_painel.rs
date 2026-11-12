@@ -2321,7 +2321,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    camada de estado neutra da linha pairada da tela «Controls»), `31 px` exactos, a mesma de `danger-press`.
     // ⬆️ `2 074 → 2 104` em 2026-11-10 (InputMap onda 4, item 6), MEDIDO: UMA fileira de cromo `key-face` (a face
     //    de repouso da tecla desenhada, que deixou o `KanbanCardRaised` emprestado), `30 px` medidos.
-    ("tokens", 2104.0),
+    // ⬆️ `2 104 → 2 166` em 2026-11-11 (InputMap onda 4 §10c), MEDIDO: DUAS fileiras de cromo `key-ink` e
+    //    `key-legend` (a legenda da tecla sem acção e a segunda do numérico), `31 px` cada.
+    ("tokens", 2166.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

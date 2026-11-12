@@ -7,7 +7,8 @@ use ph2d_app_input_map::View;
 use ph2d_app_input_map::view_keyboard::keys_fit::{LEGEND_MARGIN, REST_FACE};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::view_keyboard::sub_legend::{
-    SUB_PAD, SUB_PX, SubLegend, SubLook, cap_height_px, clear_of_corners, nav_of, sub_ink, sub_of,
+    Iso, SUB_PAD, SUB_PX, SubLegend, SubLook, cap_height_px, clear_of_corners, nav_of, sub_ink,
+    sub_of,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_input::{Binding, Key};
@@ -78,15 +79,16 @@ fn dentro(a: Rect, b: Rect) -> bool {
 /// ⭐ Item 7a, no arranjo da foto do dono: nas áreas reais e nos dois modos de texto, cada segunda legenda à vista
 /// está inteira (nunca cortada), na faixa de baixo à direita, por baixo do número, dentro da tecla e fora da curva do
 /// canto, menor que ele e sem barra na faixa dela. As de TEXTO são um conjunto e as SETAS outro: nunca um subconjunto,
-/// salvo a tecla ligada com barra na faixa (a `KP8`). Controlo da coerência: a 1280 o «End» caberia SOZINHO (≤ 18 +
-/// 2 × `SUB_PAD` < 28,1) e mesmo assim falta, porque o «Home» não cabe.
+/// salvo a tecla ligada com barra na faixa (a `KP8`). Onde o «Home» não cabe (1280), o conjunto de texto inteiro passa
+/// aos símbolos ISO (⇱ ⇲ ⇞ ⇟ ⎀ ⌦), nunca palavra ao lado de símbolo. Controlo: a 1280 o «End» caberia SOZINHO e mesmo
+/// assim é símbolo (o conjunto), e o «Home» de facto não cabe.
 #[test]
 fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
     // MEDIDO (Default e CrispHeavyPlus), número a 15 px e a segunda Regular a 10 px, alinhada à direita com `SUB_PAD`
     // dos dois lados (pode começar à esquerda do número: decisão do coordenador). «Home» Regular + 2 × 2 cabe nos 34,5
-    // da tecla a 1600 e não nos 28,1 a 1280. 1600 = 9 (a ↑ da KP8 ligada perde a faixa); 1280 e estreita = 3 (só as
-    // setas); 1920 = 10.
-    const CONTAGEM: [usize; 4] = [9, 3, 3, 10];
+    // da tecla a 1600 e não nos 28,1 a 1280. 1600 = 9 (a ↑ da KP8 ligada perde a faixa) em palavras; 1280 e estreita
+    // = 9 com as seis em símbolo ISO (antes 3: só as setas); 1920 = 10.
+    const CONTAGEM: [usize; 4] = [9, 9, 9, 10];
     em_cada_modo_de_texto(|| {
         for (a, conta) in AREAS.into_iter().zip(CONTAGEM) {
             let mut m = pinta(a);
@@ -101,7 +103,7 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
             eprintln!("{at}: {} segundas legendas", looks.len());
             for l in looks
                 .iter()
-                .filter(|l| matches!(l.legend, SubLegend::Text(_)))
+                .filter(|l| !matches!(l.legend, SubLegend::Icon(_)))
             {
                 eprintln!(
                     "{at}: {:?} tinta {:.2} × {:.2} · tecla {:.2}",
@@ -109,26 +111,43 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                 );
             }
             assert_eq!(looks.len(), conta, "{at}: a tabela medida");
-            if a.w > 600.0 && a.w < 700.0 {
-                // LITERAL-PX-OK: 1280 — o CONTROLO da coerência: o «End» sozinho caberia na largura útil.
+            let isos = looks
+                .iter()
+                .filter(|l| matches!(l.legend, SubLegend::Iso(_)))
+                .count();
+            let palavras = looks
+                .iter()
+                .filter(|l| matches!(l.legend, SubLegend::Text(_)))
+                .count();
+            assert!(
+                isos == 0 || palavras == 0,
+                "{at}: palavra ao lado de símbolo"
+            );
+            if a.w < 700.0 {
+                // LITERAL-PX-OK: 1280 e a estreita — as seis em símbolo; CONTROLO: o «End» sozinho caberia e o «Home» não.
+                assert_eq!((isos, palavras), (6, 0), "{at}: as seis em símbolo ISO");
                 let end = keys
                     .iter()
                     .find(|k| k.key == Key(0xF741))
                     .expect("Numpad 1");
-                let w = m.ts.prefix_width("End", SUB_PX);
-                // A largura no peso do número é um tecto da do Regular.
-                assert!(w + SUB_PAD * 2.0 <= end.rect.w, "{at}: o End sozinho cabe");
+                let w = |t: &str, ts: &mut ph2d_text::TextSystem| ts.prefix_width(t, SUB_PX);
                 assert!(
-                    looks.iter().all(|l| l.key != end.key),
-                    "{at}: e falta, pelo conjunto"
+                    w("End", &mut m.ts) + SUB_PAD * 2.0 <= end.rect.w,
+                    "{at}: o End sozinho cabe"
                 );
+                assert!(
+                    w("Home", &mut m.ts) + SUB_PAD * 2.0 > end.rect.w,
+                    "{at}: o Home não cabe"
+                );
+            } else {
+                assert_eq!((isos, palavras), (0, 6), "{at}: as seis em palavras");
             }
             for k in keys.iter().filter(|k| nav_of(k.key).is_some()) {
                 let kr = k.rect;
                 let Some(s) = looks.iter().find(|s| s.key == k.key) else {
                     // Ausente: o conjunto dela está fora (nenhuma do mesmo tipo à vista), ou as barras na faixa.
                     let texto = matches!(sub_of(k.key), Some(SubLegend::Text(_)));
-                    let mesmo = |l: &&SubLook| matches!(l.legend, SubLegend::Text(_)) == texto;
+                    let mesmo = |l: &&SubLook| !matches!(l.legend, SubLegend::Icon(_)) == texto;
                     let conjunto_fora = !looks.iter().any(|l| mesmo(&l));
                     let faixa = kr.y + kr.h * 0.5;
                     let barras = bars.iter().any(|b| dentro(*b, kr) && b.y + b.h > faixa);
@@ -139,6 +158,13 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                     );
                     continue;
                 };
+                if let SubLegend::Iso(i) = &s.legend {
+                    assert_eq!(
+                        Some(*i),
+                        nav_of(s.key).and_then(Iso::of),
+                        "{at}: o símbolo da tecla"
+                    );
+                }
                 if let SubLegend::Text(t) = &s.legend {
                     assert!(!cortadas.contains(t), "{at}: «{t}» cortada");
                     assert!(regulares.contains(t), "{at}: «{t}» no peso Regular");
@@ -200,23 +226,29 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
     });
 }
 
-/// ⭐ A tinta da segunda (na FACE da tecla) é mais fraca que a do número ligado e igual à do número sem acção (menor),
-/// em todo tema, e lê-se (≥ min(3:1, o número)).
+/// ⭐ A tinta da segunda (na FACE da tecla) é mais fraca que a do número, ligada (`Text1`) ou sem acção (`key-ink`),
+/// em todo tema, e lê-se (≥ 3:1). Controlo: a tinta de antes da tecla sem acção (`Text3`, a mesma do número) não
+/// cumpria — no Oled nem 3:1.
 #[test]
 fn a_segunda_legenda_e_mais_fraca_que_o_numero_e_le_se() {
     let mut falhas = Vec::new();
     for t in Theme::ALL {
-        for (bound, main) in [(true, ColorToken::Text1), (false, ColorToken::Text3)] {
+        for (bound, main) in [(true, ColorToken::Text1), (false, ColorToken::KeyInk)] {
             let bg = REST_FACE.resolve(t);
             let n = main.resolve(t).contrast_ratio(&bg);
             let s = sub_ink(bound).resolve(t).contrast_ratio(&bg);
-            let fraca = if bound { s < n } else { s <= n };
-            if !fraca || s < n.min(3.0) {
+            eprintln!("{t:?} {main:?}: número {n:.2} · segunda {s:.2}");
+            if s >= n || s < 3.0 {
                 falhas.push(format!("{t:?} {main:?}: número {n:.2} · segunda {s:.2}"));
             }
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+    let oled = |k: ColorToken| {
+        k.resolve(Theme::Oled)
+            .contrast_ratio(&REST_FACE.resolve(Theme::Oled))
+    };
+    assert!(oled(ColorToken::Text3) < 3.0, "controlo: o Text3 no Oled");
 }
 
 /// Onda 4, item 3 na vista Keyboard: com a aberta sem ligações, AltGr + F liga o F (a plataforma não ergue a bandeira

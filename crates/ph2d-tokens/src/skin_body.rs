@@ -162,6 +162,8 @@ impl ColorToken {
             | T::KanbanAvatarInk => Role::Ink(InkLevel::Primary),
             T::AccentFg => Role::Ink(InkLevel::OnAccent),
             T::Text3
+            | T::KeyInk
+            | T::KeyLegend
             | T::KanbanListMeta
             | T::KanbanCardMeta
             | T::KanbanTintedMeta

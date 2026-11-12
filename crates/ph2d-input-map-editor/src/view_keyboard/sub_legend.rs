@@ -3,10 +3,11 @@
 //! fraca. A ligação continua pela tecla FÍSICA; a legenda é a `cap_short` da tecla de navegação (a tabela única de
 //! `ph2d_input`) ou a seta desenhada. Arranjo da foto: número em cima à esquerda, segunda em baixo à direita. As de
 //! TEXTO são um conjunto (todas ou nenhuma: manda a mais larga, «Home»), as SETAS outro; a única exceção por tecla é a
-//! tecla ligada com barra na faixa de baixo (as barras vencem). Nunca elide.
+//! tecla ligada com barra na faixa de baixo (as barras vencem). Nunca elide: onde as PALAVRAS não cabem (1280), o
+//! conjunto inteiro passa aos símbolos ISO/IEC 9995-7 (⇱ ⇲ ⇞ ⇟ ⎀ ⌦), como nos teclados compactos.
 
-use ph2d_editor_core::icons::{IconId, cmd_to_path};
-use ph2d_editor_core::paint::{icon_side_for_glyph, paint_icon};
+use ph2d_editor_core::icons::{IconCmd, IconId, cmd_to_path};
+use ph2d_editor_core::paint::{icon_side_for_glyph, paint_icon_path};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_input::Key;
@@ -48,11 +49,73 @@ pub fn nav_of(key: Key) -> Option<Key> {
         .map(|(_, nav)| Key(*nav))
 }
 
-/// A segunda legenda: a palavra curta da tabela ou a seta.
+/// A segunda legenda: a palavra curta da tabela, o seu símbolo ISO (quando as palavras não cabem) ou a seta.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SubLegend {
     Text(String),
+    Iso(Iso),
     Icon(IconId),
+}
+
+/// O símbolo ISO/IEC 9995-7 de uma palavra do numérico. A fonte não tem os glifos: ⇱ ⇲ ⇞ ⇟ são as tampas da casa
+/// ([`super::keys_fit::iso_icon`]); ⎀ (U+2380) e ⌦ (U+2326) desenham-se aqui, no traço e na viewbox delas.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Iso {
+    Home,
+    End,
+    PageUp,
+    PageDown,
+    Insert,
+    Delete,
+}
+
+/// ⎀: a linha da inserção com o acento circunflexo do cursor por cima.
+const INSERT: [IconCmd; 2] = [
+    IconCmd::Path("M4 19H20"),
+    IconCmd::Polyline("7 15 12 6 17 15"),
+];
+/// ⌦: a seta-pentágono para a direita com o × dentro (apagar à frente).
+const DELETE: [IconCmd; 2] = [
+    IconCmd::Path("M3 6H15L21 12L15 18H3Z"),
+    IconCmd::Path("M7 9.5L12 14.5M12 9.5L7 14.5"),
+];
+
+impl Iso {
+    /// O símbolo da palavra de `nav` (`None` fora das seis).
+    #[must_use]
+    pub fn of(nav: Key) -> Option<Self> {
+        Some(match nav.0 {
+            0xF729 => Self::Home,
+            0xF72B => Self::End,
+            0xF72C => Self::PageUp,
+            0xF72D => Self::PageDown,
+            0xF727 => Self::Insert,
+            0xF728 => Self::Delete,
+            _ => return None,
+        })
+    }
+
+    /// Os traços na viewbox 24×24 dos ícones.
+    #[must_use]
+    pub fn cmds(self) -> &'static [IconCmd] {
+        match self {
+            Self::Home => IconId::KbdHome.cmds(),
+            Self::End => IconId::KbdEnd.cmds(),
+            Self::PageUp => IconId::KbdPageUp.cmds(),
+            Self::PageDown => IconId::KbdPageDown.cmds(),
+            Self::Insert => &INSERT,
+            Self::Delete => &DELETE,
+        }
+    }
+}
+
+/// Os traços de uma segunda desenhada (seta ou símbolo); `None` = palavra.
+fn drawn(s: &SubLegend) -> Option<&'static [IconCmd]> {
+    match s {
+        SubLegend::Text(_) => None,
+        SubLegend::Iso(i) => Some(i.cmds()),
+        SubLegend::Icon(i) => Some(i.cmds()),
+    }
 }
 
 /// A segunda legenda de `key`, se a tecla tem uma.
@@ -80,13 +143,17 @@ pub fn cap_height_px(px: f32) -> f32 {
     k * d(px)
 }
 
-/// A caixa da TINTA do ícone na viewbox 24×24, em fracção do lado do desenho.
-fn ink_frac(icon: IconId) -> (f32, f32, f32, f32) {
+fn path_of(cmds: &[IconCmd]) -> BezPath {
     let mut p = BezPath::new();
-    for c in icon.cmds() {
+    for c in cmds {
         p.extend(cmd_to_path(*c));
     }
-    let b = p.bounding_box();
+    p
+}
+
+/// A caixa da TINTA do desenho na viewbox 24×24, em fracção do lado do desenho.
+fn ink_frac(cmds: &[IconCmd]) -> (f32, f32, f32, f32) {
+    let b = path_of(cmds).bounding_box();
     let v = 24.0; // LITERAL-PX-OK: a viewbox dos ícones da casa
     (
         (b.x0 / v) as f32,
@@ -97,29 +164,30 @@ fn ink_frac(icon: IconId) -> (f32, f32, f32, f32) {
 }
 
 /// ⭐ O lado do DESENHO da seta para que a tinta dela tenha o tamanho da maiúscula do texto secundário (o peso visual
-/// de «End»): a dimensão maior da tinta = [`cap_height_px`]`(SUB_PX)`.
-fn arrow_drawn(icon: IconId) -> f32 {
-    let (_, _, fw, fh) = ink_frac(icon);
+/// de «End»): a dimensão maior da tinta = [`cap_height_px`]`(SUB_PX)`. O símbolo ISO mede-se igual.
+fn arrow_drawn(cmds: &[IconCmd]) -> f32 {
+    let (_, _, fw, fh) = ink_frac(cmds);
     cap_height_px(SUB_PX) / fw.max(fh)
 }
 
 /// A caixa da tinta da segunda (o que ocupa a faixa): o texto, a largura medida e a altura do corpo; a seta, a tinta.
 fn sub_size(ts: &mut TextSystem, s: &SubLegend) -> (f32, f32) {
-    match s {
-        SubLegend::Text(t) => (body_width(ts, t, SUB_PX), cap_height_px(SUB_PX)),
-        SubLegend::Icon(i) => {
-            let (_, _, fw, fh) = ink_frac(*i);
-            let dr = arrow_drawn(*i);
+    match (s, drawn(s)) {
+        (SubLegend::Text(t), _) => (body_width(ts, t, SUB_PX), cap_height_px(SUB_PX)),
+        (_, cmds) => {
+            let cmds = cmds.unwrap_or_default();
+            let (_, _, fw, fh) = ink_frac(cmds);
+            let dr = arrow_drawn(cmds);
             (fw * dr, fh * dr)
         }
     }
 }
 
 /// O quadrado onde pintar a seta para que a sua tinta caia em `ink` (o inverso do encaixe com o respiro do ícone).
-fn icon_rect(icon: IconId, ink: Rect) -> Rect {
-    let dr = arrow_drawn(icon);
+fn icon_rect(cmds: &[IconCmd], ink: Rect) -> Rect {
+    let dr = arrow_drawn(cmds);
     let side = icon_side_for_glyph(dr);
-    let (fx, fy, _, _) = ink_frac(icon);
+    let (fx, fy, _, _) = ink_frac(cmds);
     let pad = (side - dr) * 0.5;
     Rect::new(ink.x - pad - fx * dr, ink.y - pad - fy * dr, side, side)
 }
@@ -157,6 +225,8 @@ pub fn clear_of_corners(r: Rect, kr: Rect) -> bool {
 pub struct SubSets {
     /// As de texto (End PgDn Home PgUp Ins Del): todas ou nenhuma.
     pub text: bool,
+    /// ... e em SÍMBOLO ISO (as palavras não cabem, os símbolos sim).
+    pub iso: bool,
     /// As setas (↑ ↓ ← →): todas ou nenhuma.
     pub icons: bool,
 }
@@ -195,22 +265,29 @@ fn band(kr: Rect, (cap_top, bottom): (f32, f32), (w, h): (f32, f32)) -> (Rect, b
     (r, w + SUB_PAD * 2.0 <= kr.w && clear_of_corners(whole, kr))
 }
 
-/// ⭐ Os conjuntos ao passo de `f`: o de texto se a MAIS LARGA das palavras cabe em TODA tecla com palavra; o das setas
-/// se a maior seta cabe em toda tecla com seta. Nunca um subconjunto (a 1280, End/Ins/Del sem Home liam-se como erro).
+/// ⭐ Os conjuntos ao passo de `f`: o de texto se a MAIS LARGA das palavras cabe em TODA tecla com palavra (senão, o
+/// mesmo com o maior símbolo ISO); o das setas se a maior seta cabe em toda tecla com seta. Nunca um subconjunto (a
+/// 1280, End/Ins/Del sem Home liam-se como erro) nem palavra ao lado de símbolo.
 #[must_use]
 pub fn sets(ts: &mut TextSystem, f: Fit) -> SubSets {
-    let mut widest = (0.0_f32, 0.0_f32, 0.0_f32);
-    for (kp, _) in NUMPAD_NAV {
+    let grow = |a: &mut (f32, f32), (w, h): (f32, f32)| *a = (a.0.max(w), a.1.max(h));
+    let (mut words, mut isos, mut arrows) = ((0.0, 0.0), (0.0, 0.0), (0.0, 0.0));
+    for (kp, nav) in NUMPAD_NAV {
         if let Some(s) = sub_of(Key(kp)) {
-            let (w, h) = sub_size(ts, &s);
+            let size = sub_size(ts, &s);
             match s {
-                SubLegend::Text(_) => widest.0 = widest.0.max(w),
-                SubLegend::Icon(_) => (widest.1, widest.2) = (widest.1.max(w), widest.2.max(h)),
+                SubLegend::Icon(_) => grow(&mut arrows, size),
+                _ => {
+                    grow(&mut words, size);
+                    let iso = SubLegend::Iso(Iso::of(Key(nav)).expect("palavra com símbolo"));
+                    grow(&mut isos, sub_size(ts, &iso));
+                }
             }
         }
     }
     let mut out = SubSets {
         text: true,
+        iso: true,
         icons: true,
     };
     for (c, x, y, w, h) in fit::placed(f) {
@@ -223,10 +300,16 @@ pub fn sets(ts: &mut TextSystem, f: Fit) -> SubSets {
         };
         let at = (cap_top, bottom);
         match s {
-            SubLegend::Text(_) => out.text &= band(kr, at, (widest.0, cap_height_px(SUB_PX))).1,
-            SubLegend::Icon(_) => out.icons &= band(kr, at, (widest.1, widest.2)).1,
+            SubLegend::Icon(_) => out.icons &= band(kr, at, arrows).1,
+            _ => {
+                out.text &= band(kr, at, (words.0, cap_height_px(SUB_PX))).1;
+                out.iso &= band(kr, at, isos).1;
+            }
         }
     }
+    // As palavras vencem onde cabem; senão os símbolos, se cabem todos.
+    out.iso &= !out.text;
+    out.text |= out.iso;
     out
 }
 
@@ -262,8 +345,12 @@ pub(crate) fn corner_of(
     let main = Rect::new(x, top, ts.prefix_width(s, px), cap_height_px(px));
     let sub = sub_of(key).and_then(|sl| {
         let set = match sl {
-            SubLegend::Text(_) => on.text,
             SubLegend::Icon(_) => on.icons,
+            _ => on.text,
+        };
+        let sl = match (on.iso, nav_of(key).and_then(Iso::of)) {
+            (true, Some(i)) => SubLegend::Iso(i),
+            _ => sl,
         };
         let (sr, fits) = band(kr, (cap_top, bottom), sub_size(ts, &sl));
         let clear = bars.iter().all(|b| b.y + b.h <= cap_top || b.y >= bottom);
@@ -277,15 +364,13 @@ pub(crate) fn corner_of(
 }
 
 /// A tinta da segunda legenda, na FACE da tecla: ligada `Text2` (um degrau abaixo do `Text1` do número, ≥ 5,46:1);
-/// sem acção fica no `Text3` do número — o degrau mais fraco é o peso Regular e o tamanho (67 %). MEDIDO: nenhum token
-/// de texto da casa fica abaixo do `Text3` nos 12 temas (`TextDisabled` passa-o no Light e no Candy, `CardLabel` no
-/// Sunstone), e no Oled o próprio número é 2,62:1.
+/// sem acção a `key-legend` (≥ 3:1, um degrau × 1,2 abaixo da `key-ink` do número; nenhum token de texto cabia lá).
 #[must_use]
 pub fn sub_ink(bound: bool) -> ColorToken {
     if bound {
         ColorToken::Text2
     } else {
-        ColorToken::Text3
+        ColorToken::KeyLegend
     }
 }
 
@@ -314,15 +399,19 @@ pub(super) fn paint(
 ) {
     let tok = sub_ink(bound);
     let c = ink.color(tok);
-    match s {
-        SubLegend::Text(t) => {
+    match (s, drawn(s)) {
+        (SubLegend::Text(t), _) => {
             // Regular (o corpo da casa), um degrau abaixo do peso do número.
             body(&mut doc.census, ts, scene, t, sb, SUB_PX, c);
         }
-        SubLegend::Icon(i) => {
+        (_, cmds) => {
             // O traço das setas das teclas (`keys::paint_key`): o mesmo peso que a palavra ao lado.
-            paint_icon(scene, *i, icon_rect(*i, sb), c, StrokeToken::Default.px());
-            doc.census.icons.push((sb, *i));
+            let cmds = cmds.unwrap_or_default();
+            let r = icon_rect(cmds, sb);
+            paint_icon_path(scene, &path_of(cmds), r, c, StrokeToken::Default.px());
+            if let SubLegend::Icon(i) = s {
+                doc.census.icons.push((sb, *i));
+            }
         }
     }
     doc.kb.subs.push(SubLook {

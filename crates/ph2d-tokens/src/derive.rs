@@ -527,6 +527,36 @@ fn code_gutter(panel: Rgb) -> Rgb {
     Rgb::new(panel.r + d, panel.g + d, panel.b + d).clamp()
 }
 
+/// O `Text1` sobre o `accent-soft` (o véu do Godot descido rumo ao `mono_inv` só o que falta): AA com folga do `u8`.
+/// Medido: PlumberRed 3,18 → 4,6 e PlumberGreen 3,36 → 4,6; os outros dez intactos.
+pub const SOFT_TEXT_MIN: f64 = 4.55;
+/// A tinta da tecla SEM acção (`key-ink`) contra a `key-face`: a segunda legenda (`key-legend`, ≥ 3:1) fica um degrau
+/// visível abaixo dela (× 1,25). Medido (Input Map onda 4): o `Text3` dava 2,62 no Oled e 3,12 no Forge.
+pub const KEY_INK_MIN: f64 = 3.8;
+/// A segunda legenda do numérico contra a `key-face`: 3:1 (WCAG 1.4.11) com a folga do `u8`/oklch.
+pub const KEY_LEGEND_MIN: f64 = 3.05;
+
+/// ⭐ `from` puxado rumo a `to` o MÍNIMO (passos de 1 %) até medir `min` contra `bg`; a que já mede sai intacta.
+#[must_use]
+pub fn toward_until(from: Rgb, to: Rgb, bg: Color, min: f64) -> Rgb {
+    (0..=100)
+        .map(|i| from.lerp(to, i as f32 / 100.0))
+        .find(|c| c.color().contrast_ratio(&bg) >= min)
+        .unwrap_or(to)
+}
+
+/// `(key-ink, key-legend)` sobre a face `kf`: a `Text3` erguida rumo à `Text1` até [`KEY_INK_MIN`], e a legenda da
+/// face rumo a ela até [`KEY_LEGEND_MIN`] (a matiz do tema fica).
+#[must_use]
+pub fn key_inks(kf: Color, text3: Color, text1: Color) -> (Rgb, Rgb) {
+    let rgb = |c: Color| {
+        let ch = |v: u8| f32::from(v) / 255.0;
+        Rgb::new(ch(c.r), ch(c.g), ch(c.b))
+    };
+    let ink = toward_until(rgb(text3), rgb(text1), kf, KEY_INK_MIN);
+    (ink, toward_until(rgb(kf), ink, kf, KEY_LEGEND_MIN))
+}
+
 /// **A cor de um slot num tema moderno.**
 ///
 /// ⚠️ Cobre TODA chave de [`ColorToken`] — o gate `every_token_derives_in_every_modern_theme`
@@ -576,7 +606,10 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "accent" => r.accent.color(),
         "accent-hover" => r.accent.lerp(r.mono, 0.15).color(),
         "accent-press" => r.accent.lerp(r.mono_inv, 0.15).color(),
-        "accent-soft" => r.accent.over(r.base, HIGHLIGHT_A).color(),
+        "accent-soft" => {
+            let soft = r.accent.over(r.base, HIGHLIGHT_A);
+            toward_until(soft, r.mono_inv, r.font.color(), SOFT_TEXT_MIN).color()
+        }
         "accent-fg" => r.mono_inv.color(),
         "selection" => r.accent.over(r.base, HIGHLIGHT_A).color(),
         "focus-ring" => r.accent.with_alpha(0.55),
@@ -589,6 +622,11 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "row-hover" => r.mono.with_alpha(f32::from(borrow().a) / 255.0),
         // A face da tecla desenhada: o tom ESCRITO no `tokens.json` (o aprovado), emprestado como o do cartão.
         "key-face" => borrow(),
+        "key-ink" | "key-legend" => {
+            let kf = ColorToken::KeyFace.factory(borrowed);
+            let (ink, legend) = key_inks(kf, colour(theme, ColorToken::Text3), r.font.color());
+            if key == "key-ink" { ink } else { legend }.color()
+        }
         "success" => r.success.color(),
         "success-soft" => r.success.over(r.base, HIGHLIGHT_A).color(),
         "warn" => r.warning.color(),

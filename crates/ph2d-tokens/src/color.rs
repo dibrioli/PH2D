@@ -173,14 +173,16 @@ color_tokens! {
     RowHover => "row-hover",
     /// `key-face` — a face de repouso de uma tecla/parte desenhada (Input Map); o tom aprovado na onda 1.
     KeyFace => "key-face",
+    /// `key-ink` — a legenda da tecla SEM acção sobre a `key-face` (≥ 3,8:1; o `Text3` erguido onde não chega).
+    KeyInk => "key-ink",
+    /// `key-legend` — a segunda legenda do numérico na tecla sem acção: ≥ 3:1 e um degrau abaixo da `key-ink`.
+    KeyLegend => "key-legend",
     /// `panel-bg` — surface fill for floating side panels (Inspector, Hierarchy): `BgElev`'s hue, slightly
     /// translucent (~8 % alpha bleed) so panels float over the canvas; less transparent than `RailBg`.
     PanelBg => "panel-bg",
     /// ⭐⭐⭐ `window-ground` — **o CHÃO da janela**, um degrau abaixo do painel.
     ///
-    /// Enio, 2026-09-07, com o Godot ao lado: *«os painéis, o canvas, a timeline, na Godot parecem
-    /// cards, e assim os espaços entre cards ficam legais… a aparência de cards me parece mais
-    /// pro»*.
+    /// Enio, 2026-09-07, com o Godot ao lado: *«na Godot parecem cards… a aparência de cards me parece mais pro»*.
     ///
     /// ⛔⛔ **A divisória de 4 px sozinha não bastou, e a medição diz porquê:** o painel desta casa
     /// **É** o tom mais escuro (`#131313` no Dark, mais fundo que o `bg-0`), logo ele já estava ao
@@ -189,8 +191,7 @@ color_tokens! {
     ///
     /// ⚠️ **Quem desce é o CHÃO, não quem sobe é o painel** — pelo mesmo motivo que a wave 4
     /// escreveu ao descer o painel: o `Bg1` responde a duas perguntas (o fundo do canvas e o de um
-    /// cartão), e mexer nele move o canvas que o dono aprovou. O chão é superfície nova e não tem
-    /// pergunta agarrada.
+    /// cartão), e mexer nele move o canvas que o dono aprovou. O chão é superfície nova, sem pergunta agarrada.
     WindowGround => "window-ground",
 
     // ── Borders (3 levels) ─────────────────────────────────────────

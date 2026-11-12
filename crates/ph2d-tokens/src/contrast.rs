@@ -105,6 +105,21 @@ pub const CONTRAST_PAIRS: &[ContrastPair] = &[
         min_ratio: 3.0,
         criterion: "WCAG 2.2 AA 1.4.11",
     },
+    // A seleção da casa: o texto lê-se nela (PlumberRed 3,18 e PlumberGreen 3,36 antes da cura).
+    kanban_text(ColorToken::Text1, ColorToken::AccentSoft),
+    // A tecla desenhada do Input Map: a legenda sem acção e a segunda legenda do numérico na face.
+    ContrastPair {
+        fg: ColorToken::KeyInk,
+        bg: ColorToken::KeyFace,
+        min_ratio: 3.75,
+        criterion: "WCAG 2.2 AA 1.4.11 × 1,25",
+    },
+    ContrastPair {
+        fg: ColorToken::KeyLegend,
+        bg: ColorToken::KeyFace,
+        min_ratio: 3.0,
+        criterion: "WCAG 2.2 AA 1.4.11",
+    },
     // ── O editor de scripts: cada tinta do realce sobre o fundo dele. ⚠️ O comentário também a
     //    4,5 (não 3): num script de artista ele É a documentação. A linha do cursor, a distância
     //    entre tipos e a tabela medida: `tests/it/the_code_inks_read_and_differ.rs`.

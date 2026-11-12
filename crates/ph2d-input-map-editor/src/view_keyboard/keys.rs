@@ -475,7 +475,7 @@ fn paint_key(
     } else if lit_plate {
         fit::LIT_INK
     } else if who.is_empty() {
-        ColorToken::Text3
+        ColorToken::KeyInk
     } else {
         ColorToken::Text1
     };
@@ -524,7 +524,7 @@ fn paint_key(
             // O ícone fica da altura da letra no mínimo e nunca encosta à aresta da tecla.
             let ir = lb;
             // O símbolo é traço fino: nunca mais apagado que `Text2` numa tecla do jogo (a ligada fica em `Text1`).
-            let tone = if fg_tok == ColorToken::Text3 {
+            let tone = if fg_tok == ColorToken::KeyInk {
                 ink.color(ColorToken::Text2)
             } else {
                 fg

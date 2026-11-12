@@ -121,10 +121,11 @@ fn an_authored_break_is_reported() {
         "o CONTROLE falhou: a fabrica ja' reporta problemas"
     );
 
-    put(theme, ColorToken::Text1, ColorToken::Bg1.resolve(theme));
+    // O `Text2` está num par só (o `Text1` também está sobre o `accent-soft`).
+    put(theme, ColorToken::Text2, ColorToken::Bg1.resolve(theme));
     let failing = failing_pairs(theme);
     assert_eq!(failing.len(), 1, "esperava exactamente um par a falhar");
-    assert_eq!(failing[0].fg, ColorToken::Text1);
+    assert_eq!(failing[0].fg, ColorToken::Text2);
     clear_color_overrides();
 }
 
@@ -186,7 +187,7 @@ fn the_readout_is_per_mode() {
     clear_color_overrides();
     put(
         Theme::Forge,
-        ColorToken::Text1,
+        ColorToken::Text2,
         ColorToken::Bg1.resolve(Theme::Forge),
     );
     assert_eq!(failing_pairs(Theme::Forge).len(), 1);
@@ -216,4 +217,52 @@ fn a_factory_table_reports_nothing() {
             );
         }
     }
+}
+
+/// ⭐ Input Map onda 4 §10: (a) a seleção (`accent-soft`) lê o `Text1` a AA, continua o ACENTO do tema (a mesma
+/// família de matiz) e destaca-se do cartão; (c) a segunda legenda do numérico (`key-legend`) lê-se na face (≥ 3:1) e
+/// fica um degrau visível (× 1,2) abaixo da legenda da tecla sem acção (`key-ink`). Controlo: sem a cura, o
+/// `highlight` do Godot reprova no PlumberRed (prova que a régua vê o caso), e o `Text3` antigo no Oled.
+#[test]
+fn a_selecao_e_as_tintas_da_tecla_leem_se_em_todo_tema() {
+    use crate::color_space::srgb_to_oklch;
+    clear_color_overrides();
+    let hue = |c: Color| srgb_to_oklch(c.r, c.g, c.b).2;
+    for t in ALL_THEMES {
+        let c = |k: ColorToken| k.resolve(t);
+        let (soft, kf) = (c(ColorToken::AccentSoft), c(ColorToken::KeyFace));
+        let txt = c(ColorToken::Text1).contrast_ratio(&soft);
+        assert!(txt >= 4.5, "{t:?}: Text1 sobre accent-soft {txt:.2}");
+        let card = crate::derive::card_surface(t, false).unwrap_or_else(|| c(ColorToken::Bg1));
+        let off = soft.contrast_ratio(&card);
+        assert!(off >= 1.15, "{t:?}: accent-soft a {off:.2} do cartão");
+        if let Some(i) = crate::derive::Inputs::of(t) {
+            // A cura só ESCURECE: a matiz fica a do véu do Godot (o acento sobre a base).
+            let r = i.roles();
+            let d = (hue(soft) - hue(r.accent.over(r.base, 0.275).color())).rem_euclid(360.0);
+            assert!(
+                d.min(360.0 - d) <= 8.0,
+                "{t:?}: accent-soft fugiu da matiz do acento ({d:.0}°)"
+            );
+        }
+        let (ink, leg) = (c(ColorToken::KeyInk), c(ColorToken::KeyLegend));
+        let (n, l) = (ink.contrast_ratio(&kf), leg.contrast_ratio(&kf));
+        assert!(
+            l >= 3.0 && n >= l * 1.2,
+            "{t:?}: key-ink {n:.2} · key-legend {l:.2}"
+        );
+    }
+    let r = crate::derive::Inputs::of(Theme::PlumberRed)
+        .expect("moderno")
+        .roles();
+    let godot = r.accent.over(r.base, 0.275).color();
+    assert!(
+        r.font.color().contrast_ratio(&godot) < 4.5,
+        "controlo: o véu de antes reprova"
+    );
+    let oled = ColorToken::Text3.resolve(Theme::Oled);
+    assert!(
+        oled.contrast_ratio(&ColorToken::KeyFace.resolve(Theme::Oled)) < 3.0,
+        "controlo: o Text3 no Oled"
+    );
 }

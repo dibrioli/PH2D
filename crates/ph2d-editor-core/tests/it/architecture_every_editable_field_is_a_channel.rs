@@ -741,7 +741,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/topdown.rs::corpo",
+        "sections/topdown.rs::numero",
         Canal,
         &[
             "component.field.top_down_player.0",
@@ -751,11 +751,11 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/topdown.rs::deslize",
+        "sections/topdown.rs::escolha",
         Canal,
         &[
-            "component.field.top_down_player.10",
-            "component.field.top_down_player.8",
+            "component.field.top_down_player.3",
+            "component.field.top_down_player.6",
         ],
         "o rótulo do catálogo vem da tabela da secção (F27 B2)",
     ),

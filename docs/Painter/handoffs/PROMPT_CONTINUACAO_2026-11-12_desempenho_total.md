@@ -26,6 +26,31 @@ Vc está só. Não pare até terminar.» Auditoria com esforço `xhigh`.
   `flow_x`/`flow_y` (`ph2d-wet-paint/src/grid/snapshot.rs` `Registo::restaura`) que `FotoDoMotor::repoe` reescreve,
   + `poe` dos 126 tiles 8,8 ms; o +5,4 do toque Wet é `47ec5ad159` (o plano do papel = o agente A). B2 implementa as
   duas curas no branch `tmp/painter-wet-1112` da worktree `/home/enio/Documentos/Projetos/.ph2d-bis-4k` → cherry-pick.
+- **Estado às ~01:30 de 12/11 (nenhum agente em voo):**
+  1. **Envio sem cópia (A): POR COMITAR na árvore da linha** — `crates/ph2d-render/src/{impasto_light.rs,lib.rs}`,
+     `crates/ph2d-render/tests/it/impasto_light_gpu.rs`, `crates/ph2d-tool-painter/src/{lib.rs,tool/mod.rs}`,
+     `.../tool/paint/{impasto_gpu.rs,impasto_gpu_reuso_tests.rs}`, `crates/ph2d-app-painter/src/painter_gpu_preview.rs`,
+     `crates/ph2d-app-painter/tests/the_impasto_fold_walks_the_dirty_rect.rs`. Desenho: reserva de 2 buffers
+     `MAP_WRITE|COPY_SRC` por plano (o wgpu 30 zera um `mapped_at_creation` novo), dobra paralela por faixas de 16
+     linhas direto na vista mapeada (`PlanosEmEnvio::faixa`, `dobrar_faixas`), `copy_buffer_to_texture` no encoder da
+     luz; `impasto_gpu_planes_reusing` saiu; `planos_de_tamanho` saiu. Paridade ao bit provada (9 testes tool, 6
+     render lib, 5 GPU na Radeon incl. `o_envio_sem_copia_desenha_o_que_o_write_texture_desenhava` + mutação).
+     Medição SUJA (carga 6–41): Filbert toque 74,2→65,2 · Ctrl+Z 62,9→54,2; Wet toque 62,7→48,5. Binários
+     `bin_envA`/`bin_envB` no scratch `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/fb53f5ce-2f42-4773-b6f1-219f6399f510/scratchpad/`.
+     `the_shell_folds_the_window_the_tool_reports_dirty` já reprovava no HEAD (procura `let plane_win`): curar.
+  2. **Curas do Wet (B2): no branch `tmp/painter-wet-1112`** da worktree `.ph2d-bis-4k` — `dd4d9207b6` (Ctrl+Z sem o
+     memset do fluxo), `ca6bf04bf1` (o preparo arranca ao ligar a tela/mudar modo ou meio), `04ca713600` (testes;
+     todos os de undo verdes). Medição SUJA (carga 9–47) — binários `bin_a95be6612d`/`bin_ca6bf04bf1` no scratch.
+     Falta: controlo do teste do preparo; a causa de o Painter não receber `on_tick` antes do 1.º toque (shell);
+     `poe` dos 126 tiles (8,8 ms).
+  3. **Laço a pedido: feito** — `d16298c35f`, `50872fe70b`, `709c9ee59d` (B23.2 no BACKLOG). Aberto: o nome do cartão
+     solto que pisca (`ph2d-editor-core/src/panel/cards_solto.rs:93`), a câmara da apresentação do Quadro
+     (`screens/hero/board_team_show.rs:73`), a rolagem de borda (`panel/cards_rolagem.rs:18`), queda/fade dos cartões
+     (`cards_lista.rs:165`, `cards_solto_some.rs:30`) e o fmt de `card_loose_ops.rs` + `a_frame_request_has_a_listener.rs`.
+  4. **PRÓXIMO PASSO (sozinho na máquina, nada a compilar em paralelo):** UMA matriz calma intercalada n≥5, binários
+     do MESMO target construídos em série: base `a95be6612d` · +envio · +envio+Wet (cherry-pick dos 3 commits),
+     cenas Wet/Filbert/Impasto 4K (+ Filbert 1080p); alarmes de pincel antes×depois (mesma lista de vermelhos);
+     comitar o envio se ganhar ≥ 3 ms e o Wet se ≥ 1 ms; gravar a tabela em `REGRESSOES_TOQUE_E_UNDO_2026-11-11.md`.
 - Censo dos abertos (auditoria xhigh 12/11): os instantes que o artista sente a 4K, por ordem de ataque:
   B14.3+W5/W9 (cerdas grandes: soltar 1,34 s, traço p95 190 ms) · B28.3/B28.1 (Color mixing largo: traço p95 400 ms;
   falta o carimbo, `Ladrilhos::le`/`Sombra::le`) · B11.3 + B13.5–13.7 (água Wet com Óleo Real 34 → 3,6–5 img/s) ·

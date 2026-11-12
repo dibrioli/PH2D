@@ -89,6 +89,30 @@ pub(crate) fn janelas_do_upload(
     }
 }
 
+thread_local! {
+    /// O buffer do envio INTEIRO (B20.6), reusado de quadro em quadro: o `clone` de 33 MB a 4K por quadro saiu.
+    static ENVIO: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Os bytes de uma faixa do [`envio_fundido`] (múltiplo de 4: píxeis inteiros).
+const FAIXA_DO_ENVIO: usize = 256 * 1024;
+
+/// **B20.6 — o envio inteiro fundido:** a tela copiada para `dst` e pré-multiplicada na MESMA passagem, em faixas
+/// paralelas — os mesmos bytes que o `clone` + [`premultiply_rgba8`] (que é por píxel), sem alocar.
+pub(crate) fn envio_fundido(src: &[u8], dst: &mut Vec<u8>) {
+    use rayon::prelude::*;
+    if dst.len() != src.len() {
+        dst.clear();
+        dst.resize(src.len(), 0);
+    }
+    dst.par_chunks_mut(FAIXA_DO_ENVIO)
+        .zip(src.par_chunks(FAIXA_DO_ENVIO))
+        .for_each(|(d, s)| {
+            d.copy_from_slice(s);
+            premultiply_rgba8(d);
+        });
+}
+
 /// The CPU lane's slot upkeep for one frame — plan the upload ([`plan_upload`]), execute it
 /// against the renderer, keep the bookkeeping, release the slot when the CPU cache is gone. The
 /// single door both [`dispatch`] and the display gates drive, so what the tests hold byte-exact is
@@ -139,25 +163,24 @@ pub(crate) fn upload_cpu_preview(
                             .map(|()| texture_id),
                     )
                 }
-                UploadPlan::Full { reuse } => {
-                    let mut premul_bytes = (*preview.rgba).clone();
-                    premultiply_rgba8(&mut premul_bytes);
-                    Some(match reuse {
+                UploadPlan::Full { reuse } => Some(ENVIO.with_borrow_mut(|premul_bytes| {
+                    envio_fundido(&preview.rgba, premul_bytes);
+                    match reuse {
                         Some(texture_id) => renderer
                             .replace_individual_pixels(
                                 texture_id,
                                 preview.width,
                                 preview.height,
-                                &premul_bytes,
+                                premul_bytes,
                             )
                             .map(|()| texture_id),
                         None => renderer.acquire_individual(
                             preview.width,
                             preview.height,
-                            &premul_bytes,
+                            premul_bytes,
                         ),
-                    })
-                }
+                    }
+                })),
             };
             match upload_result {
                 None => {}
@@ -307,3 +330,6 @@ pub(crate) fn release_preview_texture(
         renderer.individual_mut().release(gpu.texture_id);
     }
 }
+
+#[cfg(test)]
+mod envio_tests;

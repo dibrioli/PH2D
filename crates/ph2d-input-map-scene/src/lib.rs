@@ -4,7 +4,8 @@
 //! o aviso âmbar da B4) e o estado da aba de cada cena, posto pelas portas `InputMapDoc::smoke_*`. A shell compõe:
 //! acha a aba, chama [`arma`], instala o mapa e pede a aba (`request_input_map_tab`, o caminho do menu).
 //!
-//! **Numeração** (contada no roteiro, `CENAS` = 23; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
+//! **Numeração** ([`PRIMEIRA`]..=[`ULTIMA`], contada de [`CODIGOS`]; uma cena nova da aba entra ao fim deles e empurra as
+//! cenas do roteiro que vêm depois, `ph2d_app_game::smoke::CENAS`):
 //!
 //! | `PH2D_GAME_SMOKE` | Cena | Estado |
 //! |---|---|---|
@@ -41,6 +42,10 @@ use ph2d_script::{LuauScript, ProjectScripts};
 
 /// A primeira cena da aba no roteiro `PH2D_GAME_SMOKE`.
 pub const PRIMEIRA: u32 = 6;
+
+/// A última cena da aba: CONTADA de [`CODIGOS`]; a cena seguinte do roteiro começa em `ULTIMA + 1`.
+#[allow(clippy::cast_possible_truncation)] // 18 códigos
+pub const ULTIMA: u32 = PRIMEIRA + CODIGOS.len() as u32 - 1;
 
 /// O código de cada cena, pela ordem do roteiro.
 pub const CODIGOS: [&str; 18] = [

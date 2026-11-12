@@ -20,7 +20,10 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 24; // 6..23 = a aba Input Map (a tabela: `input_map`); 24 = o Top-Down Player
+/// A última cena do roteiro: 6..=`input_map::ULTIMA` = a aba Input Map (a tabela: `input_map`); a seguinte = o
+/// Top-Down Player. Contada: uma cena nova da aba sem empurrar o Top-Down não compila.
+pub const CENAS: u32 = topdown::CENA;
+const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 pub use {ph2d_input_map_scene as input_map, ph2d_physics_scene::cena_topdown as topdown};
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a

@@ -174,6 +174,13 @@ impl CodeView {
         self.render_cap = bytes.max(1);
     }
 
+    /// A coluna esquerda à vista e quantas colunas se vêem (a janela de uma linha longa cobre-as).
+    pub(crate) fn view_columns(&self) -> (usize, usize) {
+        let adv = self.m.advance.max(f32::EPSILON);
+        let left = (self.scroll_x / adv).max(0.0) as usize;
+        (left, (self.text_rect().w / adv).ceil() as usize + 1)
+    }
+
     /// Esquece os layouts (a medição a frio).
     pub fn clear_cache(&mut self) {
         self.cache.clear();

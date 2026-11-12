@@ -31,7 +31,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return; // ainda sem mundo; tenta no próximo quadro
         };
-        if FEITO.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        if nivel == "0" || FEITO.swap(true, std::sync::atomic::Ordering::Relaxed) {
             return;
         }
         let world = gfx.sim.world_mut();

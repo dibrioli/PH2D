@@ -94,6 +94,9 @@ pub struct StripDrag {
     /// re-reads the value it is writing accumulates its own rounding and drifts
     /// (`arch_no_absolute_drag_pattern`).
     pub start_ease: f64,
+    /// A marca do canto agarrado ao começar (`StripView::marks`): a linha verde/vermelha aponta a
+    /// posição ORIGINAL, e um segundo arrasto mede a partir dela, nunca da de agora (dono 11/11).
+    pub start_mark: f64,
 }
 
 /// An open marker rename. The field text lives in the `WidgetStore` (like every

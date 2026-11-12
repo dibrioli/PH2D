@@ -241,3 +241,17 @@ mudança laranja some no Done; trocar de clipe/aba = Done.
   aberta; irmãs em cinza com a dica «Same piece: what you change here changes here too»; o caminho mostra
   «Scene › Run & jump» com o chip aceso; a barra do loop é a do container (arrastar = `SetContainerLoop` embrulhado).
 - **Shell:** zero linhas novas (o carimbo vira uma linha só).
+
+### Onda 4 — respostas do dono ao smoke (11/11)
+
+- **A moldura acompanha a peça:** o comprimento do container é derivado do conteúdo, então a instância que mostrava a
+  peça INTEIRA continua a mostrá-la (`instancia_acompanha.rs`, chamado pelo `edit()` de `intent_apply.rs`, no mesmo passo
+  de undo; `Once` cresce o span à mesma velocidade, `Loop` só a fatia; recortada ou com comprimento fixo fica). 8 testes
+  `no_lugar_acompanha`, 2 `no_lugar_moldura_seam`, 4 mutações sangram. O «1.45x» do print não se reproduziu por gesto de
+  dentro (só o canto verde da instância de fora escreve `speed`).
+- **A linha verde/vermelha é a posição ORIGINAL do canto:** um segundo arrasto media a partir do canto de agora e
+  apagava a referência; `StripDrag.start_mark` soma a marca que já existia ao `from`. Teste
+  `a_second_drag_keeps_measuring_from_the_original_corner` (mutação sangra).
+- **Undo leva à aba Keys e trava Containers/Arrange:** NÃO reproduzido. Achado: `PH2D_ANIMACAO_SMOKE=0` montava a cena da
+  animação junto da `PH2D_NEST_SMOKE=4` (agora `0` desliga). Se voltar: smoke com `PH2D_UNDO_LOG=1`. Achado lateral:
+  `reset_trail` não tem chamador na shell (o rasto pode apontar para container que sumiu).

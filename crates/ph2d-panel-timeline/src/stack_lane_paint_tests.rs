@@ -306,6 +306,7 @@ fn the_trim_preview_marks_only_the_removed_span_and_only_when_cutting() {
             start_x: 0.0,
             start_span: (1.0, 3.0), // the edges at drag-start
             start_ease: 0.0,
+            start_mark: 0.0,
         })
     };
     let body = Rect::new(view.x(1.5), 60.0, 100.0, 20.0);

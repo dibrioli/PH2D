@@ -557,23 +557,21 @@ pub(crate) fn edit_at(
 /// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit
 /// only if the document changed.
 pub(crate) fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {
-    // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step: just
-    // mutate, and let the bracket's commit fold every frame of the gesture into
-    // one. Outside it, the edit is atomic and brackets itself.
-    //
-    // Every branch re-derives the roving keys' times after the mutation — the
-    // single choke point that keeps "time ∝ value travel" true through every
-    // authoring path (add/move/scale/paste/value/interp/rove), idempotent and
-    // cheap, and folded into the same undo step as the edit it follows.
-    if state.history.is_open() {
-        f(&mut state.doc, &mut state.selection);
-        settle(&mut state.doc);
-        return;
+    // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step; outside it, the
+    // edit brackets itself. Every edit then re-derives the invariants (`settle`) and lets each
+    // instance showing a whole container follow its new length (`instancia_acompanha`) — the
+    // single choke point, folded into the same undo step as the edit it follows.
+    let aberto = state.history.is_open();
+    if !aberto {
+        state.history.begin(&state.doc);
     }
-    state.history.begin(&state.doc);
+    let antes = crate::instancia_acompanha::comprimentos(&state.doc);
     f(&mut state.doc, &mut state.selection);
     settle(&mut state.doc);
-    state.history.commit_if_changed(&state.doc);
+    crate::instancia_acompanha::acompanha(&mut state.doc, &antes);
+    if !aberto {
+        state.history.commit_if_changed(&state.doc);
+    }
 }
 
 /// Frames a duplicate is pushed by when it would otherwise land on top of its

@@ -49,6 +49,7 @@ mod expr_pass;
 mod frame_solve;
 pub mod graph;
 pub mod history;
+mod instancia_acompanha;
 pub mod intent;
 pub mod intent_apply;
 mod intent_apply_fade;

@@ -59,6 +59,13 @@ pub(crate) fn apply(
                     EASE_OUT => s.blend_out - s.lead_out,
                     _ => 0.0,
                 },
+                start_mark: match edge {
+                    0 | 1 => s.marks[ph2d_timeline::mark_index(false, edge)],
+                    STRETCH_START | STRETCH_END => {
+                        s.marks[ph2d_timeline::mark_index(true, u8::from(edge == STRETCH_END))]
+                    }
+                    _ => 0.0,
+                },
             });
         }
         GesturePhase::Update | GesturePhase::End => {
@@ -268,7 +275,7 @@ fn edge_move(
 ) -> (f64, f64) {
     let (a0, b0) = d.start_span;
     let from = if edge == 0 { a0 } else { b0 };
-    (from, snapped(state, snap, from + dt))
+    (from + d.start_mark, snapped(state, snap, from + dt))
 }
 
 /// Frame-snap, when the panel is snapping. Never negative.

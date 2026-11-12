@@ -73,14 +73,19 @@ pub(super) fn grao_das_celulas(
             if grao_cel.len() != gw * gh {
                 *grao_cel = vec![0u8; gw * gh];
             }
-            for cy in cy0..=cy1 {
-                for cx in cx0..=cx1 {
-                    // A tinta sem óleo não mostra o dente do papel do óleo (a fracção dela).
-                    let d =
-                        ph2d_wet_paint::oleo_real::grao_do_papel(o, c, cx, cy) * c.oleo_em(cx, cy);
-                    grao_cel[(cy - 1) * gw + cx - 1] = (d.clamp(0.0, 1.0) * 255.0).round() as u8;
-                }
-            }
+            // Cada célula só lê o campo e escreve a sua: as linhas no pool (B11.3, ao bit da série).
+            grao_cel[(cy0 - 1) * gw..cy1 * gw]
+                .par_chunks_mut(gw)
+                .enumerate()
+                .for_each(|(k, linha)| {
+                    let cy = cy0 + k;
+                    for cx in cx0..=cx1 {
+                        // A tinta sem óleo não mostra o dente do papel do óleo (a fracção dela).
+                        let d = ph2d_wet_paint::oleo_real::grao_do_papel(o, c, cx, cy)
+                            * c.oleo_em(cx, cy);
+                        linha[cx - 1] = (d.clamp(0.0, 1.0) * 255.0).round() as u8;
+                    }
+                });
         }
         _ if !grao_cel.is_empty() => *grao_cel = Vec::new(),
         _ => {}
@@ -112,9 +117,11 @@ pub(super) fn tinta_sem_oleo(
             let r = (raio / f32::from(ratio)).ceil() as usize + 1;
             let cw = cx1 + 1 - cx0;
             let mut v = vec![false; cw * (cy1 + 1 - cy0)];
-            for cy in cy0..=cy1 {
+            // Cada célula só lê as grades e o campo: as linhas no pool (B11.3; corria no fio do quadro).
+            v.par_chunks_mut(cw).enumerate().for_each(|(k, linha)| {
+                let cy = cy0 + k;
                 for cx in cx0..=cx1 {
-                    v[(cy - cy0) * cw + cx - cx0] = if tinta(cx + cy * s) {
+                    linha[cx - cx0] = if tinta(cx + cy * s) {
                         c.oleo_em(cx, cy) < 0.5
                     } else {
                         // O papel segue a tinta à volta: só sem óleo se nenhuma tinta com óleo o rodeia.
@@ -133,7 +140,7 @@ pub(super) fn tinta_sem_oleo(
                         sem && !com
                     };
                 }
-            }
+            });
             Some((cx0, cy0, cw, v))
         }
         _ => None,

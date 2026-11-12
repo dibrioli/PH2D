@@ -100,14 +100,16 @@ impl CampoAltura {
         let borda = sem_entalhes(rep, &cob, borda_suave(rep, &cob, w, h), w, h);
         // D1 W3b: o Smooth Edges da tela amacia ESSA silhueta antes do campo — a cor e o relevo seguem a mesma.
         let borda = if r_suave > 0.0 {
-            let degraus: Vec<u8> = (0..w * h)
-                .map(|k| {
-                    let i = (ax0 + k % w) + (ay0 + k / w) * g.s;
-                    crate::grid::aparencia::degrau_do_suave(crate::grid::aparencia::suave_visto(
-                        camadas, i,
-                    ))
-                })
-                .collect();
+            // As linhas pelo `rep` (B11.3: no fio do quadro era ~1/8 do tempo dele com água a 4K).
+            let mut degraus = vec![0u8; w * h];
+            por_linha(rep, w, &mut degraus, &|y, linha| {
+                for (x, d) in linha.iter_mut().enumerate() {
+                    let i = (ax0 + x) + (ay0 + y) * g.s;
+                    *d = crate::grid::aparencia::degrau_do_suave(
+                        crate::grid::aparencia::suave_visto(camadas, i),
+                    );
+                }
+            });
             amacia_a_silhueta(rep, &cob, borda, (w, h), &degraus, ratio)
         } else {
             borda

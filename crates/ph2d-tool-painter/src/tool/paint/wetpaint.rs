@@ -494,6 +494,8 @@ mod sobe_a_ladeira_porta_tests; // sonda J9 §2: por que porta a água entra no 
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
+mod sonda_agua_oleo_4k; // B11.3/B13.5: a água a 4K com o Óleo Real, ms por quadro e o hash
+#[cfg(test)]
 mod sonda_agua_quieta; // B13.3: quanto da água ainda mexe depois de soltar
 #[cfg(test)]
 mod sonda_b32_espectral; // B32.1: K–M × espectral, prancha e custo no mesmo processo

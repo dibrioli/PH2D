@@ -56,10 +56,20 @@
 
 #[path = "global_palette_bars.rs"]
 pub mod global_palette_bars;
+/// Os comandos da barra de menus, com o caminho de onde moram.
+#[path = "global_palette_menus.rs"]
+pub mod global_palette_menus;
 #[path = "global_palette_places.rs"]
 pub mod global_palette_places;
+/// A memória de sessão: os recentes e a seleção que rola para ficar à vista.
+#[path = "global_palette_session.rs"]
+mod global_palette_session;
+pub use global_palette_session::PaletteSession;
 
-use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
+use crate::widget::command_palette::{
+    PaletteGroup, PaletteItem, PaletteLayout, PaletteModel, PaletteSelect, PaletteSub, item_ids,
+    scoped, shortcut_column,
+};
 use ph2d_a11y::NodeId;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -71,9 +81,14 @@ pub const GLOBAL_PALETTE_TITLE: TextKey = TextKey::new("chrome.palette.commands"
 /// `snake_case` → `Title Case`. Ver o doc-header: é uma DERIVAÇÃO do id, nunca uma tabela.
 #[must_use]
 pub fn humanise_panel_id(id: &str) -> String {
-    // O único que a derivação estraga («Bgremoval»): o id colou as duas palavras.
-    if id == "bgremoval" {
-        return tr("panel.bg_removal.title").to_owned();
+    // Os que a derivação estraga: o id colou as palavras («Bgremoval», «Sfxlab») ou é só metade
+    // do nome («Authored», «Tokens»). O nome é o título que a aba do painel já mostra.
+    match id {
+        "bgremoval" => return tr("panel.bg_removal.title").to_owned(),
+        "sfxlab" => return tr("panel.sfxlab.title").to_owned(),
+        "authored" => return tr("panel.authored.title").to_owned(),
+        "tokens" => return tr("panel.tokens.title").to_owned(),
+        _ => {}
     }
     let mut out = String::with_capacity(id.len());
     for (i, word) in id.split('_').enumerate() {
@@ -98,9 +113,24 @@ pub fn humanise_panel_id(id: &str) -> String {
 /// verbo é o que todo produto do género faz, e é informação que o artista quer ali.
 ///
 /// Isto **não é uma segunda tabela** — é uma derivação da mesma string, no ponto onde ela deixa de
-/// ser desenhada como menu.
+/// ser desenhada como menu. O atalho vai para a coluna dele pela porta dos menus
+/// ([`shortcut_column`]).
 fn palette_label(label: &str) -> String {
-    label.strip_prefix("\u{2014} ").unwrap_or(label).to_string()
+    shortcut_column(label.strip_prefix("\u{2014} ").unwrap_or(label))
+}
+
+/// O nome do chip com o atalho que a dica dele diz («Translate · G» ⇒ `G` na coluna), quando a
+/// dica é o MESMO nome seguido da tecla.
+fn with_tip_key(label: &str, tip: Option<&str>) -> String {
+    match tip.and_then(|t| t.rsplit_once(crate::widget::command_palette::PATH_SEP)) {
+        Some((name, key)) if name.eq_ignore_ascii_case(label) && !key.is_empty() => {
+            shortcut_column(&format!(
+                "{label}{}{key}",
+                crate::widget::command_palette::PATH_SEP
+            ))
+        }
+        _ => label.to_owned(),
+    }
 }
 
 /// **Constrói o modelo da paleta global a partir do que o app REGISTA agora.**
@@ -115,20 +145,65 @@ fn palette_label(label: &str) -> String {
 /// mais barata que enxerga todos os painéis (a mesma disciplina do censo do scrub).
 #[must_use]
 pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
-    let mut groups = Vec::new();
+    // ── A BARRA DE MENUS (File · Edit · View · Window · Help), através das cascatas. Um id que
+    //    mora nela leva o caminho DELA e aparece uma vez só: os outros grupos perdem-no. ──
+    let mut bar = global_palette_menus::groups();
 
-    // ── Os chips do RAIL (ferramentas + os toggles de painel do topo da coluna) ──
+    // ── Os comandos das abas de FAMÍLIA: os que têm linha na barra vão para o lugar dela
+    //    (`File · New`, `Window · Plan`); só os do menu PRÓPRIO da aba ficam em «This tab». ──
+    let mut tab_only: Vec<PaletteItem> = Vec::new();
+    for c in super::surface_input::commands(hero) {
+        let item = PaletteItem {
+            badge: None,
+            label: shortcut_column(&c.label),
+            id: c.id,
+            keywords: "",
+        };
+        match super::document_tabs::doc_menu_kind(c.menu)
+            .and_then(global_palette_menus::place_of_menu)
+        {
+            Some(at) => global_palette_menus::place(&mut bar, at, item),
+            None => tab_only.push(item),
+        }
+    }
+
+    // ── As listas que uma linha da barra ABRE (Preferences ▸ …, Theme): cada folha com o caminho
+    //    real (`Edit · Preferences · Motion`). Um pick nelas é um `Click(id)` sem geometria. ──
+    for kind in super::menu_rows::TOPBAR_LEAF_MENUS {
+        let at = global_palette_menus::place_of_leaf_menu(*kind);
+        for (id, label, _) in super::menu_rows::menu_rows(*kind) {
+            let item = PaletteItem {
+                badge: None,
+                label: palette_label(label.tr()),
+                id: *id,
+                keywords: "",
+            };
+            global_palette_menus::place(&mut bar, at.clone(), item);
+        }
+    }
+    let in_bar = |id: NodeId| {
+        bar.iter()
+            .flat_map(|g| &g.subs)
+            .flat_map(|s| &s.items)
+            .any(|it| it.id == id)
+    };
+
+    let mut groups = Vec::new();
+    // ── Os chips do RAIL (ferramentas + os toggles de painel do topo da coluna); o atalho vem da
+    //    dica do chip («Translate · G»). ──
     let tools: Vec<PaletteItem> =
         super::left_rail::rail_entries(&hero.store, hero.rail_shows_painter_tools())
             .iter()
             .filter_map(|e| {
+                let (label, id) = (e.label()?, e.node_id()?);
                 Some(PaletteItem {
                     badge: None,
-                    label: e.label()?.to_string(),
-                    id: e.node_id()?,
+                    label: with_tip_key(label, hero.store.tooltip_for(id)),
+                    id,
                     keywords: "",
                 })
             })
+            .filter(|it| !in_bar(it.id))
             .collect();
     if !tools.is_empty() {
         groups.push(PaletteGroup {
@@ -144,23 +219,14 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     // ── As BARRAS do módulo na mão (F4): ①, ② com os pulldowns, ④ — pelo nome do LUGAR ──
     groups.extend(global_palette_bars::groups(&hero.store));
 
-    // ── Os comandos da aba de FAMÍLIA activa (o editor de scripts): os das linhas de menu dela ──
-    let doc: Vec<PaletteItem> = super::surface_input::commands(hero)
-        .into_iter()
-        .map(|c| PaletteItem {
-            badge: None,
-            label: crate::widget::command_palette::shortcut_column(&c.label),
-            id: c.id,
-            keywords: "",
-        })
-        .collect();
-    if !doc.is_empty() {
+    tab_only.retain(|it| !in_bar(it.id));
+    if !tab_only.is_empty() {
         groups.push(PaletteGroup {
             title: tr("chrome.palette.document").into(),
             color: ColorToken::NodeCatSource,
             subs: vec![PaletteSub {
                 title: None,
-                items: doc,
+                items: tab_only,
             }],
         });
     }
@@ -174,6 +240,9 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     // suíte da `editor-core` corre sem ele e a variante estrita PANICARIA.
     crate::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
+            if in_bar(p.manifest.panel_node_id) {
+                continue;
+            }
             panels.push(PaletteItem {
                 badge: None,
                 label: humanise_panel_id(p.manifest.id),
@@ -193,49 +262,34 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             }],
         });
     }
+    groups.extend(bar);
 
-    // ── As ROWS dos menus da barra de topo — o «tipo 2» que o doc-header nomeia ──
-    // O pill abre um menu ancorado a um rectângulo, e por isso não é servível daqui; a **row** de
-    // dentro dele é, porque um pick nela é um `Click(id)` que o `chrome::dispatch_all` resolve sem
-    // geometria nenhuma. É a diferença entre *abrir* um menu e *escolher* nele.
-    //
-    // ⚠️ Um GRUPO, um SUB por menu — e não N grupos. Cada grupo é um CARD no masonry, então nove
-    // cards de duas ou três linhas seriam ruído; um sub é exactamente «um cluster nomeado dentro de
-    // uma categoria», que é o que estas rows são.
-    let menus: Vec<PaletteSub> = super::menu_rows::TOPBAR_LEAF_MENUS
-        .iter()
-        .filter_map(|kind| {
-            let items: Vec<PaletteItem> = super::menu_rows::menu_rows(*kind)
-                .iter()
-                .map(|(id, label, _)| PaletteItem {
-                    badge: None,
-                    label: palette_label(label.tr()),
-                    id: *id,
-                    keywords: "",
-                })
-                .collect();
-            (!items.is_empty()).then(|| PaletteSub {
-                title: super::menu_rows::menu_title(*kind).map(str::to_string),
-                items,
-            })
-        })
-        .collect();
-    if !menus.is_empty() {
-        groups.push(PaletteGroup {
-            title: tr("chrome.palette.menus").into(),
-            color: ColorToken::NodeCatOutput,
-            subs: menus,
-        });
-    }
+    as_list(
+        PaletteModel {
+            title: GLOBAL_PALETTE_TITLE.tr().into(),
+            groups,
+            // O `Ctrl+K` não tem caixa nenhuma — ver `PaletteModel::toggle`.
+            toggle: None,
+            tips: Vec::new(),
+            select: None,
+            layout: PaletteLayout::Cloud,
+        },
+        hero.palette_session.recent(),
+    )
+}
 
-    PaletteModel {
-        title: GLOBAL_PALETTE_TITLE.tr().into(),
-        groups,
-        // O `Ctrl+K` não tem caixa nenhuma — ver `PaletteModel::toggle`.
-        toggle: None,
-        tips: Vec::new(),
-        select: None,
-    }
+/// ⭐ **A paleta global é uma LISTA** (dono 12/11): os recentes da sessão em cima e o destaque na
+/// primeira linha que se pinta (o `select` é o que dá as setas e o Enter do destacado no store).
+fn as_list(mut model: PaletteModel, recent: &[NodeId]) -> PaletteModel {
+    model.layout = PaletteLayout::List {
+        recent: recent.to_vec(),
+    };
+    let first = item_ids(&scoped(&model, "", None).model).first().copied();
+    model.select = first.map(|initial| PaletteSelect {
+        initial,
+        teach: Vec::new(),
+    });
+    model
 }
 
 /// `Ctrl+K` — abre a paleta sobre o que o app oferece AGORA, com os prefixos `@` e `:` da aba
@@ -249,7 +303,9 @@ pub fn open(hero: &mut super::HeroScreen) {
 pub fn open_with(hero: &mut super::HeroScreen, family: Option<PaletteGroup>) {
     let mut model = build_global_model(hero);
     model.groups.extend(family);
+    let model = as_list(model, hero.palette_session.recent());
     hero.store.open_command_palette(model);
+    hero.palette_session.opened();
     let scopes = global_palette_places::scopes(hero);
     hero.store.set_command_palette_scopes(scopes);
 }
@@ -258,6 +314,7 @@ pub fn open_with(hero: &mut super::HeroScreen, family: Option<PaletteGroup>) {
 /// fechada: o reconhecimento é «este id está no que EU ofereço agora», e o modelo reconstrói-se para
 /// a pergunta; um item dos prefixos reconhece-se pelo id (sem perguntar à aba).
 pub fn drain(hero: &mut super::HeroScreen) {
+    global_palette_session::follow(hero);
     let model = build_global_model(hero);
     let mine = |id: NodeId| model.is_item(id) || global_palette_places::owns(id);
     let Some(id) = hero.store.take_command_pick_if(mine) else {
@@ -280,6 +337,14 @@ pub fn drain(hero: &mut super::HeroScreen) {
 /// Devolve `false` quando o id não é dela (o canal do pick é partilhado com a paleta de nós do
 /// Motion, e um consumidor que toma incondicionalmente é o que torna a ORDEM load-bearing).
 pub fn route_global_pick(hero: &mut super::HeroScreen, id: NodeId) -> bool {
+    let done = run_pick(hero, id);
+    if done {
+        hero.palette_session.remember(id);
+    }
+    done
+}
+
+fn run_pick(hero: &mut super::HeroScreen, id: NodeId) -> bool {
     let query = hero.store.command_pick_query().to_owned();
     if global_palette_places::route(hero, id, &query) {
         return true;

@@ -59,6 +59,8 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::MenuBarWindowPixel => menu_tables::MENU_BAR_WINDOW_PIXEL_ROWS,
         ContextMenuKind::MenuBarWindowPlan => menu_tables::MENU_BAR_WINDOW_PLAN_ROWS,
         ContextMenuKind::MenuBarHelpDeveloper => menu_tables::MENU_BAR_HELP_DEVELOPER_ROWS,
+        ContextMenuKind::MenuBarRoot => menu_tables::MENU_BAR_ROOT_ROWS,
+        ContextMenuKind::MenuBarPlay => menu_tables::MENU_BAR_PLAY_ROWS,
         ContextMenuKind::SaveMenu => menu_tables::SAVE_MENU_ROWS,
         ContextMenuKind::OpenMenu => menu_tables::OPEN_MENU_ROWS,
         ContextMenuKind::SettingsMenu => super::menu_tables_settings::SETTINGS_MENU_ROWS,

@@ -2,7 +2,7 @@
 //! Settings → Pixels per meter cascade: open submenu + write preset.
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::screens::hero::HeroScreen;
 
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
@@ -13,12 +13,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // top-level menu with the PPM presets submenu. Anchored to the right
     // edge of the clicked cascade row.
     if id == ids::CTX_MENU_SETTINGS_PPM {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsPpmSubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsPpmSubmenu,
+        );
         return true;
     }
     // PPM presets — writes `project.pixels_per_meter` and closes the

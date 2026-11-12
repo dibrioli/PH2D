@@ -61,7 +61,9 @@ pub(super) fn update_hover(store: &mut WidgetStore, hit: Option<NodeId>) {
     if let Some(new) = hit {
         // Skip hover state on the active (dragging) widget — its
         // state stays Pressed.
-        if store.active_id() != Some(new) {
+        // Uma linha de menu acende pelo `hot_id`; o botão gémeo fora do menu (mesmo id) fica quieto.
+        let linha_de_menu = store.is_open_menu_row(new);
+        if store.active_id() != Some(new) && !linha_de_menu {
             enter_hover(store, new);
         }
     }

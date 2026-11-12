@@ -275,6 +275,7 @@ pub fn build(
         toggle: None,
         tips,
         select,
+        layout: Default::default(),
     }
 }
 

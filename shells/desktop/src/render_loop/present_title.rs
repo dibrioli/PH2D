@@ -14,7 +14,9 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-        let AppGfx { surface, toasts, .. } = gfx;
+        let AppGfx {
+            surface, toasts, ..
+        } = gfx;
         // A placa sem memória avisa no TÍTULO, o único texto que ela não desenha; na volta, um resize
         // ao mesmo tamanho refaz os alvos da janela que nasceram sob recusa (F35 §2).
         if let Some(sem) = ph2d_gpu::memoria::sem_memoria_mudou() {

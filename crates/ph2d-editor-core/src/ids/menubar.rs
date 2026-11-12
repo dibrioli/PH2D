@@ -141,3 +141,11 @@ pub const MENUBAR_WINDOW_PLAN_MENU: NodeId = hash_node_id("menubar_window_plan_m
 pub const MENUBAR_HELP_COMMANDS: NodeId = hash_node_id("menubar_help_commands");
 /// *Help ▸ Developer* — as ferramentas de quem faz o app.
 pub const MENUBAR_HELP_DEVELOPER_MENU: NodeId = hash_node_id("menubar_help_developer_menu");
+
+// ── A faixa que responde (onda 2, versão C do dono) ───────────────────────────────────────────
+/// O botão «Menu» da faixa: abre os cinco menus em cascata (`Alt` também).
+pub const MENUBAR_W: NodeId = hash_node_id("menubar_w");
+/// O campo «Find anything» no centro da faixa: abre a busca (`Ctrl+K`).
+pub const MENUBAR_FIND: NodeId = hash_node_id("menubar_find");
+/// A seta ao lado do Play: escolhe onde o jogo se mostra.
+pub const MENUBAR_PLAY_MENU: NodeId = hash_node_id("menubar_play_menu");

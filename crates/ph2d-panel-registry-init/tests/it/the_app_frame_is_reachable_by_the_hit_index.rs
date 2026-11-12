@@ -119,23 +119,13 @@ fn every_menu_title_and_every_tab_answers_at_its_own_centre() {
     let mut text = TextSystem::without_system_fonts();
 
     let mut targets: Vec<(String, Rect)> = Vec::new();
-    for (_, title, r) in ph2d_editor_core::screens::hero::menu_bar::menu_rects(l.top_bar, &mut text)
-    {
-        targets.push((format!("o título {title:?}"), r));
-    }
-    // ⭐ O título *Run* virou cinco botões no centro da barra (GEF, dono 07/11): mesma superfície,
-    // mesmo índice — medem-se pelos rects que a barra publica, com os limites que ela usa.
-    let menus_end_x = targets
-        .iter()
-        .map(|(_, r)| r.x + r.w)
-        .fold(l.top_bar.x, f32::max);
-    let layout_start =
-        ph2d_editor_core::screens::hero::layout_tabs::tab_rects(l.top_bar, menus_end_x, &mut text)
-            .first()
-            .map_or(l.top_bar.x + l.top_bar.w, |(_, r)| r.x);
-    for (id, _, r) in
-        ph2d_editor_core::screens::hero::transport_bar::rects(l.top_bar, menus_end_x, layout_start)
-    {
+    // ⭐ Versão C (dono 12/11): a faixa é o botão «Menu», o campo de busca e a fila do jogo —
+    // medem-se pela porta da geometria que a barra pinta (`menu_faixa::faixa`).
+    let f = ph2d_editor_core::screens::hero::menu_faixa::faixa(l.top_bar, &mut text);
+    targets.push(("o botão «Menu»".to_owned(), f.menu));
+    targets.push(("o campo de busca".to_owned(), f.find));
+    assert_eq!(f.jogo.len(), 5, "a fila do jogo não coube na barra");
+    for (id, _, r) in f.jogo {
         targets.push((format!("o botão do jogo {id:?}"), r));
     }
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
@@ -149,8 +139,8 @@ fn every_menu_title_and_every_tab_answers_at_its_own_centre() {
     }
 
     assert!(
-        targets.len() >= 11,
-        "só {} alvos (4 títulos + 5 botões do jogo + 2 abas esperados) — a fixtura mudou e o gate mediria pouco",
+        targets.len() >= 9,
+        "só {} alvos (Menu + busca + 5 botões do jogo + 2 abas esperados) — a fixtura mudou e o gate mediria pouco",
         targets.len()
     );
 

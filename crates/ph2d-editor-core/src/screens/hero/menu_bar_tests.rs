@@ -5,6 +5,8 @@ use super::*;
 use crate::screens::hero::{layout_tabs, slot_tabs_face};
 use crate::screens::task_layout::TaskLayout;
 use crate::text_elide::em_todo_estilo;
+use crate::zones::Rect;
+use ph2d_tokens::TypeToken;
 
 fn branco() -> ph2d_vector::Color {
     ph2d_vector::Color::from_rgba8(255, 255, 255, 255) // LITERAL-COLOR-OK: cor de teste
@@ -21,7 +23,8 @@ fn branco() -> ph2d_vector::Color {
 /// elisões), nunca uma conta refeita aqui.
 ///
 /// Três superfícies, a mesma lei:
-/// - **a barra de menus** (`Window` -> `Wind…`, foto da Inter) — pela [`pinta_titulo`];
+/// - **a faixa** (`Window` -> `Wind…`, foto da Inter; hoje «Menu», «Find anything» e «Play») —
+///   pelo [`paint_menu_bar`];
 /// - **as abas de tarefa** (`Flip` -> `F…` no Grande) — pela geometria do `layout_tabs` e o
 ///   pintor que ele usa;
 /// - **as abas de encaixe** (`Inspector` -> `Inspect…` na Atkinson) — pela `face`, que é a única
@@ -44,9 +47,21 @@ fn nenhum_rotulo_medido_do_chrome_e_cortado() {
     let acusados = em_todo_estilo(|ts| {
         let mut scene = VectorScene::new();
         let (_, medidos) = crate::text_elide::elisao::medindo(|| {
-            for (_, title, r) in menu_rects(bar, ts) {
-                pinta_titulo(ts, &mut scene, title, r, branco());
-            }
+            // A faixa de verdade: o «Menu», o campo e o Play com nome, pelos pintores deles.
+            let mut hits = HitIndex::default();
+            crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(true));
+            paint_menu_bar(
+                &HeroLayout::for_viewport(Rect::new(0.0, 0.0, 1930.0, 1040.0)),
+                &mut scene,
+                ts,
+                Theme::default(),
+                &mut hits,
+                &WidgetStore::default(),
+                &crate::motion::UiMotion::default(),
+                &crate::documents::Documents::default(),
+                crate::game_stage::GameRun::default(),
+            );
+            crate::widget::lista_flutuante::force_cromo_on_this_thread(None);
             for (l, r) in layout_tabs::tab_rects(bar, 0.0, ts) {
                 crate::paint::paint_text_centered(
                     ts,

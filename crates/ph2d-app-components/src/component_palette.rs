@@ -173,6 +173,7 @@ pub(crate) fn build(
         }),
         tips,
         select: None,
+        layout: Default::default(),
     };
     reselect(&mut model, None);
     model

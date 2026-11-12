@@ -203,6 +203,27 @@ fn click_at(h: &mut HeroScreen, r: Rect) -> Vec<WidgetEvent> {
     todos
 }
 
+/// Abre o menu *File* com o dedo (versão C, dono 12/11): o botão «Menu» da faixa e, na lista dele,
+/// a linha «File», que abre o menu dela ao lado.
+fn open_file_menu(h: &mut HeroScreen, vp: Rect) {
+    for (id, what) in [
+        (ph2d_editor_core::ids::MENUBAR_W, "o botao `Menu`"),
+        (ph2d_editor_core::ids::MENUBAR_FILE, "a linha `File`"),
+    ] {
+        let r = h
+            .hit_index
+            .rect_for(id)
+            .unwrap_or_else(|| panic!("{what} nao esta' no indice de acerto"));
+        let _ = click_at(h, r);
+        paint(h, vp);
+    }
+    assert_eq!(
+        h.store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::MenuBarFile),
+        "o menu `File` nao abriu"
+    );
+}
+
 /// Abre o chip do pulldown `slot` — com o dedo, não com um `Click` fabricado.
 fn open_area_menu(h: &mut HeroScreen, vp: Rect, slot: u32) {
     let chip = h
@@ -403,12 +424,7 @@ fn the_file_menu_serves_the_contributed_row_and_keeps_its_own() {
     let (mut h, vp) = hero(1194.0, 834.0, true);
     paint(&mut h, vp);
 
-    let title = h
-        .hit_index
-        .rect_for(ph2d_editor_core::ids::MENUBAR_FILE)
-        .expect("o titulo `File` nao esta' no indice de acerto");
-    let _ = click_at(&mut h, title);
-    paint(&mut h, vp);
+    open_file_menu(&mut h, vp);
 
     assert!(
         h.hit_index
@@ -466,12 +482,7 @@ fn closing_the_module_takes_the_commands_off_the_bar_and_off_the_file_menu() {
     );
 
     // E o menu do app abre, sem as linhas do módulo.
-    let title = h
-        .hit_index
-        .rect_for(ph2d_editor_core::ids::MENUBAR_FILE)
-        .expect("o titulo `File` nao esta' no indice de acerto");
-    let _ = click_at(&mut h, title);
-    paint(&mut h, vp);
+    open_file_menu(&mut h, vp);
     assert!(
         h.hit_index
             .rect_for(ph2d_editor_core::ids::CTX_MENU_SAVE)

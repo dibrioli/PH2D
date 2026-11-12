@@ -258,6 +258,12 @@ pub fn paint_hover_tooltip(
     let Some(id) = store.hot_id() else {
         return false;
     };
+    // Com a busca aberta, ou sobre uma linha de menu (o id é o do botão gémeo), a dica não é de ninguém.
+    if store.command_palette_open()
+        || crate::screens::hero::menu_cascade::level_of_row(store, id).is_some()
+    {
+        return false;
+    }
     // GEF 20b — com um arrasto na mão a dica tapava o fantasma e o campo que se mira (foto 02/11).
     if store.asset_drag().is_some_and(|d| d.armed) {
         return false;

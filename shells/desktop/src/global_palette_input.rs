@@ -35,5 +35,8 @@ impl App {
             g.toasts.push(ph2d_editor_core::Toast::info(t));
         }
         global_palette::drain(h);
+        if h.store.take_global_palette_request() {
+            open_global_palette(h, &mut self.pixel);
+        }
     }
 }

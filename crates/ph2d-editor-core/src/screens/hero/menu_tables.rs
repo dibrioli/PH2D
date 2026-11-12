@@ -171,8 +171,10 @@ pub(super) const MENU_BAR_FILE_ROWS: &[MenuRow] = &[
 ];
 
 /// As linhas de `ContextMenuKind::MenuBarFileNew` (+ New Kanban e New Sound, pelas famílias).
-pub(super) const MENU_BAR_FILE_NEW_ROWS: &[MenuRow] =
-    &[menu_row(ids::MENUBAR_FILE_NEW, "chrome.menu.new_image_cmd_n")];
+pub(super) const MENU_BAR_FILE_NEW_ROWS: &[MenuRow] = &[menu_row(
+    ids::MENUBAR_FILE_NEW,
+    "chrome.menu.new_image_cmd_n",
+)];
 
 /// As linhas de `ContextMenuKind::MenuBarFileImport` (+ Import from Trello, pelo Kanban). As do
 /// Pixel ficam CINZENTAS sem um Pixel Sprite em Draw (`menu_row_is_unavailable`): nunca somem.
@@ -300,10 +302,29 @@ pub(super) const MENU_BAR_WINDOW_AUDIO_ROWS: &[MenuRow] = &[
 /// `ContextMenuKind::MenuBarWindowPlan`: só linhas de família (Kanban, Planner), pelo `DocMenu`.
 pub(super) const MENU_BAR_WINDOW_PLAN_ROWS: &[MenuRow] = &[];
 
+/// As linhas de `ContextMenuKind::MenuBarRoot` — os cinco menus, pela ordem de `menu_bar::MENUS`.
+pub(super) const MENU_BAR_ROOT_ROWS: &[MenuRow] = &[
+    menu_row(ids::MENUBAR_FILE, "chrome.menu_bar.file"),
+    menu_row(ids::MENUBAR_EDIT, "chrome.menu_bar.edit"),
+    menu_row(ids::MENUBAR_VIEW, "chrome.menu_bar.view"),
+    menu_row(ids::MENUBAR_WINDOW, "chrome.menu_bar.window"),
+    menu_row(ids::MENUBAR_HELP, "chrome.menu_bar.help"),
+];
+
+/// As linhas de `ContextMenuKind::MenuBarPlay` — os mesmos ids dos botões da tela cheia.
+pub(super) const MENU_BAR_PLAY_ROWS: &[MenuRow] = &[
+    menu_row(ids::MENUBAR_RUN_EDITOR, "chrome.menu.play_in_editor"),
+    menu_row(ids::MENUBAR_RUN_WINDOW, "chrome.menu.play_in_window"),
+    menu_row(ids::MENUBAR_RUN_FULLSCREEN, "chrome.menu.play_fullscreen"),
+];
+
 /// As linhas de `ContextMenuKind::MenuBarHelp`.
 pub(super) const MENU_BAR_HELP_ROWS: &[MenuRow] = &[
     menu_row(ids::MENUBAR_HELP_COMMANDS, "chrome.menu.commands_cmd_k"),
-    menu_row(ids::MENUBAR_HELP_DEVELOPER_MENU, "chrome.menu.developer_submenu"),
+    menu_row(
+        ids::MENUBAR_HELP_DEVELOPER_MENU,
+        "chrome.menu.developer_submenu",
+    ),
 ];
 
 /// As linhas de `ContextMenuKind::MenuBarHelpDeveloper` — as ferramentas de quem faz o app.

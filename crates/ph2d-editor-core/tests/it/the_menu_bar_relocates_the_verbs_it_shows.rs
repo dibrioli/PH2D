@@ -33,56 +33,57 @@ fn hero() -> HeroScreen {
     HeroScreen::new(ph2d_editor_core::NodeId(1))
 }
 
-fn bar() -> Rect {
-    Rect::new(0.0, 0.0, 1366.0, menu_bar::MENU_BAR_H)
-}
-
-/// **Carregar num título abre o MENU DELE** — pela cadeia real de ponteiro, não chamando o
-/// handler à mão.
+/// **Carregar no «Menu» abre os cinco, e cada linha abre o MENU DELA** — pela cadeia real de
+/// ponteiro sobre o quadro pintado (versão C, dono 12/11: os títulos foram para dentro do botão).
 ///
-/// ⚠️ A âncora sai do **rectângulo** do título, e o `y` do menu tem de cair por baixo da barra:
-/// um menu ancorado no cursor saltaria de sítio conforme onde no título se carregou.
-///
-/// ⛔ E os quatro juntos de propósito: os cinco blocos gémeos que esta tabela substituiu eram
-/// exactamente a forma de um `kind` copiado do vizinho.
+/// ⚠️ A âncora sai do **rectângulo** do botão, e o `y` do menu tem de cair por baixo da barra.
 #[test]
 fn pressing_a_title_opens_its_own_menu() {
     let mut text = TextSystem::without_system_fonts();
-    let rects = menu_bar::menu_rects(bar(), &mut text);
-    for (id, title, r) in rects {
+    let viewport = Rect::new(0.0, 0.0, 1366.0, 1024.0);
+    for (id, key, want) in MENUS {
+        let title = key.tr();
         let mut h = hero();
-        let mut hit = HitIndex::default();
-        hit.register(id, r);
-        let arena = Bump::new();
-        let _ = dispatch_pointer(
-            &mut h.store,
-            &hit,
-            PointerEvent {
+        let mut pinta = |h: &mut HeroScreen| {
+            let mut scene = ph2d_vector::VectorScene::new();
+            ph2d_editor_core::screens::hero::paint_hero_screen(h, viewport, &mut scene, &mut text);
+        };
+        let toca = |h: &mut HeroScreen, alvo: NodeId, kind: PointerKind| {
+            let r = h.hit_index.rect_for(alvo).expect("o alvo está no quadro");
+            let arena = Bump::new();
+            let ev = PointerEvent {
                 x: r.x + r.w * 0.5,
                 y: r.y + r.h * 0.5,
                 pressure: 1.0,
-                kind: PointerKind::Down,
+                kind,
                 source: PointerSource::Mouse,
                 button: PointerButton::Primary,
                 timestamp_ns: 0,
-            },
-            &arena,
-        );
-        let open = h
+            };
+            let evs: Vec<WidgetEvent> = h.handle_pointer(ev, &arena).to_vec();
+            for e in evs {
+                h.apply_event(e);
+            }
+            r
+        };
+        pinta(&mut h);
+        let botao = toca(&mut h, ids::MENUBAR_W, PointerKind::Down);
+        let raiz = h
             .store
             .context_menu()
-            .unwrap_or_else(|| panic!("{title}: o título é pintado e não abre menu nenhum"));
-        let want = MENUS
-            .iter()
-            .find(|(mid, ..)| *mid == id)
-            .expect("o id veio da tabela")
-            .2;
-        assert_eq!(open.kind, want, "{title} abriu o menu do vizinho");
+            .expect("o botão Menu é pintado e não abre menu nenhum");
+        assert_eq!(raiz.kind, ContextMenuKind::MenuBarRoot);
         assert!(
-            open.y >= r.y + r.h,
-            "{title}: o menu abriu POR CIMA do título (y={}, barra acaba em {})",
-            open.y,
-            r.y + r.h
+            raiz.y >= botao.y + botao.h,
+            "o menu abriu POR CIMA do botão"
+        );
+        pinta(&mut h);
+        toca(&mut h, id, PointerKind::Move);
+        let chain: Vec<_> = h.store.menu_chain().iter().map(|r| r.kind).collect();
+        assert_eq!(
+            chain,
+            [ContextMenuKind::MenuBarRoot, want],
+            "{title} abriu o menu do vizinho, ou fechou o pai"
         );
     }
 }
@@ -270,38 +271,10 @@ fn the_bar_subtracts_height_it_never_floats() {
     }
 }
 
-/// **E os títulos não se sobrepõem** — a porta única mede-os contra o texto real, e larguras
-/// fixas por título dariam ou um buraco ou um recorte conforme a fonte.
-#[test]
-fn the_titles_are_laid_side_by_side_without_overlap() {
-    let mut text = TextSystem::without_system_fonts();
-    let rects = menu_bar::menu_rects(bar(), &mut text);
-    for pair in rects.windows(2) {
-        let (_, a_title, a) = pair[0];
-        let (_, b_title, b) = pair[1];
-        assert!(
-            a.x + a.w <= b.x + f32::EPSILON,
-            "{a_title} e {b_title} sobrepõem-se"
-        );
-        assert!(a.w > 0.0, "{a_title} tem largura zero");
-    }
-    let last = rects[rects.len() - 1].2;
-    assert!(
-        last.x + last.w <= bar().x + bar().w,
-        "os títulos transbordam da barra"
-    );
-}
-
-/// ⛔⛔ **O QUADRO REAL: os quatro títulos ficam agarráveis onde a barra os desenha.**
+/// ⛔⛔ **O QUADRO REAL: o «Menu», o campo e o jogo ficam agarráveis onde a faixa os desenha.**
+/// (A lei da geometria — nada se sobrepõe — mede-se em `menu_faixa_tests`.)
 ///
-/// ⚠️ Os outros testes deste ficheiro montam o `HitIndex` à mão a partir da porta
-/// ([`menu_bar::menu_rects`]) — provam a **lei**, e um pintor que se esquecesse de registar
-/// passaria por todos eles. Este pinta o hero de verdade e pergunta ao índice do quadro.
-///
-/// ⭐ É a mesma lição que o trilho lateral ainda paga: lá o pintor e o registo de hit são **dois
-/// laços** sobre a mesma lista, com a aritmética escrita duas vezes e nada a ligá-los.
-///
-/// *Mutação que sangra:* apagar o `hit_index.register` do `paint_menu_bar`.
+/// *Mutação que sangra:* apagar um `hit_index.register` do `menu_faixa::paint`.
 #[test]
 fn the_painted_bar_registers_every_title_where_it_drew_it() {
     let mut h = hero();
@@ -314,18 +287,22 @@ fn the_painted_bar_registers_every_title_where_it_drew_it() {
         "precondição: sem chrome legado a barra de menus é o inquilino da faixa"
     );
     let layout = h.last_layout.expect("o quadro publicou o layout");
-    for (id, title, want) in menu_bar::menu_rects(layout.top_bar, &mut text) {
+    let f = ph2d_editor_core::screens::hero::menu_faixa::faixa(layout.top_bar, &mut text);
+    let alvos = [(ids::MENUBAR_W, f.menu), (ids::MENUBAR_FIND, f.find)]
+        .into_iter()
+        .chain(f.jogo.iter().map(|(id, _, r)| (*id, *r)));
+    for (id, want) in alvos {
         let got = h
             .hit_index
             .rect_for(id)
-            .unwrap_or_else(|| panic!("{title}: pintado e SEM alvo no índice do quadro"));
+            .unwrap_or_else(|| panic!("{id:?}: pintado e SEM alvo no índice do quadro"));
         assert!(
             (got.x - want.x).abs() < 0.5 && (got.w - want.w).abs() < 0.5,
-            "{title}: o alvo ({got:?}) não é onde a porta diz ({want:?})"
+            "{id:?}: o alvo ({got:?}) não é onde a porta diz ({want:?})"
         );
         assert!(
             got.y + got.h <= layout.draw_area.y + 0.5,
-            "{title}: o alvo entra na área de desenho"
+            "{id:?}: o alvo entra na área de desenho"
         );
     }
 }

@@ -200,6 +200,7 @@ pub(super) fn build_palette_model(
         toggle: None,
         tips: Vec::new(),
         select: None,
+        layout: Default::default(),
     }
 }
 

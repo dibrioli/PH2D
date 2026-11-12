@@ -71,12 +71,26 @@ fn only(model: &PaletteModel, groups: Vec<PaletteGroup>) -> PaletteModel {
         toggle: model.toggle.clone(),
         tips: model.tips.clone(),
         select: model.select.clone(),
+        layout: model.layout.clone(),
     }
 }
 
 /// A busca `query` sobre `model` com os prefixos de `scopes` (sem eles, a lei de sempre).
 #[must_use]
 pub fn scoped<'a>(
+    model: &'a PaletteModel,
+    query: &str,
+    scopes: Option<&PaletteScopes>,
+) -> Scoped<'a> {
+    let s = scoped_cloud(model, query, scopes);
+    match &model.layout {
+        super::PaletteLayout::List { recent } => super::lista::arrange(recent, s, query),
+        super::PaletteLayout::Cloud => s,
+    }
+}
+
+/// [`scoped`] antes de a lista arrumar a vista.
+fn scoped_cloud<'a>(
     model: &'a PaletteModel,
     query: &str,
     scopes: Option<&PaletteScopes>,
@@ -232,6 +246,7 @@ mod tests {
             toggle: None,
             tips: Vec::new(),
             select: None,
+            layout: Default::default(),
         };
         let scopes = PaletteScopes {
             symbols: Some(group(

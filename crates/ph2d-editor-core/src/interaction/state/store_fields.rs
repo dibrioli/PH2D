@@ -461,6 +461,8 @@ pub struct WidgetStore {
     /// mudado de sítio. O orçamento medido é `3` chips ([`crate::ids::area_menu_button`]).
     pub(in crate::interaction) area_menus: crate::interaction::AreaMenus,
     pub(in crate::interaction) tool_bars: crate::interaction::ToolBarsSlot,
+    /// Os pais da cascata de menus ([`super::menu_chain_ops`]).
+    pub(in crate::interaction) menu_chain: super::MenuChain,
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
     /// O corte da D2 é por **âmbito**: *vale em todo o app ⇒ barra global; vale só naquele editor

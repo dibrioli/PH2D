@@ -134,6 +134,10 @@ pub enum ContextMenuKind {
     MenuBarWindowPlan,
     /// Ver [`Self::MenuBarFileNew`].
     MenuBarHelpDeveloper,
+    /// ⭐ O menu do botão «Menu» da faixa (onda 2): cinco linhas, uma por menu, todas cascata.
+    MenuBarRoot,
+    /// A seta ao lado do Play: onde o jogo se mostra (Editor · Window · Fullscreen).
+    MenuBarPlay,
     /// Clicked the TOPBAR theme cluster. Menu offers the 4 theme
     /// options plus 3 corner-radius scale presets (Sharp / Default
     /// / Round) — the standardized way to switch chrome look.
@@ -495,6 +499,8 @@ impl ContextMenuKind {
         Self::MenuBarWindowPixel,
         Self::MenuBarWindowPlan,
         Self::MenuBarHelpDeveloper,
+        Self::MenuBarRoot,
+        Self::MenuBarPlay,
         Self::ThemeSelector,
         Self::SaveMenu,
         Self::OpenMenu,

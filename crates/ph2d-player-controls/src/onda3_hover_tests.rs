@@ -155,18 +155,20 @@ fn sobre_o_botao_da_barra_o_movimento_sai_da_tela() {
         AREA.w,
         ph2d_editor_core::screens::hero::menu_bar::MENU_BAR_H,
     );
-    let botoes = transport_bar::rects(bar, AREA.w * 0.25, AREA.w * 0.75);
+    let play_w = transport_bar::play_width(&mut ts, bar.h);
+    let botoes = transport_bar::rects(bar, AREA.w * 0.25, AREA.w * 0.75, play_w);
     let (hits, store) = (&mut hero.hit_index, &hero.store);
     let mut scene = VectorScene::new();
     transport_bar::paint(
         &botoes,
         GameRun::default(),
         &mut scene,
+        &mut ts,
         Theme::default(),
         hits,
         store,
     );
-    let (linha, botao) = (centre(lay.rows[1].band), centre(botoes[5].2));
+    let (linha, botao) = (centre(lay.rows[1].band), centre(botoes[botoes.len() - 1].2));
     assert_eq!(
         host::pointer_move_com_a_barra(&mut s, Some(&mut hero), Some(linha)),
         (true, true),

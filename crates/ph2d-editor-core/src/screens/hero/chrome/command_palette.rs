@@ -83,7 +83,12 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         // ⭐ Modo «destaca, depois escolhe» (Add Object, dono 07/11): um clique destaca e mostra a dica.
         WidgetEvent::Click(id)
-            if hero.store.command_palette_selects() && hero.store.command_palette_has(id) =>
+            if hero.store.command_palette_selects()
+                && !hero
+                    .store
+                    .command_palette_model()
+                    .is_some_and(|m| m.is_list())
+                && hero.store.command_palette_has(id) =>
         {
             hero.store.highlight_command_palette(id);
             true
@@ -120,6 +125,7 @@ mod tests {
             toggle: None,
             tips: Vec::new(),
             select: None,
+            layout: Default::default(),
             groups: vec![PaletteGroup {
                 title: "Source".into(),
                 color: ColorToken::NodeCatSource,

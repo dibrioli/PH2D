@@ -285,6 +285,11 @@ pub(super) fn handle_down_menus(
         && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
         && let Some(kind) = menu_opened_by(hit_id)
     {
+        // O segundo clique no mesmo botão fecha o menu que ele abriu.
+        if store.menu_chain().first().map(|r| r.kind) == Some(kind) {
+            store.close_context_menu();
+            return true;
+        }
         store.open_context_menu(ContextMenuRequest {
             x: hit_rect.x,
             y: hit_rect.y + hit_rect.h + MENU_ANCHOR_GAP_PX,
@@ -390,10 +395,7 @@ pub(super) fn click_belongs_to_the_open_menu(
         // ⭐ Uma linha INDISPONÍVEL (hoje: *Load Custom Theme* sem nada gravado) — o Down nela é
         //   um clique no menu, não fora dele; o clique a seguir chega ao verbo, que recusa.
         ContextMenuKind::SectionOutline { .. } => store.menu_row_is_unavailable(id),
-        kind if crate::screens::hero::menu_bar::is_bar_menu(kind) => {
-            store.menu_row_is_unavailable(id)
-        }
-        _ => false,
+        kind => crate::screens::hero::menu_cascade::down_is_of_the_menu(store, kind, id),
     }
 }
 
@@ -406,11 +408,12 @@ const MENU_ANCHOR_GAP_PX: f32 = 4.0; // LITERAL-PX-OK: folga do popover ao alvo 
 /// seguintes são os pills do chrome legado, que a tecla `F9` ainda devolve. Os dois conjuntos
 /// partilham a lei — *abre o teu menu ancorado por baixo de ti* — e por isso partilham o código.
 fn menu_opened_by(id: ph2d_a11y::NodeId) -> Option<ContextMenuKind> {
-    if let Some((_, _, kind)) = crate::screens::hero::menu_bar::MENUS
-        .iter()
-        .find(|(mid, ..)| *mid == id)
-    {
-        return Some(*kind);
+    // O botão «Menu» da faixa (os cinco menus em cascata) e a seta do Play.
+    if id == crate::ids::MENUBAR_W {
+        return Some(ContextMenuKind::MenuBarRoot);
+    }
+    if id == crate::ids::MENUBAR_PLAY_MENU {
+        return Some(ContextMenuKind::MenuBarPlay);
     }
     // ⚠️ **Os cinco do chrome legado saem da TABELA, não de um `match`** — a mesma que o gate
     // `the_bar_relocated_every_row_of_the_menus_it_replaced` lê para exigir que as rows destes

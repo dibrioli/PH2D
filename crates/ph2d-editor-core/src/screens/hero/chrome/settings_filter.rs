@@ -11,7 +11,7 @@
 
 use crate::action_bus::EditorAction;
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::project::ImageFilterMode;
 use crate::screens::hero::HeroScreen;
 
@@ -20,12 +20,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if id == ids::CTX_MENU_SETTINGS_FILTER {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsFilterSubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsFilterSubmenu,
+        );
         return true;
     }
     // Image-filter submenu options — write `project.image_filter`, push

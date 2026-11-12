@@ -60,6 +60,7 @@ fn model(select: bool) -> PaletteModel {
             initial: id("Sprite"),
             teach: Vec::new(),
         }),
+        layout: Default::default(),
     }
 }
 

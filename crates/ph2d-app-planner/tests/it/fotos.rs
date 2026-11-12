@@ -143,12 +143,12 @@ fn foto_menu_file_com_os_modos_nos_dois_temas() {
             &mut ph2d_vector::VectorScene::new(),
             &mut ts,
         );
-        // Como o clique no título (`pointer_down_menus`): o menu ancorado por baixo de «File».
+        // O menu File ancorado por baixo do botão «Menu» da faixa (versão C: os títulos saíram da barra).
         let file = m
             .hero
             .hit_index
-            .rect_for(ph2d_editor_core::ids::MENUBAR_FILE)
-            .expect("o título File pintado");
+            .rect_for(ph2d_editor_core::ids::MENUBAR_W)
+            .expect("o botão Menu pintado");
         m.hero.store.open_context_menu(ContextMenuRequest {
             x: file.x,
             y: file.y + file.h,

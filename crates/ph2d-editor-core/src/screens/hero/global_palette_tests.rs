@@ -47,8 +47,19 @@ fn every_global_palette_item_is_dispatched_by_somebody() {
             "a paleta global tem comandos (painter={painter_active}), tem {}",
             items.len()
         );
+        // ⚠️ As folhas de *Window* e de *Help ▸ Developer* são despachadas pelos PAINÉIS, e nesta
+        // crate o registo é vazio: o gate delas é o `every_window_menu_row_reaches_a_consumer` da
+        // `ph2d-panel-registry-init` (as mesmas duas listas, com o registo instalado).
+        let dos_paineis: Vec<NodeId> = [
+            crate::interaction::ContextMenuKind::MenuBarWindow,
+            crate::interaction::ContextMenuKind::MenuBarHelpDeveloper,
+        ]
+        .into_iter()
+        .flat_map(super::super::menu_bar::leaf_rows)
+        .map(|r| r.0)
+        .collect();
         let mut dead = Vec::new();
-        for it in &items {
+        for it in items.iter().filter(|it| !dos_paineis.contains(&it.id)) {
             // Um hero NOVO por item: o dispatch muta estado, e um chip que só responde na 1a vez
             // passaria por acidente da ordem.
             let mut hero = HeroScreen::new(NodeId(1));
@@ -95,8 +106,10 @@ fn the_model_carries_every_named_rail_chip_verbatim() {
             let found = found.unwrap_or_else(|| {
                 panic!("o chip {label:?} está PINTADO no rail e não está na paleta")
             });
+            // O nome é o do chip; o atalho (da dica do chip ou da linha da barra) vai na coluna.
             assert_eq!(
-                found.label, label,
+                crate::widget::command_palette::split_shortcut(&found.label).0,
+                label,
                 "o nome do comando tem de ser o nome do chip"
             );
         }
@@ -124,7 +137,24 @@ fn the_top_bar_pills_are_out_because_they_open_menus_anchored_to_a_rect() {
         .flat_map(|g| &g.subs)
         .flat_map(|s| &s.items)
         .collect();
+    // ⚠️ Versão C (dono 12/11): a paleta leva as folhas da barra de menus, e um pill que é um
+    // BOTÃO directo (Physics: alterna um painel, sem menu) tem lá a linha dele com o mesmo id. Os
+    // que ABREM um menu continuam fora — e o controlo abaixo prova que a isenção não os apanha.
+    let folhas: Vec<NodeId> = super::super::menu_bar::MENUS
+        .iter()
+        .flat_map(|(_, _, k)| super::super::menu_bar::leaf_rows(*k))
+        .map(|r| r.0)
+        .collect();
+    for (pill, kind) in super::super::menu_rows::LEGACY_PILL_MENUS {
+        assert!(
+            !folhas.contains(pill) && !items.iter().any(|it| it.id == *pill),
+            "o pill que abre {kind:?} entrou na paleta"
+        );
+    }
     for (id, cluster) in super::super::fixture::topbar_clusters() {
+        if folhas.contains(&id) {
+            continue;
+        }
         assert!(
             !items.iter().any(|it| it.id == id),
             "o cluster {:?} da barra de topo entrou na paleta; ele abre um MENU ancorado ao \
@@ -141,6 +171,8 @@ fn a_panel_title_is_derived_from_its_id() {
     assert_eq!(humanise_panel_id("wet_tuning"), "Wet Tuning");
     assert_eq!(humanise_panel_id("vector"), "Vector");
     assert_eq!(humanise_panel_id("bgremoval"), "Background Removal");
+    assert_eq!(humanise_panel_id("authored"), "Authored UI");
+    assert_eq!(humanise_panel_id("tokens"), "Design Tokens");
 }
 
 /// A paleta **segue o modo**: com o Painter em mãos ela oferece as ferramentas de pintura.
@@ -340,9 +372,11 @@ fn the_menu_group_carries_every_leaf_row_verbatim() {
 fn the_palette_label_drops_the_indent_dash_and_nothing_else() {
     assert_eq!(palette_label("\u{2014} Corners: Sharp"), "Corners: Sharp");
     assert_eq!(palette_label("Forge (dark)"), "Forge (dark)");
-    // O atalho é informação que um command palette MOSTRA — não é ruído a limpar.
-    assert_eq!(
-        palette_label("Save \u{00b7} Ctrl+S"),
-        "Save \u{00b7} Ctrl+S"
-    );
+    // O atalho é informação que um command palette MOSTRA — vai para a coluna dele (a porta
+    // `shortcut_column` dos menus), não some.
+    assert_eq!(palette_label("Save \u{00b7} Ctrl+S"), "Save\tCtrl+S");
 }
+
+/// A paleta em LISTA: caminhos, recentes, destaque (onda 2 da barra de menus).
+#[path = "global_palette_list_tests.rs"]
+mod list;

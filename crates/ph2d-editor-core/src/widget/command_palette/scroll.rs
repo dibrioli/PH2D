@@ -58,7 +58,12 @@ pub(super) fn metrics(
     let content_w = card_w - pad * 2.0;
     let font = TypeToken::Md.px();
 
-    let (placed, measured) = arrange(ts, model, content_x, content_w);
+    let list = model.is_list();
+    let (placed, measured) = if list {
+        (Vec::new(), super::lista::content_h(model))
+    } else {
+        arrange(ts, model, content_x, content_w)
+    };
     // With no matches the arrangement is empty (height 0); reserve a row for the "No matches" message so
     // the card doesn't collapse to just the header.
     let content_h = if no_match && model.select.is_some() {
@@ -75,11 +80,23 @@ pub(super) fn metrics(
         super::selecao::dock_height(ts, model, content_w)
     };
     let dock_gap = if dock_h > 0.0 { Spacing::Sm.px() } else { 0.0 };
-    let chrome_h = pad * 2.0 + lk.header_h + Spacing::Sm.px() + dock_h + dock_gap;
+    // A lista troca a faixa da dica pelo rodapé das dicas de tecla.
+    let foot_h = if list {
+        super::lista::footer_h() + Spacing::Sm.px()
+    } else {
+        0.0
+    };
+    let chrome_h = pad * 2.0 + lk.header_h + Spacing::Sm.px() + dock_h + dock_gap + foot_h;
+    // ⭐ A lista fica PRESA logo abaixo da faixa (o campo «Find anything»): o topo nunca mexe e a
+    //    altura cresce e encolhe para baixo. As outras paletas continuam centradas.
+    let anchor = list.then(|| viewport.y + list_top());
+    let room = anchor.map_or(viewport.h - EDGE_MARGIN * 2.0, |top| {
+        viewport.y + viewport.h - EDGE_MARGIN - top
+    });
     let card_h = (chrome_h + content_h)
         .min(viewport.h * CARD_MAX_H_FRAC)
-        .min(viewport.h - EDGE_MARGIN * 2.0);
-    let card_y = viewport.y + (viewport.h - card_h) * 0.5;
+        .min(room);
+    let card_y = anchor.unwrap_or(viewport.y + (viewport.h - card_h) * 0.5);
     Metrics {
         card: Rect::new(card_x, card_y, card_w, card_h),
         content_x,
@@ -95,6 +112,13 @@ pub(super) fn metrics(
     }
 }
 
+/// Onde o topo da paleta em lista assenta: por baixo da faixa da barra de menus (a altura dela é
+/// a de uma linha, `MENU_BAR_H = ROW_H_PX`).
+#[must_use]
+pub fn list_top() -> f32 {
+    ph2d_tokens::ROW_H_PX
+}
+
 /// ⭐ **Até onde a roda pode levar a lista** — `0` quando tudo cabe.
 ///
 /// ⚠️ **O teto vem de QUEM MEDE, não do chamador**, ao contrário da janela do Input Map: ali o
@@ -102,8 +126,11 @@ pub(super) fn metrics(
 /// **medir texto**, e um teto adivinhado levaria a lista para longe com o artista sem saber voltar.
 #[must_use]
 pub fn max_scroll(ts: &mut TextSystem, model: &PaletteModel, query: &str, viewport: Rect) -> f32 {
-    let filtered;
-    let model = if query.is_empty() {
+    let (filtered, listed);
+    let model = if model.is_list() {
+        listed = super::scoped(model, query, None);
+        &*listed.model
+    } else if query.is_empty() {
         model
     } else {
         filtered = filter_model(model, query);

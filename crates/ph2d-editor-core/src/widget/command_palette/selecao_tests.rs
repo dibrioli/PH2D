@@ -66,6 +66,7 @@ fn model(select: bool) -> PaletteModel {
                 start_label: "Start with the Sprite".into(),
             }],
         }),
+        layout: Default::default(),
     }
 }
 

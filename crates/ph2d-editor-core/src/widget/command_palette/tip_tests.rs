@@ -63,6 +63,7 @@ fn model() -> PaletteModel {
             picture: PICTURE,
         }],
         select: None,
+        layout: Default::default(),
     }
 }
 

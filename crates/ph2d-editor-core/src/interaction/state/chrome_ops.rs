@@ -139,6 +139,7 @@ impl WidgetStore {
     /// `kind`. Replaces any previously-open menu (only one menu
     /// can be visible at a time).
     pub fn open_context_menu(&mut self, request: ContextMenuRequest) {
+        self.menu_chain.solta();
         self.context_menu = Some(request);
     }
 
@@ -406,6 +407,7 @@ impl WidgetStore {
         if self.command_palette.is_some() && !c.is_control() {
             self.command_palette_query.push(c);
             self.command_palette_scope.search_focus = true;
+            self.drop_list_highlight();
         }
     }
 
@@ -414,6 +416,7 @@ impl WidgetStore {
         if self.command_palette.is_some() {
             self.command_palette_query.pop();
             self.command_palette_scope.search_focus = true;
+            self.drop_list_highlight();
         }
     }
 
@@ -535,6 +538,7 @@ impl WidgetStore {
     /// menu's `kind` when handling the item-click that triggered
     /// the close (the click → Click event arrives AFTER the close).
     pub fn close_context_menu(&mut self) {
+        self.menu_chain.solta();
         if let Some(req) = self.context_menu.take() {
             self.last_context_menu = Some(req);
         }

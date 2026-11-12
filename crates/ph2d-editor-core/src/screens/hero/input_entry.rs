@@ -12,7 +12,10 @@ impl HeroScreen {
         if document_tabs_menu::pointer(self, event) {
             return &[];
         }
-        dispatch_pointer(&mut self.store, &self.hit_index, event, arena)
+        let antes = self.store.last_pointer();
+        let events = dispatch_pointer(&mut self.store, &self.hit_index, event, arena);
+        menu_cascade::pointer(self, antes, event);
+        events
     }
 
     /// [`Self::handle_pointer`] with a live `TextSystem`, so a click snaps the caret to the glyph.
@@ -26,13 +29,16 @@ impl HeroScreen {
         if document_tabs_menu::pointer(self, event) {
             return &[];
         }
-        dispatch_pointer_with_text(
+        let antes = self.store.last_pointer();
+        let events = dispatch_pointer_with_text(
             &mut self.store,
             &self.hit_index,
             event,
             Some(text_system),
             arena,
-        )
+        );
+        menu_cascade::pointer(self, antes, event);
+        events
     }
 
     pub fn handle_key<'frame>(
@@ -40,6 +46,9 @@ impl HeroScreen {
         event: KeyEvent,
         arena: &'frame Bump,
     ) -> &'frame [WidgetEvent] {
+        if menu_cascade::key(self, event) {
+            return &[];
+        }
         crate::interaction::dispatch_key(&mut self.store, event, arena)
     }
 

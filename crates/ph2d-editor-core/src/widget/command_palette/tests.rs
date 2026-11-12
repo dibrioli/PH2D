@@ -21,6 +21,7 @@ fn model() -> PaletteModel {
         toggle: None,
         tips: Vec::new(),
         select: None,
+        layout: Default::default(),
         groups: vec![
             PaletteGroup {
                 title: "Source".into(),
@@ -295,6 +296,7 @@ fn tall(n: usize, k: usize) -> PaletteModel {
         toggle: None,
         tips: Vec::new(),
         select: None,
+        layout: Default::default(),
         groups: (0..n)
             .map(|i| PaletteGroup {
                 title: format!("Cat {i}"),

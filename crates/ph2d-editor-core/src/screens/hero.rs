@@ -105,6 +105,8 @@ pub mod layout_tabs;
 mod live;
 /// A TABELA de rows de cada menu — a porta única de *«que linhas este menu tem?»*.
 pub mod menu_bar;
+pub mod menu_cascade;
+pub mod menu_faixa;
 pub mod menu_rows;
 mod menu_tables;
 mod menu_tables_board;
@@ -290,6 +292,8 @@ pub struct HeroScreen {
     pub import_requested: bool,
     /// ⭐ **Os QUADROS do projecto e a aba activa** (MiroClone) — ver [`crate::documents`].
     pub documents: crate::documents::Documents,
+    /// A memória de sessão da paleta `Ctrl+K` (os recentes) — ver [`global_palette::PaletteSession`].
+    pub palette_session: global_palette::PaletteSession,
     /// O que o menu Ficheiro pediu — ver [`file_menu::FileMenuRequests`].
     pub file_menu: file_menu::FileMenuRequests,
     /// O elo entre a fila global do undo e a história de uma família — [`crate::undo_link`].
@@ -434,6 +438,7 @@ impl HeroScreen {
         // tests `ensure_panel_registry()`) — an auto-install here hid the `panel-*` features (B1).
         let mut store = WidgetStore::with_capacity(64);
         Self::pre_populate_store(&mut store);
+        store.set_menu_row_probe(|s, id| menu_cascade::level_of_row(s, id).is_some());
         Self {
             motion: crate::motion::UiMotion::default(),
             prefab_edit: None,
@@ -464,6 +469,7 @@ impl HeroScreen {
             camera_reset_pending: false,
             import_requested: false,
             documents: crate::documents::Documents::default(),
+            palette_session: global_palette::PaletteSession::default(),
             file_menu: file_menu::FileMenuRequests::default(),
             undo_links: crate::undo_link::UndoLinks::default(),
             project: crate::project::ProjectSettings::default(),

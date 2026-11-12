@@ -108,7 +108,13 @@ pub(super) fn compact() -> Look {
 /// ⭐ **O acabamento de um modelo** — a decisão única: o modo «destaca, depois escolhe» (o Add
 /// Object) leva o da referência; os outros, o de sempre.
 pub(super) fn look(model: &PaletteModel) -> Look {
-    if model.select.is_some() {
+    if model.is_list() {
+        // A lista: o acabamento da referência numa janela mais estreita, a busca com o foco.
+        Look {
+            card_max_w: super::lista::LIST_MAX_W,
+            ..compact()
+        }
+    } else if model.select.is_some() {
         compact()
     } else {
         classic()

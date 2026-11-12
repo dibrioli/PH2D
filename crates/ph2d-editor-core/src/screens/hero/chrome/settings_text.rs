@@ -9,7 +9,7 @@
 //! a shell-side resource (unlike `SetPresentMode`).
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::screens::hero::HeroScreen;
 use ph2d_tokens::TextRendering;
 
@@ -18,12 +18,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if id == ids::CTX_MENU_SETTINGS_TEXT {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsTextSubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsTextSubmenu,
+        );
         return true;
     }
     let chosen = if id == ids::CTX_MENU_TEXT_DEFAULT {

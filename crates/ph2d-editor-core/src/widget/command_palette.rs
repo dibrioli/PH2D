@@ -62,6 +62,10 @@ use grupo::paint_card;
 mod selecao;
 pub use selecao::{CMD_PALETTE_TEACH_START, PaletteSelect, PaletteTeach, item_ids, teach_for};
 
+/// **A paleta em LISTA** (uma linha por comando, «Recent», rodapé) — a 7.ª responsabilidade.
+mod lista;
+pub use lista::{PATH_SEP, PaletteLayout, RECENT_SHOWN, follow_scroll, path_of, row_span};
+
 /// The close-X in the header.
 pub const CMD_PALETTE_CLOSE: NodeId = hash_node_id("command_palette.close");
 /// The full-viewport scrim barrier — a click here (outside the card) closes the palette.
@@ -142,6 +146,9 @@ pub struct PaletteModel {
     pub tips: Vec<PaletteTip>,
     /// ⭐ **O gesto «destaca, depois escolhe»** ([`PaletteSelect`]); `None` = um clique escolhe.
     pub select: Option<PaletteSelect>,
+    /// ⭐ **Nuvem ou lista** ([`PaletteLayout`]). ⚠️ A lista traz `select` (é ele que dá o destaque
+    /// e as setas no store), mas escolhe num clique: quem pergunta pelo gesto lê [`Self::two_step`].
+    pub layout: PaletteLayout,
 }
 
 /// ⭐ **A dica ILUSTRADA de um item** (as do Fusion 360): o nome simples, um desenho e a explicação
@@ -159,6 +166,18 @@ pub struct PaletteTip {
 }
 
 impl PaletteModel {
+    /// A paleta pinta-se em lista?
+    #[must_use]
+    pub fn is_list(&self) -> bool {
+        matches!(self.layout, PaletteLayout::List { .. })
+    }
+
+    /// O gesto «destaca, depois escolhe» (o Add Object): tem `select` e NÃO é lista.
+    #[must_use]
+    pub fn two_step(&self) -> bool {
+        self.select.is_some() && !self.is_list()
+    }
+
     /// Total item count (for the header's "N items" readout).
     #[must_use]
     pub fn item_count(&self) -> usize {
@@ -242,6 +261,13 @@ pub fn paint(
     //    matching items and drops emptied sub-clusters / categories; `Enter` adds the same top match. ──
     // ⭐ Os prefixos de quem a abriu (I14) estreitam o modelo; sem eles, a lei de sempre.
     let view = scoped(model, query, store.command_palette_scopes());
+    // «7 of 116»: o total é o do modelo inteiro, sem repetir id (só a lista o mostra).
+    let total = model.is_list().then(|| {
+        let mut ids = item_ids(model);
+        ids.sort_unstable();
+        ids.dedup();
+        ids.len()
+    });
     let model: &PaletteModel = &view.model;
     let no_match = model.groups.is_empty();
 
@@ -291,10 +317,11 @@ pub fn paint(
     //    500 LOC deste ficheiro: o corte é por responsabilidade — aqui fica o CARTÃO, lá a BANDA.
     let header_y = card_y + pad;
     let mut lk = look::look(model);
-    lk.search_focus &= store.command_palette_search_focused();
+    // A lista é uma caixa de comando: a busca nasce com o foco.
+    lk.search_focus &= model.is_list() || store.command_palette_search_focused();
     let close_rect = header::paint_header(
         scene, ts, theme, hit_index, model, query, card_x, card_w, content_x, content_w, header_y,
-        pad, &lk,
+        pad, &lk, total,
     );
 
     // ── Content: paint the measured category cards at the card's content origin — or a "No matches"
@@ -316,7 +343,8 @@ pub fn paint(
     //    conteúdo; a porta prende o ALVO e o vivo alcança-o. Preso também aqui, para esse quadro não
     //    mostrar um cartão vazio.
     let scroll = crate::math::safe_clamp(area.scroll(), 0.0, (content_h - view_h).max(0.0));
-    if no_match && model.select.is_some() {
+    // A nota de um prefixo (`:` sem número) ganha do «Nothing is called…».
+    if no_match && model.select.is_some() && view.note.is_none() {
         let at = (content_x, content_y);
         let _ = selecao::paint_teach(scene, ts, theme, hit_index, model, query, at, content_w);
     } else if no_match {
@@ -332,6 +360,16 @@ pub fn paint(
             content_w,
             superficie.cor(ColorToken::Text3),
         );
+    } else if model.is_list() {
+        // Com rolagem, a barra dela mora na borda direita: a coluna do atalho fica à esquerda dela.
+        let bar = if content_h > view_h {
+            crate::widget::scrollbar::SCROLLBAR_W
+        } else {
+            0.0
+        };
+        let at = (content_x, content_y - scroll, content_w - bar);
+        let state = [store.hot_id(), chosen];
+        lista::paint_rows(scene, ts, theme, hit_index, model, at, body, state);
     } else {
         // ⚠️ A CASCATA: o cartão `i` desenha-se subido por `cascade_rise(t)` e o hit regista na
         //    posição ASSENTE. É a mesma lei do `hover_lift` — o alvo que o dedo procura não pode
@@ -363,7 +401,11 @@ pub fn paint(
     }
 
     // ⭐ A dica: na faixa do destacado (modo de seleção), ou sobre o item sob o rato — sem alvo.
-    if let Some(dock) = dock {
+    if model.is_list() {
+        let h = lista::footer_h();
+        let at = Rect::new(content_x, card_y + card_h - pad - h, content_w, h);
+        lista::paint_footer(scene, ts, theme, at);
+    } else if let Some(dock) = dock {
         selecao::paint_dock(scene, ts, theme, model, chosen, dock);
     } else {
         let rect_for = |id| hit_index.rect_for(id);

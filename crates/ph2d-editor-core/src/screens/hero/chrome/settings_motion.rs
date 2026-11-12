@@ -12,7 +12,7 @@
 //! estado vivo, e uma projecção não precisa de um canal próprio para ser notificada.
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::motion::UiCharacter;
 use crate::screens::hero::HeroScreen;
 
@@ -21,12 +21,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if id == ids::CTX_MENU_SETTINGS_MOTION {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsMotionSubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsMotionSubmenu,
+        );
         return true;
     }
     if id == ids::CTX_MENU_MOTION_REDUCED {

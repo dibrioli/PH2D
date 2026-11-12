@@ -13,7 +13,7 @@
 //! que o `every_choice_submenu_marks_its_active_value` existe para apanhar.
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::screens::hero::HeroScreen;
 use crate::screens::hero::text_style_rows::{FONTS, SCALES, SIZES, WEIGHTS};
 use ph2d_a11y::NodeId;
@@ -43,9 +43,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if let Some((_, kind)) = CATEGORIES.iter().find(|(c, _)| *c == id) {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store
-            .open_context_menu(ContextMenuRequest { x, y, kind: *kind });
+        crate::screens::hero::menu_cascade::open_cascade(hero, id, *kind);
         return true;
     }
     if let Some((_, z)) = SCALES.iter().find(|(r, _)| *r == id) {

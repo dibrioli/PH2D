@@ -51,7 +51,7 @@ pub fn item_matches(query: &str, item: &PaletteItem) -> bool {
 /// The fuzzy tier is the Run Command's (Ctrl+K, `docs/PixelArt/P12_oraculos.md` O10).
 #[must_use]
 pub fn model_item_matches(model: &PaletteModel, query: &str, item: &PaletteItem) -> bool {
-    if model.select.is_some() {
+    if model.two_step() {
         label_matches(query, &item.label) || intent_matches(query, item)
     } else {
         item_matches(query, item)
@@ -110,7 +110,7 @@ pub fn top_match(model: &PaletteModel, query: &str) -> Option<NodeId> {
         .find(|it| label_matches(query, &it.label))
         .or_else(|| items().find(|it| keyword_is(query, it)))
         .or_else(|| items().find(|it| intent_matches(query, it)))
-        .or_else(|| model.select.is_none().then(best_fuzzy).flatten())
+        .or_else(|| (!model.two_step()).then(best_fuzzy).flatten())
         .map(|it| it.id)
 }
 
@@ -164,15 +164,17 @@ pub(super) fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
                 .subs
                 .iter()
                 .filter_map(|s| {
+                    // Em lista, o caminho também acha («export» ⇒ tudo em File · Export).
+                    let place = model.is_list() && label_matches(query, &super::path_of(g, s));
                     let mut items: Vec<PaletteItem> = s
                         .items
                         .iter()
-                        .filter(|it| model_item_matches(model, query, it))
+                        .filter(|it| place || model_item_matches(model, query, it))
                         .cloned()
                         .collect();
                     // Best match first (O10); a stable sort keeps the display order on a tie.
                     // A palette that selects keeps its order (no fuzzy tier there).
-                    if model.select.is_none() {
+                    if !model.two_step() {
                         items.sort_by_key(|it| {
                             std::cmp::Reverse(fuzzy_score(query, &it.label).unwrap_or(i32::MIN))
                         });
@@ -199,5 +201,6 @@ pub(super) fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
         // A dica procura-se pela id: as dos itens filtrados ficam e não pintam.
         tips: model.tips.clone(),
         select: model.select.clone(),
+        layout: model.layout.clone(),
     }
 }

@@ -125,6 +125,19 @@ impl App {
         {
             return;
         }
+        // ⭐ Os menus da faixa: `Alt` sozinho abre o «Menu»; aberto, as setas e o Enter são dele.
+        if let PhysicalKey::Code(code) = physical_key
+            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && ph2d_editor_core::screens::hero::menu_cascade::shell_key(
+                h,
+                winit_to_editor_keycode(code),
+                matches!(code, KeyCode::AltLeft | KeyCode::AltRight),
+                (state == ElementState::Pressed, repeat),
+                Self::convert_modifiers(self.modifiers),
+            )
+        {
+            return;
+        }
         // ⭐ **F9 — o chrome legado volta.** Porquê um interruptor: `crate::legacy_chrome`.
         if state == ElementState::Pressed
             && physical_key == PhysicalKey::Code(KeyCode::F9)

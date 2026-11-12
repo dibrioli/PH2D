@@ -145,6 +145,7 @@ fn an_open_palette_wins_the_click_over_a_shadowing_graph_surface() {
         toggle: None,
         tips: Vec::new(),
         select: None,
+        layout: Default::default(),
         groups: vec![PaletteGroup {
             title: "Source".into(),
             color: ColorToken::NodeCatSource,

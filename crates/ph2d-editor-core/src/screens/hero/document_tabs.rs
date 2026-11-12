@@ -233,26 +233,31 @@ pub fn surface_title(doc: &DocTab) -> String {
     }
 }
 
+/// O menu da barra onde um comando de documento entra; `None` = só no menu da própria aba.
+#[must_use]
+pub fn doc_menu_kind(
+    menu: crate::doc_surface::DocMenu,
+) -> Option<crate::interaction::ContextMenuKind> {
+    use crate::doc_surface::DocMenu;
+    use crate::interaction::ContextMenuKind as K;
+    Some(match menu {
+        DocMenu::New => K::MenuBarFileNew,
+        DocMenu::Import => K::MenuBarFileImport,
+        DocMenu::Export => K::MenuBarFileExport,
+        DocMenu::Plan => K::MenuBarWindowPlan,
+        DocMenu::Audio => K::MenuBarWindowAudio,
+        DocMenu::Edit => K::MenuBarEdit,
+        DocMenu::Tab => return None,
+    })
+}
+
 /// ⭐ Em todo quadro, antes de pintar: a família que abriu um documento ganha a aba activa, e as abas
 /// de família têm os controlos registados (sem `InteractiveState` uma aba nasce morta).
 pub fn follow_surfaces(hero: &mut HeroScreen) {
     hero.documents.follow_surfaces();
-    use crate::doc_surface::DocMenu;
-    use crate::interaction::ContextMenuKind as K;
     let rows = super::surface_input::commands(hero)
         .into_iter()
-        .filter_map(|c| {
-            let menu = match c.menu {
-                DocMenu::New => K::MenuBarFileNew,
-                DocMenu::Import => K::MenuBarFileImport,
-                DocMenu::Export => K::MenuBarFileExport,
-                DocMenu::Plan => K::MenuBarWindowPlan,
-                DocMenu::Audio => K::MenuBarWindowAudio,
-                DocMenu::Edit => K::MenuBarEdit,
-                DocMenu::Tab => return None,
-            };
-            Some((menu, c.id, c.label))
-        })
+        .filter_map(|c| Some((doc_menu_kind(c.menu)?, c.id, c.label)))
         .collect();
     hero.store.set_doc_commands(rows);
     for (tab, _) in hero.documents.surfaces().tabs() {

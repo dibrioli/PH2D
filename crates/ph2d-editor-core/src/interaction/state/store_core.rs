@@ -120,6 +120,7 @@ impl WidgetStore {
             tool_overflow: Vec::new(),
             area_menus: crate::interaction::AreaMenus::default(),
             tool_bars: crate::interaction::ToolBarsSlot::default(),
+            menu_chain: Default::default(),
             menu_contrib: Vec::new(),
             dock_h_bottom: None,
             present_vsync: true,

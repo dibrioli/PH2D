@@ -30,9 +30,12 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // (`menu_bar::close_on_row_click`) exactamente por isto — o `cascade_anchor` lê o menu que
     // ainda está aberto para saber de onde a cascata sai.
     // *Help ▸ Commands…* — a paleta `Ctrl+K`, que nada na tela mostrava (dono 12/11).
-    if id == ids::MENUBAR_HELP_COMMANDS {
+    // *Help ▸ Commands…* e o campo «Find anything» da faixa: a mesma busca do `Ctrl+K`. A shell
+    // reabre-a no mesmo quadro com as linhas das famílias que vivem fora do hero.
+    if id == ids::MENUBAR_HELP_COMMANDS || id == ids::MENUBAR_FIND {
         hero.store.close_context_menu();
         crate::screens::hero::global_palette::open(hero);
+        hero.store.request_global_palette();
         return true;
     }
     let cascade = if let Some(sub) = crate::screens::hero::menu_bar::cascade_of(id) {
@@ -100,12 +103,17 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     } else {
         return false;
     };
-    let (x, y) = super::cascade_anchor(hero, id);
-    hero.store.open_context_menu(ContextMenuRequest {
-        x,
-        y,
-        kind: cascade,
-    });
+    if cascade == ContextMenuKind::SceneList {
+        // A lista de cenas é uma janela de busca: abre sozinha, no lugar dos menus.
+        let (x, y) = super::cascade_anchor(hero, id);
+        hero.store.open_context_menu(ContextMenuRequest {
+            x,
+            y,
+            kind: cascade,
+        });
+    } else {
+        crate::screens::hero::menu_cascade::open_cascade(hero, id, cascade);
+    }
     true
 }
 

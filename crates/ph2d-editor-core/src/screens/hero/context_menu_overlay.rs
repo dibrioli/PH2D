@@ -23,6 +23,10 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 /// its parent row or needs to flip to the left.
 pub const MENU_W: f32 = 200.0; // LITERAL-PX-OK: context menu fixed width (chrome-specific)
 pub(super) const ROW_H: f32 = ROW_H_PX;
+/// Quanto o centro óptico de uma linha de texto desce do centro da caixa, em fração do corpo
+/// (medido nas fotos da onda 2: o «›» ficava ~2 px acima do texto de 13 px).
+const OPTICAL_DROP: f32 = 0.12; // LITERAL-PX-OK: fração do corpo, não pixels
+
 /// ⚠️ `fn` e nao `const`: a escala e AUTORAVEL (plano UI/UX W4c.2), entao este numero e lido
 /// por quadro em vez de assado na compilacao.
 pub(super) fn pad_y() -> f32 {
@@ -81,9 +85,40 @@ pub fn paint_context_menu_overlay(
     luz: &crate::luz_edits::PreferenciaDaLuz,
     viewport: Rect,
 ) {
-    let Some(req) = store.context_menu() else {
-        return;
-    };
+    // ⭐ A cascata: os pais primeiro, a ponta por cima — cada nível com a linha-mãe acesa.
+    for (depth, req) in store.menu_chain().into_iter().enumerate() {
+        let mae = store.menu_open_row(depth);
+        paint_nivel(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            project,
+            motion,
+            luz,
+            viewport,
+            req,
+            mae,
+        );
+    }
+}
+
+/// Um nível da cascata (ou o menu sozinho). `mae` é a linha dele com o submenu aberto.
+#[allow(clippy::too_many_arguments)]
+fn paint_nivel(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    project: &crate::project::ProjectSettings,
+    motion: &crate::motion::UiMotion,
+    luz: &crate::luz_edits::PreferenciaDaLuz,
+    viewport: Rect,
+    req: crate::interaction::ContextMenuRequest,
+    mae: Option<ph2d_a11y::NodeId>,
+) {
     // ⚠️ A tabela mora no `menu_rows` desde que a paleta de comandos passou a oferecer os
     // mesmos verbos: uma segunda lista aqui divergiria da que a paleta lê.
     //
@@ -253,7 +288,7 @@ pub fn paint_context_menu_overlay(
         // ⭐ Uma linha INDISPONÍVEL pinta-se apagada e sem realce — a mesma porta que o despacho lê
         //   para engolir o clique ([`WidgetStore::menu_row_is_unavailable`]).
         let indisponivel = store.menu_row_is_unavailable(*id);
-        if Some(*id) == store.hot_id() && !indisponivel {
+        if (Some(*id) == store.hot_id() || Some(*id) == mae) && !indisponivel {
             superficie.realce(scene, r);
         }
         let pad_x = Spacing::Md.px();
@@ -364,20 +399,16 @@ pub fn paint_context_menu_overlay(
                 ColorToken::Text2
             }),
         );
-        // Cascade indicator — real `IconId::ChevronRight` glyph at the right edge (Enio
-        // 2026-05-25: "usando emojis e não ícones"). ⭐ Só onde HÁ submenu (dono 12/11): as
-        // categorias das Preferências e as cascatas da barra (`menu_bar::CASCADES`).
-        if matches!(req.kind, ContextMenuKind::SettingsMenu)
-            || super::menu_bar::cascade_of(*id).is_some()
-            || *id == crate::ids::MENUBAR_EDIT_PREFERENCES
-            || *id == crate::ids::MENUBAR_VIEW_THEME
-        {
-            let chev = Rect::new(r.x + r.w - pad_x - icon_size, icon_y, icon_size, icon_size);
+        // «›» só onde HÁ submenu (dono 12/11) — a porta é `menu_cascade::opens_submenu`.
+        if super::menu_cascade::opens_submenu(*id) {
+            // O centro óptico do texto fica abaixo do centro da caixa: o «›» desce com ele.
+            let cy = icon_y + TypeToken::Sm.px() * OPTICAL_DROP;
+            let chev = Rect::new(r.x + r.w - pad_x - icon_size, cy, icon_size, icon_size);
             paint_icon(
                 scene,
                 IconId::ChevronRight,
                 chev,
-                superficie.cor(ColorToken::Text3),
+                superficie.cor(ColorToken::Text2),
                 StrokeToken::Default.px(),
             );
         }

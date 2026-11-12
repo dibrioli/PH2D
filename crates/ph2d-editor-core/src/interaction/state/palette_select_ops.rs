@@ -28,11 +28,21 @@ impl WidgetStore {
             self.command_palette_scopes(),
         );
         let ids = item_ids(&view.model);
+        // Em lista o destaque por omissão é a 1.ª linha que se pinta, não o melhor da busca.
+        let top = view.top.filter(|_| !model.is_list());
         self.command_palette_scope
             .highlight
             .filter(|id| ids.contains(id))
-            .or(view.top)
+            .or(top)
             .or_else(|| ids.first().copied())
+    }
+
+    /// ⭐ A busca de uma paleta em LISTA mudou: o destaque antigo sai no mesmo instante (o Enter do
+    /// mesmo quadro corre a 1.ª linha filtrada, não a que estava destacada).
+    pub(super) fn drop_list_highlight(&mut self) {
+        if self.command_palette.as_ref().is_some_and(|m| m.is_list()) {
+            self.command_palette_scope.highlight = None;
+        }
     }
 
     /// Destaca `id` (um clique num item). O clique sai da busca, como num campo de verdade.

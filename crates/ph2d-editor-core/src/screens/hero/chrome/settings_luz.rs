@@ -6,7 +6,7 @@
 //! escreve em `HeroScreen.luz2d`, o dono do facto; a shell aplica-o à luz do quadro e persiste-o.
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::luz_edits::NivelDaLuz;
 use crate::screens::hero::HeroScreen;
 
@@ -15,12 +15,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if id == ids::CTX_MENU_SETTINGS_LIGHT {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsLightSubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsLightSubmenu,
+        );
         return true;
     }
     if id == ids::CTX_MENU_LIGHT_AUTO {

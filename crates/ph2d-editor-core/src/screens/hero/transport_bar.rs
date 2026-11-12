@@ -9,7 +9,7 @@ use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
 
 /// Os botões, pela ordem da barra. O dono os pediu nesta ordem.
@@ -24,9 +24,35 @@ pub const BOTOES: [(NodeId, IconId); 5] = [
 /// ⭐ O botão «Controls» (dono 10/11): à direita do Stop, depois de um separador, numa moldura própria.
 pub const CONTROLS: (NodeId, IconId) = (ids::TOPBAR_PLAYER_CONTROLS, IconId::Gamepad);
 
+/// ⭐ **A fila do jogo na FAIXA** (versão C, dono 12/11): o Play com nome (joga onde se jogou por
+/// último), a seta que escolhe o palco, Pause e Stop. Os três de [`BOTOES`] são as linhas da seta.
+pub const FAIXA: [(NodeId, IconId); 4] = [
+    (ids::TOPBAR_PLAY_BUTTON, IconId::Play),
+    (ids::MENUBAR_PLAY_MENU, IconId::ChevronDown),
+    (ids::TOPBAR_PAUSE, IconId::Pause),
+    (ids::TOPBAR_RESET, IconId::Stop),
+];
+
+/// O nome no botão Play.
+fn nome_do_play() -> &'static str {
+    ph2d_i18n::tr("chrome.topbar.name.play")
+}
+
+/// A largura do Play com nome: o glifo, o nome e o respiro dos dois lados.
+#[must_use]
+pub fn play_width(text_system: &mut ph2d_text::TextSystem, bar_h: f32) -> f32 {
+    let nome = text_system.prefix_width(nome_do_play(), TypeToken::Sm.px());
+    Spacing::Sm.px() + crate::paint::icon_glyph_side(bar_h) + crate::paint::rect_for_label(nome)
+}
+
+/// A largura da seta do palco.
+fn largura_da_seta() -> f32 {
+    ph2d_tokens::INLINE_ICON_PX + Spacing::Sm.px()
+}
+
 /// Regista os botões. Chamado pelo `pre_populate` do hero.
 pub fn populate(store: &mut WidgetStore) {
-    for (id, _) in BOTOES.into_iter().chain([CONTROLS]) {
+    for (id, _) in BOTOES.into_iter().chain(FAIXA).chain([CONTROLS]) {
         store.register(
             id,
             InteractiveState::Button {
@@ -41,22 +67,24 @@ fn vao_do_separador() -> f32 {
     Spacing::Sm.px()
 }
 
-/// ⭐ **A porta da geometria:** os cinco do jogo centrados na barra e, se o centro cair sobre os vizinhos, no meio do
-/// vão entre `start_x` e `end_x`; o [`CONTROLS`] por último, à direita deles depois do [`separador`]. Vazio se não
-/// couberem: um botão por cima de um menu rouba-lhe o clique.
+/// ⭐ **A porta da geometria:** a [`FAIXA`] encostada à direita (`end_x`) — o centro é do campo de busca —, o Play
+/// com a largura do nome (`play_w`, de [`play_width`]); o [`CONTROLS`] por último, depois do [`separador`]. Vazio se
+/// não couberem depois de `start_x`: um botão por cima de um menu rouba-lhe o clique.
 #[must_use]
-pub fn rects(bar: Rect, start_x: f32, end_x: f32) -> Vec<(NodeId, IconId, Rect)> {
+pub fn rects(bar: Rect, start_x: f32, end_x: f32, play_w: f32) -> Vec<(NodeId, IconId, Rect)> {
     let lado = bar.h;
-    let jogo = lado * BOTOES.len() as f32;
+    let larguras = [play_w, largura_da_seta(), lado, lado];
+    let jogo: f32 = larguras.iter().sum();
     let total = jogo + vao_do_separador() * 2.0 + lado;
     let vao = Spacing::Sm.px();
     let (de, ate) = (start_x + vao, end_x - vao);
     if ate - de < total {
         return Vec::new();
     }
-    let x = crate::math::safe_clamp(bar.x + (bar.w - jogo) * 0.5, de, ate - total);
-    com_controls(BOTOES.iter().enumerate().map(|(i, (id, icon))| {
-        let r = Rect::new(x + lado * i as f32, bar.y, lado, bar.h);
+    let mut x = ate - total;
+    com_controls(FAIXA.iter().zip(larguras).map(|((id, icon), w)| {
+        let r = Rect::new(x, bar.y, w, bar.h);
+        x += w;
         (*id, *icon, r)
     }))
 }
@@ -174,7 +202,7 @@ pub fn paint_palco(
         let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
         fill_rounded_rect(scene, u, raio, chao_da_barra(theme));
     }
-    paint(&botoes, run, scene, theme, hit_index, store);
+    paint(&botoes, run, scene, text_system, theme, hit_index, store);
     let _ = super::topbar::paint_hover_tooltip(scene, text_system, theme, hit_index, store, area);
 }
 
@@ -190,6 +218,8 @@ pub fn aceso(id: NodeId, run: GameRun) -> bool {
     .find_map(|(botao, s)| (botao == id).then_some(s));
     match palco {
         Some(s) => run.stage == Some(s) && !run.paused(),
+        // O Play com nome acende em qualquer palco.
+        None if id == ids::TOPBAR_PLAY_BUTTON => run.stage.is_some() && !run.paused(),
         None if id == CONTROLS.0 => run.controls_open,
         None => id == ids::TOPBAR_PAUSE && run.paused(),
     }
@@ -265,11 +295,12 @@ fn moldura_controls(
     })
 }
 
-/// Pinta os botões e regista os alvos.
+/// Pinta os botões e regista os alvos. O Play da faixa (mais largo que alto) leva o nome ao lado do glifo.
 pub fn paint(
     botoes: &[(NodeId, IconId, Rect)],
     run: GameRun,
     scene: &mut VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
@@ -311,14 +342,24 @@ pub fn paint(
                 theme,
             )
         };
-        let lado = crate::paint::icon_glyph_side(r.h);
-        let glifo = Rect::new(
-            r.x + (r.w - lado) * 0.5,
-            r.y + (r.h - lado) * 0.5,
-            lado,
-            lado,
-        );
+        let com_nome = *id == ids::TOPBAR_PLAY_BUTTON && r.w > r.h;
+        let lado = if *id == ids::MENUBAR_PLAY_MENU {
+            ph2d_tokens::INLINE_ICON_PX
+        } else {
+            crate::paint::icon_glyph_side(r.h)
+        };
+        let gx = if com_nome {
+            r.x + Spacing::Sm.px()
+        } else {
+            r.x + (r.w - lado) * 0.5
+        };
+        let glifo = Rect::new(gx, r.y + (r.h - lado) * 0.5, lado, lado);
         crate::paint::paint_icon(scene, *icon, glifo, cor, StrokeToken::Default.px());
+        if com_nome {
+            let nome = super::menu_faixa::caixa_do_nome(text_system, nome_do_play(), *r, gx + lado);
+            let px = TypeToken::Sm.px();
+            crate::paint::paint_text_centered(text_system, scene, nome_do_play(), nome, px, cor);
+        }
         hit_index.register(*id, *r);
     }
 }

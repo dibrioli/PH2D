@@ -64,6 +64,7 @@ pub(super) fn paint_header(
     header_y: f32,
     pad: f32,
     lk: &Look,
+    total: Option<usize>,
 ) -> Rect {
     let header_h = lk.header_h;
     let font = lk.title_font;
@@ -85,7 +86,14 @@ pub(super) fn paint_header(
     // paleta de componentes lia *"43 nodes"* sobre uma lista onde não há nó nenhum. Um substantivo
     // genérico é a resposta certa para um widget genérico; um campo novo no modelo seria pedir a
     // três consumidores que declarassem o óbvio.
-    let count_str = ph2d_i18n::tr_with("chrome.palette.n_items", &[("n", &model.item_count())]);
+    let shown = model.item_count();
+    let count_str = match total {
+        // A lista, a filtrar: «7 of 116».
+        Some(all) if shown != all => {
+            ph2d_i18n::tr_with("chrome.palette.n_of_m", &[("n", &shown), ("m", &all)])
+        }
+        _ => ph2d_i18n::tr_with("chrome.palette.n_items", &[("n", &shown)]),
+    };
     let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
     let close_x = card_x + card_w - CLOSE_W - pad;
     let count_x = close_x - count_w - Spacing::Sm.px();

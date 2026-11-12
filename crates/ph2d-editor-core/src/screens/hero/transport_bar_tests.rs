@@ -5,27 +5,61 @@ use crate::interaction::{HitIndex, WidgetStore};
 
 const BARRA: Rect = Rect::new(0.0, 0.0, 1000.0, 24.0);
 
+/// A largura do Play com nome nestes testes (a real mede-se contra o texto: `play_width`).
+const PLAY_W: f32 = 60.0;
+
+/// Versão C (dono 12/11): o centro é do campo de busca; o jogo encosta à direita.
 #[test]
-fn ficam_no_centro_da_barra() {
-    let r = rects(BARRA, 100.0, 800.0);
-    assert_eq!(r.len(), 6, "os cinco do jogo e o Controls");
-    let inicio = r[0].2.x;
+fn ficam_encostados_a_direita() {
+    let r = rects(BARRA, 100.0, 800.0, PLAY_W);
+    let ids: Vec<_> = r.iter().map(|(id, ..)| *id).collect();
+    assert_eq!(
+        ids,
+        [
+            ids::TOPBAR_PLAY_BUTTON,
+            ids::MENUBAR_PLAY_MENU,
+            ids::TOPBAR_PAUSE,
+            ids::TOPBAR_RESET,
+            CONTROLS.0
+        ],
+        "o Play com nome, a seta, Pause, Stop e o Controls"
+    );
     let fim = r[4].2.x + r[4].2.w;
-    assert!(((inicio + fim) * 0.5 - 500.0).abs() < 0.01);
+    assert!(fim <= 800.0 && 800.0 - fim <= Spacing::Sm.px() + 0.01);
+    assert!(
+        (r[0].2.w - PLAY_W).abs() < 0.01,
+        "o Play tem a largura do nome"
+    );
+    for par in r.windows(2) {
+        assert!(par[0].2.x + par[0].2.w <= par[1].2.x + 0.01, "pisam-se");
+    }
 }
 
-/// Mutação: tirar o `clamp` ⇒ os botões caem sobre as abas da direita.
+/// Mutação: tirar o `if ate - de < total` ⇒ os botões caem sobre o que está à esquerda.
 #[test]
-fn saem_do_centro_antes_de_pisar_nos_vizinhos() {
-    let r = rects(BARRA, 100.0, 520.0);
-    assert_eq!(r.len(), 6);
-    assert!(r[5].2.x + r[5].2.w <= 520.0);
+fn nao_pisam_no_vizinho_da_esquerda() {
+    let r = rects(BARRA, 100.0, 520.0, PLAY_W);
+    assert_eq!(r.len(), 5);
+    assert!(r[4].2.x + r[4].2.w <= 520.0);
     assert!(r[0].2.x >= 100.0);
 }
 
 #[test]
 fn sem_espaco_nao_aparecem() {
-    assert!(rects(BARRA, 100.0, 150.0).is_empty());
+    assert!(rects(BARRA, 100.0, 150.0, PLAY_W).is_empty());
+}
+
+/// O Play com nome acende em qualquer palco; a seta nunca.
+#[test]
+fn o_play_com_nome_acende_com_o_jogo() {
+    let corre = GameRun {
+        stage: Some(GameStage::Editor),
+        playing: true,
+        ..Default::default()
+    };
+    assert!(aceso(ids::TOPBAR_PLAY_BUTTON, corre));
+    assert!(!aceso(ids::TOPBAR_PLAY_BUTTON, GameRun::default()));
+    assert!(!aceso(ids::MENUBAR_PLAY_MENU, corre));
 }
 
 #[test]
@@ -76,8 +110,9 @@ fn a_tela_cheia_tem_jogar_pausar_e_parar_no_topo_ao_centro() {
 /// e um ponto fora não é de ninguém. Mutação: registar o `glifo` em vez de `r` ⇒ a borda deixa de responder.
 #[test]
 fn a_area_clicavel_e_o_quadrado_que_o_botao_desenha() {
+    let mut ts = ph2d_text::TextSystem::new();
     for (botoes, run) in [
-        (rects(BARRA, 100.0, 800.0), GameRun::default()),
+        (rects(BARRA, 100.0, 800.0, PLAY_W), GameRun::default()),
         (
             rects_palco(BARRA),
             GameRun {
@@ -92,6 +127,7 @@ fn a_area_clicavel_e_o_quadrado_que_o_botao_desenha() {
             &botoes,
             run,
             &mut scene,
+            &mut ts,
             Theme::Dark,
             &mut hits,
             &WidgetStore::default(),
@@ -108,35 +144,36 @@ fn a_area_clicavel_e_o_quadrado_que_o_botao_desenha() {
     }
 }
 
-/// ⭐ Dono 10/11: o «Controls» vem à direita do Stop, com o separador entre eles, e o grupo do jogo fica ao centro.
+/// ⭐ Dono 10/11: o «Controls» vem à direita do Stop, com o separador entre eles, e o grupo todo encostado à direita.
 /// Mutação: tirar o `chain` do `rects` ⇒ o botão some; tirar o vão do separador ⇒ o separador cai sobre um botão.
 #[test]
 fn o_controls_fica_a_direita_do_stop_com_um_separador_entre_eles() {
-    let r = rects(BARRA, 100.0, 800.0);
-    assert_eq!(r.len(), 6);
-    assert_eq!((r[4].0, r[5].0), (ids::TOPBAR_RESET, CONTROLS.0));
-    assert_eq!(r[5].1, IconId::Gamepad);
+    let r = rects(BARRA, 100.0, 800.0, PLAY_W);
+    assert_eq!(r.len(), 5);
+    assert_eq!((r[3].0, r[4].0), (ids::TOPBAR_RESET, CONTROLS.0));
+    assert_eq!(r[4].1, IconId::Gamepad);
     let s = separador(&r).expect("o separador");
-    let fim_do_stop = r[4].2.x + r[4].2.w;
+    let fim_do_stop = r[3].2.x + r[3].2.w;
     assert!(
-        s.x > fim_do_stop && s.x + s.w < r[5].2.x,
+        s.x > fim_do_stop && s.x + s.w < r[4].2.x,
         "{s:?} fora do vão"
     );
     assert!(
-        s.h > 0.0 && s.h < r[5].2.h,
+        s.h > 0.0 && s.h < r[4].2.h,
         "o separador é vertical e mais baixo que o botão"
     );
 }
 
-/// A moldura do «Controls» não é a pílula do grupo: a pílula acaba no Stop, antes do separador. Mutação: unir os seis na
+/// A moldura do «Controls» não é a pílula do grupo: a pílula acaba no Stop, antes do separador. Mutação: unir os cinco na
 /// `pilula` ⇒ reprova.
 #[test]
 fn o_controls_tem_moldura_propria_fora_da_pilula_do_jogo() {
-    let r = rects(BARRA, 100.0, 800.0);
+    let r = rects(BARRA, 100.0, 800.0, PLAY_W);
     let p = pilula(&r).expect("a pílula");
     let s = separador(&r).expect("o separador");
-    assert!((p.x + p.w - (r[4].2.x + r[4].2.w)).abs() < 0.01);
-    assert!(p.x + p.w < s.x && s.x < r[5].2.x);
+    assert!((p.x - r[0].2.x).abs() < 0.01, "a pílula começa no Play");
+    assert!((p.x + p.w - (r[3].2.x + r[3].2.w)).abs() < 0.01);
+    assert!(p.x + p.w < s.x && s.x < r[4].2.x);
 }
 
 /// Aceso = a tela aberta; desligado fora do Play ou num jogo sem tela.
@@ -245,13 +282,14 @@ fn a_dica_do_controls_nunca_corta_e_cabe_na_janela() {
                     ..Default::default()
                 };
                 publish(&mut hero, run);
-                let botoes = rects(bar, largura * 0.25, largura * 0.75);
+                let botoes = rects(bar, largura * 0.25, largura * 0.75, PLAY_W);
                 let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
                 let run = hero.view.game_run;
                 paint(
                     &botoes,
                     run,
                     &mut scene,
+                    &mut ts,
                     Theme::Dark,
                     &mut hits,
                     &hero.store,
@@ -285,7 +323,7 @@ fn a_dica_do_controls_nunca_corta_e_cabe_na_janela() {
                 let dica = crate::widget::mede_a_dica(&mut ts, &frase, janela.w);
                 assert_eq!(dica.linhas.join(" "), frase, "as linhas cobrem a frase");
                 let r = crate::screens::hero::topbar::tooltip_rect(
-                    botoes[5].2,
+                    botoes[botoes.len() - 1].2,
                     dica.w,
                     dica.h,
                     Spacing::Sm.px(),
@@ -393,7 +431,8 @@ fn com_a_tela_aberta_o_controls_acende_so_sob_o_ponteiro() {
         button: PointerButton::Primary,
         timestamp_ns: 0,
     };
-    for botoes in [rects(BARRA, 100.0, 800.0), rects_palco(BARRA)] {
+    let mut ts = ph2d_text::TextSystem::new();
+    for botoes in [rects(BARRA, 100.0, 800.0, PLAY_W), rects_palco(BARRA)] {
         let mut hero = crate::screens::hero::HeroScreen::new(NodeId(1));
         let mut scene = VectorScene::new();
         let (hits, store) = (&mut hero.hit_index, &hero.store);
@@ -401,6 +440,7 @@ fn com_a_tela_aberta_o_controls_acende_so_sob_o_ponteiro() {
             &botoes,
             GameRun::default(),
             &mut scene,
+            &mut ts,
             Theme::Dark,
             hits,
             store,
@@ -484,7 +524,8 @@ fn loja_com(hover: bool) -> WidgetStore {
 /// hover da casa): com a tela aberta, pairar muda o botão. Mutação: o acento ignorar o `hover` ⇒ aceso = aceso+hover.
 #[test]
 fn o_controls_normal_aceso_e_aceso_pairado_pintam_diferente() {
-    let r = rects(BARRA, 100.0, 800.0);
+    let r = rects(BARRA, 100.0, 800.0, PLAY_W);
+    let mut ts = ph2d_text::TextSystem::new();
     let ligado = GameRun {
         stage: Some(GameStage::Editor),
         playing: true,
@@ -495,7 +536,7 @@ fn o_controls_normal_aceso_e_aceso_pairado_pintam_diferente() {
         controls_open: true,
         ..ligado
     };
-    let pinta = |run: GameRun, hover: bool| {
+    let mut pinta = |run: GameRun, hover: bool| {
         let store = loja_com(hover);
         format!(
             "{:?}",
@@ -503,6 +544,7 @@ fn o_controls_normal_aceso_e_aceso_pairado_pintam_diferente() {
                 &r,
                 run,
                 scene,
+                &mut ts,
                 Theme::Dark,
                 &mut HitIndex::default(),
                 &store
@@ -598,9 +640,10 @@ fn na_tela_cheia_a_moldura_e_o_separador_sao_os_da_barra_do_editor() {
         assert_eq!(fundo, [realce[0]], "o fundo aceso ≠ o realce do Pause");
         let normal = gravado(|scene| {
             paint(
-                &rects(BARRA, 100.0, 800.0),
+                &rects(BARRA, 100.0, 800.0, PLAY_W),
                 run,
                 scene,
+                &mut ts,
                 theme,
                 &mut HitIndex::default(),
                 &store,

@@ -1,57 +1,29 @@
-//! ⭐⭐ **A BARRA DE MENUS** — *File · Edit · View · Window*, a barra global da **D2**.
+//! ⭐⭐ **A BARRA DE MENUS** — as TABELAS dos cinco menus (*File · Edit · View · Window · Help*) e
+//! a faixa que os hospeda.
 //!
-//! Enio, 2026-08-30: *«Pode tirar também os botões do topo para começarmos a trabalhar a barra
-//! superior.»* Os 29 pills saíram na wave anterior; esta é o que fica no lugar deles.
+//! Desde a onda 2 (versão C, dono 12/11 — revoga a D2 «menus à vista») os cinco moram dentro do
+//! botão «Menu» ([`super::menu_faixa`]), em cascata de verdade ([`super::menu_cascade`]); este
+//! ficheiro guarda as tabelas ([`MENUS`], [`CASCADES`], [`GROUP_BREAKS`], [`MODULE_TRUTHS`]) e o
+//! pintor da faixa.
 //!
-//! # A lei desta barra: ela REALOJA, não constrói
+//! # A lei: a barra REALOJA, não constrói
 //!
-//! ⚠️ **Quase toda linha destes quatro menus leva um id que já existia.** O *Save* é o
-//! `CTX_MENU_SAVE` do `chrome::io_menu`; o *Motion Nodes* é o `TOPBAR_MOTION` que o pill levava, e
-//! quem o despacha continua a ser o `chrome::motion_toggle`. É a **D2** ao pé da letra
-//! (`docs/UI_New_and_Simple/00_DECISOES_DO_ENIO.md`): *existe um sítio canónico para cada comando*
-//! — e um comando com dois ids tem dois sítios a apodrecer em separado.
+//! ⚠️ **Quase toda linha destes menus leva um id que já existia** (o *Save* é o `CTX_MENU_SAVE`
+//! do `chrome::io_menu`; o *Motion Nodes* é o `TOPBAR_MOTION`): existe um sítio canónico para cada
+//! comando, e um comando com dois ids tem dois sítios a apodrecer em separado.
 //!
-//! ⇒ nasceram **quatro** ids de linha, e só onde não havia verbo nenhum a alcançar: a régua, o
-//! tema como categoria, as preferências, e a imagem nova (que só a tecla abria).
-//!
-//! # ⭐ Uma TABELA, três consumidores
-//!
-//! [`MENUS`] é a fonte, e [`menu_rects`] é a porta:
-//!
-//! | quem | o que pergunta |
-//! |---|---|
-//! | [`paint_menu_bar`] | onde desenho cada título |
-//! | [`paint_menu_bar`] (hit) | que rectângulo registo para cada título |
-//! | `interaction::dispatch::pointer_down_menus` | que menu abre este clique |
-//!
-//! ⛔ **Foi assim de propósito.** O trilho lateral tinha a mesma aritmética escrita **TRÊS**
-//! vezes — o pintor (`widget/tool_rail/paint.rs`), o registo de hit do trilho e o do flyout
-//! (`left_rail.rs`) —, e nada no repo ligava as três: um pintor horizontal com um hit vertical
-//! compilaria e passaria a suíte inteira. ⭐ A wave seguinte curou-o com `widget::entry_rects`;
-//! ⚠️ esta nota dizia *«tem»* e *«duas»*, e ficou errada nas duas metades um commit depois.
-//!
-//! # ⚠️ A banda é a MESMA do chrome legado, e é uma escolha
-//!
-//! A barra ocupa `ChromeBands::top_bar_h`, que é a faixa que a barra de pills ocupava — logo a
-//! `F9` **troca** as duas em vez de as empilhar. Duas faixas empilhadas custariam altura
-//! permanente ao alvo de 1024 pontos por causa de um interruptor de bissecção.
-//!
-//! ⚠️ **E ela SUBTRAI altura, nunca flutua** (spec §4): a área de desenho começa por baixo dela,
-//! como as colunas começam ao lado do trilho. *Uma barra global a flutuar reproduziria, num modelo
-//! novo, o defeito da régua tapada que a wave anterior curou.*
+//! ⚠️ **A faixa SUBTRAI altura, nunca flutua** (`ChromeBands::top_bar_h`): a área de desenho
+//! começa por baixo dela.
 
 use super::HeroLayout;
 use crate::ids;
 use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_text_centered, rect_for_label, rect_to_vello, resolve,
-};
+use crate::paint::rect_to_vello;
 use crate::widget::ButtonState;
-use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::TextKey;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Theme};
 use ph2d_vector::VectorScene;
 
 /// A altura da barra — **uma linha de menu**, que é o que um título é.
@@ -94,13 +66,34 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// Uma tabela, quatro consumidores: o despacho (`chrome::menu_bar` abre o submenu ancorado na
 /// linha), o fecho antecipado ([`close_on_row_click`] deixa-as de fora), o pintor (o «›» só nelas)
 /// e [`leaf_rows`] (a paleta e os censos atravessam a cascata até às folhas).
-pub const CASCADES: [(NodeId, ContextMenuKind); 7] = [
+pub const CASCADES: [(NodeId, ContextMenuKind); 12] = [
+    // Os cinco menus, linhas do botão «Menu» (onda 2).
+    (ids::MENUBAR_FILE, ContextMenuKind::MenuBarFile),
+    (ids::MENUBAR_EDIT, ContextMenuKind::MenuBarEdit),
+    (ids::MENUBAR_VIEW, ContextMenuKind::MenuBarView),
+    (ids::MENUBAR_WINDOW, ContextMenuKind::MenuBarWindow),
+    (ids::MENUBAR_HELP, ContextMenuKind::MenuBarHelp),
     (ids::MENUBAR_FILE_NEW_MENU, ContextMenuKind::MenuBarFileNew),
-    (ids::MENUBAR_FILE_IMPORT_MENU, ContextMenuKind::MenuBarFileImport),
-    (ids::MENUBAR_FILE_EXPORT_MENU, ContextMenuKind::MenuBarFileExport),
-    (ids::MENUBAR_WINDOW_AUDIO_MENU, ContextMenuKind::MenuBarWindowAudio),
-    (ids::MENUBAR_WINDOW_PIXEL_MENU, ContextMenuKind::MenuBarWindowPixel),
-    (ids::MENUBAR_WINDOW_PLAN_MENU, ContextMenuKind::MenuBarWindowPlan),
+    (
+        ids::MENUBAR_FILE_IMPORT_MENU,
+        ContextMenuKind::MenuBarFileImport,
+    ),
+    (
+        ids::MENUBAR_FILE_EXPORT_MENU,
+        ContextMenuKind::MenuBarFileExport,
+    ),
+    (
+        ids::MENUBAR_WINDOW_AUDIO_MENU,
+        ContextMenuKind::MenuBarWindowAudio,
+    ),
+    (
+        ids::MENUBAR_WINDOW_PIXEL_MENU,
+        ContextMenuKind::MenuBarWindowPixel,
+    ),
+    (
+        ids::MENUBAR_WINDOW_PLAN_MENU,
+        ContextMenuKind::MenuBarWindowPlan,
+    ),
     (
         ids::MENUBAR_HELP_DEVELOPER_MENU,
         ContextMenuKind::MenuBarHelpDeveloper,
@@ -115,10 +108,10 @@ pub fn cascade_of(id: NodeId) -> Option<ContextMenuKind> {
         .find_map(|(row, kind)| (*row == id).then_some(*kind))
 }
 
-/// Este menu é da barra — um dos cinco títulos ou um submenu deles?
+/// Este menu é da barra — o do botão «Menu», um dos cinco ou um submenu deles?
 #[must_use]
 pub fn is_bar_menu(kind: ContextMenuKind) -> bool {
-    MENUS.iter().any(|(_, _, k)| *k == kind) || CASCADES.iter().any(|(_, k)| *k == kind)
+    kind == ContextMenuKind::MenuBarRoot || CASCADES.iter().any(|(_, k)| *k == kind)
 }
 
 /// ⭐ **OS GRUPOS** — a linha ANTES da qual o menu da barra pinta um divisor. Um menu de 9 linhas
@@ -182,11 +175,6 @@ pub const OWN_ROWS: [NodeId; 20] = [
     ids::MENUBAR_VIEW_FRAME_SELECTED,
 ];
 
-/// Recuo da barra à esquerda, para o primeiro título não nascer colado à borda da janela.
-fn bar_inset_x() -> f32 {
-    Spacing::Sm.px()
-}
-
 /// Regista os quatro títulos e as quatro linhas próprias. Chamado por
 /// [`super::pre_populate::populate_shared`].
 ///
@@ -201,6 +189,10 @@ pub fn populate(store: &mut WidgetStore) {
                 state: ButtonState::Normal,
             },
         );
+    }
+    for id in [ids::MENUBAR_W, ids::MENUBAR_FIND] {
+        let state = ButtonState::Normal;
+        store.register(id, InteractiveState::Button { state });
     }
     // ⛔ O fundo é `Plain`: ele não é um botão, é a superfície que ENGOLE o clique — ver
     // `ids::MENUBAR_BACKDROP`.
@@ -277,6 +269,8 @@ pub enum ModuleTruth {
     Column(crate::screens::layout::DockSide),
     /// A fila ② está embaixo da área (F5)? Aceso = embaixo.
     ToolRowBottom,
+    /// O Play joga neste palco (a seta ao lado do Play).
+    Stage(crate::game_stage::GameStage),
 }
 
 impl ModuleTruth {
@@ -289,13 +283,26 @@ impl ModuleTruth {
             Self::Rulers => hero.view.rulers_visible,
             Self::Column(side) => !super::dock_columns::is_closed(hero, side),
             Self::ToolRowBottom => hero.store.tool_row_bottom(),
+            Self::Stage(s) => hero.view.game_stage == s,
         }
     }
 }
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 27] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 30] = [
+    (
+        ids::MENUBAR_RUN_EDITOR,
+        ModuleTruth::Stage(crate::game_stage::GameStage::Editor),
+    ),
+    (
+        ids::MENUBAR_RUN_WINDOW,
+        ModuleTruth::Stage(crate::game_stage::GameStage::Window),
+    ),
+    (
+        ids::MENUBAR_RUN_FULLSCREEN,
+        ModuleTruth::Stage(crate::game_stage::GameStage::Fullscreen),
+    ),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -393,47 +400,9 @@ pub fn row_is_marked_by_button_state(id: NodeId) -> bool {
     MODULE_TRUTHS.iter().any(|(mid, _)| *mid == id)
 }
 
-/// ⭐ **A PORTA** — onde cada título fica, medido contra o texto real.
-///
-/// ⚠️ A largura sai do `prefix_width`, não de um número por título: *Window* é mais largo que
-/// *File*, e alvos de largura fixa dariam ou um buraco ou um recorte conforme a fonte.
-#[must_use]
-pub fn menu_rects(
-    bar: Rect,
-    text_system: &mut TextSystem,
-) -> [(NodeId, &'static str, Rect); MENUS.len()] {
-    let font = TypeToken::Sm.px();
-    let mut x = bar.x + bar_inset_x();
-    std::array::from_fn(|i| {
-        let (id, key, _) = MENUS[i];
-        let title = key.tr();
-        // ⚠️ Pela PORTA da casa e nunca `texto + 2·recuo` à mão: a volta em vírgula flutuante fica
-        //    um ULP abaixo do texto em `2,65 %` do domínio, e o pintor elide com `<=` (2026-10-01:
-        //    `Window` → `Wind…` com a Inter de verdade). [`rect_for_label`] já paga esse ULP.
-        let w = rect_for_label(text_system.prefix_width(title, font));
-        let r = Rect::new(x, bar.y, w, bar.h);
-        x += w;
-        (id, title, r)
-    })
-}
-
-/// Pinta um título no rectângulo que o [`menu_rects`] mediu para ele — uma função só para o gate
-/// percorrer o MESMO caminho que a barra.
-fn pinta_titulo(
-    text_system: &mut TextSystem,
-    scene: &mut VectorScene,
-    title: &str,
-    r: Rect,
-    fg: ph2d_vector::Color,
-) {
-    paint_text_centered(text_system, scene, title, r, TypeToken::Sm.px(), fg);
-}
-
-/// Desenha a barra e regista os alvos dos títulos.
-///
-/// ⚠️ O título cujo menu está **aberto** fica realçado — sem isso, um menu aberto não diz de onde
-/// saiu, e o segundo clique (o que o fecha) parece não ter alvo.
-#[allow(clippy::too_many_arguments)] // o relógio é o 7º, como nos irmãos do chrome
+/// Desenha a faixa (versão C): «Menu» · abas de documento · «Find anything» · o jogo. A geometria
+/// é a de [`super::menu_faixa::faixa`].
+#[allow(clippy::too_many_arguments)]
 pub fn paint_menu_bar(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -451,72 +420,16 @@ pub fn paint_menu_bar(
     }
     let chao = super::transport_bar::chao_da_barra(theme);
     scene.fill_rect(rect_to_vello(bar), chao);
-    // ⛔⛔ **PRIMEIRO o fundo, e por isso ele PERDE para os títulos** — o `HitIndex` caminha de
-    // trás para a frente, então o que se regista antes fica por baixo. Sem esta linha a barra
-    // pinta 1366 px de opaco e deixa passar **86,9 %** deles para o desenho.
+    // ⛔ PRIMEIRO o fundo: o `HitIndex` caminha de trás para a frente, e ele engole o clique que
+    // não é de ninguém (senão a barra opaca deixava-o passar para o desenho).
     hit_index.register(ids::MENUBAR_BACKDROP, bar);
-    let open = store.context_menu().map(|r| r.kind);
-    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
-    let em_cartoes = superficie.tinta().is_some();
-    for (id, title, r) in menu_rects(bar, text_system) {
-        let state = store.button_state(id).unwrap_or(ButtonState::Normal);
-        let is_open = open.is_some_and(|k| MENUS.iter().any(|(mid, _, mk)| *mid == id && *mk == k));
-        // ⛔⛔ **O TÍTULO LÊ O RELÓGIO DA UI.** A 1.ª versão desta barra resolvia a cor pelo
-        // `ButtonState` duro e ficava **imune ao carácter Expressivo/Discreto** — que é
-        // literalmente o defeito para o qual o gate `the_chrome_reads_the_ui_clock` foi escrito
-        // (Enio: *«não percebi nenhuma diferença com expressive»*). Ele continuava VERDE porque
-        // afirma que o **chrome legado** passa o relógio, e o legado só pinta sob `F9`: *um gate
-        // pode ser desarmado por um RAMO, sem um corte nem um rename a fazê-lo falhar alto.*
-        //
-        // ⚠️ **Um título com o menu ABERTO fica FORA do eixo**, pela mesma lei do chip activo do
-        // trilho: *aberto* não é uma quantidade — é o estado que diz *«o menu saiu daqui»*, e
-        // desvanecê-lo faria a barra piscar a resposta enquanto o menu está à vista.
-        let t = crate::widget::chip_axis_t(state, is_open, motion.get(id));
-        let bg = match state {
-            _ if is_open => Some(ColorToken::AccentSoft),
-            ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed => {
-                Some(ColorToken::BgElev)
-            }
-            _ => None,
-        };
-        if let Some(bg) = bg {
-            if em_cartoes {
-                superficie.realce(scene, r);
-            } else {
-                fill_rounded_rect(
-                    scene,
-                    r,
-                    crate::paint::frame_radius(theme, Radius::Sm.px()),
-                    resolve(bg, theme),
-                );
-            }
-        }
-        let fg = if is_open && !em_cartoes {
-            ColorToken::Accent
-        } else {
-            ColorToken::Text1
-        };
-        let fg = crate::widget::chip_axis_color(t, ColorToken::Text2, ColorToken::Text1, fg, theme);
-        pinta_titulo(text_system, scene, title, r, fg);
-        hit_index.register(id, r);
-    }
-    let menus_end_x = menu_rects(bar, text_system)
-        .iter()
-        .map(|(_, _, r)| r.x + r.w)
-        .fold(bar.x, f32::max);
-    // ⭐⭐ **AS ABAS DE DOCUMENTO** (MiroClone) no vazio entre os menus e as abas de layout.
-    let gap = super::document_tabs::gap_px();
-    // ⛔ As abas de layout (Scene · Draw · Vector · Flip · Animate · Nodes) SAÍRAM da faixa (dono
-    //    12/11, `docs/BarraDeMenus/01_plano.md`): o lado direito é do transporte e das abas de doc.
-    let layout_start = bar.x + bar.w;
-    // ⭐ Os botões do jogo mandam no centro; as abas de documento ficam com o vão à esquerda deles.
-    let botoes = super::transport_bar::rects(bar, menus_end_x, layout_start);
-    let docs_end = botoes.first().map_or(layout_start, |(_, _, r)| r.x);
-    super::transport_bar::paint(&botoes, run, scene, theme, hit_index, store);
+    let f = super::menu_faixa::faixa(bar, text_system);
+    super::menu_faixa::paint(&f, scene, text_system, theme, hit_index, store, motion);
+    super::transport_bar::paint(&f.jogo, run, scene, text_system, theme, hit_index, store);
     super::document_tabs::paint(
         bar,
-        menus_end_x + gap,
-        docs_end - gap,
+        f.docs.0,
+        f.docs.1,
         docs,
         scene,
         text_system,
@@ -539,26 +452,19 @@ pub fn close_on_row_click(hero: &mut super::HeroScreen, event: WidgetEvent) {
     let WidgetEvent::Click(id) = event else {
         return;
     };
-    let Some(kind) = hero.store.context_menu().map(|r| r.kind) else {
-        return;
-    };
-    if !is_bar_menu(kind) {
+    let chain = hero.store.menu_chain();
+    if !chain.first().is_some_and(|r| is_bar_menu(r.kind)) {
         return;
     }
-    if id == ids::MENUBAR_EDIT_PREFERENCES
-        || id == ids::MENUBAR_VIEW_THEME
-        || id == ids::MENUBAR_FILE_SCENES
-        || cascade_of(id).is_some()
+    if id == ids::MENUBAR_FILE_SCENES
+        || super::menu_cascade::opens_submenu(id)
         // A linha cinzenta não faz nada — nem fechar o menu (o verbo recusa; ver `io_menu`).
         || hero.store.menu_row_is_unavailable(id)
     {
         return;
     }
-    if super::menu_rows::menu_rows(kind)
-        .iter()
-        .any(|(rid, ..)| *rid == id)
-        || hero.store.doc_menu_rows(kind).any(|(rid, _)| rid == id)
-    {
+    // A linha de QUALQUER nível aberto fecha a cascata inteira.
+    if super::menu_cascade::level_of_row(&hero.store, id).is_some() {
         hero.store.close_context_menu();
     }
 }

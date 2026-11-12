@@ -19,7 +19,7 @@
 //! graus e radianos)"*.
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::project::DisplayAngle;
 use crate::screens::hero::HeroScreen;
 
@@ -28,12 +28,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if id == ids::CTX_MENU_SETTINGS_ANGLE {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsAngleSubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsAngleSubmenu,
+        );
         return true;
     }
     // Angle-unit submenu options — write to `project.display_angle` and close the

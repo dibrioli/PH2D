@@ -69,9 +69,9 @@ fn as_abas_do_topo_sao_segmentos_sem_acento() {
     let ((novo, alvos_novos), (antigo, alvos_antigos)) = nos_dois_modos(menu_bar);
     assert_eq!(alvos_novos, alvos_antigos);
     assert!(alvos_novos.len() > 6, "sem abas não prova nada");
-    // A aba de documento e os botões do jogo: duas pílulas. ⚠️ As abas de layout (Scene·Draw·…)
-    // saíram da barra por ordem do dono (12/11) — eram a terceira pílula.
-    assert_eq!(vezes(&novo, ColorToken::CardField), 2);
+    // A aba de documento, o campo «Find anything» (versão C, 12/11) e os botões do jogo: três
+    // fundos de campo. ⚠️ As abas de layout (Scene·Draw·…) saíram da barra por ordem do dono (12/11).
+    assert_eq!(vezes(&novo, ColorToken::CardField), 3);
     // Um escolhido: o documento activo (o layout escolhido saiu com as abas de layout).
     assert_eq!(vezes(&novo, ColorToken::KanbanCardRaised), 1);
     assert_eq!(vezes(&novo, ColorToken::AccentSoft), 0);

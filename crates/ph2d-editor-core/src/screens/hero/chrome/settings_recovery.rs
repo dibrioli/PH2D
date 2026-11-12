@@ -3,7 +3,7 @@
 //! Escolher escreve em [`crate::recovery_pref`]; a shell aplica-o no quadro e persiste-o.
 
 use crate::ids;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
+use crate::interaction::{ContextMenuKind, WidgetEvent};
 use crate::recovery_pref;
 use crate::screens::hero::HeroScreen;
 
@@ -12,12 +12,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if id == ids::CTX_MENU_SETTINGS_RECOVERY {
-        let (x, y) = super::cascade_anchor(hero, id);
-        hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
-            kind: ContextMenuKind::SettingsRecoverySubmenu,
-        });
+        crate::screens::hero::menu_cascade::open_cascade(
+            hero,
+            id,
+            ContextMenuKind::SettingsRecoverySubmenu,
+        );
         return true;
     }
     let Some(i) = ids::CTX_MENU_RECOVERY.iter().position(|&n| n == id) else {

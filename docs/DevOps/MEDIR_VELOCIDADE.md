@@ -27,7 +27,10 @@
    totais por rótulo desde a última chamada (chame `end_frame` no último quadro do bloco antes). A SOMA dos
    passes, não um passe sozinho (o relógio por passe mente na fronteira — doc 121 §9.13).
 6. **UMA compilação no perfil `smoke`** (otimizado e incremental). O relógio da placa não depende da otimização
-   do Rust; se a régua for de CPU, o `smoke` também é otimizado.
+   do Rust; se a régua for de CPU, o `smoke` também é otimizado. ⛔ **A × B entre DUAS compilações** (a variante é
+   código, não uma flag): `CARGO_INCREMENTAL=0` nas duas. O incremental com `codegen-units = 16` muda o código
+   gerado pelo histórico das compilações — o MESMO fonte variou até ~5 G instruções (1,3 %) no `mede_o_dab` do
+   Flat Bristle 240 (12/11, PainterWatercolor): dois «−2,9 %» comitados eram isso; limpo, 375,12 × 375,17 G.
 7. **Nenhuma espera de calma.** Imprima o `loadavg` no início e no fim, ao lado — é contexto, não porta.
 
 ## ⚠️ O que este método NÃO substitui

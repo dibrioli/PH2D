@@ -192,6 +192,8 @@ mod tests {
         ("text", "PH2D_GAME_SMOKE"),
         // A aba do SFX Lab abre sobre o mundo que o jogo monta (`ph2d_sfx_scene::ROUTER`, nível 3).
         ("sfxlab", "PH2D_SFX_SMOKE"),
+        // As cenas da aba Input Map montam-se sobre o jogo: `PH2D_GAME_SMOKE` a partir da 6 (plano `docs/InputMap/01_plano.md`).
+        ("input-map", "PH2D_GAME_SMOKE"),
     ];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter

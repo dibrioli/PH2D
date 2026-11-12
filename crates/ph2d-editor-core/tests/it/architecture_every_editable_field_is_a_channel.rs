@@ -227,7 +227,7 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "o interruptor só diz se o alcance tem número; o número tem canal (`luz_fields.4`)",
     ),
     (
-        "INSP_PLAYER_EMIT",
+        "INSP_PLAYER_EMIT_BOX",
         NaoAnimavel,
         "a caixa diz se o marcador `PlayerSignals` EXISTE: estrutura, não valor (a lei do Mask2D)",
     ),
@@ -680,13 +680,27 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/player.rs::paint_cards",
+        "sections/player_cartoes.rs::rows",
         Canal,
         &[
-            "component.field.platform_player.52",
-            "component.field.platform_player.53",
+            "component.field.platform_player.0",
+            "component.field.platform_player.1",
         ],
-        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+        "o rótulo do catálogo vem da tabela da secção (`PLAYER_CARDS`, F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/player_cartoes.rs::sim_ou_beira",
+        Canal,
+        &["component.field.platform_player.53"],
+        "o rótulo do catálogo chega por parâmetro de quem pinta a dobra (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/player_pulo.rs::linhas_do_pulo",
+        NaoAnimavel,
+        &["INSP_PLAYER_FEEL"],
+        "Floaty·Snappy·Heavy é um preset: escreve os números do pulo (que têm canal), não é um campo",
     ),
     (
         "ph2d-panel-inspector",
@@ -2178,13 +2192,22 @@ fn casa(corpo: &str, p: &str) -> bool {
         .any(|(i, _)| !corpo[i + p.len()..].starts_with("dropper"))
 }
 
-/// ⛔ **Escolhas de um DIÁLOGO dentro do [`ESCOPO`]** (GEF02 fecho, 08/11): (`ficheiro.rs`, `fn`, porquê). Não
-/// são campos da cena — a escolha vive enquanto a pergunta está aberta e morre no clique — logo não têm losango.
-const DIALOGO_SEM_COLUNA: &[(&str, &str, &str)] = &[(
-    "aba/remove.rs",
-    "pinta",
-    "o destino da pergunta do «Remove» da aba Collision Layers: para onde vão os objetos da camada que sai",
-)];
+/// ⛔ **Caixas sem coluna do losango dentro do [`ESCOPO`]**: (`ficheiro.rs`, `fn`, porquê). Um DIÁLOGO (GEF02 fecho,
+/// 08/11: a escolha vive enquanto a pergunta está aberta e morre no clique) ou uma caixa que o desenho do dono pôs no
+/// CABEÇALHO de uma dobra, onde não há coluna para o losango.
+const DIALOGO_SEM_COLUNA: &[(&str, &str, &str)] = &[
+    (
+        "aba/remove.rs",
+        "pinta",
+        "o destino da pergunta do «Remove» da aba Collision Layers: para onde vão os objetos da camada que sai",
+    ),
+    (
+        "sections/rows_par.rs",
+        "caixa_de_cabecalho",
+        "a caixa que liga uma habilidade do Platform Player vive no cabeçalho da dobra (dono 10/11), sem a coluna do \
+         losango (a marca da chave não se pinta ali — a pôr diante do dono se o losango deve voltar ao cabeçalho)",
+    ),
+];
 
 /// ⭐ **A lei da COLUNA** (F24d): uma caixa de marcar, um chip de menu, um seletor pintado direto ou
 /// um olho só se pintam numa função que pinta a coluna do decorator — onde o losango mora e onde

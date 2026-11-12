@@ -44,6 +44,10 @@ pub fn fixa_lei_do_wet(lei: crate::ColorMix) {
 /// O `WGM_EPSILON` do libmypaint: a reflectância nunca é zero (o `log` da média geométrica).
 const EPS: f32 = 0.001;
 
+/// As 10 bandas em 12 pistas (3 × 4 do SSE2): as 2 do fim são enchimento, calculadas e nunca lidas. Cada pista faz
+/// as MESMAS operações, na mesma ordem, da conta escalar — o vetor dá os mesmos bits (oráculo ao bit nos testes).
+const N: usize = 12;
+
 #[rustfmt::skip]
 const T: [[f32; 10]; 3] = [
     [0.026_595_62, 0.049_779_43, 0.022_449_85, -0.218_453_7, -0.256_894_9, 0.445_881_7, 0.772_365_9, 0.194_498_77, 0.014_038_158, 0.007_687_264],
@@ -51,27 +55,64 @@ const T: [[f32; 10]; 3] = [
     [0.339_475_47, 0.635_401_4, 0.771_520_8, 0.113_222_64, -0.055_251_114, -0.048_222_58, -0.012_966_666, -0.001_523_814_5, -0.000_094_718_95, -0.000_051_604_595],
 ];
 #[rustfmt::skip]
-const SR: [f32; 10] = [0.009_281_363, 0.009_732_627, 0.011_254_253, 0.015_105_579, 0.024_797_924, 0.083_622_59, 0.977_865, 1.0, 0.999_961, 1.0];
+const SR: [f32; N] = em_pistas([0.009_281_363, 0.009_732_627, 0.011_254_253, 0.015_105_579, 0.024_797_924, 0.083_622_59, 0.977_865, 1.0, 0.999_961, 1.0]);
 #[rustfmt::skip]
-const SG: [f32; 10] = [0.002_854_127_4, 0.003_917_59, 0.012_132_152, 0.748_259_2, 1.0, 0.865_695_9, 0.037_477_47, 0.022_816_79, 0.021_747_42, 0.021_384_94];
+const SG: [f32; N] = em_pistas([0.002_854_127_4, 0.003_917_59, 0.012_132_152, 0.748_259_2, 1.0, 0.865_695_9, 0.037_477_47, 0.022_816_79, 0.021_747_42, 0.021_384_94]);
 #[rustfmt::skip]
-const SB: [f32; 10] = [0.537_052_15, 0.546_646_4, 0.575_501_8, 0.258_778_83, 0.041_709_924, 0.012_662_639, 0.007_485_593, 0.006_766_901, 0.006_699_765, 0.006_676_22];
+const SB: [f32; N] = em_pistas([0.537_052_15, 0.546_646_4, 0.575_501_8, 0.258_778_83, 0.041_709_924, 0.012_662_639, 0.007_485_593, 0.006_766_901, 0.006_699_765, 0.006_676_22]);
+
+/// As 10 bandas e o enchimento `1` (o produto escalar das pistas mortas fica em `[3·EPS, 3]`, longe de tudo).
+const fn em_pistas(a: [f32; 10]) -> [f32; N] {
+    let mut p = [1.0f32; N];
+    let mut i = 0;
+    while i < 10 {
+        p[i] = a[i];
+        i += 1;
+    }
+    p
+}
+
+/// `T` por banda: a linha `i` são os 3 canais (e um 4.º morto) que a banda `i` soma — uma pista por canal.
+const TT: [[f32; 4]; 10] = {
+    let mut tt = [[0.0f32; 4]; 10];
+    let mut i = 0;
+    while i < 10 {
+        tt[i] = [T[0][i], T[1][i], T[2][i], 0.0];
+        i += 1;
+    }
+    tt
+};
 
 /// O `log2` da reflectância de 10 bandas de uma cor RGB `[0, 1]`.
 #[inline]
-fn log_espectro(c: [f32; 3]) -> [f32; 10] {
+fn log_espectro(c: [f32; 3]) -> [f32; N] {
     let [r, g, b] = c.map(|v| v.clamp(0.0, 1.0) * (1.0 - EPS) + EPS);
-    std::array::from_fn(|i| log2(SR[i] * r + SG[i] * g + SB[i] * b))
+    let mut l = [0.0f32; N];
+    for (i, li) in l.iter_mut().enumerate() {
+        *li = log2_pista(SR[i] * r + SG[i] * g + SB[i] * b);
+    }
+    l
 }
 
-/// Do `log2` do espectro de volta ao RGB `[0, 1]`.
+/// Do `log2` do espectro de volta ao RGB `[0, 1]`: as potências em pista, depois a soma por canal banda a banda
+/// (a ordem da soma é a de sempre).
 #[inline]
-fn rgb_do_log(l: &[f32; 10]) -> [f32; 3] {
-    let mut rgb = [0.0f32; 3];
-    for (i, li) in l.iter().enumerate() {
-        let s = exp2(*li);
-        for (k, v) in rgb.iter_mut().enumerate() {
-            *v += T[k][i] * s;
+fn rgb_do_log(l: &[f32; N]) -> [f32; 3] {
+    let [r, g, b, _] = rgb4_do_log(l);
+    [r, g, b]
+}
+
+/// [`rgb_do_log`] com a 4.ª pista morta devolvida: sem ela o vetor de 4 cai em 2 + 1 escalar.
+#[inline(never)]
+fn rgb4_do_log(l: &[f32; N]) -> [f32; 4] {
+    let mut s = [0.0f32; N];
+    for (si, li) in s.iter_mut().zip(l) {
+        *si = exp2_pista(*li);
+    }
+    let mut rgb = [0.0f32; 4];
+    for (ti, si) in TT.iter().zip(&s) {
+        for (v, t) in rgb.iter_mut().zip(ti) {
+            *v += t * si;
         }
     }
     rgb.map(|v| ((v - EPS) / (1.0 - EPS)).clamp(0.0, 1.0))
@@ -82,8 +123,8 @@ fn rgb_do_log(l: &[f32; 10]) -> [f32; 3] {
 /// depósito do Flat Bristle 240 a 4K era esta conta).
 #[derive(Clone, Copy)]
 struct Memo {
-    base: ([u32; 3], [f32; 10]),
-    tinta: ([u32; 3], [f32; 10]),
+    base: ([u32; 3], [f32; N]),
+    tinta: ([u32; 3], [f32; N]),
 }
 
 thread_local! {
@@ -97,7 +138,7 @@ fn bits(c: [f32; 3]) -> [u32; 3] {
 
 /// O espectro de `c`, do memo se a entrada é a mesma (ao bit) da última deste lado.
 #[inline]
-fn do_memo(lado: &mut ([u32; 3], [f32; 10]), c: [f32; 3]) -> [f32; 10] {
+fn do_memo(lado: &mut ([u32; 3], [f32; N]), c: [f32; 3]) -> [f32; N] {
     let k = bits(c);
     if lado.0 != k {
         *lado = (k, log_espectro(c));
@@ -120,9 +161,16 @@ pub fn mistura(base: [f32; 3], tinta: [f32; 3], fac: f32) -> [f32; 3] {
             base: (bits(base), log_espectro(base)),
             tinta: (bits(tinta), log_espectro(tinta)),
         });
-        (do_memo(&mut memo.base, base), do_memo(&mut memo.tinta, tinta))
+        (
+            do_memo(&mut memo.base, base),
+            do_memo(&mut memo.tinta, tinta),
+        )
     });
-    rgb_do_log(&std::array::from_fn(|i| lb[i] + fac * (lt[i] - lb[i])))
+    let mut l = [0.0f32; N];
+    for ((li, b), t) in l.iter_mut().zip(&lb).zip(&lt) {
+        *li = b + fac * (t - b);
+    }
+    rgb_do_log(&l)
 }
 
 /// A cor de canais `0..255` no invólucro canal a canal de `a` e `b` (o que o K–M também garante: a volta nunca
@@ -179,7 +227,7 @@ pub fn media_pesada_255(
         *out = p;
         return;
     }
-    let mut l = [0.0f32; 10];
+    let mut l = [0.0f32; N];
     for k in 0..count {
         if weights[k] <= 0.0 {
             continue;
@@ -187,8 +235,8 @@ pub fn media_pesada_255(
         let w = (weights[k] * inv_total) as f32;
         let c = [0, 1, 2].map(|ch| (colors[k * 3 + ch] / 255.0) as f32);
         let lk = log_espectro(c);
-        for i in 0..10 {
-            l[i] += w * lk[i];
+        for (li, x) in l.iter_mut().zip(&lk) {
+            *li += w * x;
         }
     }
     let m = rgb_do_log(&l);
@@ -201,13 +249,17 @@ pub fn media_pesada_255(
 #[inline]
 #[must_use]
 pub fn log2(x: f32) -> f32 {
+    log2_pista(x)
+}
+
+/// O corpo de [`log2`] sem salto (a mantissa acima de `√2` escolhe-se por seleção), para correr em pista.
+#[inline(always)]
+fn log2_pista(x: f32) -> f32 {
     let bits = x.to_bits();
-    let mut e = ((bits >> 23) & 0xff) as i32 - 127;
-    let mut m = f32::from_bits((bits & 0x007f_ffff) | 0x3f80_0000);
-    if m > std::f32::consts::SQRT_2 {
-        m *= 0.5;
-        e += 1;
-    }
+    let m = f32::from_bits((bits & 0x007f_ffff) | 0x3f80_0000);
+    let alta = m > std::f32::consts::SQRT_2;
+    let e = ((bits >> 23) & 0xff) as i32 - 127 + i32::from(alta);
+    let m = if alta { m * 0.5 } else { m };
     let t = (m - 1.0) / (m + 1.0);
     let t2 = t * t;
     let s = t * (1.0 + t2 * (1.0 / 3.0 + t2 * (1.0 / 5.0 + t2 * (1.0 / 7.0 + t2 * (1.0 / 9.0)))));
@@ -218,16 +270,34 @@ pub fn log2(x: f32) -> f32 {
 #[inline]
 #[must_use]
 pub fn exp2(y: f32) -> f32 {
+    exp2_pista(y)
+}
+
+/// `1,5·2²³`: somado a `|z| < 2²²` arredonda-o ao inteiro par, e os bits da soma SÃO esse inteiro mais os dele.
+const MAGICO: f32 = 12_582_912.0;
+
+/// O corpo de [`exp2`] em pista. O `floor(y + ½)` sai do arredondar pelo [`MAGICO`] menos `1` quando ele passou
+/// acima — sem `floor` nem `as i32`, cuja saturação o vetor faz pista a pista. Igual ao de antes em todo o
+/// domínio do `clamp`, provado por varredura exaustiva no oráculo.
+#[inline(always)]
+fn exp2_pista(y: f32) -> f32 {
     let y = y.clamp(-126.0, 4.0);
-    let n = (y + 0.5).floor();
-    let x = (y - n) * std::f32::consts::LN_2;
+    let z = y + 0.5;
+    let s = z + MAGICO;
+    let acima = s - MAGICO > z;
+    let n = s.to_bits() as i32 - MAGICO.to_bits() as i32 - i32::from(acima);
+    let x = (y - n as f32) * std::f32::consts::LN_2;
     let p = 1.0
         + x * (1.0
             + x * (0.5
                 + x * (1.0 / 6.0
                     + x * (1.0 / 24.0 + x * (1.0 / 120.0 + x * (1.0 / 720.0 + x / 5040.0))))));
-    p * f32::from_bits(((n as i32 + 127) as u32) << 23)
+    p * f32::from_bits(((n + 127) as u32) << 23)
 }
+
+#[cfg(test)]
+#[path = "espectral_oraculo.rs"]
+mod oraculo;
 
 #[cfg(test)]
 #[path = "espectral_tests.rs"]

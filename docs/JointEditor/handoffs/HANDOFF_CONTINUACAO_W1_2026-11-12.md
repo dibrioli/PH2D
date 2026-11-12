@@ -61,9 +61,18 @@ memória `project-memory/project_joint_editor_version_b_2026_11_12.md`. Não é 
 2. A montagem aparece na Hierarchy como objeto sem tipo (ícone vazio, `ObjectType::Empty`). Tipo/ícone próprio é W2/W3:
    `hier_types.rs` `ObjectType` + `IconId` + `ColorToken` + gates de ícone/cor.
 3. Undo de shell provado só no retrato do mundo; o teste dirigindo Ctrl+Z real vem com o gesto da W3.
-4. W4 «Make the parts» tem de criar corpos pela regra do [ADR-0199](../../architecture/decisions/0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md)
-   (forma de colisão = filha, `nasce_com_forma` / `torna_corpo`), **não** com Collider no corpo como os testes e a cena fazem;
-   reusar `Template::part_name`.
+4. W4 «Make the parts» cria corpos pela regra do [ADR-0199](../../architecture/decisions/0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md)
+   (forma = filha, `nasce_com_forma` / `torna_corpo`); reusar `Template::part_name`. ✅ Depois do smoke (commit 452da1a635) a cena 123
+   e os testes de `joint_assembly` já põem a forma na filha, e o gate da cena exige corpo sem `Collider`.
+4-bis. ⭐ **A ponte cede sob carga** (smoke do dono 12/11; tabelas em `02_gabaritos_medidos.md` §«A ponte sob carga»). A densidade
+   está certa; o que esmaga é a razão caixa:tábua — `Rope` cede a 200:1 (tábuas no padrão 1), 2000:1 nada segura, nem solver 12/16.
+   `Pin` entre as tábuas segura o peso parado (flecha 2 cm) mas afunda no impacto. Abrir na W2: (a) a ponte de fábrica com `Pin`
+   entre as tábuas (as pontas nos postes a medir: Rope × Pin), (b) medir a corrente como multibody (coordenadas reduzidas; o
+   laço pelo mundo fecha com UMA junta de impulso) — `bridge/fk.rs`/`ik.rs` já montam árvores multibody. Sondas `probe_*` (ignoradas)
+   em `physics_smoke_joint_templates_tests.rs`. O gate da cena (caixa > 0,6) passa com folga curta: apertar quando a cura entrar.
+4-ter. Docs: a lei do ADR-0199 entrou no CLAUDE.md (§1 Física, §5.1 Física), na emenda 2 do ADR-0131 e nos doc-comments de
+   `Collider`/`lib.rs` (commit 08565a7c40). **Fora do escopo, declarado ao dono:** 63 cenas de smoke antigas ainda põem o
+   `Collider` no corpo (`physics_smoke_base.rs` é o molde); o dono decide se abre tarefa.
 5. `linked` / grupo: o carro tem as duas rodas no grupo 0; a edição em grupo é W2.
 6. Os números não medem carga (força do elevador/polia com peso, carro em rampa) — doc 02 §«O que esta tabela NÃO mede».
 
@@ -94,5 +103,6 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-JointEditor && pwd && git 
 ```
 Confirme `line/JointEditor`. Leia, nesta ordem: `docs/JointEditor/01_plano.md`, a memória
 `project-memory/project_joint_editor_version_b_2026_11_12.md` e `docs/JointEditor/handoffs/HANDOFF_CONTINUACAO_W1_2026-11-12.md`.
-A W1 está feita (commit e3cc56d9eb). Comece a **W2** (Inspector melhor) — §5 do handoff. Não feche o gate
+A W1 está feita e o dono aprovou o smoke (12/11). Comece a **W2** (Inspector melhor) — §5 do handoff — e junte nela a cura da
+ponte sob carga (§4 item 4-bis), medida antes de escolher. Não feche o gate
 `every_registered_physics_component_has_a_ui_writer` antes da W3. Inner loop = `cargo-check-narrow.sh`; testes por nome; sem push.

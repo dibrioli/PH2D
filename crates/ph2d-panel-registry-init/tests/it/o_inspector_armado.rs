@@ -435,6 +435,7 @@ pub fn fisica_armada() -> InspectorPhysicsInfo {
         collides_differs: false,
         collides_pinned: 0,
         offset: [0.0, 0.0],
+        look: ph2d_editor_core::ShapeLookFacts::NONE,
         walk_grip: 1.0,
         walk_belt: 0.0,
         bake_seconds: 2.0,

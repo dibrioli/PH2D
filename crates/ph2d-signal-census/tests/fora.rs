@@ -194,6 +194,7 @@ fn quem_ouve_de_fora_e_so_quem_ouve_aquele_nome() {
         motion: Some(&g),
         timeline: Some(&t),
         ui_states: Some(&s),
+        painel: None,
     };
     let doc = |d| Listener {
         object: None,

@@ -99,13 +99,16 @@ fn starting_from_a_recipe_is_one_undo_step() {
     assert_eq!(h.input_map, fabrica);
 }
 
-/// O «Create this action» do Trigger (`fase_criar_accao_do_mapa`) desfaz-se como qualquer edição.
+/// O «Create and set key» do Trigger (`fase_criar_accao_do_mapa`) cria a acção e desfaz-se como qualquer edição.
 #[test]
 fn the_triggers_create_this_action_is_undoable() {
     use ph2d_editor_core::screens::hero::chrome::{PedidoDoMapa, aplica_pedidos_do_mapa};
     let mut h = hero();
     let (mut undo, mut base) = (ProjectUndo::default(), foto(&h));
-    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::Criar("open_door".into())]);
+    aplica_pedidos_do_mapa(
+        &mut h,
+        vec![PedidoDoMapa::CriarEEscutar("open_door".into())],
+    );
     assert!(
         h.input_map.id("open_door").is_some(),
         "a fábrica não tinha esta acção"

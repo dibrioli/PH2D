@@ -153,6 +153,8 @@ mod preview_pino; // o pino que fixa a preview viva no topo da vista Brush
 pub mod seccoes;
 pub mod state;
 mod state_dropdowns;
+#[cfg(test)]
+mod state_instantaneo_tests; // B39.A3: ler o instantâneo não clona a pilha
 mod state_ramp;
 mod state_shape_cor; // a cor do Shape em duas camadas (prompt 38)
 mod state_wet_presets; // W1: a vista dos presets que a ponte publica

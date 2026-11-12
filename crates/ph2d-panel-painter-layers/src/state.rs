@@ -34,7 +34,7 @@ type TextureImageSnapshot = (Arc<Vec<u8>>, u32, u32);
 thread_local! {
     /// Snapshot do `LayerStack` publicado pelo host antes de cada `paint`.
     /// `None` até o primeiro push (panel pinta o placeholder "No layers").
-    static CURRENT_LAYERS: RefCell<Option<LayerStack>> = const { RefCell::new(None) };
+    static CURRENT_LAYERS: RefCell<Option<Arc<LayerStack>>> = const { RefCell::new(None) };
 
     /// Snapshot do brush ativo publicado pelo host antes de cada `paint` (mirror
     /// de [`CURRENT_LAYERS`]). `None` até o primeiro push (Brush section usa o
@@ -439,13 +439,16 @@ pub struct PainterLayersPanelState;
 /// por frame quando o `painter` tool é ativo; pass `None` pra limpar
 /// (panel volta ao placeholder).
 pub fn set_current_layers(stack: Option<LayerStack>) {
-    CURRENT_LAYERS.with(|c| *c.borrow_mut() = stack);
+    CURRENT_LAYERS.with(|c| *c.borrow_mut() = stack.map(Arc::new));
 }
 
 /// Lê o snapshot publicado pelo host neste frame. `None` quando o host
 /// ainda não pushou (boot, ou Painter inativo) — `paint` pinta o
 /// placeholder "No layers".
-pub(crate) fn current_layers() -> Option<LayerStack> {
+///
+/// Devolve o `Arc` do instantâneo: as ~6–10 leituras por quadro da vista Layers eram cada uma um clone
+/// da pilha inteira (nomes, filhos dos grupos, ajustes) — B39.A3.
+pub(crate) fn current_layers() -> Option<Arc<LayerStack>> {
     CURRENT_LAYERS.with(|c| c.borrow().clone())
 }
 

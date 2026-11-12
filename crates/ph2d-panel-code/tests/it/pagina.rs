@@ -504,3 +504,34 @@ fn o_indice_da_ajuda_centra_as_seccoes() {
     ph2d_text::set_active_text_style(antes);
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
+
+/// Auditoria de layout 11/11: a página mais alta que a vista leva a barra da casa à direita, fora do
+/// texto, e o polegar desce até ao fundo no fim; a página que cabe inteira não a leva.
+#[test]
+fn a_pagina_longa_tem_barra_e_a_curta_nao() {
+    let doc = pagina();
+    let (mut v, mut ts) = (HelpView::new(), ts());
+    pinta(&mut v, &quadro(&doc), &mut ts, LARGA);
+    let p = v.probe();
+    let bar = p.bar.expect("a página longa sem barra");
+    assert!(
+        bar.x + bar.w <= LARGA.x + LARGA.w && bar.y >= LARGA.y,
+        "{bar:?}"
+    );
+    assert!(
+        p.links.iter().all(|(_, r, _)| r.x + r.w <= bar.x),
+        "um link por baixo da barra: {bar:?}"
+    );
+    v.end();
+    pinta(&mut v, &quadro(&doc), &mut ts, LARGA);
+    let fim = v.probe().bar.expect("a barra sumiu no fim");
+    assert!(fim.y > bar.y, "o polegar não desceu: {bar:?} → {fim:?}");
+    let curta = HelpDoc {
+        key: 2,
+        title: "x".into(),
+        blocks: vec![Block::Title("x".into())],
+        sections: Vec::new(),
+    };
+    pinta(&mut v, &quadro(&curta), &mut ts, LARGA);
+    assert_eq!(v.probe().bar, None, "a página curta com barra");
+}

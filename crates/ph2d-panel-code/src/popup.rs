@@ -11,7 +11,10 @@ use crate::view::CodeView;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::math::safe_clamp_ord;
 use ph2d_editor_core::paint::rect_to_vello;
-use ph2d_editor_core::widget::{Popover, paint_popover, pop_popover_clip, push_popover_clip};
+use ph2d_editor_core::widget::{
+    Popover, SCROLLBAR_W, ScrollbarState, paint_popover, paint_scrollbar, pop_popover_clip,
+    push_popover_clip, scrollbar_is_needed,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Spacing;
@@ -28,6 +31,8 @@ pub(crate) struct Painted {
     pub kind: ListKind,
     /// Os índices das linhas cujo rótulo não coube inteiro.
     pub cut: Vec<usize>,
+    /// O polegar da barra de rolagem (só quando a lista inteira não cabe nas linhas à vista).
+    pub bar: Option<Rect>,
 }
 
 /// Uma linha pintada da lista, como a sonda a dá: o índice, o rótulo, se é a seleccionada e o centro.
@@ -79,8 +84,16 @@ impl CodeView {
             ListKind::Completion => safe_clamp_ord(c.width_chars, 1, COMPLETION_MAX_CHARS),
             ListKind::Actions | ListKind::References => c.width_chars.max(1),
         } as f32;
-        let w = (cols * self.m.advance + 2.0 * pad).min(tr.w);
-        let h = c.rows.len().min(COMPLETION_ROWS) as f32 * lh + 2.0 * pad;
+        // A lista que não cabe nas linhas à vista leva a barra da casa (só indica; a roda rola): a
+        // largura dela soma-se à da lista para não pintar por cima do tipo à direita.
+        let shown = c.rows.len().min(COMPLETION_ROWS);
+        let bar_w = if scrollbar_is_needed(c.total as f32, shown as f32) {
+            SCROLLBAR_W + pad
+        } else {
+            0.0
+        };
+        let w = (cols * self.m.advance + 2.0 * pad + bar_w).min(tr.w);
+        let h = shown as f32 * lh + 2.0 * pad;
         let x = (at.x - pad).min(tr.x + tr.w - w).max(tr.x);
         let below = at.y + at.h;
         let y = if below + h <= tr.y + tr.h || at.y - h < tr.y {
@@ -97,6 +110,7 @@ impl CodeView {
             doc: None,
             kind: c.kind,
             cut: Vec::new(),
+            bar: None,
         };
         for (k, row) in c.rows.iter().take(COMPLETION_ROWS).enumerate() {
             let i = c.top + k;
@@ -125,7 +139,7 @@ impl CodeView {
             // A largura é `colunas × advance` (a média dos dígitos); a soma das larguras dos glifos
             // pode passá-la por um erro de vírgula e cortar a ÚLTIMA letra (foto 08/11: o «)» de «Make
             // it a property (Inspector field)»). Meio recuo de folga absorve-o sem tocar na borda.
-            let right = x + w - pad;
+            let right = x + w - pad - bar_w;
             let label = self.paint_mono(
                 ts,
                 scene,
@@ -149,6 +163,12 @@ impl CodeView {
                 }
             }
             painted.rows.push((i, r, row.label.clone(), selected));
+        }
+        if bar_w > 0.0 {
+            let body = Rect::new(x, y + pad, w, shown as f32 * lh);
+            let visual = (ScrollbarState::Normal, 0.0);
+            let (top, total) = (c.top as f32 * lh, c.total as f32 * lh);
+            painted.bar = paint_scrollbar(body, top, total, body.h, visual, scene, pal.theme);
         }
         pop_popover_clip(scene);
         if !c.preview.is_empty() {
@@ -263,6 +283,12 @@ impl CodeView {
     #[must_use]
     pub fn completion_cut(&self) -> Option<Vec<usize>> {
         self.popup.as_ref().map(|p| p.cut.clone())
+    }
+
+    /// ⚠️ SONDA: o polegar da barra da lista do último quadro (`None` = a lista inteira à vista).
+    #[must_use]
+    pub fn completion_bar(&self) -> Option<Rect> {
+        self.popup.as_ref().and_then(|p| p.bar)
     }
 
     /// Onde caiu `(x, y)` na lista do último quadro (`None` = fora dela).

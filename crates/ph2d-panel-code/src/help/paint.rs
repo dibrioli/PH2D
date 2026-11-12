@@ -19,7 +19,8 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::ui_scale::ao_pixel;
 use ph2d_editor_core::widget::{
-    ButtonState, IconButtonStyle, IconGlyph, paint_icon_button, paint_popover_row_focus,
+    ButtonState, IconButtonStyle, IconGlyph, ScrollbarState, paint_icon_button,
+    paint_popover_row_focus, paint_scrollbar,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -103,6 +104,9 @@ impl HelpView {
         scene.push_clip(&rect_to_vello(area));
         scene.fill_rect(rect_to_vello(area), pal.bg);
         self.paint_content(frame, scene, ts, &pal, theme);
+        // A barra da casa (só indica; a roda e PgDn rolam): sem ela não se via que a página continua.
+        let (vp, visual) = (self.viewport, (ScrollbarState::Normal, 0.0));
+        self.bar = paint_scrollbar(vp, self.scroll, self.height(), vp.h, visual, scene, *theme);
         self.paint_index(frame, scene, ts, &ui);
         self.paint_header(frame, scene, ts, &ui);
         if let (Some(bar), Some(r)) = (&frame.find, self.find_rect) {

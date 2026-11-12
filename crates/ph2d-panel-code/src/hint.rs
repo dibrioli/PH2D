@@ -9,7 +9,7 @@
 
 use crate::frame::{COMPLETION_MAX_CHARS, CodeFrame};
 use crate::palette::Palette;
-use crate::popup::{plain, wrap};
+use crate::popup::{elide, plain, wrap};
 use crate::style::Ink;
 use crate::view::CodeView;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
@@ -253,10 +253,20 @@ impl CodeView {
             probe.live.push(t);
             by += ROW_H_PX + gap;
         }
+        // As linhas que não cabem do lado escolhido não somem caladas: a última à vista leva «…».
+        let fit = ((w - 2.0 * pad) / self.m.advance.max(1.0)).floor() as usize;
         for (k, (l, mark)) in lines.iter().take(rows).enumerate() {
             let ly = y + pad + k as f32 * lh;
             let x0 = x + pad;
-            if let Some(m) = mark {
+            let l = &if k + 1 == rows && rows < lines.len() {
+                elide(&format!("{l} …"), fit)
+            } else {
+                l.clone()
+            };
+            if let Some(m) = mark
+                .as_ref()
+                .filter(|m| l.is_char_boundary(m.start) && l.is_char_boundary(m.end))
+            {
                 let a = l[..m.start].chars().count() as f32;
                 let n = l[m.clone()].chars().count() as f32;
                 scene.fill_rect(

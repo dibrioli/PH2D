@@ -100,6 +100,8 @@ pub struct HelpView {
     pub(super) focus: Option<u32>,
     /// A secção corrente (a marcada no índice).
     pub(super) section: Option<usize>,
+    /// O polegar da barra de rolagem (`None` = a página inteira à vista).
+    pub(super) bar: Option<Rect>,
 }
 
 impl Default for HelpView {
@@ -125,6 +127,7 @@ impl Default for HelpView {
             shown: 0..0,
             focus: None,
             section: None,
+            bar: None,
         }
     }
 }

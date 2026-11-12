@@ -25,6 +25,8 @@ pub struct HelpProbe {
     pub section: Option<usize>,
     /// Os trechos pintados.
     pub runs: usize,
+    /// O polegar da barra de rolagem (`None` = a página inteira à vista).
+    pub bar: Option<Rect>,
 }
 
 impl HelpView {
@@ -213,6 +215,7 @@ impl HelpView {
             height: self.height(),
             section: self.section,
             runs: self.shown.len(),
+            bar: self.bar,
         };
         let Some(l) = self.laid() else { return p };
         let shown = &l.runs[self.shown.clone()];

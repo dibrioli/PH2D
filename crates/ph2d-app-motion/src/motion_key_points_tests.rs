@@ -207,3 +207,45 @@ fn nothing_is_offered_without_object_keys_tab_or_keys() {
             .is_none()
     );
 }
+
+/// **Com a animação a TOCAR, o que se vê é o que se agarra** (doc 17 item 12): a agulha a andar
+/// reescreve a pose VIVA do objecto e do pai animado, mas os losangos e as alças são o caminho do
+/// documento — pintura e clique leem a mesma porta, e o clique no ponto pintado agarra a chave dele.
+/// *Mutação: `key_points` ler a pose viva em vez de `world_pose_at` ⇒ os pontos andam com a agulha.*
+#[test]
+fn while_playing_the_painted_points_and_handles_are_what_the_click_grabs() {
+    let (mut w, doc, e) = scene(false);
+    let antes = key_points(true, &w, &doc, Some(e));
+    let alcas_antes = crate::motion_key_handles::alcas(true, true, &w, &doc, Some(e));
+    assert!(
+        antes.len() >= 2 && !alcas_antes.is_empty(),
+        "controlo positivo"
+    );
+    // O que o apply da agulha a tocar escreve: só os canais ANIMADOS (rotação do pai, X/Y do filho).
+    let filho = ph2d_ecs::Entity::from_bits(e);
+    let pai = w.get::<ChildOf>(filho).expect("pai").0;
+    w.get_mut::<Transform>(pai).expect("pai vivo").rotation = 1.0;
+    w.get_mut::<Transform>(filho)
+        .expect("filho vivo")
+        .translation = Vec2::new(7.0, -3.0);
+    assert_eq!(
+        key_points(true, &w, &doc, Some(e)),
+        antes,
+        "os losangos não andam com a agulha"
+    );
+    assert_eq!(
+        crate::motion_key_handles::alcas(true, true, &w, &doc, Some(e)),
+        alcas_antes,
+        "nem as alças"
+    );
+    for k in &antes {
+        let (sx, sy) = camera().world_to_screen(k.at, window());
+        let grab =
+            motion_path_hit_with_keys(true, true, &w, &doc, Some(e), &camera(), window(), sx, sy);
+        assert_eq!(
+            grab,
+            Some(MotionPathGrab::Key { entity: e, t: k.t }),
+            "o clique no losango pintado agarra a chave dele"
+        );
+    }
+}

@@ -153,3 +153,116 @@ fn the_k_authors_an_anchor_through_the_door_that_can_refuse() {
          (o K); achei {emitters} — se o gesto ganhou um irmão, ele entra nesta lei"
     );
 }
+
+/// O corpo de `fn <nome>(` num ficheiro do `src/`: do `fn` até ao fecho do método (`\n    }\n`).
+fn body<'a>(src: &'a str, name: &str) -> &'a str {
+    let at = src
+        .find(&format!("fn {name}("))
+        .unwrap_or_else(|| panic!("controle positivo: `fn {name}` sumiu"));
+    let end = src[at..].find("\n    }\n").map_or(src.len(), |e| at + e);
+    &src[at..end]
+}
+
+fn src_of(rel: &str) -> String {
+    std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(rel))
+        .unwrap_or_else(|e| panic!("{rel}: {e}"))
+}
+
+/// ⭐ **O que se vê é o que se agarra** (doc 17 item 12, dono 10/11): o desenho dos losangos e das
+/// alças e o clique que os agarra perguntam pela MESMA caixa «Edit curves on canvas» — o espelho
+/// que o painel publica a cada quadro (`curves_on_canvas()`), já falso com o painel escondido ou
+/// fora da aba Keys. Um literal ou outro derivado num dos lados deixa o mouse agarrar curva invisível.
+#[test]
+fn the_paint_and_the_click_read_the_same_curves_checkbox() {
+    const LIVE_CURVES: &str = "ph2d_panel_timeline::state::curves_on_canvas()";
+    let mut files = Vec::new();
+    rust_files(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src").as_path(),
+        &mut files,
+    );
+    let mut seen = 0_usize;
+    for path in &files {
+        let Ok(src) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        for door in ["motion_path_hit_with_keys(", "motion_key_points::draw("] {
+            let mut from = 0;
+            while let Some(off) = src[from..].find(door) {
+                let open = from + off + door.len() - 1;
+                let rest = &src[open + 1..];
+                let second = rest.split(',').nth(1).unwrap_or("").trim();
+                assert_eq!(
+                    second,
+                    LIVE_CURVES,
+                    "{} chama `{door}` com `{second}` no 2º argumento: pintura e clique têm de ler \
+                     a mesma caixa, senão o mouse agarra a curva que não se vê",
+                    path.display()
+                );
+                seen += 1;
+                from = open;
+            }
+        }
+    }
+    assert_eq!(
+        seen, 2,
+        "controle positivo: uma porta de pintar e uma de agarrar"
+    );
+}
+
+/// ⭐ **No palco do jogo as curvas não se desenham — e o rato não as alcança** (doc 17 item 12): o
+/// `no_palco()` sai da fase das sobreposições ANTES de pintar, e o despacho do botão e do movimento
+/// sai pelo mesmo `no_palco()` ANTES dos ramos onde mora a porta de agarrar e a de arrastar.
+/// Afirma a ORDEM dentro de cada função, não uma distância em bytes.
+#[test]
+fn on_the_game_stage_the_curves_are_neither_painted_nor_reached() {
+    const GUARD: &str = "if self.no_palco()";
+    let casos = [
+        (
+            "src/render_loop/fase_canvas_overlays.rs",
+            "fase_canvas_overlays",
+            "motion_key_points::draw(",
+        ),
+        (
+            "src/input_dispatch.rs",
+            "pointer_button",
+            "self.ramo_picks_de_fisica_e_alcas(",
+        ),
+        (
+            "src/input_dispatch.rs",
+            "pointer_moved",
+            "self.ramo_mover_vetor(",
+        ),
+    ];
+    for (rel, f, door) in casos {
+        let src = src_of(rel);
+        let b = body(&src, f);
+        let (Some(g), Some(d)) = (b.find(GUARD), b.find(door)) else {
+            panic!("controle positivo: `{f}` em {rel} perdeu `{GUARD}` ou `{door}`");
+        };
+        assert!(
+            g < d,
+            "`{f}` ({rel}) chega a `{door}` antes de sair pelo palco do jogo"
+        );
+    }
+    // E os ramos são onde as portas moram: sem isto, mover a porta para outro ramo antes do guarda
+    // deixava a ordem acima verde a afirmar nada.
+    let ramos = [
+        (
+            "ramo_picks_de_fisica_e_alcas",
+            "src/input_dispatch/despacho_clique_select.rs",
+            "self.motion_path_anchor_down(",
+        ),
+        (
+            "ramo_mover_vetor",
+            "src/input_dispatch/despacho_mover.rs",
+            "self.motion_path_anchor_move(",
+        ),
+    ];
+    for (f, rel, door) in ramos {
+        let src = src_of(rel);
+        assert!(
+            body(&src, f).contains(door),
+            "`{door}` saiu de `{f}` ({rel})"
+        );
+    }
+}

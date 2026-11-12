@@ -62,8 +62,8 @@ impl InspectorMoveDirections {
             Self::Free => tr("panel.topdown.free"),
             Self::Eight => tr("panel.topdown.8_dir"),
             Self::Four => tr("panel.topdown.4_dir"),
-            Self::AxisX => tr("panel.topdown.x_only"),
-            Self::AxisY => tr("panel.topdown.y_only"),
+            Self::AxisX => tr("panel.topdown.dir_x"),
+            Self::AxisY => tr("panel.topdown.dir_y"),
         }
     }
 
@@ -151,10 +151,10 @@ impl InspectorFacing {
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
-            Self::None => tr("panel.topdown.don_t_turn"),
-            Self::Movement => tr("panel.topdown.face_move"),
-            Self::Snap4 => tr("panel.topdown.face_4"),
-            Self::Snap8 => tr("panel.topdown.face_8"),
+            Self::None => tr("panel.topdown.facing_still"),
+            Self::Movement => tr("panel.topdown.facing_move"),
+            Self::Snap4 => tr("panel.topdown.facing_4"),
+            Self::Snap8 => tr("panel.topdown.facing_8"),
         }
     }
 

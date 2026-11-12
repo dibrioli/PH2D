@@ -1,408 +1,337 @@
-//! ⭐⭐⭐ **O que o Inspector mostra do MOVER DE VISTA DE CIMA** (TOP-20 #13, W3).
+//! ⭐⭐⭐ **O que o Inspector mostra do MOVER DE VISTA DE CIMA** — a versão A da ficha
+//! `docs/GameEngineFuncional/componentes/05_topdown.md` («três perguntas», dono 12/11).
 //!
-//! # ⭐⭐ O que o painel DIZ que os campos sozinhos não diriam
+//! À vista: os avisos, Speed, Directions, Facing e Turn (só quando ele gira). O resto mora na dobra
+//! «More», fechada, cujo cabeçalho resume a rampa e o Viewpoint (`No easing · Top-Down view`).
 //!
-//! Quatro avisos, e cada um responde a uma forma diferente de *«pus o componente e ele não anda»*:
+//! # ⭐⭐ Os avisos dizem o que os campos sozinhos não diriam
 //!
 //! | aviso | o que se passa |
 //! |---|---|
 //! | `No body` | sem `RigidBody` não há o que mover |
-//! | `The body must be Kinematic` | um corpo dinâmico é do **solver**, e o mover não tem pose para escrever |
+//! | `The body must be Kinematic` | um corpo dinâmico é do **solver** |
 //! | `A Platform Player on this object wins` | dois movers, um `Transform` |
 //! | `The clock is stopped` | a ponte corre no passo fixo |
+//! | `Off — the keys don't reach it` | Default Controls desligado; o botão «Turn on» liga-o |
 //!
-//! ⚠️ **Os dois do meio são os que esta wave pagou a descobrir**, e sem eles um componente que está
-//! a funcionar perfeitamente lê-se como partido **com todos os números certos no ecrã**.
+//! # ⭐ Duas linhas SOMEM conforme o modo
 //!
-//! # ⭐ E duas linhas SOMEM conforme o modo
-//!
-//! O *Board Angle* só existe em `Custom` e a *Turn Speed* só existe quando ele roda — é a lei do
-//! `SignalVerb::uses_arg`, e a alternativa (mostrar sempre) entrega um controlo morto em cada modo.
+//! O *Board Angle* só existe em `Custom` e o *Turn* só quando ele roda — a lei do
+//! `SignalVerb::uses_arg`: mostrar sempre entrega um controlo morto em cada modo.
 
+use super::grupo_dobravel::{Pincel, dobra};
 use super::*;
+use ph2d_editor_core::property_row::Seccao;
 use ph2d_editor_core::topdown_edits::{
     InspectorFacing, InspectorMoveDirections, InspectorTopDownInfo, InspectorViewpoint,
 };
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::TextKey;
-use ph2d_i18n::tr;
+use ph2d_editor_core::widget::Unit;
+use ph2d_i18n::{TextKey, tr};
 
-/// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o primeiro
-/// clique depois de trocar de objecto mandar o valor do objecto anterior.
-///
-/// ⛔⛔ **O nome estava POR CIMA** (`row_y = y + font + Xs`, e o grupo a toda a largura) — a forma
-/// que o dono reprovou duas vezes, escrita com a variável `font`, que é o TERCEIRO nome do mesmo
-/// idioma a que o gate textual ficou cego. ⇒ a porta
-/// [`ph2d_editor_core::property_row::paint_choice_row`], com a coluna da SECÇÃO.
-#[allow(clippy::too_many_arguments)]
-fn seg_row<'a>(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
+/// Os rótulos da secção INTEIRA (dobrada ou não): a coluna do nome é uma só.
+const ROTULOS: [&str; 12] = [
+    "component.field.top_down_player.0",
+    "component.field.top_down_player.3",
+    "component.field.top_down_player.6",
+    "component.field.top_down_player.7",
+    "component.field.top_down_player.1",
+    "component.field.top_down_player.2",
+    "component.field.top_down_player.4",
+    "component.field.top_down_player.5",
+    "component.field.top_down_player.11",
+    "component.field.top_down_player.8",
+    "component.field.top_down_player.9",
+    "component.field.top_down_player.10",
+];
+
+/// O pincel da secção.
+struct Td<'a> {
+    scene: &'a mut VectorScene,
+    text: &'a mut TextSystem,
     theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
+    hit: &'a mut HitIndex,
+    store: &'a WidgetStore,
     x: f32,
     w: f32,
-    y: f32,
-    titulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
-    ids: &[ph2d_a11y::NodeId],
-    rotulos: &[&'static str],
-    escolhido: usize,
-    seccao: ph2d_editor_core::property_row::Seccao,
-) -> f32 {
-    let segments: Vec<(&str, bool, ph2d_a11y::NodeId)> = ids
-        .iter()
-        .enumerate()
-        .map(|(i, &id)| (rotulos.get(i).copied().unwrap_or(""), i == escolhido, id))
-        .collect();
-    ph2d_editor_core::property_row::paint_choice_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        y,
-        titulo,
-        &segments,
-        seccao,
-    )
+    info: &'a InspectorTopDownInfo,
+    seccao: Seccao,
 }
 
-/// **Os AVISOS** — a metade que responde a *«pus o componente e ele não anda»*.
-///
-/// ⚠️ Eles vêm ANTES dos números, e por isso são uma função própria: quem não vê nada mexer não
-/// quer afinar uma rampa. O corte foi imposto pelo tecto de LOC e está certo por isto.
-#[allow(clippy::too_many_arguments)]
-fn avisos(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    i: &InspectorTopDownInfo,
-) -> f32 {
-    let mut cur_y = y;
+impl Pincel for Td<'_> {
+    #[allow(clippy::type_complexity)]
+    fn partes(
+        &mut self,
+    ) -> (
+        &mut VectorScene,
+        &mut TextSystem,
+        Theme,
+        &mut HitIndex,
+        &WidgetStore,
+        f32,
+        f32,
+    ) {
+        (
+            self.scene, self.text, self.theme, self.hit, self.store, self.x, self.w,
+        )
+    }
+}
+
+impl Td<'_> {
+    fn aviso(&mut self, y: f32, chave: &str, token: ColorToken) -> f32 {
+        super::rows::aviso(
+            self.scene,
+            self.text,
+            self.theme,
+            self.x,
+            self.w,
+            y,
+            tr(chave),
+            token,
+        )
+    }
+
+    /// Um número pela porta das unidades do mundo (`rows::fields_row` → px/m).
+    fn numero(
+        &mut self,
+        y: f32,
+        campo: &'static str,
+        id: NodeId,
+        passo: f64,
+        u: Option<Unit>,
+    ) -> f32 {
+        super::rows::fields_row(
+            self.scene,
+            self.text,
+            self.theme,
+            self.hit,
+            self.store,
+            self.x,
+            self.w,
+            y,
+            TextKey::new(campo),
+            &[id],
+            passo,
+            u,
+            self.seccao,
+        )
+    }
+
+    /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o
+    /// primeiro clique depois de trocar de objecto mandar o valor do objecto anterior.
+    fn escolha(
+        &mut self,
+        y: f32,
+        campo: &'static str,
+        ids: &[NodeId],
+        rotulos: &[&str],
+        sel: u8,
+    ) -> f32 {
+        let segmentos: Vec<(&str, bool, NodeId)> = ids
+            .iter()
+            .zip(rotulos)
+            .enumerate()
+            .map(|(i, (&id, &r))| (r, i == usize::from(sel), id))
+            .collect();
+        ph2d_editor_core::property_row::paint_choice_row(
+            self.scene,
+            self.text,
+            self.theme,
+            self.hit,
+            self.store,
+            self.x,
+            self.w,
+            y,
+            TextKey::new(campo),
+            &segmentos,
+            self.seccao,
+        )
+    }
+
+    fn botao(&mut self, y: f32, id: NodeId, rotulo: &str) -> f32 {
+        let rect =
+            ph2d_editor_core::property_row::caixa_do_botao(self.text, self.x, self.w, y, rotulo);
+        let b = Button::new(id, rotulo)
+            .kind(ButtonKind::Default)
+            .visual(self.store.button_visual(id));
+        paint_button(&b, rect, self.scene, self.text, self.theme);
+        self.hit.register(id, rect);
+        ph2d_editor_core::property_row::abaixo_do_botao(rect)
+    }
+}
+
+/// **Os AVISOS** — vêm antes dos números: quem não vê nada mexer não quer afinar uma rampa.
+fn avisos(p: &mut Td<'_>, y: f32) -> f32 {
+    let i = p.info;
+    let mut y = y;
     if !i.has_body {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.topdown.no_body_u_add_a_rigid_body_for_this_to_move_anything"),
+        y = p.aviso(
+            y,
+            "panel.inspector.topdown.no_body_u_add_a_rigid_body_for_this_to_move_anything",
             ColorToken::Danger,
         );
     } else if !i.body_is_kinematic {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr(
-                "panel.inspector.topdown.the_body_must_be_kinematic_u_a_dynamic_body_belongs_to_the_solver",
-            ),
+        y = p.aviso(
+            y,
+            "panel.inspector.topdown.the_body_must_be_kinematic_u_a_dynamic_body_belongs_to_the_solver",
             ColorToken::Danger,
         );
     }
     if i.conflicts_with_platformer {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr(
-                "panel.inspector.topdown.a_platform_player_on_this_object_wins_u_remove_one_of_the_two",
-            ),
+        y = p.aviso(
+            y,
+            "panel.inspector.topdown.a_platform_player_on_this_object_wins_u_remove_one_of_the_two",
             ColorToken::Warn,
         );
     } else if !i.clock_playing {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.topdown.the_clock_is_stopped_u_it_moves_while_the_clock_plays"),
+        y = p.aviso(
+            y,
+            "panel.inspector.topdown.the_clock_is_stopped_u_it_moves_while_the_clock_plays",
             ColorToken::Text3,
         );
     }
-    cur_y
-}
-
-/// O corpo da secção — os CONTROLOS.
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-fn corpo(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    i: &InspectorTopDownInfo,
-) -> f32 {
-    let mut cur_y = avisos(scene, text_system, theme, x, w, y, i);
-    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
-    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
-    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
-    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
-    //    por linha com outro nome.*
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("component.field.top_down_player.0"),
-            tr("component.field.top_down_player.1"),
-            tr("component.field.top_down_player.2"),
-            tr("component.field.top_down_player.11"),
-            tr("component.field.top_down_player.5"),
-            tr("component.field.top_down_player.7"),
-            tr("component.field.top_down_player.8"),
-            tr("component.field.top_down_player.9"),
-            tr("component.field.top_down_player.3"),
-            tr("component.field.top_down_player.4"),
-            tr("component.field.top_down_player.6"),
-        ],
-    );
-    for (label, id, step, unidade) in [
-        (
-            TextKey::new("component.field.top_down_player.0"),
-            crate::ids::INSP_TD_SPEED,
-            0.1, // LITERAL-PX-OK: passo de scrub em m/s
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
-        ), // LITERAL-PX-OK: m/s
-        (
-            TextKey::new("component.field.top_down_player.1"),
-            crate::ids::INSP_TD_ACCEL,
-            0.5,
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
-        ), // LITERAL-PX-OK: m/s²
-        (
-            TextKey::new("component.field.top_down_player.2"),
-            crate::ids::INSP_TD_DECEL,
-            0.5,
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
-        ), // LITERAL-PX-OK: m/s²
-        // ⭐ O EMPURRÃO (plano 28, W5): um golpe de uma `Damage` com `Push` fá-lo deslizar, e isto
-        // diz quão depressa ele pára de deslizar.
-        (
-            TextKey::new("component.field.top_down_player.11"),
-            crate::ids::INSP_TD_KNOCKBACK_RECOVERY,
-            0.5,
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
-        ), // LITERAL-PX-OK: m/s²
-    ] {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            label,
-            &[id],
-            step,
-            unidade,
-            seccao,
+    // ⭐ A caixa mora no More (fechado): o aviso e a saída dele ficam à vista.
+    if !i.default_controls {
+        y = p.aviso(
+            y,
+            "panel.inspector.topdown.off_u_the_keys_don_t_reach_it_something_else_must_drive_it",
+            ColorToken::Text3,
+        );
+        y = p.botao(
+            y,
+            ids::INSP_TD_TURN_ON_CONTROLS,
+            tr("panel.inspector.topdown.turn_on"),
         );
     }
+    y
+}
 
-    let rotulos: Vec<&'static str> = InspectorMoveDirections::ALL
-        .iter()
-        .map(|m| m.label())
-        .collect();
-    cur_y = seg_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        TextKey::new("component.field.top_down_player.3"),
-        &crate::ids::INSP_TD_DIRECTIONS,
-        &rotulos,
-        usize::from(i.directions.tag()),
-        seccao,
+/// À vista: Speed · Directions · Facing · Turn (só se gira).
+fn a_vista(p: &mut Td<'_>, y: f32) -> f32 {
+    let i = p.info;
+    let y = p.numero(
+        y,
+        "component.field.top_down_player.0",
+        ids::INSP_TD_SPEED,
+        0.1, // LITERAL-PX-OK: passo de scrub em m/s
+        Some(Unit::MetersPerSecond),
     );
+    let rotulos = InspectorMoveDirections::ALL.map(InspectorMoveDirections::label);
+    let y = p.escolha(
+        y,
+        "component.field.top_down_player.3",
+        &ids::INSP_TD_DIRECTIONS,
+        &rotulos,
+        i.directions.tag(),
+    );
+    let rotulos = InspectorFacing::ALL.map(InspectorFacing::label);
+    let y = p.escolha(
+        y,
+        "component.field.top_down_player.6",
+        &ids::INSP_TD_FACING,
+        &rotulos,
+        i.facing.tag(),
+    );
+    if !i.facing.uses_turn_speed() {
+        return y;
+    }
+    p.numero(
+        y,
+        "component.field.top_down_player.7",
+        ids::INSP_TD_TURN_SPEED,
+        10.0, // LITERAL-PX-OK: graus/s
+        Some(Unit::DegreesPerSecond),
+    )
+}
 
-    let rotulos: Vec<&'static str> = InspectorViewpoint::ALL.iter().map(|m| m.label()).collect();
-    cur_y = seg_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        TextKey::new("component.field.top_down_player.4"),
-        &crate::ids::INSP_TD_VIEWPOINT,
-        &rotulos,
-        usize::from(i.viewpoint.tag()),
-        seccao,
+/// ⭐ **O resumo do cabeçalho do More**: a rampa (`No easing` só com as duas a zero) · a vista.
+pub(crate) fn resumo_do_mais(i: &InspectorTopDownInfo) -> String {
+    let rampa = if i.acceleration == 0.0 && i.deceleration == 0.0 {
+        tr("panel.inspector.topdown.sum_no_easing")
+    } else {
+        tr("panel.inspector.topdown.sum_eased")
+    };
+    let vista = ph2d_i18n::tr_with(
+        "panel.inspector.topdown.sum_view",
+        &[("name", &i.viewpoint.label())],
     );
-    // ⭐ **Só em `Custom`** — ver o cabeçalho.
+    format!("{rampa} · {vista}")
+}
+
+/// O corpo do More, pela ordem da ficha.
+fn mais(p: &mut Td<'_>, y: f32) -> f32 {
+    let i = p.info;
+    let ramp = Some(Unit::MetersPerSecondSquared);
+    let y = p.numero(
+        y,
+        "component.field.top_down_player.1",
+        ids::INSP_TD_ACCEL,
+        0.5,
+        ramp,
+    );
+    let y = p.numero(
+        y,
+        "component.field.top_down_player.2",
+        ids::INSP_TD_DECEL,
+        0.5,
+        ramp,
+    );
+    let rotulos = InspectorViewpoint::ALL.map(InspectorViewpoint::label);
+    let mut y = p.escolha(
+        y,
+        "component.field.top_down_player.4",
+        &ids::INSP_TD_VIEWPOINT,
+        &rotulos,
+        i.viewpoint.tag(),
+    );
     if i.viewpoint.uses_angle() {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            TextKey::new("component.field.top_down_player.5"),
-            &[crate::ids::INSP_TD_VIEW_ANGLE],
+        y = p.numero(
+            y,
+            "component.field.top_down_player.5",
+            ids::INSP_TD_VIEW_ANGLE,
             0.5, // LITERAL-PX-OK: graus
-            Some(ph2d_editor_core::widget::Unit::Degrees),
-            seccao,
+            Some(Unit::Degrees),
         );
     }
-
-    let rotulos: Vec<&'static str> = InspectorFacing::ALL.iter().map(|m| m.label()).collect();
-    cur_y = seg_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        TextKey::new("component.field.top_down_player.6"),
-        &crate::ids::INSP_TD_FACING,
-        &rotulos,
-        usize::from(i.facing.tag()),
-        seccao,
-    );
-    // ⭐ **Só quando ele roda.**
-    if i.facing.uses_turn_speed() {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            TextKey::new("component.field.top_down_player.7"),
-            &[crate::ids::INSP_TD_TURN_SPEED],
-            10.0, // LITERAL-PX-OK: graus/s
-            Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
-            seccao,
-        );
-    }
-
-    cur_y = deslize(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        seccao,
-        i,
-    );
-    cur_y
-}
-
-/// **O DESLIZE numa parede** — irmão por tecto de LOC (a função passou a `210/200` quando a
-/// coluna da secção entrou). ⚠️ Corte por RESPONSABILIDADE: é a metade que o TOP-20 #13 existe
-/// para trazer (deslizar à velocidade CHEIA), e ela tem os dois números que só ela lê.
-#[allow(clippy::too_many_arguments)]
-fn deslize(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    seccao: ph2d_editor_core::property_row::Seccao,
-    i: &InspectorTopDownInfo,
-) -> f32 {
-    let mut cur_y = y;
-    for (label, id, step, unidade) in [
+    let campos = [
         (
-            TextKey::new("component.field.top_down_player.8"),
-            crate::ids::INSP_TD_MIN_SLIDE,
+            "component.field.top_down_player.11",
+            ids::INSP_TD_KNOCKBACK_RECOVERY,
+            0.5,
+            ramp,
+        ),
+        (
+            "component.field.top_down_player.8",
+            ids::INSP_TD_MIN_SLIDE,
             1.0,
-            Some(ph2d_editor_core::widget::Unit::Degrees),
-        ), // LITERAL-PX-OK: graus
+            Some(Unit::Degrees),
+        ),
         (
-            TextKey::new("component.field.top_down_player.9"),
-            crate::ids::INSP_TD_MAX_SLIDES,
+            "component.field.top_down_player.9",
+            ids::INSP_TD_MAX_SLIDES,
             1.0,
             None,
-        ), // LITERAL-PX-OK: contagem
-    ] {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            label,
-            &[id],
-            step,
-            unidade,
-            seccao,
-        );
+        ),
+    ];
+    for (campo, id, passo, u) in campos {
+        y = p.numero(y, campo, id, passo, u);
     }
-
-    cur_y = ph2d_editor_core::property_row::paint_check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
+    ph2d_editor_core::property_row::paint_check_row(
+        p.scene,
+        p.text,
+        p.theme,
+        p.hit,
+        p.store,
+        p.x,
+        p.w,
+        y,
         (
-            crate::ids::INSP_TD_DEFAULT_CONTROLS,
+            ids::INSP_TD_DEFAULT_CONTROLS,
             TextKey::new("component.field.top_down_player.10"),
             i.default_controls,
         ),
-        seccao,
-    );
-    if !i.default_controls {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr(
-                "panel.inspector.topdown.off_u_the_keys_don_t_reach_it_something_else_must_drive_it",
-            ),
-            ColorToken::Text3,
-        );
-    }
-    cur_y
+        p.seccao,
+    )
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.
@@ -421,7 +350,7 @@ pub(crate) fn paint_topdown_section(
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
     let header = section_header(
         store,
-        ph2d_editor_core::ids::INSP_LIVE_TOPDOWN_SECTION,
+        core_ids::INSP_LIVE_TOPDOWN_SECTION,
         tr("component.top_down_player.name"),
     );
     paint_section_header(
@@ -433,7 +362,7 @@ pub(crate) fn paint_topdown_section(
     );
     let Some(fold) = SectionFold::begin(
         store,
-        ph2d_editor_core::ids::INSP_LIVE_TOPDOWN_SECTION,
+        core_ids::INSP_LIVE_TOPDOWN_SECTION,
         x,
         w,
         y + header_h,
@@ -442,17 +371,29 @@ pub(crate) fn paint_topdown_section(
     ) else {
         return y + header_h;
     };
-    let mut cur_y = y + header_h;
-    cur_y = corpo(
+    let nomes = ROTULOS.map(tr);
+    let seccao = Seccao::medida(text_system, 1, &nomes);
+    let mut p = Td {
         scene,
-        text_system,
+        text: text_system,
         theme,
-        hit_index,
+        hit: hit_index,
         store,
         x,
         w,
-        cur_y,
         info,
+        seccao,
+    };
+    let mut cur_y = avisos(&mut p, y + header_h);
+    cur_y = a_vista(&mut p, cur_y);
+    let resumo = resumo_do_mais(info);
+    cur_y = dobra(
+        &mut p,
+        cur_y,
+        ids::INSP_TD_FOLD_MORE,
+        tr("panel.inspector.topdown.more"),
+        &resumo,
+        mais,
     );
-    fold.finish(store, scene, hit_index, cur_y)
+    fold.finish(store, p.scene, p.hit, cur_y)
 }

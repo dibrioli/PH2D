@@ -39,7 +39,98 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 8] = [
     (ids::INSP_TD_MAX_SLIDES, 4.0, 1.0, 8.0, 1.0),             // LITERAL-PX-OK: contagem
 ];
 
+/// As dicas de hover (Plain English). Accel, Decel e Turn têm a sua no `populate_dicas`.
+const DICAS: [(ph2d_a11y::NodeId, &str); 20] = [
+    (ids::INSP_TD_SPEED, "panel.inspector.topdown.tip_speed"),
+    (
+        ids::INSP_TD_DIRECTIONS[0],
+        "panel.inspector.topdown.tip_dir_free",
+    ),
+    (
+        ids::INSP_TD_DIRECTIONS[1],
+        "panel.inspector.topdown.tip_dir_8",
+    ),
+    (
+        ids::INSP_TD_DIRECTIONS[2],
+        "panel.inspector.topdown.tip_dir_4",
+    ),
+    (
+        ids::INSP_TD_DIRECTIONS[3],
+        "panel.inspector.topdown.tip_dir_x",
+    ),
+    (
+        ids::INSP_TD_DIRECTIONS[4],
+        "panel.inspector.topdown.tip_dir_y",
+    ),
+    (
+        ids::INSP_TD_FACING[0],
+        "panel.inspector.topdown.tip_face_still",
+    ),
+    (
+        ids::INSP_TD_FACING[1],
+        "panel.inspector.topdown.tip_face_move",
+    ),
+    (ids::INSP_TD_FACING[2], "panel.inspector.topdown.tip_face_4"),
+    (ids::INSP_TD_FACING[3], "panel.inspector.topdown.tip_face_8"),
+    (
+        ids::INSP_TD_VIEWPOINT[0],
+        "panel.inspector.topdown.tip_view_top",
+    ),
+    (
+        ids::INSP_TD_VIEWPOINT[1],
+        "panel.inspector.topdown.tip_view_iso21",
+    ),
+    (
+        ids::INSP_TD_VIEWPOINT[2],
+        "panel.inspector.topdown.tip_view_iso30",
+    ),
+    (
+        ids::INSP_TD_VIEWPOINT[3],
+        "panel.inspector.topdown.tip_view_custom",
+    ),
+    (
+        ids::INSP_TD_VIEW_ANGLE,
+        "panel.inspector.topdown.tip_board_angle",
+    ),
+    (
+        ids::INSP_TD_KNOCKBACK_RECOVERY,
+        "panel.inspector.topdown.tip_hit_recovery",
+    ),
+    (
+        ids::INSP_TD_MIN_SLIDE,
+        "panel.inspector.topdown.tip_min_slide",
+    ),
+    (
+        ids::INSP_TD_MAX_SLIDES,
+        "panel.inspector.topdown.tip_max_slides",
+    ),
+    (
+        ids::INSP_TD_DEFAULT_CONTROLS,
+        "panel.inspector.topdown.tip_default_controls",
+    ),
+    (
+        ids::INSP_TD_TURN_ON_CONTROLS,
+        "panel.inspector.topdown.tip_turn_on",
+    ),
+];
+
 pub(crate) fn populate_topdown(store: &mut WidgetStore) {
+    for (id, chave) in DICAS {
+        store.set_tooltip(id, ph2d_i18n::tr(chave));
+    }
+    store.set_tooltip(
+        ids::INSP_TD_FOLD_MORE,
+        ph2d_i18n::tr("panel.inspector.topdown.tip_more"),
+    );
+    // ⭐ A dobra More nasce FECHADA; depois manda o que o artista abriu.
+    store.mark_collapsible_section(ids::INSP_TD_FOLD_MORE);
+    store.set_collapsed_if_unchosen(ids::INSP_TD_FOLD_MORE, true);
+    store.register(
+        ids::INSP_TD_TURN_ON_CONTROLS,
+        InteractiveState::Button {
+            state: Default::default(),
+        },
+    );
     store.register(
         ids::INSP_TD_DEFAULT_CONTROLS,
         InteractiveState::Checkbox {

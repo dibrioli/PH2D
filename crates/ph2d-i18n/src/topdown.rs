@@ -14,6 +14,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.topdown.face_move" => "Face Move",
         "panel.topdown.face_4" => "Face 4",
         "panel.topdown.face_8" => "Face 8",
+        "panel.topdown.dir_x" => "X",
+        "panel.topdown.dir_y" => "Y",
+        "panel.topdown.facing_still" => "Still",
+        "panel.topdown.facing_move" => "Move",
+        "panel.topdown.facing_4" => "4",
+        "panel.topdown.facing_8" => "8",
         // ph2d-migrar-texto:end
         _ => return None,
     })

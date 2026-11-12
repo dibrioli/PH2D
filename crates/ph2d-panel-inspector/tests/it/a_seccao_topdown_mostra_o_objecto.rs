@@ -87,6 +87,10 @@ fn a_linha_do_empurrao_esta_viva_sob_o_dedo() {
     let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     set_current_inspector_topdown(Some(mover()));
+    // A linha mora na dobra More (fechada de fábrica).
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    h.set_collapsed(ids::INSP_TD_FOLD_MORE, false);
+    h.settle_section_folds();
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let r = rects
         .iter()

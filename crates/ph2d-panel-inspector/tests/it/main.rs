@@ -119,6 +119,7 @@ mod seam_px_m;
 mod seam_render_source;
 mod seam_shake;
 mod seam_texture_slot;
+mod seam_topdown;
 mod seam_tween;
 mod seam_wheel;
 mod the_add_component_button_follows_the_selection;

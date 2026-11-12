@@ -23,6 +23,11 @@ pub(crate) fn apply_topdown_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     let bits = info.entity_bits;
 
     if let WidgetEvent::Click(id) = ev {
+        // ⭐ O «Turn on» do aviso: liga, nunca alterna (o aviso só existe com a caixa desligada).
+        if id == crate::ids::INSP_TD_TURN_ON_CONTROLS {
+            push(host, bits, TopDownFieldEdit::DefaultControls(true));
+            return true;
+        }
         // ⚠️ **Os TRÊS segmentados numa varredura só, pela posição** — a mesma lei de todos: a
         // posição no array é a tag do clique, e reordenar faria um clique escrever outro modo.
         if let Some(i) = crate::ids::INSP_TD_DIRECTIONS.iter().position(|&b| b == id) {

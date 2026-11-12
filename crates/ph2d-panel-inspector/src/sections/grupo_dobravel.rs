@@ -103,3 +103,44 @@ pub(crate) fn resumo_do_grupo(
         resolve(ColorToken::Text3, theme),
     );
 }
+
+/// O que uma secção em cartões entrega à [`dobra`]: o pincel dela e a faixa (`x`, `w`).
+pub(crate) trait Pincel {
+    #[allow(clippy::type_complexity)]
+    fn partes(
+        &mut self,
+    ) -> (
+        &mut VectorScene,
+        &mut TextSystem,
+        Theme,
+        &mut HitIndex,
+        &WidgetStore,
+        f32,
+        f32,
+    );
+}
+
+/// ⭐ **A dobra com resumo** dos cartões da casa (Platform Player, Top-Down Player): aberta pinta o
+/// `corpo`; fechada, o `resumo` à direita do nome. Devolve o `y` seguinte.
+pub(crate) fn dobra<P: Pincel>(
+    p: &mut P,
+    y: f32,
+    id: NodeId,
+    titulo: &str,
+    resumo: &str,
+    corpo: impl FnOnce(&mut P, f32) -> f32,
+) -> f32 {
+    let g = {
+        let (scene, text, theme, hit, store, x, w) = p.partes();
+        grupo_dobravel(scene, text, theme, hit, store, x, w, y, id, titulo)
+    };
+    let fim = if g.aberto() {
+        corpo(p, g.y)
+    } else {
+        let (scene, text, theme, _, _, x, w) = p.partes();
+        resumo_do_grupo(scene, text, theme, x, w, g.y, titulo, resumo);
+        g.y
+    };
+    let (scene, _, _, hit, store, _, _) = p.partes();
+    g.fecha(store, scene, hit, fim)
+}

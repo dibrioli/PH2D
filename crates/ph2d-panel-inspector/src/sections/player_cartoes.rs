@@ -51,6 +51,24 @@ pub(super) fn coluna_da_secao(text: &mut TextSystem) -> Option<f32> {
         .reduce(f32::max)
 }
 
+impl super::grupo_dobravel::Pincel for Pintor<'_> {
+    fn partes(
+        &mut self,
+    ) -> (
+        &mut VectorScene,
+        &mut TextSystem,
+        Theme,
+        &mut HitIndex,
+        &WidgetStore,
+        f32,
+        f32,
+    ) {
+        (
+            self.scene, self.text, self.theme, self.hit, self.store, self.x, self.w,
+        )
+    }
+}
+
 impl Pintor<'_> {
     fn shown(&self, id: NodeId) -> bool {
         const SPRING_ONLY: [NodeId; 3] = [
@@ -132,18 +150,7 @@ impl Pintor<'_> {
         resumo: &str,
         corpo: impl FnOnce(&mut Self, f32) -> f32,
     ) -> f32 {
-        let g = super::rows::grupo_dobravel(
-            self.scene, self.text, self.theme, self.hit, self.store, self.x, self.w, y, id, titulo,
-        );
-        let fim = if g.aberto() {
-            corpo(self, g.y)
-        } else {
-            super::rows::resumo_do_grupo(
-                self.scene, self.text, self.theme, self.x, self.w, g.y, titulo, resumo,
-            );
-            g.y
-        };
-        g.fecha(self.store, self.scene, self.hit, fim)
+        super::grupo_dobravel::dobra(self, y, id, titulo, resumo, corpo)
     }
 
     /// ⭐ **A dobra de uma HABILIDADE**: a caixa à esquerda do chevron liga e desliga; o chevron e o

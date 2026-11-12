@@ -210,8 +210,7 @@ impl crate::App {
         // cache já viu é o caso NORMAL, não o raro.
         gfx.catalogs = crate::project_library::apply_catalogs(&state.library);
         gfx.library_cache.invalidate();
-        // ⭐⭐⭐ **E a ÁRVORE DE TAGS volta** (TOP-20 #9), com a MESMA disciplina da biblioteca: a
-        // árvore restaurada nasce com revisão `0`, logo a cache tem de esquecer a que viu.
+        // ⭐⭐⭐ **A ÁRVORE DE TAGS volta** (TOP-20 #9) e a cache esquece-a, como a da biblioteca.
         //
         // ⚠️ **O `remap` corre no MESMO gesto**: um documento com gémeos funde-os; sem ele, a tag do
         // gémeo descartado sumia em silêncio. Vazio num passo de undo; é no LOAD que ele trabalha.
@@ -223,6 +222,7 @@ impl crate::App {
             for bits in field_back {
                 hero.gizmo.add_to_selection(bits);
             }
+            self.timeline_last_selected = hero.gizmo.iter_selected().next(); // bits novos ≠ seleção nova (→ Keys)
         }
         self.vec.entities = map;
         self.flip_state.entities = flip_map;

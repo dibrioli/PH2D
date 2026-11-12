@@ -168,3 +168,30 @@ fn the_step_carries_the_selection_and_the_restore_prefers_it() {
         "o passo nasce sem a selecção que lhe pertence — a fila volta a ser só estado"
     );
 }
+
+/// ⭐ **O restauro devolve a seleção com bits NOVOS, e isso não é uma seleção NOVA** (dono 12/11: depois
+/// do Done, e com vários Ctrl+Z, as abas Arrange e Containers voltavam sempre a Keys). O detector de borda
+/// `selection_jumps_to_keys` compara bits; o restauro carimba o `timeline_last_selected` com a seleção
+/// que acabou de repor, DEPOIS de a repor. *Mutação: sem o carimbo ⇒ a borda dispara e a aba vai a Keys.*
+#[test]
+fn the_restore_is_not_a_new_selection_for_the_keys_tab_jump() {
+    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/undo_app.rs"))
+        .expect("undo_app.rs legível");
+    let body = src
+        .split("pub(crate) fn apply_project_with")
+        .nth(1)
+        .expect("apply_project_with existe")
+        .split("\n    pub(crate) fn ")
+        .next()
+        .expect("corpo de apply_project_with");
+    let repoe = body
+        .find("hero.gizmo.add_to_selection(bits)")
+        .expect("controle positivo: o restauro repõe a seleção");
+    let carimbo = body
+        .find("self.timeline_last_selected = hero.gizmo.iter_selected().next()")
+        .expect("o restauro tem de carimbar a seleção reposta no detector da aba Keys");
+    assert!(
+        carimbo > repoe,
+        "o carimbo vem DEPOIS de a seleção voltar com os bits novos"
+    );
+}

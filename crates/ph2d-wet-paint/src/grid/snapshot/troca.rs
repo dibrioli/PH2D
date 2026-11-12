@@ -60,14 +60,21 @@ fn troca_ou_copia(v: &mut [f32], s: usize, r: Ret, d: &mut Vec<f32>) {
 }
 
 macro_rules! planos {
-    (densos: $($f:ident : $t:ty $(= $i:literal)?),* ; esparsos: $($e:ident),* $(,)?) => {
-        /// Os planos densos que trocam: cheios na grade e do comprimento da base (o `ajusta` não lhes mexe).
+    (densos: $($f:ident : $t:ty $(= $i:literal)?),* ; esparsos: $($e:ident : $te:ty = $ie:literal),* $(,)?) => {
+        /// Os planos que trocam: cheios na grade e do comprimento da base (o `ajusta` não lhes mexe).
         #[derive(Clone, Copy)]
-        struct Trocam { $($f: bool,)* }
+        struct Trocam { $($f: bool,)* $($e: bool,)* }
 
         impl Trocam {
             fn de(g: &Grid, v: &[usize; 9]) -> Self {
-                Trocam { $($f: !g.$f.is_empty() $(&& v[$i] == g.$f.len())?,)* }
+                #[cfg(test)]
+                let esparsos = !ESPARSOS_COPIAM.with(std::cell::Cell::get);
+                #[cfg(not(test))]
+                let esparsos = true;
+                Trocam {
+                    $($f: !g.$f.is_empty() $(&& v[$i] == g.$f.len())?,)*
+                    $($e: esparsos && !g.$e.is_empty() && v[$ie] == g.$e.len(),)*
+                }
             }
         }
 
@@ -75,21 +82,33 @@ macro_rules! planos {
         fn copia_os_outros(g: &Grid, r: Ret, t: &mut TileFino, ok: Trocam) -> TileFino {
             let mut pos = TileFino::default();
             $( if !ok.$f { pos.$f = std::mem::replace(&mut t.$f, Plano::tira_tile(&g.$f, g.s, r)); } )*
-            $( pos.$e = std::mem::replace(&mut t.$e, Plano::tira_tile(&g.$e, g.s, r)); )*
+            // O esparso que troca só copia no tile que não o tem (o restauro não lhe punha nada).
+            $( if !ok.$e || t.$e.len() != (r.x1 - r.x0) * (r.y1 - r.y0) {
+                pos.$e = std::mem::replace(&mut t.$e, Plano::tira_tile(&g.$e, g.s, r));
+            } )*
             pos
         }
 
-        /// Os planos que trocam, cada um em jobs por faixa de tiles.
-        fn troca_os_densos(g: &mut Grid, tiles: &mut [(Ret, TileFino)], ok: Trocam) {
-            struct Listas<'a> { $($f: Vec<(Ret, &'a mut Vec<$t>)>,)* }
-            let mut l = Listas { $($f: Vec::new(),)* };
-            for (r, t) in tiles.iter_mut() {
-                let TileFino { $($f,)* .. } = t;
-                $( if ok.$f { l.$f.push((*r, $f)); } )*
+        /// Os planos que trocam: cada denso em jobs por faixa de tiles, cada esparso em jobs por fatia de pedaços (as
+        /// linhas do tile que têm o plano; as outras já tiraram a cópia).
+        fn troca_os_planos(g: &mut Grid, tiles: &mut [(Ret, TileFino)], ok: Trocam) {
+            struct Listas<'a> {
+                $($f: Vec<(Ret, &'a mut Vec<$t>)>,)*
+                $($e: Vec<(usize, &'a mut [$te])>,)*
             }
+            let mut l = Listas { $($f: Vec::new(),)* $($e: Vec::new(),)* };
             let s = g.s;
+            for (r, t) in tiles.iter_mut() {
+                let TileFino { $($f,)* $($e,)* .. } = t;
+                $( if ok.$f { l.$f.push((*r, $f)); } )*
+                let w = r.x1 - r.x0;
+                $( if ok.$e && $e.len() == w * (r.y1 - r.y0) {
+                    l.$e.extend($e.chunks_mut(w).enumerate().map(|(i, v)| ((r.y0 + i) * s + r.x0, v)));
+                } )*
+            }
             rayon::scope(|sc| {
                 $( troca_no_pool(&mut g.$f, s, l.$f, sc); )*
+                $( g.$e.troca_trechos_poupando(l.$e, <$te as MesmoBit>::mesmo_bit, sc); )*
             });
         }
     };
@@ -99,8 +118,15 @@ planos!(
     densos: film: f32, susp: f32, susp_rgb: [f32; 3], sett: f32, sett_rgb: [f32; 3], relevo: f32,
     altura: f32 = 0, espessura: f32 = 1, crista: f32 = 2, nivelado: f32 = 3, vela: f32,
     tinta: tinta::CelulaTinta = 7, pigmento: tinta::pigmento::LadoEspectral = 8, wet: u8, active: u8, bloom: u8;
-    esparsos: material, aparencia, oleo,
+    esparsos: material: crate::material::MaterialCelula = 4, aparencia: aparencia::AparenciaCelula = 5,
+    oleo: oleo_celula::OleoCelula = 6,
 );
+
+#[cfg(test)]
+thread_local! {
+    /// Os planos esparsos copiam como antes (a troca só dos densos), por fio: a régua A/B no MESMO processo.
+    pub(crate) static ESPARSOS_COPIAM: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
 
 impl Registo {
     /// O `inverso(g, self, extra)` + `restaura_com(g, extra, zera_o_fluxo)`, ao bit, numa passada: os tiles de `self` e
@@ -167,7 +193,7 @@ impl Registo {
         ajusta_campo(&mut g.oleo, v[6], a7.is_some());
         ajusta(&mut g.tinta, v[7], a8.as_ref());
         ajusta(&mut g.pigmento, v[8], a9.as_ref());
-        troca_os_densos(g, &mut tiles, ok);
+        troca_os_planos(g, &mut tiles, ok);
         let ts: Vec<(Ret, &TileFino)> = tiles.iter().map(|(r, _)| *r).zip(&por).collect();
         TileFino::poe_no_pool(g, &ts);
         drop(ts);

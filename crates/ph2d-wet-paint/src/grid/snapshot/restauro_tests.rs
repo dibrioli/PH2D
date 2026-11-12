@@ -96,10 +96,21 @@ fn corre(e: &mut Engine, n: usize) {
 }
 
 fn monta(w: usize, h: usize, pigmento: bool, tamanho: f64) -> Engine {
+    monta_lei(w, h, u8::from(pigmento), tamanho)
+}
+
+/// `lei`: 0 = a aguada, 1 = o pigmento com o Real Oil, 2 = o Óleo Real com material e aparência na célula (o Dabber):
+/// os três planos esparsos vivos.
+fn monta_lei(w: usize, h: usize, lei: u8, tamanho: f64) -> Engine {
     let mut e = Engine::new(w, h);
-    if pigmento {
+    if lei >= 1 {
         e.sim.set_tinta(LeiDaTinta::Pigmento);
         e.sim.oleo = true;
+    }
+    if lei == 2 {
+        e.set_knob(crate::tuning::Knob::Metallic, 0.6);
+        e.set_knob(crate::tuning::Knob::Opaque, 0.7);
+        e.set_knob(crate::tuning::Knob::OilDepth, 1.8);
     }
     e.sliders.water = 1.0;
     e.sliders.size = tamanho;
@@ -230,20 +241,26 @@ fn sonda_o_ctrl_z_wet_a_4k() {
     let tam = std::env::var("PH2D_SONDA_TAMANHO")
         .ok()
         .and_then(|v| v.parse().ok());
-    let pig = std::env::var("PH2D_SONDA_PIGMENTO").is_ok();
-    let mut e = monta(3840, 2160, pig, tam.unwrap_or(1.0));
+    // `PH2D_SONDA_LEI`: 0 aguada, 1 pigmento + Real Oil, 2 o Óleo Real com material e aparência (`monta_lei`).
+    let lei = std::env::var("PH2D_SONDA_LEI")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(u8::from(std::env::var("PH2D_SONDA_PIGMENTO").is_ok()));
+    let mut e = monta_lei(3840, 2160, lei, tam.unwrap_or(1.0));
     let l = e.active_layer;
     let tiles = e.layers[l].undo.last().map_or(0, |r| r.finos.len());
     let g = &e.layers[l].grid;
     eprintln!(
-        "4K: {tiles} tiles no passo do topo · aparência {} · óleo {} pedaços vivos · tinta {} · pigmento {}",
+        "4K: {tiles} tiles no passo do topo · material {} · aparência {} · óleo {} pedaços vivos · tinta {} · pigmento {}",
+        g.material.pedacos_vivos(),
         g.aparencia.pedacos_vivos(),
         g.oleo.pedacos_vivos(),
         g.tinta.len(),
         g.pigmento.len()
     );
     const N: usize = 9;
-    let nomes = ["antigo", "novo"];
+    // 0 = o restauro em série de antes, 1 = a troca só dos densos (os esparsos copiam), 2 = a troca de todos.
+    let nomes = ["antigo", "troca densa", "troca total"];
     let mut t = vec![
         [
             Vec::new(),
@@ -251,19 +268,22 @@ fn sonda_o_ctrl_z_wet_a_4k() {
             Vec::new(),
             Vec::new(),
             Vec::new(),
+            Vec::new(),
             Vec::new()
         ];
-        2
+        3
     ];
     for r in 0..N {
-        for v in [r % 2, 1 - r % 2] {
+        for v in [r % 3, (r + 1) % 3, (r + 2) % 3] {
             let antigo = v == 0;
+            super::troca::ESPARSOS_COPIAM.with(|c| c.set(v == 1));
             let a = Instant::now();
             com(antigo, || assert!(e.undo_sem_zerar_o_fluxo()));
             t[v][0].push(ms(a));
             let a = Instant::now();
             com(antigo, || assert!(e.redo_sem_zerar_o_fluxo()));
             t[v][1].push(ms(a));
+            super::troca::ESPARSOS_COPIAM.with(|c| c.set(false));
             // As fases, sobre o passo do topo: o inverso, os tiles postos e repostos, as duas recontagens.
             let layer = &mut e.layers[l];
             let reg = layer.undo.last().expect("o passo");
@@ -301,6 +321,16 @@ fn sonda_o_ctrl_z_wet_a_4k() {
                 oleo_celula::reconta_real(&mut layer.grid);
             }
             t[v][5].push(ms(a));
+            // A troca sozinha (sem o `drain_step` nem o sujo do motor): o registo do topo vai e volta.
+            let mut reg = layer.undo.pop().expect("o passo");
+            super::troca::ESPARSOS_COPIAM.with(|c| c.set(v == 1));
+            let a = Instant::now();
+            let (mut inv, _) = com(antigo, || reg.troca(&mut layer.grid, None, false));
+            let (mut volta, _) = com(antigo, || inv.troca(&mut layer.grid, None, false));
+            t[v][6].push(ms(a) / 2.0);
+            (volta.passo, volta.dabs) = (reg.passo, reg.dabs);
+            super::troca::ESPARSOS_COPIAM.with(|c| c.set(false));
+            layer.undo.push(volta);
         }
     }
     for (v, nome) in nomes.iter().enumerate() {
@@ -312,6 +342,7 @@ fn sonda_o_ctrl_z_wet_a_4k() {
             "tiles postos (1 restauro)",
             "reconta_teto",
             "reconta_real",
+            "troca só (1 restauro)",
         ];
         for (i, f) in f.iter().enumerate() {
             resumo(f, &mut t[v][i]);
@@ -342,11 +373,20 @@ fn pilha(e: &Engine) -> (Vec<(Vec<u32>, Vec<u32>, usize)>, usize) {
 /// troca deixou volta a ser posto e comparado. Nas duas leis, com o `extra` do redo e um traço a meio.
 #[test]
 fn a_troca_da_o_bit_do_inverso_e_do_restauro() {
-    for pigmento in [false, true] {
-        let (mut a, mut b) = (
-            monta(700, 420, pigmento, 1.0),
-            monta(700, 420, pigmento, 1.0),
-        );
+    for lei in [0, 1, 2] {
+        let (mut a, mut b) = (monta_lei(700, 420, lei, 1.0), monta_lei(700, 420, lei, 1.0));
+        if lei == 2 {
+            let g = b.active_grid();
+            let vivos = [
+                g.material.pedacos_vivos(),
+                g.aparencia.pedacos_vivos(),
+                g.oleo.pedacos_vivos(),
+            ];
+            assert!(
+                vivos.iter().all(|&n| n > 4),
+                "os esparsos não nasceram: {vivos:?}"
+            );
+        }
         let passos = [
             "undo", "corre", "redo", "undo", "undo", "traco", "corre", "undo", "redo", "corre",
             "undo", "redo", "redo",
@@ -360,7 +400,7 @@ fn a_troca_da_o_bit_do_inverso_e_do_restauro() {
             };
             com(true, || faz(&mut a));
             com(false, || faz(&mut b));
-            let at = format!("{k}: {passo} (pigmento {pigmento})");
+            let at = format!("{k}: {passo} (lei {lei})");
             assert_eq!(estado(a.active_grid()), estado(b.active_grid()), "{at}");
             assert_eq!(pilha(&a), pilha(&b), "{at}: a pilha");
             assert_eq!(a.dirty, b.dirty, "{at}: sujo");

@@ -194,6 +194,58 @@ impl<T: Copy> CampoEsparso<T> {
         }
     }
 
+    /// O [`Self::escreve_intervalo_poupando`] que TROCA, em jobs de `sc`: cada trecho `(a, v)` (disjuntos) passa para
+    /// as células `a..a + v.len()` e `v` fica com o que elas liam (o chão no pedaço ausente). Um job por fatia de
+    /// pedaços; dentro do pedaço os trechos seguem a ordem de `ts` — a mesma decisão de alocar do laço em série.
+    pub fn troca_trechos_poupando<'a>(
+        &'a mut self,
+        ts: Vec<(usize, &'a mut [T])>,
+        mesmo_bit: fn(&T, &T) -> bool,
+        sc: &rayon::Scope<'a>,
+    ) where
+        T: Send + Sync,
+    {
+        if ts.is_empty() || self.n == 0 {
+            return;
+        }
+        let jobs = (rayon::current_num_threads() * 4).clamp(1, self.pedacos.len());
+        let por = self.pedacos.len().div_ceil(jobs);
+        let mut baldes: Vec<Vec<(usize, &'a mut [T])>> = Vec::new();
+        baldes.resize_with(self.pedacos.len().div_ceil(por), Vec::new);
+        for (a, mut v) in ts {
+            assert!(
+                a + v.len() <= self.n,
+                "troca {a}+{} fora de {}",
+                v.len(),
+                self.n
+            );
+            let mut i = a;
+            while !v.is_empty() {
+                let m = v.len().min(PEDACO - (i & MASCARA));
+                let (cabeca, resto) = std::mem::take(&mut v).split_at_mut(m);
+                baldes[(i >> LOG_PEDACO) / por].push((i, cabeca));
+                (i, v) = (i + m, resto);
+            }
+        }
+        let chao = self.chao;
+        for ((b, fatia), balde) in self.pedacos.chunks_mut(por).enumerate().zip(baldes) {
+            if balde.is_empty() {
+                continue;
+            }
+            sc.spawn(move |_| {
+                for (i, v) in balde {
+                    let (p, o) = (&mut fatia[(i >> LOG_PEDACO) - b * por], i & MASCARA);
+                    if p.is_some() || !v.iter().all(|c| mesmo_bit(c, &chao)) {
+                        let p = p.get_or_insert_with(|| vec![chao; PEDACO].into_boxed_slice());
+                        p[o..o + v.len()].swap_with_slice(v);
+                    } else {
+                        v.fill(chao);
+                    }
+                }
+            });
+        }
+    }
+
     /// Copia as células `faixa` de `o` (o mesmo `len` e o mesmo chão): o pedaço ausente nos dois não se aloca, e o
     /// ausente só na origem volta ao chão no destino.
     pub fn copia_faixa_de(&mut self, o: &Self, faixa: std::ops::Range<usize>) {

@@ -537,13 +537,13 @@ pub(super) fn pousa_o_dab(
             let Some(f) = fios_dab.as_ref() else {
                 return tapete(dc);
             };
-            let q = dc.map(|v| v * px_por_celula);
+            let q = [dc[0] * px_por_celula, dc[1] * px_por_celula];
             let p = match (tabela, fio_linha) {
                 (Some(t), Some(m)) => f.no_ponto_no_fio(q, m.ou(cx, cy, || f.fio_no_ponto(q)), t),
                 (Some(t), None) => f.no_ponto_em(q, t),
                 (None, _) => f.no_ponto(q),
             };
-            p.ganho * tapete(p.q.map(|v| v / px_por_celula))
+            p.ganho * tapete([p.q[0] / px_por_celula, p.q[1] / px_por_celula])
         }
     });
     let texv_liso = sem_grao.map_or(1.0, |[g, _]| g);

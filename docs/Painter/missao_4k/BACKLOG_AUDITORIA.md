@@ -24,7 +24,7 @@ Colunas: `| id | tema | origem | arquivos (file:line) | muda aparência? | medi�
 ### → junta-se ao B01 (camadas sem perda de dados)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
 |---|---|---|---|---|---|---|---|---|---|---|
-| B01.A1 | `apply_mask`: laço serial de 16,7 M px + clone de 67 MB da máscara só para ler | AU-01-5 | TL/layers/mutate.rs:411,419 | não | relógio 4K do gesto (raro) | ler a máscara por `Arc` emprestado; `par_chunks_mut` | paridade ao bit com o laço antigo + relógio 4K | | | aberto |
+| B01.A1 | `apply_mask`: laço serial de 16,7 M px + clone de 67 MB da máscara só para ler | AU-01-5 | TL/layers/mutate.rs:411,419 | não | relógio 4K do gesto (raro) | ler a máscara por `Arc` emprestado; `par_chunks_mut` | paridade ao bit com o laço antigo + relógio 4K | o laço vive em TL/layers/estrutura.rs (`mascara_no_alfa`): faixas de linhas por `em_faixas_de_linhas`/`parallel_threads`, máscara por `Arc`. Gate `aplica_mascara_tests::apply_mask_em_faixas_e_o_laco_serial_ao_bit` (oráculo serial verbatim; 1/2/7/32 fios; normal e invertida) + os 3 de apply_mask verdes. Relógio 4096²: a sonda `sonda_apply_mask_4096` (oráculo × faixas intercalados, mín. de 9) está na fila pesada (o hook recusa `--ignored` em subagente) | este commit | parcial (o número da sonda na fila) |
 
 ### → junta-se ao B02 (Wet preso ao documento/camada)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |

@@ -184,12 +184,12 @@ impl PainterTool {
             return false;
         };
         let parent_px = Arc::make_mut(&mut parent_img.rgba8);
-        for idx in 0..n {
-            let v = crate::compositor::mask_value(&mask_px, idx);
-            let cov = if inverted { 1.0 - v } else { v };
-            let a = parent_px[idx * 4 + 3] as f32;
-            parent_px[idx * 4 + 3] = (a * cov).round().clamp(0.0, 255.0) as u8;
-        }
+        mascara_no_alfa(
+            &mask_px[..n * 4],
+            &mut parent_px[..n * 4],
+            w as usize,
+            inverted,
+        );
         let was_active = self.layers.active();
         self.layers.remove(mask_id);
         self.images.remove(&mask_id);
@@ -205,4 +205,21 @@ impl PainterTool {
         self.invalidate_composite();
         true
     }
+}
+
+/// O alfa de `parent_px` multiplicado pela cobertura de `mask_px` (linhas de `w` texels), em faixas de
+/// linhas: cada texel só lê o seu, então o bit é o mesmo a qualquer nº de fios. Gate: `aplica_mascara_tests`.
+pub(crate) fn mascara_no_alfa(mask_px: &[u8], parent_px: &mut [u8], w: usize, inverted: bool) {
+    let row_bytes = w * 4;
+    let rows = parent_px.len() / row_bytes.max(1);
+    let fios = crate::compositor::parallel_threads(parent_px.len() / 4, rows);
+    crate::compositor::em_faixas_de_linhas(parent_px, row_bytes, fios, |faixa, y0| {
+        let base = y0 * w;
+        for i in 0..faixa.len() / 4 {
+            let v = crate::compositor::mask_value(mask_px, base + i);
+            let cov = if inverted { 1.0 - v } else { v };
+            let a = faixa[i * 4 + 3] as f32;
+            faixa[i * 4 + 3] = (a * cov).round().clamp(0.0, 255.0) as u8;
+        }
+    });
 }

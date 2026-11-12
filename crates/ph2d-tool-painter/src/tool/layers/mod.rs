@@ -14,6 +14,8 @@
 //!   curves / gradient / channel-mixer / selective-color).
 
 mod adjustments;
+#[cfg(test)]
+mod aplica_mascara_tests;
 mod cache;
 #[cfg(test)]
 mod copias_de_plano_tests;

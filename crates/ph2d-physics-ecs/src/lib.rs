@@ -3,8 +3,10 @@
 //! rapier wrapper (M10) into the ECS as a **global, runtime-truth** rigid
 //! world (ADR-0131 W1).
 //!
-//! - [`RigidBody`] / [`Collider`] are ECS components (config only) that an
-//!   entity carries to become a physics body.
+//! - [`RigidBody`] / [`Collider`] are ECS components (config only). ⛔ The body
+//!   carries the `RigidBody`; its shape is the CHILD «Collision Shape» carrying the
+//!   `Collider` — make it with [`nasce_com_forma`] / [`torna_corpo`] (ADR-0199),
+//!   never by spawning both on one entity, in the editor, a smoke scene or a test.
 //! - [`PhysicsBridge`] owns the transient rapier world + the entity↔handle
 //!   map and is driven once per frame at the `Playhead` tick.
 //! - [`register_physics_components`] plugs the components into the shared

@@ -141,7 +141,9 @@ pub struct RigidBody {
 
 impl SimComponent for RigidBody {}
 
-/// The collider attached to a [`RigidBody`]'s entity. W2 adds `restitution`
+/// A body's shape. ⛔ It lives on the body's CHILD «Collision Shape», made by
+/// [`crate::nasce_com_forma`] / [`crate::torna_corpo`] (ADR-0199); the engine still
+/// reads one on the body itself only for old tests. W2 adds `restitution`
 /// and `friction` — **appended**, because postcard encodes fields
 /// positionally, and both are read by `body_desc` on the way to rapier in
 /// the same commit (a field with no consumer is an orphan, DIRETIVA §2).

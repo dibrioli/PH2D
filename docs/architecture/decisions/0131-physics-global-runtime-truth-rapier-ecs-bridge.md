@@ -14,6 +14,14 @@
 
 ---
 
+## ⚠️ EMENDA 2 — 2026-11-08: o `Collider` mora na FILHA, não no corpo
+
+> **Estendido por:** [ADR-0199](0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md). Onde este ADR põe
+> `RigidBody` e `Collider` na mesma entidade, leia hoje: o corpo leva o `RigidBody`; a forma é a filha
+> «Collision Shape» com o `Collider` (`ph2d_physics_ecs::nasce_com_forma` / `torna_corpo`). O motor ainda
+> aceita o `Collider` no corpo (testes antigos), mas nenhuma porta do editor, cena de smoke nova ou teste
+> novo o põe lá.
+
 ## ⚠️ EMENDA 1 — 2026-08-29: caducou o NÚMERO **e** o VOCABULÁRIO
 
 > **Emendado por:** [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md).

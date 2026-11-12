@@ -38,6 +38,38 @@ objetos e com elas por conta do mundo. Código: [`crates/ph2d-joint-templates`](
 | `the_elevator_rises_one_storey_and_stops` | sobe ≠ 3,0 ± 0,1 m ou sai do trilho |
 | `every_template_assembles_its_factory_parts_and_holds` | qualquer gabarito: número de juntas errado, peça em NaN, abaixo do chão ou a mais de 30 m |
 
+## A ponte sob carga (smoke do dono, 12/11)
+
+O dono viu a ponte esmagar mais quanto MENOR a densidade. Sondas `#[ignore]` em
+`crates/ph2d-app-physics/src/physics_smoke_joint_templates_tests.rs` (`probe_*`), cena 123, caixa 0,5 m, 300 ticks.
+`Plank 5` em repouso a `y = 1,00`; o topo do chão é `y = 0`.
+
+**A densidade está certa** — pelo Inspector (`apply_physics_edit`, a caixa selecionada, a forma filha recebe):
+
+| caixa (densidade) | Plank 5, fim | mais baixo |
+|---|---|---|
+| 0,1 | +0,915 | +0,872 |
+| 1 | +0,903 | +0,797 |
+| 10 | +0,905 | +0,382 |
+| 40 (10 kg) | +0,750 | +0,046 |
+| 400 | +0,027 | −0,037 |
+
+**O que esmaga é a RAZÃO de massas** (caixa 10 kg; tábua 0,05 m² × densidade). Pousada sem queda dá o mesmo:
+
+| tábuas | Rope, fim · mais baixo | pousada, fim | Pin entre as tábuas, fim · mais baixo |
+|---|---|---|---|
+| 0,1 (2000:1) | +0,027 · −0,036 | +0,026 | +0,095 · +0,013 |
+| 1 (200:1, o padrão) | +0,750 · +0,046 | +0,568 | **+0,978** · +0,308 |
+| 10 (20:1) | +0,842 · +0,619 | +0,840 | +1,033 · +0,653 |
+| 40 (5:1) | +0,897 · +0,797 | +0,889 | — |
+
+Solver, tábuas 1: `sub 4 it 4` +0,750 · `8/4` +0,771 · `12/4` +0,950 · `4/16` +1,045 · `12/16` +0,968 (mais baixo +0,675).
+Tábuas 0,1: nenhuma combinação segura (o melhor, `12/16`, volta a +0,885 mas passa por +0,023).
+
+Leitura: o `Rope` (só um limite de distância) cede sob 200:1; o `Pin` entre tábuas segura o peso parado (2 cm) mas
+ainda afunda no impacto; 2000:1 nenhum ajuste de junta ou de solver segura — é o limite do solver iterativo, cuja
+cura é resolver a corrente inteira de uma vez (multibody, coordenadas reduzidas). A abrir na W2.
+
 ## O que esta tabela NÃO mede
 
 - Carga: a força do elevador e da polia com peso em cima, e o torque do carro numa rampa. Só o carro vazio no plano.

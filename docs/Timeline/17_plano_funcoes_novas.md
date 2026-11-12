@@ -255,3 +255,21 @@ mudança laranja some no Done; trocar de clipe/aba = Done.
 - **Undo leva à aba Keys e trava Containers/Arrange:** NÃO reproduzido. Achado: `PH2D_ANIMACAO_SMOKE=0` montava a cena da
   animação junto da `PH2D_NEST_SMOKE=4` (agora `0` desliga). Se voltar: smoke com `PH2D_UNDO_LOG=1`. Achado lateral:
   `reset_trail` não tem chamador na shell (o rasto pode apontar para container que sumiu).
+
+## Onda 5 — itens 11 e 12 feitos (12/11), smoke do dono OK
+
+- **11 — mecanismo:** a aba Keys sem pilha usa `ViewClock::Editor` = `self.playhead`; `cena_do_jogo().a_correr` = `playhead.is_playing()`, então o Play da Timeline dava os cliques do canvas ao jogo (`FocoDoJogo::premido`) e eles nunca chegavam a `motion_path_anchor_down`. Cura: `Tapa.animar = timeline.animating.0` em `posse_do_jogo` (`ph2d-app-components`), como o preview do Morph; o Play da barra de cima (runtime) encerra a sessão e devolve o rato ao jogo. Teste `a_previa_da_timeline_a_tocar_nao_da_o_rato_ao_jogo` (mutação sangra).
+- **12 — provas, sem cura:** medido que pintura e clique já concordavam em toda condição (checkbox, aba, painel escondido, cartões, alça recolhida, Path, palco: `pointer_button`/`pointer_moved` voltam em `no_palco` antes dos ramos do editor). Provas: `while_playing_the_painted_points_and_handles_are_what_the_click_grabs` (`ph2d-app-motion`), `the_paint_and_the_click_read_the_same_curves_checkbox` e `on_the_game_stage_the_curves_are_neither_painted_nor_reached` (`shells/desktop/tests/it/the_motion_path_is_offered_only_on_the_keys_tab.rs`), cada uma com mutação que sangrou.
+- **Abas presas em Keys (explica o relato «vários UNDO → Keys» de 11/11):** `apply_project_with` devolve a seleção com bits NOVOS; `selection_jumps_to_keys` comparava com os antigos e pedia `request_keys_tab`. Com o Done passando a marca de seleção, sair de Keys encerrava a sessão → restauro → de volta a Keys. Cura: o restauro carimba `timeline_last_selected`; gate `the_restore_is_not_a_new_selection_for_the_keys_tab_jump` (`the_undo_preserves_the_vector_selection.rs`, mutação sangra). A shell ficou neutra no TETO.
+- **Done rebobina a agulha (dono 12/11):** `take_done(&mut Playhead)` pausa e rebobina; `ph2d-core` virou dependência normal de `ph2d-panel-timeline`. Mutação: sem o rebobinar, `done_tells_the_shell_once_to_turn_auto_key_off` falha.
+- Smoke do dono OK em 12/11: Done, itens 11 e 12, abas. Handoff: [CONTINUACAO onda 5](handoffs/HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-12_ONDA5_ITENS_11_12.md).
+
+### 13 — investigação (12/11)
+
+- **Pergunta:** o easing estraga a curva desenhada no canvas. Ainda NÃO reproduzido; o primeiro passo, seja qual for a escolha, é um teste que mostre qual caminho de dano acontece.
+- **Modelo:** `Interp` (`ph2d-anim/src/curve.rs:20`: Hold, Linear, Eased, Bezier, `BezierW{x1,dy1,x2,dy2}`, Nearest); `Key{t,value,interp}` em `track.rs:78`. `BezierW` é cúbica no plano (u, valor): x = fração de tempo, dy = desvio ABSOLUTO de valor (`curve_weighted.rs`). O arrasto de alça no canvas (`motion_key_handles.rs:233`, `drag_alca`) escreve por eixo `bezier_w(1/3, c1−v0, 2/3, c2−v1)` (:281).
+- **Easing na UI:** `presets.rs:192–202` (`SetInterp`/`SetSelectedInterp`) com `Interp` novo inteiro (`presets::absolute` :271) → `intent_apply.rs:271` `track.set_interp` SUBSTITUI; alças em `graph.rs:152/190`.
+- **Ideia-chave:** em `BezierW` o caminho espacial (X,Y) é dado só pelos dy; o ritmo, por x1,x2. Se X e Y partilham x1,x2, mudar x1,x2 mantendo dy preserva o caminho exatamente.
+- **Caminhos de dano suspeitos:** (a) `SetInterp` troca `BezierW` e perde os dy; (b) easing num eixo só desparelha X e Y; (c) o canvas fixa x em 1/3–2/3.
+- **Alternativa já existente:** `MotionPath` (`ph2d-timeline/src/path.rs:129`, ADR-0141 «proposto, aguardando aceite do Enio»): Position = distância no caminho com easing próprio; `has_path` desliga as alças do canvas. Se o formato mudar: `PROJECT_SCHEMA` = 237 (`shells/desktop/src/project_schema.rs:459`).
+- **Decisão do dono PENDENTE (perguntada 12/11):** **A** = modelo AE (uma linha «Position» = ritmo ao longo do caminho, forma no canvas, via `MotionPath`) · **B** = manter as linhas X/Y; a seta muda só o ritmo (x1,x2), aplicado a X e Y juntos, forma mantida.

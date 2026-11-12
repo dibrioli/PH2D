@@ -241,7 +241,10 @@ fn as_formigas_da_selecao_acordam_o_laco_no_passo_e_parado_emitem_a_mesma_imagem
     p.set_rect_selection(4, 4, 20, 20);
     assert!(p.selection_active(), "a Seleção ficou viva");
     let falta = acorda(&p).expect("a Seleção viva acorda o laço");
-    assert!(falta <= passo_ms, "no passo das formigas, não no prazo: {falta:?}");
+    assert!(
+        falta <= passo_ms,
+        "no passo das formigas, não no prazo: {falta:?}"
+    );
 
     let c = cena();
     let ids = |passo| {
@@ -258,7 +261,11 @@ fn as_formigas_da_selecao_acordam_o_laco_no_passo_e_parado_emitem_a_mesma_imagem
 
     let (p0, t0) = crate::painter_bridge_selection_overlay::passo_das_formigas(Instant::now());
     let (p1, t1) = crate::painter_bridge_selection_overlay::passo_das_formigas(t0);
-    assert_eq!((p1, t1), (p0 + 1, t0 + passo_ms), "um passo por 100 ms de relógio");
+    assert_eq!(
+        (p1, t1),
+        (p0 + 1, t0 + passo_ms),
+        "um passo por 100 ms de relógio"
+    );
 }
 
 /// A caixa nunca cobre o pixel amostrado, e vira para o outro lado na borda da janela.

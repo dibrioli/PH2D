@@ -311,7 +311,13 @@ fn o_arrasto_de_ajustes_com_resumo_e_a_rota_sem_resumo_ao_bit() {
     use crate::compositor::compose::resumo::SEM_RESUMO;
     let esparsa = |w: u32, h: u32, semente: u32| {
         let mut img = tinta(w, h, semente);
-        for (i, p) in img.rgba8_mut().as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        for (i, p) in img
+            .rgba8_mut()
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .enumerate()
+        {
             let (x, y) = (i as u32 % w, i as u32 / w);
             if (x / 64 + y / 3 + semente) % 3 != 0 {
                 *p = [0; 4];

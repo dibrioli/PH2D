@@ -302,6 +302,7 @@ mod plane_fork;
 pub(super) mod relief_state;
 #[cfg(test)]
 mod selection_arrasto_tests; // B16.7: o arrasto da selecao nao recompoe por Move
+pub mod selection_formigas; // B20.11: o overlay guardado por passo e identidade da mascara
 #[cfg(test)]
 mod selection_gizmo_mods_tests; // Shift/Ctrl no gizmo de selecao
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
@@ -314,7 +315,6 @@ mod selection_offset;
 mod selection_offset_geom; // sharp-corner offset: trace(+holes) → refit → CAD offset per level (no SDF rounding)
 /// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
 mod selection_overlay;
-pub mod selection_formigas; // B20.11: o overlay guardado por passo e identidade da mascara
 mod selection_pen; // a CANETA: o Pen do vetor autorando uma regiao de selecao (Enio 2026-08-07)
 #[cfg(test)]
 mod selection_pen_tests;
@@ -414,10 +414,10 @@ mod impasto_aa_tests; // screen-space AA of the impasto film silhouette (BUGS #1
 #[cfg(test)]
 mod impasto_fingerprint_tests; // the deposit's byte-for-byte pin — the net any kernel rewrite needs
 #[cfg(test)]
+mod ritmo_fixo_tests; // B22.1: o mesmo gesto a 30/60/144 Hz dá os mesmos bytes
+#[cfg(test)]
 mod sculpt_tests;
 #[cfg(test)]
 mod watercolor_aa_tests; // screen-space AA of the thin-stroke watercolor silhouette
-#[cfg(test)]
-mod ritmo_fixo_tests; // B22.1: o mesmo gesto a 30/60/144 Hz dá os mesmos bytes
 #[cfg(test)]
 mod watercolor_dry_tests; // o decaimento da umidade: janela deslizante + rect que encolhe

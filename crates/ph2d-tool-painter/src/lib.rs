@@ -48,7 +48,9 @@ pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
 
 /// A lei única do alfa das rampas de cor do PINCEL (Grain · Shape Color).
 pub use tool::paint::BRUSH_RAMP_ALPHA;
-pub use tool::paint::selection_formigas::{PASSO_DAS_FORMIGAS_MS, construcoes_do_overlay_da_selecao};
+pub use tool::paint::selection_formigas::{
+    PASSO_DAS_FORMIGAS_MS, construcoes_do_overlay_da_selecao,
+};
 
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,

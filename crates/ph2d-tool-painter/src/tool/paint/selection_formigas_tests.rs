@@ -26,7 +26,11 @@ fn o_overlay_guardado_e_o_de_sempre_e_parado_nao_se_refaz() {
     let n0 = construcoes();
     for passo in [0, 3, 7] {
         let cru = t.selection_overlay_rgba(passo).expect("cru").0;
-        assert_eq!(bytes(&t, passo), cru, "passo {passo}: o byte do caminho cru");
+        assert_eq!(
+            bytes(&t, passo),
+            cru,
+            "passo {passo}: o byte do caminho cru"
+        );
     }
     assert_eq!(construcoes() - n0, 3, "um passo novo, uma construção");
     for _ in 0..5 {

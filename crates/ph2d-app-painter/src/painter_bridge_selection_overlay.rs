@@ -21,7 +21,10 @@ pub(crate) fn passo_das_formigas(agora: Instant) -> (u32, Instant) {
     let inicio = *INICIO.get_or_init(|| agora);
     let ms = ph2d_tool_painter::PASSO_DAS_FORMIGAS_MS;
     let passo = agora.saturating_duration_since(inicio).as_millis() as u64 / ms;
-    (passo as u32, inicio + Duration::from_millis((passo + 1) * ms))
+    (
+        passo as u32,
+        inicio + Duration::from_millis((passo + 1) * ms),
+    )
 }
 
 /// Draw the active selection's overlay (marching ants + deselected-area hatching) into `vector_scene`.

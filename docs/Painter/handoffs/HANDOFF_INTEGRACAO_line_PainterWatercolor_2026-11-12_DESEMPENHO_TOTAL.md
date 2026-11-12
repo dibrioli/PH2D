@@ -145,6 +145,13 @@ Binário: `Worktrees/line-PainterWatercolor/target/smoke/ph2d-host-desktop`, com
    rastrear os tiles que a água mudou), o chunk esparso como tile 64×64 para trocar ponteiros (ADR-0203 adenda 2).
 3. **Água com Óleo Real:** o campo refaz-se na janela inteira a cada imagem (a revisão muda a cada passo) — guardar por
    linhas; B13.5/B13.6 (o passo cresce com os traços) não atacados; B13.7 (Jacobi) muda bits = dono.
+   ⛔ **Recusa MEDIDA (12/11, ramo `tmp/painter-gama2`): o cache do campo por LINHAS não tem o que poupar.** A caixa
+   já é a das células que mudaram ao bit (B14.1); sonda `sonda_agua_oleo_4k` (OLEO=1, 2 traços, 12 quadros),
+   linhas da janela do campo cujo `sett`/`susp` (o que a massa e a cobertura leem) mudou desde a última composição:
+   durante o traço **492/564**, nos quadros sem pincel **~800/880** — as que ficam iguais são só o anel do alcance
+   (35 células de cada lado), e o campo desse anel lê as mudadas: refaz-se de qualquer modo. A água move o `susp` em
+   toda a envolvente molhada a cada passo. O ganho tem de vir de cortar o custo POR CÉLULA do campo
+   (`visibilidade_e_ceu`, `rebote_no_papel`, `desfoca`) ou de B13.5/B13.6, não de reuso.
 4. **Camadas:** B18.1 cópia sob demanda (`LayerImage.rgba8` → `Arc<Vec<u8>>`, ~35 construções, serde `rc`), B18.2 salvar
    por empréstimo (precisa da shell, `project_painter.rs`), B19.10 resto (faixas, resumo por ladrilho), a pista GPU recompõe
    sempre na troca.

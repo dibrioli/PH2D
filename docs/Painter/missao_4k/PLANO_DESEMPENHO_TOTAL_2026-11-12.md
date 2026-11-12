@@ -65,6 +65,13 @@ Por fazer no fecho: matriz calma única base `4381ee6d4a` × HEAD (Wet/Filbert/I
 camada), alarmes, fmt/clippy das crates tocadas, tectos, handoff, §5.1, binário smoke 2×, limpar as worktrees
 `.ph2d-ag-*`, `.ph2d-bis-4k`, `.ph2d-perf-target` e os targets.
 
+**06:10 — FECHO da janela:** + ε2/ε3 (o histórico TROCA os tiles, densos e esparsos), α3b (5 cortes), os 7 vermelhos
+herdados curados (B33.1, B32.1, B14.2/C3, formato da macro v3), os 4 tectos cortados, a bateria de fecho verde. Matriz rf
+(base × HEAD, 72 corridas): Wet toque 62,9 → 50,7 · Wet Ctrl+Z 49,9 → 34,0 · Filbert Ctrl+Z 61,9 → 48,1 · Óleo Real toque
+68,6 → 55,6 e Ctrl+Z 64,7 → 46,8 · W5 toque 44,3 → 31,0 e Ctrl+Z 88,4 → 47,9 · W6 CPU parado 468 → 160 % · W9 toque 55,9 →
+30,7. Handoff: [DESEMPENHO_TOTAL](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-12_DESEMPENHO_TOTAL.md)
+(§8 = o que fica aberto, por ordem).
+
 **Achado transversal (não é do Painter):** parado, cada quadro gasta ~38 M ciclos no fio da UI — estados dos widgets
 e a11y em BTreeMap (~12 %), o modelo do Quadro (`BoardId`, 4,4 %) numa cena de pintura, `format` por quadro. Vai ao
 handoff para a linha da UI/Editor.

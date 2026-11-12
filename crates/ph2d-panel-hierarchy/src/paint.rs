@@ -74,6 +74,11 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     let rename_target = state.rename_target_row;
     let filter = state.component_filter;
     let entities_by_id = entries_now();
+    let cortados = crate::row_name::take_cut();
+    for (id, e) in &entities_by_id {
+        let nome = if cortados.contains(id) { &*e.name } else { "" };
+        ctx.host.store_mut().set_tooltip(*id, nome);
+    }
     let (row_set, area, chip) = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_hierarchy_body(

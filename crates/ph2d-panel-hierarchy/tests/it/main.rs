@@ -14,6 +14,7 @@ mod hierarchy_apply_event;
 mod hierarchy_context_menu;
 mod hierarchy_selection_by_identity;
 mod hierarchy_sync_round_trip;
+mod o_nome_tem_prioridade_sobre_os_interruptores;
 mod o_selo_de_uma_linha_cabe_no_selo;
 mod one_click_on_an_animated_sprite_row;
 mod os_cartoes;

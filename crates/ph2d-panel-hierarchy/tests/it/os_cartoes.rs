@@ -148,6 +148,13 @@ impl Mesa {
         self.aplica(ev)
     }
 
+    /// O rato sobre a linha: os interruptores no valor normal só se pintam na linha apontada.
+    fn aponta(&mut self, row: NodeId) {
+        let p = self.centro(row);
+        let _ = self.ponteiro(PointerKind::Move, p);
+        self.pinta();
+    }
+
     fn ponteiro(&mut self, kind: PointerKind, p: (f32, f32)) -> Vec<WidgetEvent> {
         self.ponteiro_em(kind, p, 0)
     }
@@ -253,6 +260,7 @@ fn mais_olho_cadeado_e_grupo_respondem_nos_rects_pintados() {
         got.contains(&EditorAction::Hierarchy(HierRequest::AddRoot)),
         "{got:?}"
     );
+    mesa.aponta(row);
     let got = mesa.clica(core_ids::hier_eye_companion(row));
     assert!(
         got.contains(&EditorAction::Hierarchy(HierRequest::ToggleVisibility {
@@ -294,8 +302,11 @@ fn o_galo_recolhe_e_expande() {
 /// Duplo clique no nome abre o campo POR CIMA do nome, dentro da linha e antes dos ícones.
 #[test]
 fn renomear_abre_a_caixa_por_cima_do_nome() {
-    let mut mesa = Mesa::nova(4);
     let row = id_de(2);
+    // Renomeia-se a linha escolhida: e a escolhida mostra os interruptores.
+    let mut mesa = Mesa::com(4, |m| {
+        m.get_mut(&row).expect("linha").selected = true;
+    });
     mesa.st.rename_target_row = Some(row);
     mesa.pinta();
     let caixa = mesa
@@ -686,11 +697,18 @@ fn o_botao_direito_abre_o_menu_da_linha() {
 fn arrastar_pela_coluna_do_olho_pinta_as_outras_linhas() {
     let mut mesa = Mesa::nova(5);
     let (a, b) = (id_de(2), id_de(3));
-    let (de, para) = (
-        mesa.centro(core_ids::hier_eye_companion(a)),
-        mesa.centro(core_ids::hier_eye_companion(b)),
+    // Aponta-se a linha `a`; premido o olho dela, o quadro seguinte pinta a coluna em todas.
+    mesa.aponta(a);
+    let de = mesa.centro(core_ids::hier_eye_companion(a));
+    let para = (de.0, mesa.centro(b).1);
+    let mut ev = mesa.ponteiro(PointerKind::Down, de);
+    mesa.pinta();
+    assert!(
+        mesa.rect(core_ids::hier_eye_companion(b)).is_some(),
+        "durante o arrasto a coluna do olho pinta-se em toda linha"
     );
-    let ev = mesa.host.drag_at(de.0, de.1, para.0, para.1);
+    ev.extend(mesa.ponteiro(PointerKind::Move, para));
+    ev.extend(mesa.ponteiro(PointerKind::Up, para));
     let got = mesa.aplica(ev);
     assert!(
         got.contains(&EditorAction::Hierarchy(HierRequest::ToggleVisibility {

@@ -27,6 +27,7 @@ mod populate;
 mod row;
 mod row_components;
 mod row_ink;
+mod row_name;
 mod rows;
 mod search;
 pub mod state;

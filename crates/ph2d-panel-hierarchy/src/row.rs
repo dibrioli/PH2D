@@ -216,15 +216,18 @@ pub(crate) fn paint_hierarchy_row(
     let eye_size = Spacing::Xl.px();
     // ⭐ Só um OBJECTO tem olho e travas: a Cena e o conteúdo não se escondem nem se trancam.
     if entity.role == ph2d_editor_core::hier_rows::RowRole::Object {
-        right_x = paint_row_eye(
-            entity,
-            rect,
-            scene,
-            ink,
-            row_id,
-            hit_index.as_deref_mut(),
-            right_x,
-        );
+        let todas = crate::row_name::toggles_all_shown(entity);
+        if todas || !entity.visible {
+            right_x = paint_row_eye(
+                entity,
+                rect,
+                scene,
+                ink,
+                row_id,
+                hit_index.as_deref_mut(),
+                right_x,
+            );
+        }
         right_x = paint_row_locks(
             entity,
             rect,
@@ -232,8 +235,7 @@ pub(crate) fn paint_hierarchy_row(
             ink,
             row_id,
             hit_index.as_deref_mut(),
-            eye_size,
-            icon_cluster_gap,
+            (eye_size, icon_cluster_gap, todas),
             right_x,
         );
     }
@@ -300,7 +302,7 @@ pub(crate) fn paint_hierarchy_row(
     } else {
         ColorToken::Text1
     };
-    paint_row_name(
+    let cortado = paint_row_name(
         scene,
         text_system,
         ink,
@@ -310,6 +312,9 @@ pub(crate) fn paint_hierarchy_row(
         right_x,
         name_color,
     );
+    if let Some(id) = row_id.filter(|_| cortado) {
+        crate::row_name::mark_cut(id);
+    }
     right_x - Spacing::Xxs.px()
 }
 
@@ -380,11 +385,9 @@ fn paint_row_eye(
     right_x - eye_size
 }
 
-/// ⭐ **O GRUPO e o CADEADO** — os dois companheiros de trava à esquerda do olho, sempre pintados e
-/// sempre clicáveis, com a cor a dizer o estado.
-///
-/// ⚠️ Saiu do [`paint_hierarchy_row`] pelo tecto de 200 LOC por função, verbatim: recebe o `right_x`
-/// onde o olho acabou e devolve onde o cadeado acaba — a coluna segue a encolher da direita.
+/// ⭐ **O GRUPO e o CADEADO** — os dois companheiros de trava à esquerda do olho, com a cor a dizer o
+/// estado. Destravados só se pintam com `todas` ([`crate::row_name::toggles_all_shown`]); travados,
+/// sempre. Recebe o `right_x` onde o olho acabou e devolve onde o último pintado acaba.
 #[allow(clippy::too_many_arguments)]
 fn paint_row_locks(
     entity: &fixture::HierarchyEntity,
@@ -393,55 +396,27 @@ fn paint_row_locks(
     ink: RowInk,
     row_id: Option<ph2d_a11y::NodeId>,
     mut hit_index: Option<&mut HitIndex>,
-    eye_size: f32,
-    icon_cluster_gap: f32,
+    (eye_size, icon_cluster_gap, todas): (f32, f32, bool),
     mut right_x: f32,
 ) -> f32 {
-    // ── Group lock (folder icon) — pinta SE locked, sempre clicável.
-    // À esquerda do olho. Click toggla `GroupedChildren` em SimWorld
-    // via EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::ToggleGrou)p (handler no shell). Enio
-    // 2026-05-26: "Agrupar: vc pode manipular o pai mas não os filhos".
-    let icon_btn = eye_size;
-    let group_rect = Rect::new(
-        right_x - icon_btn,
-        rect.y + (rect.h - icon_btn) * 0.5,
-        icon_btn,
-        icon_btn,
-    );
-    // Enio 2026-05-26: checked → Accent (cor de destaque do tema);
-    // unchecked → Text3 (cinza). Olho NÃO usa accent — segue o seu
-    // próprio padrão.
-    let group_color = if entity.group_locked {
-        ColorToken::Accent
-    } else {
-        ColorToken::Text3
-    };
-    let group_icon = if entity.group_locked {
-        IconId::Group
-    } else {
-        IconId::Ungroup
-    };
-    paint_icon(
-        scene,
-        group_icon,
-        group_rect,
-        ink.color(group_color),
-        StrokeToken::Default.px(),
-    );
-    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-        let hit_pad = Spacing::Xs.px();
-        let hit_rect = row_tall(rect, group_rect.x - hit_pad, group_rect.w + hit_pad * 2.0);
-        idx.register(crate::ids::hier_group_companion(row_id), hit_rect);
-        pintavel(
-            crate::ids::hier_group_companion(row_id),
-            entity.group_locked,
-            hit_rect,
-        );
+    if todas || entity.group_locked {
+        right_x = paint_row_group(
+            entity,
+            rect,
+            scene,
+            ink,
+            (row_id, hit_index.as_deref_mut()),
+            eye_size,
+            right_x,
+        ) - icon_cluster_gap;
     }
-    right_x -= icon_btn + icon_cluster_gap;
+    if !(todas || entity.locked) {
+        return right_x;
+    }
+    let icon_btn = eye_size;
     // ── Lock individual (cadeado) — Enio: "Cadeado trava apenas o
     // objeto. Se este objeto tiver filhos, os filhos podem ser
-    // manipulados". Sempre pintado, cor reflete estado.
+    // manipulados".
     let lock_rect = Rect::new(
         right_x - icon_btn,
         rect.y + (rect.h - icon_btn) * 0.5,
@@ -480,6 +455,48 @@ fn paint_row_locks(
     right_x
 }
 
+/// O GRUPO (pasta) à esquerda do olho: clique alterna `GroupedChildren` (Enio 2026-05-26: «Agrupar: vc
+/// pode manipular o pai mas não os filhos»). Ligado = Accent; desligado = Text3. Devolve onde acaba.
+fn paint_row_group(
+    entity: &fixture::HierarchyEntity,
+    rect: Rect,
+    scene: &mut VectorScene,
+    ink: RowInk,
+    (row_id, hit_index): (Option<ph2d_a11y::NodeId>, Option<&mut HitIndex>),
+    icon_btn: f32,
+    right_x: f32,
+) -> f32 {
+    let group_rect = Rect::new(
+        right_x - icon_btn,
+        rect.y + (rect.h - icon_btn) * 0.5,
+        icon_btn,
+        icon_btn,
+    );
+    let (group_icon, group_color) = if entity.group_locked {
+        (IconId::Group, ColorToken::Accent)
+    } else {
+        (IconId::Ungroup, ColorToken::Text3)
+    };
+    paint_icon(
+        scene,
+        group_icon,
+        group_rect,
+        ink.color(group_color),
+        StrokeToken::Default.px(),
+    );
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index) {
+        let hit_pad = Spacing::Xs.px();
+        let hit_rect = row_tall(rect, group_rect.x - hit_pad, group_rect.w + hit_pad * 2.0);
+        idx.register(crate::ids::hier_group_companion(row_id), hit_rect);
+        pintavel(
+            crate::ids::hier_group_companion(row_id),
+            entity.group_locked,
+            hit_rect,
+        );
+    }
+    right_x - icon_btn
+}
+
 /// ⭐⭐ **O NOME da linha** — o que o artista lê, recortado ao espaço que sobra.
 ///
 /// ⚠️ **Função irmã, e não um bloco no meio do pintor** (teto de 200 LOC por função): o rótulo
@@ -508,7 +525,7 @@ fn paint_row_name(
     name_x: f32,
     right_x: f32,
     name_color: ColorToken,
-) {
+) -> bool {
     // Hard clip ao espaço entre name_x e o icon cluster — sem clip,
     // `paint_text` faz wrap quando a string excede a largura (nomes
     // longos quebravam em 2 linhas E invadiam os ícones). Com clip,
@@ -519,7 +536,7 @@ fn paint_row_name(
     let name_right_limit = right_x - Spacing::Xxs.px();
     let name_w = (name_right_limit - name_x).max(0.0);
     if name_w <= 0.0 {
-        return;
+        return !entity.name.is_empty();
     }
     let name_clip = ph2d_vector::Rect::new(
         name_x as f64,
@@ -539,6 +556,7 @@ fn paint_row_name(
         ink.color(name_color),
     );
     scene.pop_layer();
+    text_system.prefix_width(&entity.name, ink.name_px()) > name_w
 }
 
 #[cfg(test)]

@@ -31,7 +31,9 @@ fn linha(name: &str, visible: bool) -> HierarchyEntity {
         swatch: None,
         visible,
         selected: false,
-        hovered: false,
+        // O ponteiro passou por elas: os interruptores no valor normal só se pintam na linha
+        // apontada (`row_name.rs`), e a lei medida aqui é a do arrasto.
+        hovered: true,
         muted: false,
         locked: false,
         group_locked: false,

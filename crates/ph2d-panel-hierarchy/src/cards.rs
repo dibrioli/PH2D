@@ -200,8 +200,15 @@ fn prepare(
     }
     traz_a_selecao(st, store, a, g);
     let y0 = g.arvore - store.panel_scroll(PAINEL).max(0.0);
+    let cortados = crate::row_name::take_cut();
     for l in &a.mostradas[faixa(y0, janela, a.mostradas.len())] {
-        dicas_da_linha(store, l.id, a.entradas.get(&l.id));
+        let e = a.entradas.get(&l.id);
+        dicas_da_linha(store, l.id, e);
+        // O nome cortado no quadro anterior: o balão da linha diz o nome inteiro; inteiro, nenhum.
+        let nome = e
+            .filter(|_| cortados.contains(&l.id))
+            .map_or("", |e| &e.name);
+        store.set_tooltip(l.id, nome);
     }
 }
 
@@ -303,7 +310,9 @@ fn dicas_da_linha(store: &mut WidgetStore, row: NodeId, e: Option<&HierarchyEnti
 }
 
 /// O rato está sobre a linha ou sobre um dos ícones dela? (`hover_live` diz 1 a quem o relógio nunca viu.)
-fn sob_o_rato(store: &WidgetStore, id: NodeId) -> bool {
+/// ⚠️ Os ícones de componente contam: sem eles, o rato num deles apagava os interruptores e a linha
+/// mexia sob o dedo.
+fn sob_o_rato(store: &WidgetStore, id: NodeId, e: &HierarchyEntity) -> bool {
     store.hot_id().is_some_and(|h| {
         h == id
             || core_ids::hier_expand_companion_to_row(h) == Some(id)
@@ -311,6 +320,9 @@ fn sob_o_rato(store: &WidgetStore, id: NodeId) -> bool {
             || core_ids::hier_lock_companion_to_row(h) == Some(id)
             || core_ids::hier_group_companion_to_row(h) == Some(id)
             || core_ids::hier_icon_companion_to_row(h) == Some(id)
+            || e.components
+                .iter()
+                .any(|c| ids::hier_component_icon(id, *c) == h)
     })
 }
 
@@ -319,7 +331,7 @@ fn fundo(c: &mut CardCtx<'_>, r: Rect, k: usize, e: &HierarchyEntity, id: NodeId
     paint_row_stripe(c.scene, r, c.ink.theme, ColorToken::KanbanCard, k);
     let tom = if e.selected {
         RowHighlight::Selected
-    } else if e.hovered || sob_o_rato(c.store, id) {
+    } else if e.hovered || sob_o_rato(c.store, id, e) {
         RowHighlight::Hovered
     } else {
         RowHighlight::None
@@ -366,6 +378,8 @@ fn arvore(c: &mut CardCtx<'_>, a: &Arvore, janela: (f32, f32), y0: f32) -> f32 {
         c.hit_index.register(l.id, inteira);
         fundo(c, inteira, k, molde, l.id);
         let mut e = molde.clone();
+        // A linha apontada mostra os interruptores no valor normal (`row_name`).
+        e.hovered = e.hovered || sob_o_rato(c.store, l.id, molde);
         e.muted = e.muted
             || arrasto.is_some_and(|d| {
                 crate::paint::row_rides_the_drag(l.id == d.dragged, leva_selecao, e.selected)

@@ -131,6 +131,7 @@ fn o_botao_anotado_chega_a_aba_no_carregar_e_no_mover() {
 struct Flutua {
     carregares: usize,
     rodas: usize,
+    avisos: usize,
 }
 
 const MENU: Rect = Rect {
@@ -176,6 +177,9 @@ impl DocumentSurface for Flutua {
     }
     fn floats_at(&self, _: u64, x: f32, y: f32) -> bool {
         MENU.contains(x, y)
+    }
+    fn dismiss_floating(&mut self, _: u64) {
+        self.avisos += 1;
     }
     fn as_any(&self) -> &dyn Any {
         self
@@ -254,4 +258,52 @@ fn o_carregar_e_a_roda_sobre_o_chrome_vao_a_aba_so_onde_o_menu_dela_flutua() {
         (2, 1),
         "a descida e o largar no menu; a roda"
     );
+}
+
+/// ⭐ Um carregar sobre um PAINEL fora do menu da aba avisa-a (fecha a cadeia) e segue ao painel;
+/// no menu e na área da aba não há aviso (o carregar é dela). A perda de foco avisa também.
+#[test]
+fn o_carregar_num_painel_fora_do_menu_avisa_a_aba_e_segue_ao_painel() {
+    use PointerButton::Primary;
+    use PointerKind::Down;
+    let mut hero = HeroScreen::new(NodeId(1));
+    let mut ts = TextSystem::without_system_fonts();
+    hero.documents.install_surface(Box::<Flutua>::default());
+    hero.documents
+        .activate_surface(SurfaceTab { family: 0, id: 7 });
+    let board = crate::screens::hero::board_view::pointer;
+    let avisos = |h: &mut HeroScreen| h.documents.surfaces().find::<Flutua>().map(|f| f.avisos);
+    let (mx, my) = (MENU.x + 1.0, MENU.y + 1.0);
+    assert!(board(
+        &mut hero,
+        input(&mut ts),
+        Down,
+        Primary,
+        mx,
+        my,
+        false
+    ));
+    assert!(board(
+        &mut hero,
+        input(&mut ts),
+        Down,
+        Primary,
+        5.0,
+        5.0,
+        true
+    ));
+    assert_eq!(
+        avisos(&mut hero),
+        Some(0),
+        "controlo: no menu e na área, nada"
+    );
+    let painel = board(&mut hero, input(&mut ts), Down, Primary, 5.0, 5.0, false);
+    assert!(!painel, "o carregar segue ao painel");
+    assert_eq!(
+        avisos(&mut hero),
+        Some(1),
+        "o painel fora do menu avisa a aba"
+    );
+    crate::screens::hero::surface_input::dismiss_floating(&mut hero);
+    assert_eq!(avisos(&mut hero), Some(2), "a perda de foco avisa a aba");
 }

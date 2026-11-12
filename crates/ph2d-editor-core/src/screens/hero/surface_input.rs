@@ -150,6 +150,16 @@ pub fn pointer_leave(hero: &mut HeroScreen) {
     }
 }
 
+/// Um carregar fora do que a aba activa tem a flutuar, ou a janela perdeu o foco: os menus dela
+/// fecham ([`DocumentSurface::dismiss_floating`]).
+///
+/// [`DocumentSurface::dismiss_floating`]: crate::doc_surface::DocumentSurface::dismiss_floating
+pub fn dismiss_floating(hero: &mut HeroScreen) {
+    if let Some((f, id)) = hero.documents.active_surface_mut() {
+        f.dismiss_floating(id);
+    }
+}
+
 pub(super) fn pointer_move(
     hero: &mut HeroScreen,
     input: Input<'_>,

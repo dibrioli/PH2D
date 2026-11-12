@@ -379,6 +379,7 @@ fn route_pointer(
         // Os menus da aba flutuam por cima do chrome: o carregar neles é dela.
         let floats = hero.documents.surface_floats_at(x, y);
         if matches!(kind, PointerKind::Down) && !on_canvas && !floats {
+            super::surface_input::dismiss_floating(hero);
             return false;
         }
         return super::surface_input::pointer(hero, input, kind, button, x, y).unwrap_or(false);

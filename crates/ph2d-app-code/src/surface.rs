@@ -22,8 +22,7 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 use std::any::Any;
 
-/// A aba pára acima do chrome que flutua na faixa de baixo (o HUD): a última linha e o Console ficam à
-/// vista. O chão do documento cobre o resto.
+/// A aba pára acima do HUD da faixa de baixo: a última linha e o Console ficam à vista.
 fn acima_do_chrome(area: Rect, over: Option<Rect>) -> Rect {
     match over {
         Some(o) if o.y > area.y && o.y < area.y + area.h => Rect::new(
@@ -75,8 +74,7 @@ impl DocumentSurface for CodeDocs {
             self.bancada.who = who;
             return;
         }
-        // Cada peça da Bancada volta a pôr os seus alvos ao pintar-se: a que não se pinta neste quadro
-        // (aba de ajuda, aba cujo documento fechou) não deixa alvo nenhum.
+        // Cada peça da Bancada repõe os alvos ao pintar-se: a que não se pinta não deixa nenhum.
         self.bench.forget_frame();
         let dirty: Vec<ScriptId> = self
             .buffers()
@@ -179,6 +177,11 @@ impl DocumentSurface for CodeDocs {
 
     fn floats_at(&self, _id: u64, x: f32, y: f32) -> bool {
         self.bar.floats_at(x, y)
+    }
+
+    fn dismiss_floating(&mut self, _id: u64) {
+        self.bar.dismiss();
+        self.options.click_outside();
     }
 
     fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
@@ -294,8 +297,7 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
-        // O largar perdeu-se fora da aba: é aqui, no 1.º movimento sem o botão. A queda de um nome da
-        // lista foi noutro sítio: cancela-se, nunca cai onde o rato voltou.
+        // O largar perdeu-se fora da aba (1.º movimento sem botão): a queda de um nome cancela-se.
         let lost = !input.primary_held
             && (self.pressed || self.left.dragging.is_some() || self.list.drag.is_some());
         if lost {
@@ -479,8 +481,7 @@ impl DocumentSurface for CodeDocs {
             Compose::DeadKey(ComposeKey::Modifier) => {
                 return d.preedit.as_ref().is_some_and(|p| p.1);
             }
-            // Outra tecla: a tecla morta desfaz-se e a tecla segue para o `key` (o texto composto
-            // vem nela).
+            // Outra tecla: a tecla morta desfaz-se e segue para o `key` (com o texto composto).
             Compose::DeadKey(ComposeKey::Other) => {
                 if d.preedit.as_ref().is_some_and(|p| p.1) {
                     d.preedit = None;
@@ -595,8 +596,7 @@ impl DocumentSurface for CodeDocs {
 }
 
 impl CodeDocs {
-    /// As teclas da FAMÍLIA, em qualquer aba dela: Ctrl+W fecha a aba activa; Alt+← / Alt+→ andam
-    /// pelo histórico ([`crate::nav`]). `None` = não é uma delas.
+    /// Teclas da FAMÍLIA: Ctrl+W fecha; Alt+← / Alt+→ andam no [`crate::nav`]; `None` = outra.
     fn family_key(&mut self, id: u64, key: Key, mods: ph2d_host::Modifiers) -> Option<KeyOutcome> {
         let cmd = mods.ctrl || mods.meta;
         let taken = KeyOutcome {

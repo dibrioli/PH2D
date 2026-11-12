@@ -956,7 +956,7 @@ impl ApplicationHandler for App {
                 // ⚠️ **UMA memória da mão, e ela larga tudo.** O `PlayerKeys` que vivia ao lado
                 // foi removido na W5 do plano 30: duas memórias divergiriam no primeiro `Up` que
                 // uma recebesse e a outra não.
-                self.input.apply_event(ph2d_input::Event::FocusLost);
+                self.on_focus_lost();
             }
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(ime) => self.on_ime(ime),

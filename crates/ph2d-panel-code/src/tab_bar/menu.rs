@@ -287,7 +287,14 @@ impl<M: Copy + PartialEq> TabBar<M> {
             }) else {
                 break;
             };
-            let Some(parent) = row else { break };
+            // A linha-mãe rolou para fora da vista: a cadeia fecha daqui para baixo (nada aberto
+            // fica sem se ver).
+            let Some(parent) = row else {
+                let mut c = self.chain();
+                c.truncate(k);
+                self.set_chain(c);
+                break;
+            };
             let (w, check_w) = measure(rows, ts);
             let b = self.bounds();
             let popup = super::cascade::beside(menu, parent, w, content_h(rows.len()), b);

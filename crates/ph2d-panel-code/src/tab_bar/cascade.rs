@@ -324,9 +324,22 @@ impl<M: Copy + PartialEq> TabBar<M> {
         }
     }
 
-    /// O rato saiu da janela: nenhum `hover_move_at` virá fora da seta, e a auto-rolagem pára.
+    /// O rato saiu da janela: nenhum `hover_move_at` virá fora da seta, e a auto-rolagem pára; o
+    /// realce do rato e a âncora da mira largam-se (o menu fica aberto: o teclado continua).
     pub fn pointer_left(&mut self) {
         self.auto = None;
+        self.hover = None;
+        self.last = None;
+        self.moved_at = 0;
+    }
+
+    /// Um carregar fora de todos os níveis (num painel, no chrome) ou a janela perdeu o foco: fecha a
+    /// cadeia toda, como qualquer menu de desktop. `true` = havia um menu aberto.
+    pub fn dismiss(&mut self) -> bool {
+        let was = self.is_open();
+        self.close();
+        self.pointer_left();
+        was
     }
 
     /// O Esc fecha um nível: o submenu mais fundo, senão o menu. `true` = fechou algo.

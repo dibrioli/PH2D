@@ -130,6 +130,14 @@ impl crate::App {
         }
     }
 
+    /// A janela perdeu o foco: a mão larga tudo e os menus da aba de família activa fecham.
+    pub(crate) fn on_focus_lost(&mut self) {
+        self.input.apply_event(ph2d_input::Event::FocusLost);
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            ph2d_editor_core::screens::hero::surface_input::dismiss_floating(hero);
+        }
+    }
+
     pub(crate) fn on_dropped_file(&mut self, path: std::path::PathBuf) {
         // M14.7 polish (7.3 fix): winit fires `DroppedFile` once PER
         // FILE on macOS but the events arrive across multiple loop

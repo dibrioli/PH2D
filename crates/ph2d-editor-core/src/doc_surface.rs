@@ -327,6 +327,11 @@ pub trait DocumentSurface: Any {
     fn floats_at(&self, _id: u64, _x: f32, _y: f32) -> bool {
         false
     }
+    /// Um carregar caiu FORA de [`Self::floats_at`] e fora da área (num painel, no chrome), ou a
+    /// janela perdeu o foco: fecha o que flutua. O carregar segue para quem está por baixo.
+    fn dismiss_floating(&mut self, id: u64) {
+        let _ = id;
+    }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }

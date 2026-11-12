@@ -12,6 +12,7 @@ mod cronometro;
 mod escurecimento;
 mod escurecimento_da_ui;
 mod estado;
+mod fora_do_menu;
 mod fundo_por_sitio;
 mod fundo_real;
 mod janela_da_linha_longa;

@@ -239,37 +239,53 @@ pub(super) fn pousa_o_dab(
         margem.is_some() && fora_t(t_do_centro(cx, cy), margem, desliza)
     };
     let margem0 = margem(0.0);
+    // Um sub-ponto do AA em `(sx, sy)` com o seu `t`.
+    let amostra = |sx: f32, sy: f32, t: f32| -> f32 {
+        let v = ph2d_painter_brush::dab::silhouette_at(
+            &spec,
+            sil_input,
+            t,
+            sx.floor() as i64,
+            sy.floor() as i64,
+            d.center,
+            d.radius_px,
+        );
+        match corte {
+            Some(c) => v * c.cobre(sx, sy),
+            None => v,
+        }
+    };
     let sil = |cx: i32, cy: i32| -> f64 {
-        // Com `aa_n = 1` o único sub-ponto do AA é o centro de `fora` (`lado = aa_step`): o mesmo `t`, contado 1×.
-        let t0 = (aa_n == 1).then(|| t_do_centro(cx, cy));
-        if t0.map_or_else(|| fora(cx, cy, margem0, 0.0), |t| fora_t(t, margem0, 0.0)) {
-            return 0.0;
-        }
-        if conta {
-            crate::wet_diag::conta_sil(2, 1);
-            crate::wet_diag::conta_sil(3, u64::from(aa_n) * u64::from(aa_n));
-        }
+        let conta_aa = || {
+            if conta {
+                crate::wet_diag::conta_sil(2, 1);
+                crate::wet_diag::conta_sil(3, u64::from(aa_n) * u64::from(aa_n));
+            }
+        };
         let mut acc = 0.0f32;
-        for j in 0..aa_n {
-            let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
-            for i in 0..aa_n {
-                let sx = grid_map::cell_subsample_px(cx, ratio, i, aa_step);
-                let t = t0.unwrap_or_else(|| {
-                    fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r)
-                });
-                let v = ph2d_painter_brush::dab::silhouette_at(
-                    &spec,
-                    sil_input,
-                    t,
-                    sx.floor() as i64,
-                    sy.floor() as i64,
-                    d.center,
-                    d.radius_px,
-                );
-                acc += match corte {
-                    Some(c) => v * c.cobre(sx, sy),
-                    None => v,
-                };
+        if aa_n == 1 {
+            // O único sub-ponto do AA é o centro de `fora` (`lado = aa_step`): o mesmo ponto e o mesmo `t`, contados 1×.
+            let sx = grid_map::cell_subsample_px(cx, ratio, 0, aa_step);
+            let sy = grid_map::cell_subsample_px(cy, ratio, 0, aa_step);
+            let t = fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
+            if fora_t(t, margem0, 0.0) {
+                return 0.0;
+            }
+            conta_aa();
+            acc += amostra(sx, sy, t);
+        } else {
+            if fora(cx, cy, margem0, 0.0) {
+                return 0.0;
+            }
+            conta_aa();
+            for j in 0..aa_n {
+                let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
+                for i in 0..aa_n {
+                    let sx = grid_map::cell_subsample_px(cx, ratio, i, aa_step);
+                    let t =
+                        fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
+                    acc += amostra(sx, sy, t);
+                }
             }
         }
         if conta && acc == 0.0 {

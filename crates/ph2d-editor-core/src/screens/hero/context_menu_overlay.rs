@@ -369,6 +369,8 @@ pub fn paint_context_menu_overlay(
         // categorias das Preferências e as cascatas da barra (`menu_bar::CASCADES`).
         if matches!(req.kind, ContextMenuKind::SettingsMenu)
             || super::menu_bar::cascade_of(*id).is_some()
+            || *id == crate::ids::MENUBAR_EDIT_PREFERENCES
+            || *id == crate::ids::MENUBAR_VIEW_THEME
         {
             let chev = Rect::new(r.x + r.w - pad_x - icon_size, icon_y, icon_size, icon_size);
             paint_icon(

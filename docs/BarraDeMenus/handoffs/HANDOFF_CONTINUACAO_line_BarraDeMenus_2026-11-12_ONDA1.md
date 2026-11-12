@@ -43,3 +43,14 @@ Botão W rotulado «Menu» contendo os 5 menus, Alt abre · campo central «Find
 `crates/ph2d-editor-core/src/screens/hero/`: `menu_bar.rs`, `menu_tables.rs`, `menu_rows.rs`, `context_menu_overlay.rs`, `chrome/menu_bar.rs`,
 `document_tabs.rs`, `global_palette.rs` · `.../doc_surface.rs` · `widget/command_palette/` · `transport_bar.rs` ·
 `shells/desktop/src/init.rs:89` (janela, decorações do SO).
+
+## Fotos da onda 1 (commit 7de8ff4c28) — o que elas mostraram
+
+Fotos em `docs/BarraDeMenus/fotos/onda1_*.png` (Xvfb + xdotool, método de `docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh`).
+- ✅ grupos, coluna de atalhos, Pixel cinzento, Input Map em Window, Help, layouts fora.
+- ✅ curado depois das fotos: «›» em Preferences… e Theme… (abrem submenu e não o levavam).
+- ⛔ ABERTO (para a onda 2, que de qualquer forma põe os cinco menus em cascata dentro do W): o submenu
+  **substitui** o pai (um só slot de menu no `WidgetStore`) e abre só no **clique**, não no hover. A cascata
+  de verdade pede pilha de menus abertos (pai fica, filho ao lado, hover abre). Os testes de UI que abrem
+  `File ▸ Export` com dois cliques (`abre_file_sub`, `abre_window_pixel`) terão de mudar junto.
+- ⚠️ o «›» fica ~3–4 px acima da linha de base do texto e apagado (Text3) — alinhar ao centro óptico.

@@ -10,7 +10,7 @@ Plano por famílias e estado: [PLANO_DESEMPENHO_TOTAL_2026-11-12.md](../missao_4
 ## 1. Identidade
 
 - Branch `line/PainterWatercolor`, merge-base com o main `bc4a6ce930` (o main não andou durante a janela).
-- Esta janela: `4381ee6d4a..HEAD` (≈ 45 commits; 87+ ficheiros, +4 651/−523 antes do corte dos tectos). Tocado:
+- Esta janela: `4381ee6d4a..HEAD` (52 commits; 87+ ficheiros, +4 651/−523 antes do corte dos tectos). Tocado:
   `ph2d-tool-painter` (44 ficheiros) · `ph2d-wet-paint` (19) · `ph2d-painter-brush` (4) · `ph2d-app-painter` (4) ·
   `ph2d-render` (3) · `ph2d-pigment` (3) · `ph2d-panel-painter-layers` (3) · `Cargo.toml` (perfil smoke) · `Cargo.lock` ·
   `docs/` (ADR-0203, medições, plano). **`shells/desktop` intocado.**

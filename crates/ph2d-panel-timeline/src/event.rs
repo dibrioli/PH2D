@@ -73,6 +73,9 @@ pub(crate) fn apply_event(
     // its two menus and its weight field all speak to the STACK rather than to the
     // sheet, and folding them into one guard is also what keeps `apply_event` under
     // its LOC cap — the cap noticing that the stack had grown into its own subject.
+    if let Some(out) = crate::no_lugar::evento(state, ev, host) {
+        return out;
+    }
     if let Some(out) = stack_event(state, ev, host) {
         return out;
     }

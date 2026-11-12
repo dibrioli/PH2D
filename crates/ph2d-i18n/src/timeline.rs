@@ -26,6 +26,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.add_track_lista" => "+ Track",
         "panel.timeline.add_lane" => "+ Lane",
         // The lane's eye: open = the lane plays, closed = it is left out of the animation.
+        "panel.timeline.no_lugar.same_piece" => "Same piece: what you change here changes here too",
         "panel.timeline.lane_mute" => "Mute this lane (open eye: it plays)",
         "panel.timeline.lane_unmute" => "Unmute this lane (closed eye: it is left out)",
         "panel.timeline.add_container" => "+ Container",

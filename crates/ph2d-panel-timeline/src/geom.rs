@@ -271,7 +271,9 @@ pub(crate) fn peca_margem() -> f32 {
 fn stack_rows(snap: &TimelineViewSnapshot, tab: Tab) -> usize {
     match crate::tab::rows(tab, snap) {
         crate::tab::Rows::Keys => 0,
-        crate::tab::Rows::Lanes => snap.lanes.len(),
+        crate::tab::Rows::Lanes => {
+            snap.lanes.len() + crate::no_lugar::vista(snap, tab).map_or(0, |v| v.lanes.len())
+        }
         crate::tab::Rows::Containers => snap.containers.len(),
     }
 }
@@ -286,9 +288,31 @@ pub(crate) fn stack_bands(
     scroll_y: f32,
 ) -> impl Iterator<Item = (usize, f32, f32)> + '_ {
     let top = rows_top - scroll_y;
-    let n = stack_rows(snap, tab);
     let h = faixa_h();
-    (0..n).map(move |i| (i, top + h * i as f32, h))
+    // As lanes de dentro da peça aberta entram logo abaixo da lane dela (doc 17 item 10).
+    let (depois, dentro) =
+        crate::no_lugar::vista(snap, tab).map_or((usize::MAX, 0), |v| (v.lane, v.lanes.len()));
+    let n = stack_rows(snap, tab) - dentro;
+    (0..n).map(move |i| {
+        let k = i + if i > depois { dentro } else { 0 };
+        (i, top + h * k as f32, h)
+    })
+}
+
+/// As linhas de dentro da peça aberta no lugar, `(k, top_y, h)` — vazio sem peça aberta.
+pub(crate) fn no_lugar_bands(
+    snap: &TimelineViewSnapshot,
+    tab: Tab,
+    rows_top: f32,
+    scroll_y: f32,
+) -> Vec<(usize, f32, f32)> {
+    let h = faixa_h();
+    let top = rows_top - scroll_y;
+    crate::no_lugar::vista(snap, tab).map_or_else(Vec::new, |v| {
+        (0..v.lanes.len())
+            .map(|k| (k, top + h * (v.lane + 1 + k) as f32, h))
+            .collect()
+    })
 }
 
 /// Height the Summary channel occupies above the tracks. Zero in the Arrange tab

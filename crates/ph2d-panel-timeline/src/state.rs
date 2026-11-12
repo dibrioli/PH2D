@@ -68,6 +68,7 @@ mod state_nav;
 /// `pub use` so `state::request_*` stays every caller's door.
 #[path = "state_requests.rs"]
 mod state_requests;
+pub use crate::no_lugar::caminho;
 pub use state_nav::{
     containers_list, curves_on_canvas, edit_host, edit_path, keys_mode, open_container, reset_trail,
 };

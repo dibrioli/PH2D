@@ -120,8 +120,7 @@ impl crate::App {
         // transport follows them (`timeline_bridge::on_nav_change`): in, the loop brackets
         // the entered instance; out, the document's own loop is re-installed. Edge-triggered
         // — the mirror of the `keys_mode` tab-switch sync right below.
-        let edit_path = ph2d_panel_timeline::state::edit_path();
-        self.timeline.edit_path = edit_path;
+        (self.timeline.edit_path, self.timeline.no_lugar) = ph2d_panel_timeline::state::caminho();
         // **Which container the transport is EDITING this frame** (Enio, 2026-07-22) —
         // `Some(c)` only while inside a container's lanes (not Keys, not the scene root),
         // stamped for the bridge, the autokey pass and the K flow to read. The active

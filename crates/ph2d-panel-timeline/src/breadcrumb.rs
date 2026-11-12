@@ -126,6 +126,12 @@ pub(crate) fn status(snap: &TimelineViewSnapshot) -> Option<Status> {
             _ => None,
         };
     }
+    if let Some(v) = snap.no_lugar.as_ref()
+        && ph2d_editor_core::panel::cards::ferramenta::cards_on()
+    {
+        // A peça aberta no lugar diz onde toca, no selo de sempre (doc 17 item 10).
+        return Some(Status::Plays(v.janela.0, v.janela.1));
+    }
     if snap.crumbs.is_empty() {
         // The readout states a fact about the ARRANGE ruler (where the instance plays on
         // it). On the Keys tab that ruler is not on screen and the host readouts publish

@@ -63,6 +63,7 @@ pub(crate) fn paint(
             Rect::new(region.x, y, region.w, h),
         );
     }
+    crate::no_lugar_paint::paint(ctx, theme, g, view, state, snap);
 }
 
 /// One lane: its label slice, then its strips.
@@ -271,7 +272,7 @@ fn trim_cut_region(
 /// where no test can reach it is a rule that will be deleted by someone tidying up, and the
 /// artist would find out by dragging a handle that silently writes a number nobody reads
 /// ([[feedback_disabled_button_still_dispatches]]).
-fn hit_plan(
+pub(crate) fn hit_plan(
     spans: &[(u64, Rect)],
     bands: &[(u64, u8, Rect)],
     eases: &[(u64, u8, Rect, bool)],
@@ -364,7 +365,14 @@ pub(crate) fn clipped(r: Rect, band: Rect) -> Option<Rect> {
 }
 
 /// One strip hit target. `edge`: `0` = start, `1` = end, `2` = body.
-fn put_strip_hit(ctx: &mut PaintCtx, row: Rect, rect: Rect, lane: usize, strip: u64, edge: u8) {
+pub(crate) fn put_strip_hit(
+    ctx: &mut PaintCtx,
+    row: Rect,
+    rect: Rect,
+    lane: usize,
+    strip: u64,
+    edge: u8,
+) {
     let id = ids::timeline_strip_hit_id(lane as u64, strip, edge);
     ctx.host.store_mut().register(
         id,

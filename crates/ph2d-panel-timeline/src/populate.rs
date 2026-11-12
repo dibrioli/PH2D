@@ -99,6 +99,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::TIMELINE_LANE_ADD_STRIP {
         button(store, id);
     }
+    for id in ids::TIMELINE_NO_LUGAR_MUTE {
+        button(store, id);
+    }
     button(store, crate::ids::TIMELINE_ADD_MARKER);
     button(store, crate::ids::TIMELINE_STRETCH_CLEAR);
     button(store, crate::ids::TIMELINE_ANIMATING_DONE);
@@ -118,6 +121,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // field that was never registered — pintado mas inerte (the same reason every
     // clip option below is registered up front).
     for id in ids::TIMELINE_LANE_WEIGHT {
+        number(store, id);
+    }
+    for id in ids::TIMELINE_NO_LUGAR_WEIGHT {
         number(store, id);
     }
     // The lane LABEL surfaces (the right-click target). The slot has to exist

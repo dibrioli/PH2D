@@ -441,7 +441,7 @@ pub(crate) fn pilula(peso: Rect, texto_w: f32) -> Rect {
 ///
 /// Nos cartões o número mora numa pílula (maquete B3) e o campo só aparece a escrever; o alvo é o
 /// rect inteiro, nos dois modos.
-fn paint_weight(
+pub(crate) fn paint_weight(
     ctx: &mut PaintCtx,
     theme: Theme,
     id: ph2d_editor_core::NodeId,

@@ -77,7 +77,8 @@ pub(crate) fn apply(
                 state::push_intent(TimelineIntent::EndEdit);
             }
             // O clique no CORPO escolhe a peça (doc 17 item 1); as alças não.
-            if edge == BODY {
+            // Dentro da peça aberta o clique não troca a escolha (fecharia a própria peça).
+            if edge == BODY && crate::no_lugar::interior(snap, lane).is_none() {
                 state.strip_escolhida = Some(StripId(strip));
             }
         }
@@ -186,7 +187,19 @@ fn emit(
         // a strip cannot be dragged off the front of the timeline and become unreachable, and
         // clamped to the lanes that EXIST vertically for the same reason.
         _ => {
-            let to_lane = lane_at(d, y, snap.lanes.len());
+            let to_lane = match crate::no_lugar::interior(snap, d.start_lane) {
+                // Entre as lanes de DENTRO, nunca para fora delas (doc 17 item 10).
+                Some(k) => {
+                    let base = d.start_lane - k;
+                    let dentro = StripDrag {
+                        start_lane: k,
+                        lane: d.lane - base,
+                        ..d
+                    };
+                    base + lane_at(dentro, y, crate::no_lugar::n_lanes(snap))
+                }
+                None => lane_at(d, y, snap.lanes.len()),
+            };
             let intent = TimelineIntent::MoveStrip {
                 lane: d.lane,
                 to_lane,
@@ -201,7 +214,7 @@ fn emit(
             intent
         }
     };
-    state::push_intent(intent);
+    state::push_intent(crate::no_lugar::embrulha(snap, intent));
 }
 
 /// **Which lane the pointer has carried the strip to** — a whole number of rows from where the
@@ -284,6 +297,9 @@ pub(crate) fn esquece_a_sumida(state: &mut TimelinePanelState, snap: &TimelineVi
 
 /// The strip this gesture is about, as the snapshot last saw it.
 fn find(snap: &TimelineViewSnapshot, lane: usize, strip: u64) -> Option<&ph2d_timeline::StripView> {
+    if let Some(k) = crate::no_lugar::interior(snap, lane) {
+        return crate::no_lugar::strip_de_dentro(snap, k, StripId(strip));
+    }
     snap.lanes
         .get(lane)?
         .strips

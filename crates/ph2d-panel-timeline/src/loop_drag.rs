@@ -31,8 +31,7 @@ pub(crate) fn apply(
                 // No range yet? Start one at the playhead so the first drag has
                 // something to pull — the brace is only ever drawn (and thus
                 // grabbable) when a range exists, so in practice this is Some.
-                start_range: snap
-                    .loop_range
+                start_range: crate::no_lugar::loop_range(snap)
                     .unwrap_or((snap.time_seconds, snap.time_seconds)),
             });
         }
@@ -51,6 +50,7 @@ pub(crate) fn apply(
                 // shell (`timeline_bridge.rs`) and the veil drag takes here
                 // (`duration_drag::emit_length`): `container_open` first, everything
                 // else through `SetLoop` (which itself picks Keys vs Arrange).
+                let aberta = crate::no_lugar::loop_intent(snap, range);
                 let intent = match snap.container_open {
                     Some(c) => TimelineIntent::SetContainerLoop {
                         container: c,
@@ -62,7 +62,7 @@ pub(crate) fn apply(
                         ping_pong: snap.loop_ping_pong,
                     },
                 };
-                state::push_intent(intent);
+                state::push_intent(aberta.unwrap_or(intent));
             }
             if matches!(g.phase, GesturePhase::End) {
                 state.loop_drag = None;

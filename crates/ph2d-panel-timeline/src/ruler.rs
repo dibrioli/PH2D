@@ -103,7 +103,13 @@ pub(crate) fn paint(
     // armed stretch IS the loop that plays, so the ruler shows it instead of the clip's (doc 17 item 2).
     let trecho = crate::ruler_trecho::vale(snap, clock);
     if clock.loop_band {
-        paint_loop_band(ctx, theme, region, &time_to_x, trecho.or(snap.loop_range));
+        paint_loop_band(
+            ctx,
+            theme,
+            region,
+            &time_to_x,
+            trecho.or(crate::no_lugar::loop_range(snap)),
+        );
     }
     // The recorded-history band (Blender's cache bar): only on the ruler whose drag moves the
     // clock the history was recorded on (`RulerClock::history`), on this ruler's axis.
@@ -302,7 +308,7 @@ fn paint_loop_braces(
     time_to_x: &impl Fn(f64) -> f32,
     snap: &TimelineViewSnapshot,
 ) {
-    let Some((a, b)) = snap.loop_range else {
+    let Some((a, b)) = crate::no_lugar::loop_range(snap) else {
         return;
     };
     let right = region.x + region.w;

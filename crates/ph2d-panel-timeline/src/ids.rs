@@ -85,3 +85,5 @@ mod timeline_barra;
 pub use timeline_barra::*;
 mod timeline_cartao;
 pub use timeline_cartao::*;
+mod timeline_no_lugar;
+pub use timeline_no_lugar::*;

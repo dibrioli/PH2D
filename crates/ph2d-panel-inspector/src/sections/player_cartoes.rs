@@ -35,6 +35,20 @@ pub(super) struct Pintor<'a> {
     pub x: f32,
     pub w: f32,
     pub info: &'a InspectorPlayerInfo,
+    /// O rótulo mais largo da secção inteira ([`coluna_da_secao`]): a coluna do rótulo é UMA.
+    pub coluna: Option<f32>,
+}
+
+/// ⭐ **A coluna do rótulo é a da SECÇÃO INTEIRA, medida uma vez** sobre todas as rows de
+/// [`PLAYER_CARDS`] (dobradas ou não): uma coluna por dobra seria uma coluna por dobra («as labels
+/// alinhadas todas à direita», dono 14/09) e o nome largo («Swim Line (weights)») cortaria.
+pub(super) fn coluna_da_secao(text: &mut TextSystem) -> Option<f32> {
+    let fonte = TypeToken::Sm.px();
+    PLAYER_CARDS
+        .iter()
+        .flat_map(|(_, _, rows)| rows.iter())
+        .map(|(label, _, _, _)| text.prefix_width(label.tr(), fonte))
+        .reduce(f32::max)
 }
 
 impl Pintor<'_> {
@@ -70,8 +84,18 @@ impl Pintor<'_> {
                 )
             } else {
                 num_row_unit(
-                    self.scene, self.text, self.theme, self.hit, self.store, x, w, y, label, id,
-                    unit, None,
+                    self.scene,
+                    self.text,
+                    self.theme,
+                    self.hit,
+                    self.store,
+                    x,
+                    w,
+                    y,
+                    label,
+                    id,
+                    unit,
+                    self.coluna,
                 )
             };
             i += 1;

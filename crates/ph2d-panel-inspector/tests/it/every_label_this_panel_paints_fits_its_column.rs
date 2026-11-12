@@ -191,7 +191,9 @@ fn the_painter_borrows_the_slack_the_control_does_not_need() {
 
     /// A largura do controlo se a coluna do rótulo fosse SÓ a metade da linha.
     fn controlo_a_meio(painel: f32) -> f32 {
-        let linha = painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * Spacing::Sm.px();
+        // O Float mora numa DOBRA (Player em cartões, GEF 03), que ocupa a largura da secção: já não
+        // tem a moldura de cartão (`Spacing::Sm` de cada lado) que a linha tinha antes.
+        let linha = painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX;
         let gap = Spacing::Md.px();
         let util = linha - ph2d_editor_core::widget::DECORATOR_W;
         util - (linha * 0.5 - gap) - gap

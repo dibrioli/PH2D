@@ -129,6 +129,7 @@ pub(crate) fn paint_player_section(
     if info.live.is_some() {
         yy = paint_live_readout(scene, text_system, theme, x, w, yy, info.live);
     }
+    let coluna = cartoes::coluna_da_secao(text_system);
     yy = cartoes::paint(
         &mut cartoes::Pintor {
             scene,
@@ -139,6 +140,7 @@ pub(crate) fn paint_player_section(
             x,
             w,
             info,
+            coluna,
         },
         yy,
     );

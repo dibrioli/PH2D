@@ -10,7 +10,7 @@ pub(super) fn cartao(p: &mut Pintor<'_>, y: f32, titulo: &'static str, lista: &[
     let pulo = lista == JUMP.as_slice();
     // Fora dos cartões a moldura mede-se pela CONTAGEM de rows: as duas do pulo contam.
     let n = lista.iter().filter(|id| p.shown(**id)).count() + if pulo { 2 } else { 0 };
-    let (theme, x, w, store, info) = (p.theme, p.x, p.w, p.store, p.info);
+    let (theme, x, w, store, info, coluna) = (p.theme, p.x, p.w, p.store, p.info, p.coluna);
     let hit = &mut *p.hit;
     card_frame_with(
         p.scene,
@@ -31,6 +31,7 @@ pub(super) fn cartao(p: &mut Pintor<'_>, y: f32, titulo: &'static str, lista: &[
                 x: ix,
                 w: iw,
                 info,
+                coluna,
             };
             let fim = q.rows(ix, iw, ry, lista);
             if pulo {

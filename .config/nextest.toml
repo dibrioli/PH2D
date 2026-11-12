@@ -263,9 +263,12 @@ slow-timeout = { period = "60s", terminate-after = 8 }
 # razões da grade e do fluxo postas, em série (o `teto`/`grade_inteira` são estado do fio). Sozinho (integ 09/11,
 # `--profile smoke`, load ~40): `undo_vivo_grade_1_fluxo_2` 78,0 s; os seis estouraram os 180 s na suíte (load > 40).
 # Tecto 8 × 60 s ≈ 6× o medido sozinho (a suíte custa 2,5×–4,6×, ver acima).
+# 12/11 (integração, ship com outra linha a compilar ao lado, load ~50): `undo_vivo_grade_1_fluxo_3` estourou os 480 s
+# duas suítes seguidas; sozinho 53–81 s (3 corridas, load 17–49). Tecto 16 × 60 s ≈ 12× o medido sozinho: é prazo de
+# carga, não régua de velocidade (a régua do undo é `the_shell_*`/`undo_*_ms`, por nome e em calma).
 [[profile.default.overrides]]
 filter = 'test(/^tool::paint::wetpaint::undo_matriz_tests::undo_vivo_grade_/)'
-slow-timeout = { period = "60s", terminate-after = 8 }
+slow-timeout = { period = "60s", terminate-after = 16 }
 # Na suíte de 09/11 (load ~12) TRÊS ainda estouraram os 480 s com as seis a correr juntas (cada uma enche o pool
 # rayon): dois de cada vez, com 4 fios reservados, e no INÍCIO da fila (não alongam a cauda da suíte).
 test-group = 'undo-matriz'

@@ -1,51 +1,54 @@
 # GERADO por scripts/testes-lentos.py --regerar — NÃO edite à mão.
 # limiar: 60 s (o slow-timeout do .config/nextest.toml)
+# fonte: 51579eb7-2e57-4697-a513-50b2d0a27df9 2026-11-12T06:57:16.398-03:00 (35572 testes)
 # fonte: 9e193fb6-3135-478a-8c77-09f3a18c56ad 2026-11-12T05:17:15.343-03:00 (35572 testes)
 # fonte: db408d13-43ab-4d39-b584-412eebae5667 2026-11-12T02:23:55.700-03:00 (35956 testes)
-# 81 testes, 11298 s somados
+# 83 testes, 11546 s somados
 # binary_id<TAB>nome<TAB>segundos
 ph2d-app-light2d::it	as_formas_redondas::as_formas_redondas_nao_saem_em_facetas	67.232
 ph2d-app-light2d::it	o_interior_do_opaco::o_interior_do_opaco_nao_depende_da_posicao_na_grade	511.760
 ph2d-app-light2d::it	o_interior_do_opaco::o_rebote_nao_depende_da_oitava	140.358
 ph2d-app-light2d::it	o_miolo_das_formas::o_miolo_das_formas_nao_sai_em_degraus	161.555
+ph2d-app-light2d::it	o_oclusor_fino::o_oclusor_fino_faz_a_sombra_do_gabarito	87.746
 ph2d-app-light2d::it	o_rebote_assenta::o_rebote_assenta_em_dez_quadros	90.538
 ph2d-app-macros::it	tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha	133.777
 ph2d-app-macros::it	tutorial_painter::uma_versao_nova_prepara_se_fora_do_quadro	233.936
 ph2d-app-motion	motion_bridge::ciclos_mods::tutorial_figuras::as_figuras_dos_tutoriais_sao_as_que_os_geradores_produzem	105.756
-ph2d-app-motion	motion_demo_legend::enquadra::a_cena_abre_inteira_100_a_max	65.729
+ph2d-app-motion	motion_demo_legend::enquadra::a_cena_abre_inteira_100_a_max	69.091
 ph2d-app-painter	macro_track::palcos_arrasto_tests::arrastar_a_timeline_deixa_a_ranhura_igual_a_tela_inteira_em_cada_meio	75.963
 ph2d-app-painter	macro_track::palcos_tests::fim_tests::cobertura_tests::a_pincelada_nova_a_cruzar_as_gravadas_nao_deixa_resquicio	140.071
 ph2d-light2d-ref::it	luz_em_com_normal::a_normal_de_frente_e_o_receptor_de_hoje_bit_a_bit	289.652
-ph2d-light2d-ref::it	luz_em_com_normal::nunca_negativa	213.863
+ph2d-light2d-ref::it	luz_em_com_normal::nunca_negativa	230.997
+ph2d-panel-inspector::it	o_inspector_em_cartoes_por_tipo::cada_clique_pede_o_mesmo_que_no_painel_de_antes	60.775
 ph2d-panel-painter-layers::it	censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_na_aquarela	105.802
 ph2d-panel-painter-layers::it	censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_no_wet_paint	91.969
 ph2d-panel-painter-layers::it	h5_os_cartoes::every_number_shows_the_same_value_and_range_as_the_old_panel	62.411
 ph2d-panel-painter-layers::it	h6_os_cartoes::typing_each_number_sends_the_same_action_as_the_old_panel	61.123
 ph2d-panel-painter-layers::it	h7_os_cartoes::typing_each_number_sends_the_same_action_as_the_old_panel	135.416
 ph2d-panel-painter-layers::it	macro_estado_inicial::cada_controlo_mexido_a_gravar_reproduz_se	338.973
-ph2d-panel-painter-layers::it	macro_estado_inicial::o_estado_inicial_leva_as_ferramentas_do_trilho	96.611
+ph2d-panel-painter-layers::it	macro_estado_inicial::o_estado_inicial_leva_as_ferramentas_do_trilho	124.228
 ph2d-panel-painter-layers::it	macro_estado_inicial::o_estado_inicial_leva_cada_controlo_de_cada_meio	343.756
 ph2d-panel-painter-layers::it	o_censo_so_encolhe::o_censo_dos_controlos_so_encolhe	61.478
 ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_blend	156.894
 ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_blow	181.573
-ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_dry	145.772
-ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_smear	146.321
+ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_dry	148.600
+ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_smear	149.022
 ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_water	145.113
-ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_linha_visivel_age_na_ferramenta_ou_diz_porque_nao	145.553
+ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_linha_visivel_age_na_ferramenta_ou_diz_porque_nao	148.802
 ph2d-panel-painter-layers::it	seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo	110.082
 ph2d-skeleton-live	skin_desenho::tests::zona::dobra::densidade::o_braco_nao_tem_dentes_a_densidade_nenhuma	93.875
 ph2d-skeleton-live	skin_live::carrega::tests::uma_forma_ja_cozida_com_pilha_nova_coze_outra_vez	92.040
 ph2d-skeleton-live	skinned_mesh::rive_sondas_tests::diag_d_o_preco_do_segundo_corpo	91.459
-ph2d-tool-painter	macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao	251.458
+ph2d-tool-painter	macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao	271.125
 ph2d-tool-painter	macro_track::tutorial::tests::cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta	164.703
-ph2d-tool-painter	macro_track::tutorial::tests::o_aluno_exacto_cumpre_no_quadro_do_up	273.339
+ph2d-tool-painter	macro_track::tutorial::tests::o_aluno_exacto_cumpre_no_quadro_do_up	281.540
 ph2d-tool-painter	macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma	204.623
 ph2d-tool-painter	tool::paint::tests::papel_de_cor_censo_tests::nenhum_pincel_de_fabrica_clareia_o_papel_de_cor	150.873
-ph2d-tool-painter	tool::paint::wetpaint::agua_no_oleo_regua_tests::a_agua_nao_atravessa_o_oleo_mais_depressa_que_escorre_no_papel	65.851
-ph2d-tool-painter	tool::paint::wetpaint::agua_no_oleo_regua_tests::a_agua_parada_dissolve_a_tinta_soluvel_da_orla	94.308
+ph2d-tool-painter	tool::paint::wetpaint::agua_no_oleo_regua_tests::a_agua_nao_atravessa_o_oleo_mais_depressa_que_escorre_no_papel	70.353
+ph2d-tool-painter	tool::paint::wetpaint::agua_no_oleo_regua_tests::a_agua_parada_dissolve_a_tinta_soluvel_da_orla	96.397
 ph2d-tool-painter	tool::paint::wetpaint::agua_no_oleo_regua_tests::o_relevo_dissolvido_deixa_a_agua_passar	128.691
 ph2d-tool-painter	tool::paint::wetpaint::grao_a_mao_tests::casos_abertos_tirar_o_grain_nao_muda_a_quantidade	86.074
-ph2d-tool-painter	tool::paint::wetpaint::grao_a_mao_tests::trocar_o_grain_proprio_nao_muda_a_quantidade	81.039
+ph2d-tool-painter	tool::paint::wetpaint::grao_a_mao_tests::trocar_o_grain_proprio_nao_muda_a_quantidade	83.471
 ph2d-tool-painter	tool::paint::wetpaint::material_do_pincel_tests::cada_knob_do_material_muda_o_preview	61.030
 ph2d-tool-painter	tool::paint::wetpaint::mistura_wet_drip_tests::uma_mistura_nunca_e_mais_clara_que_as_tintas	60.084
 ph2d-tool-painter	tool::paint::wetpaint::opcoes_tests::a_heavy_edge_a_meio_pesa_na_orla_de_baixo	75.711
@@ -83,5 +86,5 @@ ph2d-tool-painter::it	familias::aguarela::portoes::o_azul_nao_leva_o_vermelho_mo
 ph2d-tool-painter::it	familias::mistura::cada_preset_da_agua_tem_a_sua_cara	93.299
 ph2d-tool-painter::it	familias::tintas::o_borrao_da_tinta_transborda_a_faixa	71.765
 ph2d-tool-painter::it	presets_de_fabrica::alarme::a_largura_de_fabrica_e_a_aprovada	108.978
-ph2d-tool-painter::it	presets_de_fabrica::memoria::a_memoria_do_dabber_cabe	85.983
+ph2d-tool-painter::it	presets_de_fabrica::memoria::a_memoria_do_dabber_cabe	91.932
 ph2d-tool-painter::it	presets_de_fabrica::portoes::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje	70.906

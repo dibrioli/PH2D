@@ -21,25 +21,28 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
         // Cura 02/11c: o lobo da lâmpada passa ao microfacet físico (`G/(4·n·v)` × a irradiância) — os quatro por
         // desenho. Antes: Clássico `0x47c1_f5e4_7399_15f8` · Estúdio `0x03c8_d0c8_5dc1_62fd` · `0x1b0c_d582_4ea7_dfc3` ·
         // Interior `0x098a_d848_eafe_0558` · `0x1539_eaf7_a31b_5abd` · Pátio `0x39ae_7d6d_e887_a7ca` · `0x155b_c697_578a_d5ad`.
+        // Decisão do dono 12/11: a luz do traço é a única — os quatro por desenho. Antes (a Cheia, `acb4e537f3`):
+        // Clássico `0xc628_2478_0671_3a32` · Estúdio `0xf8b3_5f85_223d_cfb4` · `0xc66f_56f2_6140_3359` · Interior
+        // `0x28bd_f703_1fff_08e4` · `0xa11d_ff5c_d937_0c9e` · Pátio `0xcff4_3d4f_54e3_fca9` · `0x2e48_98cb_6899_0c1e`.
         (
             Ambiente::Classico,
-            0xc628_2478_0671_3a32u64,
-            0xc628_2478_0671_3a32u64,
+            0x4dbc_404d_8074_9c67u64,
+            0x4dbc_404d_8074_9c67u64,
         ),
         (
             Ambiente::Estudio,
-            0xf8b3_5f85_223d_cfb4u64,
-            0xc66f_56f2_6140_3359u64,
+            0x8048_ab52_5c1f_f63du64,
+            0xfff8_d2b6_63e2_75fdu64,
         ),
         (
             Ambiente::Interior,
-            0x28bd_f703_1fff_08e4u64,
-            0xa11d_ff5c_d937_0c9eu64,
+            0xdbc1_c829_d7dd_66adu64,
+            0x28ff_94f2_3b75_64e0u64,
         ),
         (
             Ambiente::Patio,
-            0xcff4_3d4f_54e3_fca9u64,
-            0x2e48_98cb_6899_0c1eu64,
+            0x8ac7_bed7_0e26_0f61u64,
+            0xebd6_2df9_5c74_a0d2u64,
         ),
     ] {
         // K10: com o rebote no papel desligado (ele muda só o papel, por desenho).

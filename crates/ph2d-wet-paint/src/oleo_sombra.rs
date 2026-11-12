@@ -32,7 +32,7 @@ pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
             x,
             y,
             PAPEL_PLANO,
-            (escala_do_horizonte(o), o.qualidade),
+            escala_do_horizonte(o),
             ceu.as_ref(),
         );
         (forca_da_fenda(v, o.fenda), dir)
@@ -82,9 +82,9 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
     // `∫₀^a cos(θ − g)·sin θ dθ`: o peso pelo cosseno de um arco da fatia (o da visibilidade). A normal é a do
     // papel: a projecção, `g`, os seus senos e o integral até ao tecto do arco vêm das [`Amostras`] (R3).
     debug_assert!(super::oleo_horizonte::e_o_papel(n));
-    Amostras::com(escala, o.qualidade, |am| {
+    Amostras::com(escala, |am| {
         let mut soma = 0.0;
-        for k in 0..am.nf {
+        for k in 0..FATIAS {
             let (dx, dy) = am.dir[k];
             let Some(plano) = am.papel[k] else {
                 continue;
@@ -126,7 +126,7 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
                 soma += len * luz;
             }
         }
-        o.sombra * o.af.rebote_papel * soma / am.nf as f64
+        o.sombra * o.af.rebote_papel * soma / FATIAS as f64
     })
 }
 
@@ -199,7 +199,7 @@ pub fn transparencia_de_quem_tapa(o: &OleoReal, campo: &CampoAltura, cx: usize, 
     // O CORPO da tinta que tapa: a célula mais alta no caminho da luz (a orla parcial à frente dela mistura o
     // material com o papel pela cobertura).
     let (mut alto, mut quem) = (f64::NEG_INFINITY, (cx as isize, cy as isize));
-    for t in o.qualidade.marcha() {
+    for t in marcha() {
         let t = t as f64;
         let q = (
             exato::round(x + dx * t) as isize,

@@ -93,7 +93,9 @@ fn a_fenda_fica_no_tom_da_tinta_e_nunca_preta() {
     };
     let c = campo(&g, &o);
     let t = termos(&o, &c, 32, 32);
-    assert!(t.vis < 0.5, "o fundo do sulco vê pouco céu: {t:?}");
+    // Decisão do dono 12/11: a luz do traço é a única — as 2 fatias dela (uma ao longo do sulco) dão 0,55; a Cheia
+    // (4 fatias, `acb4e537f3`) dava < 0,5.
+    assert!(t.vis < 0.6, "o fundo do sulco vê pouco céu: {t:?}");
     let rgb = [215.0, 25.0, 30.0];
     let out = ilumina(&o, &c, 32, 32, rgb, 1.0);
     assert!(out[0] > 0.6 * rgb[0], "o vermelho não se apaga: {out:?}");
@@ -435,7 +437,8 @@ fn a_forca_da_fenda_multiplica_as_chances_de_oclusao() {
 fn a_fenda_neutra_e_bit_identica_a_de_antes() {
     // §BUG-ressalto: o papel ao pé da tinta mudou por desenho (sem saia; plano) — era `0xd577_67fb_dd93_1d70`.
     // Cura 02/11c: o lobo da lâmpada passa ao microfacet físico — era `0x47c1_f5e4_7399_15f8`.
-    let (ambiente, antes) = (Ambiente::Classico, 0xc628_2478_0671_3a32u64);
+    // Decisão do dono 12/11: a luz do traço é a única — era `0xc628_2478_0671_3a32` (a Cheia, `acb4e537f3`).
+    let (ambiente, antes) = (Ambiente::Classico, 0x4dbc_404d_8074_9c67u64);
     // K10: o rebote da tinta no papel mudou o PAPEL por desenho; desligado, o de antes ao bit.
     let af = Afinacao {
         rebote_papel: 0.0,
@@ -499,8 +502,8 @@ fn o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula() {
         for cx in 2..W {
             let (x, y) = (cx as isize, cy as isize);
             let n = normal(&c, x, y);
-            let (v, d) = visibilidade_e_ceu(&c, x, y, n, (1.0, o.qualidade), Some(&ceu));
-            let (v0, _) = visibilidade_e_ceu(&c, x, y, n, (1.0, o.qualidade), None);
+            let (v, d) = visibilidade_e_ceu(&c, x, y, n, 1.0, Some(&ceu));
+            let (v0, _) = visibilidade_e_ceu(&c, x, y, n, 1.0, None);
             assert_eq!(
                 v.to_bits(),
                 v0.to_bits(),

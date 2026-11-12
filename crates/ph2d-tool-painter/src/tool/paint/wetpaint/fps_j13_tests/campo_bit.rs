@@ -3,13 +3,9 @@
 //! cada função lê à volta. Lê o campo só pelos acessores públicos (`luz_ceu` é `pub(super)`: fica de fora).
 
 use ph2d_wet_paint::material::MaterialCelula;
-use ph2d_wet_paint::oleo_real::{CampoAltura, OleoReal, albedo_em};
+use ph2d_wet_paint::oleo_real::{CampoAltura, FATIAS, HORIZONTE, OleoReal, albedo_em};
 use std::cell::RefCell;
 
-/// Cópia de `oleo_real::HORIZONTE` (privada) — as distâncias da marcha do horizonte e do rebote.
-const HORIZONTE: [f64; 9] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0];
-const FATIAS: usize = 4;
-const PASSOS_SOMBRA: usize = 24;
 const CAMPOS: [&str; 9] = [
     "v", "detalhe", "sombra", "albedo", "material", "borda", "brilho", "oleo", "sss",
 ];
@@ -168,7 +164,7 @@ fn alcances(o: &OleoReal) -> ([Deslocs; 3], (f64, usize, usize)) {
     }
     let (lx, ly) = (o.azimute.cos(), o.azimute.sin());
     let mut luz = vec![(0, 0)];
-    for t in 1..=PASSOS_SOMBRA {
+    for t in ph2d_wet_paint::oleo_real::marcha() {
         let (fx, fy) = (
             (lx * t as f64).floor() as isize,
             (ly * t as f64).floor() as isize,

@@ -71,7 +71,8 @@ pub(crate) struct Sectores {
     c: Vec<[[f64; 4]; 2]>,
 }
 
-/// A largura (em fracção da volta) da cunha de azimute de cada lado de uma fatia: `FATIAS = 4` ⇒ 8 lados.
+/// A largura (em fracção da volta) da cunha de azimute de cada lado de uma fatia: a das 4 fatias de antes (8 lados);
+/// a luz do traço (2 fatias, dono 12/11) lê 4 delas, de duas em duas — outra cunha muda o bit do céu.
 pub(crate) const CUNHA: f64 = 1.0 / 8.0;
 
 impl Sectores {

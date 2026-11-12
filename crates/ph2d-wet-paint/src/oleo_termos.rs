@@ -27,7 +27,6 @@ pub(super) struct ChaveLuz {
     penumbra: f64,
     ambiente: Ambiente,
     alcance_fenda: f64,
-    qualidade: QualidadeDaLuz,
 }
 
 impl ChaveLuz {
@@ -39,7 +38,6 @@ impl ChaveLuz {
             penumbra: o.af.penumbra,
             ambiente: o.ambiente,
             alcance_fenda: o.alcance_fenda,
-            qualidade: o.qualidade,
         }
     }
 }
@@ -49,8 +47,7 @@ pub(crate) fn luz_ceu(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize) -> 
     let n = normal(campo, x, y);
     let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
     let ceu = CeuDoMapa::de(o);
-    let horizonte = (escala_do_horizonte(o), o.qualidade);
-    let (v, dir) = visibilidade_e_ceu(campo, x, y, n, horizonte, ceu.as_ref());
+    let (v, dir) = visibilidade_e_ceu(campo, x, y, n, escala_do_horizonte(o), ceu.as_ref());
     LuzCeu { luz, v, dir }
 }
 
@@ -246,7 +243,7 @@ pub(crate) fn termos_da_amostra(
         let xa = a004 * -1.04 + (-0.572 * rug + 1.04);
         let yb = a004 * 1.04 + (0.022 * rug - 0.04);
         let pre = mapa.map_or([1.0; 3], |mp| mp.brilho(para_o_mapa(o, mp.claro, r), rug));
-        let livre = reflexo_livre(campo, x, y, r, rug, (escala, o.qualidade));
+        let livre = reflexo_livre(campo, x, y, r, rug, escala);
         (pre, xa, yb, livre)
     };
     let a2_amb = rugo * rugo * rugo * rugo + aa_amb;

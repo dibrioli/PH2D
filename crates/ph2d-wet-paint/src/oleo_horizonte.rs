@@ -7,9 +7,6 @@ use super::*;
 /// lado e cada raio do [`HORIZONTE`], o deslocamento arredondado e a distância dele (`d = 0` = amostra saltada).
 /// São as MESMAS contas que cada célula fazia (ao bit), feitas uma vez por escala em vez de 72 vezes por célula.
 pub(super) struct Amostras {
-    /// As fatias em uso ([`QualidadeDaLuz::fatias`]); as de cima ficam por usar e as distâncias além das da
-    /// qualidade com `d = 0` (saltadas).
-    pub(super) nf: usize,
     pub(super) dir: [(f64, f64); FATIAS],
     pub(super) desloc: [[[(isize, isize, f64); HORIZONTE.len()]; 2]; FATIAS],
     /// Com a normal do PAPEL ([`PAPEL_PLANO`]), por fatia: o comprimento da normal projectada, o ângulo `g` do zénite
@@ -86,18 +83,16 @@ pub(super) fn e_o_papel(n: [f64; 3]) -> bool {
 }
 
 impl Amostras {
-    pub(super) fn de(escala: f64, q: QualidadeDaLuz) -> Self {
+    pub(super) fn de(escala: f64) -> Self {
         use core::f64::consts::PI;
-        let nf = q.fatias();
         let mut a = Self {
-            nf,
             dir: [(0.0, 0.0); FATIAS],
             desloc: [[[(0, 0, 0.0); HORIZONTE.len()]; 2]; FATIAS],
             papel: [None; FATIAS],
             papel_lados: [[LadoDoPapel::default(); 2]; FATIAS],
         };
-        for k in 0..nf {
-            let phi = PI * k as f64 / nf as f64;
+        for k in 0..FATIAS {
+            let phi = PI * k as f64 / FATIAS as f64;
             let (dx, dy) = (libm::cos(phi), libm::sin(phi));
             a.dir[k] = (dx, dy);
             a.papel[k] = PlanoDaFatia::de(PAPEL_PLANO, dx, dy);
@@ -105,7 +100,7 @@ impl Amostras {
                 a.papel_lados[k] = [1.0, -1.0].map(|sgn| LadoDoPapel::de(sgn * p.g));
             }
             for (j, sgn) in [1.0, -1.0].into_iter().enumerate() {
-                for (i, &r) in q.horizonte().iter().enumerate() {
+                for (i, &r) in HORIZONTE.iter().enumerate() {
                     let r = r * escala;
                     let (ox, oy) = (exato::round(sgn * dx * r), exato::round(sgn * dy * r));
                     a.desloc[k][j][i] = (ox as isize, oy as isize, libm::hypot(ox, oy));
@@ -115,17 +110,17 @@ impl Amostras {
         a
     }
 
-    /// As da escala `escala` e da qualidade `q`, guardadas por fio (as últimas pedidas).
-    pub(super) fn com<R>(escala: f64, q: QualidadeDaLuz, f: impl FnOnce(&Self) -> R) -> R {
-        type Chave = (u64, QualidadeDaLuz);
+    /// As da escala `escala`, guardadas por fio (as últimas pedidas).
+    pub(super) fn com<R>(escala: f64, f: impl FnOnce(&Self) -> R) -> R {
+        type Chave = u64;
         thread_local! {
             static GUARDADAS: core::cell::RefCell<Option<(Chave, Amostras)>> = const { core::cell::RefCell::new(None) };
         }
         GUARDADAS.with(|g| {
             let mut g = g.borrow_mut();
-            let chave = (escala.to_bits(), q);
+            let chave = escala.to_bits();
             if g.as_ref().is_none_or(|(b, _)| *b != chave) {
-                *g = Some((chave, Self::de(escala, q)));
+                *g = Some((chave, Self::de(escala)));
             }
             f(&g.as_ref().unwrap().1)
         })
@@ -141,10 +136,10 @@ pub(super) fn visibilidade_e_ceu(
     x: isize,
     y: isize,
     n: [f64; 3],
-    (escala, q): (f64, QualidadeDaLuz),
+    escala: f64,
     ceu: Option<&CeuDoMapa<'_>>,
 ) -> (f64, Option<[f64; 3]>) {
-    Amostras::com(escala, q, |am| visibilidade_com(campo, x, y, n, am, ceu))
+    Amostras::com(escala, |am| visibilidade_com(campo, x, y, n, am, ceu))
 }
 
 pub(super) fn visibilidade_com(
@@ -160,8 +155,8 @@ pub(super) fn visibilidade_com(
     let mut acc = 0.0;
     let mut e = [0.0f64; 4];
     let papel = e_o_papel(n);
-    for k in 0..am.nf {
-        let phi = PI * k as f64 / am.nf as f64;
+    for k in 0..FATIAS {
+        let phi = PI * k as f64 / FATIAS as f64;
         let (dx, dy) = am.dir[k];
         let mut s = [0.0f64; 2];
         for (j, lado) in am.desloc[k].iter().enumerate() {
@@ -209,7 +204,7 @@ pub(super) fn visibilidade_com(
             }
         }
     }
-    let vis = (acc / am.nf as f64).clamp(0.0, 1.0);
+    let vis = (acc / FATIAS as f64).clamp(0.0, 1.0);
     let dir = ceu.map(|cm| {
         if e[3] > 1e-9 {
             [0, 1, 2].map(|ch| e[ch] / e[3] / cm.cima[ch].max(1e-9))
@@ -221,7 +216,7 @@ pub(super) fn visibilidade_com(
 }
 
 /// O céu do HDRI visto pelas fatias (W2 E2): as [`Sectores`] do mapa, o azimute do mapa da fatia `φ = 0`
-/// e a irradiância do plano ABERTO pelas MESMAS 8 direcções (a tinta lisa sai exactamente com a cor dela).
+/// e a irradiância do plano ABERTO pelas MESMAS `2·FATIAS` direcções (a tinta lisa sai exactamente com a cor dela).
 pub(super) struct CeuDoMapa<'a> {
     s: &'a Sectores,
     u0: f64,
@@ -232,17 +227,16 @@ impl<'a> CeuDoMapa<'a> {
     pub(super) fn novo(o: &OleoReal, claro: f64, s: &'a Sectores) -> Self {
         let u0 = u_do_mapa(o, claro);
         let mut cima = [0.0; 3];
-        // As direcções das fatias em uso (`φ = π·k/nf` e o lado oposto), nem mais nem menos: a tinta lisa sai com a cor.
-        let nf = o.qualidade.fatias();
-        let salto = FATIAS / nf;
-        let lados = (1.0 / CUNHA) as usize / salto;
+        // As direcções das fatias (`φ = π·k/FATIAS` e o lado oposto), nem mais nem menos: a tinta lisa sai com a cor.
+        let lados = 2 * FATIAS;
+        let salto = (1.0 / CUNHA) as usize / lados;
         for k in 0..lados {
             let [c1, _] = s.ate(
                 u0 + (k * salto) as f64 * CUNHA,
                 core::f64::consts::FRAC_PI_2,
             );
             for ch in 0..3 {
-                cima[ch] += c1[ch] / c1[3] / (2 * nf) as f64;
+                cima[ch] += c1[ch] / c1[3] / lados as f64;
             }
         }
         Self { s, u0, cima }
@@ -251,7 +245,7 @@ impl<'a> CeuDoMapa<'a> {
     /// O céu do mapa de `o`, guardado por fio pela chave de que ele depende (o ambiente e a direcção da luz): as
     /// MESMAS contas, ao bit — R3: era refeito em cada célula (8 leituras do mapa, a luz e um `atan2`).
     pub(super) fn de(o: &OleoReal) -> Option<CeuDoMapa<'static>> {
-        type Guardado = Option<((u8, u64, u64, QualidadeDaLuz), (f64, [f64; 3]))>;
+        type Guardado = Option<((u8, u64, u64), (f64, [f64; 3]))>;
         thread_local! {
             static GUARDADO: core::cell::Cell<Guardado> = const { core::cell::Cell::new(None) };
         }
@@ -261,7 +255,6 @@ impl<'a> CeuDoMapa<'a> {
             o.ambiente.indice(),
             o.altitude.to_bits(),
             o.azimute.to_bits(),
-            o.qualidade,
         );
         let (u0, cima) = GUARDADO.with(|g| match g.get() {
             Some((k, v)) if k == chave => v,
@@ -292,7 +285,7 @@ pub(super) fn reflexo_livre(
     y: isize,
     r: [f64; 3],
     rug: f64,
-    (escala, q): (f64, QualidadeDaLuz),
+    escala: f64,
 ) -> f64 {
     let rxy = libm::hypot(r[0], r[1]);
     if rxy < 1e-6 {
@@ -301,7 +294,7 @@ pub(super) fn reflexo_livre(
     let (dx, dy) = (r[0] / rxy, r[1] / rxy);
     let h0 = campo.at_fina(x, y);
     let mut sen = 0.0f64;
-    for &d in q.horizonte() {
+    for &d in &HORIZONTE {
         let d = d * escala;
         let (ox, oy) = (exato::round(dx * d), exato::round(dy * d));
         let dist = libm::hypot(ox, oy);

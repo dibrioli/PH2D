@@ -240,7 +240,7 @@ pub(super) fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize,
     // apaga-se ao longo de `penumbra` (em tangente) abaixo da elevação dela. Em papel livre o horizonte
     // é 0 e a luz é cheia — a forma `k·folga/t` limitava-a a `k·tan(alt)` também no papel livre.
     let mut horizonte = f64::NEG_INFINITY;
-    for t in o.qualidade.marcha() {
+    for t in marcha() {
         let t = t as f64;
         let q = campo.at_sombra_em(x as f64 + dx * t, y as f64 + dy * t);
         horizonte = horizonte.max((q - h0) / t);

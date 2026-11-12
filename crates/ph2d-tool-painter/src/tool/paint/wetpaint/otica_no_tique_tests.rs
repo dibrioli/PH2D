@@ -9,7 +9,6 @@ use super::agua_sobre_oleo_tests::preset;
 use super::offthread::otica::{CaixaCel, forca_no_teste};
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
-use ph2d_wet_paint::oleo_real::QualidadeDaLuz;
 use std::time::{Duration, Instant};
 
 pub(super) const LADO: usize = 192;
@@ -541,7 +540,7 @@ fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
             .expect("o preset");
         t.set_wet_oleo_real_ligado(true);
         t.set_wet_agua_viva(viva);
-        // A luz rasante: a que separava a Cheia da Simples (B14.2).
+        // A luz rasante: a que mais mexe na sombra (a que separava a antiga luz Cheia do repouso da do traço).
         t.paint.wetpaint.oleo_real_valores.altitude = 12f64.to_radians();
         t.set_brush_size_px(16.0);
         t.set_brush_color_srgb8([200, 40, 40]);
@@ -554,11 +553,6 @@ fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
         }
         quadros(&mut t, 10);
         assert!(t.wet_pincel_na_tela(), "{onde}: premissa: o pincel na tela");
-        assert_eq!(
-            t.factos_da_otica().oleo.qualidade,
-            QualidadeDaLuz::Simples,
-            "{onde}: a luz do gesto"
-        );
         let (gesto, repouso) = (composta(&mut t, true), composta(&mut t, false));
         assert!(
             gesto.chunks_exact(4).any(|p| p != [255, 255, 255, 255]),
@@ -570,11 +564,6 @@ fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
             "{onde}: o mesmo motor com o pincel na tela e fora dela"
         );
         let _ = t.on_canvas_pointer(ponto(lado * 0.8, lado * 0.45, PointerPhase::Up));
-        assert_eq!(
-            t.factos_da_otica().oleo.qualidade,
-            QualidadeDaLuz::Simples,
-            "{onde}: a luz do repouso"
-        );
         t.set_wet_agua_viva(false);
         quadros(&mut t, 2);
         assenta(&mut t);

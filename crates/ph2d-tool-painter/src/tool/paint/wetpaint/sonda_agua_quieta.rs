@@ -278,3 +278,97 @@ fn sonda_sono_ligado_e_desligado() {
         }
     }
 }
+
+/// B13.6: ms por passo e por ESTÁGIO (0..6) a 4K com 3 traços (Wet Wash, branco), a saída do advect por linha
+/// (`SAIDA_BLOCO = 0`, antes) × por bloco (`PH2D_SAIDA_BLOCO`, 16 por omissão, o produto), duas telas
+/// INTERCALADAS no mesmo processo, o mínimo por janela de 40 passos; o digest de film/susp/sett/vel ao bit.
+#[test]
+#[ignore = "sonda: corre à mão, no perfil smoke"]
+fn sonda_b13_6_saida_por_bloco() {
+    use std::sync::atomic::Ordering::SeqCst;
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let lib = Biblioteca::carregar(&raiz, None);
+    let bloco: usize = std::env::var("PH2D_SAIDA_BLOCO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(16);
+    let (w, h) = match std::env::var("PH2D_SONO_RES").as_deref() {
+        Ok("1080") => (1920, 1080),
+        _ => (3840, 2160),
+    };
+    let produto = ph2d_wet_paint::solver::SAIDA_BLOCO.load(SeqCst);
+    let mut ts = [tela_pintada(&lib, w, h), tela_pintada(&lib, w, h)];
+    let mut ms = [Vec::new(), Vec::new()];
+    let mut est = [Vec::new(), Vec::new()];
+    let mut dif = 0;
+    for step in 0..400u32 {
+        let mut hs = [0u64; 2];
+        for lado in [step as usize % 2, 1 - step as usize % 2] {
+            ph2d_wet_paint::solver::SAIDA_BLOCO.store(if lado == 0 { 0 } else { bloco }, SeqCst);
+            let e: &mut ph2d_wet_paint::painter::Engine = &mut ts[lado]
+                .paint
+                .wetpaint
+                .session
+                .as_mut()
+                .expect("sessao")
+                .engine;
+            let idx = e.active_layer;
+            let ph2d_wet_paint::painter::Engine {
+                sim,
+                layers,
+                tuning,
+                ..
+            } = &mut *e;
+            let g = &mut layers[idx].grid;
+            let mut por = [0f64; 7];
+            let a = Instant::now();
+            for k in 0.. {
+                let b = Instant::now();
+                let fim = sim_step_stage(sim, g, tuning).is_some();
+                por[k.min(6)] += b.elapsed().as_secs_f64() * 1e3;
+                if fim {
+                    break;
+                }
+            }
+            ms[lado].push(a.elapsed().as_secs_f64() * 1e3);
+            est[lado].push(por);
+            let mut x = 0xcbf2_9ce4_8422_2325u64;
+            for c in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
+                for v in c.iter() {
+                    x = (x ^ u64::from(v.to_bits())).wrapping_mul(0x0100_0000_01b3);
+                }
+            }
+            hs[lado] = x;
+        }
+        dif += usize::from(hs[0] != hs[1]);
+    }
+    ph2d_wet_paint::solver::SAIDA_BLOCO.store(produto, SeqCst);
+    println!("\n  B13.6 {w}x{h} · bloco {bloco} · passos que diferem {dif}/400 (tem de ser 0)");
+    for j in 0..10 {
+        let r = j * 40..(j + 1) * 40;
+        let m = |v: &[f64]| v.iter().copied().fold(f64::MAX, f64::min);
+        // Estágio k: o mínimo, entre os passos da janela que o correram (o advect é o 3).
+        let e = |l: usize| -> Vec<f64> {
+            (0..7)
+                .map(|k| {
+                    (m(&est[l][r.clone()].iter().map(|p| p[k]).collect::<Vec<_>>()) * 100.0).round()
+                        / 100.0
+                })
+                .collect()
+        };
+        println!(
+            "    {:>4.1} s: passo antes {:>6.2} · depois {:>6.2} ms · estágios antes {:?} · depois {:?}",
+            (j + 1) as f64,
+            m(&ms[0][r.clone()]),
+            m(&ms[1][r.clone()]),
+            e(0),
+            e(1)
+        );
+    }
+    println!(
+        "  load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+}

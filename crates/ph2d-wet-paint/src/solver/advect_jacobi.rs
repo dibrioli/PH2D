@@ -379,6 +379,11 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
     let (uv, bt): (&[[f32; 2]], &[i8]) = (uv, bt);
     // Só as linhas que o `prepare_rows` deste passo escreveu: fora da bbox a faixa viva fica de pé e o `uv`/`bt`
     // são os de um passo velho (Bug #57). A rota fundida tem o mesmo limite.
+    let bloco = saida::SAIDA_BLOCO.load(std::sync::atomic::Ordering::Relaxed);
+    if bloco > 0 {
+        saida::outflow_rows_bloco(&c, &mut outflow[band], uv, bt, mode, bloco);
+        return;
+    }
     par::walk_rows(mode, &mut outflow[band], c.s, |ri, row| {
         outflow_row(&c, c.by0 + ri as i32, row, uv, bt, 0, c.by0, c.by1);
     });
@@ -602,6 +607,11 @@ use commit::{commit_rows, walk_rows2_reduce};
 
 #[path = "advect_fundida.rs"]
 mod fundida;
+
+#[path = "advect_saida.rs"]
+mod saida;
+#[doc(hidden)]
+pub use saida::SAIDA_BLOCO;
 
 #[path = "meio_transporte.rs"]
 mod meio;

@@ -165,13 +165,25 @@ fn bloco(
             vmax = f64::max(vmax, v);
         }
     }
-    for y in o_lo..=o_hi {
-        let o = (y - o_lo) as usize * s;
-        let row = &mut of[o..o + s];
-        if y < c.by0 || y > c.by1 {
-            row.fill(0.0);
-        } else {
-            outflow_row(c, y, row, uv, bt, ubase, u_lo, u_hi);
+    if super::saida::SAIDA_BLOCO.load(Relaxed) > 0 {
+        let (i_lo, i_hi) = (o_lo.max(c.by0), o_hi.min(c.by1));
+        for y in (o_lo..=o_hi).filter(|&y| y < i_lo || y > i_hi) {
+            let o = (y - o_lo) as usize * s;
+            of[o..o + s].fill(0.0);
+        }
+        if i_lo <= i_hi {
+            let (oa, ob) = ((i_lo - o_lo) as usize * s, (i_hi - o_lo + 1) as usize * s);
+            super::saida::outflow_block(c, i_lo, &mut of[oa..ob], uv, bt, ubase, u_lo, u_hi);
+        }
+    } else {
+        for y in o_lo..=o_hi {
+            let o = (y - o_lo) as usize * s;
+            let row = &mut of[o..o + s];
+            if y < c.by0 || y > c.by1 {
+                row.fill(0.0);
+            } else {
+                outflow_row(c, y, row, uv, bt, ubase, u_lo, u_hi);
+            }
         }
     }
     for y in a..=b {

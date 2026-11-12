@@ -348,3 +348,97 @@ fn advect_jacobi_tiles_bits_equal_the_one_interval_span() {
         }
     }
 }
+
+/// Fixa o [`saida::SAIDA_BLOCO`] enquanto vive (volta ao valor anterior no fim).
+struct Saida(usize);
+impl Saida {
+    fn new(linhas: usize) -> Self {
+        Saida(saida::SAIDA_BLOCO.swap(linhas, std::sync::atomic::Ordering::SeqCst))
+    }
+}
+impl Drop for Saida {
+    fn drop(&mut self) {
+        saida::SAIDA_BLOCO.store(self.0, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+/// **B13.6 — a saída por BLOCO dá a saída por LINHA ao bit:** fases (rascunho incluído) e fundida, rf 1/2/4/3,
+/// tecto 1 e 3 (alcance 2 e 4), série, paralela e medida, blocos de 1, 2, 5, 16 e 64 linhas contra o oráculo
+/// por linha (`SAIDA_BLOCO = 0`, a rota de antes verbatim).
+#[test]
+fn a_saida_por_bloco_da_a_saida_por_linha_ao_bit() {
+    let casos = [
+        (1.0, false, Rows::Serial, 1),
+        (3.0, true, Rows::Parallel, 1),
+        (1.0, true, Rows::Medida(0), 2),
+        (3.0, false, Rows::Parallel, 4),
+        (3.0, true, Rows::Serial, 3),
+    ];
+    for (mv, km, mode, rf) in casos {
+        for fundida in [None, Some(7)] {
+            let rascunho = fundida.is_none();
+            let antes = {
+                let _s = Saida::new(0);
+                hash_rota_com(mv, km, mode, fundida, rascunho, rf, true).0
+            };
+            for linhas in [1, 2, 5, 16, 64] {
+                let _s = Saida::new(linhas);
+                let depois = hash_rota_com(mv, km, mode, fundida, rascunho, rf, true).0;
+                assert_eq!(
+                    depois, antes,
+                    "rf {rf} · tecto {mv} · km {km} · {mode:?} · fundida {fundida:?} · bloco {linhas}"
+                );
+            }
+        }
+    }
+}
+
+/// O digest de todo campo persistente do grid depois de `passos` passos do PRODUTO (`step_simulation`) numa
+/// tela de três traços grande o bastante para o piso paralelo, num pool de `fios`.
+fn digest_da_sim(rf: usize, fios: usize, passos: usize) -> u64 {
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(fios)
+        .build()
+        .expect("pool");
+    pool.install(|| {
+        let mut e = Engine::with_flow_ratio(720, 420, rf);
+        e.sliders.water = 1.0;
+        e.sliders.size = 0.2;
+        traco(&mut e, &[(40.0, 60.0), (680.0, 90.0)]);
+        traco(&mut e, &[(40.0, 200.0), (680.0, 230.0)]);
+        traco(&mut e, &[(60.0, 400.0), (360.0, 300.0), (700.0, 380.0)]);
+        for _ in 0..passos {
+            e.step_simulation();
+        }
+        let g = e.active_grid_mut();
+        let mut h = Fnv(0xcbf2_9ce4_8422_2325);
+        for c in [
+            &g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y, &g.flow_x, &g.flow_y,
+        ] {
+            h.f32s(c);
+        }
+        for c in &g.susp_rgb {
+            h.f32s(c);
+        }
+        for v in g.wet.iter().chain(g.active.iter()) {
+            h.0 = (h.0 ^ u64::from(*v)).wrapping_mul(0x0100_0000_01b3);
+        }
+        h.0
+    })
+}
+
+/// **B13.6 — o oráculo da SIM inteira:** 24 passos do produto com três traços, saída por linha × por bloco, a
+/// 1, 2, 4, 8, 16 e 32 fios, rf 1 e 2: todo campo ao bit, e o mesmo bit em qualquer número de fios.
+#[test]
+fn a_sim_com_a_saida_por_bloco_e_a_de_antes_ao_bit_em_qualquer_fio() {
+    for rf in [1, 2] {
+        let antes = {
+            let _s = Saida::new(0);
+            digest_da_sim(rf, 1, 24)
+        };
+        for fios in [1, 2, 4, 8, 16, 32] {
+            let _s = Saida::new(16);
+            assert_eq!(digest_da_sim(rf, fios, 24), antes, "rf {rf} · {fios} fios");
+        }
+    }
+}

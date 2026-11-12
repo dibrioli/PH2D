@@ -197,6 +197,12 @@ if [ "$1" = faixas ]; then
     "M4|omissão:impasto|PH2D_M4=a|PH2D_M4=b"
     # M5 (M4 do fecho, 11/11): o pen-up do Filbert pelo compositor da óptica (de fábrica) × em casa (a cura C2, faixas).
     "M5|Filbert:wet|PH2D_WET_OTICA_FORA=1|PH2D_WET_OTICA_FORA=0"
+    # R* (12/11): a regressão da aquarela — o passo fixo do B22.1 (A) × o `dt` do quadro (B), o MESMO binário.
+    "R1|omissão:water|PH2D_RITMO_FIXO=1|PH2D_RITMO_FIXO=0"
+    "R2|Watercolor Basic:water|PH2D_RITMO_FIXO=1|PH2D_RITMO_FIXO=0"
+    "R3|Wet Liner:wet|PH2D_RITMO_FIXO=1|PH2D_RITMO_FIXO=0"
+    "R4|omissão:digital|PH2D_RITMO_FIXO=1|PH2D_RITMO_FIXO=0"
+    "R5|omissão:water|PH2D_RITMO_FIXO=seca|PH2D_RITMO_FIXO=traco"
   )
   [ -n "$SO" ] && mapfile -t CASOS < <(printf '%s\n' "${CASOS[@]}" | grep -E "^($SO)\|")
   for i in $(seq 1 "$N"); do for c in "${CASOS[@]}"; do

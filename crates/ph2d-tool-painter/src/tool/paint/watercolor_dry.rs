@@ -26,7 +26,7 @@ impl PainterTool {
         // B22.1: só corre o relógio enquanto há papel molhado (a sessão começa com ele a zero).
         if self.paint.canvas_wet_rect.is_some() {
             let mut relogio = self.paint.canvas_wet_relogio;
-            for dt in super::ritmo::passos_fixos(&mut relogio, dt_s) {
+            for dt in super::ritmo::passos_fixos(&mut relogio, dt_s, super::ritmo::Ramo::Seca) {
                 self.dry_canvas_wet_inner(dt);
             }
             self.paint.canvas_wet_relogio = relogio;

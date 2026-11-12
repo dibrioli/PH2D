@@ -10,20 +10,41 @@ pub(super) const PASSO_FIXO_S: f32 = 1.0 / 60.0;
 /// último passo (a lei de um `dt` grande, como antes) para um engasgo não virar espiral.
 pub(super) const PASSOS_POR_QUADRO_MAX: u32 = 8;
 
+/// Quem pede os passos (a chave de medição [`ritmo_antigo`] distingue-os).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Ramo {
+    Seca,
+    Traco,
+}
+
+/// Medição A×B (`PH2D_RITMO_FIXO`, lida uma vez): `0` = os dois ramos no `dt` do quadro (antes do B22.1),
+/// `seca` / `traco` = só esse ramo. Ausente = o passo fixo.
+fn ritmo_antigo(ramo: Ramo) -> bool {
+    static V: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    match V
+        .get_or_init(|| std::env::var("PH2D_RITMO_FIXO").ok())
+        .as_deref()
+    {
+        Some("0") => true,
+        Some("seca") => ramo == Ramo::Seca,
+        Some("traco") => ramo == Ramo::Traco,
+        _ => false,
+    }
+}
+
 /// Os `dt` a correr neste quadro: `relogio` (em passos) recebe `dt_s` e devolve os passos inteiros.
-pub(super) fn passos_fixos(relogio: &mut f64, dt_s: f32) -> impl Iterator<Item = f32> {
-    *relogio += f64::from(dt_s.max(0.0)) / f64::from(PASSO_FIXO_S);
-    // A folga absorve o arredondamento do `dt` em f32 (16,666666 ms ≠ 1/60 s ao último bit).
-    let n = (*relogio + 1e-6).floor().max(0.0) as u32;
-    *relogio -= f64::from(n);
-    let m = n.min(PASSOS_POR_QUADRO_MAX);
-    (0..m).map(move |i| {
-        if i + 1 == m {
-            PASSO_FIXO_S * (n - m + 1) as f32
-        } else {
-            PASSO_FIXO_S
-        }
-    })
+pub(super) fn passos_fixos(relogio: &mut f64, dt_s: f32, ramo: Ramo) -> impl Iterator<Item = f32> {
+    let (m, ultimo) = if ritmo_antigo(ramo) {
+        (1, dt_s)
+    } else {
+        *relogio += f64::from(dt_s.max(0.0)) / f64::from(PASSO_FIXO_S);
+        // A folga absorve o arredondamento do `dt` em f32 (16,666666 ms ≠ 1/60 s ao último bit).
+        let n = (*relogio + 1e-6).floor().max(0.0) as u32;
+        *relogio -= f64::from(n);
+        let m = n.min(PASSOS_POR_QUADRO_MAX);
+        (m, PASSO_FIXO_S * (n - m + 1) as f32)
+    };
+    (0..m).map(move |i| if i + 1 == m { ultimo } else { PASSO_FIXO_S })
 }
 
 use super::{Dab, Stroke, union_region};
@@ -45,7 +66,7 @@ impl super::PainterTool {
     ) -> bool {
         let mut stamped = false;
         let mut relogio = self.paint.traco_relogio;
-        for dt in passos_fixos(&mut relogio, dt_s) {
+        for dt in passos_fixos(&mut relogio, dt_s, Ramo::Traco) {
             let parked = !std::mem::take(&mut self.paint.movido_desde_o_passo);
             stroke.tick(dt, dabs);
             self.dual_passo(|m, o| m.tick(dt, o));

@@ -5,12 +5,9 @@
 > ficheiro; famílias e lições dobradas → `reference_topic_*` (2 saltos). Entrada nova longa vai para
 > o `reference_topic_*` da secção, **nunca para aqui**.
 >
-> ⚠️ **O tecto é o que o CARREGADOR leva (medido 2026-09-17: `26 007` bytes; ele cortou o ficheiro
-> na linha `158` de `224` sem avisar).** O recurso é o BYTE: alvo **≤ 17 KB**.
+> ⚠️ O carregador corta sem avisar (17/09: `26 007` bytes, cortado na linha 158). Alvo **≤ 17 KB**.
 >
-> ⛔⛔ **O que o estourou foi a FUSÃO de seis linhas** reescrevendo a MESMA entrada (`60` ponteiros
-> sobre `51` ficheiros, zero linhas iguais byte a byte). ⇒ **um ponteiro por ficheiro**, e **a
-> contagem de uma família CONTA-SE no ficheiro dela**.
+> ⛔⛔ Um ponteiro por ficheiro; a contagem de uma família CONTA-SE no ficheiro dela.
 
 ## Perfil & referência
 - ⛔⛔⛔ [Dono 05/11: lei nova ARQUIVADA, não apagar; produto na antiga](project_new_paint_law_for_all_brushes_2026_11_05.md)
@@ -37,12 +34,14 @@
 - ⭐⭐⭐ [Dono 07/11: tudo o que importa das cerdas mora no Shape; a ordem de 13/10 e 01/11 ficou incompleta](project_all_bristle_controls_belong_in_shape_2026_11_07.md)
 
 ## Comunicação & decisão
-- ⭐⭐⭐ [Painter (31/10): Pigmento + Água = só a DILUIÇÃO; o VOLUME ao papel é outro controlo — um controlo, uma grandeza](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
+- ⭐⭐⭐ [Painter (31/10): diluição ≠ volume ao papel](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
 - ⛔⛔⛔ [O APP é SÓ em inglês — toda string de UI, e a ajuda/tooltip em Plain English para qualquer país (31/10)](feedback_app_ui_english_only.md)
-- ⛔⛔ [Hora de trocar de janela = prompt de continuação COMPLETO sem o dono pedir — handoff e prompt só DEPOIS do smoke (25/10)](feedback_always_hand_the_full_continuation_prompt.md)
-- ⛔⛔ [Smoke ao dono na UI de CARTÕES; `PH2D_CARDS=0` ele lê como regressão (11/11)](feedback_smoke_for_the_owner_runs_in_the_card_ui.md)
+- ⛔⛔ [Trocar de janela = prompt de continuação COMPLETO (após o smoke)](feedback_always_hand_the_full_continuation_prompt.md)
+- ⛔⛔ [Smoke ao dono na UI de CARTÕES (11/11)](feedback_smoke_for_the_owner_runs_in_the_card_ui.md)
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
 - ⭐ [Dono 09/11: escolhas de acabamento = estado da arte, sem perguntar](feedback_finish_choices_go_to_the_state_of_the_art.md)
+- ⛔ [Dono 10/11: liga/desliga no app = CHECKBOX, nunca toggle/pílula — o padrão da casa vence o estado da arte](feedback_the_app_standard_is_a_checkbox_not_a_toggle.md)
+- ⭐ [Dono 10/11: aba de scripts com o peso da maquete 14](project_script_tab_font_weight_follows_mockup_2026_11_10.md)
 - ⛔ [A linha acaba no HANDOFF — ordem das linhas e árvore suja são do INTEGRADOR](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)
 - ⭐ [**Como um CONTROLO mente** — a família (25)](reference_topic_control_design_hazards.md)
 - ⛔ [O produto de referência do DONO decide a lei, não o oráculo; capturas dele MEDEM-SE](feedback_the_owners_reference_product_decides_the_law.md)
@@ -50,13 +49,14 @@
 - ⛔⛔⛔ [Smoke do Motion = FORMAS + SIMULAÇÃO; fotografe antes](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
 - ⛔⛔ [Tela com maquete: foto e maquete lado a lado ANTES do smoke, acabamento incluído (07/11)](feedback_a_mockup_is_compared_side_by_side_before_the_smoke.md)
-- ⛔⛔ [Imagem ao dono = link CLICÁVEL, caminho relativo à RAIZ do repo principal (`Worktrees/line-<x>/…`) — regra geral do dono 09/11, no CLAUDE.md §0.8](feedback_images_for_the_owner_are_clickable_links.md)
+- ⛔⛔ [Imagem ao dono = link CLICÁVEL relativo à RAIZ (§0.8)](feedback_images_for_the_owner_are_clickable_links.md)
 - ⛔⛔ [NUNCA `spectacle` em `kwin --virtual` (fotografa o ecrã REAL); `import -window`](feedback_spectacle_in_a_virtual_kwin_photographs_the_owners_real_screen.md)
 - ⛔ [Só o Wet Paint evolui (07/10): Digital/Impasto/Watercolor ficam](project_wet_paint_is_the_only_painter_mode_to_evolve_2026_10_07.md)
 - ⭐ [Óleo Real (26/10): o mais importante é relevo, shader, luz e sombra realistas](project_oleo_real_priority_relief_shader_light_2026_10_26.md)
+- ⭐⭐ [Dono 12/11: Óleo Real com UMA luz, a do traço (Simples); a Cheia do repouso sai](project_real_oil_one_light_the_stroke_light_2026_11_12.md)
 - ⭐⭐ [MISSÃO 19/10: melhores pincéis — ENCERRADA 22/10: 18 aprovados, o resto trava em motor](project_the_worlds_best_brushes_mission_2026_10_19.md)
-- ⛔⛔ [Missão autónoma NUNCA pára num pedido de permissão: hook allow + formas proibidas no briefing (20/10)](feedback_an_autonomous_mission_must_never_stop_on_a_permission_prompt.md)
-- ⛔⛔ [Missão de pincéis (28/10): o DONO faz a triagem, SIMULA-SE o conserto antes de construir, 45 min/agente, pesado 1× no fim](feedback_brush_method_owner_triage_and_simulate_before_building.md)
+- ⛔⛔ [Missão autónoma nunca pára num pedido de permissão](feedback_an_autonomous_mission_must_never_stop_on_a_permission_prompt.md)
+- ⛔⛔ [Pincéis (28/10): o DONO faz a triagem; simular antes de construir](feedback_brush_method_owner_triage_and_simulate_before_building.md)
 - ⛔⛔ [Passar a régua do recto não é ser um pincel: Filbert «nada novo», lâminas «inúteis» (P53)](feedback_a_brush_that_passes_the_ruler_can_still_be_useless.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — meio-feito é pior que não começar
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
@@ -73,7 +73,7 @@
 - ⭐ [CI 04/11: 27–30 min com cache · semente `gh workflow run spike.yml --ref main` após o push · teto de CPU 50 vs 100 é do DONO](project_ci_acceleration_2026_11_04.md)
 - ⛔ [A régua de uma linha é o MERGE-BASE, nunca o main a andar](feedback_the_ruler_is_the_merge_base_not_a_moving_main.md)
 - [Integração multi-linha (15) — ordem se MEDE](reference_topic_integration_discipline.md)
-- ⛔⛔⛔ [Partilhar `CARGO_TARGET_DIR` entre worktrees TROCA os `.rlib` — o erro acusa o código e a medição vale ZERO](feedback_sharing_a_target_dir_between_worktrees_corrupts_the_build.md)
+- ⛔⛔⛔ [`CARGO_TARGET_DIR` partilhado entre worktrees troca os `.rlib`](feedback_sharing_a_target_dir_between_worktrees_corrupts_the_build.md)
 - ⛔⛔⛔ [`kill` do PAI de um órfão = `systemd --user` = LOGOUT do dono (05/10)](feedback_killing_the_parent_of_an_orphan_kills_the_owners_session.md)
 - [Cadência de processo + CI (19)](reference_topic_process_cadence.md)
 - ⛔⛔ [Dono 23/10 e 25/10: a suíte COMPLETA só antes da INTEGRAÇÃO; na linha só testes por nome](feedback_full_suite_only_before_integration.md)
@@ -82,7 +82,7 @@
 
 ## Auditoria (famílias — 2 saltos)
 - ⛔⛔ [Contar operações ≠ perfil; o PERFIL DE BUILD decide o número](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
-- ⛔⛔⛔ [Régua de calma que não nomeia o PERFIL: a leitura a 98 % ociosa foi a PIOR das quatro — era debug](feedback_a_calm_ruler_that_does_not_name_the_build_profile_reads_as_a_verdict.md)
+- ⛔⛔⛔ [Régua de calma sem o PERFIL de build lê-se como veredito](feedback_a_calm_ruler_that_does_not_name_the_build_profile_reads_as_a_verdict.md)
 - [Reprodução/diagnóstico (26) — ⛔ onde um defeito ATERRA ≠ o que o PROVOCA](reference_topic_repro_discipline.md)
 - ⛔⛔ [Fixtura ALINHADA AOS EIXOS não mede uma BASE](feedback_an_axis_aligned_fixture_cannot_measure_a_basis.md)
 - ⛔⛔ [Campo que varia sob consumidor com TAMANHO mede-se a esse tamanho](feedback_a_field_under_an_extent_is_measured_at_that_extent.md)
@@ -98,7 +98,7 @@
 - ⛔ [Vermelho bimodal: 6/6 no main era sorte e outro build; 12×12 intercalado decide](feedback_a_bimodal_red_needs_interleaved_samples_with_the_same_build.md)
 - ⛔⛔⛔ [Uma régua enviesada manda a wave seguinte para onde ela própria está errada](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
 - ⛔⛔ [Duas curvas coincidem no MEIO: meça em 1/4 e 3/4, não só em t=1,5](feedback_a_midpoint_sample_hides_two_curves_that_differ_elsewhere.md)
-- ⛔⛔⛔ [Régua que pára no MUNDO aprova um clique partido no ECRÃ (340 px: o chrome desenha numa BANDA)](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
+- ⛔⛔⛔ [Régua que pára no MUNDO aprova clique partido no ECRÃ](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
 - [Costura de UI (27)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
 - [**Ofício de gate** — a família (141)](reference_topic_gate_discipline.md)
 - [Protocolo de auditoria (9) — ⛔ num artefacto ATESTADO toda linha nova é população nova](reference_topic_audit_protocol.md)
@@ -107,7 +107,7 @@
 ## Padrões de código (gotchas silenciosos)
 - ⛔⛔ [Cura de CONTRASTE carrega a SUPERFÍCIE contra a qual foi calibrada](feedback_a_contrast_cure_carries_the_surface_it_was_calibrated_against.md)
 - ⛔⛔ [Mudar a ARITMÉTICA de um widget partilhado varre-se por CONSUMIDOR](feedback_changing_a_shared_widgets_arithmetic_is_swept_by_consumer_not_by_call_site.md)
-- ⛔⛔⛔ [Impor uma propriedade DEPOIS de um óptimo por-peça é o que ONDULA — antes de forçar suavidade, meça se a VERDADE a tem](feedback_forcing_a_property_after_the_optimum_is_what_ripples.md)
+- ⛔⛔⛔ [Impor propriedade DEPOIS do óptimo por-peça ONDULA](feedback_forcing_a_property_after_the_optimum_is_what_ripples.md)
 - [Registro de painel — (6) sítios](reference_topic_panel_registration.md) · [Gotchas de código (36)](reference_topic_code_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais (59) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
@@ -120,18 +120,26 @@
 - 📚 [Arquitetura / norte / perf: mais (29) lições — caminho DERIVADO × do ARTISTA · ASSAR (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (19)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (43) — 4 controlos, pré-voo das âncoras · cercas em SEQUÊNCIA](reference_topic_mutation_proofs.md)
-- ⭐⭐⭐ [Dono 10/11: física FLUIDA com limites de junta e tamanhos de forma animados; o «mínimo» do limite é o do OBJETO](project_physics_fluid_under_animation_2026_11_10.md)
 - ⭐ [Animated Sprite: smoke do dono feito 07/11 e 09/11; próximo = Align (GEF 28)](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)
 - ⛔ [Janela passada de 300 mil/passo: uma rodada de smoke = um agente novo; a janela só decide e confere (05/11)](feedback_a_main_window_past_300k_delegates_each_round.md)
 
 - ⛔⛔ [Pincel comparado ao original SÓ sobre blocos escondeu Multiply que não pinta no vazio: 3 fundos sempre (08/11)](feedback_brush_oracle_must_include_blank_canvas.md)
-- ⭐⭐⭐ [Dono 08/11: Color Mixing afina-se pelo NOSSO motor, não pelo CSP; Round Mixing = Amount 0,25 + Hardness 0,5](project_color_mixing_tuned_for_our_engine_not_csp_2026_11_08.md)
-- ⭐⭐ [Dono 09/11: crítica da física — Sensor fica, etiqueta de quem ouve o sinal, Width/Height, «More» fechado, tecla no Trigger](project_physics_critique_answers_2026_11_09.md)
-- ⭐⭐ [Dono 10/11: Pastel enche o dente OK; grão Noise 120 dele; Chalk/Crayon enchem; Color mixing em cartão próprio; mistura talvez invertida](project_pastel_tooth_fill_and_mixing_card_2026_11_10.md)
-- ⭐⭐ [Dono 10/11: Input Map = aba central com as 3 versões (A·B·C) e seletor; tela de controles funciona no jogo; Luau pela ação](project_inputmap_three_versions_2026_11_10.md)
+- ⭐⭐⭐ [Dono 08/11: Color Mixing pelo NOSSO motor; Round Mixing 0,25/0,5](project_color_mixing_tuned_for_our_engine_not_csp_2026_11_08.md)
+- ⭐⭐ [Dono 09/11: crítica da física (Sensor, Width/Height, Trigger)](project_physics_critique_answers_2026_11_09.md)
+- ⭐⭐ [Dono 10/11: Pastel enche o dente; Noise 120; Color mixing em cartão](project_pastel_tooth_fill_and_mixing_card_2026_11_10.md)
+
+- ⭐⭐ [Dono 10/11: Input Map = aba central A·B·C](project_inputmap_three_versions_2026_11_10.md) · [botão Controls ao lado do Stop](project_controls_button_in_play_bar_2026_11_10.md)
 - ⭐⭐ [Dono 09/11: Timeline redesenhada sem mudar funções — versão B (chips à Rive); Keys|Curves de fora](project_timeline_redesign_rive_mold_b_2026_11_09.md)
-- ⭐ [Dono 09/11: P13 do Pixel — tween = quadros reais, várias faixas de som, CRT na prévia e no jogo, pasta «Apps de Pixel»](project_pixel_p13_owner_decisions_2026_11_09.md)
+- ⭐ [Dono 09/11: P13 do Pixel (tween, som, CRT)](project_pixel_p13_owner_decisions_2026_11_09.md)
 - ⛔⛔ [Sonda de custo sem o papel/relevo do dono não tem o fenómeno: 1,6 ms × 1,7 s no app (pen-up 4K, 10/11)](feedback_a_cost_probe_without_the_owners_paper_has_no_phenomenon.md)
+- ⭐⭐ [Dono 10/11: curva do pulo no CANVAS (4 curvas, alça = altura e distância); no cartão só o botão e Floaty·Snappy·Heavy](project_jump_arc_on_canvas_2026_11_10.md)
 - [perf neste PC: ele ABRE o app, `-k` sem `-g`, `STRIP=none` no smoke](reference_perf_on_this_pc_opens_the_app_no_callgraph.md)
-- ⭐ [Dono 11/11: o Done da Timeline desliga o Auto Key e não larga a seleção](project_timeline_done_turns_off_autokey_2026_11_11.md)
-- ⭐⭐ [Dono 10/11: Collision Shape com o Look da Sprite — Color substitui, Opacity ≥ 25 %, resets, Pivot com X/Y à vista; ferramenta Pivot](project_collision_shape_look_2026_11_10.md)
+- ⭐⭐⭐ [Dono 10/11: missão Painter 4K — recomendações dos estudos, sem RTX, alarmes ficam vermelhos](project_painter_4k_mission_decisions_2026_11_10.md) · [fechada 11/11 sem integrar, continuada: 151 feitos, 135 abertos, 3 decisões do dono](project_painter_4k_mission_closed_2026_11_11.md)
+- ⛔ [Matriz no app: pedir a vez da placa UMA vez para a matriz toda](feedback_a_gpu_turn_is_held_for_the_whole_matrix.md)
+- ⭐ [Dono 10/11: marcador da Timeline = linha no tempo exato + alça de setinhas do easing, nunca chip](project_timeline_marker_is_a_line_with_the_ease_grip_2026_11_10.md)
+- ⭐⭐ [Dono 10/11: Curves sai da Timeline, vai ao canvas](project_timeline_curves_live_on_canvas_2026_11_10.md)
+- ⛔⛔ [Dono 06/09 e 10/11: rótulo que não cabe = uma linha com «…» antes do ponto; nunca quebra — é regra](feedback_a_label_that_does_not_fit_gets_an_ellipsis_never_wraps.md)
+- ⭐⭐ [Dono 10/11: Look da forma, Pivot, Dash e stroke](project_shape_look_body_default_dash_stroke_2026_11_10.md)
+- ⭐⭐⭐ [Dono 10/11: física FLUIDA sob animação; o «mínimo» do limite é o do OBJETO](project_physics_fluid_under_animation_2026_11_10.md)
+- ⭐ [Dono 11/11: o Done da Timeline desliga o Auto Key](project_timeline_done_turns_off_autokey_2026_11_11.md)
+- ⭐⭐ [Dono 10/11: Collision Shape com o Look da Sprite; ferramenta Pivot](project_collision_shape_look_2026_11_10.md)

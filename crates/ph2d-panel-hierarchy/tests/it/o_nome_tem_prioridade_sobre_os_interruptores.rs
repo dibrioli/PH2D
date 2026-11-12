@@ -104,7 +104,7 @@ impl Mesa {
     }
 
     fn pinta(&mut self) -> Vec<Medido> {
-        let (h, st, lay) = (&mut self.host, &mut self.st, self.layout.clone());
+        let (h, st, lay) = (&mut self.host, &mut self.st, self.layout);
         let (rects, medidos) = elisao::medindo(|| {
             ph2d_editor_core::aquecimento::com_passo_fixo(
                 ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,

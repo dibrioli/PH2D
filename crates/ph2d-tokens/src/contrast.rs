@@ -112,7 +112,7 @@ pub const CONTRAST_PAIRS: &[ContrastPair] = &[
         fg: ColorToken::KeyInk,
         bg: ColorToken::KeyFace,
         min_ratio: 3.75,
-        criterion: "WCAG 2.2 AA 1.4.11 × 1,25",
+        criterion: "WCAG 2.2 AA 1.4.11",
     },
     ContrastPair {
         fg: ColorToken::KeyLegend,

@@ -2,24 +2,27 @@ use super::*;
 
 #[test]
 fn three_rasters_and_a_nested_group() {
-    // T3.1 criterion 1: create 3 raster layers + 1 nested group.
+    // T3.1 criterion 1: create 3 raster layers + 1 nested group, over the fixed BASE (the bottom of the root —
+    // the Apply bakes into it, so it never moves into a group: `5651d764d4`, B01).
     let mut s = LayerStack::new();
+    let base = s.add_raster("Base", 64, 64).unwrap();
     let a = s.add_raster("Layer 1", 64, 64).unwrap();
     let b = s.add_raster("Layer 2", 64, 64).unwrap();
     let _c = s.add_raster("Layer 3", 64, 64).unwrap();
     let g = s.add_group("Group").unwrap();
-    // Newest is on top: root = [Group, L3, L2, L1].
+    // Newest is on top: root = [Group, L3, L2, L1, Base].
     assert_eq!(s.root().first(), Some(&g));
-    assert_eq!(s.len(), 4);
+    assert_eq!(s.len(), 5);
+    assert!(!s.move_into_group(base, g), "the base is fixed");
     // Nest two rasters into the group.
     assert!(s.move_into_group(a, g));
     assert!(s.move_into_group(b, g));
     assert_eq!(s.depth(a), 1);
     assert_eq!(s.depth(g), 0);
-    // a and b left the root; group + L3 remain at root.
+    // a and b left the root; group + L3 + the base remain at root.
     assert!(!s.root().contains(&a));
     assert!(!s.root().contains(&b));
-    assert_eq!(s.root().len(), 2);
+    assert_eq!(s.root().len(), 3);
 }
 
 #[test]
@@ -163,14 +166,17 @@ fn cannot_nest_group_into_its_own_descendant() {
 
 #[test]
 fn remove_group_drops_subtree() {
+    // Over the fixed base (B01, `5651d764d4`): it stays when the group goes.
     let mut s = LayerStack::new();
+    let base = s.add_raster("base", 8, 8).unwrap();
     let a = s.add_raster("a", 8, 8).unwrap();
     let g = s.add_group("g").unwrap();
-    s.move_into_group(a, g);
-    assert_eq!(s.len(), 2);
+    assert!(s.move_into_group(a, g));
+    assert_eq!(s.len(), 3);
     s.remove(g);
-    assert_eq!(s.len(), 0);
-    assert_eq!(s.active(), None);
+    assert_eq!(s.len(), 1);
+    assert!(s.get(a).is_none() && s.get(g).is_none());
+    assert!(s.active().is_none_or(|x| x == base));
 }
 
 #[test]

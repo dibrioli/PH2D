@@ -1,7 +1,7 @@
 //! A cena 123 ensina o que acontece: quatro montagens nomeadas, e cada máquina faz a sua coisa.
 
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_physics_ecs::{JointAssembly, PhysicsBridge, PhysicsJoint};
+use ph2d_physics_ecs::{Collider, JointAssembly, PhysicsBridge, PhysicsJoint, RigidBody};
 
 fn y_of(sim: &mut SimWorld, name: &str) -> Transform {
     let mut q = sim.world_mut().query::<(&Name, &Transform)>();
@@ -29,6 +29,19 @@ fn the_template_scene_shows_four_named_machines_that_work() {
         .iter(sim.world())
         .count();
     assert_eq!(joints, 1 + 9 + 1 + 2, "door + bridge + elevator + car");
+    // ADR-0199: a forma de cada corpo é a filha «Collision Shape» na Hierarchy, nunca o corpo.
+    let bodies: Vec<_> = sim
+        .world_mut()
+        .query_filtered::<ph2d_ecs::Entity, ph2d_ecs::With<RigidBody>>()
+        .iter(sim.world())
+        .collect();
+    for b in bodies {
+        let w = sim.world();
+        assert!(w.get::<Collider>(b).is_none(), "a body carries its shape");
+        let f = ph2d_physics_ecs::forma_para_editar(w, b).expect("every body has a shape");
+        let name = w.get::<Name>(f).map_or("", Name::as_str);
+        assert!(name.starts_with("Collision Shape"), "the shape is «{name}»");
+    }
 
     let (car0, lift0) = (
         y_of(&mut sim, "Car Body"),

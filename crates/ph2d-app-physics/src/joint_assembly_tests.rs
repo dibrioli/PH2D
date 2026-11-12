@@ -28,19 +28,21 @@ fn body(sim: &mut SimWorld, name: &str, guide: Guide, at: [f32; 2], kind: BodyKi
         },
         Guide::Disc { radius } => ColliderShape::Ball { radius },
     };
-    sim.world_mut()
+    let w = sim.world_mut();
+    let e = w
         .spawn((
             Name::new(name.to_owned()),
             RigidBody { kind },
-            Collider {
-                shape,
-                // O pneu agarra (o atrito das rodas do smoke 57).
-                friction: 1.0,
-                ..Collider::default()
-            },
             Transform::from_translation(Vec2::new(at[0], at[1])),
         ))
-        .id()
+        .id();
+    // ADR-0199: a forma é a filha «Collision Shape», como o editor a cria.
+    let f = ph2d_physics_ecs::nasce_com_forma(w, e, shape);
+    if let Some(mut c) = w.get_mut::<Collider>(f) {
+        // O pneu agarra (o atrito das rodas do smoke 57).
+        c.friction = 1.0;
+    }
+    e
 }
 
 fn ground(sim: &mut SimWorld) {

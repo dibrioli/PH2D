@@ -8,7 +8,9 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, World};
 use ph2d_joint_templates::{Guide, JointKind, Template, by_name};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, InitialVelocity, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, InitialVelocity, RigidBody, nasce_com_forma,
+};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 const GROUND: [f32; 4] = [0.40, 0.42, 0.48, 1.0];
@@ -40,19 +42,25 @@ fn block(
     at: [f32; 2],
     kind: BodyKind,
 ) -> Entity {
-    world
+    let e = world
         .spawn((
             Transform::from_translation(Vec2::new(at[0], at[1])),
             Sprite::atlas(WHITE_TILE_KEY, size, rgba),
             Name::new(name.to_owned()),
             RigidBody { kind },
-            Collider {
-                shape,
-                friction: 1.0,
-                ..Collider::default()
-            },
         ))
-        .id()
+        .id();
+    // ADR-0199: a forma é a filha «Collision Shape» na Hierarchy, nunca um componente do corpo.
+    let f = nasce_com_forma(world, e, shape);
+    if let Some(mut c) = world.get_mut::<Collider>(f) {
+        c.friction = 1.0;
+    }
+    e
+}
+
+/// A forma de colisão (a filha) de um corpo da cena.
+fn shape_of(world: &mut World, body: Entity) -> Option<Entity> {
+    ph2d_physics_ecs::forma_para_editar(world, body)
 }
 
 fn wall(world: &mut World, name: &str, half: [f32; 2], at: [f32; 2]) {
@@ -156,7 +164,9 @@ pub fn build(world: &mut World) {
         BodyKind::Dynamic,
     );
     // 0,25 m² × 40 = 10 kg: o peso com que o gate mede a ponte.
-    if let Some(mut col) = w.get_mut::<Collider>(c) {
+    if let Some(f) = shape_of(w, c)
+        && let Some(mut col) = w.get_mut::<Collider>(f)
+    {
         col.density = 40.0;
     }
     std::mem::swap(sim.world_mut(), world);

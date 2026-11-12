@@ -81,12 +81,22 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
 /// batch (*"o teto capava a tinta comum"*, §13.8). Here the 22 sites collapse into ONE question asked at
 /// the top of every batch — *did anything change under me?* — answered by three witnesses ([`Self::witness`],
 /// [`Self::scratch_gen`], [`Self::layer`]). Enumeration rots; a witness does not.
+/// The epoch's `base`, sparse: `pixels` is canvas-sized but zero-allocated (pages fault in only where a
+/// chunk is captured), `have[row * chunks + c]` says chunk `c` of `row` holds the pristine canvas.
+/// `have == None` = every texel present (the frozen pre-B40.A4 path, `cfg(test)` oracle only).
+#[derive(Clone)]
+pub(crate) struct GateBase {
+    pub(crate) pixels: Arc<Vec<u8>>,
+    pub(crate) have: Option<Vec<u8>>,
+}
+
 #[derive(Clone)]
 pub(crate) struct GateSession {
-    /// The canvas as the protection found it — what a fully-protected texel keeps forever. An `Arc` clone,
-    /// so seeding costs a refcount, not a copy (the first `make_mut` on the canvas forks it once and the
-    /// session keeps the pristine side).
-    pub(crate) base: Arc<Vec<u8>>,
+    /// The canvas as the protection found it — what a fully-protected texel keeps forever. Only where the
+    /// epoch projected: each row chunk is copied from the canvas the first time a batch reaches it (the canvas
+    /// there is still pristine), so the canvas keeps ONE owner and is never forked (B40.A4,
+    /// `tool/paint/mask_gate.rs`).
+    pub(crate) base: GateBase,
     /// What **unrestricted** painting would have produced, accumulated across every stroke of the epoch.
     /// Swapped into `canvas_rgba` for the stamp, so every route (colour, smear, blur, clone, composite)
     /// paints exactly what it would paint with no gate at all — the gate has no say in WHAT is painted,

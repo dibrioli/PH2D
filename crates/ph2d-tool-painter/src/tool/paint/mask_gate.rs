@@ -70,6 +70,12 @@ impl PainterTool {
             &mut sess.free,
             &self.undo.write_state,
         );
+        capture_gate_base(
+            &mut sess.base,
+            &self.canvas_rgba,
+            region,
+            self.source_size.0,
+        );
         self.project_gate_region(&sess, region, mask_gate, sel_gate);
         // The witness is taken AFTER our own writes, so the clock movement this batch caused is absorbed
         // and only somebody ELSE's write can make the next batch see a mismatch.
@@ -91,7 +97,7 @@ impl PainterTool {
         let sgen = self.mask_scratch_gen;
         let clock = self.pixel_clock;
         let keep_it = self.gate.as_ref().is_some_and(|g| {
-            g.base.len() == n4 && g.free.len() == n4 && g.layer == layer && g.scratch_gen == sgen
+            g.base.pixels.len() == n4 && g.free.len() == n4 && g.layer == layer && g.scratch_gen == sgen
                 // `witness == clock` normally; the epoch's FIRST batch has not written yet, and the
                 // stroke's own undo snapshot does not move the clock, so nothing here is off by one.
                 && g.witness == clock
@@ -99,8 +105,21 @@ impl PainterTool {
         if keep_it {
             return;
         }
+        // ⭐ B40.A4: the ONE copy of the epoch is `free`; `base` is captured chunk by chunk where batches
+        // project, so the canvas keeps one owner and the projection forks nothing.
+        #[cfg(test)]
+        let base = if caminho_antigo() {
+            crate::tool::GateBase {
+                pixels: Arc::clone(&self.canvas_rgba),
+                have: None,
+            }
+        } else {
+            gate_base_vazia(self.source_size)
+        };
+        #[cfg(not(test))]
+        let base = gate_base_vazia(self.source_size);
         self.gate = Some(crate::tool::GateSession {
-            base: Arc::clone(&self.canvas_rgba),
+            base,
             free: Arc::new(self.canvas_rgba.as_ref().clone()),
             preview_patch: None,
             layer,
@@ -132,13 +151,13 @@ impl PainterTool {
         let (w, _h) = self.source_size;
         let scratch = mask_gate.then(|| Arc::clone(&self.paint.mask_scratch_rgba));
         let sel = sel_gate.then(|| Arc::clone(&self.paint.selection_mask));
-        let base = Arc::clone(&sess.base);
+        let base = Arc::clone(&sess.base.pixels);
         let free = Arc::clone(&sess.free);
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            regiao_do_fork(region),
         );
         let n = buf.len() / 4;
         for ry in 0..region.h {
@@ -174,6 +193,10 @@ impl PainterTool {
                 }
             }
         }
+        // The projection wrote `region` and nothing else: say so, or the commit sweeps the whole canvas.
+        if regiao_do_fork(region).is_some() {
+            self.declare_wrote(Some(region));
+        }
     }
 
     /// End the protection session — the stroke is over (pen-up close, shape Apply, a new pen-down, an
@@ -185,4 +208,67 @@ impl PainterTool {
     pub(crate) fn end_gate_session(&mut self) {
         self.gate = None;
     }
+}
+
+/// Row-chunk width of the sparse `base` ([`crate::tool::GateBase`]): 64 px = 256 bytes, one page row-slice.
+const CHUNK_PX: usize = 64;
+
+fn gate_base_vazia((w, h): (u32, u32)) -> crate::tool::GateBase {
+    let (w, h) = (w as usize, h as usize);
+    crate::tool::GateBase {
+        // `vec![0; n]` is a zeroed allocation: pages fault in only where a chunk is written.
+        pixels: Arc::new(vec![0u8; w * h * 4]),
+        have: Some(vec![0u8; h * w.div_ceil(CHUNK_PX)]),
+    }
+}
+
+/// Copy into `base` every chunk of `region` it does not hold yet, from `canvas` — still pristine there,
+/// because inside an epoch only the projection writes the canvas, and it writes a chunk only after this.
+fn capture_gate_base(base: &mut crate::tool::GateBase, canvas: &[u8], region: Region, w: u32) {
+    let Some(have) = base.have.as_mut() else {
+        return; // the full-canvas oracle: nothing to capture
+    };
+    let w = w as usize;
+    let chunks = w.div_ceil(CHUNK_PX);
+    let pixels = Arc::make_mut(&mut base.pixels);
+    let (c0, c1) = (
+        region.x as usize / CHUNK_PX,
+        ((region.x + region.w) as usize)
+            .div_ceil(CHUNK_PX)
+            .min(chunks),
+    );
+    for y in region.y as usize..(region.y + region.h) as usize {
+        for c in c0..c1 {
+            let k = y * chunks + c;
+            if k >= have.len() || have[k] != 0 {
+                continue;
+            }
+            let a = (y * w + c * CHUNK_PX) * 4;
+            let b = (y * w + ((c + 1) * CHUNK_PX).min(w)) * 4;
+            if b <= canvas.len() && b <= pixels.len() {
+                pixels[a..b].copy_from_slice(&canvas[a..b]);
+                have[k] = 1;
+            }
+        }
+    }
+}
+
+/// The projection's fork window: the batch region (B40.A4) — the whole canvas on the frozen oracle path.
+fn regiao_do_fork(region: Region) -> Option<Region> {
+    #[cfg(test)]
+    if caminho_antigo() {
+        return None;
+    }
+    Some(region)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// `true` = the pre-B40.A4 path verbatim (full `base` Arc, whole-canvas fork) — the parity oracle.
+    pub(super) static CAMINHO_ANTIGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+fn caminho_antigo() -> bool {
+    CAMINHO_ANTIGO.with(std::cell::Cell::get)
 }

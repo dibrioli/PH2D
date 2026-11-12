@@ -427,6 +427,9 @@ fn mask_op_from_u8(op: u8) -> Option<MaskCanvasOp> {
 #[path = "mask_gate.rs"]
 mod mask_gate;
 #[cfg(test)]
+#[path = "mask_gate_copia_tests.rs"]
+mod mask_gate_copia_tests;
+#[cfg(test)]
 #[path = "mask_gate_tests.rs"]
 mod mask_gate_tests;
 #[cfg(test)]

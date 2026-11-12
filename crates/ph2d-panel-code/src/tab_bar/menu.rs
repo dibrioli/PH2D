@@ -8,7 +8,8 @@
 //! borda dele, alargada meia linha) o rato passa por cima de outras linhas sem o fechar — a «mira»
 //! dos menus de sistema; parar mais de [`AIM_REST_NS`] a caminho acaba-a. Escolher fecha tudo; o Esc
 //! fecha **um** nível. O submenu abre à direita; se não cabe até à borda da barra, à esquerda; se
-//! nem assim, encosta à borda (fica sempre dentro da aba, onde o rato chega).
+//! nem assim, por baixo do menu, encostado à borda (fica dentro da aba, onde o rato chega, e nunca
+//! tapa a mãe).
 
 use super::{TabBar, height, label, width_of};
 use crate::mono_label;
@@ -256,14 +257,16 @@ impl<M: Copy + PartialEq> TabBar<M> {
         let h = rh * rows.len() as f32 + pad;
         let edge = self.painted.header.x + self.painted.header.w;
         let left = self.painted.header.x;
-        let x = if menu.x + menu.w + w <= edge {
-            menu.x + menu.w
+        // Sem lugar de nenhum lado (o transbordo numa coluna estreita), abre por baixo do menu,
+        // encostado à borda: nunca por cima das linhas da mãe.
+        let (x, y) = if menu.x + menu.w + w <= edge {
+            (menu.x + menu.w, parent.y - pad * 0.5)
         } else if menu.x - w >= left {
-            menu.x - w
+            (menu.x - w, parent.y - pad * 0.5)
         } else {
-            (edge - w).max(left)
+            ((edge - w).max(left), menu.y + menu.h)
         };
-        let popup = Rect::new(x, parent.y - pad * 0.5, w, h);
+        let popup = Rect::new(x, y, w, h);
         paint_popover(&Popover::new(SUB_POPOVER_ID), popup, scene, *theme);
         push_popover_clip(popup, scene);
         let mut sub = SubPainted {

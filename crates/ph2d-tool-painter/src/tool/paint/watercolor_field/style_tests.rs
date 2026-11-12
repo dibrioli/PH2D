@@ -100,6 +100,17 @@ fn delta(a: &[u8], b: &[u8]) -> u8 {
 
 #[test]
 fn o_256_o_traco_nao_reescreve_o_estilo_do_255_o() {
+    // Também com o pen-up pela UNIÃO da sessão: o pen-up do produto só relê o traço ⊕ pad (B16.2 cont3),
+    // e um estilo reescrito fora dele ficaria latente até à próxima recomposição larga.
+    use crate::tool::paint::watercolor_render::COMMIT_PELA_UNIAO;
+    for uniao in [false, true] {
+        let antes = COMMIT_PELA_UNIAO.replace(uniao);
+        o_256_nao_reescreve_com(uniao);
+        COMMIT_PELA_UNIAO.set(antes);
+    }
+}
+
+fn o_256_nao_reescreve_com(uniao: bool) {
     const N: u32 = 300;
     let mut t = aguada_em_celulas();
     let mut feitas: Vec<Vec<u8>> = Vec::with_capacity(N as usize);
@@ -131,7 +142,7 @@ fn o_256_o_traco_nao_reescreve_o_estilo_do_255_o() {
     let primeiro = piores.first().copied();
     assert!(
         piores.is_empty(),
-        "{} (traço, célula) mudaram depois do próprio pen-up; o primeiro {primeiro:?}, Δmax {pior}",
+        "união {uniao}: {} (traço, célula) mudaram depois do próprio pen-up; o primeiro {primeiro:?}, Δmax {pior}",
         piores.len()
     );
 }

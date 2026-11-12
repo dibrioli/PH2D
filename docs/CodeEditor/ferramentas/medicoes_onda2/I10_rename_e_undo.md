@@ -65,6 +65,12 @@ própria foto leva ~20–100 ms). ⇒ o realce não tem pausa de interface: segu
 servidor a cada (revisão, palavra sob o cursor) nova — `0,1` ms a 7 500 linhas, fora do quadro — e um
 pedido novo cancela o velho do mesmo género.
 
+**Re-corrida 2026-11-11, VS Code 1.145.2** (`c4453f8ea4`, `loadavg` 12,7 — relógio só indicativo): o pixel fixo
+`p{552,135}` caía num glifo (`#AD8BD2` antes, `#AE90D9` depois: a cor do texto, não o fundo), por isso a sonda
+passou a achar o realce pela COR — a mais frequente na área do texto da última foto que não existe na foto antes,
+contada em cada foto. Resultado: a cor é a mesma `#182D35` (681 px; 2.ª cor nova `#264654`, a ocorrência sob o
+cursor), ausente antes, e já inteira na 1.ª foto a **125 ms**. A conclusão de cima não muda.
+
 ## O que isto decide
 
 1. **A validação do nome é NOSSA, antes de perguntar**: identificador Luau, não reservado, diferente do

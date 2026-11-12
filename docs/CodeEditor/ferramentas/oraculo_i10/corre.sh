@@ -115,19 +115,40 @@ vai 3:15; shot r14_realce 2
 xdotool key shift+F12; shot r15_referencias 3
 fecha
 fi
-# 6. O ATRASO do realce: clique em `helper` (linha 1) e rajada de fotos; a cor do fundo do `helper` da
-#    linha 3 diz em que foto o realce chegou (cada foto leva o seu relógio, porque `import` não é instantâneo).
+# 6. O ATRASO do realce: clique em `helper` (linha 1) e rajada de fotos (cada foto leva o seu relógio, porque
+#    `import` não é instantâneo). O realce acha-se pela COR, nunca por um pixel fixo (o `p{552,135}` de 18/10
+#    caía num glifo no 1.145.2): a cor do realce = a mais frequente da área do texto na ÚLTIMA foto que não
+#    existe na foto ANTES; cada foto conta os seus pixels dessa cor; chegou = a 1.ª com ≥ metade da última.
+AREA=1200x300+400+100   # a área do texto inteira (à direita do Explorer), larga de propósito
+hist() { magick "$1" -crop "$AREA" +repage -format %c histogram:info:; }
 sessao
 vai 2:1; sleep 2.5
 import -window root "$T/antes.miff"
-echo "realce antes do clique helper_l3=#$(magick "$T/antes.miff" -format '%[hex:p{552,135}]' info:)" >>"$OUT/passos.txt"
 t0=$(date +%s%N); xdotool mousemove 544 96 click 1
 for i in $(seq 0 39); do
   import -window root "$T/burst$i.miff"; echo "$(( ($(date +%s%N) - t0) / 1000000 ))" >"$T/burst$i.t"
 done
-for i in $(seq 0 39); do
-  echo "realce $i t=$(cat "$T/burst$i.t")ms helper_l3=#$(magick "$T/burst$i.miff" -format '%[hex:p{552,135}]' info:)" >>"$OUT/passos.txt"
-done
+hist "$T/antes.miff" >"$T/antes.h"
+for i in $(seq 0 39); do hist "$T/burst$i.miff" >"$T/burst$i.h"; done
+python3 -I - "$T" >>"$OUT/passos.txt" <<'PY'
+import re, sys
+t = sys.argv[1]
+def h(p):
+    return {m[1].upper(): int(m[0]) for m in re.findall(r"^\s*(\d+):.*?#([0-9A-Fa-f]{6,12})", open(p).read(), re.M)}
+antes, ult = h(f"{t}/antes.h"), h(f"{t}/burst39.h")
+novas = sorted(((n, c) for c, n in ult.items() if c not in antes), reverse=True)
+if not novas:
+    print("realce: NENHUMA cor nova na área do texto (o clique não realçou)"); sys.exit()
+n_ult, cor = novas[0]
+curto = lambda c: "#" + "".join(c[i:i + 2] for i in range(0, len(c), len(c) // 3))[:7] if len(c) == 12 else "#" + c
+print(f"realce: cor {curto(cor)} ({n_ult} px na última foto; antes 0 px); 2.ª cor nova {curto(novas[1][1]) if len(novas) > 1 else '-'}")
+cheg = None
+for i in range(40):
+    n = h(f"{t}/burst{i}.h").get(cor, 0); ms = open(f"{t}/burst{i}.t").read().strip()
+    if cheg is None and n * 2 >= n_ult: cheg = (i, ms)
+    print(f"realce {i} t={ms}ms px_realce={n}")
+print(f"realce CHEGOU na foto {cheg[0]} a {cheg[1]} ms" if cheg else "realce: nunca chegou a metade")
+PY
 fecha
 
 echo "gravado em $OUT"; cat "$OUT/passos.txt"

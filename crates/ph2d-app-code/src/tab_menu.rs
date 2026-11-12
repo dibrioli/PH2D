@@ -32,9 +32,8 @@ pub fn menu_titles() -> [(TabMenu, &'static str); 6] {
     TabMenu::ALL.map(|m| (m, m.title()))
 }
 
-/// As linhas do menu `m` com os interruptores em `state` e o jogo em `stop`: o Run leva a nota do
-/// Restart Code Assistant debaixo dele; o View acaba nos submenus `Card Style ▸` e `Text rendering ▸`
-/// (escolhas um-entre-N; dono 10/11 e 11/11).
+/// As linhas do menu `m` (interruptores em `state`, o jogo em `stop`): o Run leva a nota do Restart
+/// Code Assistant; o View acaba em `Card Style ▸` e `Text rendering ▸` (dono 10/11 e 11/11).
 #[must_use]
 pub fn menu_items(
     m: TabMenu,
@@ -82,7 +81,7 @@ pub fn menu_items(
 }
 
 /// As linhas do menu aberto da barra: o de um título, o do transbordo, ou nenhuma.
-fn open_items(
+pub(crate) fn open_items(
     bar: &Bar,
     state: crate::commands::CommandState,
     stop: crate::debug::GameStop,
@@ -98,10 +97,9 @@ fn open_items(
 
 /// O que um carregar na barra (fora do menu) pede.
 enum BarPress {
-    Run(ph2d_a11y::NodeId),
+    Menu(MenuPress),
     Crumb(usize, usize),
     Gear,
-    Taken,
 }
 
 impl CodeDocs {
@@ -119,9 +117,8 @@ impl CodeDocs {
         (page_of(id).is_none()).then(|| ph2d_panel_code::bancada::phrase_split(split(doc_r).1).1)
     }
 
-    /// O caminho até o cursor da aba `id`. É chrome de cada quadro: nunca reparsa (com a árvore
-    /// velha fica a função da última árvore exacta até o worker a trocar) e só procura a função
-    /// quando a árvore ou a linha mudam — com as dobras das funções candidatas, nunca as do ficheiro.
+    /// O caminho até o cursor da aba `id` (chrome de cada quadro): nunca reparsa e só procura a função
+    /// quando a árvore ou a linha mudam, com as dobras das funções candidatas.
     fn crumb(&mut self, id: u64) -> Option<Crumb> {
         let d = self.docs.iter_mut().find(|d| d.script.0 == id)?;
         let t = d.buffer.text();
@@ -199,9 +196,6 @@ impl CodeDocs {
             let tip = ph2d_i18n::tr("code.options.pin").to_owned();
             self.bar.painted.tips.push((pin, tip));
         }
-        let items = open_items(&self.bar, state, self.debug.game_stop);
-        let clock = (self.clock.0, crate::hint::HOVER_PAUSE_NS);
-        self.bar.paint_popup(&items, scene, ts, theme, clock);
     }
 
     /// Um carregar primário: o menu aberto, a barra, o cartão das opções. `Some(true)` = tomado.
@@ -210,10 +204,7 @@ impl CodeDocs {
             return None;
         }
         let press = if let Some(p) = self.bar.press(x, y) {
-            match p {
-                MenuPress::Run(cmd) => BarPress::Run(cmd),
-                MenuPress::Taken => BarPress::Taken,
-            }
+            BarPress::Menu(p)
         } else if let Some((r, l, c)) = self.bar.painted.crumb_fn
             && r.contains(x, y)
         {
@@ -221,22 +212,22 @@ impl CodeDocs {
         } else if self.bar.painted.gear.is_some_and(|g| g.contains(x, y)) {
             BarPress::Gear
         } else if let Some(cmd) = self.options.press(x, y) {
-            BarPress::Run(cmd)
+            BarPress::Menu(MenuPress::Run(cmd))
         } else if self.options.contains(x, y) {
-            BarPress::Taken
+            BarPress::Menu(MenuPress::Taken)
         } else {
             self.options.click_outside();
             return self.bar.painted.header.contains(x, y).then_some(true);
         };
         match press {
-            BarPress::Run(cmd) => {
+            BarPress::Menu(MenuPress::Run(cmd)) => {
                 let _ = ph2d_editor_core::doc_surface::DocumentSurface::command(self, id, cmd);
             }
             BarPress::Crumb(l, c) => {
                 let _ = self.tab_go_to(id, l, c);
             }
             BarPress::Gear => self.options.toggle(),
-            BarPress::Taken => {}
+            BarPress::Menu(MenuPress::Taken) => {}
         }
         Some(true)
     }

@@ -6,6 +6,7 @@
 //! O menu aberto pode ter linhas com **submenu em cascata** (`View ▸ Text rendering ▸ …`): a
 //! mecânica (pairar abre, a escolha fecha tudo, Esc fecha um nível) está em [`menu`].
 
+mod cascade;
 pub mod menu;
 
 use ph2d_a11y::NodeId;
@@ -37,8 +38,12 @@ pub struct BarPainted<M> {
     pub sub_parents: Vec<NodeId>,
     /// Todas as linhas do menu aberto como saíram (as inactivas e as notas incluídas).
     pub lines: Vec<menu::Line>,
-    /// O submenu aberto, se algum.
+    /// O 1.º submenu aberto, se algum.
     pub sub: Option<menu::SubPainted>,
+    /// Os submenus abertos depois do 1.º (o 3.º nível em diante), pela ordem.
+    pub deeper: Vec<menu::SubPainted>,
+    /// As setas ▲▼ do menu aberto, quando é mais alto que a janela e rola.
+    pub arrows: Option<(Rect, Rect)>,
     /// A parte «função» do caminho: a caixa, a linha e a coluna (0-based) da definição.
     pub crumb_fn: Option<(Rect, usize, usize)>,
     /// O caminho como saiu: a caixa do primeiro ao último glifo e as partes pintadas (já com `…`).
@@ -62,6 +67,8 @@ impl<M> Default for BarPainted<M> {
             sub_parents: Vec::new(),
             lines: Vec::new(),
             sub: None,
+            deeper: Vec::new(),
+            arrows: None,
             crumb_fn: None,
             crumb: None,
             gear: None,
@@ -80,6 +87,12 @@ pub struct TabBar<M> {
     pub hover: Option<NodeId>,
     /// A linha do menu aberto cujo submenu está aberto.
     pub sub: Option<NodeId>,
+    /// As linhas-mãe abertas depois de [`sub`](Self::sub), do 2.º submenu ao mais fundo.
+    pub deeper: Vec<NodeId>,
+    /// A janela onde os menus flutuam (presos a ela, por cima de tudo); `None` = a barra sozinha.
+    pub window: Option<Rect>,
+    /// A rolagem de cada nível aberto (0 = o menu) que é mais alto que a janela.
+    pub scroll: Vec<f32>,
     pub painted: BarPainted<M>,
     /// A dica sob o rato (índice em `painted.tips`) e desde quando.
     pub tip: Option<(usize, u128)>,
@@ -97,6 +110,9 @@ impl<M> Default for TabBar<M> {
             more: false,
             hover: None,
             sub: None,
+            deeper: Vec::new(),
+            window: None,
+            scroll: Vec::new(),
             painted: BarPainted::default(),
             tip: None,
             last: None,
@@ -191,7 +207,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
         self.painted.hidden = titles[shown..].iter().map(|t| t.0).collect();
         if self.open.is_some_and(|m| self.painted.hidden.contains(&m)) {
             self.open = None;
-            self.sub = None;
+            (self.sub, self.deeper) = (None, Vec::new());
         }
         if self.painted.hidden.is_empty() {
             self.more = false;

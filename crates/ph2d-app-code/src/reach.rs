@@ -252,8 +252,8 @@ impl CodeDoc {
 impl crate::docs::CodeDocs {
     /// O ponteiro em `(x, y)` sobre a aba `id` ([`CodeDoc::pointer_look`]); `None` fora da aba.
     pub(crate) fn tab_pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
-        if !self.area.contains(x, y) {
-            return None;
+        if self.bar.floats_at(x, y) || !self.area.contains(x, y) {
+            return self.bar.floats_at(x, y).then_some(PointerLook::Arrow);
         }
         let d = self.docs.iter().find(|d| d.script.0 == id)?;
         let look = self.options.look(x, y).or_else(|| self.bench.look(x, y));

@@ -28,6 +28,7 @@ mod problemas;
 mod quadro_do_depurador;
 mod recorte_do_quadro;
 mod respiro;
+mod sobreposicao;
 mod sublinhado;
 mod submenu;
 mod transbordo;

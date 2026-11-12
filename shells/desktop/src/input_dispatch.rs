@@ -298,11 +298,13 @@ impl App {
         if self.command_palette_wheel(dy) {
             return;
         }
-        // ⭐ A janela do Input Map já não precisa de caso próprio (rolagem única, W5): ela publica o
-        // rect do cartão como rect de painel, logo o `cursor_over_hero_panel` abaixo a apanha e a roda
-        // rola-a pelo mesmo caminho de todo painel — e nunca dá zoom no canvas por baixo dela.
-        let over_panel =
-            cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
+        // ⭐ A janela do Input Map publica o rect do cartão como rect de painel (rolagem única, W5): a
+        // roda rola-a como todo painel. Um menu da aba de família por cima de um painel é da aba.
+        let (px, py) = self.last_pointer;
+        let over_panel = cursor_over_hero_panel(self.gfx.as_ref(), px, py)
+            && !self
+                .hero_ref()
+                .is_some_and(|h| h.documents.surface_floats_at(px, py));
         // ⭐ Um QUADRO activo (MiroClone) é dono da área de desenho: a roda dá zoom nele, nunca na cena.
         if !over_panel
             && let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())

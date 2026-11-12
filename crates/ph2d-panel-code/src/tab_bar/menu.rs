@@ -1,15 +1,20 @@
-//! ⭐ **O menu aberto da barra e o submenu em cascata** (dono 10/11: `View ▸ Text rendering ▸ 4 modos`).
+//! ⭐ **O menu aberto da barra e os submenus em cascata** (dono 10/11: `View ▸ Text rendering ▸ 4 modos`).
 //!
 //! A mecânica é a dos menus de sistema (macOS, GTK, Windows): a linha com submenu tem a seta `›` à
 //! direita; **pairar** sobre ela abre o submenu ao lado (fica acesa enquanto ele está aberto);
-//! pairar noutra linha do menu fecha-o; o rato pode sair dos dois sem os fechar. As escolhas são
-//! um-entre-N: a em vigor leva o `✓` na coluna da esquerda (em acento). A caminho do submenu aberto
-//! (dentro do triângulo entre a ÂNCORA — o último ponto fora da mira, que fica parada a caminho — e a
-//! borda dele, alargada meia linha) o rato passa por cima de outras linhas sem o fechar — a «mira»
-//! dos menus de sistema; parar mais de [`AIM_REST_NS`] a caminho acaba-a. Escolher fecha tudo; o Esc
-//! fecha **um** nível. O submenu abre à direita; se não cabe até à borda da barra, à esquerda; se
-//! nem assim, por baixo do menu, encostado à borda (fica dentro da aba, onde o rato chega, e nunca
-//! tapa a mãe).
+//! pairar noutra linha do mesmo nível fecha-o; o rato pode sair de todos sem os fechar. Os níveis são
+//! N (`… ▸ View ▸ Text rendering ▸`): cada submenu pinta-se pela MESMA [`TabBar::paint_lines`]. As
+//! escolhas são um-entre-N: a em vigor leva o `✓` na coluna da esquerda (em acento). A caminho de um
+//! submenu aberto (dentro do triângulo entre a ÂNCORA — o último ponto fora da mira, que fica parada
+//! a caminho — e a borda dele, alargada meia linha) o rato passa por cima de outras linhas sem o
+//! fechar — a «mira» dos menus de sistema; parar mais de [`AIM_REST_NS`] a caminho acaba-a. Escolher
+//! fecha tudo; o Esc fecha **um** nível.
+//!
+//! **Os menus flutuam por cima de TUDO, presos à JANELA** ([`TabBar::window`]; a aba pinta-os no fim
+//! do quadro): o menu abre por baixo do título e, sem lugar, encosta ao fundo da janela; o submenu
+//! abre à direita, senão à esquerda, senão por baixo do menu; um nível mais alto que a janela ocupa-a
+//! e rola (a roda e as setas ▲▼ nas pontas). Sem janela (os testes da barra sozinha) a borda é a da
+//! barra na horizontal e nada limita a vertical. A posição e o rato estão em [`super::cascade`].
 
 use super::{TabBar, height, label, width_of};
 use crate::mono_label;
@@ -33,7 +38,7 @@ const SUB_POPOVER_ID: NodeId = hash_node_id("code_tab_submenu_popover");
 /// atraso dos menus de sistema, ~300 ms no macOS e no GTK).
 pub const AIM_REST_NS: u128 = 300_000_000;
 
-/// Uma linha do menu aberto (o de um título e o submenu pintam-se pela MESMA função).
+/// Uma linha do menu aberto (o de um título e os submenus pintam-se pela MESMA função).
 #[derive(Clone, Debug, PartialEq)]
 pub enum MenuItem {
     /// Um comando: o id, o nome, o atalho (vazio = nenhum) e se vale agora (senão a cinzento e
@@ -48,7 +53,7 @@ pub enum MenuItem {
     Choice { id: NodeId, name: String, on: bool },
     /// Uma nota na letra das dicas, debaixo da linha anterior (não se clica).
     Note(String),
-    /// Uma linha que abre um submenu com as linhas `rows`.
+    /// Uma linha que abre um submenu com as linhas `rows` (que podem ter submenus delas).
     Sub {
         id: NodeId,
         name: String,
@@ -66,7 +71,7 @@ impl MenuItem {
     }
 
     /// As linhas que se escolhem, pela ordem: os comandos que valem e, no lugar de um submenu, as
-    /// escolhas dele com a mãe (`Some(mãe)`).
+    /// escolhas dele (de qualquer nível) com a mãe de topo (`Some(mãe)`).
     #[must_use]
     pub fn leaves(items: &[Self]) -> Vec<(NodeId, Option<NodeId>)> {
         let mut out = Vec::new();
@@ -99,17 +104,21 @@ pub struct Line {
     pub check: Option<bool>,
 }
 
-/// O submenu pintado: a linha-mãe, a caixa e as escolhas.
+/// Um submenu pintado: a linha-mãe, a caixa e as linhas.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubPainted {
     pub parent: NodeId,
     pub popup: Rect,
-    /// As linhas que se clicam e a caixa delas.
+    /// As linhas que se clicam (à vista) e a caixa delas.
     pub rows: Vec<(NodeId, Rect)>,
     /// As escolhas com o `✓` (a em vigor).
     pub checked: Vec<NodeId>,
     /// Todas as linhas como saíram (as inactivas e as notas incluídas).
     pub lines: Vec<Line>,
+    /// As linhas que abrem um submenu (o nível seguinte).
+    pub parents: Vec<NodeId>,
+    /// As setas ▲▼ das pontas, quando o nível é mais alto que a janela e rola.
+    pub arrows: Option<(Rect, Rect)>,
 }
 
 /// O que um carregar no menu pede a quem o usa.
@@ -117,7 +126,7 @@ pub struct SubPainted {
 pub enum MenuPress {
     /// Correr o comando (o menu já fechou).
     Run(NodeId),
-    /// O carregar foi do menu (abrir, trocar, fechar); nada a correr.
+    /// O carregar foi do menu (abrir, trocar, fechar, rolar); nada a correr.
     Taken,
 }
 
@@ -129,21 +138,10 @@ pub fn more_row(i: usize) -> NodeId {
 
 /// O menu do transbordo `…` (a barra estreita, o idioma do VS Code): cada título escondido
 /// `(linha, nome, linhas do menu dele)` vira um submenu com as MESMAS linhas do menu desse título
-/// (atalhos, inactivas a cinzento, notas); um submenu dele (o 3.º nível) entra como a nota com o nome
-/// e as escolhas por baixo.
+/// (atalhos, inactivas a cinzento, notas, e os submenus dele como submenus: o 3.º nível).
 pub fn more_menu(hidden: impl Iterator<Item = (NodeId, String, Vec<MenuItem>)>) -> Vec<MenuItem> {
-    let inline = |it: MenuItem| match it {
-        MenuItem::Sub { name, rows, .. } => {
-            std::iter::once(MenuItem::Note(name)).chain(rows).collect()
-        }
-        it => vec![it],
-    };
     hidden
-        .map(|(id, name, items)| MenuItem::Sub {
-            id,
-            name,
-            rows: items.into_iter().flat_map(inline).collect(),
-        })
+        .map(|(id, name, rows)| MenuItem::Sub { id, name, rows })
         .collect()
 }
 
@@ -166,16 +164,15 @@ pub fn row_bg(hot: bool, theme: &Theme) -> ph2d_vector::Color {
     }
 }
 
+fn icon_at(scene: &mut VectorScene, icon: IconId, r: Rect, ink: ColorToken, theme: &Theme) {
+    let stroke = StrokeToken::Default.px();
+    paint_icon(scene, icon, r, resolve(ink, *theme), stroke);
+}
+
 fn chevron(scene: &mut VectorScene, right: f32, y: f32, ink: ColorToken, theme: &Theme) {
     let s = INLINE_ICON_PX;
     let r = Rect::new(right - s, y + (height() - s) * 0.5, s, s);
-    paint_icon(
-        scene,
-        IconId::ChevronRight,
-        r,
-        resolve(ink, *theme),
-        StrokeToken::Default.px(),
-    );
+    icon_at(scene, IconId::ChevronRight, r, ink, theme);
 }
 
 /// A largura de um menu com `items` e a da coluna do `✓` (zero sem escolhas).
@@ -205,6 +202,11 @@ fn measure(items: &[MenuItem], ts: &mut TextSystem) -> (f32, f32) {
     (w, check_w)
 }
 
+/// A altura de um menu de `n` linhas inteiro (sem rolar).
+fn content_h(n: usize) -> f32 {
+    height() * n as f32 + Spacing::Sm.px()
+}
+
 /// O que [`TabBar::paint_lines`] pintou.
 #[derive(Default)]
 struct Laid {
@@ -212,13 +214,15 @@ struct Laid {
     parents: Vec<NodeId>,
     checked: Vec<NodeId>,
     lines: Vec<Line>,
-    /// A linha do submenu aberto: o índice em `items` e a caixa.
-    open: Option<(usize, Rect)>,
+    /// A caixa da linha cujo submenu está aberto (se à vista).
+    open: Option<Rect>,
+    arrows: Option<(Rect, Rect)>,
 }
 
 impl<M: Copy + PartialEq> TabBar<M> {
-    /// Pinta o menu aberto por baixo do título dele, com `items`, e o submenu aberto ao lado (por cima
-    /// de tudo: chame-a por último). Sem menu aberto, a dica sob o rato depois de `pause_ns`.
+    /// Pinta o menu aberto por baixo do título dele, com `items`, e os submenus abertos ao lado (por
+    /// cima de tudo: chame-a por último, depois de [`Self::window`]). Sem menu aberto, a dica sob o
+    /// rato depois de `pause_ns`.
     pub fn paint_popup(
         &mut self,
         items: &[MenuItem],
@@ -227,62 +231,101 @@ impl<M: Copy + PartialEq> TabBar<M> {
         theme: &Theme,
         (now, pause_ns): (u128, u128),
     ) {
-        self.painted.rows.clear();
-        self.painted.sub_parents.clear();
-        self.painted.lines.clear();
-        self.painted.popup = None;
-        self.painted.sub = None;
+        let p = &mut self.painted;
+        (p.popup, p.sub, p.arrows) = (None, None, None);
+        p.rows.clear();
+        p.sub_parents.clear();
+        p.lines.clear();
+        p.deeper.clear();
         if !self.is_open() {
             return self.paint_tip(scene, ts, theme, now, pause_ns);
         }
         let Some(title) = self.anchor() else {
             return;
         };
-        if self.sub.is_some_and(|s| {
-            !items
-                .iter()
-                .any(|i| matches!(i, MenuItem::Sub { id, .. } if *id == s))
-        }) {
-            self.sub = None;
-        }
+        self.prune(items);
         let (w, check_w) = measure(items, ts);
-        let h = height() * items.len() as f32 + Spacing::Sm.px();
-        let popup = Rect::new(title.x, title.y + title.h, w, h);
-        let laid = self.paint_lines(items, popup, check_w, true, scene, ts, theme);
-        self.painted.rows = laid.rows;
-        self.painted.sub_parents = laid.parents;
-        self.painted.lines = laid.lines;
-        self.painted.popup = Some(popup);
-        if let Some((i, parent)) = laid.open
-            && let MenuItem::Sub { id, rows, .. } = &items[i]
-        {
-            self.paint_sub(*id, popup, parent, rows, scene, ts, theme);
+        // Sem janela, o menu fica debaixo do título, sem limite (a barra sozinha dos testes).
+        let all = Rect::new(f32::MIN, f32::MIN, f32::INFINITY, f32::INFINITY);
+        let b = self.window.unwrap_or(all);
+        let popup = super::cascade::below(title, w, content_h(items.len()), b);
+        let laid = self.paint_lines(items, popup, check_w, 0, scene, ts, theme);
+        let p = &mut self.painted;
+        (p.rows, p.sub_parents, p.lines) = (laid.rows, laid.parents, laid.lines);
+        (p.popup, p.arrows) = (Some(popup), laid.arrows);
+        let (mut menu, mut row, mut cur) = (popup, laid.open, items);
+        for (k, id) in self.chain().into_iter().enumerate() {
+            let Some(rows) = cur.iter().find_map(|i| match i {
+                MenuItem::Sub { id: s, rows, .. } if *s == id => Some(rows),
+                _ => None,
+            }) else {
+                break;
+            };
+            let Some(parent) = row else { break };
+            let (w, check_w) = measure(rows, ts);
+            let b = self.bounds();
+            let popup = super::cascade::beside(menu, parent, w, content_h(rows.len()), b);
+            let laid = self.paint_lines(rows, popup, check_w, k + 1, scene, ts, theme);
+            let sub = SubPainted {
+                parent: id,
+                popup,
+                rows: laid.rows,
+                checked: laid.checked,
+                lines: laid.lines,
+                parents: laid.parents,
+                arrows: laid.arrows,
+            };
+            if k == 0 {
+                self.painted.sub = Some(sub);
+            } else {
+                self.painted.deeper.push(sub);
+            }
+            (menu, row, cur) = (popup, laid.open, rows);
         }
     }
 
-    /// Pinta `items` no popover `popup` (o menu de um título, ou o submenu com `top = false`, onde uma
-    /// linha de submenu não abre nada): o `✓` na coluna `check_w`, o nome, o atalho à direita; a
-    /// linha inactiva a cinzento, sem realce e fora das que se clicam.
+    /// Pinta `items` no popover `popup` do nível `level` (0 = o menu do título): o `✓` na coluna
+    /// `check_w`, o nome, o atalho à direita (ou a `›` de um submenu); a linha inactiva a cinzento,
+    /// sem realce e fora das que se clicam. Mais alto que `popup`, rola entre as setas ▲▼.
     #[allow(clippy::too_many_arguments)]
     fn paint_lines(
-        &self,
+        &mut self,
         items: &[MenuItem],
         popup: Rect,
         check_w: f32,
-        top: bool,
+        level: usize,
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         theme: &Theme,
     ) -> Laid {
         let (pad, xs, rh) = (Spacing::Sm.px(), Spacing::Xs.px(), height());
-        let id = if top { POPOVER_ID } else { SUB_POPOVER_ID };
+        let id = if level == 0 {
+            POPOVER_ID
+        } else {
+            SUB_POPOVER_ID
+        };
         paint_popover(&Popover::new(id), popup, scene, *theme);
-        push_popover_clip(popup, scene);
         let mut laid = Laid::default();
-        let mut y = popup.y + pad * 0.5;
+        let rolls = popup.h < content_h(items.len());
+        let (view, mut y) = if rolls {
+            let view = Rect::new(popup.x, popup.y + rh, popup.w, popup.h - rh * 2.0);
+            let max = rh * items.len() as f32 - view.h;
+            let s = self.scroll_to(level, max);
+            let up = Rect::new(popup.x, popup.y, popup.w, rh);
+            let down = Rect::new(popup.x, view.y + view.h, popup.w, rh);
+            laid.arrows = Some((up, down));
+            self.paint_arrows((up, down), s > 0.0, s < max, scene, theme);
+            (view, view.y - s)
+        } else {
+            self.scroll_to(level, 0.0);
+            (popup, popup.y + pad * 0.5)
+        };
+        push_popover_clip(view, scene);
+        let chain = self.chain();
         let right = popup.x + popup.w - pad * 2.0;
-        for (i, it) in items.iter().enumerate() {
+        for it in items {
             let rr = Rect::new(popup.x + xs, y, popup.w - xs * 2.0, rh);
+            let seen = (view.y..=view.y + view.h).contains(&(y + rh * 0.5));
             let nr = Rect::new(popup.x + pad + check_w, y, f32::INFINITY, rh);
             let (rid, name, keys, live, check, opens) = match it {
                 MenuItem::Note(n) => {
@@ -306,9 +349,10 @@ impl<M: Copy + PartialEq> TabBar<M> {
                     live,
                 } => (*id, name, keys.as_str(), *live, None, false),
                 MenuItem::Choice { id, name, on } => (*id, name, "", true, Some(*on), false),
-                MenuItem::Sub { id, name, .. } => (*id, name, "", top, None, true),
+                MenuItem::Sub { id, name, .. } => (*id, name, "", true, None, true),
             };
-            let hot = live && (self.hover == Some(rid) || (opens && self.sub == Some(rid)));
+            let open = opens && chain.get(level) == Some(&rid);
+            let hot = live && (self.hover == Some(rid) || open);
             if hot {
                 paint_popover_row_highlight(scene, rr, *theme);
             }
@@ -321,8 +365,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
                 } else {
                     ColorToken::Accent
                 };
-                let stroke = StrokeToken::Default.px();
-                paint_icon(scene, IconId::Check, cr, resolve(mark, *theme), stroke);
+                icon_at(scene, IconId::Check, cr, mark, theme);
                 laid.checked.push(rid);
             }
             let c = resolve(ink, *theme);
@@ -331,14 +374,8 @@ impl<M: Copy + PartialEq> TabBar<M> {
             if opens {
                 chevron(scene, right, y, dim, theme);
             } else {
-                label(
-                    ts,
-                    scene,
-                    keys,
-                    Rect::new(right - kw, y, kw, rh),
-                    dim,
-                    theme,
-                );
+                let kr = Rect::new(right - kw, y, kw, rh);
+                label(ts, scene, keys, kr, dim, theme);
             }
             laid.lines.push(Line {
                 id: Some(rid),
@@ -348,13 +385,13 @@ impl<M: Copy + PartialEq> TabBar<M> {
                 live,
                 check,
             });
-            if live {
+            if live && seen {
                 laid.rows.push((rid, rr));
             }
-            if opens && top {
+            if opens && seen {
                 laid.parents.push(rid);
-                if self.sub == Some(rid) {
-                    laid.open = Some((i, rr));
+                if open {
+                    laid.open = Some(rr);
                 }
             }
             y += rh;
@@ -363,190 +400,25 @@ impl<M: Copy + PartialEq> TabBar<M> {
         laid
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn paint_sub(
-        &mut self,
-        id: NodeId,
-        menu: Rect,
-        parent: Rect,
-        rows: &[MenuItem],
+    /// As setas ▲▼ das pontas de um nível que rola (a cinzento quando já não há para onde ir).
+    fn paint_arrows(
+        &self,
+        (up, down): (Rect, Rect),
+        more_up: bool,
+        more_down: bool,
         scene: &mut VectorScene,
-        ts: &mut TextSystem,
         theme: &Theme,
     ) {
-        let pad = Spacing::Sm.px();
-        let (w, check_w) = measure(rows, ts);
-        let h = height() * rows.len() as f32 + pad;
-        let edge = self.painted.header.x + self.painted.header.w;
-        let left = self.painted.header.x;
-        // Sem lugar de nenhum lado (o transbordo numa coluna estreita), abre por baixo do menu,
-        // encostado à borda: nunca por cima das linhas da mãe.
-        let (x, y) = if menu.x + menu.w + w <= edge {
-            (menu.x + menu.w, parent.y - pad * 0.5)
-        } else if menu.x - w >= left {
-            (menu.x - w, parent.y - pad * 0.5)
-        } else {
-            ((edge - w).max(left), menu.y + menu.h)
-        };
-        let popup = Rect::new(x, y, w, h);
-        let laid = self.paint_lines(rows, popup, check_w, false, scene, ts, theme);
-        self.painted.sub = Some(SubPainted {
-            parent: id,
-            popup,
-            rows: laid.rows,
-            checked: laid.checked,
-            lines: laid.lines,
-        });
-    }
-
-    fn row_at(&self, x: f32, y: f32) -> Option<NodeId> {
-        self.painted
-            .rows
-            .iter()
-            .find(|r| r.1.contains(x, y))
-            .map(|r| r.0)
-    }
-
-    fn sub_row_at(&self, x: f32, y: f32) -> Option<Option<NodeId>> {
-        let s = self.painted.sub.as_ref()?;
-        s.popup
-            .contains(x, y)
-            .then(|| s.rows.iter().find(|r| r.1.contains(x, y)).map(|r| r.0))
-    }
-
-    /// Um menu aberto: o de um título ou o de transbordo.
-    #[must_use]
-    pub fn is_open(&self) -> bool {
-        self.open.is_some() || self.more
-    }
-
-    /// O título sob o menu aberto.
-    fn anchor(&self) -> Option<Rect> {
-        if self.more {
-            return self.painted.more;
-        }
-        let m = self.open?;
-        self.painted.titles.iter().find(|t| t.0 == m).map(|t| t.1)
-    }
-
-    /// O transbordo `…` está em `(x, y)`?
-    fn on_more(&self, x: f32, y: f32) -> bool {
-        self.painted.more.is_some_and(|r| r.contains(x, y))
-    }
-
-    /// Abre o menu do título `m`, ou o transbordo com `None`.
-    fn open_at(&mut self, m: Option<M>) {
-        self.more = m.is_none();
-        self.open = m;
-        self.sub = None;
-    }
-
-    fn close(&mut self) {
-        self.more = false;
-        self.open = None;
-        self.sub = None;
-        self.hover = None;
-    }
-
-    /// Um carregar primário: `None` = não foi da barra (o menu está fechado e não é um título).
-    pub fn press(&mut self, x: f32, y: f32) -> Option<MenuPress> {
-        if !self.is_open() {
-            if self.on_more(x, y) {
-                self.open_at(None);
+        let s = INLINE_ICON_PX;
+        let at = |r: Rect| Rect::new(r.x + (r.w - s) * 0.5, r.y + (r.h - s) * 0.5, s, s);
+        let ink = |on: bool| {
+            if on {
+                ColorToken::Text2
             } else {
-                self.open_at(Some(self.title_at(x, y)?));
+                ColorToken::Text3
             }
-            self.hover = None;
-            return Some(MenuPress::Taken);
-        }
-        if let Some(at) = self.sub_row_at(x, y) {
-            return Some(match at {
-                Some(id) => {
-                    self.close();
-                    MenuPress::Run(id)
-                }
-                None => MenuPress::Taken,
-            });
-        }
-        if let Some(id) = self.row_at(x, y) {
-            if self.painted.sub_parents.contains(&id) {
-                self.sub = Some(id);
-                return Some(MenuPress::Taken);
-            }
-            self.close();
-            return Some(MenuPress::Run(id));
-        }
-        match self.title_at(x, y) {
-            Some(m) if self.open != Some(m) => self.open_at(Some(m)),
-            None if !self.more && self.on_more(x, y) => self.open_at(None),
-            _ => self.close(),
-        }
-        Some(MenuPress::Taken)
+        };
+        icon_at(scene, IconId::ChevronUp, at(up), ink(more_up), theme);
+        icon_at(scene, IconId::ChevronDown, at(down), ink(more_down), theme);
     }
-
-    /// O rato sem botão com um menu aberto: pairar acende a linha; a linha de um submenu abre-o, outra
-    /// linha fecha-o; dentro do submenu acende a escolha; outro título troca de menu. `false` = o
-    /// menu está fechado (o rato é de outrem).
-    pub fn hover_move(&mut self, x: f32, y: f32) -> bool {
-        self.hover_move_at(x, y, 0)
-    }
-
-    /// [`Self::hover_move`] no relógio `now` (ns): a mira até ao submenu parte da âncora (o último ponto
-    /// fora dela) e acaba se o rato parar mais de [`AIM_REST_NS`] a caminho.
-    pub fn hover_move_at(&mut self, x: f32, y: f32, now: u128) -> bool {
-        if !self.is_open() {
-            return false;
-        }
-        let rested = now.saturating_sub(std::mem::replace(&mut self.moved_at, now)) > AIM_REST_NS;
-        if let Some(m) = self.title_at(x, y)
-            && self.open != Some(m)
-        {
-            self.open_at(Some(m));
-        } else if !self.more && self.on_more(x, y) {
-            self.open_at(None);
-        }
-        if let Some(at) = self.sub_row_at(x, y) {
-            self.hover = at;
-            self.last = Some((x, y));
-            return true;
-        }
-        if let (Some(p), Some(s)) = (self.last, self.painted.sub.as_ref())
-            && !rested
-            && aims_at(p, (x, y), s.popup)
-        {
-            return true;
-        }
-        self.last = Some((x, y));
-        self.hover = self.row_at(x, y);
-        if let Some(h) = self.hover {
-            self.sub = self.painted.sub_parents.contains(&h).then_some(h);
-        }
-        true
-    }
-
-    /// O Esc fecha um nível: o submenu, senão o menu. `true` = fechou algo.
-    pub fn escape(&mut self) -> bool {
-        if self.sub.take().is_some() {
-            self.hover = None;
-            return true;
-        }
-        std::mem::take(&mut self.more) | self.open.take().is_some()
-    }
-}
-
-/// `to` está no triângulo entre `from` e a borda de `sub` virada para ele (a mira até ao submenu)?
-fn aims_at(from: (f32, f32), to: (f32, f32), sub: Rect) -> bool {
-    let edge = if from.0 <= sub.x {
-        sub.x
-    } else {
-        sub.x + sub.w
-    };
-    let slack = height() * 0.5;
-    let (a, b) = ((edge, sub.y - slack), (edge, sub.y + sub.h + slack));
-    let side = |p: (f32, f32), q: (f32, f32), r: (f32, f32)| {
-        (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0)
-    };
-    let (d1, d2, d3) = (side(from, a, to), side(a, b, to), side(b, from, to));
-    let moved = (to.0 - from.0).abs() + (to.1 - from.1).abs() > 0.0;
-    moved && ((d1 >= 0.0 && d2 >= 0.0 && d3 >= 0.0) || (d1 <= 0.0 && d2 <= 0.0 && d3 <= 0.0))
 }

@@ -376,7 +376,9 @@ fn route_pointer(
     if hero.documents.surface_active().is_some() {
         // Um carregar sobre o chrome desenhado por cima da aba (o menu File, um popover, a paleta)
         // é do chrome; o largar segue a lei do quadro: só é da aba se o carregar foi.
-        if matches!(kind, PointerKind::Down) && !on_canvas {
+        // Os menus da aba flutuam por cima do chrome: o carregar neles é dela.
+        let floats = hero.documents.surface_floats_at(x, y);
+        if matches!(kind, PointerKind::Down) && !on_canvas && !floats {
             return false;
         }
         return super::surface_input::pointer(hero, input, kind, button, x, y).unwrap_or(false);

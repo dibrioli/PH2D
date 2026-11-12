@@ -85,6 +85,29 @@ impl Documents {
         f.pointer_look(tab.id, x, y)
     }
 
+    /// A aba de família activa tem algo flutuante em `(x, y)` ([`DocumentSurface::floats_at`]).
+    #[must_use]
+    pub fn surface_floats_at(&self, x: f32, y: f32) -> bool {
+        let Some(tab) = self.surface_active else {
+            return false;
+        };
+        let f = self.surfaces.families.get(usize::from(tab.family));
+        f.is_some_and(|f| f.floats_at(tab.id, x, y))
+    }
+
+    /// Pinta o que a aba de família activa tem a flutuar sobre a janela inteira `window`.
+    pub fn paint_floating(
+        &mut self,
+        window: crate::zones::Rect,
+        scene: &mut ph2d_vector::VectorScene,
+        text: &mut ph2d_text::TextSystem,
+        theme: ph2d_tokens::Theme,
+    ) {
+        if let Some((f, id)) = self.active_surface_mut() {
+            f.paint_floating(id, window, scene, text, &theme);
+        }
+    }
+
     /// ⭐ Corre em todo quadro antes de pintar: uma família que abriu um documento pede a aba; uma
     /// aba activa que a família fechou cai na `Cena`.
     pub fn follow_surfaces(&mut self) {

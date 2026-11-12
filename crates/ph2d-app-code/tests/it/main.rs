@@ -232,6 +232,8 @@ impl Mesa {
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
         self.docs()
             .paint(id.0, AREA, &mut scene, &mut ts, &Theme::default());
+        self.docs()
+            .paint_floating(id.0, AREA, &mut scene, &mut ts, &Theme::default());
         self.ts = ts;
         scene
     }
@@ -242,6 +244,8 @@ impl Mesa {
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
         self.docs()
             .paint(id.0, area, &mut scene, &mut ts, &Theme::default());
+        self.docs()
+            .paint_floating(id.0, area, &mut scene, &mut ts, &Theme::default());
         self.ts = ts;
     }
 

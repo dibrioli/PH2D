@@ -639,8 +639,7 @@ pub fn paint_hero_screen(
         }
         None => hero.store.clear_panel_rect(ids::INPUT_MAP_SURFACE),
     }
-    // Onion settings modal (ADR-0142 W3b) — a floating, draggable card opened from the timeline's
-    // Onion-settings button (no-op when closed). Same floating-dialog layer as the Fill modal.
+    // Onion settings modal (ADR-0142 W3b): the timeline's floating card, same layer as Fill's.
     chrome::paint_onion_modal(
         scene,
         text_system,
@@ -663,9 +662,10 @@ pub fn paint_hero_screen(
     ) {
         pending.publish(&mut hero.store);
     }
-    // M14.4e: file-drop overlay sits above EVERY layer (chrome,
-    // tooltips, context menus) so the user always sees the "Drop to
-    // import" hint while the OS drag is active.
+    // Os menus da aba de família activa: por cima do chrome, presos à JANELA (não à área da aba).
+    hero.documents
+        .paint_floating(viewport, scene, text_system, hero.theme);
+    // M14.4e: file-drop overlay above EVERY layer: the OS drag always shows the "Drop to import" hint.
     if let Some((paths, cursor)) = hero.dragging_files.as_ref() {
         paint_drop_overlay(&layout, paths, *cursor, scene, text_system, hero.theme);
     }

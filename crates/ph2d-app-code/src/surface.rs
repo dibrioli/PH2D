@@ -152,6 +152,29 @@ impl DocumentSurface for CodeDocs {
         self.bancada.who = who;
     }
 
+    fn paint_floating(
+        &mut self,
+        id: u64,
+        window: Rect,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: &Theme,
+    ) {
+        if page_of(id).is_some() {
+            return;
+        }
+        let doc = self.docs.iter().find(|d| d.script.0 == id);
+        let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
+        self.bar.window = Some(window);
+        let items = crate::tab_menu::open_items(&self.bar, state, self.debug.game_stop);
+        let clock = (self.clock.0, crate::hint::HOVER_PAUSE_NS);
+        self.bar.paint_popup(&items, scene, text, theme, clock);
+    }
+
+    fn floats_at(&self, _id: u64, x: f32, y: f32) -> bool {
+        self.bar.floats_at(x, y)
+    }
+
     fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
         self.over = over;
     }
@@ -176,6 +199,12 @@ impl DocumentSurface for CodeDocs {
             self.pressed = taken;
             return taken;
         }
+        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
+            && let Some(taken) = self.bar_press(id, x, y)
+        {
+            self.pressed = taken;
+            return taken;
+        }
         // O divisor da coluna da esquerda ganha aos cartões: o vão é só dele.
         if matches!(kind, PointerKind::Up) && self.left_release() {
             self.pressed = false;
@@ -196,12 +225,6 @@ impl DocumentSurface for CodeDocs {
                 self.pressed = true;
                 return true;
             }
-        }
-        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
-            && let Some(taken) = self.bar_press(id, x, y)
-        {
-            self.pressed = taken;
-            return taken;
         }
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
             && page_of(id).is_none()
@@ -323,8 +346,8 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
-        if !self.area.contains(x, y) {
-            return false;
+        if self.bar.floats_at(x, y) || !self.area.contains(x, y) {
+            return self.bar.wheel(x, y, dy);
         }
         if self.list.view.wheel(x, y, dy) || self.bench.wheel(x, y, dy) {
             return true;

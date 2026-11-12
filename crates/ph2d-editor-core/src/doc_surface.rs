@@ -308,6 +308,21 @@ pub trait DocumentSurface: Any {
     fn yields_to_scene(&self) -> bool {
         false
     }
+    /// ⭐ **O que flutua por cima de TODA a janela** (os menus e submenus da aba, como os de qualquer
+    /// app de desktop): pintado no FIM do quadro, depois do chrome, preso a `window` e não à área.
+    fn paint_floating(
+        &mut self,
+        _id: u64,
+        _window: Rect,
+        _scene: &mut VectorScene,
+        _text: &mut TextSystem,
+        _theme: &Theme,
+    ) {
+    }
+    /// Há algo de [`Self::paint_floating`] em `(x, y)`: o carregar é da aba mesmo por cima do chrome.
+    fn floats_at(&self, _id: u64, _x: f32, _y: f32) -> bool {
+        false
+    }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }

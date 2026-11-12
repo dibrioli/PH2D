@@ -222,8 +222,7 @@ fn linhas_de_topo(m: u8, ts: &mut TextSystem) -> (Vec<Line>, Vec<(ph2d_a11y::Nod
 }
 
 /// ⭐ O submenu do `…` mostra o MESMO que o menu do título na barra larga: rótulo, atalho alinhado à
-/// direita, inactivo a cinzento, notas; um submenu do título entra como a nota com o nome e as
-/// escolhas dele. Uma linha inactiva não corre nem fecha: carregar nela é do menu.
+/// direita, inactivo a cinzento, notas, e os submenus do título como submenus (o 3.º nível). Uma linha inactiva não corre nem fecha: carregar nela é do menu.
 #[test]
 fn o_submenu_do_transbordo_mostra_o_mesmo_que_o_menu_do_titulo() {
     let mut ts = TextSystem::without_system_fonts();
@@ -238,22 +237,6 @@ fn o_submenu_do_transbordo_mostra_o_mesmo_que_o_menu_do_titulo() {
     bar.more = true;
     for m in hidden {
         let (top, subs) = linhas_de_topo(m, &mut ts);
-        let esperado: Vec<Line> = top
-            .iter()
-            .flat_map(|l| match subs.iter().find(|s| Some(s.0) == l.id) {
-                Some((_, rows)) => std::iter::once(Line {
-                    id: None,
-                    name: l.name.clone(),
-                    keys: String::new(),
-                    keys_inset: 0.0,
-                    live: false,
-                    check: None,
-                })
-                .chain(rows.iter().cloned())
-                .collect(),
-                None => vec![l.clone()],
-            })
-            .collect();
         assert!(
             top.iter().any(|l| !l.live && !l.keys.is_empty()),
             "controlo: o menu de {m} tem uma inactiva com atalho"
@@ -265,7 +248,15 @@ fn o_submenu_do_transbordo_mostra_o_mesmo_que_o_menu_do_titulo() {
             .sub
             .clone()
             .expect("o submenu do título escondido");
-        assert_eq!(sub.lines, esperado, "o submenu de {m} = o menu dele");
+        assert_eq!(sub.lines, top, "o submenu de {m} = o menu dele");
+        // E cada submenu do título é um submenu de verdade no `…` (o 3.º nível), com as mesmas linhas.
+        for (p, rows) in &subs {
+            bar.deeper = vec![*p];
+            pinta(&mut bar, w, &mut ts);
+            let deep = bar.painted.deeper.first().expect("o 3.º nível");
+            assert_eq!(&deep.lines, rows, "… ▸ {m} ▸ submenu = o do título");
+        }
+        bar.deeper.clear();
         let off = sub
             .lines
             .iter()

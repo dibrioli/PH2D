@@ -147,6 +147,7 @@ fn do_memo(lado: &mut ([u32; 3], [f32; N]), c: [f32; 3]) -> [f32; N] {
 }
 
 /// ⭐ **A média geométrica pesada** de duas cores: `fac` da `tinta`, `1 − fac` da `base` (RGB `[0, 1]`).
+#[inline]
 #[must_use]
 pub fn mistura(base: [f32; 3], tinta: [f32; 3], fac: f32) -> [f32; 3] {
     let fac = fac.clamp(0.0, 1.0);
@@ -156,6 +157,15 @@ pub fn mistura(base: [f32; 3], tinta: [f32; 3], fac: f32) -> [f32; 3] {
     if fac <= 0.0 {
         return base;
     }
+    let ([b0, b1, b2], [t0, t1, t2]) = (base, tinta);
+    mistura_no_meio(b0, b1, b2, t0, t1, t2, fac)
+}
+
+/// O meio da [`mistura`] com os canais soltos, em registos: o `[f32; 3]` por referência obrigava a uma carga de
+/// 8 bytes sobre duas escritas de 4 do chamador, que não se encaminham (metade das amostras da `mistura`).
+#[inline(never)]
+fn mistura_no_meio(b0: f32, b1: f32, b2: f32, t0: f32, t1: f32, t2: f32, fac: f32) -> [f32; 3] {
+    let (base, tinta) = ([b0, b1, b2], [t0, t1, t2]);
     let (lb, lt) = MEMO.with_borrow_mut(|m| {
         let memo = m.get_or_insert_with(|| Memo {
             base: (bits(base), log_espectro(base)),

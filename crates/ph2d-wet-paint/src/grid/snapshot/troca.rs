@@ -1,0 +1,206 @@
+//! O undo/redo do motor numa passada: o registo que sai da pilha TROCA os seus tiles com a grade nos planos densos que
+//! o restauro não redimensiona — o tile passa a ser o do inverso, sem alocar nem largar a memória dele; o resto copia
+//! como o [`Registo::inverso`] + [`Registo::restaura_com`], que ficam como oráculo (`ANTIGO`; ADR-0203).
+
+use super::*;
+
+/// Troca os tiles `ts` de um plano denso com a grade (um job por faixa de tiles). O tile que não tem o plano (vazio)
+/// só tira a cópia: o restauro não lhe punha nada.
+fn troca_no_pool<'a, T: Clone + Send>(
+    v: &'a mut [T],
+    s: usize,
+    ts: Vec<(Ret, &'a mut Vec<T>)>,
+    sc: &rayon::Scope<'a>,
+) {
+    if ts.is_empty() || v.is_empty() {
+        return;
+    }
+    let mut por_faixa: Vec<Vec<(Ret, &'a mut Vec<T>)>> = Vec::new();
+    por_faixa.resize_with(v.len().div_ceil(TILE * s), Vec::new);
+    for (r, d) in ts {
+        por_faixa[r.y0 / TILE].push((r, d));
+    }
+    for ((ty, faixa), tiles) in v.chunks_mut(TILE * s).enumerate().zip(por_faixa) {
+        if tiles.is_empty() {
+            continue;
+        }
+        sc.spawn(move |_| {
+            let o = ty * TILE * s;
+            for (r, d) in tiles {
+                let w = r.x1 - r.x0;
+                if d.len() == w * (r.y1 - r.y0) {
+                    for (i, y) in (r.y0..r.y1).enumerate() {
+                        let a = y * s + r.x0 - o;
+                        faixa[a..a + w].swap_with_slice(&mut d[i * w..(i + 1) * w]);
+                    }
+                } else {
+                    d.clear();
+                    for y in r.y0..r.y1 {
+                        let a = y * s + r.x0 - o;
+                        d.extend_from_slice(&faixa[a..a + w]);
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// O mesmo para um plano de fluxo, em série (poucos tiles).
+fn troca_ou_copia(v: &mut [f32], s: usize, r: Ret, d: &mut Vec<f32>) {
+    let w = r.x1 - r.x0;
+    if !v.is_empty() && d.len() == w * (r.y1 - r.y0) {
+        for (i, y) in (r.y0..r.y1).enumerate() {
+            v[y * s + r.x0..y * s + r.x1].swap_with_slice(&mut d[i * w..(i + 1) * w]);
+        }
+    } else {
+        let novo = tira(v, s, r);
+        poe(v, s, r, d);
+        *d = novo;
+    }
+}
+
+macro_rules! planos {
+    (densos: $($f:ident : $t:ty $(= $i:literal)?),* ; esparsos: $($e:ident),* $(,)?) => {
+        /// Os planos densos que trocam: cheios na grade e do comprimento da base (o `ajusta` não lhes mexe).
+        #[derive(Clone, Copy)]
+        struct Trocam { $($f: bool,)* }
+
+        impl Trocam {
+            fn de(g: &Grid, v: &[usize; 9]) -> Self {
+                Trocam { $($f: !g.$f.is_empty() $(&& v[$i] == g.$f.len())?,)* }
+            }
+        }
+
+        /// Antes do `ajusta`: os planos que não trocam tiram a cópia do inverso; devolve o do registo, a pôr depois.
+        fn copia_os_outros(g: &Grid, r: Ret, t: &mut TileFino, ok: Trocam) -> TileFino {
+            let mut pos = TileFino::default();
+            $( if !ok.$f { pos.$f = std::mem::replace(&mut t.$f, Plano::tira_tile(&g.$f, g.s, r)); } )*
+            $( pos.$e = std::mem::replace(&mut t.$e, Plano::tira_tile(&g.$e, g.s, r)); )*
+            pos
+        }
+
+        /// Os planos que trocam, cada um em jobs por faixa de tiles.
+        fn troca_os_densos(g: &mut Grid, tiles: &mut [(Ret, TileFino)], ok: Trocam) {
+            struct Listas<'a> { $($f: Vec<(Ret, &'a mut Vec<$t>)>,)* }
+            let mut l = Listas { $($f: Vec::new(),)* };
+            for (r, t) in tiles.iter_mut() {
+                let TileFino { $($f,)* .. } = t;
+                $( if ok.$f { l.$f.push((*r, $f)); } )*
+            }
+            let s = g.s;
+            rayon::scope(|sc| {
+                $( troca_no_pool(&mut g.$f, s, l.$f, sc); )*
+            });
+        }
+    };
+}
+
+planos!(
+    densos: film: f32, susp: f32, susp_rgb: [f32; 3], sett: f32, sett_rgb: [f32; 3], relevo: f32,
+    altura: f32 = 0, espessura: f32 = 1, crista: f32 = 2, nivelado: f32 = 3, vela: f32,
+    tinta: tinta::CelulaTinta = 7, pigmento: tinta::pigmento::LadoEspectral = 8, wet: u8, active: u8, bloom: u8;
+    esparsos: material, aparencia, oleo,
+);
+
+impl Registo {
+    /// O `inverso(g, self, extra)` + `restaura_com(g, extra, zera_o_fluxo)`, ao bit, numa passada: os tiles de `self` e
+    /// de `extra` passam para o inverso (os registos ficam sem tiles). Devolve o inverso e se o papel mudou.
+    pub fn troca(
+        &mut self,
+        g: &mut Grid,
+        extra: Option<&mut Registo>,
+        zera_o_fluxo: bool,
+    ) -> (Registo, bool) {
+        #[cfg(test)]
+        if ANTIGO.with(std::cell::Cell::get) {
+            let inv = Self::inverso(g, self, extra.as_deref());
+            let p = self.restaura_com(g, extra.as_deref(), zera_o_fluxo);
+            return (inv, p);
+        }
+        let mut out = Registo::abre(g);
+        // Os tiles na ordem do restauro: os do registo, depois os do `extra` que ele não tem.
+        let (ex_finos, ex_fluxo) = extra.map_or_else(Default::default, |e| {
+            (std::mem::take(&mut e.finos), std::mem::take(&mut e.fluxo))
+        });
+        let ex_finos: Vec<_> = ex_finos
+            .into_iter()
+            .filter(|(k, _)| !self.finos.contains_key(k))
+            .collect();
+        let ex_fluxo: Vec<_> = ex_fluxo
+            .into_iter()
+            .filter(|(k, _)| !self.fluxo.contains_key(k))
+            .collect();
+        let (s, rows) = (g.s, g.rows);
+        let (ks, mut tiles): (Vec<u32>, Vec<(Ret, TileFino)>) = std::mem::take(&mut self.finos)
+            .into_iter()
+            .chain(ex_finos)
+            .map(|(k, t)| (k, (ret_do_tile(k, s, rows), t)))
+            .unzip();
+        let v = self.base.vazios;
+        macro_rules! amostra {
+            ($f:ident) => {
+                tiles.iter().find_map(|(_, t)| t.$f.first().cloned())
+            };
+        }
+        let (a0, a1, a2, a3) = (
+            amostra!(altura),
+            amostra!(espessura),
+            amostra!(crista),
+            amostra!(nivelado),
+        );
+        let (a5, a6, a7) = (amostra!(material), amostra!(aparencia), amostra!(oleo));
+        let (a8, a9) = (amostra!(tinta), amostra!(pigmento));
+        let ok = Trocam::de(g, &v);
+        let por: Vec<TileFino> = {
+            let g = &*g;
+            tiles
+                .par_iter_mut()
+                .map(|(r, t)| copia_os_outros(g, *r, t, ok))
+                .collect()
+        };
+        ajusta(&mut g.altura, v[0], a0.as_ref());
+        ajusta(&mut g.espessura, v[1], a1.as_ref());
+        ajusta(&mut g.crista, v[2], a2.as_ref());
+        ajusta(&mut g.nivelado, v[3], a3.as_ref());
+        ajusta_campo(&mut g.material, v[4], a5.is_some());
+        ajusta_campo(&mut g.aparencia, v[5], a6.is_some());
+        ajusta_campo(&mut g.oleo, v[6], a7.is_some());
+        ajusta(&mut g.tinta, v[7], a8.as_ref());
+        ajusta(&mut g.pigmento, v[8], a9.as_ref());
+        troca_os_densos(g, &mut tiles, ok);
+        let ts: Vec<(Ret, &TileFino)> = tiles.iter().map(|(r, _)| *r).zip(&por).collect();
+        TileFino::poe_no_pool(g, &ts);
+        drop(ts);
+        super::super::aparencia::reconta_teto(g);
+        super::super::oleo_celula::reconta_real(g);
+        let (fs, frows) = (g.flow.s, g.flow.rows);
+        out.fluxo = std::mem::take(&mut self.fluxo)
+            .into_iter()
+            .chain(ex_fluxo)
+            .map(|(k, [mut vx, mut vy])| {
+                let r = ret_do_tile(k, fs, frows);
+                troca_ou_copia(&mut g.vel_x, fs, r, &mut vx);
+                troca_ou_copia(&mut g.vel_y, fs, r, &mut vy);
+                (k, [vx, vy])
+            })
+            .collect();
+        out.finos = ks.into_iter().zip(tiles.into_iter().map(|t| t.1)).collect();
+        if zera_o_fluxo {
+            g.flow_x.fill(0.0);
+            g.flow_y.fill(0.0);
+        }
+        let b = &self.base;
+        g.bx0 = b.bx0;
+        g.by0 = b.by0;
+        g.bx1 = b.bx1;
+        g.by1 = b.by1;
+        g.has_fluid = b.has_fluid;
+        g.row_lo.copy_from_slice(&b.row_lo);
+        g.row_hi.copy_from_slice(&b.row_hi);
+        g.fill_tiles_all();
+        let paper_changed = g.paper_preset != b.paper_preset || g.paper_sheet != b.paper_sheet;
+        g.paper_preset = b.paper_preset;
+        g.paper_sheet = b.paper_sheet;
+        (out, paper_changed)
+    }
+}

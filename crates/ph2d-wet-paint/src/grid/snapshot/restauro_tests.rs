@@ -318,3 +318,71 @@ fn sonda_o_ctrl_z_wet_a_4k() {
         }
     }
 }
+
+/// As chaves e os bytes de cada registo do undo, e os bytes da história toda (redo e `desde` incluídos): o inverso da
+/// troca guarda os mesmos tiles.
+fn pilha(e: &Engine) -> (Vec<(Vec<u32>, Vec<u32>, usize)>, usize) {
+    let l = &e.layers[e.active_layer];
+    let undo = l
+        .undo
+        .iter()
+        .map(|r| {
+            (
+                r.finos.keys().copied().collect(),
+                r.fluxo.keys().copied().collect(),
+                r.bytes_retidos(),
+            )
+        })
+        .collect();
+    (undo, e.bytes_do_historico(e.active_layer))
+}
+
+/// A troca (o registo que sai da pilha troca os tiles com a grade) dá o bit do inverso + restauro em série: o estado
+/// todo a cada passo, a pilha (chaves e bytes), e no fim a história inteira desfeita e refeita — cada inverso que a
+/// troca deixou volta a ser posto e comparado. Nas duas leis, com o `extra` do redo e um traço a meio.
+#[test]
+fn a_troca_da_o_bit_do_inverso_e_do_restauro() {
+    for pigmento in [false, true] {
+        let (mut a, mut b) = (
+            monta(700, 420, pigmento, 1.0),
+            monta(700, 420, pigmento, 1.0),
+        );
+        let passos = [
+            "undo", "corre", "redo", "undo", "undo", "traco", "corre", "undo", "redo", "corre",
+            "undo", "redo", "redo",
+        ];
+        for (k, passo) in passos.into_iter().enumerate() {
+            let faz = |e: &mut Engine| match passo {
+                "undo" => assert!(e.undo() || !e.can_undo()),
+                "redo" => assert!(e.redo_sem_zerar_o_fluxo() || !e.can_redo()),
+                "corre" => corre(e, 2),
+                _ => traco(e, (300.0, 200.0), (7.0, 2.0), 25),
+            };
+            com(true, || faz(&mut a));
+            com(false, || faz(&mut b));
+            let at = format!("{k}: {passo} (pigmento {pigmento})");
+            assert_eq!(estado(a.active_grid()), estado(b.active_grid()), "{at}");
+            assert_eq!(pilha(&a), pilha(&b), "{at}: a pilha");
+            assert_eq!(a.dirty, b.dirty, "{at}: sujo");
+        }
+        let mut n = 0;
+        for desfaz in [true, false] {
+            loop {
+                let feito = |e: &mut Engine| if desfaz { e.undo() } else { e.redo() };
+                let (fa, fb) = (com(true, || feito(&mut a)), com(false, || feito(&mut b)));
+                assert_eq!(fa, fb);
+                if !fa {
+                    break;
+                }
+                n += 1;
+                assert_eq!(
+                    estado(a.active_grid()),
+                    estado(b.active_grid()),
+                    "volta {n}"
+                );
+                assert_eq!(pilha(&a), pilha(&b), "volta {n}: a pilha");
+            }
+        }
+        assert!(n >= 4, "a história inteira tinha só {n} passos");
+    }
+}

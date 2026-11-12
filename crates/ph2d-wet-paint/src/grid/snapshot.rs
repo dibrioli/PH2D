@@ -5,6 +5,8 @@ use rayon::prelude::*;
 
 #[path = "snapshot/registo_bytes.rs"]
 mod registo_bytes;
+#[path = "snapshot/troca.rs"]
+mod troca;
 
 // ---------------------------------------------------------------------------
 // History snapshots (SPEC §15). The transient flow arrays are scratch rebuilt
@@ -310,6 +312,7 @@ fn poe<T: Clone>(v: &mut [T], s: usize, r: Ret, d: &[T]) {
 macro_rules! tile_fino {
     ($($f:ident : $t:ty),* $(,)?) => {
         #[derive(Clone, Default)]
+        #[cfg_attr(test, derive(Debug))]
         struct TileFino { $($f: Vec<$t>,)* }
         impl TileFino {
             fn tira(g: &Grid, r: Ret) -> Self { TileFino { $($f: Plano::tira_tile(&g.$f, g.s, r),)* } }

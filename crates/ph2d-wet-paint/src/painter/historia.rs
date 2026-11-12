@@ -278,14 +278,13 @@ impl Engine {
         let caixa = self.caixa_do_restauro(false);
         let forma = forma_global(&self.layers[self.active_layer].grid);
         let layer = &mut self.layers[self.active_layer];
-        let Some(reg) = layer.undo.pop() else {
+        let Some(mut reg) = layer.undo.pop() else {
             return false;
         };
-        // O registo estava aberto: o grid só difere da base dele nos tiles que ele guarda.
-        let mut inv = Registo::inverso(&layer.grid, &reg, None);
+        // O registo estava aberto: o grid só difere da base dele nos tiles que ele guarda — trocam-se com ela.
+        let (mut inv, paper_changed) = reg.troca(&mut layer.grid, None, zera_o_fluxo);
         inv.passo = agora;
         layer.redo.push(inv);
-        let paper_changed = reg.restaura_com(&mut layer.grid, None, zera_o_fluxo);
         layer.desde = Some(Registo::abre(&layer.grid));
         self.repoe_passo(&reg.passo);
         self.depois_do_restauro(paper_changed, caixa, forma);
@@ -308,15 +307,14 @@ impl Engine {
         let forma = forma_global(&self.layers[self.active_layer].grid);
         let fundo = self.fundo_da_historia;
         let layer = &mut self.layers[self.active_layer];
-        let Some(reg) = layer.redo.pop() else {
+        let Some(mut reg) = layer.redo.pop() else {
             return false;
         };
         // Desde o último evento o grid andou nos tiles de `desde`; fora deles e dos do registo,
         // ele É a base do registo.
-        let desde = layer.desde.take();
-        let mut inv = Registo::inverso(&layer.grid, &reg, desde.as_ref());
+        let mut desde = layer.desde.take();
+        let (mut inv, paper_changed) = reg.troca(&mut layer.grid, desde.as_mut(), zera_o_fluxo);
         inv.passo = agora;
-        let paper_changed = reg.restaura_com(&mut layer.grid, desde.as_ref(), zera_o_fluxo);
         layer.undo.push(inv);
         if layer.undo.len() > fundo {
             layer.undo.remove(0);

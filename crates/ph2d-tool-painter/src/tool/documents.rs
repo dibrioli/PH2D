@@ -73,20 +73,18 @@ impl StashedDoc {
         crate::tool::persist::PaintedDocument {
             id,
             layers: self.layers.clone(),
-            canvas_rgba: self.canvas_rgba.as_ref().clone(),
+            // B18.2: the planes are shared (refcount), not copied; the `Arc` writes as the `Vec`.
+            canvas_rgba: Arc::clone(&self.canvas_rgba),
             images: self
                 .images
                 .iter()
                 .map(|(k, v)| (*k, v.as_ref().clone()))
                 .collect(),
-            // The disk holds plain vectors — the `Arc` is a RUNTIME sharing device (it makes an undo
-            // snapshot a refcount bump instead of an 80 MB copy at 4096²), not a wire format. Same
-            // boundary the `canvas_rgba` above already crosses.
-            heights: unshare(&self.heights),
-            covers: unshare(&self.covers),
-            mats: unshare(&self.mats),
+            heights: self.heights.clone(),
+            covers: self.covers.clone(),
+            mats: self.mats.clone(),
             size: self.source_size,
-            vidros: unshare(&self.vidros),
+            vidros: self.vidros.clone(),
             papel: self.papel,
             tintas_molhadas: self.tintas_molhadas.clone(),
             fator_aparencia: self.fator_aparencia,
@@ -97,17 +95,17 @@ impl StashedDoc {
     /// away from it — so `bind_document` restores it through the ONE path that already exists.
     pub(crate) fn from_painted(doc: crate::tool::persist::PaintedDocument) -> Self {
         Self {
-            canvas_rgba: crate::tool::persist::arc_pixels(doc.canvas_rgba),
+            canvas_rgba: doc.canvas_rgba,
             layers: doc.layers,
             images: doc
                 .images
                 .into_iter()
                 .map(|(k, v)| (k, Arc::new(v)))
                 .collect(),
-            heights: reshare(doc.heights),
-            covers: reshare(doc.covers),
-            mats: reshare(doc.mats),
-            vidros: reshare(doc.vidros),
+            heights: doc.heights,
+            covers: doc.covers,
+            mats: doc.mats,
+            vidros: doc.vidros,
             papel: doc.papel,
             fator_aparencia: doc.fator_aparencia,
             tintas_molhadas: doc.tintas_molhadas,
@@ -419,16 +417,6 @@ impl PainterTool {
             h,
         ))
     }
-}
-
-/// Runtime `Arc` maps -> plain vectors, for the disk (see [`StashedDoc::to_painted`]).
-fn unshare<T: Clone>(m: &BTreeMap<RtLayerId, Arc<Vec<T>>>) -> BTreeMap<RtLayerId, Vec<T>> {
-    m.iter().map(|(k, v)| (*k, v.as_ref().clone())).collect()
-}
-
-/// The inverse of [`unshare`]: plain vectors off the disk become shareable again.
-fn reshare<T>(m: BTreeMap<RtLayerId, Vec<T>>) -> BTreeMap<RtLayerId, Arc<Vec<T>>> {
-    m.into_iter().map(|(k, v)| (k, Arc::new(v))).collect()
 }
 
 #[cfg(test)]

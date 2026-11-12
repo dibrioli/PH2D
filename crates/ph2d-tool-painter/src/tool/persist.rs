@@ -24,6 +24,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// Um documento pintado, pronto para o disco. Postcard é posicional: **campo novo entra no FIM**.
+///
+/// Os planos são `Arc` (B18.2): colher o documento partilha os planos do tool em vez de os copiar; o
+/// serde `rc` grava um `Arc<Vec<T>>` como o `Vec<T>`, byte a byte (gate em `copias_de_plano_tests`).
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PaintedDocument {
     /// A identidade estável (o `PaintedDoc(u32)` que a shell carimbou no sprite).
@@ -31,18 +34,18 @@ pub struct PaintedDocument {
     /// Estrutura: camadas, grupos, máscaras, ajustes, blend, opacidade, visibilidade.
     pub layers: LayerStack,
     /// Pixels da camada ATIVA (o `canvas_rgba` do tool — a única que não vive em `images`).
-    pub canvas_rgba: Vec<u8>,
+    pub canvas_rgba: Arc<Vec<u8>>,
     /// Pixels das demais camadas.
     pub images: BTreeMap<RtLayerId, LayerImage>,
     /// **Impasto**: o relevo por camada. Vazio ⇒ documento sem escultura (custo zero).
-    pub heights: BTreeMap<RtLayerId, Vec<f32>>,
+    pub heights: BTreeMap<RtLayerId, Arc<Vec<f32>>>,
     /// **Impasto**: a cobertura de tinta por camada — o que a luz pesa. Anda junto com o relevo.
-    pub covers: BTreeMap<RtLayerId, Vec<u8>>,
+    pub covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
     /// **Impasto**: o MATERIAL por camada (`[shine, roughness, metallic, wax]`) — o que a tinta É.
     /// Anda junto com o relevo pelo mesmo motivo: sem ele, reabrir o quadro devolve óleo brilhante
     /// como guache fosco. Vazio ⇒ documento anterior ao material ⇒ lido como `Material::NEUTRAL`,
     /// que é o passe exatamente como ele sombreava então.
-    pub mats: BTreeMap<RtLayerId, Vec<MaterialBytes>>,
+    pub mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
     /// Tamanho do canvas em pixels.
     pub size: (u32, u32),
     /// O PAPEL do documento ([`crate::tool::papel`]): a cor sob as camadas, ou `None`.
@@ -50,7 +53,7 @@ pub struct PaintedDocument {
     /// O VIDRO por camada ([`crate::compositor::vidro`]): sem ele, reabrir o quadro devolveria a aguada
     /// de um alfa só, e o papel de cor deixaria de a escurecer como filtro (o papel e o vidro: degrau
     /// `185 → 186` do `PROJECT_SCHEMA`).
-    pub vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
+    pub vidros: BTreeMap<RtLayerId, Arc<Vec<crate::compositor::vidro::Vidro>>>,
     /// As camadas com tinta do **Wet Paint** (`PainterTool::tintas_molhadas`): sem elas, reabrir o
     /// quadro mostraria o dente do papel por cima da tinta do Wet, que já o traz desenhado (degrau
     /// `217 → 218`).
@@ -80,11 +83,11 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
         Self {
             id: d.id,
             layers: d.layers,
-            canvas_rgba: d.canvas_rgba,
+            canvas_rgba: Arc::new(d.canvas_rgba),
             images: d.images,
-            heights: d.heights,
-            covers: d.covers,
-            mats: d.mats,
+            heights: partilha(d.heights),
+            covers: partilha(d.covers),
+            mats: partilha(d.mats),
             size: d.size,
             papel: None,
             vidros: BTreeMap::new(),
@@ -94,7 +97,9 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
     }
 }
 
-use crate::plane_copy::par_clone;
+fn partilha<T>(m: BTreeMap<RtLayerId, Vec<T>>) -> BTreeMap<RtLayerId, Arc<Vec<T>>> {
+    m.into_iter().map(|(k, v)| (k, Arc::new(v))).collect()
+}
 
 impl PainterTool {
     /// Todos os documentos que o Painter tem em mãos: o LIGADO (os campos de topo) e os guardados
@@ -127,33 +132,19 @@ impl PainterTool {
         PaintedDocument {
             id,
             layers: self.layers.clone(),
-            // B18.2: cada plano em blocos paralelos (os mesmos bytes; a cópia serial pagava o first-touch).
-            canvas_rgba: par_clone(&self.canvas_rgba),
+            // B18.2: cada plano é partilhado (refcount); a escrita seguinte do tool faz a cópia na escrita.
+            canvas_rgba: Arc::clone(&self.canvas_rgba),
             images: self
                 .images
                 .iter()
                 .map(|(k, v)| (*k, LayerImage::clone(v)))
                 .collect(),
-            // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
-            // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.
-            heights: self
-                .heights
-                .iter()
-                .map(|(k, v)| (*k, par_clone(v)))
-                .collect(),
-            covers: self
-                .covers
-                .iter()
-                .map(|(k, v)| (*k, par_clone(v)))
-                .collect(),
-            mats: self.mats.iter().map(|(k, v)| (*k, par_clone(v))).collect(),
+            heights: self.heights.clone(),
+            covers: self.covers.clone(),
+            mats: self.mats.clone(),
             size: self.source_size,
             papel: self.papel,
-            vidros: self
-                .vidros
-                .iter()
-                .map(|(k, v)| (*k, par_clone(v)))
-                .collect(),
+            vidros: self.vidros.clone(),
             tintas_molhadas: self.tintas_molhadas.clone(),
             fator_aparencia: self.fator_aparencia,
         }
@@ -259,12 +250,6 @@ impl PainterTool {
         let (px, pw, ph) = lido?;
         Some((px.as_ref().clone(), pw, ph))
     }
-}
-
-/// O `canvas_rgba` de um documento vem como `Arc` no tool e como `Vec` no disco — uma conversão só,
-/// aqui, para os dois lados não precisarem se conhecer.
-pub(super) fn arc_pixels(v: Vec<u8>) -> Arc<Vec<u8>> {
-    Arc::new(v)
 }
 
 #[cfg(test)]

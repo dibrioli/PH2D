@@ -182,3 +182,43 @@ fn sonda_copia_serial_contra_blocos_a_4k() {
         );
     }
 }
+
+/// B18.2 A/B no mesmo processo: colher o documento a 4K com relevo, cobertura, material e vidro — o corpo
+/// de antes (`par_clone` de cada plano) contra o de agora (`documento_vivo`, partilha), intercalados ABAB,
+/// mín./mediana de 9 de cada.
+#[test]
+#[ignore = "sonda de tempo"]
+fn sonda_colher_documento_copia_contra_partilha_a_4k() {
+    use crate::plane_copy::par_clone;
+    let (mut t, a, b) = documento();
+    let n = (W * H) as usize;
+    t.heights.insert(a, Arc::new(vec![0.5f32; n]));
+    t.covers.insert(a, Arc::new(vec![200u8; n]));
+    t.mats.insert(a, Arc::new(vec![[3u8, 1, 4, 1, 5, 9, 2]; n]));
+    t.vidros
+        .insert(b, Arc::new(vec![[2u8, 7, 1, 8, 2, 8, 1]; n]));
+    let antes = |t: &PainterTool| {
+        par_clone(&t.canvas_rgba).len()
+            + t.heights
+                .values()
+                .map(|v| par_clone(v).len())
+                .sum::<usize>()
+            + t.covers.values().map(|v| par_clone(v).len()).sum::<usize>()
+            + t.mats.values().map(|v| par_clone(v).len()).sum::<usize>()
+            + t.vidros.values().map(|v| par_clone(v).len()).sum::<usize>()
+    };
+    let (mut va, mut vb) = (vec![], vec![]);
+    for _ in 0..9 {
+        let t0 = std::time::Instant::now();
+        std::hint::black_box(antes(&t));
+        va.push(ms(t0));
+        let t0 = std::time::Instant::now();
+        std::hint::black_box(t.documento_vivo(0));
+        vb.push(ms(t0));
+    }
+    let (am, amed) = resumo(&mut va);
+    let (bm, bmed) = resumo(&mut vb);
+    println!(
+        "[B18.2 4K] colher: cópia (antes) {am:.2}/{amed:.2} ms | partilha (agora) {bm:.3}/{bmed:.3} ms (mín./mediana)"
+    );
+}

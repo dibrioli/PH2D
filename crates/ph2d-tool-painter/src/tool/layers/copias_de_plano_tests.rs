@@ -93,10 +93,11 @@ fn a_camada_duplicada_e_independente_da_origem() {
     assert_ne!(pixeis(&t, nova)[0], ruido(7)[0]);
 }
 
-/// O documento que a gravação colhe é o da cópia serial antiga, campo a campo e byte a byte no fio
-/// (postcard) — com relevo, cobertura, material e vidro presentes.
+/// O documento que a gravação colhe PARTILHA os planos do tool (B18.2): a tela, o relevo, a cobertura, o
+/// material e o vidro são o mesmo endereço, sem cópia nenhuma — e no fio (postcard e JSON) é o documento
+/// de `Vec`s de antes, byte a byte.
 #[test]
-fn o_documento_colhido_e_o_da_copia_serial_ao_byte() {
+fn o_documento_colhido_partilha_os_planos_e_grava_os_bytes_do_vec() {
     let (mut t, a, b) = documento();
     let n = (W * H) as usize;
     t.heights
@@ -107,27 +108,48 @@ fn o_documento_colhido_e_o_da_copia_serial_ao_byte() {
         .insert(b, Arc::new(vec![[2u8, 7, 1, 8, 2, 8, 1]; n]));
     let _ = copiaram_em_blocos();
     let novo = t.documento_vivo(0);
+    let guardado = crate::tool::documents::StashedDoc::from_painted(novo.clone()).to_painted(0);
     let sitios = copiaram_em_blocos();
-    let em_persist = sitios
-        .iter()
-        .filter(|f| f.ends_with("tool/persist.rs"))
-        .count();
-    // tela + relevo + material + vidro; a cobertura (`u8`, 2 MB) fica abaixo do limiar e copia-se em
-    // série pela mesma porta; as imagens das camadas partilham o plano (B18.1), nenhuma cópia.
-    assert_eq!(
-        em_persist, 4,
-        "a colheita voltou à cópia serial: {sitios:?}"
-    );
-    assert!(!copiou(&sitios, "tool/internal.rs"));
-    for (id, img) in &novo.images {
-        assert_eq!(
-            Arc::as_ptr(&img.rgba8),
-            Arc::as_ptr(&t.images[id].rgba8),
-            "a colheita copiou"
-        );
+    assert!(sitios.is_empty(), "a colheita copiou um plano: {sitios:?}");
+    fn mesmos<T>(
+        x: &BTreeMap<RtLayerId, Arc<Vec<T>>>,
+        y: &BTreeMap<RtLayerId, Arc<Vec<T>>>,
+    ) -> bool {
+        x.len() == y.len() && x.iter().all(|(k, v)| Arc::ptr_eq(v, &y[k]))
     }
-    // ORÁCULO — o corpo de antes do B18.2: `as_ref().clone()` de cada plano.
-    let serial = |t: &PainterTool| crate::tool::persist::PaintedDocument {
+    for d in [&novo, &guardado] {
+        assert!(Arc::ptr_eq(&d.canvas_rgba, &t.canvas_rgba), "a tela copiou");
+        assert!(mesmos(&d.heights, &t.heights), "o relevo copiou");
+        assert!(mesmos(&d.covers, &t.covers), "a cobertura copiou");
+        assert!(mesmos(&d.mats, &t.mats), "o material copiou");
+        assert!(mesmos(&d.vidros, &t.vidros), "o vidro copiou");
+        for (id, img) in &d.images {
+            assert!(
+                Arc::ptr_eq(&img.rgba8, &t.images[id].rgba8),
+                "a imagem copiou"
+            );
+        }
+    }
+    // ORÁCULO — o documento de `Vec`s de antes do B18.2, campo a campo na mesma ordem.
+    #[derive(serde::Serialize)]
+    struct DeVecs {
+        id: u32,
+        layers: crate::layers::LayerStack,
+        canvas_rgba: Vec<u8>,
+        images: BTreeMap<RtLayerId, crate::compositor::LayerImage>,
+        heights: BTreeMap<RtLayerId, Vec<f32>>,
+        covers: BTreeMap<RtLayerId, Vec<u8>>,
+        mats: BTreeMap<RtLayerId, Vec<ph2d_painter_brush::material::MaterialBytes>>,
+        size: (u32, u32),
+        papel: Option<[u8; 3]>,
+        vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
+        tintas_molhadas: std::collections::BTreeSet<RtLayerId>,
+        fator_aparencia: f32,
+    }
+    fn vecs<T: Clone>(m: &BTreeMap<RtLayerId, Arc<Vec<T>>>) -> BTreeMap<RtLayerId, Vec<T>> {
+        m.iter().map(|(k, v)| (*k, v.as_ref().clone())).collect()
+    }
+    let velho = DeVecs {
         id: 0,
         layers: t.layers.clone(),
         canvas_rgba: t.canvas_rgba.as_ref().clone(),
@@ -136,37 +158,26 @@ fn o_documento_colhido_e_o_da_copia_serial_ao_byte() {
             .iter()
             .map(|(k, v)| (*k, v.as_ref().clone()))
             .collect(),
-        heights: t
-            .heights
-            .iter()
-            .map(|(k, v)| (*k, v.as_ref().clone()))
-            .collect(),
-        covers: t
-            .covers
-            .iter()
-            .map(|(k, v)| (*k, v.as_ref().clone()))
-            .collect(),
-        mats: t
-            .mats
-            .iter()
-            .map(|(k, v)| (*k, v.as_ref().clone()))
-            .collect(),
+        heights: vecs(&t.heights),
+        covers: vecs(&t.covers),
+        mats: vecs(&t.mats),
         size: t.source_size,
         papel: t.papel,
-        vidros: t
-            .vidros
-            .iter()
-            .map(|(k, v)| (*k, v.as_ref().clone()))
-            .collect(),
+        vidros: vecs(&t.vidros),
         tintas_molhadas: t.tintas_molhadas.clone(),
         fator_aparencia: t.fator_aparencia,
     };
-    let velho = serial(&t);
-    assert!(novo == velho, "o documento colhido mudou");
-    assert_eq!(
-        postcard::to_allocvec(&novo).expect("postcard"),
-        postcard::to_allocvec(&velho).expect("postcard"),
+    let fio = postcard::to_allocvec(&velho).expect("postcard");
+    assert!(
+        postcard::to_allocvec(&novo).expect("postcard") == fio,
+        "o postcard mudou"
     );
+    assert!(
+        serde_json::to_string(&novo).expect("json") == serde_json::to_string(&velho).expect("json"),
+        "o JSON mudou"
+    );
+    let volta: crate::tool::persist::PaintedDocument = postcard::from_bytes(&fio).expect("lê");
+    assert!(volta == novo, "o fio de `Vec`s não volta ao documento");
 }
 
 /// O formato gravado de uma imagem de camada é o do `Vec<u8>` de antes do B18.1, byte a byte

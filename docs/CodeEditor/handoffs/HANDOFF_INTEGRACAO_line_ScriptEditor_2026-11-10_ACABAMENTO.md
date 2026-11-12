@@ -7,12 +7,13 @@
 
 ## 1. Identidade
 
-- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor` · branch `line/ScriptEditor` · HEAD de código `364f6e1099` (3.ª ronda de 11/11)
+- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor` · branch `line/ScriptEditor` · HEAD de código `9811817c39` (4.ª ronda de 11/11)
   (o commit deste handoff vem a seguir: só docs).
-- Merge-base com o `main` = `bc4a6ce930`. **123 commits** (`git rev-list --count bc4a6ce930..HEAD`, sem o commit deste handoff), **242 ficheiros, +11 499 −1 728** (com os docs e as fotos)
-  (`git diff --shortstat bc4a6ce930..HEAD`).
+- Merge-base com o `main` = `bc4a6ce930`. **156 commits** (`git rev-list --count bc4a6ce930..HEAD`, sem o commit deste handoff), **312 ficheiros, +14 957 −2 078** (com os docs e as fotos)
+  (`git diff --shortstat bc4a6ce930..HEAD`). A 4.ª ronda = `39d36f2ca6..9811817c39` (base `96c5bdcb74`), 30 commits.
 - Smoke do dono 10/11: as rondas até `e082d45b6d` **APROVADAS («Smoke OK»)**. Smoke do dono 11/11 sobre `4718a9e536` (a mira
-  do submenu na diagonal, a pilha da aba curta e o resto da 3.ª ronda): **APROVADO («smoke OK»)**.
+  do submenu na diagonal, a pilha da aba curta e o resto da 3.ª ronda): **APROVADO («smoke OK»)**. **4.ª ronda (ordem do dono depois
+  desse smoke: «resolver tudo antes de integrar»): smoke PENDENTE** (§6, passos 8–10).
 
 ## 2. Superfície de colisão
 
@@ -34,6 +35,7 @@
 | Ronda «stem darkening» (`07d722387f`) | `ph2d-tokens/src/{typography,lib}.rs` (variante 4.ª de `TextRendering`, `ALL` = 4, campo `stem_darkening`, `stem_darkening_px`) · `ph2d-text`: nada · `ph2d-editor-core`: `published.rs` (+**A** `published_embolden_tests.rs`), `paint.rs`, `paint_text.rs` (692/700), `paint_text_rotated.rs`, `ids/menus_settings.rs`, `screens/hero/{chrome/settings_text,menu_row_mark,menu_tables_settings,pre_populate}.rs` · `ph2d-i18n/src/chrome_menus.rs` (`chrome.menu.crisp_stem_darkening`) · `ph2d-vector/src/lib.rs` (re-export `FontEmbolden`, `Diagonal2`; o contrato congelado vive em `ph2d-vector-doc`, intocado) · `ph2d-panel-code/src/glyphs.rs`, `tests/it/nitidez.rs`. ⚠️ Quem faça `match` exaustivo sobre `TextRendering` noutra linha parte aqui. |
 | **Ronda 11/11** (`89ac2897e9..c67465ff6e`) | `ph2d-panel-code`: **A** `src/tab_bar.rs`, `src/tab_bar/menu.rs`, `tests/it/{submenu,fundo_real}.rs`; M `mono_label` (`paint` → `paint_on(.., bg, ..)`, ⚠️ quem chame `mono_label::paint` parte), `palette` (`link_ink`, `#[derive(Clone)]`), `code_text` (`choices`), `help/paint`, `script_list`, `bancada/{grid,outline}`, `lib`, `tests/it/main` · `ph2d-app-code`: `tab_menu` (a barra saiu; `Bar`/`BarPainted` = alias genéricos; `menu_items`/`menu_titles`/`ROW_TEXT_RENDERING`), `commands` (os 4 modos só na paleta), `surface`, `smoke_drive`, `tests/it/{barra_da_aba,divisor,ajuda,arrastar,bancada,main,onda_b}` · **`ph2d-editor-core` (foundational, ADITIVO):** `doc_surface.rs` **`PointerInput.primary_held`** (⚠️ campo novo num literal: quem construa `PointerInput` noutra linha não compila — 17 sítios preenchidos aqui), `documents.rs`/`documents_surface.rs` (`note_button`, `primary_held()`), `widget/lista_flutuante.rs` (`Superficie::fundo`), `screens/hero/surface_input.rs`, `published_embolden_tests.rs` · `shells/desktop/src/input_dispatch.rs` (+2 linhas: `note_button` no topo de `pointer_button`) · `shells/game-scenes/tests/it/` (5 ficheiros, o campo) · `ph2d-i18n/src/code_bancada.rs` (5 chaves `code.menu.text*`) |
 | **Ronda 11/11 (3.ª)** (`e040ad604c..491e4e1294`, base da ronda `d137ddac68`; nenhuma crate foundational) | `ph2d-panel-code`: **A** `src/stack.rs`, `tests/it/{pilha,barras_e_caminho}.rs`; M `src/{tab_bar,console,script_list,view,paint,lib}.rs`, `tab_bar/menu.rs`, `debug_card/mod.rs`, `bancada/{grid,outline}.rs`, `tests/it/{submenu,problemas,virtualizacao,main}` · `ph2d-app-code`: `src/{doc,surface,debug_card,tab_menu}.rs`, `tests/it/{depurador,linha_longa}` (⚠️ `CodeDoc.bench_h` passou a `Want`; `TabBar::hover_move_at(x,y,now)` é a entrada nova do movimento — `bar_move` passa o relógio do chrome) · `docs/CodeEditor/ferramentas/smoke/`: `cena14/{fotos_q3.sh,caminho_diagonal_card_style.txt}`, `ax_*.png`, `ay_*.png` |
+| **Ronda 11/11 (4.ª)** (`39d36f2ca6..9811817c39`) | `ph2d-panel-code`: **A** `src/doc_rules.rs` (regras puras vindas da `ph2d-app-code`); M `window.rs` (janela da linha longa), `stack.rs`, `tab_bar{,/menu,/keys}.rs`, `help/*`, completação (barra arrastável), `debug_card`; `ph2d-app-code`: `docs`/`surface`/`tab_menu` (encolhem) + testes · `ph2d-code-assist` (nada) · `scripts/luau-lsp-fetch.sh` (**A**), `docs/CodeEditor/ferramentas/xvfb_livre.sh` (**A**) + 21 scripts Xvfb em `-displayfd` · `ph2d-i18n`: `code.menu.more`, `code.menu.more_tip` · **FOUNDATIONAL `ph2d-editor-core` (ADITIVO):** `doc_surface.rs` (métodos **com omissão** novos no trait `DocumentSurface`: `paint_floating`, `floats_at`, `pointer_leave` — quem implemente o trait noutra linha não parte), `documents_surface.rs` (`Documents::paint_floating`, `surface_floats_at`, `chrome_owns_wheel`), `paint_text.rs`, `published.rs` (resolve o token localmente), `published_embolden_tests.rs` → **`paint_text_embolden_tests.rs`** (rename), `screens/hero.rs`, `screens/hero/board_view.rs` (o carregar sobre o chrome vai à aba onde o menu flutua), `screens/hero/paint.rs` (`paint_floating` no fim do quadro; **700/700**, comentários encurtados), `screens/hero/publish_text_tests.rs` (**A**), `screens/hero/surface_input{,_tests}.rs` (`pointer_leave`), `cascade.rs` (`safe_clamp`), `palette.rs` (`WCAG_FLARE`) · shell `shells/desktop/src/{input_dispatch.rs (roda via chrome_owns_wheel), despacho_metodos_janela_e_vetor.rs (on_cursor_left), main.rs (braço WindowEvent::CursorLeft; 1 031 = tecto)}`. ⚠️ Quem teste o ciclo `paint`↔`published` ou use o nome `published_embolden_tests` parte. |
 | Docs / fotos | 2 handoffs em `docs/CodeEditor/handoffs/`; fotos em `docs/CodeEditor/ferramentas/smoke/` (+`cena13/`); `cena14/fotos_q3.sh` (`ARRASTA=`, `DUPLO=`) |
 
 **Provas de contrato:**
@@ -96,11 +98,13 @@ corre é o do primário; a cura só vale depois da integração.
 - **Auditoria, lentes independentes:** sem violação de regra; correcção curada (item F); a lente de ratchet gerou o aviso do §2.
 - **Binário do smoke:** ver o fim do §8.
 
-## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `491e4e1294`, 11/11, 3.ª ronda)
+## 5. Folgas medidas (recontar na integração; HEAD `9811817c39`, 11/11, 4.ª ronda — só as linhas marcadas «4.ª» foram remedidas; o resto é de `491e4e1294`)
 
 | Ficheiro / crate | Medido / tecto | Folga |
 |---|---|---|
-| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) | **26 617** / 26 628 | 11 (era 44 em `d137ddac68`; a pilha da aba e o recorte do quadro entraram, a pilha compacta sem `debug_card_h` devolveu 15) |
+| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) — 4.ª | **26 627** / 26 628 | **1** (era 11; o integrador reconta — folga 1 trava testes novos aqui, §7 a) |
+| `screens/hero/paint.rs` (editor-core) — 4.ª | 700 / 700 | **0** |
+| `shells/desktop/src/main.rs` — 4.ª | 1 031 / 1 031 | **0** (tecto) |
 | maiores ficheiros tocados na 3.ª ronda | `doc.rs` 668 · `surface.rs` 646 · `script_list.rs` 591 · `ph2d-panel-code/src/paint.rs` 575 / 700 | — |
 | crate `ph2d-code-smoke` | 614 / 614 | **0** (não tocada) |
 | crate `ph2d-panel-code` | 22 129 | sem tecto de crate |
@@ -118,7 +122,7 @@ baixado (o integrador reconta).
 
 ## 6. Smokes (comando exacto)
 
-Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4–6 são novos e PENDENTES do dono**.
+Os passos 1–7 vêm das rondas aprovadas (ficam para o próximo testador); **8–10 são da 4.ª ronda e PENDENTES do dono**.
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor && PH2D_CODE_SMOKE=11 cargo run --profile smoke -p ph2d-host-desktop` →
    engrenagem ⚙ à direita de «line 21» → «Script options»: **três caixas de marcar**, «Format on save» marcada; hover **clareia**. Errado se:
@@ -144,6 +148,21 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
    (2) rato na célula âmbar `6` do Jumper: o pé diz «Jumper · speed is 6 here (2 in the script)»; (3) roda sobre a grelha: até Rover.
    Errado se: lista vazia, grelha sem âmbar ou sem rolar.
 6. Mude o tamanho da letra da interface (Small/Large) e confira que o cursor e a seleção do campo de busca/rename acompanham a altura da letra.
+8. **Janela pequena (4.ª ronda, NOVO).** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor && PH2D_CODE_SMOKE=4 ./target/smoke/ph2d-host-desktop` →
+   encolha a janela até ~900×560. (1) a barra de menus manda os títulos que não cabem para um **«…»** antes do caminho e da engrenagem;
+   «…» ▸ View/Run abre o mesmo que o menu do título (atalhos, inactivas a cinzento). (2) os menus abrem **por cima de tudo** (Run
+   inteiro, coluna Scripts e Inspector tapados), com ▲▼ quando não cabem: roda e **rato parado na seta** rolam sozinhos e pararam no
+   limite. (3) teclado: ↑↓ saltam as inactivas, → abre o submenu, ← fecha, Enter corre, Esc fecha um nível. (4) com pouca altura o
+   **código guarda as linhas** e os cartões caem ao cabeçalho (Bancada, depois a faixa, o depurador por último). Errado se: menu cortado
+   pela aba, texto do código a zero, auto-rolagem que não pára ao tirar o rato da janela. Fotos:
+   [bd_menus_estreito](../ferramentas/smoke/bd_menus_estreito.png) · [bd_menus_transbordo](../ferramentas/smoke/bd_menus_transbordo.png) ·
+   [bd_menus_view_aninhado](../ferramentas/smoke/bd_menus_view_aninhado.png) · [bc_janela_900x560](../ferramentas/smoke/bc_janela_900x560.png) ·
+   [bc_janela_1280x720](../ferramentas/smoke/bc_janela_1280x720.png).
+9. **Popups (4.ª ronda, NOVO; precisa do `luau-lsp`: `bash scripts/luau-lsp-fetch.sh`).** Mesma janela pequena, cena com o assistente: a lista de
+   autocomplete e a página de ajuda com **barra** (arrastável); balão e exemplo da ajuda cortados acabam em «…». Fotos `bb_*` em
+   [smoke/](../ferramentas/smoke/) (autocomplete e ajuda antes/depois; `bb_janela_900x560_editor_sem_texto` = o defeito).
+10. **Linha longa (4.ª ronda, NOVO).** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor && PH2D_CODE_SMOKE=4 ./target/smoke/ph2d-host-desktop` com a linha colada de 64 KB, vá ao fim (End): o
+   texto à vista pinta (antes: vazio). Foto [ba_linha_longa_fim](../ferramentas/smoke/ba_linha_longa_fim.png).
 
 ## 7. Aberto
 
@@ -151,13 +170,17 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
 2. `ph2d-editor-core/src/paint.rs` 700/700 e `screens/hero/paint.rs` 700/700 — **não tocados de propósito**: nada desta linha
    precisa deles, e partir ficheiros foundational que outras linhas editam só fabrica conflitos no merge; quem precisar de
    crescer lá cura movendo. `paint_text.rs` 692/700.
-3. O integrador reconta a catraca (`ph2d-app-code` 26 617 × tecto 26 628, folga 11; `ph2d-code-assist` 4 188).
+3. O integrador reconta a catraca (`ph2d-app-code` 26 627 × tecto 26 628, folga **1**; `ph2d-code-assist` 4 188).
 4. **Memória no primário `project-memory/`, NÃO comitada** (as do dono de 10/11) — o integrador funde-as.
-5. **Smoke do dono: APROVADO** em 11/11 sobre `4718a9e536` (todas as rondas).
-6. (3.ª ronda) A linha de 64 KB colada: o `reveal` leva agora de facto a vista ao fim, que cai no troço NÃO pintado (limite pré-existente de 2 000 bytes pintados por linha). Aberto.
-7. (3.ª ronda) O recorte do corpo do quadro do depurador ao seu rect (`cd1b7d7504`) não tem teste unitário: só foto (teste de píxel pede a placa).
-8. (3.ª ronda) Autocomplete, página de ajuda, go-to e popups de hover NÃO passaram pela auditoria de layout (o assistente de código — `luau-lsp` — falta neste ambiente).
-9. (3.ª ronda) `cena14/fotos_q3.sh` usa um número de ecrã fixo (`:73`) que colide com outras sessões; a auditoria correu uma cópia em `:187`.
+5. **Smoke do dono:** rondas até `4718a9e536` APROVADAS (11/11); **4.ª ronda PENDENTE** (§6, 8–10).
+
+Os antigos 6–9 (linha de 64 KB, recorte do quadro sem teste, popups sem auditoria, ecrã Xvfb fixo) **fecharam na 4.ª ronda** (§8). Abertos novos:
+
+- **(a)** Sem teste na `ph2d-app-code` das setas/Enter pelo `CodeDocs::key` nem do carregar da barra via sobreposição na app inteira (a catraca, folga 1, conta os testes); estão cobertos em `ph2d-panel-code` e `ph2d-editor-core`.
+- **(b)** `WindowEvent::CursorLeft` → `pointer_leave`: o caminho da shell só está provado por compilação (smoke de mão, §6 passo 8).
+- **(c)** A 900×560 com o depurador parado, a faixa Console/Problems **sai** (ordem escolhida: a barra com Continue fica); chega-se aos problemas aumentando a janela.
+- **(d)** Limites da janela da linha longa: >250 colunas de caracteres de 4 bytes pode passar da janela; um grafema >64 B no corte.
+- **(e)** Oráculos: 10 dos 12 só com `bash -n`; I10 cena 6 clica em coordenada fixa; a cor `#264654` por confirmar; a sonda da grade de camadas grava `{}`.
 
 Fechados em 11/11 (2.ª ronda, §8): o caminho do herói (`surface_input`) e a linha acesa (`row_bg`) com teste e mutação vermelha; os
 fundos reais da lista, do «In this script», da grelha e da ajuda com teste por sítio; o Card Style em submenu; a mira até ao submenu.
@@ -456,13 +479,39 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   `architecture_workspace_file_loc_cap` ✓ · `the_shell_only_shrinks` ✓ (26 617 / 26 628, folga 11) · HR-15 `commit-barato` 0 violações ·
   `cargo check -p ph2d-host-desktop` ✓. Smoke: o mesmo do §6 (passo 4 é o que falhou; refazer com o rato real).
 
-Binário de smoke depois de `rm -rf target/*/incremental` (11/11, HEAD `d137ddac68`; 1.ª: 14,27 s); a 2.ª:
+- **Ronda 11/11 (4.ª) — «resolver tudo antes de integrar» (`39d36f2ca6..9811817c39`, base `96c5bdcb74`, 30 commits).** Fecha os antigos
+  abertos 6–9 e o que a auditoria achou. Mecanismo em cada commit; aqui a lei e a prova.
+  (1) **Linha de 64 KB** (`5921007435`, `window.rs`): pinta a janela À VISTA (≤ tecto, em degraus de cap/8 colunas), não os 2 000 primeiros
+  bytes; `LINE_RENDER_BYTES_MAX` 2 000 inalterado. Limites: §7 d. Foto `ba_linha_longa_fim.png` (Col 65519, «FIM DA LINHA»).
+  (2) **Recorte do quadro do depurador** com teste sem placa (`39d36f2ca6`, lê a encoding do vello).
+  (3) **Xvfb**: 21 scripts num ecrã livre (`-displayfd`) via `ferramentas/xvfb_livre.sh` (`ff7e9c1662`); fim do `:73` fixo. **`fotos_q3.sh` do repo** (`9811817c39`): `JW`/`JH` (janela e recorte), `CLIP_FILE` (`cena14/clip.py`, área de transferência sem xclip), `APP_BIN` e o cache real do `luau-lsp` (`XDG_CACHE_HOME`); provado a 900×560 na cena 4 (fecha o antigo aberto f).
+  (4) **Auditoria dos popups** com `luau-lsp` 1.70.1 (`scripts/luau-lsp-fetch.sh`): lista de autocomplete e página de ajuda com barra
+  (arrastável, `76b0d01d03`); balão cortado e exemplo da ajuda acabam em «…» (`20020c2d0f`, `0682712255`, `0b23dab8d3`); go-to e Alt+Enter
+  sem defeito. Fotos `bb_*`.
+  (5) **Pilha da aba em 3 degraus** (`073e79bd27`, `fa3ffcb520`, `d385d31eff`): o código tem prioridade; os cartões caem INTEIROS ao
+  cabeçalho; depois saem (Bancada, faixa, depurador por último); rects de `stack::tab`, nunca se cruzam nem saem da aba. Varrimento 120..720 px
+  em teste. A 900×560 punha-se a Bancada por cima do depurador e o código a 0. Fotos `bc_*`. Ver §7 c.
+  (6) **Menus da aba** (`5ac8b043c0`, `6ea199b932`, `87ace6ef1c`, `a8dbd85e6d`, `95c5820971`, `1e45fa7c35`, `93212ed4b1`): barra estreita com
+  transbordo «…»; o submenu do «…» = o menu do título (atalhos, inactivas a cinzento); menus numa SOBREPOSIÇÃO presa à JANELA (`paint_floating`
+  / `floats_at`), com rolagem (▲▼, roda) e submenus em N níveis; sem lugar de nenhum lado o submenu abre por baixo e nunca tapa a mãe;
+  teclado (↑↓ saltam inactivas, Home/End, → abre, ← fecha, ←/→ no topo trocam de título, Enter/Espaço corre, Esc um nível); auto-rolagem
+  ao pairar nas setas, parada no limite e quando o rato sai da janela (`pointer_leave`). Fotos `bd_*`.
+  (7) **Regras puras** da aba → `ph2d-panel-code/src/doc_rules.rs` (`5b7df5f5ba`).
+  (8) **Oráculos** (`f1b498f14c`, `d31a843cce`): Godot `oraculo_cartao_composto` e VS Code `oraculo_i10` corridos de ponta a ponta; I10 acha o
+  realce pela COR (nota de re-medição em `medicoes_onda2/I10_rename_e_undo.md` §4, VS Code 1.145.2); a grade de camadas tira 1 foto.
+  (9) **Portões da bateria** (`549813fba0`): ciclo paint↔published no DAG da fundação (testes de escurecimento →
+  `paint_text_embolden_tests.rs` e `screens/hero/publish_text_tests.rs`), `safe_clamp` em `cascade.rs`, `WCAG_FLARE` em `palette.rs`.
+  **Prova de fecho (HEAD `549813fba0`):** fmt ✓ · clippy `-D warnings --all-targets` ✓ em ph2d-panel-code, ph2d-app-code, ph2d-editor-core,
+  ph2d-host-desktop, ph2d-code-assist, ph2d-i18n · testes: panel-code lib 22 + it 172 (2 ign.) · app-code lib 9 + it 273 (3 ign.) ·
+  code-assist 22 · i18n 11+18 · editor-core lib 2 144 (6 ign.) + it 630 (12 ign.) · shell: 60 módulos de `input_dispatch` + loc caps 247 ✓ ·
+  `the_shell_only_shrinks` ✓ (26 627 / 26 628) · `file_loc_cap` ✓ (hero/paint.rs 700/700, main.rs 1 031 no tecto) · HR-15 ✓.
+  `agent-loop-profile`: paralelismo 1,15/passo (alvo ≥ 1,5) ✗ · test:check 2,9× ✗ · 4 outros ✓.
+  Fotos novas: `ba_linha_longa_fim`, `bb_*` (autocomplete e ajuda antes/depois, goto 900x560, alt_enter, `janela_900x560_editor_sem_texto`),
+  `bc_janela_900x560`, `bc_janela_1280x720`, `bd_menus_estreito`, `bd_menus_transbordo`, `bd_menus_view_aninhado`.
 
-Binário de smoke depois de `rm -rf target/*/incremental` (11/11, 3.ª ronda, HEAD `364f6e1099`; 1.ª: 0,32 s — o perfil `smoke` já estava feito do último build); a 2.ª:
-`Finished \`smoke\` profile [optimized] target(s) in 0.30s`
+Binário de smoke depois de `rm -rf target/*/incremental` (11/11, 4.ª ronda, HEAD `9811817c39`); a 2.ª:
 
 ```
-▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
     Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
 

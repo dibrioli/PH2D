@@ -248,6 +248,10 @@ pub(super) const SHAPE_LOOK: &[FieldDesc] = &[
     f(1, "component.field.shape_look.1", K::Color).named("tint"),
     f(2, "component.field.shape_look.2", K::Scalar).named("opacity"),
     f(3, "component.field.shape_look.3", K::Toggle).named("own_color"),
+    f(4, "component.field.shape_look.4", K::Scalar).named("stroke_width"),
+    f(5, "component.field.shape_look.5", K::Toggle).named("dashed"),
+    f(6, "component.field.shape_look.6", K::Vec2).named("dash"),
+    f(7, "component.field.shape_look.7", K::Toggle).named("own_stroke"),
 ];
 pub(super) const GRAVITY_SCALE: &[FieldDesc] =
     &[f(0, "component.field.gravity_scale.0", K::Scalar).named_as("gravity_scale", WHOLE)];

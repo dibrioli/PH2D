@@ -121,6 +121,15 @@ impl<T: Copy> CampoEsparso<T> {
         (0..self.n).map(move |i| self[i])
     }
 
+    /// Os pedaços por ordem: `Some(células)` (o último cortado em `n`) ou `None` (todo o chão). O leitor da tela inteira
+    /// sem o ramo por célula do [`Index`] (o `iter` a 4K: 8,3 M ramos).
+    pub fn pedacos(&self) -> impl Iterator<Item = Option<&[T]>> + '_ {
+        self.pedacos.iter().enumerate().map(move |(k, p)| {
+            p.as_deref()
+                .map(|p| &p[..(self.n - k * PEDACO).min(PEDACO)])
+        })
+    }
+
     /// Acrescenta a `out` as células `a..=b` (o `extend_from_slice(&v[a..=b])` do `Vec`); o pedaço ausente dá o chão.
     pub fn copia_intervalo(&self, a: usize, b: usize, out: &mut Vec<T>) {
         assert!(

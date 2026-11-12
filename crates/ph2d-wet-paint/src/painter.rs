@@ -69,7 +69,7 @@ pub struct Layer {
     pub opacity: f64,
     pub visible: bool,
     /// O último é o registo ABERTO: recebe as marcas de toda escrita até o próximo evento.
-    undo: Vec<Registo>,
+    pub(crate) undo: Vec<Registo>,
     redo: Vec<Registo>,
     /// As escritas desde o último desfazer/refazer, para o refazer seguinte (só com `redo` cheio).
     desde: Option<Registo>,

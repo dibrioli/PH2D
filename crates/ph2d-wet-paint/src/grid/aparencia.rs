@@ -198,6 +198,18 @@ pub fn bytes_alocados(g: &Grid) -> usize {
 
 /// As portas que reescrevem o campo inteiro (o instantâneo, o histórico) recontam o tecto: nunca o baixam.
 pub fn reconta_teto(g: &mut Grid) {
+    // Por pedaço, na ordem das células: o ausente conta UMA célula do chão (o `max` devolve um dos dois argumentos,
+    // repeti-lo não muda o bit). Célula a célula pelo `Index` eram ~8 ms a 4K em cada undo.
+    let chao = g.aparencia.chao().suave;
+    g.suave_teto = g.aparencia.pedacos().fold(g.suave_teto, |t, p| match p {
+        Some(c) => c.iter().fold(t, |t, a| t.max(a.suave)),
+        None => t.max(chao),
+    });
+}
+
+/// O [`reconta_teto`] de antes (célula a célula): o oráculo dele.
+#[cfg(test)]
+pub(crate) fn reconta_teto_antigo(g: &mut Grid) {
     g.suave_teto = g.aparencia.iter().fold(g.suave_teto, |t, a| t.max(a.suave));
 }
 

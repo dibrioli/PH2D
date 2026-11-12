@@ -1,6 +1,7 @@
 //! As **fotografias do histórico** da grelha (SPEC §15) — filho de [`super`] por LOC.
 
 use super::*;
+use rayon::prelude::*;
 
 #[path = "snapshot/registo_bytes.rs"]
 mod registo_bytes;
@@ -171,14 +172,55 @@ fn ret_do_tile(k: u32, s: usize, rows: usize) -> Ret {
 trait Plano<T> {
     fn tira_tile(&self, s: usize, r: Ret) -> Vec<T>;
     fn poe_tile(&mut self, s: usize, r: Ret, d: &[T]);
+    /// Põe os tiles `ts` (disjuntos; `d` dá o plano de cada um) em jobs de `sc`; cada célula recebe o que o laço por
+    /// tile lhe punha.
+    fn poe_no_pool<'a>(
+        &'a mut self,
+        s: usize,
+        ts: &'a [(Ret, &'a TileFino)],
+        d: fn(&TileFino) -> &[T],
+        sc: &rayon::Scope<'a>,
+    );
 }
 
-impl<T: Clone> Plano<T> for Vec<T> {
+impl<T: Clone + Send + Sync> Plano<T> for Vec<T> {
     fn tira_tile(&self, s: usize, r: Ret) -> Vec<T> {
         tira(self, s, r)
     }
     fn poe_tile(&mut self, s: usize, r: Ret, d: &[T]) {
         poe(self, s, r, d);
+    }
+    /// Um job por FAIXA de tiles (as `TILE` linhas de um `ty`: um trecho contíguo do `Vec`, disjunto das outras).
+    fn poe_no_pool<'a>(
+        &'a mut self,
+        s: usize,
+        ts: &'a [(Ret, &'a TileFino)],
+        d: fn(&TileFino) -> &[T],
+        sc: &rayon::Scope<'a>,
+    ) {
+        if self.is_empty() {
+            return;
+        }
+        for (ty, faixa) in self.chunks_mut(TILE * s).enumerate() {
+            let da_faixa = move |(r, _): &&(Ret, &TileFino)| r.y0 / TILE == ty;
+            if !ts.iter().any(|t| da_faixa(&t)) {
+                continue;
+            }
+            sc.spawn(move |_| {
+                let o = ty * TILE * s;
+                for (r, t) in ts.iter().filter(da_faixa) {
+                    let d = d(t);
+                    if d.is_empty() {
+                        continue;
+                    }
+                    let w = r.x1 - r.x0;
+                    for (i, y) in (r.y0..r.y1).enumerate() {
+                        let a = y * s + r.x0 - o;
+                        faixa[a..a + w].clone_from_slice(&d[i * w..(i + 1) * w]);
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -205,7 +247,7 @@ impl MesmoBit for oleo_celula::OleoCelula {
     }
 }
 
-impl<T: MesmoBit> Plano<T> for campo_esparso::CampoEsparso<T> {
+impl<T: MesmoBit + Send + Sync> Plano<T> for campo_esparso::CampoEsparso<T> {
     fn tira_tile(&self, s: usize, r: Ret) -> Vec<T> {
         if self.is_empty() {
             return Vec::new();
@@ -224,6 +266,23 @@ impl<T: MesmoBit> Plano<T> for campo_esparso::CampoEsparso<T> {
         for (i, y) in (r.y0..r.y1).enumerate() {
             self.escreve_intervalo_poupando(y * s + r.x0, &d[i * w..(i + 1) * w], T::mesmo_bit);
         }
+    }
+    /// Um job para o campo (os pedaços cruzam as faixas de tiles), os tiles na ordem de sempre.
+    fn poe_no_pool<'a>(
+        &'a mut self,
+        s: usize,
+        ts: &'a [(Ret, &'a TileFino)],
+        d: fn(&TileFino) -> &[T],
+        sc: &rayon::Scope<'a>,
+    ) {
+        if self.is_empty() {
+            return;
+        }
+        sc.spawn(move |_| {
+            for (r, t) in ts {
+                self.poe_tile(s, *r, d(t));
+            }
+        });
     }
 }
 
@@ -254,8 +313,17 @@ macro_rules! tile_fino {
         struct TileFino { $($f: Vec<$t>,)* }
         impl TileFino {
             fn tira(g: &Grid, r: Ret) -> Self { TileFino { $($f: Plano::tira_tile(&g.$f, g.s, r),)* } }
+            #[cfg(test)]
             fn poe(&self, g: &mut Grid, r: Ret) { $(Plano::poe_tile(&mut g.$f, g.s, r, &self.$f);)* }
             fn bytes(&self) -> usize { 0 $(+ std::mem::size_of_val(self.$f.as_slice()))* }
+            /// Põe os tiles `ts` (disjuntos) no pool: um job por plano esparso, um por faixa de tiles em cada plano denso.
+            /// Cada célula é escrita por um tile só: o bit do laço por tile, em qualquer ordem.
+            fn poe_no_pool(g: &mut Grid, ts: &[(Ret, &TileFino)]) {
+                let s = g.s;
+                rayon::scope(|sc| {
+                    $( Plano::poe_no_pool(&mut g.$f, s, ts, |t: &TileFino| t.$f.as_slice(), sc); )*
+                });
+            }
         }
     };
 }
@@ -335,6 +403,20 @@ impl Escalares {
         }
     }
 }
+
+#[cfg(test)]
+thread_local! {
+    /// O restauro e o inverso de antes (os oráculos), por fio: a régua A/B no MESMO processo.
+    pub(crate) static ANTIGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+#[path = "snapshot/restauro_tests.rs"]
+mod restauro_tests;
+
+#[cfg(test)]
+#[path = "snapshot/oraculo.rs"]
+mod oraculo;
 
 /// Um passo do histórico: a base (escalares) + os tiles escritos desde que abriu, cada um com o
 /// conteúdo da BASE.
@@ -435,16 +517,21 @@ impl Registo {
     /// Fotografa o estado ACTUAL sobre os tiles que `a` (e `b`) guardam — o registo inverso.
     #[must_use]
     pub fn inverso(g: &Grid, a: &Registo, b: Option<&Registo>) -> Self {
-        let mut out = Registo::abre(g);
-        for k in a
-            .finos
-            .keys()
-            .chain(b.into_iter().flat_map(|b| b.finos.keys()))
-        {
-            out.finos
-                .entry(*k)
-                .or_insert_with(|| TileFino::tira(g, ret_do_tile(*k, g.s, g.rows)));
+        #[cfg(test)]
+        if ANTIGO.with(std::cell::Cell::get) {
+            return Self::inverso_antigo(g, a, b);
         }
+        let mut out = Registo::abre(g);
+        let mut ks: Vec<u32> = a.finos.keys().copied().collect();
+        if let Some(b) = b {
+            ks.extend(b.finos.keys().filter(|k| !a.finos.contains_key(k)));
+        }
+        // Por tile no pool: só lê a grade, e cada tile é o `TileFino::tira` de sempre.
+        let tiles: Vec<TileFino> = ks
+            .par_iter()
+            .map(|k| TileFino::tira(g, ret_do_tile(*k, g.s, g.rows)))
+            .collect();
+        out.finos = ks.into_iter().zip(tiles).collect();
         let f = &g.flow;
         for k in a
             .fluxo
@@ -468,6 +555,10 @@ impl Registo {
     /// O [`Self::restaura`] que, com `zera_o_fluxo = false`, deixa `flow_x`/`flow_y` como estão: só para quem os
     /// reescreve INTEIROS antes de qualquer leitura (o undo vivo do Painter: 66 MB de memset a 4K, ~10 ms).
     pub fn restaura_com(&self, g: &mut Grid, extra: Option<&Registo>, zera_o_fluxo: bool) -> bool {
+        #[cfg(test)]
+        if ANTIGO.with(std::cell::Cell::get) {
+            return self.restaura_com_antigo(g, extra, zera_o_fluxo);
+        }
         let tiles = || {
             self.finos.iter().chain(
                 extra
@@ -499,9 +590,11 @@ impl Registo {
         ajusta(&mut g.tinta, v[7], a8.as_ref());
         let a9 = amostra!(pigmento);
         ajusta(&mut g.pigmento, v[8], a9.as_ref());
-        for (k, t) in tiles() {
-            t.poe(g, ret_do_tile(*k, g.s, g.rows));
-        }
+        let (s, rows) = (g.s, g.rows);
+        let ts: Vec<(Ret, &TileFino)> = tiles()
+            .map(|(k, t)| (ret_do_tile(*k, s, rows), t))
+            .collect();
+        TileFino::poe_no_pool(g, &ts);
         // Contam o que os tiles acabaram de pôr: antes deles, um plano recém-criado ainda está neutro.
         super::aparencia::reconta_teto(g);
         super::oleo_celula::reconta_real(g);

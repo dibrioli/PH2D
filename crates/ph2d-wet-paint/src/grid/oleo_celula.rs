@@ -92,6 +92,17 @@ impl OleoCelula {
 /// Reconta [`Grid::oleo_real`] depois de uma porta que reescreve o campo inteiro ou uma janela dele (desfazer,
 /// instantâneo, limpar).
 pub fn reconta_real(g: &mut Grid) {
+    // Por pedaço: o ausente é todo o chão (um `e_real` só por pedaço).
+    let chao = g.oleo.chao().e_real();
+    g.oleo_real = g
+        .oleo
+        .pedacos()
+        .any(|p| p.map_or(chao, |c| c.iter().any(OleoCelula::e_real)));
+}
+
+/// O [`reconta_real`] de antes (célula a célula): o oráculo dele.
+#[cfg(test)]
+pub(crate) fn reconta_real_antigo(g: &mut Grid) {
     g.oleo_real = g.oleo.iter().any(|c| c.e_real());
 }
 

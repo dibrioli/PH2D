@@ -49,6 +49,14 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("line_show_dimensions", UI),
     ("mask_brush", OUTRA),
     ("mask_overlay_color", UI),
+    (
+        "mask_spacing_saved",
+        "o Spacing guardado enquanto o modo Mask o troca (B40b): o preview não entra em Mask",
+    ),
+    (
+        "tecto_largo",
+        "o tecto do traço largo (B29.1): por traço e por camada, como o `stroke_mask`",
+    ),
     ("eyedropper_armed", UI),
     ("falloff_armed", UI),
     ("mask_scratch_rgba", OUTRA),
@@ -225,6 +233,10 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
 /// Os campos do `WetPaintState` que o preview NÃO leva.
 const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("armed", "o meio: o `set_paint_media` do tool do preview"),
+    (
+        "preset_base",
+        "os knobs do pincel que abriu, para o ↺ do Tuning (B35.8): não pintam — os knobs em uso vão",
+    ),
     ("session", SESSAO),
     (
         "adormecidas",

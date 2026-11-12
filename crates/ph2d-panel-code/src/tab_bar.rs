@@ -35,6 +35,8 @@ pub struct BarPainted<M> {
     pub popup: Option<Rect>,
     /// As linhas de [`rows`](Self::rows) que abrem um submenu.
     pub sub_parents: Vec<NodeId>,
+    /// Todas as linhas do menu aberto como saíram (as inactivas e as notas incluídas).
+    pub lines: Vec<menu::Line>,
     /// O submenu aberto, se algum.
     pub sub: Option<menu::SubPainted>,
     /// A parte «função» do caminho: a caixa, a linha e a coluna (0-based) da definição.
@@ -58,6 +60,7 @@ impl<M> Default for BarPainted<M> {
             rows: Vec::new(),
             popup: None,
             sub_parents: Vec::new(),
+            lines: Vec::new(),
             sub: None,
             crumb_fn: None,
             crumb: None,

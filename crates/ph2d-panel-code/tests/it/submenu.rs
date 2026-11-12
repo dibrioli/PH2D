@@ -25,10 +25,10 @@ fn items() -> Vec<MenuItem> {
         MenuItem::Sub {
             id: SUB,
             name: "Text rendering".into(),
-            rows: vec![
+            rows: MenuItem::choices(vec![
                 (C1, "Default".into(), true),
                 (C2, "Crisp Heavy".into(), false),
-            ],
+            ]),
         },
     ]
 }
@@ -175,12 +175,15 @@ fn a_caminho_do_submenu_a_linha_de_baixo_nao_o_troca() {
         MenuItem::Sub {
             id: SUB,
             name: "Card Style".into(),
-            rows: vec![(C1, "Sheet".into(), true), (C2, "Cards".into(), false)],
+            rows: MenuItem::choices(vec![
+                (C1, "Sheet".into(), true),
+                (C2, "Cards".into(), false),
+            ]),
         },
         MenuItem::Sub {
             id: S2,
             name: "Text rendering".into(),
-            rows: vec![(A, "Default".into(), true)],
+            rows: MenuItem::choices(vec![(A, "Default".into(), true)]),
         },
     ];
     let pinta = |bar: &mut TabBar<u8>, ts: &mut TextSystem| {
@@ -239,16 +242,16 @@ fn a_diagonal_com_tremor_da_mao_segura_o_submenu_e_a_pausa_troca() {
         MenuItem::Sub {
             id: SUB,
             name: "Card Style".into(),
-            rows: vec![
+            rows: MenuItem::choices(vec![
                 (C1, "Sheet".into(), true),
                 (C2, "Cards".into(), false),
                 (A, "Strip".into(), false),
-            ],
+            ]),
         },
         MenuItem::Sub {
             id: S2,
             name: "Text rendering".into(),
-            rows: vec![(hash_node_id("t_d"), "Default".into(), true)],
+            rows: MenuItem::choices(vec![(hash_node_id("t_d"), "Default".into(), true)]),
         },
     ];
     let pinta = |bar: &mut TabBar<u8>, ts: &mut TextSystem| {

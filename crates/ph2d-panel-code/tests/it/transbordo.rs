@@ -3,10 +3,10 @@
 //! menu com eles como submenus (o idioma do VS Code e do JetBrains).
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress, more_menu, more_row};
+use ph2d_panel_code::tab_bar::menu::{Line, MenuItem, MenuPress, more_menu, more_row};
 use ph2d_panel_code::tab_bar::{Crumb, TabBar, height};
 use ph2d_text::TextSystem;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{Spacing, Theme};
 use ph2d_tool_registry::hash_node_id;
 use ph2d_vector::VectorScene;
 
@@ -20,18 +20,48 @@ const TITLES: [(u8, &str); 6] = [
 ];
 const RUN_CMD: ph2d_a11y::NodeId = hash_node_id("t_run_continue");
 
+const OFF_CMD: ph2d_a11y::NodeId = hash_node_id("t_run_off");
+const VIEW_SUB: ph2d_a11y::NodeId = hash_node_id("t_view_sub");
+
+/// O menu de cada título: um comando que vale com atalho, um sem atalho, um que NÃO vale (com atalho);
+/// o Run leva a nota, o View acaba num submenu de escolhas (o idioma do app).
 fn items_of(m: u8) -> Vec<MenuItem> {
     let id = if m == 5 {
         RUN_CMD
     } else {
         ph2d_tool_registry::hash_node_id_runtime(&format!("t_cmd_{m}"))
     };
-    vec![MenuItem::Cmd {
+    let cmd = |id, name: String, keys: &str, live| MenuItem::Cmd {
         id,
-        name: format!("Command {m}"),
-        keys: "F8".into(),
-        live: true,
-    }]
+        name,
+        keys: keys.into(),
+        live,
+    };
+    let rid = |k: &str| ph2d_tool_registry::hash_node_id_runtime(&format!("t_{k}_{m}"));
+    let mut out = vec![
+        cmd(id, format!("Command {m}"), "F8", true),
+        cmd(rid("plain"), format!("Plain {m}"), "", true),
+    ];
+    if m == 5 {
+        out.push(MenuItem::Note("Restarts the assistant".into()));
+    }
+    out.push(cmd(
+        if m == 5 { OFF_CMD } else { rid("off") },
+        format!("Off {m}"),
+        "Shift+F5",
+        false,
+    ));
+    if m == 4 {
+        out.push(MenuItem::Sub {
+            id: VIEW_SUB,
+            name: "Text rendering".into(),
+            rows: MenuItem::choices([
+                (rid("c1"), "Default".into(), true),
+                (rid("c2"), "Crisp".into(), false),
+            ]),
+        });
+    }
+    out
 }
 
 fn pinta(bar: &mut TabBar<u8>, w: f32, ts: &mut TextSystem) {
@@ -168,4 +198,98 @@ fn o_esc_fecha_o_submenu_e_depois_o_transbordo() {
     assert!(bar.escape() && bar.more && bar.sub.is_none(), "um nível");
     assert!(bar.escape() && !bar.more, "o transbordo");
     assert!(!bar.escape());
+}
+
+/// As linhas pintadas do menu do título `m` numa barra larga (com as de cada submenu dele aberto).
+fn linhas_de_topo(m: u8, ts: &mut TextSystem) -> (Vec<Line>, Vec<(ph2d_a11y::NodeId, Vec<Line>)>) {
+    let mut bar = TabBar::<u8> {
+        open: Some(m),
+        ..TabBar::default()
+    };
+    pinta(&mut bar, 1600.0, ts);
+    assert!(
+        bar.painted.hidden.is_empty(),
+        "controlo: a 1600 px nada se esconde"
+    );
+    let top = bar.painted.lines.clone();
+    let mut subs = Vec::new();
+    for p in bar.painted.sub_parents.clone() {
+        bar.sub = Some(p);
+        pinta(&mut bar, 1600.0, ts);
+        subs.push((p, bar.painted.sub.clone().expect("o submenu").lines));
+    }
+    (top, subs)
+}
+
+/// ⭐ O submenu do `…` mostra o MESMO que o menu do título na barra larga: rótulo, atalho alinhado à
+/// direita, inactivo a cinzento, notas; um submenu do título entra como a nota com o nome e as
+/// escolhas dele. Uma linha inactiva não corre nem fecha: carregar nela é do menu.
+#[test]
+fn o_submenu_do_transbordo_mostra_o_mesmo_que_o_menu_do_titulo() {
+    let mut ts = TextSystem::without_system_fonts();
+    let w = 200.0;
+    let mut bar = TabBar::<u8>::default();
+    pinta(&mut bar, w, &mut ts);
+    let hidden = bar.painted.hidden.clone();
+    assert!(
+        hidden.contains(&4) && hidden.contains(&5),
+        "controlo: o View e o Run saem a {w} px ({hidden:?})"
+    );
+    bar.more = true;
+    for m in hidden {
+        let (top, subs) = linhas_de_topo(m, &mut ts);
+        let esperado: Vec<Line> = top
+            .iter()
+            .flat_map(|l| match subs.iter().find(|s| Some(s.0) == l.id) {
+                Some((_, rows)) => std::iter::once(Line {
+                    id: None,
+                    name: l.name.clone(),
+                    keys: String::new(),
+                    keys_inset: 0.0,
+                    live: false,
+                    check: None,
+                })
+                .chain(rows.iter().cloned())
+                .collect(),
+                None => vec![l.clone()],
+            })
+            .collect();
+        assert!(
+            top.iter().any(|l| !l.live && !l.keys.is_empty()),
+            "controlo: o menu de {m} tem uma inactiva com atalho"
+        );
+        bar.sub = Some(more_row(m as usize));
+        pinta(&mut bar, w, &mut ts);
+        let sub = bar
+            .painted
+            .sub
+            .clone()
+            .expect("o submenu do título escondido");
+        assert_eq!(sub.lines, esperado, "o submenu de {m} = o menu dele");
+        let off = sub
+            .lines
+            .iter()
+            .find(|l| !l.live && l.id.is_some())
+            .expect("inactiva");
+        let off = off.id.expect("id");
+        assert!(
+            sub.rows.iter().all(|r| r.0 != off),
+            "a inactiva não se clica"
+        );
+    }
+    // Carregar na inactiva do Run: nada corre, nada fecha; o rato sobre ela não a acende.
+    bar.sub = Some(more_row(5));
+    pinta(&mut bar, w, &mut ts);
+    let sub = bar.painted.sub.clone().expect("o Run ▸");
+    let i = sub
+        .lines
+        .iter()
+        .position(|l| l.id == Some(OFF_CMD))
+        .expect("Off 5");
+    let y = sub.popup.y + Spacing::Sm.px() * 0.5 + height() * (i as f32 + 0.5);
+    let x = sub.popup.x + sub.popup.w * 0.5;
+    assert!(bar.hover_move(x, y));
+    assert_ne!(bar.hover, Some(OFF_CMD), "o rato não acende a inactiva");
+    assert_eq!(bar.press(x, y), Some(MenuPress::Taken));
+    assert!(bar.more && bar.sub == Some(more_row(5)), "nada fecha");
 }

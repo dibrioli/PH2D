@@ -68,14 +68,14 @@ pub fn menu_items(
         out.push(MenuItem::Sub {
             id: ROW_CARD_STYLE,
             name: ph2d_i18n::tr("code.menu.card_style").to_owned(),
-            rows: styles
-                .map(|(id, k, s)| (id, ph2d_i18n::tr(k).to_owned(), state.card_style == s))
-                .to_vec(),
+            rows: MenuItem::choices(
+                styles.map(|(id, k, s)| (id, ph2d_i18n::tr(k).to_owned(), state.card_style == s)),
+            ),
         });
         out.push(MenuItem::Sub {
             id: ROW_TEXT_RENDERING,
             name: ph2d_i18n::tr("code.menu.text_rendering").to_owned(),
-            rows: ph2d_panel_code::code_text::choices(),
+            rows: MenuItem::choices(ph2d_panel_code::code_text::choices()),
         });
     }
     out
@@ -269,16 +269,8 @@ impl CodeDocs {
     ) -> Option<(ph2d_a11y::NodeId, Option<ph2d_a11y::NodeId>)> {
         let doc = self.docs.iter().find(|d| d.script.0 == id);
         let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
-        open_items(&self.bar, state, self.debug.game_stop)
-            .into_iter()
-            .flat_map(|it| match it {
-                MenuItem::Cmd { id, live: true, .. } => vec![(id, None)],
-                MenuItem::Sub { id: p, rows, .. } => {
-                    rows.into_iter().map(|r| (r.0, Some(p))).collect()
-                }
-                _ => Vec::new(),
-            })
-            .nth(k)
+        let items = open_items(&self.bar, state, self.debug.game_stop);
+        MenuItem::leaves(&items).get(k).copied()
     }
 
     /// O que a barra pintou (os testes clicam por aqui).

@@ -9,6 +9,10 @@
 # largura de fábrica). Com `CLIQUES="x1 y1;x2 y2;…"` cliques reais em sequência (mover, 1 s, clicar,
 # 1 s), depois do `RATO` e antes do arrasto: abrir um menu e escolher num submenu (Settings ▸ Text
 # rendering ▸ …, 10/11).
+# Com `JW=900 JH=560` a janela da app tem esse tamanho e a foto é recortada a ela (omissão 1930×1040, a
+# tela inteira). Com `CLIP_FILE=<ficheiro>` o conteúdo vai para a área de transferência da Xvfb (clip.py,
+# sem xclip) antes dos passos: colar com `TECLAS=ctrl+v` (a linha de 64 KB, 11/11). `APP_BIN` troca o binário.
+# O `luau-lsp` (scripts/luau-lsp-fetch.sh) acha-se pelo cache REAL do utilizador, não pelo HOME temporário.
 # Uso (da raiz da worktree, binário `target/smoke` feito):
 #   [CENA=13] bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png> [espera_s]
 set -uo pipefail
@@ -16,8 +20,12 @@ PASSO=${1:?passo}
 SAIDA=${2:?saida.png}
 ESPERA=${3:-9}
 CENA=${CENA:-14}
+JW=${JW:-1930}
+JH=${JH:-1040}
+CACHE=${XDG_CACHE_HOME:-$HOME/.cache}
 RAIZ=$(git rev-parse --show-toplevel)
-APP="$RAIZ/target/smoke/ph2d-host-desktop"
+AQUI=$(cd "$(dirname "$0")" && pwd)
+APP="${APP_BIN:-$RAIZ/target/smoke/ph2d-host-desktop}"
 [ -x "$APP" ] || { echo "falta o binário de smoke" >&2; exit 2; }
 T=$(mktemp -d /tmp/fotos_q3.XXXX)
 mkdir -p "$T/home"
@@ -27,12 +35,13 @@ trap fim EXIT
 # Ecrã livre escolhido pelo Xvfb (corridas em paralelo e outras sessões não se cruzam).
 . "$RAIZ/docs/CodeEditor/ferramentas/xvfb_livre.sh"
 xvfb_livre 1930x1040x24 "$T/xvfb.log" || exit 2
-(cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY="$DSP" HOME="$T/home" XDG_SESSION_TYPE=x11 \
+(cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY="$DSP" HOME="$T/home" XDG_CACHE_HOME="$CACHE" XDG_SESSION_TYPE=x11 \
   PH2D_CODE_SMOKE="$CENA" PH2D_CODE_SMOKE_PASSO="$PASSO" timeout 120 "$APP" >"$T/app.log" 2>&1) &
 AP=$!
 sleep 2
 W=$(xdotool search --onlyvisible --name . 2>/dev/null | head -1)
-[ -n "$W" ] && xdotool windowsize "$W" 1930 1040 windowmove "$W" 0 0 2>/dev/null
+[ -n "${CLIP_FILE:-}" ] && (python3 -I "$AQUI/clip.py" "$CLIP_FILE" 60 &)
+[ -n "$W" ] && xdotool windowsize "$W" "$JW" "$JH" windowmove "$W" 0 0 2>/dev/null
 sleep "$ESPERA"
 if [ -n "${RATO:-}" ]; then
   # shellcheck disable=SC2086
@@ -97,5 +106,5 @@ if [ -n "${TECLAS:-}" ]; then
   sleep 1
 fi
 [ -n "${LOG:-}" ] && cp "$T/app.log" "$LOG"
-import -window root "$SAIDA"
+import -window root -crop "${JW}x${JH}+0+0" +repage "$SAIDA"
 echo "foto: $SAIDA"

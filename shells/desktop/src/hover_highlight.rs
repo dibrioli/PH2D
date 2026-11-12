@@ -210,17 +210,17 @@ impl crate::App {
     /// ⚠️ **O primeiro da lista, e não o último** — a ordem de z, que é a ordem em que o clique
     /// cicla.
     pub(crate) fn pick_hovered_object(&mut self, pointer: (f32, f32)) -> Option<u64> {
-        // Os dois factos do store, lidos antes de qualquer borrow mutável.
         let (over_panel, hot, ppm, icone) = {
             let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
             (
-                hero.chrome_panel_at(pointer.0, pointer.1).is_some(),
+                hero.chrome_panel_at(pointer.0, pointer.1).is_some()
+                    || hero.documents.surface_active().is_some(),
                 hero.store.hot_id(),
                 hero.project.pixels_per_meter,
                 hero.project.camera_icon_px,
             )
         };
-        // Sobre um painel: a resposta é a LINHA, se for uma; nunca o canvas por baixo dele.
+        // Sobre um painel ou uma aba de documento (cobre o canvas): a LINHA, se for uma; nunca o canvas.
         if over_panel {
             let node = hot?;
             return self

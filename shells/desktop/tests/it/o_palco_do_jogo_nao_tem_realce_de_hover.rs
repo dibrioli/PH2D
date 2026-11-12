@@ -37,3 +37,26 @@ fn o_palco_do_jogo_nao_tem_realce_de_hover() {
         &antes[decl..]
     );
 }
+
+/// **Com uma aba de documento aberta (Input Map, Kanban, scripts…), o rato não fura até ao canvas**
+/// (smoke do dono 11/11: o hover sobre a aba Input Map acendia objectos da cena na Hierarchy). A aba
+/// cobre o canvas, então conta como painel: a resposta é a linha apontada, nunca o objecto por baixo.
+/// **Mutação que deve sangrar:** tirar `|| hero.documents.surface_active().is_some()`.
+#[test]
+fn uma_aba_de_documento_aberta_tapa_o_hover_do_canvas() {
+    let src = so_codigo(include_str!("../../src/hover_highlight.rs"));
+    let corpo = &src[src
+        .find("fn pick_hovered_object")
+        .expect("a porta única do hover")..];
+    let decide = &corpo[..corpo.find("if over_panel").expect("a decisão do painel")];
+    assert!(
+        decide.contains("chrome_panel_at(")
+            && decide.contains("documents.surface_active().is_some()"),
+        "o painel da porta do hover não conta a aba de documento aberta — o rato fura até ao canvas:\n{decide}"
+    );
+    let ramo = &corpo[corpo.find("if over_panel").unwrap_or(0)..];
+    assert!(
+        ramo[..ramo.find("PickWorld").expect("o canvas depois do painel")].contains("return"),
+        "o ramo do painel tem de sair antes do canvas"
+    );
+}

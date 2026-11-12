@@ -435,6 +435,8 @@ impl PlatformPlayer {
                 corner_lookahead: self.corner_lookahead,
                 lift_momentum: self.lift_momentum,
                 platform_lift: self.platform_lift.law(),
+                // Os do mundo de fábrica: a ponte ainda não lhe passa os do projeto (`player_arc::world_steps`).
+                world_steps: JumpConfig::DEFAULT_WORLD_STEPS,
             },
             wall: WallConfig {
                 slide_speed: on(self.walls_on, self.wall_slide_speed),

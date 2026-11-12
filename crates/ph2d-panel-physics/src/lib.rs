@@ -26,6 +26,7 @@
 
 pub mod cards;
 pub mod curva_do_pulo;
+pub mod curva_do_pulo_numero;
 pub mod ids;
 pub mod interact;
 mod paint;

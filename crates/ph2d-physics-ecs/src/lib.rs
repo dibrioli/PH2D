@@ -110,7 +110,7 @@ pub use components::{
     clip_de_entrada, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
     segura_regra,
 };
-pub use components::{MIN_EXTENT, arc_world, collider_box_or};
+pub use components::{MIN_EXTENT, arc_world, collider_box_or, world_steps};
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
     MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,

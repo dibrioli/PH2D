@@ -2,7 +2,7 @@
 //!
 //! Corre [`crate::player_motor`] tique a tique, sem cena: o chão só no arranque, ar depois. A
 //! integração é a da ponte (`apply_player_motor`: `v += accel·dt`, `v += boost`) seguida da do
-//! mundo (`v += g·dt`, `x += v·dt`). O portão `o_arco_do_desenho_e_o_do_jogo`
+//! mundo: por sub-passo a perna, e por iteração do solver `v += g·h`, `x += v·h`. O portão `o_arco_do_desenho_e_o_do_jogo`
 //! (`ph2d-physics-ecs`) mede-o contra o player REAL. Ficha:
 //! `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md`.
 
@@ -74,8 +74,11 @@ pub struct ArcWorld {
     pub dt: f32,
     /// `+1` para a direita, `-1` para a esquerda.
     pub facing: f32,
-    /// Os sub-passos do mundo por tique: a gravidade integra-se em cada um (`PhysicsWorld::step`).
+    /// Os sub-passos do mundo por tique (`PhysicsWorld::step`): a perna paga-se em cada um.
     pub substeps: u32,
+    /// As iterações do solver em cada sub-passo: o rapier integra a gravidade e a posição em cada
+    /// uma (`dt / (substeps · iterações)`), e é o passo que o jogo dá de verdade.
+    pub solver_iterations: u32,
 }
 
 /// O «cima» de um mundo: contra a gravidade.
@@ -181,12 +184,17 @@ fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
         let m = step.motor;
         let hold_g = step.gravity_hold;
         let n = w.substeps.max(1);
+        let k = w.solver_iterations.max(1);
         let h = w.dt / n as f32;
+        let hk = h / k as f32;
         for i in 0..2 {
             v[i] += m.accel[i] * w.dt + m.boost[i];
             for _ in 0..n {
-                v[i] += (w.gravity[i] + hold_g[i]) * h;
-                p[i] += v[i] * h;
+                v[i] += hold_g[i] * h;
+                for _ in 0..k {
+                    v[i] += w.gravity[i] * hk;
+                    p[i] += v[i] * hk;
+                }
             }
         }
         if step.jump.is_some() && !first {

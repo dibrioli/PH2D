@@ -146,6 +146,17 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
   cortada no primeiro toque com as formas sólidas da cena (`ph2d-physics-ecs/src/arc_terrain.rs`, varredura
   `ph2d-physics/src/world/arc_cast.rs`): sem sensores, sem formas desligadas, sem o player e as peças dele, pela
   matriz de camadas, mão única só por cima. O painel pinta um **anel de pouso** na cor de cada curva.
+- **A alça e o cartão dizem o mesmo número** (smoke do dono 12/11: «os números não são idênticos», 198 × 200 px).
+  Mecanismo medido: o rapier integra a gravidade em cada iteração do solver (`dt / (sub-passos · iterações)` =
+  16 passos de Euler por tique), e o tique desce `g·dt²·(n+1)/(2n)`. A lei supunha a contínua (`g·dt²/2`) e o
+  desenho só os 4 sub-passos: ápice a 2 m — desenho **1,9844**, jogo **1,9961** (Floaty 2,5 m: 2,4813 × 2,4953).
+  Cura: `JumpConfig::world_steps` (16 de fábrica, gate `os_passos_do_mundo_de_fabrica_sao_os_da_lei`) em
+  `discrete_apex`, e `ArcWorld::solver_iterations` no arco. Depois: desenho = jogo a 1e-6 m, e os dois a ≤ 0,3 mm da
+  Jump Height em 4 sensações × 0,5/1/2/2,5 m (chão e ar). O readout escreve pela conta do campo
+  (`curva_do_pulo_numero::numero_da_alca`: px inteiro, centímetro em metros — antes `{:.0}` dava «2 m» para 2,5 m).
+  ⚠️ Aberto: a ponte não passa os passos do projecto à lei (`bridge/player.rs`), então com sub-passos ou iterações
+  fora de fábrica o ápice volta a errar (desenho = jogo continua); o pouso abaixo de ~1 m difere 2 tiques (a perna
+  apanha o corpo antes de `POUSO`).
 - **O ápice real é a Jump Height** (`f3a92736ab`): `launch_speed` resolve v₀ pelas bandas de gravidade; o cartão
   diz 2,00 e a alça fica a 2,00.
 - **Fotos** (`PH2D_GAME_SMOKE=4`): [`curva_terreno.png`](fotos_04/curva_terreno.png) ·

@@ -9,6 +9,7 @@ const W: ArcWorld = ArcWorld {
     dt: 1.0 / 60.0,
     facing: 1.0,
     substeps: 4,
+    solver_iterations: 4,
 };
 
 fn cfg() -> PlayerConfig {
@@ -130,8 +131,8 @@ fn as_tres_sensacoes_se_distinguem_pelo_tempo_no_ar() {
 }
 
 /// A lei nova (GEF 04): o ápice do pulo inteiro e o de cada pulo do ar = a altura escrita, para
-/// as três sensações, o padrão e alturas de 0,5 a 2,5 m. O resto é o erro do sub-passo do mundo
-/// (`−v0·dt/(2·substeps)`, a lei não vê os sub-passos): 2,3 cm a 6 m com 4 sub-passos.
+/// as três sensações, o padrão e alturas de 0,5 a 2,5 m, a meio pixel (a lei integra os passos do
+/// mundo como ele: antes, sem eles, 1,6 cm a 2 m).
 #[test]
 fn o_apice_e_a_altura_escrita_em_todas_as_sensacoes() {
     let mut falhas = Vec::new();
@@ -152,7 +153,7 @@ fn o_apice_e_a_altura_escrita_em_todas_as_sensacoes() {
             let arcs = jump_arcs(&c, W);
             let ground = rise(&arcs.full);
             let air = rise(&arcs.air[0]) - arcs.air[0].points[0][1];
-            if (ground - h).abs() >= 0.02 || (air - 0.5 * h).abs() >= 0.02 {
+            if (ground - h).abs() > 0.001 || (air - 0.5 * h).abs() > 0.001 {
                 falhas.push(format!("{feel:?} h={h}: chão {ground:.3} ar {air:.3}"));
             }
         }

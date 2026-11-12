@@ -89,8 +89,9 @@ pub fn takeoff_rise(lift: PlatformLift, rel_up: f32, ground_up: f32) -> f32 {
 /// `max(peak_speed, takeoff_speed)`, `1` até `peak_speed`, `peak_gravity` no topo (ficha GEF 04,
 /// «altura que mente»). Duas partes: a inversa FECHADA de `h = Σ (v_alto² − v_baixo²)/(2·g·k)`
 /// (cada faixa é aceleração constante) e três correcções de secante sobre o tique discreto
-/// ([`discrete_apex`]: a fase lê a velocidade do INÍCIO do tique), porque a contínua erra 2,5 cm
-/// a 2 m. Custo medido em `launch_speed_custa_pouco`. `neutral` (o fluido tem o corpo e a
+/// ([`discrete_apex`]: a fase lê a velocidade do INÍCIO do tique, e a gravidade integra-se em
+/// [`JumpConfig::world_steps`] passos de Euler), porque a contínua erra 2,5 cm a 2 m. Custo medido
+/// em `launch_speed_custa_pouco`. `neutral` (o fluido tem o corpo e a
 /// modelagem cala) devolve `√(2·g·h)`.
 #[must_use]
 pub fn launch_speed(cfg: &JumpConfig, g: f32, height: f32, neutral: bool, dt: f32) -> f32 {
@@ -146,10 +147,14 @@ fn continuous_launch_speed(cfg: &JumpConfig, g: f32, h: f32) -> f32 {
 }
 
 /// O ápice do pulo no relógio do jogo: o tique do salto só com o mundo, depois a gravidade da
-/// fase (lida no início do tique) mais a do mundo, exacta dentro do tique. Máximo sobre os fins
-/// de tique, que é o que a pose mostra.
+/// fase (lida no início do tique, um impulso) mais a do mundo, em `world_steps` passos de Euler
+/// semi-implícito (`v −= g·h; x += v·h`, o do rapier): o tique desce `g·dt²·(n+1)/(2n)`, não o
+/// `g·dt²/2` da contínua — 0,34 mm por tique a `n = 4`, 0,085 a `n = 16` (ficha GEF 04, 12/11).
+/// Máximo sobre os fins de tique, que é o que a pose mostra.
 #[must_use]
 pub fn discrete_apex(cfg: &JumpConfig, g: f32, v0: f32, dt: f32) -> f32 {
+    let n = cfg.world_steps.max(1) as f32;
+    let fall = 0.5 * g * dt * dt * (n + 1.0) / n;
     let (mut v, mut p, mut top) = (v0, 0.0_f32, 0.0_f32);
     for tick in 0..100_000 {
         let extra = if tick == 0 {
@@ -158,7 +163,7 @@ pub fn discrete_apex(cfg: &JumpConfig, g: f32, v0: f32, dt: f32) -> f32 {
             (phase_scale(cfg, v) - 1.0) * g
         };
         v -= extra * dt;
-        p += v * dt - 0.5 * g * dt * dt;
+        p += v * dt - fall;
         v -= g * dt;
         top = top.max(p);
         if v <= 0.0 && p < top {
@@ -309,6 +314,11 @@ pub struct JumpConfig {
     /// [`PlatformLift`], e o default [`PlatformLift::Full`] é o mundo de antes
     /// desta wave AO BIT.
     pub platform_lift: PlatformLift,
+
+    /// Os passos de integração que o MUNDO dá por tique: sub-passos × iterações do solver (o
+    /// rapier aplica a gravidade em cada iteração). [`launch_speed`] modela-os, e é o que põe o
+    /// ápice do jogo a menos de meio pixel da Jump Height. Não é autorado: o mundo o diz.
+    pub world_steps: u32,
 }
 
 impl JumpConfig {
@@ -391,5 +401,10 @@ impl JumpConfig {
         // recomenda: mudar isto alteraria a altura de todo pulo já autorado
         // sobre uma plataforma móvel. A escolha é do artista, na row.
         platform_lift: PlatformLift::Full,
+        world_steps: Self::DEFAULT_WORLD_STEPS,
     };
+
+    /// Os passos do mundo de fábrica: 4 sub-passos × 4 iterações do solver (o gate
+    /// `os_passos_do_mundo_de_fabrica_sao_os_da_lei` em `ph2d-physics-ecs` confere-os).
+    pub const DEFAULT_WORLD_STEPS: u32 = 16;
 }

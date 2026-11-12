@@ -15,7 +15,15 @@ pub fn arc_world(s: &PhysicsSettings, facing: f32) -> ArcWorld {
         dt: ph2d_physics::PhysicsWorld::DEFAULT_DT,
         facing: if facing < 0.0 { -1.0 } else { 1.0 },
         substeps: s.substeps,
+        solver_iterations: s.solver_iterations,
     }
+}
+
+/// Os passos de integração do mundo por tique ([`ph2d_platformer::JumpConfig::world_steps`]):
+/// sub-passos × iterações do solver.
+#[must_use]
+pub fn world_steps(s: &PhysicsSettings) -> u32 {
+    s.substeps.max(1) * s.solver_iterations.max(1)
 }
 
 impl PlatformPlayer {

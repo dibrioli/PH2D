@@ -47,5 +47,8 @@ fn sonda_envio_inteiro_4k() {
         std::hint::black_box(&dst);
         b = b.min(t.elapsed().as_secs_f64() * 1e3);
     }
-    println!("[envio 4K] antes {a:.2} ms · fundido {b:.2} ms ({:.1}×)", a / b);
+    println!(
+        "[envio 4K] antes {a:.2} ms · fundido {b:.2} ms ({:.1}×)",
+        a / b
+    );
 }

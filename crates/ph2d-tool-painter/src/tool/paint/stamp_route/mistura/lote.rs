@@ -274,9 +274,7 @@ impl PainterTool {
                 if salta {
                     continue;
                 }
-                let pre = pre[i]
-                    .take()
-                    .unwrap_or_else(|| pega(&bases[i], d));
+                let pre = pre[i].take().unwrap_or_else(|| pega(&bases[i], d));
                 let Some((local, Some(r), r2)) = pre else {
                     continue;
                 };

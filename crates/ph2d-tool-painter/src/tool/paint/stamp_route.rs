@@ -10,10 +10,10 @@ use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
 
 #[cfg(test)]
 mod aguada_tests; // B25.3: o mapa das cópias da aguada não vaza para o lote seguinte
-#[cfg(test)]
-mod mistura_memoria_tests; // B28.4: as pegadas locais não guardam a máscara da tela
 mod mascara; // a rota do pincel Mask — filho por LOC
-pub(super) mod mistura; // a mistura opaca do Digital (só com o modo ligado)
+pub(super) mod mistura;
+#[cfg(test)]
+mod mistura_memoria_tests; // B28.4: as pegadas locais não guardam a máscara da tela // a mistura opaca do Digital (só com o modo ligado)
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE

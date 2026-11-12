@@ -676,9 +676,9 @@ impl QuedaDoDab {
         }
         let remapped = ((t - h) / (1.0 - h)).clamp(0.0, 1.0);
         match spec.falloff {
-            Falloff::Custom if self.area => {
-                spec.custom_falloff.weight_area(remapped, self.passo / (1.0 - h))
-            }
+            Falloff::Custom if self.area => spec
+                .custom_falloff
+                .weight_area(remapped, self.passo / (1.0 - h)),
             Falloff::Custom => spec.custom_falloff.weight(remapped),
             preset => preset.weight(remapped),
         }

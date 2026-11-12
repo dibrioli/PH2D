@@ -87,7 +87,11 @@ pub(in crate::dab) fn em(
             t,
             wv,
             [dx, dy],
-            || crate::dab::silhouette_at_com(ctx.spec, inv.queda, ctx.shape, t, px, py, ctx.center, ctx.radius),
+            || {
+                crate::dab::silhouette_at_com(
+                    ctx.spec, inv.queda, ctx.shape, t, px, py, ctx.center, ctx.radius,
+                )
+            },
             |ox, oy| {
                 inv.queda.peso(
                     ctx.spec,
@@ -98,7 +102,9 @@ pub(in crate::dab) fn em(
         ),
         (None, None) => crate::height::film_coverage(
             ctx.spec.deposits_height(),
-            crate::dab::silhouette_at_com(ctx.spec, inv.queda, ctx.shape, t, px, py, ctx.center, ctx.radius),
+            crate::dab::silhouette_at_com(
+                ctx.spec, inv.queda, ctx.shape, t, px, py, ctx.center, ctx.radius,
+            ),
         ),
     };
     Silhueta {

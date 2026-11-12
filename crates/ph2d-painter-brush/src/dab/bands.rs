@@ -496,7 +496,14 @@ pub(super) fn stamp_band<M: crate::Tecto>(
             }
             let col = (px - ctx.ox) as usize;
             if let Some(l) = liso.as_deref_mut() {
-                liso_tocou |= super::liso::escreve(ctx, l, row + col * 4, w, ctx.spec.blend, inv.branco_no_vazio);
+                liso_tocou |= super::liso::escreve(
+                    ctx,
+                    l,
+                    row + col * 4,
+                    w,
+                    ctx.spec.blend,
+                    inv.branco_no_vazio,
+                );
             }
             let Some(t) = tinta::em(ctx, &inv, s, px, py) else {
                 continue;

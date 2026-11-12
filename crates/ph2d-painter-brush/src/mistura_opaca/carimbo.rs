@@ -5,6 +5,8 @@ use rayon::prelude::*;
 
 /// Uma faixa de `ALTO` linhas da tela: o índice, os bytes dela e os ladrilhos da sombra que a cobrem.
 type Faixa<'a> = (u32, &'a mut [u8], &'a mut [Option<Box<[f32]>>]);
+/// Uma LINHA da tela (o índice desde a 1.ª da caixa, os bytes dela) e a linha de cada ladrilho da sombra que a cobre.
+type Linha<'a> = (usize, (&'a mut [u8], &'a mut [Option<&'a mut [f32]>]));
 
 /// Um carimbo do Wet blend. `antes(i)` = o RGBA do byte `i` (múltiplo de 4) da tela de ANTES do traço, sobre a qual
 /// a película se compõe; `amostra_de(i)` = o fundo de onde se amostra (a mesma tela, ou todas as camadas visíveis —
@@ -398,7 +400,7 @@ pub fn mistura_opaca_carimbo(
             }
         }
         let stride = (w * 4) as usize;
-        let pinta_linha = |(r, (linha, lads)): (usize, (&mut [u8], &mut [Option<&mut [f32]>]))| {
+        let pinta_linha = |(r, (linha, lads)): Linha<'_>| {
             let y = y0 + r as u32;
             for x in x0..x1 {
                 let Some(q) = quanto(x, y) else { continue };

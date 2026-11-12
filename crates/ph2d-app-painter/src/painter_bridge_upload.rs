@@ -174,11 +174,9 @@ pub(crate) fn upload_cpu_preview(
                                 premul_bytes,
                             )
                             .map(|()| texture_id),
-                        None => renderer.acquire_individual(
-                            preview.width,
-                            preview.height,
-                            premul_bytes,
-                        ),
+                        None => {
+                            renderer.acquire_individual(preview.width, preview.height, premul_bytes)
+                        }
                     }
                 })),
             };

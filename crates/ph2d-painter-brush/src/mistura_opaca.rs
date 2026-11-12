@@ -45,11 +45,13 @@ pub static AMOSTRA_ESPARSA: std::sync::atomic::AtomicBool =
 /// As pegadas do lote com o SHAPE também em buffers locais, em paralelo entre os dabs (missão 4K onda 3); `false` = a
 /// rota em série na máscara da tela. Os mesmos bytes; só o gate e a medição A×B a viram.
 #[doc(hidden)]
-pub static PEGADAS_LOCAIS_COM_FORMA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+pub static PEGADAS_LOCAIS_COM_FORMA: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(true);
 /// A película do carimbo pinta-se uma LINHA por tarefa (missão 4K onda 3); `false` = uma faixa de ladrilhos por tarefa
 /// (a partição de antes). Os mesmos bytes; só o gate e a medição A×B a viram.
 #[doc(hidden)]
-pub static PELICULA_POR_LINHAS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+pub static PELICULA_POR_LINHAS: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(true);
 pub static PEGADAS_LOCAIS_SEM_GRAO: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(true);
 

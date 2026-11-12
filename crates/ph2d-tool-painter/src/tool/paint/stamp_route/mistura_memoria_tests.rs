@@ -6,7 +6,7 @@ use ph2d_editor_core::tool::{
     CanvasPaintTool as _, CanvasPointer, PointerPhase, RasterEditTool as _,
 };
 use ph2d_painter_brush::BrushSpec;
-use ph2d_painter_brush::mistura_opaca::{ModoMisturaOpaca, MisturaOpaca};
+use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
 
 fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {

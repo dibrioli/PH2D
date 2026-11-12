@@ -242,8 +242,17 @@ impl PainterTool {
                     && i > 0
                     && metades[i - 1].center == metades[i].center
                     && groups.get(i - 1) == groups.get(i);
-                (!copia)
-                    .then(|| pegada_do_dab(&bases[i].0, bases[i].1.as_ref(), &metades[i], w2, h2, image.as_ref(), None))
+                (!copia).then(|| {
+                    pegada_do_dab(
+                        &bases[i].0,
+                        bases[i].1.as_ref(),
+                        &metades[i],
+                        w2,
+                        h2,
+                        image.as_ref(),
+                        None,
+                    )
+                })
             })
             .collect();
         let antes = |i: usize| media(&base, w, h, w2, i);
@@ -268,9 +277,17 @@ impl PainterTool {
             if afina && *salta_o_grupo.get_or_insert_with(|| alvo.repete_o_centro(d.center)) {
                 continue;
             }
-            let pre = pegadas[i]
-                .take()
-                .unwrap_or_else(|| pegada_do_dab(&bases[i].0, bases[i].1.as_ref(), d, w2, h2, image.as_ref(), None));
+            let pre = pegadas[i].take().unwrap_or_else(|| {
+                pegada_do_dab(
+                    &bases[i].0,
+                    bases[i].1.as_ref(),
+                    d,
+                    w2,
+                    h2,
+                    image.as_ref(),
+                    None,
+                )
+            });
             let Some((local, Some(r), r2)) = pre else {
                 continue;
             };

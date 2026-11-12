@@ -673,7 +673,7 @@ mod prancha_b19_2_tests;
 mod prancha_b19a_tests;
 #[cfg(test)]
 mod recorte_tests;
-mod resumo;
+pub(super) mod resumo;
 #[cfg(test)]
 mod resumo_tests;
 #[cfg(test)]

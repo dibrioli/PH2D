@@ -152,6 +152,9 @@ fn compor_com_cache(
     height: u32,
     cache: &mut CompositorCache,
 ) {
+    // B19.10: o resumo por ladrilho também no arrasto de ajustes.
+    let resumos = super::compose::resumo::com_resumos(stack, src, (width, height));
+    let src = &resumos;
     let root = stack.root();
     // Highest root adjustment (smallest index = MOST below-layers cached) whose
     // cut is still valid. Its cut is the composite of everything below it.

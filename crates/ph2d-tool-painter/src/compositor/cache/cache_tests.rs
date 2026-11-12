@@ -30,6 +30,14 @@ fn bc(brightness: f32, contrast: f32) -> AdjustmentParams {
 
 /// Root (top-first): topo · blur · grupo(filho, Overlay) · alto · meio (Multiply, masked) · baixo · base.
 fn pilha(w: u32, h: u32) -> (LayerStack, MapPixelSource, [LayerId; 3]) {
+    pilha_com(w, h, tinta)
+}
+
+fn pilha_com(
+    w: u32,
+    h: u32,
+    tinta: impl Fn(u32, u32, u32) -> LayerImage,
+) -> (LayerStack, MapPixelSource, [LayerId; 3]) {
     let mut s = LayerStack::new();
     let mut src = MapPixelSource::default();
     let base = s.add_raster("base", w, h).unwrap();
@@ -294,4 +302,38 @@ fn mede_o_arrasto_com_espacial_acima_4k() {
             best[0], best[1]
         );
     }
+}
+
+/// B19.10: o arrasto de ajustes com o resumo por ladrilho dá o byte da rota sem resumo. As camadas são
+/// ESPARSAS (blocos de 64 px todos α=0), senão o resumo não salta nada e o gate não prova nada.
+#[test]
+fn o_arrasto_de_ajustes_com_resumo_e_a_rota_sem_resumo_ao_bit() {
+    use crate::compositor::compose::resumo::SEM_RESUMO;
+    let esparsa = |w: u32, h: u32, semente: u32| {
+        let mut img = tinta(w, h, semente);
+        for (i, p) in img.rgba8_mut().as_chunks_mut::<4>().0.iter_mut().enumerate() {
+            let (x, y) = (i as u32 % w, i as u32 / w);
+            if (x / 64 + y / 3 + semente) % 3 != 0 {
+                *p = [0; 4];
+            }
+        }
+        img
+    };
+    let (w, h) = (300, 40);
+    let sessao_esparsa = || {
+        let (mut s, src, [baixo, alto, _]) = pilha_com(w, h, esparsa);
+        let mut cache = CompositorCache::new();
+        let mut v = vec![composite_with_cache(&s, &src, w, h, &mut cache)];
+        for (k, id) in [alto, baixo, alto].into_iter().enumerate() {
+            s.adjustment_mut(id).unwrap().params = bc(0.1 * k as f32, -0.2);
+            cache.invalidate_above(id, &s);
+            v.push(composite_with_cache(&s, &src, w, h, &mut cache));
+        }
+        v
+    };
+    SEM_RESUMO.store(true, Relaxed);
+    let sem = sessao_esparsa();
+    SEM_RESUMO.store(false, Relaxed);
+    let com = sessao_esparsa();
+    assert!(sem == com, "o resumo mudou o arrasto de ajustes");
 }

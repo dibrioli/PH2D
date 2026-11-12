@@ -77,12 +77,12 @@ fn calcula(rgba: &[u8], w: u32, h: u32) -> Vec<u8> {
 
 /// `src` with the summaries of every visible raster/texture layer of `stack` whose plane backs its
 /// `layer_rgba` exactly.
-pub(super) struct ComResumos<'a, S> {
+pub(in crate::compositor) struct ComResumos<'a, S> {
     src: &'a S,
     resumos: BTreeMap<LayerId, Arc<Vec<u8>>>,
 }
 
-pub(super) fn com_resumos<'a, S: LayerPixelSource>(
+pub(in crate::compositor) fn com_resumos<'a, S: LayerPixelSource>(
     stack: &LayerStack,
     src: &'a S,
     canvas: (u32, u32),
@@ -193,7 +193,7 @@ fn resumo_ligado() -> bool {
     true
 }
 #[cfg(test)]
-pub(super) static SEM_RESUMO: std::sync::atomic::AtomicBool =
+pub(in crate::compositor) static SEM_RESUMO: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 #[cfg(test)]
 fn resumo_ligado() -> bool {

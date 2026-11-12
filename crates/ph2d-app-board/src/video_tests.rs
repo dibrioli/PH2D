@@ -132,3 +132,27 @@ fn the_player_reloads_when_the_same_window_changes_video() {
     assert_eq!(tune(None, w, &a, true), Tune::Start);
     assert_eq!(tune(None, w, &a, false), Tune::Wait);
 }
+
+/// B23.2: o vídeo a tocar (ou ainda a arrancar, `autoplay`) pede quadro ao laço a pedido — os quadros do
+/// navegador chegam a 30 q/s; pausado, no fim ou à espera de play, deixa-o dormir.
+#[test]
+fn o_video_a_tocar_pede_quadro_e_pausado_deixa_dormir() {
+    use ph2d_board_video::{Phase, Playback};
+    let now = Instant::now();
+    let mut b = Playback::default();
+    assert!(
+        super::toca(&b, now),
+        "a arrancar (autoplay) não pediu quadro"
+    );
+    b.started = true;
+    for (phase, quer) in [
+        (Phase::Playing, true),
+        (Phase::Buffering, true),
+        (Phase::Paused, false),
+        (Phase::Ended, false),
+        (Phase::Cued, false),
+    ] {
+        b.phase = phase;
+        assert_eq!(super::toca(&b, now), quer, "{phase:?}");
+    }
+}

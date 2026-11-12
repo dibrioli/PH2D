@@ -61,6 +61,19 @@ impl PixelApp {
         }
     }
 
+    /// B23.2: o tocar (documento, Preview, ciclo) pede o quadro já; as formigas em Draw acordam o laço no passo delas.
+    pub(crate) fn pede_o_quadro(&self, editing: bool, agora: std::time::Instant) {
+        use ph2d_app_host::quadro::{Produtor, desperta_ate, pede};
+        if self.preview.playing() || self.docs.values().any(|d| d.play.is_some()) {
+            pede(Produtor::Animacao);
+        }
+        let mascara = self.docs.values().any(|d| d.sprite.mask().is_some());
+        if editing && (mascara || self.laco.is_some() || self.solta.is_some()) {
+            let falta = crate::draw::ANTS_STEP_MS - self.formigas_ms % crate::draw::ANTS_STEP_MS;
+            desperta_ate(agora + std::time::Duration::from_millis(falta));
+        }
+    }
+
     /// Aplica um pedido da linha do tempo; `false` = não é dela.
     pub(crate) fn aplica_quadro(&mut self, r: &PixelRequest) -> bool {
         let Some(key) = self.chave else {
@@ -314,3 +327,7 @@ impl PixelApp {
 
 const CEL: &str = "pixel.history.cel_properties";
 const TAG: &str = "pixel.history.tag_properties";
+
+#[cfg(test)]
+#[path = "quadros_pedido_tests.rs"]
+mod pedido_tests;

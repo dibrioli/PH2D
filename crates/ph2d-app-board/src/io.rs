@@ -62,6 +62,12 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
     author(hero);
     crate::live::service(hero);
     crate::video::service(hero);
+    let agora = std::time::Instant::now();
+    if let Some(t) =
+        ph2d_editor_core::screens::hero::board_nav::facilitate::next_change(hero, agora)
+    {
+        ph2d_app_host::quadro::desperta_ate(t);
+    }
     // W4 do Kanban — o desenho (e o export) deste fio lê os Kanbans do projecto: um `Rc` NOVO a cada
     // projecto aberto, por isso a cada quadro.
     ph2d_board_render::install_kanbans(hero.documents.kanbans_shared());

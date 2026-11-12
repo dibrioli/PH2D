@@ -118,3 +118,47 @@ fn a_still_scene_with_the_timeline_stopped_creates_no_live_spring() {
         );
     }
 }
+
+/// B23.2: a mola ao vivo a balançar pede o quadro seguinte ao laço a pedido (sem entrada, a 4 q/s ela
+/// saltava); assentada, deixa-o dormir.
+#[test]
+fn a_mola_ao_vivo_pede_quadro_ate_assentar() {
+    use ph2d_app_host::quadro::{PRAZO, no_laco};
+    let acorda = || {
+        let agora = std::time::Instant::now();
+        no_laco(|l| l.acorda(&[], agora)) == Some(agora + PRAZO)
+    };
+    let mut c = cena();
+    let dt = 1.0 / 60.0;
+    let mut parede = 0.0;
+    for _ in 0..3 {
+        quadro_parado(&mut c, parede);
+        parede += dt;
+    }
+    assert!(acorda(), "parada e sem arrasto, a mola pediu quadro");
+    let dono = c.dono;
+    c.sim
+        .world_mut()
+        .get_mut::<Transform>(dono)
+        .unwrap()
+        .translation
+        .x = 1.0;
+    quadro_parado(&mut c, parede);
+    parede += dt;
+    quadro_parado(&mut c, parede);
+    assert!(
+        vivas(&c.sim) > 0 && !acorda(),
+        "a mola a balançar não pediu quadro"
+    );
+    for _ in 0..600 {
+        parede += dt;
+        quadro_parado(&mut c, parede);
+        _ = acorda(); // a shell lê o laço depois de cada quadro
+    }
+    parede += dt;
+    quadro_parado(&mut c, parede);
+    assert!(
+        vivas(&c.sim) == 0 && acorda(),
+        "a mola assentada segurou o laço"
+    );
+}

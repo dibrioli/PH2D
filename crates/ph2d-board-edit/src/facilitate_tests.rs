@@ -495,3 +495,31 @@ fn a_frame_seen_from_far_hides_and_refuses_votes_and_stamps() {
     w.click(plus, NONE);
     assert_eq!(w.ed.vote().unwrap().mine(a), 1);
 }
+
+/// B23.2: o cartão diz ao laço a pedido quando muda sozinho — o segundo do mostrador e a fase do piscar —
+/// e armado não acorda ninguém.
+#[test]
+fn o_cronometro_acorda_o_laco_na_proxima_mudanca_vista() {
+    let now = Instant::now();
+    let mut t = Timer::default();
+    assert_eq!(t.next_change(now), None, "armado não anda");
+    t.play(now);
+    let ms = Duration::from_millis;
+    assert_eq!(t.next_change(now), Some(ms(1000)));
+    let a = now + ms(300);
+    assert_eq!(t.next_change(a), Some(ms(700)));
+    assert_ne!(
+        t.display(a),
+        t.display(a + ms(701)),
+        "o segundo muda nesse instante"
+    );
+    assert_eq!(t.display(a), t.display(a + ms(699)));
+    t.pause(a);
+    assert_eq!(t.next_change(a + ms(100)), Some(TIMER_BLINK - ms(100)));
+    let b = a + ms(100) + TIMER_BLINK - ms(100);
+    assert_ne!(
+        t.blink_off(b),
+        t.blink_off(b - ms(1)),
+        "o piscar vira nesse instante"
+    );
+}

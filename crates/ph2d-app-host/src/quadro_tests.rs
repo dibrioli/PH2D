@@ -230,3 +230,25 @@ fn o_rastreio_parte_as_faltas_por_fase() {
         "o último lido sobrevive à janela"
     );
 }
+
+/// B23.2: o pedido feito DENTRO do quadro acorda já o laço uma vez e esvazia-se; o despertar pedido
+/// encurta o sono (nunca o alonga) e também se esvazia.
+#[test]
+fn o_pedido_de_dentro_do_quadro_vale_um_acorda() {
+    let agora = Instant::now();
+    let mut l = Laco::novo(false);
+    l.pede(Produtor::Animacao);
+    assert_eq!(l.acorda(&[], agora), None, "pedido ⇒ desenha já");
+    assert_eq!(
+        l.acorda(&[], agora),
+        Some(agora + PRAZO),
+        "esvaziou ⇒ dorme"
+    );
+    let cedo = agora + Duration::from_millis(40);
+    l.desperta_ate(agora + Duration::from_secs(9));
+    l.desperta_ate(cedo);
+    assert_eq!(l.acorda(&[], agora), Some(cedo), "o mais cedo encurta");
+    l.desperta_ate(agora + Duration::from_secs(9));
+    assert_eq!(l.acorda(&[], agora), Some(agora + PRAZO), "nunca alonga");
+    assert_eq!(l.acorda(&[], agora), Some(agora + PRAZO));
+}

@@ -210,6 +210,10 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
             molas.atrasos.insert((dono, id), atraso);
         }
     }
+    // B23.2: a mola ao vivo anda no relógio de parede sem entrada — o laço a pedido desenha até assentar.
+    if !molas.vivas.is_empty() {
+        ph2d_app_host::quadro::pede(ph2d_app_host::quadro::Produtor::UiAnima);
+    }
     w.insert_resource(molas);
     crate::comportamento::preparar(sim, relogio);
 }

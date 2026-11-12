@@ -350,6 +350,14 @@ pub fn tick(hero: &mut HeroScreen, now: Instant) {
     }
 }
 
+/// B23.2 — o instante mais cedo em que um cronómetro muda sozinho (o segundo, o piscar): o laço a
+/// pedido acorda aí em vez de desenhar a 60 q/s. `None` = nenhum anda.
+#[must_use]
+pub fn next_change(hero: &HeroScreen, now: Instant) -> Option<Instant> {
+    let t = hero.documents.live.fac.timers.values();
+    t.filter_map(|t| t.next_change(now)).min().map(|d| now + d)
+}
+
 /// ⭐ Antes de desenhar o quadro activo (os `+` e o esconder do resultado leem a sessão DELE — a
 /// auditoria W7 viu um quadro com a sessão do anterior): a sessão de voto segue o SEU quadro (a aba
 /// mudou ⇒ estaciona-se e volta a do activo), larga os alvos apagados ou escondidos (V2), e o zero do

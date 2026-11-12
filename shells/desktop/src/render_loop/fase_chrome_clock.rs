@@ -1,5 +1,5 @@
 //! **Fase do quadro: O RELÓGIO DO CHROME** — o `wall_dt` do quadro (um dono só), o `ui_dt` que desconta
-//! o congelamento de um diálogo modal, e os tiques que andam nele: o Zen, a poeira, a UI viva e o zoom
+//! o congelamento de um diálogo modal, e os tiques que andam nele: a poeira, a UI viva e o zoom
 //! do canvas, os toasts, as barras de trabalho e o passo contínuo do stepper (OBRA 2 da
 //! `line/render-loop`, 2026-09-12).
 //!
@@ -18,7 +18,6 @@ impl crate::App {
             camera,
             canvas_zoom,
             view,
-            zen,
             toasts,
             jobs,
             hero_screen,
@@ -27,8 +26,7 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         self.host.as_ref()?;
 
-        // M12 per-frame ticks: ZenMode debounce cooldown + ToastQueue
-        // TTL decay. Both are pure data-layer (no Vello paint here).
+        // M12 per-frame tick: ToastQueue TTL decay (pure data-layer; the Zen cooldown is by the clock).
         // ⚠️ **O `wall_dt` é calculado AQUI, uma vez, e tem UM dono.** Ele vivia 400 linhas abaixo,
         // junto do acumulador da sim, e o `ToastQueue` — o único relógio do chrome — contava
         // QUADROS por não o alcançar (um toast de "3 s" durava 6 a 30 fps). Subi-lo é mais barato
@@ -48,7 +46,6 @@ impl crate::App {
         // continuam a ler o `wall_dt` inteiro, porque para eles o tempo passou mesmo.
         let ui_dt = ph2d_app_host::modal::chrome_dt(wall_dt, ph2d_app_host::modal::take_stall());
 
-        zen.tick();
         // ⚠️ **A UI VIVA anda aqui, com o MESMO relógio dos toasts** — um segundo `Instant::now()`
         // para o chrome seria a segunda resposta a *"quanto durou o último quadro?"*, e a que o
         // artista vê seria a errada. O `ui_dt` **não** é esse segundo relógio: é o `wall_dt` com a

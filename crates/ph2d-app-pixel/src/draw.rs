@@ -254,7 +254,7 @@ pub fn draw(
 }
 
 /// Quantos ms as formigas levam a andar um píxel de ecrã (escolha visual: o passo do Aseprite).
-const ANTS_STEP_MS: u64 = 60;
+pub(crate) const ANTS_STEP_MS: u64 = 60;
 
 pub(crate) fn fase_das_formigas(app: &PixelApp) -> f64 {
     ((app.formigas_ms / ANTS_STEP_MS) % (2.0 * ph2d_pixel_render::ANTS_DASH_PX) as u64) as f64

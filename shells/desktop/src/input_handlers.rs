@@ -21,7 +21,7 @@ mod letra_solta;
 
 impl App {
     /// M12 demo control router.
-    ///   Tab — toggle ZenMode (debounced 30 frames)
+    ///   Tab — toggle ZenMode (debounced 0,5 s)
     ///   M   — flip theme Dark↔Light
     ///   T   — push info toast
     ///   Cmd+Z / Ctrl+Z — image-edit undo

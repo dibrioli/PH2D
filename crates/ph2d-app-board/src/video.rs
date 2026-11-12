@@ -87,6 +87,15 @@ pub fn service(hero: &mut HeroScreen) {
     thumbnails(hero, &mut st);
     browser(hero, &mut st, Instant::now());
     player(hero, &mut st);
+    let b = st.playing.as_ref().map(|p| p.player.playback());
+    if b.is_some_and(|b| toca(&b, Instant::now())) {
+        ph2d_app_host::quadro::pede(ph2d_app_host::quadro::Produtor::Animacao);
+    }
+}
+
+/// B23.2 — o vídeo a tocar (ou a arrancar) traz quadros do navegador a 30 q/s: o laço a pedido desenha-os.
+fn toca(b: &ph2d_board_video::Playback, now: Instant) -> bool {
+    b.shown(now).running() || !b.started
 }
 
 /// W21 — sem navegador achado, de quanto em quanto se procura de novo enquanto há vídeos à vista (quem o

@@ -237,6 +237,7 @@ impl PixelApp {
         });
         let dt = self.som_do_play(mixer, dt);
         self.tick(dt);
+        self.pede_o_quadro(editing.is_some(), now);
         self.som();
         let whole =
             ph2d_editor_core::zones::Rect::new(0.0, 0.0, window.width as f32, window.height as f32);

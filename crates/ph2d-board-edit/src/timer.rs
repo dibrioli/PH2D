@@ -180,6 +180,33 @@ impl Timer {
         false
     }
 
+    /// B23.2 — daqui a quanto o cartão muda SOZINHO: o segundo do mostrador (a correr) ou a fase do
+    /// piscar e do tremor (pausado, no zero). `None` = armado, nada anda. O laço a pedido dorme até lá.
+    #[must_use]
+    pub fn next_change(&self, now: Instant) -> Option<Duration> {
+        let resto = |t: Duration, passo: Duration| {
+            Duration::from_nanos(u64::try_from(t.as_nanos() % passo.as_nanos()).unwrap_or(0))
+        };
+        match self.run {
+            TimerRun::Set => None,
+            // O mostrador arredonda para cima: muda quando o resto passa um segundo inteiro.
+            TimerRun::Running { deadline } => {
+                let r = resto(
+                    deadline.saturating_duration_since(now),
+                    Duration::from_secs(1),
+                );
+                Some(if r.is_zero() {
+                    Duration::from_secs(1)
+                } else {
+                    r
+                })
+            }
+            TimerRun::Paused { at, .. } | TimerRun::Done { at } => {
+                Some(TIMER_BLINK - resto(now.saturating_duration_since(at), TIMER_BLINK))
+            }
+        }
+    }
+
     /// F4/F6 — a fase «apagada» do piscar (pausado) e do tremor (no zero): `true` meio período sim,
     /// meio não.
     #[must_use]

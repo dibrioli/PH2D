@@ -160,6 +160,11 @@ pub struct Laco {
     forca_oculta: Option<bool>,
     /// O próximo quadro sem present ([`SEM_PRESENT`] depois do anterior).
     passo_oculto: Option<Instant>,
+    /// Os produtores que se pediram DENTRO do quadro ([`pede`]), um bit por posição em
+    /// [`Produtor::TODOS`]; o [`Laco::acorda`] seguinte lê-os e esvazia-os.
+    pedidos: u32,
+    /// O despertar mais cedo pedido dentro do quadro ([`desperta_ate`]); esvazia como `pedidos`.
+    despertar: Option<Instant>,
 }
 
 /// Um smoke conta quadros ou conduz a cena: qualquer `PH2D_*SMOKE*`/`*DEMO*`,
@@ -181,6 +186,8 @@ impl Laco {
             oculta: false,
             forca_oculta: None,
             passo_oculto: None,
+            pedidos: 0,
+            despertar: None,
         }
     }
 
@@ -225,7 +232,16 @@ impl Laco {
             .is_some_and(|t| agora.saturating_duration_since(t) < PRAZO);
         let deste = [(self.smoke, Produtor::Smoke), (recente, Produtor::Entrada)];
         let extra = deste.iter().filter(|(sim, _)| *sim).map(|(_, p)| *p);
-        for p in documento.iter().copied().chain(extra).take(ativos.len()) {
+        let pedidos = (Produtor::TODOS.iter().enumerate())
+            .filter(|(i, _)| self.pedidos & (1 << i) != 0)
+            .map(|(_, p)| *p);
+        for p in documento
+            .iter()
+            .copied()
+            .chain(pedidos)
+            .chain(extra)
+            .take(ativos.len())
+        {
             ativos[n] = p;
             n += 1;
         }
@@ -257,6 +273,8 @@ impl Laco {
     #[must_use]
     pub fn acorda(&mut self, documento: &[Produtor], agora: Instant) -> Option<Instant> {
         let pedido = self.pedido(documento, agora);
+        self.pedidos = 0;
+        let despertar = self.despertar.take();
         rastreio::rastreia(&pedido);
         match pedido {
             Pedido::Ja(_) if !self.apresenta() => {
@@ -269,9 +287,36 @@ impl Laco {
                 (alvo > agora).then_some(alvo)
             }
             Pedido::Ja(_) => None,
-            Pedido::Ate { prazo, .. } => Some(agora + prazo),
+            Pedido::Ate { prazo, .. } => {
+                Some(despertar.map_or(agora + prazo, |d| d.min(agora + prazo)))
+            }
         }
     }
+
+    /// Ver [`pede`].
+    pub fn pede(&mut self, p: Produtor) {
+        let i = Produtor::TODOS.iter().position(|q| *q == p).unwrap_or(0);
+        self.pedidos |= 1 << i;
+    }
+
+    /// Ver [`desperta_ate`].
+    pub fn desperta_ate(&mut self, t: Instant) {
+        self.despertar = Some(self.despertar.map_or(t, |d| d.min(t)));
+    }
+}
+
+/// ⭐ B23.2 — um produtor que só se sabe DENTRO do quadro (o tique da família: o tocar do Pixel, a
+/// mola ao vivo, o vídeo do Quadro) pede o quadro seguinte daqui, sem uma linha na shell. Vale até ao
+/// próximo [`Laco::acorda`]: quem continua a mexer pede-o de novo no quadro que esse pedido trouxe.
+pub fn pede(p: Produtor) {
+    no_laco(|l| l.pede(p));
+}
+
+/// ⭐ B23.2 — o laço a dormir acorda no máximo em `t` (a próxima mudança VISTA de um relógio: o
+/// segundo do cronómetro, a fase do piscar), em vez de desenhar a 60 q/s para mudar uma vez por meio
+/// segundo. Vale até ao próximo [`Laco::acorda`], como [`pede`].
+pub fn desperta_ate(t: Instant) {
+    no_laco(|l| l.desperta_ate(t));
 }
 
 thread_local! {

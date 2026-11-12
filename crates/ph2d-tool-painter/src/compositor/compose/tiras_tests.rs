@@ -5,6 +5,7 @@
 
 use super::barreira::{FIOS_DA_REGIAO, LINHAS_DA_TIRA};
 use super::barreira_tests::{bits, compor_regiao_antigo, pilha, raster};
+use super::resumo::SEM_RESUMO;
 use super::*;
 use std::sync::atomic::Ordering::Relaxed;
 
@@ -47,8 +48,8 @@ fn as_tiras_de_cache_e_o_salto_em_todos_os_modos_sao_a_rota_antiga_ao_bit() {
 /// Sonda B19.10 (`--ignored`, `--profile smoke`, SOZINHA: mexe nas chaves globais): `composite` a
 /// 3840×2160, base opaca + N ∈ {1, 4, 16} camadas (modos Normal·Multiply·Screen·Overlay em roda) —
 /// vazias, traços (~10 % pintado) e ruído (¼ de α = 0) — em quatro rotas: A = a de antes (banda
-/// inteira, salto só no Normal) · B = tiras · C = salto em todos os modos · D = tiras + salto (o
-/// produto). ABCDDCBA, o mínimo de 6 de cada; a saída é a mesma ao bit.
+/// inteira, salto só no Normal) · B = tiras · C = salto em todos os modos · D = tiras + salto ·
+/// E = D + o resumo por ladrilho (o produto). ABCDEEDCBA, o mínimo de 6 de cada; a mesma saída ao bit.
 #[test]
 #[ignore]
 fn mede_as_tiras_de_cache_4k() {
@@ -89,12 +90,13 @@ fn mede_as_tiras_de_cache_4k() {
                     }
                 }
             }
-            let mut best = [f64::MAX; 4];
-            let mut saidas: [Option<Vec<u8>>; 4] = [None, None, None, None];
-            for i in 0..24usize {
-                let v = [0usize, 1, 2, 3, 3, 2, 1, 0][i % 8];
-                LINHAS_DA_TIRA.store(if v & 1 == 0 { u32::MAX } else { 0 }, Relaxed);
+            let mut best = [f64::MAX; 5];
+            let mut saidas: [Option<Vec<u8>>; 5] = [None, None, None, None, None];
+            for i in 0..30usize {
+                let v = [0usize, 1, 2, 3, 4, 4, 3, 2, 1, 0][i % 10];
+                LINHAS_DA_TIRA.store(if v == 0 || v == 2 { u32::MAX } else { 0 }, Relaxed);
                 SALTO_SO_NORMAL.store(v < 2, Relaxed);
+                SEM_RESUMO.store(v < 4, Relaxed);
                 let t0 = std::time::Instant::now();
                 let out = composite(&s, &src, w, h);
                 best[v] = best[v].min(t0.elapsed().as_secs_f64() * 1e3);
@@ -102,13 +104,14 @@ fn mede_as_tiras_de_cache_4k() {
             }
             LINHAS_DA_TIRA.store(0, Relaxed);
             SALTO_SO_NORMAL.store(false, Relaxed);
+            SEM_RESUMO.store(false, Relaxed);
             assert!(
                 saidas.iter().all(|o| *o == saidas[0]),
                 "{cena} N={n}: a saída mudou"
             );
             println!(
-                "[B19.10] 3840x2160 {cena} N={n}: antes {:.1} ms | tiras {:.1} | salto todos {:.1} | tiras+salto {:.1}",
-                best[0], best[1], best[2], best[3]
+                "[B19.10] 3840x2160 {cena} N={n}: antes {:.1} ms | tiras {:.1} | salto todos {:.1} | tiras+salto {:.1} | +ladrilhos {:.1}",
+                best[0], best[1], best[2], best[3], best[4]
             );
         }
     }

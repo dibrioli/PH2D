@@ -37,6 +37,11 @@ impl LayerPixelSource for ToolPixelSource<'_> {
             self.images.get(&id).map(|img| img.rgba8.as_slice())
         }
     }
+    fn layer_plane(&self, id: RtLayerId) -> Option<&Arc<Vec<u8>>> {
+        (id != self.active_id)
+            .then(|| self.images.get(&id).map(|img| &img.rgba8))
+            .flatten()
+    }
 }
 
 /// Take a layer's pixels out of the shared store WITHOUT copying (B18.1): the plane stays shared with an

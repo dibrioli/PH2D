@@ -227,7 +227,7 @@ fn compor_regiao(
         &mut acc,
         t.as_deref_mut(),
         stack,
-        src,
+        &resumo::com_resumos(stack, src, (width, height)),
         (width, height),
         region,
         vidros,
@@ -346,7 +346,9 @@ pub(super) fn composite_into(
                     });
                     m * clip.map_or(1.0, |base| base[idx * 4 + 3] as f32 / 255.0)
                 };
-                blend_window(acc, rx, ry, rw, rh, mode, opacity, sample);
+                let vazios = src.layer_vazios(id);
+                let jan = (rx, ry, rw, rh);
+                resumo::blend_window_resumo(acc, jan, canvas_w, mode, opacity, vazios, sample);
                 // O papel atravessa esta camada canal a canal (o vidro só no modo Normal: os outros
                 // modos não são um filtro sobre o que está por baixo).
                 if let Some((planos, t)) = vidro.as_mut() {
@@ -671,6 +673,9 @@ mod prancha_b19_2_tests;
 mod prancha_b19a_tests;
 #[cfg(test)]
 mod recorte_tests;
+mod resumo;
+#[cfg(test)]
+mod resumo_tests;
 #[cfg(test)]
 mod salto_tests;
 #[cfg(test)]

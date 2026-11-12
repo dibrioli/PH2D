@@ -68,6 +68,16 @@ impl LayerImage {
 /// `Arc<Vec<u8>>` canvas) without cloning. `None` for unknown/group layers.
 pub trait LayerPixelSource {
     fn layer_rgba(&self, id: LayerId) -> Option<&[u8]>;
+    /// The shared plane BEHIND [`Self::layer_rgba`] (the same bytes), when there is one: B19.10 keys its
+    /// per-layer empty-block summary on the plane's `Arc` allocation (a `Weak`), which every write moves.
+    fn layer_plane(&self, _id: LayerId) -> Option<&Arc<Vec<u8>>> {
+        None
+    }
+    /// B19.10: one byte per (canvas row, 64-px column block), `0` = every texel α = 0. Only the
+    /// compositor's own wrapper answers it.
+    fn layer_vazios(&self, _id: LayerId) -> Option<&[u8]> {
+        None
+    }
 }
 
 /// Trivial [`LayerPixelSource`] over a `BTreeMap` — tests + simple hosts.
@@ -86,6 +96,9 @@ impl MapPixelSource {
 impl LayerPixelSource for MapPixelSource {
     fn layer_rgba(&self, id: LayerId) -> Option<&[u8]> {
         self.images.get(&id).map(|img| img.rgba8.as_slice())
+    }
+    fn layer_plane(&self, id: LayerId) -> Option<&Arc<Vec<u8>>> {
+        self.images.get(&id).map(|img| &img.rgba8)
     }
 }
 

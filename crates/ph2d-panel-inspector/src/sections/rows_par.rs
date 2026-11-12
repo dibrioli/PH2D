@@ -330,6 +330,7 @@ pub(crate) fn caixa_de_cabecalho(
     };
     ph2d_editor_core::widget::paint_checkbox(
         &ph2d_editor_core::widget::Checkbox::new(id, "")
+            .fora_do_formulario()
             .visual(store.checkbox_visual(id))
             .value(valor),
         caixa,

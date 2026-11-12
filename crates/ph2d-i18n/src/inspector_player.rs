@@ -74,7 +74,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.player.dynamic" => "Dynamic",
         "panel.inspector.player.kinematic" => "Kinematic",
-        "panel.inspector.player.pure" => "Kinematic, pushes nothing",
+        "panel.inspector.player.pure" => "Pure kinematic",
         "panel.inspector.player.emit_signals" => "Emit Signals",
         "panel.inspector.player.full" => "Full",
         "panel.inspector.player.up_only" => "Up Only",

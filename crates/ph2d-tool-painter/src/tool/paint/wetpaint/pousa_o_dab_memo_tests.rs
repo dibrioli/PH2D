@@ -4,7 +4,7 @@
 
 use super::super::agua_sobre_oleo_tests::{mostrada, ponteiro};
 use super::super::undo_tinta_morre_tests as m;
-use super::{MEMOS_BASE, SEM_MEMO_BASE};
+use super::oraculos::{MEMOS_BASE, SEM_MEMO_BASE};
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
 /// As contagens da silhueta são globais (`wet_diag`): os traços deste módulo pintam um de cada vez.
@@ -67,13 +67,13 @@ fn pinta_contando(sem_corte: bool, pincel: &str, tamanho: f32) -> (Vec<u8>, [u64
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     CONTANDO.with(|c| c.set(true));
-    super::SEM_CORTE_FORA.with(|s| s.set(sem_corte));
+    super::oraculos::SEM_CORTE_FORA.with(|s| s.set(sem_corte));
     crate::wet_diag::CONTA_SIL.store(true, std::sync::atomic::Ordering::Relaxed);
     let _ = crate::wet_diag::take_sil();
     let (px, _) = pinta(false, pincel, tamanho);
     let s = crate::wet_diag::take_sil();
     crate::wet_diag::CONTA_SIL.store(false, std::sync::atomic::Ordering::Relaxed);
-    super::SEM_CORTE_FORA.with(|s| s.set(false));
+    super::oraculos::SEM_CORTE_FORA.with(|s| s.set(false));
     CONTANDO.with(|c| c.set(false));
     (px, [s[2], s[5], s[0]])
 }

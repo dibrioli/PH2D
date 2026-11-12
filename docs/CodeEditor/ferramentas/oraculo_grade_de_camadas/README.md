@@ -7,7 +7,9 @@ e num médio uns saíam «…».
 **O oráculo** (Godot 4.7.2, MIT, `corre.sh` + `sonda.gd`, editor numa Xvfb com um Sprite2D):
 [`godot_grade_zoom.png`](godot_grade_zoom.png) — o `EditorPropertyLayers` põe o número DENTRO de um ladrilho, aceso
 (acento) quando a camada está ligada, escuro com o número apagado quando não; células pequenas de tamanho fixo.
-(A medição JSON da sonda saiu vazia, e o estreitamento do dock não pegou — a foto chega para a lei.)
+(A medição JSON da sonda saiu vazia, e o estreitamento do dock não pegou — a 2.ª foto saía pixel a pixel igual à
+[`foto_01_dock_omissao.png`](foto_01_dock_omissao.png) (`compare -metric AE` = 0, 11/11), por isso a sonda tem uma fase
+só; a foto chega para a lei.)
 
 **A lei aplicada** (`ph2d-editor-core/src/widget/bitmask_grid32.rs`): ladrilho com o número dentro, `8 × 4`
 (metade da altura do `4 × 8` antigo), orçamento do número = o ladrilho menos `Xs` (não o de um rótulo). Gate

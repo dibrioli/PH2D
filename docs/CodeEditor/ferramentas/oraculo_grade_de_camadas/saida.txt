@@ -1,6 +1,4 @@
-# Oráculo: godot 4.7.2-2.1 · editor numa Xvfb 1600x1000 · 2026-10-24 · load 10.79 13.30 14.20
+# Oráculo: godot 4.7.2-2.1 · editor numa Xvfb 1600x1000 · 2026-11-11 · load 9.78 11.76 9.29
 # A geometria do EditorPropertyLayers por fase (x/y/w/h em px do ecrã).
 == fase 1
-{}
-== fase 2
 {}

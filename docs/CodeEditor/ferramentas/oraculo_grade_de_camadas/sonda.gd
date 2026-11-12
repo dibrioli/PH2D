@@ -2,8 +2,8 @@
 extends EditorPlugin
 # Sonda do oráculo «como o Godot mostra uma máscara de 32 camadas?» (CodeEditor, report do dono 24/10: a grade do
 # «Cull Mask» sem números). SÓ MEDE: selecciona o Sprite2D, abre as secções, rola até à «Visibility Layer», grava a
-# geometria do `EditorPropertyLayers` e escreve a fase para o corre.sh fotografar. Fase 1 = dock de omissão;
-# fase 2 = o mesmo com o dock estreitado para ~260 px.
+# geometria do `EditorPropertyLayers` e escreve a fase para o corre.sh fotografar. Uma fase só (dock de omissão):
+# o estreitamento do dock (`split_offset`) saiu porque não pegava — a 2.ª foto era pixel a pixel a 1.ª (11/11).
 
 var dir := OS.get_environment("SONDA_DIR")
 var t := 0.0
@@ -25,7 +25,7 @@ func _mede(no: Node) -> Dictionary:
 func _process(d: float) -> void:
 	t += d
 	var alvo := int(t / 4.0)
-	if alvo <= fase or fase >= 2:
+	if alvo <= fase or fase >= 1:
 		return
 	fase += 1
 	var raiz := EditorInterface.get_edited_scene_root()
@@ -36,12 +36,6 @@ func _process(d: float) -> void:
 	EditorInterface.edit_node(no)
 	await get_tree().process_frame
 	var insp := EditorInterface.get_inspector()
-	if fase == 2:
-		var dock: Node = insp.get_parent()
-		while dock != null and not dock is SplitContainer:
-			dock = dock.get_parent()
-		if dock != null:
-			dock.split_offset += int(insp.size.x) - 260
 	for s in insp.find_children("*", "EditorInspectorSection", true, false):
 		s.call("unfold")
 	await get_tree().process_frame

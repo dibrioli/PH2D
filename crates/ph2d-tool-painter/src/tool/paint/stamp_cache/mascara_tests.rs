@@ -113,6 +113,17 @@ fn o_tecto_largo_zera_o_sujo_como_o_u8() {
     let mut m: MascaraDoTraco<TexelLargo> = MascaraDoTraco::default();
     m.clear();
     m.prepara(n, w, StrokeMethod::Line, [a]);
+    // O mapa nasce de páginas zeradas (`zeroed_vec`): esse zero tem de ser o `Default` que os leitores esperam.
+    assert_eq!(
+        <TexelLargo as bytemuck::Zeroable>::zeroed(),
+        TexelLargo::default()
+    );
+    assert!(m.iter().all(|&t| t == TexelLargo::default()));
+    assert_eq!(
+        m.zerados(),
+        0,
+        "o 1.º lote do tecto largo recebe páginas do SO, como o u8"
+    );
     for y in a.y as usize..(a.y + a.h) as usize {
         let i = y * w + a.x as usize;
         m.fatia_do_lote()[i..i + a.w as usize].fill(cheio);

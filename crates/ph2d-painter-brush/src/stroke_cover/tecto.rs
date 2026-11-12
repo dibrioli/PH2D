@@ -21,7 +21,9 @@ impl Tecto for u8 {
 }
 
 /// A cobertura do traço em `u16` e o pré-traço (capturado quando o texel sai de `m = 0`): 6 bytes por texel.
-#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+/// `Zeroable`: o `Default` é o zero dos bits, e o mapa da tela nasce de `bytemuck::zeroed_vec` (páginas do SO,
+/// como o `u8`) — `vec![TexelLargo::default(); n]` escrevia ~50 MB a 4K no pen-down (+8 ms, medido 11/11).
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug, bytemuck::Zeroable)]
 pub struct TexelLargo {
     pub m: u16,
     pub pre: [u8; 4],

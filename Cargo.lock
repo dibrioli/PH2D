@@ -10045,6 +10045,7 @@ dependencies = [
 name = "ph2d-painter-brush"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "ph2d-det-math",
  "ph2d-label-census",
  "ph2d-pen-law",

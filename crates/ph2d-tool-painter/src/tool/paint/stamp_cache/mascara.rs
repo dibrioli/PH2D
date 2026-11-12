@@ -10,7 +10,6 @@
 //! inteiro como sujo: o re-carimbo seguinte zera tudo, que é a lei antiga.
 
 use super::super::Region;
-use crate::plane_copy::size_to;
 use ph2d_painter_brush::{StrokeMethod, TexelLargo};
 use std::ops::{Deref, DerefMut};
 
@@ -46,7 +45,7 @@ impl<T> DerefMut for MascaraDoTraco<T> {
     }
 }
 
-impl<T: Copy + Default + PartialEq + Send + Sync> MascaraDoTraco<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync + bytemuck::Zeroable> MascaraDoTraco<T> {
     /// O pen-down: o mapa do traço anterior volta ao SO; o 1.º lote recebe páginas zeradas.
     pub(crate) fn clear(&mut self) {
         self.texels = Vec::new();
@@ -75,8 +74,8 @@ impl<T: Copy + Default + PartialEq + Send + Sync> MascaraDoTraco<T> {
                 self.zerados += len.saturating_sub(antes) as u64;
                 self.sujo = Sujo::Todo;
             } else {
-                self.texels = Vec::new();
-                size_to(&mut self.texels, len, T::default());
+                // `zeroed_vec` = `alloc_zeroed` para QUALQUER texel (o `vec![T::default(); n]` só o faz no `u8`).
+                self.texels = bytemuck::zeroed_vec(len);
                 self.sujo = Sujo::Limpo;
             }
         } else if !incremental {

@@ -61,6 +61,9 @@ rayon = "1"
 ph2d-pigment = { path = "../ph2d-pigment" }
 # O tapete de cerdas do Wet Paint (o tipo Bristles do Shape, plano 27 D1): um só gerador, o do motor.
 ph2d-wet-paint = { path = "../ph2d-wet-paint" }
+# `Zeroable` do `TexelLargo` (B29.1): o mapa do tecto a 4K nasce de páginas zeradas do SO (`zeroed_vec`, sem
+# `unsafe` aqui) em vez de 50 MB escritos no pen-down. Só o derive; nada de UI nem de GPU.
+bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 
 [dev-dependencies]
 # A régua lexical do HR-15, para o censo deste motor.

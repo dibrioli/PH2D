@@ -372,3 +372,127 @@ fn sonda_b13_6_saida_por_bloco() {
             .trim()
     );
 }
+
+/// `n` traços longos de `preset` (faixas a cada 140 px de 1080p, cabem 6 a 4K), sessão em casa.
+fn tela_n(lib: &Biblioteca, w: usize, h: usize, preset: &str, n: usize) -> PainterTool {
+    let k = w as f32 / 1920.0;
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.preset_aplicar(por_nome(lib, preset)).expect("preset");
+    t.set_brush_size_px(120.0 * k);
+    for lane in 0..n {
+        let y = (250.0 + 140.0 * lane as f32) * k;
+        t.on_canvas_pointer(cp([200.0 * k, y], PointerPhase::Down));
+        for s in 1..=60 {
+            t.on_canvas_pointer(cp([(200.0 + 25.0 * s as f32) * k, y], PointerPhase::Move));
+            t.on_tick(1000.0 / 60.0);
+            let _ = t.take_preview_arc();
+        }
+        t.on_canvas_pointer(cp([1700.0 * k, y], PointerPhase::Up));
+    }
+    t.wet_bring_home();
+    t
+}
+
+/// B13.12: o escorrer em TEMPO REAL? Para 1..`PH2D_TRACOS` (6) traços de `PH2D_SONDA_PRESET` (Wet Wash) a
+/// `PH2D_SONO_RES` (4K), duas telas iguais passo a passo INTERCALADAS, uma num pool de 1 fio e outra no de
+/// `PH2D_FIOS` (todos): ms/passo (mín. e mediana de 120 passos = 3 s simulados), o mínimo por ESTÁGIO 0..6
+/// (Amdahl: o estágio que não encolhe com os fios é o serial que sobra), o digest de film/susp/sett/vel ao
+/// bit entre os dois pools (tem de ser 0 passos diferentes) e sim-s/s = min(1, 25 ms / mediana) — o worker
+/// corre `STEP_S` = 25 ms de sim por passo e nunca recupera (câmera lenta = sim-s/s < 1).
+#[test]
+#[ignore = "sonda: corre à mão, no perfil smoke"]
+fn sonda_n_tracos_em_tempo_real() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let lib = Biblioteca::carregar(&raiz, None);
+    let env = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<usize>().ok());
+    let preset = std::env::var("PH2D_SONDA_PRESET").unwrap_or_else(|_| "Wet Wash".into());
+    let (w, h) = match std::env::var("PH2D_SONO_RES").as_deref() {
+        Ok("1080") => (1920, 1080),
+        _ => (3840, 2160),
+    };
+    let fios = env("PH2D_FIOS").unwrap_or_else(rayon::current_num_threads);
+    let pools = [1, fios].map(|f| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(f)
+            .build()
+            .expect("pool")
+    });
+    const PASSOS: usize = 120;
+    println!("\n  B13.12 {w}x{h} · {preset} · pools 1 × {fios} fios");
+    for n in 1..=env("PH2D_TRACOS").unwrap_or(6) {
+        let mut ts = [
+            tela_n(&lib, w, h, &preset, n),
+            tela_n(&lib, w, h, &preset, n),
+        ];
+        let mut ms = [Vec::new(), Vec::new()];
+        let mut est = [[f64::MAX; 7]; 2];
+        let mut dif = 0;
+        let mut celulas = 0u64;
+        for step in 0..PASSOS {
+            let mut hs = [0u64; 2];
+            for lado in [step % 2, 1 - step % 2] {
+                let e: &mut ph2d_wet_paint::painter::Engine = &mut ts[lado]
+                    .paint
+                    .wetpaint
+                    .session
+                    .as_mut()
+                    .expect("sessao")
+                    .engine;
+                let idx = e.active_layer;
+                let ph2d_wet_paint::painter::Engine {
+                    sim,
+                    layers,
+                    tuning,
+                    ..
+                } = &mut *e;
+                let g = &mut layers[idx].grid;
+                let mut por = [0f64; 7];
+                let a = Instant::now();
+                pools[lado].install(|| {
+                    for k in 0.. {
+                        let b = Instant::now();
+                        let fim = sim_step_stage(sim, g, tuning).is_some();
+                        por[k.min(6)] += b.elapsed().as_secs_f64() * 1e3;
+                        if fim {
+                            break;
+                        }
+                    }
+                });
+                ms[lado].push(a.elapsed().as_secs_f64() * 1e3);
+                for (m, p) in est[lado].iter_mut().zip(por) {
+                    if p > 0.0 {
+                        *m = m.min(p);
+                    }
+                }
+                celulas = g.live_span_cells();
+                let mut x = 0xcbf2_9ce4_8422_2325u64;
+                for c in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
+                    for v in c.iter() {
+                        x = (x ^ u64::from(v.to_bits())).wrapping_mul(0x0100_0000_01b3);
+                    }
+                }
+                hs[lado] = x;
+            }
+            dif += usize::from(hs[0] != hs[1]);
+        }
+        for (l, f) in [1, fios].into_iter().enumerate() {
+            let mut v = ms[l].clone();
+            v.sort_by(f64::total_cmp);
+            let med = v[v.len() / 2];
+            let r: Vec<f64> = est[l].iter().map(|m| (m * 100.0).round() / 100.0).collect();
+            println!(
+                "    {n} traço(s) · {f:>2} fios · passo mín {:>6.2} med {med:>6.2} ms · sim-s/s {:.2} · estágios mín {r:?} · células vivas {celulas} · passos ≠ {dif}/{PASSOS}",
+                v[0],
+                (25.0 / med).min(1.0)
+            );
+        }
+    }
+    println!(
+        "  load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+}

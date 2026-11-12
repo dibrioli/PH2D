@@ -111,7 +111,8 @@ grupo 45.2/51.2 → 41.2/42.0 · mais 104.1/109.8 → 79.8/111.3 · troca 87.3/9
 
 Binário: `Worktrees/line-PainterWatercolor/target/smoke/ph2d-host-desktop`.
 
-<!-- BINARIO_SMOKE -->
+Compilado 2× depois de `rm -rf target/*/incremental` (23 GB) sobre `b77199380c`; a 1.ª recompilou só o
+`ph2d-host-desktop` (24,95 s), a 2.ª: `Finished \`smoke\` profile [optimized] target(s) in 0.25s` (zero `Compiling`).
 
 Comando base (cada passo acrescenta só o que diz): `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_PAINEL=wet PH2D_COMPOSITE_TELA=3840x2160 PH2D_COMPOSITE_FUNDO=papel PH2D_COMPOSITE_PAPEL=1 ./target/smoke/ph2d-host-desktop`
 

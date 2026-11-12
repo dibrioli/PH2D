@@ -95,6 +95,13 @@ impl Documents {
         f.is_some_and(|f| f.floats_at(tab.id, x, y))
     }
 
+    /// A roda sobre o chrome (`over_chrome`) é dele, salvo onde a aba activa flutua por cima
+    /// ([`Self::surface_floats_at`]: um menu dela sobre um painel rola o menu).
+    #[must_use]
+    pub fn chrome_owns_wheel(&self, over_chrome: bool, x: f32, y: f32) -> bool {
+        over_chrome && !self.surface_floats_at(x, y)
+    }
+
     /// Pinta o que a aba de família activa tem a flutuar sobre a janela inteira `window`.
     pub fn paint_floating(
         &mut self,

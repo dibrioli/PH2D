@@ -301,10 +301,9 @@ impl App {
         // ⭐ A janela do Input Map publica o rect do cartão como rect de painel (rolagem única, W5): a
         // roda rola-a como todo painel. Um menu da aba de família por cima de um painel é da aba.
         let (px, py) = self.last_pointer;
-        let over_panel = cursor_over_hero_panel(self.gfx.as_ref(), px, py)
-            && !self
-                .hero_ref()
-                .is_some_and(|h| h.documents.surface_floats_at(px, py));
+        let over = cursor_over_hero_panel(self.gfx.as_ref(), px, py);
+        let over_panel =
+            (self.hero_ref()).map_or(over, |h| h.documents.chrome_owns_wheel(over, px, py));
         // ⭐ Um QUADRO activo (MiroClone) é dono da área de desenho: a roda dá zoom nele, nunca na cena.
         if !over_panel
             && let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())

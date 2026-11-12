@@ -462,6 +462,12 @@ impl Registo {
     /// Devolve o grid à base deste registo. `extra` cobre os tiles escritos desde o último evento do
     /// histórico que este registo não guarda (o caso do refazer). Devolve `true` se o papel mudou.
     pub fn restaura(&self, g: &mut Grid, extra: Option<&Registo>) -> bool {
+        self.restaura_com(g, extra, true)
+    }
+
+    /// O [`Self::restaura`] que, com `zera_o_fluxo = false`, deixa `flow_x`/`flow_y` como estão: só para quem os
+    /// reescreve INTEIROS antes de qualquer leitura (o undo vivo do Painter: 66 MB de memset a 4K, ~10 ms).
+    pub fn restaura_com(&self, g: &mut Grid, extra: Option<&Registo>, zera_o_fluxo: bool) -> bool {
         let tiles = || {
             self.finos.iter().chain(
                 extra
@@ -510,8 +516,10 @@ impl Registo {
             poe(&mut g.vel_x, fs, r, vx);
             poe(&mut g.vel_y, fs, r, vy);
         }
-        g.flow_x.fill(0.0);
-        g.flow_y.fill(0.0);
+        if zera_o_fluxo {
+            g.flow_x.fill(0.0);
+            g.flow_y.fill(0.0);
+        }
         let b = &self.base;
         g.bx0 = b.bx0;
         g.by0 = b.by0;

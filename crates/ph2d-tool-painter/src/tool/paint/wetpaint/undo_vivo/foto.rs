@@ -76,6 +76,12 @@ impl FotoDoMotor {
         s.semente_do_po = r.semente_do_po;
     }
 
+    /// Se o [`Self::repoe`] reescreve o fluxo da camada `i` inteiro (cópia de todos os tiles ou esvaziamento), sem ler o
+    /// que lá estava — a condição para o undo do motor não o zerar antes.
+    pub(super) fn repoe_o_fluxo_de(&self, i: usize) -> bool {
+        i < self.fluxo.len()
+    }
+
     fn planos(&self) -> impl Iterator<Item = &PlanoEmTiles> {
         self.oleo_antes
             .iter()

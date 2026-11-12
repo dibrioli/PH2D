@@ -325,10 +325,12 @@ impl PainterTool {
                         y1.saturating_sub(1).clamp(1, gh),
                     )
                 });
-            let feito = if refaz {
-                sess.engine.redo()
-            } else {
-                sess.engine.undo()
+            // A fotografia reescreve o fluxo da camada activa INTEIRO: zerá-lo antes era memset morto (66 MB a 4K).
+            let feito = match (refaz, foto.repoe_o_fluxo_de(sess.engine.active_layer)) {
+                (true, true) => sess.engine.redo_sem_zerar_o_fluxo(),
+                (true, false) => sess.engine.redo(),
+                (false, true) => sess.engine.undo_sem_zerar_o_fluxo(),
+                (false, false) => sess.engine.undo(),
             };
             debug_assert!(
                 feito,

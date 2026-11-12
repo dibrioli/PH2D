@@ -259,6 +259,16 @@ impl Engine {
 
     /// Desfaz o último passo; sem nada a desfazer não mexe em nada (nem no ritmo da água).
     pub fn undo(&mut self) -> bool {
+        self.undo_com(true)
+    }
+
+    /// O [`Self::undo`] que deixa o fluxo (`flow_x`/`flow_y`) da camada activa por zerar: só para quem o REESCREVE
+    /// inteiro logo a seguir, antes de qualquer leitura (o undo vivo do Painter repõe-no da fotografia).
+    pub fn undo_sem_zerar_o_fluxo(&mut self) -> bool {
+        self.undo_com(false)
+    }
+
+    fn undo_com(&mut self, zera_o_fluxo: bool) -> bool {
         if !self.can_undo() {
             return false;
         }
@@ -275,7 +285,7 @@ impl Engine {
         let mut inv = Registo::inverso(&layer.grid, &reg, None);
         inv.passo = agora;
         layer.redo.push(inv);
-        let paper_changed = reg.restaura(&mut layer.grid, None);
+        let paper_changed = reg.restaura_com(&mut layer.grid, None, zera_o_fluxo);
         layer.desde = Some(Registo::abre(&layer.grid));
         self.repoe_passo(&reg.passo);
         self.depois_do_restauro(paper_changed, caixa, forma);
@@ -284,6 +294,15 @@ impl Engine {
 
     /// Refaz; o passo em voo de agora entra no registo inverso (um undo devolve-o) e o do registo é reposto.
     pub fn redo(&mut self) -> bool {
+        self.redo_com(true)
+    }
+
+    /// O [`Self::redo`] que deixa o fluxo por zerar — o mesmo contrato do [`Self::undo_sem_zerar_o_fluxo`].
+    pub fn redo_sem_zerar_o_fluxo(&mut self) -> bool {
+        self.redo_com(false)
+    }
+
+    fn redo_com(&mut self, zera_o_fluxo: bool) -> bool {
         let agora = self.passo_em_voo();
         let caixa = self.caixa_do_restauro(true);
         let forma = forma_global(&self.layers[self.active_layer].grid);
@@ -297,7 +316,7 @@ impl Engine {
         let desde = layer.desde.take();
         let mut inv = Registo::inverso(&layer.grid, &reg, desde.as_ref());
         inv.passo = agora;
-        let paper_changed = reg.restaura(&mut layer.grid, desde.as_ref());
+        let paper_changed = reg.restaura_com(&mut layer.grid, desde.as_ref(), zera_o_fluxo);
         layer.undo.push(inv);
         if layer.undo.len() > fundo {
             layer.undo.remove(0);

@@ -85,3 +85,17 @@ fn o_script_que_conecta_o_nome_e_listado_como_script() {
     assert_eq!(l.list.len(), 1, "o on_signal não é um ouvinte nomeado");
     assert!(l.script_may, "mas pode ouvir");
 }
+
+/// Dois objectos com o MESMO nome (ou sem nome) que ouvem são DUAS linhas: a deduplicação é por
+/// entidade. *Mutação: deduplicar por (nome, o que ouve) ⇒ uma linha só.*
+#[test]
+fn dois_objetos_com_o_mesmo_nome_sao_dois_ouvintes() {
+    let mut w = World::new();
+    w.spawn((Name::new("Hero"), SignalActions(vec![acao("land")])));
+    w.spawn((Name::new("Hero"), SignalActions(vec![acao("land")])));
+    w.spawn(SignalActions(vec![acao("land")]));
+    w.spawn(SignalActions(vec![acao("land")]));
+    let l = ouvem(&w, "land");
+    assert_eq!(l.len(), 4, "{l:?}");
+    assert_eq!(l.iter().filter(|x| x.object.is_none()).count(), 2);
+}

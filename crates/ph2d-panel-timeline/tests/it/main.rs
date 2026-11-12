@@ -27,6 +27,7 @@ mod grupo_de_canais_seam;
 mod keys_ruler_moves_the_editor_clock_seam;
 mod marker_menu_seam;
 mod nesting_seam;
+mod no_lugar_lanes_seam;
 mod no_lugar_moldura_seam;
 mod no_lugar_seam;
 mod o_cartao_estreito;

@@ -391,8 +391,10 @@ impl PreviewDrive {
     /// forma* — e é esta porta que os separa.
     ///
     /// ⭐ **Como [`Self::driven`], SEM a «outra mão»**: o autorado de uma condução que já existe
-    /// nunca muda. É a sessão «Animating» da Timeline (doc 17 item 9, idioma do Construct): enquanto
-    /// se anima, só as CHAVES são documento — a pose de entrada fica autorada até ao Done.
+    /// nunca muda nos campos que o motor CONDUZ. É a sessão «Animating» da Timeline (doc 17 item 9,
+    /// idioma do Construct): enquanto se anima, só as CHAVES são documento — a pose de entrada fica
+    /// autorada até ao Done; um campo que o motor não reescreve adopta a outra mão (`held.rs`).
+    /// Chame-a também com `before == after` quando há entrada (`still_driving`).
     pub fn driven_held(&mut self, entity: Entity, before: Driven, after: Driven) {
         let e = self
             .memo
@@ -402,6 +404,9 @@ impl PreviewDrive {
                 last_written: after,
                 seen: true,
             });
+        if e.last_written != before {
+            e.authored = e.authored.adopta_por_campo(e.last_written, before, after);
+        }
         e.last_written = after;
         e.seen = true;
     }
@@ -580,6 +585,7 @@ mod consultas;
 mod facto;
 /// ⭐ Os campos escritos por script — irmão por LOC e por chave (doc CodeEditor 08 §3.6).
 pub mod fields;
+mod held;
 pub use fields::{FieldDrive, FieldRef};
 /// ⭐ Os componentes inteiros conduzidos — irmão por LOC e por chave (macros W19 §2.4).
 pub mod blobs;

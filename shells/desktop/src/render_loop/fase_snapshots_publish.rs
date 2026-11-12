@@ -207,8 +207,7 @@ impl crate::App {
         ph2d_panel_timeline::ouvintes(|n| ph2d_signal_census::listeners(sim.world(), &fora, n));
         #[cfg(feature = "panel-tags")]
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
-        // ⭐⭐ **As secções que o `publish` NÃO pode calcular** (leem a VM, o relógio, as partículas
-        // vivas — nada disso está no mundo) — na fase-filha, num ficheiro irmão (tecto de função).
+        // ⭐⭐ As secções que o `publish` NÃO pode calcular (VM, relógio, partículas): fase-filha.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
         let s = tardios::Sessao::nova(sel, self.playhead.is_playing(), &hero.input_map, motion);
         tardios::publica(sim, tags, script.as_ref(), particles, &s);

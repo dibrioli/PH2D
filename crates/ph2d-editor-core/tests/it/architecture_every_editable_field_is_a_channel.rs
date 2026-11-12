@@ -1678,6 +1678,12 @@ const SEM_COLUNA_FORA: &[(&str, &str, Classe, &str)] = &[
         "o mudo de uma faixa da pilha é parâmetro da animação; não se anima a si própria (cartões)",
     ),
     (
+        "ph2d-panel-timeline",
+        "no_lugar_paint.rs::coluna",
+        NaoAnimavel,
+        "o mudo de uma faixa de DENTRO do container aberto no lugar: o mesmo parâmetro da animação",
+    ),
+    (
         "ph2d-panel-flip-frames",
         "paint_toolbar.rs::dropdown_chip",
         NaoAnimavel,

@@ -417,11 +417,11 @@ impl crate::App {
         // ⚠️ **PRIMEIRO, e antes de qualquer captura:** o ledger da condução esquece quem os
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
         // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
+        self.devolve_a_cena(); // o «Done» da Timeline (doc 17 item 9), com o ledger ainda a conduzir
         self.preview_drive.settle();
         self.vec.conducao.settle();
         self.flip_state.conducao.settle();
         self.physics.conducao.settle();
-        self.devolve_a_cena(); // o «Done» da Timeline (doc 17 item 9)
         // ⭐⭐⭐ **A FOTOGRAFIA que o `Cancel` da sessão de receita repõe** — pedida quando a sessão
         // abriu, tirada aqui, onde o `self` está livre (a captura reconcilia o documento antes de
         // fotografar e leva o `&mut self` inteiro).

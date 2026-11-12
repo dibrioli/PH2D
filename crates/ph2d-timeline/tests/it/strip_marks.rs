@@ -185,9 +185,10 @@ fn a_trim_and_a_stretch_at_the_same_edge_keep_separate_marks() {
             from: 3.0,
         },
     );
+    // Dono 11/11: a barra do trim continua a apontar o SEU original (4), agora do outro lado.
     assert!(
-        (mark(&st, id, false, 1) - 1.0).abs() < 1e-12,
-        "the trim's bar is still there"
+        (mark(&st, id, false, 1) + 1.0).abs() < 1e-12,
+        "the trim's bar is still there, still pointing at 4"
     );
     assert!(
         (mark(&st, id, true, 1) + 2.0).abs() < 1e-12,
@@ -241,5 +242,51 @@ fn setting_the_speed_marks_the_end_corner_like_a_stretch_does() {
     assert!(
         (mark(&st, id, true, 1) + 2.0).abs() < 1e-12,
         "and the green end corner wears the two seconds it grew"
+    );
+}
+
+/// **Stretch e trim na MESMA borda: cada barra aponta o ORIGINAL da sua alça** (dono 11/11). O
+/// painel manda `from = borda + a marca da própria op`; a marca da OUTRA op segue a borda para
+/// continuar a apontar o mesmo instante. *Mutação: não deslocar a outra marca ⇒ a verde aponta 5
+/// em vez de 4 — vermelho.*
+#[test]
+fn stretch_then_trim_on_one_edge_keep_both_originals() {
+    let (mut st, mut ph, id) = app_with_a_strip();
+    let fim = |st: &TimelineState| st.doc.strip(0, id).unwrap().t_end;
+    let mut drag = |st: &mut TimelineState, stretch: bool, t: f64| {
+        let from = fim(st) + mark(st, id, stretch, 1);
+        let i = if stretch {
+            I::StretchStrip {
+                lane: 0,
+                id,
+                edge: 1,
+                t,
+                from,
+            }
+        } else {
+            I::TrimStrip {
+                lane: 0,
+                id,
+                edge: 1,
+                t,
+                from,
+            }
+        };
+        apply_intent(st, &mut ph, i);
+    };
+    drag(&mut st, true, 6.0); // verde: original 4
+    drag(&mut st, false, 7.0); // vermelha: original 6
+    drag(&mut st, true, 8.0);
+    let e = fim(&st);
+    assert!((e - 8.0).abs() < 1e-9);
+    assert!(
+        (e + mark(&st, id, true, 1) - 4.0).abs() < 1e-9,
+        "a verde aponta o fim original do stretch (4): {}",
+        e + mark(&st, id, true, 1)
+    );
+    assert!(
+        (e + mark(&st, id, false, 1) - 6.0).abs() < 1e-9,
+        "a vermelha aponta o fim original do trim (6): {}",
+        e + mark(&st, id, false, 1)
     );
 }

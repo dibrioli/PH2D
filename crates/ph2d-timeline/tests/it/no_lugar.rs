@@ -303,3 +303,51 @@ fn no_lugar_o_undo_desfaz_a_edicao_de_dentro() {
     assert!(k.st.undo());
     assert!(near(inner_x(&k.st, k.c, k.x).0, 0.5));
 }
+
+/// A cópia de uma volta LIDA DE TRÁS (PingPong) leva as barras do canto para o lado certo: a borda
+/// de entrada é a de saída, e o sentido inverte — em toda cópia, `borda + marca` cai no ORIGINAL
+/// visto pela volta. *Mutação: não trocar as marcas na volta invertida ⇒ vermelho.*
+#[test]
+fn no_lugar_a_volta_invertida_leva_as_barras_do_canto_para_o_lado_certo() {
+    let mut k = cena();
+    fixa(&mut k.st, 0, k.a, 1.0, 3.0, StripLoop::PingPong);
+    k.st.doc
+        .strip_in_mut(StackHost::Document, 0, k.a)
+        .unwrap()
+        .t_end = 5.0;
+    let marks = [0.25, 0.1, -0.2, 0.3];
+    k.st.doc
+        .strip_in_mut(StackHost::Container(k.c), 0, k.x)
+        .unwrap()
+        .marks = marks;
+    k.st.no_lugar = Some(k.a);
+    let m = instance_map(&k.st.doc, k.a).unwrap();
+    assert!(m.voltas[1].reversed, "controlo: a 2.ª volta lê de trás");
+    let v = snap(&mut k.st).no_lugar.unwrap();
+    let copias: Vec<_> = v.lanes[0]
+        .strips
+        .iter()
+        .filter(|s| s.instancia == k.a)
+        .collect();
+    assert_eq!(copias.len(), 2);
+    for (s, volta) in copias.iter().zip(&m.voltas) {
+        let vs = &s.view;
+        for stretch in [0, 2] {
+            // O original de cada borda no tempo do container; a volta invertida troca-as.
+            let orig = [0.5 + marks[stretch], 1.5 + marks[stretch + 1]];
+            let (ini, fim) = if volta.reversed { (1, 0) } else { (0, 1) };
+            assert!(
+                near(vs.t_start + vs.marks[stretch], volta.scene(orig[ini])),
+                "início (reversed {}): {:?}",
+                volta.reversed,
+                vs.marks
+            );
+            assert!(
+                near(vs.t_end + vs.marks[stretch + 1], volta.scene(orig[fim])),
+                "fim (reversed {}): {:?}",
+                volta.reversed,
+                vs.marks
+            );
+        }
+    }
+}

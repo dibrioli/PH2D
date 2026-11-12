@@ -64,6 +64,17 @@ fn is_toggle(id: NodeId) -> bool {
         || id == TIMELINE_SNAP
 }
 
+/// Os botões que só os cartões pintam (Done, ✕ do trecho, encaixar): `true` = tratado.
+fn clique_dos_cartoes(id: NodeId, host: &mut dyn PanelHostInternal) -> bool {
+    match id {
+        _ if id == crate::ids::TIMELINE_ANIMATING_DONE => crate::animando::done(),
+        _ if id == crate::ids::TIMELINE_STRETCH_CLEAR => crate::ruler_trecho::larga(),
+        _ if id == crate::ids::TIMELINE_CARD_DOCK => crate::cartao_solto::encaixa(host.store_mut()),
+        _ => return false,
+    }
+    true
+}
+
 pub(crate) fn apply_event(
     state: &mut TimelinePanelState,
     host: &mut dyn PanelHostInternal,
@@ -89,18 +100,7 @@ pub(crate) fn apply_event(
             host.set_panel_visible(TimelinePanel::ID, false);
             EventOutcome::Consumed
         }
-        WidgetEvent::Click(id) if id == crate::ids::TIMELINE_ANIMATING_DONE => {
-            crate::animando::done();
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if id == crate::ids::TIMELINE_STRETCH_CLEAR => {
-            crate::ruler_trecho::larga();
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if id == crate::ids::TIMELINE_CARD_DOCK => {
-            crate::cartao_solto::encaixa(host.store_mut());
-            EventOutcome::Consumed
-        }
+        WidgetEvent::Click(id) if clique_dos_cartoes(id, host) => EventOutcome::Consumed,
         // Ruler scrub: the slider value (0..1 over the visible span) maps back to
         // an absolute time via the span `paint` stored; forward it as a Scrub.
         WidgetEvent::ValueChanged(id) if id == TIMELINE_RULER => {

@@ -230,3 +230,44 @@ fn no_lugar_acompanha_nao_quando_a_edicao_fixa_o_comprimento() {
     assert_eq!(k.st.doc.container_length_seconds(k.c), 3.0);
     assert_inteira(&k, k.a, 2.0, 2.0);
 }
+
+/// Apagar um container não «des-recorta» a instância de OUTRO: os comprimentos de antes casam-se
+/// pelo container, não pelo índice que o `RemoveContainer` deslocou. *Mutação: casar por índice ⇒
+/// a instância de B (recortada a `0..4`) passa a `0..6` — vermelho.*
+#[test]
+fn apagar_um_container_nao_mexe_na_instancia_recortada_de_outro() {
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    let clip = StripSource::Clip(0);
+    let a = doc.add_container("A".into());
+    doc.add_lane_in(StackHost::Container(a), "Base".into())
+        .unwrap();
+    doc.add_strip_to(StackHost::Container(a), 0, clip, 0.0, 4.0)
+        .unwrap();
+    let b = doc.add_container("B".into());
+    doc.add_lane_in(StackHost::Container(b), "Base".into())
+        .unwrap();
+    doc.add_strip_to(StackHost::Container(b), 0, clip, 0.0, 6.0)
+        .unwrap();
+    assert!((doc.container_length_seconds(a) - 4.0).abs() < EPS);
+    assert!((doc.container_length_seconds(b) - 6.0).abs() < EPS);
+    doc.add_lane("Base".into()).unwrap();
+    let src = StripSource::Container(u16::try_from(b).unwrap());
+    let id = doc
+        .add_strip_to(StackHost::Document, 0, src, 0.0, 4.0)
+        .unwrap();
+    {
+        let s = st.doc.strip_in_mut(StackHost::Document, 0, id).unwrap();
+        (s.src_in, s.src_out, s.speed) = (0.0, 4.0, 1.0);
+    }
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(&mut st, &mut ph, I::RemoveContainer { index: a });
+    let s = st.doc.strip_in(StackHost::Document, 0, id).unwrap();
+    assert_eq!(s.source.container_index(), Some(0), "B desceu para 0");
+    assert!(
+        (s.src_out - 4.0).abs() < EPS && (s.t_end - 4.0).abs() < EPS,
+        "a recortada ficou: src_out {} t_end {}",
+        s.src_out,
+        s.t_end
+    );
+}

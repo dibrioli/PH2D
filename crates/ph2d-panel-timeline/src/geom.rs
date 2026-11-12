@@ -315,6 +315,58 @@ pub(crate) fn no_lugar_bands(
     })
 }
 
+/// A linha das lanes sob um `y`: de fora (`lane`), de dentro da peça aberta (`k`), ou abaixo da
+/// última (a faixa nova). `(top, h)` é a banda pintada.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) enum LinhaSob {
+    Fora { lane: usize, top: f32, h: f32 },
+    Dentro { k: usize, top: f32, h: f32 },
+    Nova { top: f32, h: f32 },
+}
+
+/// ⭐ **A linha sob o ponteiro, pelas MESMAS bandas que a pintura usa** ([`stack_bands`] +
+/// [`no_lugar_bands`]). `None` acima da primeira.
+pub(crate) fn linha_sob(
+    snap: &TimelineViewSnapshot,
+    tab: Tab,
+    rows_top: f32,
+    scroll_y: f32,
+    y: f32,
+) -> Option<LinhaSob> {
+    let dentro = |(k, top, h): (usize, f32, f32)| LinhaSob::Dentro { k, top, h };
+    let fora = |(lane, top, h): (usize, f32, f32)| LinhaSob::Fora { lane, top, h };
+    let todas: Vec<LinhaSob> = stack_bands(snap, tab, rows_top, scroll_y)
+        .map(fora)
+        .chain(
+            no_lugar_bands(snap, tab, rows_top, scroll_y)
+                .into_iter()
+                .map(dentro),
+        )
+        .collect();
+    let banda = |l: &LinhaSob| match *l {
+        LinhaSob::Fora { top, h, .. }
+        | LinhaSob::Dentro { top, h, .. }
+        | LinhaSob::Nova { top, h } => (top, h),
+    };
+    if let Some(l) = todas.iter().find(|l| {
+        let (t, h) = banda(l);
+        y >= t && y < t + h
+    }) {
+        return Some(*l);
+    }
+    let fundo = todas
+        .iter()
+        .map(|l| {
+            let (t, h) = banda(l);
+            t + h
+        })
+        .fold(rows_top - scroll_y, f32::max);
+    (y >= fundo).then_some(LinhaSob::Nova {
+        top: fundo,
+        h: faixa_h(),
+    })
+}
+
 /// Height the Summary channel occupies above the tracks. Zero in the Arrange tab
 /// (it summarises KEYS), and zero when nothing is bound: an empty timeline shows
 /// no master row to grab.

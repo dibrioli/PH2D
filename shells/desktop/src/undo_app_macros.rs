@@ -63,14 +63,16 @@ impl crate::App {
         }
     }
 
-    /// Acabada a sessão de animar, a cena volta à base do undo (a pose de entrada), sem passo.
+    /// Fim da sessão de animar: o pendente vira passo (o ledger ainda conduz: chaves ficam, pose não) e a cena volta.
     pub(super) fn devolve_a_cena(&mut self) {
-        if ph2d_panel_timeline::take_ended()
-            && !self.undo.jogo.a_correr()
-            && let Some(base) = self.undo_baseline.take()
+        let (botao, jogo) = (self.held_button.is_some(), self.undo.jogo.a_correr());
+        if ph2d_timeline_preview::devolve_agora(botao, jogo, ph2d_panel_timeline::take_ended)
+            && let Some(atual) = self.capture_project()
         {
-            let marca = self.field_selection_mark(); // o Done não larga a seleção (dono 11/11)
-            self.apply_project_with(&base, Some(&marca));
+            let base = self.undo.espera.a_comparar(atual);
+            let m = self.field_selection_mark();
+            (self.undo_baseline.as_ref() != Some(&base)).then(|| self.empurra(base.clone()));
+            self.apply_project_with(&base, Some(&m)); // o Done não larga a seleção (dono 11/11)
             self.arma_o_restauro();
         }
     }

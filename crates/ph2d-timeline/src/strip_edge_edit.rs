@@ -45,9 +45,21 @@ pub(crate) fn trim_strip(s: &mut crate::ClipStrip, edge: u8, t: f64) {
 /// It reads the edge AFTER the edit, which gets the clamps for free: a corner that
 /// ran into its limit records the change it actually made, not the one the pointer
 /// asked for.
-pub(crate) fn mark_edge(s: &mut crate::ClipStrip, stretch: bool, edge: u8, from: f64) {
+///
+/// `before` is where the edge sat before THIS apply: the other op's mark on the same edge (if
+/// any) shifts by the edge's travel, so it keeps pointing at its own original (owner, 11/11).
+pub(crate) fn mark_edge(s: &mut crate::ClipStrip, stretch: bool, edge: u8, from: f64, before: f64) {
     let now = if edge == 0 { s.t_start } else { s.t_end };
     s.marks[crate::mark_index(stretch, edge)] = from - now;
+    let outra = &mut s.marks[crate::mark_index(!stretch, edge)];
+    if *outra != 0.0 {
+        *outra += before - now;
+    }
+}
+
+/// Where edge `edge` of `s` sits now.
+pub(crate) fn edge_at(s: &crate::ClipStrip, edge: u8) -> f64 {
+    if edge == 0 { s.t_start } else { s.t_end }
 }
 
 /// Move one edge of a strip WITHOUT touching its source slice — the retime.

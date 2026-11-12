@@ -233,3 +233,59 @@ fn a_barra_do_loop_aberta_e_a_do_container_embrulhada() {
     );
     fecha();
 }
+
+/// ⭐⭐ O encaixe ao quadro DENTRO da peça aberta é na grelha do CONTAINER: com a instância a
+/// velocidade 2 a começar em 1,01 s, arrastar o corpo, a quina vermelha ou a verde de uma fita de
+/// dentro grava bordas que são múltiplos exatos de `1/fps` no tempo do container. *Mutação: o
+/// `strip_drag::snapped_em` voltar a encaixar na cena ⇒ as bordas caem fora da grelha.*
+#[test]
+fn dentro_da_peca_aberta_o_encaixe_e_na_grelha_do_container() {
+    for (edge, dx) in [(2u8, 37.0), (1, -37.0), (6, -37.0)] {
+        let (mut m, mut c) = mesa(true);
+        let mut ph = ph2d_core::Playhead::default();
+        for i in [
+            I::MoveStrip {
+                lane: 0,
+                to_lane: 0,
+                id: c.a,
+                t_start: 1.01,
+            },
+            I::SetStripSpeed {
+                lane: 0,
+                id: c.a,
+                speed: 2.0,
+            },
+        ] {
+            ph2d_timeline::apply_intent(&mut c.st, &mut ph, i);
+        }
+        // A fatia que o retime segura (a cena não tem o clipe 0).
+        let x = &mut c.st.doc.container_stack_mut(0).expect("o container")[0].strips[0];
+        (x.src_in, x.src_out) = (0.0, 2.0);
+        set_current_timeline(Some(snap_de(&mut c.st)));
+        m.assenta_em(JANELA);
+        abre(&mut m, &mut c);
+        let fps = snap_de(&mut c.st).fps;
+        assert!(fps > 0.0 && c.st.flags.frame_snap, "o encaixe armado");
+        let r = m
+            .rect(ids::timeline_strip_hit_id(2, c.x.0, edge))
+            .unwrap_or_else(|| panic!("a alça {edge} da fita de dentro"));
+        arrasta(&mut m, r, dx, 0.0);
+        for i in drain_intents() {
+            ph2d_timeline::apply_intent(&mut c.st, &mut ph, i);
+        }
+        let s = &c.st.doc.container_stack(0).expect("o container")[0].strips[0];
+        assert_ne!(
+            (s.t_start, s.t_end),
+            (0.0, 2.0),
+            "alça {edge}: a fita mexeu"
+        );
+        for t in [s.t_start, s.t_end] {
+            let q = t * fps;
+            assert!(
+                (q - q.round()).abs() < 1e-6,
+                "alça {edge}: a borda {t} cai fora da grelha do container ({q} quadros)"
+            );
+        }
+        fecha();
+    }
+}

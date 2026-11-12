@@ -284,6 +284,51 @@ fn the_keys_tab_starts_at_the_top_however_many_lanes_the_document_has() {
     );
 }
 
+/// ⭐ As linhas de dentro da peça aberta só existem no Arrange: dentro de um container (aba
+/// Containers com caminho) o quadro de atraso da shell não as pinta. *Mutação: tirar o
+/// `tab == Arrange` da `no_lugar::vista` ⇒ vermelho.*
+#[test]
+fn as_linhas_de_dentro_so_existem_no_arrange() {
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    let mut snap = snap_with(0);
+    force_cards_on_this_thread(Some(true));
+    snap.lanes.push(lane());
+    snap.lanes.push(lane());
+    snap.crumbs.push((0, "C".into()));
+    snap.no_lugar = Some(ph2d_timeline::NoLugarView {
+        instancia: ph2d_timeline::StripId(1),
+        lane: 0,
+        container: 0,
+        nome: "C".into(),
+        janela: (0.0, 1.0),
+        mapa: ph2d_timeline::Volta {
+            t0: 0.0,
+            t1: 1.0,
+            u0: 0.0,
+            u1: 1.0,
+            reversed: false,
+        },
+        loop_cena: None,
+        lanes: vec![ph2d_timeline::NoLugarLane {
+            name: "in".into(),
+            muted: false,
+            weight: 1.0,
+            strips: Vec::new(),
+        }],
+    });
+    let h = faixa_h();
+    let b: Vec<_> = stack_bands(&snap, A, 0.0, 0.0).collect();
+    assert_eq!(b, vec![(0, 0.0, h), (1, 2.0 * h, h)], "no Arrange empurra");
+    let b: Vec<_> = stack_bands(&snap, Tab::Containers, 0.0, 0.0).collect();
+    assert_eq!(
+        b,
+        vec![(0, 0.0, h), (1, h, h)],
+        "dentro de um container não"
+    );
+    assert!(no_lugar_bands(&snap, Tab::Containers, 0.0, 0.0).is_empty());
+    force_cards_on_this_thread(None);
+}
+
 /// ⭐ Doc 16 onda 3: a faixa do stack (lanes e lista de containers) mede a porta — nos cartões a da
 /// maquete B (30), no clássico a linha de sempre —, e a pilha, as bandas e a peça leem-na. *Mutação:
 /// `stack_bands` voltar a `ROW_H_PX` ⇒ vermelho nos cartões.*

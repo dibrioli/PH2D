@@ -55,6 +55,7 @@ pub(crate) fn larga() {
 pub(crate) fn vista(snap: &TimelineViewSnapshot, tab: Tab) -> Option<&ph2d_timeline::NoLugarView> {
     let v = snap.no_lugar.as_ref()?;
     (ph2d_editor_core::panel::cards::ferramenta::cards_on()
+        && tab == Tab::Arrange
         && crate::tab::rows(tab, snap) == crate::tab::Rows::Lanes
         && v.lane < snap.lanes.len())
     .then_some(v)

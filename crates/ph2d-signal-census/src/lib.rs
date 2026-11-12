@@ -217,24 +217,27 @@ pub fn when_changed(world: &World, fora: &Fora<'_>, publish: impl FnOnce(SignalC
 
 /// ⭐ **Quem ouve `name`** (doc Timeline 17 item 8, a lista «Heard by» do cartão do marcador): as
 /// linhas `Listen` de [`CAMPOS`] e de [`FORA`] e os scripts que fazem `ph2d.connect(obj, "name", …)`,
-/// uma por (objecto, o que ouve), na ordem das tabelas. Nome vazio = ninguém.
+/// uma por (ENTIDADE, o que ouve) — dois objectos com o mesmo nome são duas linhas —, na ordem das
+/// tabelas. Nome vazio = ninguém. A linha de script nomeia o objecto que CORRE o script, não o alvo
+/// do `connect(obj, …)`.
 #[must_use]
 pub fn listeners(world: &World, fora: &Fora<'_>, name: &str) -> SignalListeners {
     let mut list: Vec<Listener> = Vec::new();
     if name.is_empty() {
         return SignalListeners::default();
     }
-    let mut put = |object: Option<String>, what: Quem| {
-        let l = Listener { object, what };
-        if !list.contains(&l) {
-            list.push(l);
+    let mut vistos: Vec<(Option<ph2d_ecs::Entity>, Quem)> = Vec::new();
+    let mut put = |e: Option<ph2d_ecs::Entity>, what: Quem| {
+        if !vistos.contains(&(e, what)) {
+            vistos.push((e, what));
+            let object = e.and_then(|e| ph2d_ecs::signal_actions::name_of(world, e));
+            list.push(Listener { object, what });
         }
     };
-    let nome = |e| ph2d_ecs::signal_actions::name_of(world, e);
     for c in CAMPOS.iter().filter(|c| c.role == Role::Listen) {
         (c.read)(world, &mut |e, n| {
             if n == name {
-                put(nome(e), Quem::Component(c.component));
+                put(Some(e), Quem::Component(c.component));
             }
         });
     }
@@ -245,6 +248,6 @@ pub fn listeners(world: &World, fora: &Fora<'_>, name: &str) -> SignalListeners 
             }
         });
     }
-    let script_may = luau::listeners(world, name, &mut |e| put(nome(e), Quem::Script));
+    let script_may = luau::listeners(world, name, &mut |e| put(Some(e), Quem::Script));
     SignalListeners { list, script_may }
 }

@@ -1,5 +1,4 @@
-//! Gates da pintura/hit das faixas da pilha (split do `stack_lane_paint.rs` pelo cap de 600 LOC
-//! dos painéis; declarado lá como irmão via `#[path]`, então `super` é `stack_lane_paint`).
+//! Gates da pintura/hit das faixas da pilha (irmão de `stack_lane_paint.rs` via `#[path]`; `super` é ele).
 //!
 //! Tudo aqui é sobre a **ORDEM e a existência dos hits** — as duas coisas que nenhuma pintura
 //! headless alcança e que, quando erram, erram em silêncio: um grip que outro retângulo cobriu,

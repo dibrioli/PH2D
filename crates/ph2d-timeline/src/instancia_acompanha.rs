@@ -16,27 +16,36 @@ use crate::doc::TimelineDoc;
 
 const EPS: f64 = 1e-6;
 
-/// O comprimento de cada container ANTES da edição — `None` = tem `length_override` (não acompanha).
-pub(crate) fn comprimentos(doc: &TimelineDoc) -> Vec<Option<f64>> {
+/// O comprimento de cada container ANTES da edição, com o NOME (o `RemoveContainer` desloca os
+/// índices; o nome é a identidade que sobrevive) — `None` = tem `length_override` (não acompanha).
+pub(crate) fn comprimentos(doc: &TimelineDoc) -> Vec<(String, Option<f64>)> {
     (0..doc.containers().len())
         .map(|c| {
-            doc.containers()[c]
+            let k = &doc.containers()[c];
+            let len = k
                 .length_override
                 .is_none()
-                .then(|| doc.container_length_seconds(c))
+                .then(|| doc.container_length_seconds(c));
+            (k.name.clone(), len)
         })
         .collect()
 }
 
+/// O comprimento de antes do container `c` de AGORA, casado pelo nome (só se o nome é único).
+fn antigo(doc: &TimelineDoc, antes: &[(String, Option<f64>)], c: usize) -> Option<f64> {
+    let nome = &doc.containers().get(c)?.name;
+    let mut iguais = antes.iter().filter(|(n, _)| n == nome);
+    let (_, len) = iguais.next()?;
+    iguais.next().is_none().then_some(*len)?
+}
+
 /// Leva cada instância inteira de um container que mudou de comprimento ao comprimento novo.
-pub(crate) fn acompanha(doc: &mut TimelineDoc, antes: &[Option<f64>]) {
+pub(crate) fn acompanha(doc: &mut TimelineDoc, antes: &[(String, Option<f64>)]) {
     // Cada volta só pode mudar um container a mais (o hospedeiro); `n + 1` voltas chegam ao ponto fixo.
     for _ in 0..=antes.len() {
-        let mudou: Vec<(u16, f64, f64)> = antes
-            .iter()
-            .enumerate()
-            .filter_map(|(c, a)| {
-                let old = (*a)?;
+        let mudou: Vec<(u16, f64, f64)> = (0..doc.containers().len())
+            .filter_map(|c| {
+                let old = antigo(doc, antes, c)?;
                 let new = doc.container_length_seconds(c);
                 let livre = doc.containers().get(c)?.length_override.is_none();
                 let ix = u16::try_from(c).ok()?;

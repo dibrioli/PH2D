@@ -37,6 +37,18 @@ impl Volta {
     pub fn scene(&self, u: f64) -> f64 {
         self.t0 + (u - self.u0) * (self.t1 - self.t0) / (self.u1 - self.u0)
     }
+
+    /// Segundos da cena por segundo do container (com sinal: negativo na volta de VOLTA).
+    #[must_use]
+    pub fn escala(&self) -> f64 {
+        (self.t1 - self.t0) / (self.u1 - self.u0)
+    }
+
+    /// O segundo do container na cena `t` — o inverso de [`Self::scene`].
+    #[must_use]
+    pub fn local(&self, t: f64) -> f64 {
+        self.u0 + (t - self.t0) / self.escala()
+    }
 }
 
 /// **O mapa de uma instância de container** da pilha da cena: onde ela mora e cada volta que
@@ -59,15 +71,13 @@ impl InstanceMap {
     /// Segundos da cena por segundo do container (`1 / velocidade`).
     #[must_use]
     pub fn escala(&self) -> f64 {
-        let v = self.voltas[0];
-        (v.t1 - v.t0) / (v.u1 - v.u0)
+        self.voltas[0].escala()
     }
 
     /// O segundo do container na cena `t`, pela PRIMEIRA volta (afim, sem grampo).
     #[must_use]
     pub fn local(&self, t: f64) -> f64 {
-        let v = self.voltas[0];
-        v.u0 + (t - v.t0) / self.escala()
+        self.voltas[0].local(t)
     }
 
     /// O segundo da cena em que a primeira volta lê `u` — o inverso de [`Self::local`].
@@ -120,6 +130,8 @@ pub struct NoLugarView {
     pub nome: String,
     /// A janela da instância na cena (a pílula «plays a – b»).
     pub janela: (f64, f64),
+    /// A PRIMEIRA volta da aberta: o painel encaixa ao quadro na grelha do container por ela.
+    pub mapa: Volta,
     /// O loop do container, na cena pela primeira volta da aberta.
     pub loop_cena: Option<(f64, f64)>,
     /// As lanes de dentro, de baixo para cima.
@@ -152,7 +164,7 @@ pub struct NoLugarStrip {
 
 /// A fita `sv` (tempo do container) vista pela volta `v` (tempo da cena).
 fn na_cena(sv: &StripView, v: &Volta) -> StripView {
-    let e = ((v.t1 - v.t0) / (v.u1 - v.u0)).abs();
+    let e = v.escala().abs();
     let mut o = sv.clone();
     (o.t_start, o.t_end) = (v.scene(sv.t_start), v.scene(sv.t_end));
     (o.blend_in, o.blend_out) = (sv.blend_in * e, sv.blend_out * e);
@@ -166,6 +178,9 @@ fn na_cena(sv: &StripView, v: &Volta) -> StripView {
         std::mem::swap(&mut o.lead_in, &mut o.lead_out);
         std::mem::swap(&mut o.ease_locked_in, &mut o.ease_locked_out);
         std::mem::swap(&mut o.curve_in, &mut o.curve_out);
+        // As barras do canto (`mark_index`: trim 0/1, stretch 2/3) trocam de borda e de sentido.
+        let m = o.marks;
+        o.marks = [-m[1], -m[0], -m[3], -m[2]];
     }
     o
 }
@@ -225,6 +240,7 @@ pub(crate) fn no_lugar_view(state: &TimelineState, keys_mode: bool) -> Option<No
         container: map.container,
         nome: named.name.clone(),
         janela: (map.t0, map.t1),
+        mapa: map.voltas[0],
         loop_cena: named.loop_range.map(|(a, b)| (map.scene(a), map.scene(b))),
         lanes,
     })

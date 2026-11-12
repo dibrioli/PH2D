@@ -68,6 +68,8 @@ pub struct Alvo {
     pub(crate) len: f64,
     /// Um container dentro de si mesmo: o fantasma diz não e a largada não faz nada.
     pub(crate) recusa: bool,
+    /// Numa linha de DENTRO da peça aberta: `(instância, lane de dentro)` — a largada sai embrulhada.
+    pub(crate) dentro: Option<(ph2d_timeline::StripId, usize)>,
     /// O rect da peça nova — o mesmo que a strip pinta depois da largada.
     pub(crate) rect: Rect,
 }
@@ -187,7 +189,12 @@ fn larga(a: Alvo) {
         t_start: a.t,
         t_end: a.t + a.len,
     };
-    if a.nova {
+    if let Some((instancia, _)) = a.dentro {
+        state::push_intent(TimelineIntent::NoLugar {
+            instancia,
+            intent: Box::new(peca),
+        });
+    } else if a.nova {
         for i in [
             TimelineIntent::BeginEdit,
             TimelineIntent::AddLane,
@@ -215,27 +222,34 @@ fn alvo(
     if x < view.time_x || x >= view.right || y < rows.y || y >= rows.y + rows.h {
         return None;
     }
-    let h = geom::faixa_h();
-    let topo = rows.y - state.scroll_y;
     let n = snap.lanes.len();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "y >= rows.y >= topo: a small non-negative row count"
-    )]
-    let lane = (((y - topo) / h).floor() as usize).min(n);
-    let nova = lane == n;
+    // A linha sob o ponteiro pelas MESMAS bandas que a pintura usa (as de dentro incluídas).
+    let aberta = crate::no_lugar::vista(snap, state.tab);
+    let (lane, dentro, y0, h) = match geom::linha_sob(snap, state.tab, rows.y, state.scroll_y, y)? {
+        geom::LinhaSob::Fora { lane, top, h } => (lane, None, top, h),
+        geom::LinhaSob::Dentro { k, top, h } => (k, aberta.map(|v| (v.instancia, k)), top, h),
+        geom::LinhaSob::Nova { top, h } => (n, None, top, h),
+    };
+    let nova = dentro.is_none() && lane == n;
     let (source, len) = fonte_ativa(state, snap);
-    let t = crate::strip_drag::snapped(state, snap, view.t(x));
+    // Numa linha de dentro: o quadro do container, e a peça nasce a velocidade 1 LÁ DENTRO.
+    let (t, len) = match (dentro, aberta) {
+        (Some(_), Some(v)) => (
+            crate::strip_drag::snapped_em(snap, n + lane, view.t(x)),
+            len * v.mapa.escala().abs(),
+        ),
+        _ => (crate::strip_drag::snapped(state, snap, view.t(x)), len),
+    };
     let dentro_de_si = match source {
-        StripSource::Container(c) => crate::state::edit_path()
-            .iter()
-            .any(|p| p.container == usize::from(c)),
+        StripSource::Container(c) => {
+            let c = usize::from(c);
+            crate::state::edit_path().iter().any(|p| p.container == c)
+                // …nem no interior aberto dele mesmo (os ciclos fundos o modelo recusa).
+                || (dentro.is_some() && aberta.is_some_and(|v| v.container == c))
+        }
         StripSource::Clip(_) => false,
     };
     let pad = geom::peca_margem();
-    #[expect(clippy::cast_precision_loss, reason = "lane < MAX_LANES")]
-    let y0 = topo + h * lane as f32;
     #[expect(clippy::cast_possible_truncation, reason = "a span on screen")]
     let w = (len * view.px_per_s) as f32;
     Some(Alvo {
@@ -245,6 +259,7 @@ fn alvo(
         t,
         len,
         recusa: dentro_de_si || (nova && n >= ph2d_timeline::MAX_LANES),
+        dentro,
         rect: Rect::new(view.x(t), y0 + pad, w, (h - pad * 2.0).max(0.0)),
     })
 }

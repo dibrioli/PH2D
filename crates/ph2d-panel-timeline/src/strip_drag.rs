@@ -110,7 +110,7 @@ fn emit(
         // now each is its own corner — the gizmo you grab IS the operation, no modifier
         // to remember and no NLE-specific convention to learn.
         0 | 1 => {
-            let (from, t) = edge_move(state, snap, d, dt, d.edge);
+            let (from, t) = edge_move(snap, d, dt, d.edge);
             TimelineIntent::TrimStrip {
                 lane: d.lane,
                 id: d.id,
@@ -124,7 +124,7 @@ fn emit(
         // LOOKS; the label carries the new speed factor.
         STRETCH_START | STRETCH_END => {
             let edge = u8::from(d.edge == STRETCH_END); // 0 = start, 1 = end
-            let (from, t) = edge_move(state, snap, d, dt, edge);
+            let (from, t) = edge_move(snap, d, dt, edge);
             TimelineIntent::StretchStrip {
                 lane: d.lane,
                 id: d.id,
@@ -149,7 +149,7 @@ fn emit(
         // edge frame — the travel across the gap). One handle, two intents, the edge is the
         // pivot; `SetStripEase`/`SetStripLead` carry the same `edge` (0 = start, 1 = end).
         EASE_OUT => {
-            let tip = snapped(state, snap, b0 - (d.start_ease - dt));
+            let tip = snapped_em(snap, d.start_lane, b0 - (d.start_ease - dt));
             let extent = b0 - tip; // inward is positive (tip left of the end edge)
             if extent >= 0.0 {
                 TimelineIntent::SetStripEase {
@@ -168,7 +168,7 @@ fn emit(
             }
         }
         EASE_IN => {
-            let tip = snapped(state, snap, a0 + (d.start_ease + dt));
+            let tip = snapped_em(snap, d.start_lane, a0 + (d.start_ease + dt));
             let extent = tip - a0;
             if extent >= 0.0 {
                 TimelineIntent::SetStripEase {
@@ -205,13 +205,13 @@ fn emit(
                     };
                     base + lane_at(dentro, y, crate::no_lugar::n_lanes(snap))
                 }
-                None => lane_at(d, y, snap.lanes.len()),
+                None => lane_de_fora(state, snap, d, y),
             };
             let intent = TimelineIntent::MoveStrip {
                 lane: d.lane,
                 to_lane,
                 id: d.id,
-                t_start: snapped(state, snap, (a0 + dt).max(0.0)),
+                t_start: snapped_em(snap, d.start_lane, (a0 + dt).max(0.0)),
             };
             // The drag now holds the lane the strip is ON, not the one it came from: the
             // NEXT frame's intent has to name where the document has already put it.
@@ -222,6 +222,33 @@ fn emit(
         }
     };
     state::push_intent(crate::no_lugar::embrulha(snap, intent));
+}
+
+/// ⭐ **A lane de FORA sob o ponteiro, pelas bandas que a pintura usa** (`geom::linha_sob`): as
+/// linhas de dentro da peça aberta ficam entre as lanes, e contar linhas inteiras caía uma lane
+/// abaixo. O ponteiro ancora-se no meio da linha de partida (a troca a meio da linha, como antes);
+/// sobre as linhas de dentro a fita fica na lane da instância (elas são dela).
+fn lane_de_fora(
+    state: &TimelinePanelState,
+    snap: &TimelineViewSnapshot,
+    d: StripDrag,
+    y: f32,
+) -> usize {
+    use crate::geom::LinhaSob;
+    let n = snap.lanes.len();
+    let Some((_, top, h)) =
+        crate::geom::stack_bands(snap, state.tab, 0.0, 0.0).find(|b| b.0 == d.start_lane)
+    else {
+        return lane_at(d, y, n);
+    };
+    match crate::geom::linha_sob(snap, state.tab, 0.0, 0.0, top + h * 0.5 + (y - d.start_y)) {
+        None => 0,
+        Some(LinhaSob::Fora { lane, .. }) => lane,
+        Some(LinhaSob::Dentro { .. }) => {
+            crate::no_lugar::vista(snap, state.tab).map_or(d.lane, |v| v.lane)
+        }
+        Some(LinhaSob::Nova { .. }) => n.saturating_sub(1),
+    }
 }
 
 /// **Which lane the pointer has carried the strip to** — a whole number of rows from where the
@@ -266,26 +293,35 @@ const STRETCH_END: u8 = 6;
 /// They come from the SAME captured span, which is what makes the change bar honest:
 /// the anchor is the position the drag began at, not the position of the previous
 /// frame, so every frame of the drag reports the same total travel.
-fn edge_move(
-    state: &TimelinePanelState,
-    snap: &TimelineViewSnapshot,
-    d: StripDrag,
-    dt: f64,
-    edge: u8,
-) -> (f64, f64) {
+fn edge_move(snap: &TimelineViewSnapshot, d: StripDrag, dt: f64, edge: u8) -> (f64, f64) {
     let (a0, b0) = d.start_span;
     let from = if edge == 0 { a0 } else { b0 };
-    (from + d.start_mark, snapped(state, snap, from + dt))
+    (
+        from + d.start_mark,
+        snapped_em(snap, d.start_lane, from + dt),
+    )
 }
 
 /// Frame-snap, when the panel is snapping. Never negative.
 pub(crate) fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f64 {
     let _ = state;
+    snapped_em(snap, usize::MAX, t)
+}
+
+/// O encaixe do gesto da linha de hit `lane`: numa linha de DENTRO da peça aberta, na grelha do
+/// CONTAINER (cena → local pela primeira volta, arredonda a `1/fps`, → cena) — o modelo converte de
+/// volta ao mesmo quadro local.
+pub(crate) fn snapped_em(snap: &TimelineViewSnapshot, lane: usize, t: f64) -> f64 {
     let t = t.max(0.0);
-    if snap.frame_snap && snap.fps > 0.0 {
-        (t * snap.fps).round() / snap.fps
-    } else {
-        t
+    if !(snap.frame_snap && snap.fps > 0.0) {
+        return t;
+    }
+    let q = |u: f64| (u * snap.fps).round() / snap.fps;
+    match snap.no_lugar.as_ref() {
+        Some(v) if crate::no_lugar::interior(snap, lane).is_some() => {
+            v.mapa.scene(q(v.mapa.local(t)))
+        }
+        _ => q(t),
     }
 }
 

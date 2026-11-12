@@ -181,14 +181,13 @@ pub fn declare_timeline_writes_held(
 }
 
 fn fato(drive: &mut PreviewDrive, held: bool, e: Entity, was: Driven, now: Driven) {
-    if was != now {
-        if held {
+    if held {
+        // Parada também: a outra mão num campo que a curva não escreve é autoria (`driven_held`).
+        if was != now || drive.still_driving(e, now.driver()) {
             drive.driven_held(e, was, now);
-        } else {
-            drive.driven(e, was, now);
         }
-    } else if held {
-        drive.still_driving(e, now.driver());
+    } else if was != now {
+        drive.driven(e, was, now);
     }
 }
 
@@ -240,6 +239,9 @@ fn declara(world: &World, before: &[BoundBefore], drive: &mut PreviewDrive, held
         }
     }
 }
+
+mod done;
+pub use done::devolve_agora;
 
 #[cfg(test)]
 #[path = "held_tests.rs"]

@@ -25,10 +25,14 @@ use crate::state::{self, TimelinePanelState};
 use crate::tab::Tab;
 
 /// O cartão aberto: o marcador (índice no armazenamento) e a aba em que abriu.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Aberto {
     pub index: usize,
     pub tab: Tab,
+    /// O tempo e a contagem de marcadores do último quadro: o índice só vale enquanto o
+    /// armazenamento não mudar de tamanho (o marcador não tem id).
+    t: f64,
+    n: usize,
     /// Aberto neste quadro: o Down que o abriu (na alça) também «fechou pelo clique de fora».
     novo: bool,
 }
@@ -62,6 +66,8 @@ pub(crate) fn abre(state: &mut TimelinePanelState, snap: &TimelineViewSnapshot, 
     state.sinal_aberto = (cartoes && tem_sinal(snap, index).is_some()).then_some(Aberto {
         index,
         tab: state.tab,
+        t: snap.markers.get(index).map_or(0.0, |m| m.0),
+        n: snap.markers.len(),
         novo: true,
     });
     if state.sinal_aberto.is_some() {
@@ -92,10 +98,28 @@ pub(crate) fn fecha_se_preciso(state: &mut TimelinePanelState, ctx: &mut PaintCt
         return;
     };
     let novo = std::mem::take(&mut a.novo);
-    let vivo = tem_sinal(&state::current_snapshot(), a.index).is_some();
+    let vivo = reancora(a, &state::current_snapshot());
     if (fora && !novo) || a.tab != tab || !vivo {
         state.sinal_aberto = None;
     }
+}
+
+/// ⭐ **Segue o MESMO marcador**: com a contagem igual o índice vale (arrasto, renome); se mudou
+/// (um marcador entrou ou saiu), o marcador de sinal no MESMO tempo é ele — senão sumiu e fecha.
+fn reancora(a: &mut Aberto, snap: &TimelineViewSnapshot) -> bool {
+    let index = if snap.markers.len() == a.n {
+        Some(a.index)
+    } else {
+        (0..snap.markers.len())
+            .find(|&i| tem_sinal(snap, i).is_some() && (snap.markers[i].0 - a.t).abs() < 1e-9)
+    };
+    let Some(index) = index.filter(|&i| tem_sinal(snap, i).is_some()) else {
+        return false;
+    };
+    a.index = index;
+    a.t = snap.markers[index].0;
+    a.n = snap.markers.len();
+    true
 }
 
 /// O rótulo de quem ouve: o nome do componente (ou documento) para o artista. Os padrões são os NOMES

@@ -78,3 +78,31 @@ fn without_the_session_a_parked_playhead_becomes_the_document() {
     }
     assert_eq!(autorado(&drive, e), None);
 }
+
+/// Uma escrita sem chave num campo que a Timeline NÃO conduz (a rotação, só `x` tem curva)
+/// sobrevive ao Done: o autorado adopta-a e o `x` conduzido continua o da entrada. *Mutação: o
+/// `driven_held` sem a «outra mão» por campo ⇒ a rotação some — vermelho.*
+#[test]
+fn while_animating_an_edit_on_an_undriven_field_survives_done() {
+    let (mut sim, e, mut doc) = rig();
+    let entrada = *sim.world().get::<Transform>(e).unwrap();
+    let mut drive = PreviewDrive::default();
+    for _ in 0..3 {
+        quadro(&mut sim, &mut doc, &mut drive, true);
+    }
+    sim.world_mut().get_mut::<Transform>(e).unwrap().rotation = 0.7;
+    for _ in 0..3 {
+        quadro(&mut sim, &mut doc, &mut drive, true);
+    }
+    let Some(Driven::SolverPose(a)) = autorado(&drive, e) else {
+        panic!("a condução continua")
+    };
+    assert!(
+        (a.rotation - 0.7).abs() < 1e-6,
+        "a rotação sumiu no Done: {a:?}"
+    );
+    assert_eq!(
+        a.translation, entrada.translation,
+        "o x conduzido volta à entrada"
+    );
+}

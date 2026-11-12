@@ -16,7 +16,7 @@ use crate::intent::TimelineIntent;
 use crate::intent_apply::edit_at;
 use crate::state::TimelineState;
 use crate::strip_edge_edit::{
-    MAX_STRIP_SPEED, MIN_STRIP_SPEED, mark_edge, stretch_strip, trim_strip,
+    MAX_STRIP_SPEED, MIN_STRIP_SPEED, edge_at, mark_edge, stretch_strip, trim_strip,
 };
 
 /// # O que cada edição de fade/retime FAZ
@@ -100,8 +100,9 @@ pub(crate) fn apply(state: &mut TimelineState, host: StackHost, intent: Timeline
             from,
         } => edit_at(state, host, |doc, host, _| {
             if let Some(s) = doc.strip_in_mut(host, lane, id) {
+                let before = edge_at(s, edge);
                 trim_strip(s, edge, t);
-                mark_edge(s, false, edge, from);
+                mark_edge(s, false, edge, from, before);
             }
         }),
         I::StretchStrip {
@@ -112,8 +113,9 @@ pub(crate) fn apply(state: &mut TimelineState, host: StackHost, intent: Timeline
             from,
         } => edit_at(state, host, |doc, host, _| {
             if let Some(s) = doc.strip_in_mut(host, lane, id) {
+                let before = edge_at(s, edge);
                 stretch_strip(s, edge, t);
-                mark_edge(s, true, edge, from);
+                mark_edge(s, true, edge, from, before);
             }
         }),
         I::SetStripLoop {
@@ -164,7 +166,7 @@ pub(crate) fn apply(state: &mut TimelineState, host: StackHost, intent: Timeline
                     // paths to one number look like two different edits.
                     let before = s.t_end;
                     s.t_end = s.t_start + slice / s.speed;
-                    mark_edge(s, true, 1, before);
+                    mark_edge(s, true, 1, before, before);
                 }
             }
         }),

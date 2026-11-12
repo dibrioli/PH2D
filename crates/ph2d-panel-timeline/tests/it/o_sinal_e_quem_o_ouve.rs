@@ -209,3 +209,34 @@ fn num_painel_baixo_o_cartao_nao_cobre_a_barra() {
     let _ = drain_intents();
     ferramenta::force_cards_on_this_thread(None);
 }
+
+/// ⭐ O cartão segue o MESMO marcador: tirar um marcador ANTES dele desloca os índices, e o cartão
+/// continua a dizer «land». *Mutação: `reancora` voltar ao índice cru ⇒ o cartão fecha (ou mostra
+/// outro marcador).*
+#[test]
+fn tirar_um_marcador_antes_nao_troca_o_cartao_de_marcador() {
+    let mut m = mesa();
+    clica_na_alca(&mut m, 2);
+    assert_eq!(signal_asked().as_deref(), Some("land"));
+    let mut st = TimelineState::new();
+    for (t, n) in [(0.5, "top"), (1.0, "land")] {
+        st.doc.add_marker(RationalTime::from_seconds(t), n);
+    }
+    st.doc.set_marker_signal(1, Some("land".into()));
+    st.doc.add_clip("walk".into());
+    st.doc.set_active(0);
+    st.keys_mode = true;
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &Playhead::new(1.0 / 24.0), true);
+    set_current_timeline(Some(snap));
+    m.assenta_em(JANELA);
+    m.assenta_em(JANELA);
+    assert_eq!(
+        m.st.sinal_aberto.map(|a| a.index),
+        Some(1),
+        "o cartão segue o marcador «land»"
+    );
+    assert_eq!(signal_asked().as_deref(), Some("land"));
+    let _ = drain_intents();
+    ferramenta::force_cards_on_this_thread(None);
+}

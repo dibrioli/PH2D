@@ -65,7 +65,7 @@ pub(crate) fn paint(
     stroke_rounded_rect(
         ctx.scene,
         Rect::new(x0, y0, (x1 - x0).max(0.0), y1 + h1 - y0),
-        Radius::Xs.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
         w,
         laranja,
     );

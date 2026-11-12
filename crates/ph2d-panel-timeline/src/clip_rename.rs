@@ -57,7 +57,12 @@ pub(crate) fn paint(
     // **Over the chip it renames** — same left edge, same row, at least as wide as
     // the chip so it covers it rather than sitting beside it. A rename field that
     // floats somewhere else is a field with nothing to say what it is renaming.
-    let rect = Rect::new(chip.x, chip.y, FIELD_W.max(chip.w), ROW_H_PX);
+    // Numa linha (lane, container) a altura é a da banda que a ancora (`stack_bands`).
+    let h = match cr.kind {
+        state::RenameKind::Clip => ROW_H_PX,
+        state::RenameKind::Lane | state::RenameKind::Container => chip.h,
+    };
+    let rect = Rect::new(chip.x, chip.y, FIELD_W.max(chip.w), h);
 
     // First frame the rename is open: seed the field with the current name, caret
     // at the end, and claim focus — ONCE (re-seeding every frame would stomp the

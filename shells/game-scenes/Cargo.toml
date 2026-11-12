@@ -58,6 +58,7 @@ ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["te
 ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }
 ph2d-tags = { path = "../../crates/ph2d-tags" }
+ph2d-topdown = { path = "../../crates/ph2d-topdown" }
 ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
 ph2d-text = { path = "../../crates/ph2d-text" }

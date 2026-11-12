@@ -7827,6 +7827,7 @@ dependencies = [
  "ph2d-tags",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-topdown",
  "ph2d-vec-svg",
  "ph2d-vector",
  "vello",
@@ -10945,6 +10946,7 @@ dependencies = [
  "ph2d-physics-outline",
  "ph2d-render",
  "ph2d-shape-handles",
+ "ph2d-topdown",
 ]
 
 [[package]]

@@ -20,8 +20,8 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 23; // 6..23 = a aba Input Map, A1..C4, P1, B5 e P2..P5 (a tabela: `input_map`)
-pub use ph2d_input_map_scene as input_map;
+pub const CENAS: u32 = 24; // 6..23 = a aba Input Map (a tabela: `input_map`); 24 = o Top-Down Player
+pub use {ph2d_input_map_scene as input_map, ph2d_physics_scene::cena_topdown as topdown};
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
 /// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
@@ -179,6 +179,7 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
     let horario: &[(u32, Gesto)] = match nivel {
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
+        topdown::CENA => &HORARIO_24, // → e ↑: a diagonal até à parede de cima, e desliza
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
         _ => &HORARIO_1,
@@ -220,6 +221,13 @@ pub const HORARIO_5: [(u32, Gesto); 5] = [
     (220, Gesto::Esquerda(true)),
     (270, Gesto::Esquerda(false)),
     (1500, Gesto::Para),
+];
+pub const HORARIO_24: [(u32, Gesto); 5] = [
+    (120, Gesto::Direita(true)),
+    (121, Gesto::Salta(true)),
+    (300, Gesto::Salta(false)),
+    (301, Gesto::Direita(false)),
+    (600, Gesto::Para),
 ];
 /// Onde o salto do nível 2 sai (afinado pelo gate `o_nivel_2_anda_salta_cai_e_anima`).
 pub const QUADRO_DO_SALTO: u32 = 190;
@@ -316,6 +324,14 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
             println!("{}", ph2d_sprite_anim_scene::MENSAGEM);
             jogador
         }
+        topdown::CENA => topdown::montar(
+            sim,
+            topdown::Pecas {
+                estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
+                imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
+                anexa: portas.menu.anexa,
+            },
+        ),
         n if input_map::codigo(n).is_some() => input_map::leitores(sim, n, |s| nivel_2(s, portas)),
         _ => nivel_1(sim.world_mut()),
     }

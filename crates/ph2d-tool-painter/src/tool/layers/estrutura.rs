@@ -27,14 +27,27 @@ impl PainterTool {
 
     /// Faz de `id` a activa com a tela DELA (transparente se não tem): tira-a de `images`.
     pub(crate) fn carrega_a_tela_da_activa(&mut self, id: RtLayerId) {
-        let (w, h) = self.source_size;
-        let buf = self
-            .images
-            .remove(&id)
-            .map(|img| own_image(img).rgba8)
-            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+        let buf = self.tira_a_tela_de(id);
         self.replace_canvas(Arc::new(buf));
         self.layers.set_active(id);
+    }
+
+    /// [`Self::carrega_a_tela_da_activa`] da TROCA da activa (B18.3), sem copiar a tela velha para o diário
+    /// (2,5 ms a 4K): o `before` do passo (`snapshot_model`, que segura a tela) a guarda, e o commit logo a
+    /// seguir zera o diário (`set_cursor`). Até lá nenhum leitor o desenrola sobre a tela nova: só um
+    /// `before` ELIDIDO o faz, e o desta porta nunca o é.
+    pub(crate) fn carrega_a_tela_da_troca(&mut self, id: RtLayerId) {
+        let buf = self.tira_a_tela_de(id);
+        self.instala_a_tela_do_restauro(Arc::new(buf));
+        self.layers.set_active(id);
+    }
+
+    fn tira_a_tela_de(&mut self, id: RtLayerId) -> Vec<u8> {
+        let (w, h) = self.source_size;
+        self.images
+            .remove(&id)
+            .map(|img| own_image(img).rgba8)
+            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4])
     }
 
     /// Os mapas por camada perdem as chaves das camadas que já não existem.

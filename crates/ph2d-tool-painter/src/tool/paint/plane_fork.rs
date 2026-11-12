@@ -235,7 +235,8 @@ impl crate::tool::PainterTool {
     }
 
     /// [`Self::replace_canvas`] SEM a captura: só para o restauro de um undo/redo, que reseta o journal
-    /// no fim (`restore_model_confined`) — a cópia do plano inteiro nele era jogada fora (B17b-cont).
+    /// no fim (`restore_model_confined`) — a cópia do plano inteiro nele era jogada fora (B17b-cont) —, e
+    /// para a troca da activa, cujo `before` forte segura a tela e cujo commit zera o journal (B18.3).
     pub(crate) fn instala_a_tela_do_restauro(&mut self, new: Arc<Vec<u8>>) {
         self.undo.write_state.a_tela_sai(&self.canvas_rgba);
         open_access(&self.undo.write_state);

@@ -76,6 +76,35 @@ fn sonda_trocar_duplicar_e_salvar_camada_a_4k() {
     );
 }
 
+/// B18.3 A/B no mesmo processo: a troca (a chamada + o quadro seguinte) recompondo sempre (antes) e sem
+/// recompor quando a figura é provada igual (agora), intercaladas — mín./mediana de 9 de cada.
+#[test]
+#[ignore = "sonda de tempo"]
+fn sonda_troca_recompoe_contra_mantem_a_4k() {
+    use super::cache::TROCA_RECOMPOE_SEMPRE;
+    let (mut t, a, b) = documento();
+    let mut m = [[vec![], vec![]], [vec![], vec![]]];
+    for i in 0..18 {
+        let v = (i + i / 2) % 2; // ABBA: a ordem roda entre os blocos
+        TROCA_RECOMPOE_SEMPRE.with(|c| c.set(v == 0));
+        let alvo = if t.layers.active() == Some(a) { b } else { a };
+        let t0 = std::time::Instant::now();
+        t.select_layer(alvo);
+        m[v][0].push(ms(t0));
+        let t0 = std::time::Instant::now();
+        let _ = t.take_preview_arc();
+        m[v][1].push(ms(t0));
+    }
+    TROCA_RECOMPOE_SEMPRE.with(|c| c.set(false));
+    for (v, nome) in [(0, "recompõe (antes)"), (1, "mantém (agora)")] {
+        let (tm, tmed) = resumo(&mut m[v][0]);
+        let (qm, qmed) = resumo(&mut m[v][1]);
+        println!(
+            "[B18.3 4K] {nome}: trocar {tm:.2}/{tmed:.2} ms | quadro seguinte {qm:.2}/{qmed:.2} ms (mín./mediana)"
+        );
+    }
+}
+
 /// As fases do `set_active_layer` a 4K, uma a uma (mín. de 9 trocas): onde está o custo da troca.
 #[test]
 #[ignore = "sonda de tempo"]

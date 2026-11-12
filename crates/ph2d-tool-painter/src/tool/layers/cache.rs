@@ -5,6 +5,12 @@
 
 use super::super::*;
 
+#[cfg(test)]
+thread_local! {
+    /// A sonda A/B do B18.3 no mesmo processo: `true` = a troca recompõe sempre, como antes.
+    pub(crate) static TROCA_RECOMPOE_SEMPRE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 impl PainterTool {
     /// Bump the panel's publish revision — and **nothing else**.
     ///
@@ -60,6 +66,46 @@ impl PainterTool {
         // B.5: every structural/metadata edit funnels through here, so this is
         // the single chokepoint that bumps the publish revision (set_source is
         // the only structural reset that bypasses it — bumped there too).
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
+    /// **A troca da activa deixa a figura composta igual?** (B18.3) — só a pergunta da pista CPU, e
+    /// conservadora: `false` salvo provado. O composite é função dos bytes de cada camada e dos metadados
+    /// da pilha, nunca da activa; o que lê a activa fica de fora: o filme da proteção, a vista cinza da
+    /// máscara, o relevo aceso, o vidro sob papel de cor, a tinta viva do Wet (adormecer escreve a última
+    /// imagem na tela), uma forma aberta (fecha-se na tela) e um traço aberto. Pergunta-se antes E depois.
+    pub(crate) fn a_troca_mantem_a_figura(&self, alvo: RtLayerId) -> bool {
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize) * 4;
+        #[cfg(test)]
+        if TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
+            return false;
+        }
+        self.composited.as_ref().is_some_and(|c| c.len() == n)
+            && !self.preview_dirty
+            && self.canvas_rgba.len() == n
+            && (self.layers.active() == Some(alvo)
+                || self
+                    .images
+                    .get(&alvo)
+                    .is_some_and(|i| i.width == w && i.height == h && i.rgba8.len() == n))
+            && !self.is_editing_shape()
+            && !self.has_parked_shapes()
+            && !self.traco_ou_tinta_viva()
+            && !self.mask_scratch_active()
+            && self.mask_view_grayscale.is_none()
+            && !self.impasto_visible()
+            && !self.papel_atravessa_vidro()
+    }
+
+    /// A troca da activa com a figura provada igual ([`Self::a_troca_mantem_a_figura`]): o painel publica e
+    /// os cortes dos ajustes caem como no [`Self::invalidate_composite`], mas o `composited`, o sujo e a
+    /// pista GPU ficam — o quadro seguinte não recompõe a pilha (37 ms a 4K com 3 camadas).
+    pub(crate) fn troca_sem_mudar_a_figura(&mut self) {
+        self.larga_a_luz_guardada();
+        self.edited_since_bind = true;
+        self.compositor_cache
+            .invalidate_from(RtLayerId(0), &self.layers);
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 

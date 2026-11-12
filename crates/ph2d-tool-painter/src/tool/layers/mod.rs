@@ -27,6 +27,8 @@ mod preview;
 #[cfg(test)]
 mod sonda_4k_tests;
 mod texture;
+#[cfg(test)]
+mod troca_figura_tests;
 mod undo;
 
 // Preserve the historic public path `tool::layers::MAX_CURVE_POINTS_PER_CHANNEL`

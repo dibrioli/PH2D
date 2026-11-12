@@ -20,6 +20,11 @@ impl PainterTool {
             .is_some_and(|l| matches!(l.kind, LayerKind::Raster(_) | LayerKind::Mask(_)))
     }
 
+    /// Um traço aberto ou a tinta viva do Wet — a troca da activa não prova a figura igual (B18.3).
+    pub(crate) fn traco_ou_tinta_viva(&self) -> bool {
+        self.paint.stroke_undo.is_some() || self.paint.wetpaint.session.is_some()
+    }
+
     /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo
     /// **before** painting so the whole stroke restores to the pre-stroke pixels.
     pub(super) fn paint_begin(&mut self, ev: CanvasPointer) {

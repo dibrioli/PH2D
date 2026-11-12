@@ -371,13 +371,26 @@ impl PainterTool {
         if self.layers.active() == Some(target) {
             return;
         }
+        // B18.3: com a figura igual antes e depois, o quadro seguinte não recompõe a pilha.
+        let mantem = self.a_troca_mantem_a_figura(target);
         self.fecha_a_forma_aberta();
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
-        self.carrega_a_tela_da_activa(target);
+        #[cfg(test)]
+        if super::cache::TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
+            self.carrega_a_tela_da_activa(target); // a sonda A/B: o caminho de antes
+        } else {
+            self.carrega_a_tela_da_troca(target);
+        }
+        #[cfg(not(test))]
+        self.carrega_a_tela_da_troca(target);
         self.commit_structural_edit(undo_before);
         self.wet_acorda_da_camada();
-        self.invalidate_composite();
+        if mantem && self.a_troca_mantem_a_figura(target) {
+            self.troca_sem_mudar_a_figura();
+        } else {
+            self.invalidate_composite();
+        }
     }
 
     /// Collapse the multi-selection to a single layer (selection bookkeeping

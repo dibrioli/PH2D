@@ -163,18 +163,34 @@ pub fn gavetas(nivel: u32, foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, b
 }
 
 /// O cartão que o Inspector traz à vista na cena `nivel`: na 24 o Top-Down Player, que a folha animada do
-/// herói (Image + Animation) e o Body empurram para fora da coluna.
+/// herói (Image + Animation) e o Body empurram para fora da coluna; na foto `fisica_player_pulo` (ficha GEF 04)
+/// o Platform Player, cuja Jump (Show Jump Arc, Jump Height) cai abaixo da dobra numa janela de 1040 px.
 #[must_use]
-pub fn cartao_a_vista(nivel: u32) -> Option<NodeId> {
-    (nivel == CENA).then_some(ids::INSP_LIVE_TOPDOWN_SECTION)
+pub fn cartao_a_vista(nivel: u32, foto: Option<&str>) -> Option<NodeId> {
+    use crate::fotos_dos_cartoes::{CasoFisica, caso};
+    if nivel == CENA {
+        return Some(ids::INSP_LIVE_TOPDOWN_SECTION);
+    }
+    (foto.and_then(|n| caso(n.trim())) == Some(CasoFisica::PlayerPulo))
+        .then_some(ids::INSP_LIVE_PLAYER_SECTION)
 }
 
 /// Aplica as [`gavetas`] da cena `nivel` ao Inspector e pede-lhe que role até ao [`cartao_a_vista`] de `heroi`.
 pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
-    for (id, fechada) in gavetas(nivel, foto(foto_pedida().as_deref()), cartao) {
+    arruma_o_inspector_com(store, nivel, cartao, heroi, foto_pedida().as_deref());
+}
+
+fn arruma_o_inspector_com(
+    store: &mut WidgetStore,
+    nivel: u32,
+    cartao: NodeId,
+    heroi: u64,
+    pedida: Option<&str>,
+) {
+    for (id, fechada) in gavetas(nivel, foto(pedida), cartao) {
         store.set_collapsed(id, fechada);
     }
-    if let Some(s) = cartao_a_vista(nivel) {
+    if let Some(s) = cartao_a_vista(nivel, pedida) {
         store.request_inspector_section(s, heroi);
     }
 }
@@ -188,7 +204,10 @@ mod tests {
         let c = ids::INSP_LIVE_PLAYER_SECTION;
         let g = gavetas(CENA, None, c);
         assert_eq!(g, vec![(c, false), (ids::INSP_LIVE_TOPDOWN_SECTION, false)]);
-        assert_eq!(cartao_a_vista(CENA), Some(ids::INSP_LIVE_TOPDOWN_SECTION));
+        assert_eq!(
+            cartao_a_vista(CENA, None),
+            Some(ids::INSP_LIVE_TOPDOWN_SECTION)
+        );
         let more = hash_node_id("insp_td_fold_more");
         assert!(gavetas(CENA, Some(Foto::MaisAberto), c).contains(&(more, false)));
         assert_eq!(
@@ -196,7 +215,22 @@ mod tests {
             vec![(c, false)],
             "as outras cenas não mudam"
         );
-        assert_eq!(cartao_a_vista(4), None);
+        assert_eq!(cartao_a_vista(4, None), None);
+    }
+
+    /// ⭐ A foto `fisica_player_pulo` (GEF 04) abre com o cartão Jump à vista: Show Jump Arc e Jump Height ficavam
+    /// abaixo da dobra numa janela de 1040 px (a foto comitada só os mostrava a 1972 px de altura). O nome sem o
+    /// prefixo (`player_pulo`) não é foto nenhuma — a cena abre sem a caixa marcada.
+    #[test]
+    fn a_foto_do_pulo_traz_o_cartao_platform_player_a_vista() {
+        let p = ids::INSP_LIVE_PLAYER_SECTION;
+        assert_eq!(cartao_a_vista(4, Some("fisica_player_pulo")), Some(p));
+        assert_eq!(cartao_a_vista(4, Some("fisica_player_pulo_terreno")), None);
+        assert_eq!(cartao_a_vista(4, Some("player_pulo")), None);
+        assert_eq!(cartao_a_vista(4, Some("fisica_player")), None);
+        let mut s = WidgetStore::default();
+        arruma_o_inspector_com(&mut s, 4, p, 0xF3, Some("fisica_player_pulo"));
+        assert_eq!(s.inspector_section_reveal(), Some((p, 0xF3)));
     }
 
     #[test]

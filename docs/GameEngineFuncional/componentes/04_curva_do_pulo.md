@@ -163,7 +163,9 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
   [`curva_terreno_zoom.png`](fotos_04/curva_terreno_zoom.png) com `PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno`
   (o Player sobre a «Platform Low», 2,1 m antes da borda: o Full desce ao chão da direita, o Standing pousa na
   «Platform High», o Short pára na parede dela) · [`curva_e_cartao.png`](fotos_04/curva_e_cartao.png) refeita
-  com `fisica_player_pulo`. Gate da pose: `a_foto_do_terreno_desce_ao_chao_e_pousa_na_plataforma_alta`
+  com `fisica_player_pulo` (1930×1040: o Inspector rola até ao Platform Player — `cena_topdown::cartao_a_vista`,
+  gate `a_foto_do_pulo_traz_o_cartao_platform_player_a_vista`; antes a Jump só cabia a 1972 px de altura. ⚠️ O nome
+  leva o prefixo `fisica_`: `player_pulo` não é foto nenhuma e a cena abre sem a caixa marcada). Gate da pose: `a_foto_do_terreno_desce_ao_chao_e_pousa_na_plataforma_alta`
   (`ph2d-physics-scene`; mutações recuo 0,5 m e pose não movida ⇒ vermelho).
 - **Custo medido:** `launch_speed` 0,20 µs por chamada; lei + corte **54,3 µs** por chamada com 3 formas e Air
   Jumps 1 — 2 chamadas por quadro, só com a curva ligada e o relógio parado. Escala com o número de formas: se

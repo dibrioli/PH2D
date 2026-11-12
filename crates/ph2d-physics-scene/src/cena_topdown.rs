@@ -4,6 +4,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, ZIndexOverride};
+use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::registry::hash_node_id;
+use ph2d_editor_core::{NodeId, ids};
 use ph2d_physics_ecs::{Collider, ColliderShape, TopDownPlayer};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::rotation::{self, RotationMode};
@@ -84,6 +87,7 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     }
     if let Some(mut td) = sim.world_mut().get_mut::<TopDownPlayer>(heroi) {
         td.rotation_mode = rotation::to_wire(RotationMode::ToMovement);
+        td.default_controls &= foto(foto_pedida().as_deref()) != Some(Foto::Desligado);
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
@@ -93,4 +97,88 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
          numa parede e ele desliza ao longo dela."
     );
     heroi
+}
+
+/// O instante das fotos do cartão (`PH2D_GAME_SMOKE_FOTO`, ficha GEF 05); sem a variável a cena é a do dono.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Foto {
+    /// `topdown_more`: a dobra More aberta.
+    MaisAberto,
+    /// `topdown_off`: Default Controls desligado — o aviso e o «Turn on».
+    Desligado,
+}
+
+/// A foto pedida pelo nome.
+#[must_use]
+pub fn foto(nome: Option<&str>) -> Option<Foto> {
+    match nome?.trim() {
+        "topdown_more" => Some(Foto::MaisAberto),
+        "topdown_off" => Some(Foto::Desligado),
+        _ => None,
+    }
+}
+
+fn foto_pedida() -> Option<String> {
+    std::env::var("PH2D_GAME_SMOKE_FOTO").ok()
+}
+
+/// ⭐ **As gavetas do Inspector ao abrir a cena** (`(secção, fechada)`): `cartao` é o que a família abre; na
+/// cena 24 o Top-Down Player abre, e a foto `topdown_more` abre também a dobra More.
+#[must_use]
+pub fn gavetas(nivel: u32, foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, bool)> {
+    let mut g = vec![(cartao, false)];
+    if nivel == CENA {
+        g.push((ids::INSP_LIVE_TOPDOWN_SECTION, false));
+        if foto == Some(Foto::MaisAberto) {
+            // O id é do `ph2d-panel-inspector` (`INSP_TD_FOLD_MORE`), que esta folha não vê.
+            g.push((hash_node_id("insp_td_fold_more"), false));
+        }
+    }
+    g
+}
+
+/// O cartão que o Inspector traz à vista na cena `nivel`: na 24 o Top-Down Player, que a folha animada do
+/// herói (Image + Animation) e o Body empurram para fora da coluna.
+#[must_use]
+pub fn cartao_a_vista(nivel: u32) -> Option<NodeId> {
+    (nivel == CENA).then_some(ids::INSP_LIVE_TOPDOWN_SECTION)
+}
+
+/// Aplica as [`gavetas`] da cena `nivel` ao Inspector e pede-lhe que role até ao [`cartao_a_vista`] de `heroi`.
+pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
+    for (id, fechada) in gavetas(nivel, foto(foto_pedida().as_deref()), cartao) {
+        store.set_collapsed(id, fechada);
+    }
+    if let Some(s) = cartao_a_vista(nivel) {
+        store.request_inspector_section(s, heroi);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn na_cena_24_o_cartao_top_down_nasce_a_vista() {
+        let c = ids::INSP_LIVE_PLAYER_SECTION;
+        let g = gavetas(CENA, None, c);
+        assert_eq!(g, vec![(c, false), (ids::INSP_LIVE_TOPDOWN_SECTION, false)]);
+        assert_eq!(cartao_a_vista(CENA), Some(ids::INSP_LIVE_TOPDOWN_SECTION));
+        let more = hash_node_id("insp_td_fold_more");
+        assert!(gavetas(CENA, Some(Foto::MaisAberto), c).contains(&(more, false)));
+        assert_eq!(
+            gavetas(4, Some(Foto::MaisAberto), c),
+            vec![(c, false)],
+            "as outras cenas não mudam"
+        );
+        assert_eq!(cartao_a_vista(4), None);
+    }
+
+    #[test]
+    fn a_foto_so_existe_pelo_nome() {
+        assert_eq!(foto(Some("topdown_more")), Some(Foto::MaisAberto));
+        assert_eq!(foto(Some("topdown_off")), Some(Foto::Desligado));
+        assert_eq!(foto(Some("fisica_player")), None);
+        assert_eq!(foto(None), None);
+    }
 }

@@ -10,6 +10,8 @@ pub struct HierRowsState {
     /// `hierarchy_collapsed`: o conteúdo nasce recolhido (doc 01 §6).
     content_open: std::collections::BTreeSet<NodeId>,
     reveal: Option<InspectorReveal>,
+    /// «Mostra ESTE cartão» (`secção`, `entity`): o pedido pela secção exacta, quando a família tem vários.
+    reveal_section: Option<(NodeId, u64)>,
 }
 
 /// ⭐ **«Mostra o cartão desta família»** — o clique num ícone de componente da linha. O Inspector
@@ -56,5 +58,22 @@ impl WidgetStore {
     /// Atende o pedido: tira-o do store.
     pub fn take_inspector_reveal(&mut self) -> Option<InspectorReveal> {
         self.hier_rows.reveal.take()
+    }
+
+    /// Pede ao Inspector que traga à vista a secção `section` da entidade `entity` — o irmão exacto de
+    /// [`Self::request_inspector_reveal`] quando a família tem mais de um cartão (Body e Top-Down são Physics).
+    pub fn request_inspector_section(&mut self, section: NodeId, entity: u64) {
+        self.hier_rows.reveal_section = Some((section, entity));
+    }
+
+    /// O pedido pela secção em curso.
+    #[must_use]
+    pub fn inspector_section_reveal(&self) -> Option<(NodeId, u64)> {
+        self.hier_rows.reveal_section
+    }
+
+    /// Atende o pedido pela secção.
+    pub fn take_inspector_section_reveal(&mut self) -> Option<(NodeId, u64)> {
+        self.hier_rows.reveal_section.take()
     }
 }

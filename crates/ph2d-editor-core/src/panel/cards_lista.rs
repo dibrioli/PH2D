@@ -225,6 +225,7 @@ pub fn paint_card_list_top(
         list.stack.arrive(k, de);
     }
     let placed = list.stack.place(&items, m::CARD_GAP, dt, law);
+    let assentes = crescem.is_empty();
     let regressam: Vec<(NodeId, f32)> = items
         .iter()
         .filter_map(|i| list.stack.arriving_dx(i.key).map(|d| (i.key, d)))
@@ -233,6 +234,7 @@ pub fn paint_card_list_top(
     let tilt = list.stack.tilt_deg();
     let solta = solta.filter(|f| Some(f.key) != lugar);
     solto::larga(store, panel, drop, solta);
+    rolagem::revela(store, panel, &placed.ys, assentes);
     if curta && let Some(d) = drop.filter(|d| !d.loose) {
         store.set_card_guest_drop(d);
     }

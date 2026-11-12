@@ -154,8 +154,13 @@ impl crate::App {
             }
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4 | 5 | 24)) {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
-                hero.store
-                    .set_collapsed(ph2d_sfx_scene::cartao_que_abre(), false);
+                let cartao = ph2d_sfx_scene::cartao_que_abre();
+                ph2d_app_game::smoke::topdown::arruma_o_inspector(
+                    &mut hero.store,
+                    nivel,
+                    cartao,
+                    jogador,
+                );
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
                         kind: ph2d_editor_core::ViewFocusKind::Selected,

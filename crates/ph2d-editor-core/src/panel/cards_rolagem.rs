@@ -51,3 +51,73 @@ pub(super) fn largura_dos_cartoes(store: &WidgetStore, panel: NodeId, x: f32, w:
 pub(super) fn conteudo(real: f32, cabe: bool) -> f32 {
     if cabe { 0.0 } else { real }
 }
+
+/// ⭐ **«Mostra ESTE cartão»** ([`WidgetStore::request_inspector_section`]) na lista de cartões do Inspector:
+/// com o sujeito da lista = a entidade pedida e as alturas assentes (nenhuma mola a crescer), rola até o
+/// cartão `secção` ficar no topo do corpo. Sem esse cartão, o pedido morre — como o da família.
+pub(super) fn revela(store: &mut WidgetStore, panel: NodeId, ys: &[(NodeId, f32)], assentes: bool) {
+    let Some((secao, entidade)) = store.inspector_section_reveal() else {
+        return;
+    };
+    if panel != crate::ids::INSP_PANEL
+        || store.card_subject(panel) != Some(entidade)
+        || !assentes
+        || store.panel_content_h(panel).is_none()
+    {
+        return;
+    }
+    let _ = store.take_inspector_section_reveal();
+    if let Some(&(_, y)) = ys.iter().find(|(k, _)| *k == secao) {
+        store.set_panel_scroll(panel, y.max(0.0));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ids::INSP_PANEL;
+
+    const HEROI: u64 = 0xF3;
+    const CARTAO: NodeId = NodeId(77);
+    const YS: [(NodeId, f32); 2] = [(NodeId(1), 0.0), (CARTAO, 640.0)];
+
+    fn pedido() -> WidgetStore {
+        let mut s = WidgetStore::default();
+        s.set_card_subject(INSP_PANEL, Some((HEROI, "Hero".into())));
+        s.request_inspector_section(CARTAO, HEROI);
+        s
+    }
+
+    #[test]
+    fn o_pedido_pela_seccao_rola_a_lista_ate_ao_cartao_quando_as_alturas_assentam() {
+        let mut s = pedido();
+        revela(&mut s, INSP_PANEL, &YS, true);
+        assert!(
+            s.inspector_section_reveal().is_some(),
+            "sem alturas publicadas, espera"
+        );
+        s.set_panel_content_h(INSP_PANEL, 2_000.0);
+        revela(&mut s, INSP_PANEL, &YS, false);
+        assert!(
+            s.inspector_section_reveal().is_some(),
+            "com uma mola a crescer, espera"
+        );
+        revela(&mut s, INSP_PANEL, &YS, true);
+        assert_eq!(s.panel_scroll_target(INSP_PANEL), 640.0);
+        assert!(s.inspector_section_reveal().is_none(), "atendido");
+    }
+
+    #[test]
+    fn o_pedido_de_outro_sujeito_espera_e_sem_o_cartao_morre() {
+        let mut s = pedido();
+        s.set_panel_content_h(INSP_PANEL, 2_000.0);
+        s.set_card_subject(INSP_PANEL, Some((HEROI + 1, "Other".into())));
+        revela(&mut s, INSP_PANEL, &YS, true);
+        assert!(s.inspector_section_reveal().is_some());
+        assert_eq!(s.panel_scroll_target(INSP_PANEL), 0.0);
+        s.set_card_subject(INSP_PANEL, Some((HEROI, "Hero".into())));
+        revela(&mut s, INSP_PANEL, &YS[..1], true);
+        assert!(s.inspector_section_reveal().is_none());
+        assert_eq!(s.panel_scroll_target(INSP_PANEL), 0.0);
+    }
+}

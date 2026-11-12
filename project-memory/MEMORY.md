@@ -142,4 +142,5 @@
 - ⭐⭐ [Dono 10/11: Look da forma, Pivot, Dash e stroke](project_shape_look_body_default_dash_stroke_2026_11_10.md)
 - ⭐⭐⭐ [Dono 10/11: física FLUIDA sob animação; o «mínimo» do limite é o do OBJETO](project_physics_fluid_under_animation_2026_11_10.md)
 - ⭐ [Dono 11/11: o Done da Timeline desliga o Auto Key e rebobina (12/11)](project_timeline_done_turns_off_autokey_2026_11_11.md)
+- ⭐⭐ [Dono 12/11: easing = ritmo AO LONGO do caminho (modelo AE); uma linha Position, forma no canvas](project_timeline_easing_is_rhythm_along_the_path_2026_11_12.md)
 - ⭐⭐ [Dono 10/11: Collision Shape com o Look da Sprite; ferramenta Pivot](project_collision_shape_look_2026_11_10.md)

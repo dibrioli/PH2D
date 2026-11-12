@@ -137,6 +137,8 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
     }
 }
 
+use crate::plane_copy::par_clone;
+
 impl PainterTool {
     /// Todos os documentos que o Painter tem em mãos: o LIGADO (os campos de topo) e os guardados
     /// (`doc_cache`), na ordem dos ids.
@@ -168,35 +170,32 @@ impl PainterTool {
         PaintedDocument {
             id,
             layers: self.layers.clone(),
-            canvas_rgba: self.canvas_rgba.as_ref().clone(),
+            // B18.2: cada plano em blocos paralelos (os mesmos bytes; a cópia serial pagava o first-touch).
+            canvas_rgba: par_clone(&self.canvas_rgba),
             images: self
                 .images
                 .iter()
-                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .map(|(k, v)| (*k, crate::tool::internal::copia_a_imagem(v)))
                 .collect(),
             // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
             // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.
             heights: self
                 .heights
                 .iter()
-                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .map(|(k, v)| (*k, par_clone(v)))
                 .collect(),
             covers: self
                 .covers
                 .iter()
-                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .map(|(k, v)| (*k, par_clone(v)))
                 .collect(),
-            mats: self
-                .mats
-                .iter()
-                .map(|(k, v)| (*k, v.as_ref().clone()))
-                .collect(),
+            mats: self.mats.iter().map(|(k, v)| (*k, par_clone(v))).collect(),
             size: self.source_size,
             papel: self.papel,
             vidros: self
                 .vidros
                 .iter()
-                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .map(|(k, v)| (*k, par_clone(v)))
                 .collect(),
             tintas_molhadas: self.tintas_molhadas.clone(),
             fator_aparencia: self.fator_aparencia,

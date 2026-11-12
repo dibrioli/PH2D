@@ -15,6 +15,8 @@
 
 mod adjustments;
 mod cache;
+#[cfg(test)]
+mod copias_de_plano_tests;
 mod estrutura;
 mod model;
 mod mutate;
@@ -22,6 +24,8 @@ mod passo;
 #[cfg(test)]
 mod passo_tests;
 mod preview;
+#[cfg(test)]
+mod sonda_4k_tests;
 mod texture;
 mod undo;
 

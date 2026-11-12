@@ -94,7 +94,7 @@ impl PainterTool {
         let src_pixels = self
             .images
             .get(&id)
-            .map(|img| img.rgba8.clone())
+            .map(|img| crate::plane_copy::par_clone(&img.rgba8))
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         let Some(new_id) = self.layers.duplicate(id) else {
             // Cap: a activa volta à tela (o invariante «a activa nunca está em images»).

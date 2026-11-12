@@ -199,7 +199,7 @@ impl PainterTool {
                 Arc::new(LayerImage {
                     width: w,
                     height: h,
-                    rgba8: self.canvas_rgba.as_ref().clone(),
+                    rgba8: crate::plane_copy::par_clone(&self.canvas_rgba),
                 }),
             );
         }

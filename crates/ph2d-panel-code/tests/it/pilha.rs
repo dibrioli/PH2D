@@ -260,3 +260,28 @@ fn na_janela_de_900x560_cabem_o_codigo_a_barra_e_a_faixa_pedida() {
         assert!(p.debug.is_some(), "a barra cabe ({need} ≤ 225): {p:?}");
     }
 }
+
+/// ⛔ O `want` REAL da faixa (não um cartão inventado): aberta pelo artista, pede-se (`asked`) e
+/// o cabeçalho é o mínimo dela (cabeçalho e uma linha); fechada, não se pede.
+#[test]
+fn a_faixa_aberta_pede_se_e_guarda_o_minimo_como_cabecalho() {
+    let c = ph2d_panel_code::ConsoleView::default();
+    for area_h in [240.0, 600.0, 1200.0] {
+        let aberta = c.want(true, area_h);
+        assert!(aberta.asked, "aberta pelo artista: {aberta:?}");
+        assert_eq!(
+            aberta.head, aberta.least,
+            "o cabeçalho é o mínimo: {aberta:?}"
+        );
+        assert!(
+            aberta.least < aberta.h,
+            "o mínimo cabe abaixo do que quer: {aberta:?}"
+        );
+        let fechada = c.want(false, area_h);
+        assert!(!fechada.asked, "fechada não se pede: {fechada:?}");
+        assert_eq!(
+            fechada.head, fechada.h,
+            "fechada é só o cabeçalho: {fechada:?}"
+        );
+    }
+}

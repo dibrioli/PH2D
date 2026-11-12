@@ -3,7 +3,9 @@
 `/pd-linha-assumir PainterWatercolor docs/Painter/handoffs/PROMPT_CONTINUACAO_2026-11-12_desempenho_2.md`
 
 Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor`, branch `line/PainterWatercolor`.
-`cd` + `pwd` + `git branch --show-current` ANTES de ler. O main não andou (merge-base `bc4a6ce930`): não faça rebase.
+`cd` + `pwd` + `git branch --show-current` ANTES de ler. ⛔ **NÃO faça `git rebase main`:** em 12/11 o main andou 593
+commits (a integração 12/11b de OUTRAS linhas, `integ/2026-11-12b`) e nada desta linha está nele (`git cherry main HEAD`:
+436 `+`, 0 `-`); merge-base `bc4a6ce930`. Quem funde é o integrador que o dono vai nomear — o handoff diz o merge-base.
 
 ## Ordem do dono (verbatim)
 

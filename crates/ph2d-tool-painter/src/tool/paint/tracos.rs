@@ -83,6 +83,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "link_shared_settings",
     "line_show_dimensions",
     "mask_brush",
+    "mask_spacing_saved", // o Spacing do artista guardado ao entrar no Blur/Smear do Mask (B40.4)
     "mask_overlay_color",
     "eyedropper_armed",
     "falloff_armed",

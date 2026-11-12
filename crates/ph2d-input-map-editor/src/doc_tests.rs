@@ -222,3 +222,26 @@ fn the_open_row_labels_read_in_every_theme_and_its_face_is_its_own() {
         }
     }
 }
+
+/// ⭐ O «Bind…» da aba sobre a escuta do cartão do Trigger NA MESMA acção cancela (o `Down` já a desarmou) e não
+/// re-arma como «acrescentar»; o de outra acção arma; sem cancelamento, arma.
+#[test]
+fn bind_on_the_triggers_listen_cancels_instead_of_rearming() {
+    let mut map = ph2d_input::InputMap::default();
+    let (x, y) = (map.create("fire"), map.create("jump"));
+    let mut store = ph2d_editor_core::interaction::WidgetStore::default();
+    let mut d = InputMapDoc::new(View::List);
+    for (alvo, quer) in [(x, None), (y, Some(y))] {
+        store.listen_for_binding_replacing(x);
+        store.desarma_escuta_no_clique();
+        d.end_frame(&map, &mut store, Some(Some(alvo)), true);
+        assert_eq!(store.input_map_listening(), quer);
+    }
+    store.stop_listening();
+    d.end_frame(&map, &mut store, Some(Some(x)), true);
+    assert_eq!(
+        store.input_map_listening(),
+        Some(x),
+        "sem cartão a cancelar, arma"
+    );
+}

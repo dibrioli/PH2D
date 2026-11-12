@@ -241,7 +241,7 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-scenes", 666),      // 566
     ("ph2d-code-smoke", 614),       // 514
     ("ph2d-code-viewmodel", 304),   // 204
-    ("ph2d-physics-smoke-scenes", 18_859), // 18_732 (GEF02 onda 8, 10/11: +287 da cena 48 com o tecto, +122 da cena 122)
+    ("ph2d-physics-smoke-scenes", 19_008), // 18_859 (integ 12/11: +149 da cena 49, `joint_break`, que saiu da `ph2d-app-physics` para curar o tecto dela); 18_732 (GEF02 onda 8: +287 da cena 48 com o tecto, +122 da cena 122)
 ];
 
 /// A folga de uma crate: **2 %** do medido, piso de 100 linhas. É a razão da shell

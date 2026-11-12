@@ -2,24 +2,15 @@
 //!
 //! # A cena: **a arma que aponta, e a que não aponta**
 //!
-//! Um herói que anda com as setas e **roda para onde anda**, e duas armas que ouvem a MESMA tecla:
+//! Um herói que anda com as setas e roda para onde anda, e duas armas que ouvem a MESMA tecla: **o herói** (azul),
+//! com `Aim from spawner` ligado — a bala sai para onde ele está virado — e a **torreta** (cinzenta), o controlo,
+//! com a mesma receita e a caixa desligada — as balas saem sempre para o mesmo lado. ⚠️ A tecla é a mesma de
+//! propósito: a única diferença entre os dois tiros é uma caixa de marcar.
 //!
-//! | quem | o que ele demonstra |
-//! |---|---|
-//! | **o herói** (azul) | a arma dele tem `Aim from spawner` **ligado** — a bala sai para onde ele está virado |
-//! | a **torreta** (cinzenta) | o CONTROLO: o mesmo gatilho, a mesma receita, e o `Aim from spawner` **desligado** — as balas dela saem sempre para o mesmo lado |
+//! # ⛔ A acção `fire` NÃO vem de fábrica
 //!
-//! ⚠️⚠️ **As duas ouvem a mesma tecla de propósito, e é isso que torna a wave legível:** uma tecla,
-//! dois tiros, e a única diferença entre eles é **uma caixa de marcar**. *Duas teclas não ensinariam
-//! nada — o dono não saberia se o que mudou foi a mira ou o gesto.*
-//!
-//! # ⛔ E a acção `fire` NÃO vem de fábrica
-//!
-//! O `InputMap::with_player_defaults` tem sete acções e **nenhuma é disparar** (medido). O prólogo
-//! da shell cria-a e liga-a ao **espaço**, porque *um gatilho cuja acção o mapa não conhece fica
-//! calado* — e o smoke mostraria a ferramenta a parecer partida, que é a espécie que o `CLAUDE.md`
-//! §5.0 chama de **pior que uma cena ausente**.
-//!
+//! O `InputMap::with_player_defaults` não tem «disparar» (medido): o prólogo da shell cria-a e liga-a ao espaço —
+//! um gatilho cuja acção o mapa não conhece fica calado e o smoke pareceria partido (`CLAUDE.md` §5.0).
 //! ⚠️ Se a linha `[trigger-smoke]` não aparecer, **PARE**: a cena não montou.
 
 use ph2d_core::Vec2;
@@ -43,38 +34,14 @@ pub const ACCAO: &str = "fire";
 /// O nome do sinal — idem: quem publica e quem ouve leem daqui.
 pub const SINAL: &str = "tiro";
 
-/// ⭐⭐⭐ **A TECLA — o `Q`, e ela foi MEDIDA e não escolhida** (report do dono, 2026-09-18).
+/// ⭐⭐⭐ **A TECLA — o `Q`, MEDIDA e não escolhida** (report do dono, 2026-09-18).
 ///
-/// ⛔⛔ **A 1.ª redacção usava o ESPAÇO e afirmava, sem medir, que era *«a tecla que ninguém do
-/// editor usa no canvas»*.** É FALSO: o espaço é o **Play/Pause do transporte**
-/// ([`ph2d_editor_core`], `dispatch::key`: `KEY_SPACE if !cmd => GraphKey::TogglePlay`), logo um
-/// toque fazia **duas** coisas — parava a corrida E disparava. *Uma afirmação sobre um atalho é
-/// uma MEDIÇÃO que eu não fiz.*
-///
-/// # ⚠️ A medição (2026-09-18), e porque a lista velha não servia
-///
-/// Um estudo de 2026-08-12 mediu *«das 26 letras, só NOVE estão livres: `H I J M N P U V Y`»* — e
-/// ela **envelheceu para falsa**: o `P` foi tomado pelo menu radial (E4) e o `U` pelo detalhe da
-/// escultura, no mês seguinte. ⇒ re-medido contra os braços REAIS do teclado de canvas, sobram
-/// **três** letras sem braço simples: **`H`** (que é o *Bypass* do grafo do Motion), **`J`** e
-/// **`Q`**.
-///
-/// ⚠️⚠️ **E a 1.ª re-medição também mentiu**: ela contou a tabela do NORMALIZADOR
-/// (`KeyCode::KeyQ => 0x51`, que traduz e não trata) como se fossem atalhos, e devolveu *«nenhuma
-/// letra está livre»*. *Uma régua que varre `KeyCode::Key<X> =>` apanha o tradutor junto com os
-/// consumidores.*
-///
-/// ⭐⭐ **O `Q` ganha das outras duas porque não é só livre: é a tecla que o MAPA DE FÁBRICA deste
-/// app já escolheu para uma acção de JOGADOR** (`PLAYER_DASH`), com a regra escrita ao lado dela —
-/// *«o `W` desta shell abre o painel de mundo, e um default que briga com um atalho que já existe é
-/// uma armadilha que só o artista descobre»*. Esta cena tinha exactamente essa armadilha.
-///
-/// ⚠️ **Partilhar tecla com o `dash` é DELIBERADO e tem precedente escrito** no mesmo mapa (o
-/// `jump` e o `move_up` partilham a seta de cima): *as duas leis nunca correm na mesma cena* — o
-/// `dash` é do mover de PLATAFORMA e aqui o herói é de vista de cima.
-///
-/// ⛔ E há gate: `a_tecla_do_gatilho_nao_e_reclamada_pelo_editor`, com o ESPAÇO como **controlo
-/// positivo** — senão a régua mede o nada e fica verde.
+/// ⛔ O espaço (1.ª redacção) é o Play/Pause do transporte: um toque faria duas coisas. Re-medido contra os braços
+/// REAIS do teclado de canvas, sobram três letras sem braço simples (`H`, `J`, `Q`); a lista de 2026-08-12 (nove
+/// livres) envelheceu para falsa, e a 1.ª re-medição contou a tabela do NORMALIZADOR como atalhos. O `Q` ganha porque
+/// o mapa de fábrica já o escolheu para o `PLAYER_DASH`: partilhá-lo é deliberado (o `jump` e o `move_up` partilham a
+/// seta de cima; as duas leis nunca correm na mesma cena — o `dash` é de plataforma, aqui o herói é de vista de cima).
+/// ⛔ Gate: `a_tecla_do_gatilho_nao_e_reclamada_pelo_editor`, com o ESPAÇO como controlo positivo.
 pub const TECLA: u32 = 0x51;
 
 /// O nome que o `Q` tem na tela, para o roteiro e para o painel.
@@ -82,15 +49,9 @@ pub const TECLA_NOME: &str = "Q";
 
 /// ⭐⭐⭐ **Uma acção que EXISTE e NÃO tem tecla** — o sujeito do segundo aviso.
 ///
-/// ⛔⛔ **Ela tem de ser CRIADA pela cena, e isso foi medido:** as **sete** acções do
-/// `InputMap::with_player_defaults` têm todas ligação (`←/A · →/D · ↑/Z · ↓/S · Q · R`), logo
-/// nenhuma delas serve de exemplo. *Um passo de roteiro que manda escrever `grab` ensinaria o
-/// contrário do que acontece* — a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena
-/// ausente.
-///
-/// ⚠️ **E o estado dela não é um erro:** é o que qualquer artista alcança ao criar uma acção e
-/// esquecer-se de lhe ligar uma tecla. O gatilho fica calado, e até 2026-09-18 o painel dizia que
-/// estava tudo bem.
+/// ⛔ A cena tem de CRIÁ-LA (medido): as sete acções de `with_player_defaults` têm todas ligação, e um passo de
+/// roteiro que mandasse escrever `grab` ensinaria o contrário do que acontece. O estado dela não é um erro: é o de
+/// quem cria uma acção e esquece a tecla — o gatilho fica calado.
 pub const ACCAO_SEM_TECLA: &str = "reload";
 
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];

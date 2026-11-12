@@ -116,6 +116,7 @@ pub mod physics_smoke_grab;
 pub mod physics_smoke_grow;
 pub mod physics_smoke_ik;
 pub mod physics_smoke_interact;
+pub mod physics_smoke_joint_break;
 pub mod physics_smoke_joint_motor;
 pub mod physics_smoke_kin_pure;
 pub mod physics_smoke_kin_push;

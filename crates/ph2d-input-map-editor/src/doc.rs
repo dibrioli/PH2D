@@ -190,6 +190,10 @@ impl InputMapDoc {
     ) {
         self.applied = Some(map.clone());
         match listen {
+            // O `Down` deste clique desarmou a escuta do cartão do Trigger NESTA acção: o gesto é cancelar.
+            Some(Some(id)) if store.take_listen_cancelled_by_down() == Some(id) => {
+                store.stop_listening();
+            }
             Some(Some(id)) => store.listen_for_binding(id),
             Some(None) => store.stop_listening(),
             None => {}

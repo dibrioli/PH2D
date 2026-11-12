@@ -26,6 +26,8 @@ use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "component.";
 const TABLE: &str = "crates/ph2d-i18n/src/component_catalog.rs";
+/// O irmão da tabela (os textos do `ShapeLook`, `ph2d-i18n::component_catalog_forma`): as chaves dele também são declaradas.
+const TABLE_FORMA: &str = "crates/ph2d-i18n/src/component_catalog_forma.rs";
 /// ⭐ As palavras de INTENÇÃO do *Add Component* (F6) — chaves DERIVADAS de cada componente
 /// (`ComponentDesc::keywords_key`), nunca citadas como literal: contam como usadas quando o
 /// componente de onde derivam existe.
@@ -173,7 +175,7 @@ fn every_named_exception_still_shelters_a_real_literal() {
 #[test]
 fn every_key_of_this_catalog_exists_on_both_sides() {
     let (_, repo) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let mut c = gate::chaves(&repo, PREFIX, &[TABLE, KEYWORDS_TABLE]);
+    let mut c = gate::chaves(&repo, PREFIX, &[TABLE, TABLE_FORMA, KEYWORDS_TABLE]);
     let derivadas: Vec<String> = ph2d_component_desc::all()
         .map(ph2d_component_desc::ComponentDesc::keywords_key)
         .collect();

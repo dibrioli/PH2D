@@ -23,6 +23,7 @@ mod peso_na_placa;
 mod pilha;
 mod problemas;
 mod quadro_do_depurador;
+mod recorte_do_quadro;
 mod respiro;
 mod sublinhado;
 mod submenu;

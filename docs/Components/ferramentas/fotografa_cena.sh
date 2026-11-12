@@ -206,7 +206,7 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$DISPLAY" = "${DISPLAY:-:
 fi
 cd "$RAIZ"
 mkdir -p "$TMP/home"
-[ -z "${FOTO_LAYOUT:-}" ] || { mkdir -p "$TMP/home/.ph2d"; cp "${FOTO_LAYOUT}" "$TMP/home/.ph2d/layout.txt"; }
+[ -z "${FOTO_LAYOUT:-}" ] || { mkdir -p "$TMP/home/.ph2d"; cp "${FOTO_LAYOUT:-}" "$TMP/home/.ph2d/layout.txt"; }
 env -u WAYLAND_DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_SIZE=17179869184 \
   __GL_SHADER_DISK_CACHE_PATH="$CACHE" MESA_SHADER_CACHE_DIR="$CACHE/mesa" $ENV_KV \
   PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &

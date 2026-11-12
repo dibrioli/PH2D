@@ -1,10 +1,10 @@
-# HANDOFF de integração — `line/GameEngineFuncional02`, 11/11 (Look da forma de colisão · física fluida sob animação · canais por tique · item 5 herdado)
+# HANDOFF de integração — `line/GameEngineFuncional02`, 11/11 (Look da forma de colisão · física fluida sob animação · canais por tique · item 5 herdado · janela do jogo à frente)
 
 Leitor: o agente integrador. Anterior (já no `main`): [OUTLINE_E_F3](HANDOFF_INTEGRACAO_line_GameEngineFuncional02_2026-11-09_OUTLINE_E_F3.md). Mecanismo de cada onda, nos handoffs de continuação linkados em §2 — não repetido aqui.
 
 ## 1. Identidade
 
-Branch `line/GameEngineFuncional02`, HEAD `ace77ee00f`, worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02`. Merge-base com o `main`: `bc4a6ce930` (o `main` do começo desta linha). **58 commits**, 252 ficheiros, +7 573 −2 018 (`git diff --shortstat bc4a6ce930..HEAD`). Nada integrado, nenhum push. **Suíte completa e `nextest-impacted` NÃO correram** (regra do dono 23/10: são do integrador). Árvore: só `.log`/`.png` de fotos por rastrear em `fotos_fisica/` (lixo do `fotografa_cena.sh`; comite ou apague).
+Branch `line/GameEngineFuncional02`, HEAD `104dbc5461`, worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02`. Merge-base com o `main`: `bc4a6ce930` (o `main` do começo desta linha). **61 commits**, 266 ficheiros, +7 983 −2 094 (`git diff --shortstat bc4a6ce930..HEAD`). Nada integrado, nenhum push. **Suíte completa e `nextest-impacted` NÃO correram** (regra do dono 23/10: são do integrador). Árvore: só `.log`/`.png` de fotos por rastrear em `fotos_fisica/` (lixo do `fotografa_cena.sh`; comite ou apague).
 
 ## 2. O que entra (por onda; `git log --oneline bc4a6ce930..HEAD`)
 
@@ -13,13 +13,18 @@ Branch `line/GameEngineFuncional02`, HEAD `ace77ee00f`, worktree `/home/enio/Doc
 - **Onda 7** — [ONDA7](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA7.md). Física fluida sob animação: juntas de mundo no referencial do objeto (`joint_desc(.., lado_b_mundo)`), formas reafinadas no lugar e por tique (`drive_shapes`), `retune_body` acorda sempre `f7b233f13b`; cena 66 animada `PH2D_PHYSICS_SMOKE_ANIMA=1` `b9a15ad2d6`.
 - **Onda 8** — [LOOK](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA8_LOOK.md) · [SMOKE_E_LOOK_B](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA8_SMOKE_E_LOOK_B.md) · [ITENS_2_A_4](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA8_ITENS_2_A_4.md) · [LOOK_TRACO](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA8_LOOK_TRACO.md). `ShapeLook { pivot, tint, opacity, … }` no lado-forma, cartão Look, ferramenta Pivot do canvas `e28c5da10d`..`f16259aadd`; Color/Opacity pintam o contorno `35e5d16d76`; retorno do smoke `c22f3377cf`; Look ao associar volta ao padrão do corpo `eb702f0a17`; Dash e largura do stroke `92fb36208c`; rótulo que não cabe = reticências `80670dbced`. Penetração na rampa (`reshape_push`) `ff04dccc4a`; Width/Height por tique `757d483a8b`; motor da junta em graus no cartão `3a9bdae8eb`; livro do quadro `be48b89680`; cena 122 (`PH2D_PHYSICS_SMOKE=122`, caixa que cresce).
 - **Item 5 + por tique** — [ITEM5_E_POR_TIQUE](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ITEM5_E_POR_TIQUE.md). 5.1 censo de sinais ouve o painel do artista `5b8fc8ca46` · 5.3 contorno acima do tecto desiste após o 1.º corte (`trace_fitted` 256² 1,18 s → 40 ms) `8e150966ef` · 5.4 nav/impressão contam todas as formas do corpo `b0c883aa53` · 5.5 macro não troca contorno com pontos animados `bb5aa69d2c` · 5.6 painel clássico apaga os travados `d509c7100a`. JUNTA e MUNDO chegam ao solver por tique (`SceneAtTick::mundo`, `PhysicsBridge::poe_a_cena`, `Livros{drive,fisica,mundo}`) `fe7ed896ec`; o livro da junta guarda o documento (`Driven::com_outra_mao`, fusão de 3 vias campo a campo) `e55a3a90bd`.
-- **Fecho (esta janela, 11/11)** — cápsula (a) e caixa de sinal (d) MEDIDAS e não confirmadas (§6); `FOTO_LAYOUT` do `fotografa_cena.sh` `1ece3815cb`; fmt e clippy `a9d6da935f` `ace77ee00f`; cortes de comentário `200f104a9a` `9e7b28957c`.
+- **Onda 10 (pós-fecho, 11/11)** — a janela do jogo vem à frente e o editor parado mostra um aviso `c8ccc1b6b7` (+ foto `104dbc5461`). Ver §2.1.
+- **Fecho (esta janela, 11/11)** — cápsula (a) e caixa de sinal (d) MEDIDAS e não confirmadas (§6); `FOTO_LAYOUT` do `fotografa_cena.sh` `1ece3815cb` (`FOTO_LAYOUT` ausente quebrava o heredoc sob `set -u`); fmt e clippy `a9d6da935f` `ace77ee00f`; cortes de comentário `200f104a9a` `9e7b28957c`.
+
+### 2.1 Onda 10 — «app travou» não era travamento
+
+Relato do dono 11/11 («app travou» ao simular). Diagnóstico por perf no pid vivo: não é travamento nem a forma de colisão; o Play com o palco «Window» abriu o jogo ATRÁS do editor maximizado (KWin/Wayland ignora `focus_window()` sem ficha) e `da_outra_janela` descarta os eventos do editor ⇒ cara de congelado. Pré-existente desde `bc3bf2ea58`. Dono: as duas — janela à frente + aviso sobre o editor. `game_stage.rs` (`passo_da_janela`, `QUADROS_SEM_FICHA = 30`, 4 testes, 7/7 mutantes), `screens/hero/aviso_do_jogo.rs`, `janela_do_jogo.rs` (ficha xdg-activation; clique no editor → `request_user_attention(Critical)`), i18n `shell.janela_do_jogo.running`, `undo.rs::pedido_da_janela`. Gates `the_shell_only_shrinks`/`no_magic_numeric`/clippy verdes; a fiação da shell não tem teste headless. Mecanismo e foto: [ONDA10](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-11_ONDA10_JANELA_DO_JOGO.md).
 
 ## 3. Superfície de colisão (colada de `bash <worktree>/scripts/collision-surface.sh`, 11/11 — REFERÊNCIA; o integrador lê o `main` no ficheiro)
 
 ```
 SUPERFÍCIE DE COLISÃO — line/GameEngineFuncional02 contra main
-  merge-base bc4a6ce930   ·   58 commit(s)   ·   252 arquivo(s)
+  merge-base bc4a6ce930   ·   61 commit(s)   ·   266 arquivo(s)
   ⚠ PROJECT_SCHEMA                        233   (base: 231)
   ⚠   └ tripla do gate               (233, 13, 29)   (base: (231, 13, 29))
     VEC_SCENE_SCHEMA 29=29 · FLIP_SCHEMA 13=13 · DOC_VERSION (timeline) 25=25
@@ -29,9 +34,11 @@ SUPERFÍCIE DE COLISÃO — line/GameEngineFuncional02 contra main
   ADR: último no disco 0200, próximo livre 0201; esta linha não cria ADR
   Cargo.lock: nenhum '+name' externo novo (arestas internas: ph2d-shape-handles→ph2d-anim/libm/ph2d-inspector-ordering, ph2d-app-macros→ph2d-shape-handles, ph2d-panel-physics)
   MARCADORES DE CONFLITO: nenhum
-  TETOS DE LOC: nenhum arquivo da linha passa do teto
+  ✗ TETOS DE LOC: 703/700 editor-core/src/screens/hero/paint.rs · 997/600 shells/desktop/src/main.rs · 601/600 shells/desktop/src/undo.rs
   ✗ SONDA CEGA em ph2d-render, ph2d-script (bug de caminho do script, «—» também na base; não é desta linha)
 ```
+
+Tetos de LOC (leitura): `main.rs` 1 031 (base) → 997, só encolheu; `paint.rs` 700 → **703** (+3, onda 10) e `undo.rs` 599 → **601** (+2, onda 10) passam do teto do script — o integrador confirma se o gate os pega; a cura é cortar comentário nesses dois, nunca subir o número.
 
 **Contadores como DELTA** (o integrador RECONTA: `python3 scripts/schema-recount.py`):
 
@@ -52,12 +59,12 @@ SUPERFÍCIE DE COLISÃO — line/GameEngineFuncional02 contra main
 - `PhysicsBridge::prepare` chama `sweep_outlines`; outra tabela de outline fora do `OutlineCache` fica sem poda.
 - `cards_sprite_pivot::grade` mudou de assinatura (`nome: Option<(NodeId, bool)>`). `ph2d-app-macros` agora depende de `ph2d-shape-handles`.
 - `shells/desktop/tests/it/main.rs` perdeu um `mod` (teste movido `279d4900d9`): conflito nessa linha para quem a editar.
-- **Catracas** (`find crates/<c> -name '*.rs' | xargs cat | wc -l`): `ph2d-app-physics` **37 750 / 37 798**; `ph2d-app-macros` 14 598 / 14 630; `ph2d-app-components` **80 869 / 80 869 (no tecto, intocado em LOC)**; `physics_apply.rs` 594/600; shell 188 913 / 189 041. Cura é sempre MOVER ou cortar comentário, nunca subir o número.
+- **Catracas** (`find crates/<c> -name '*.rs' | xargs cat | wc -l`): `ph2d-app-physics` **37 750 / 37 798**; `ph2d-app-macros` 14 598 / 14 630; `ph2d-app-components` **80 869 / 80 869 (no tecto, intocado em LOC)**; `physics_apply.rs` 594/600; shell: líquido −1 na onda 10 (o gate `the_shell_only_shrinks` verde). Cura é sempre MOVER ou cortar comentário, nunca subir o número.
 
 ## 5. Prova de fecho (na linha, 11/11)
 
-- `cargo fmt` workspace verde após `a9d6da935f`.
-- `cargo clippy -D warnings` verde em 13 pacotes após `ace77ee00f`: `ph2d-app-macros`, `ph2d-shape-handles`, `ph2d-editor-core`, `ph2d-panel-inspector`, `ph2d-physics-ecs`, `ph2d-panel-authored`, `ph2d-signal-census`, `ph2d-outline-trace`, `ph2d-app-physics`, `ph2d-preview-drive`, `ph2d-physics`, `ph2d-timeline`, `ph2d-host-desktop`.
+- `cargo fmt` workspace verde após `a9d6da935f`; onda 10: rustfmt limpo, clippy `-D warnings` em `ph2d-editor-core`, `ph2d-i18n`, `ph2d-host-desktop` (§2.1).
+- `cargo clippy -D warnings` verde em 13 pacotes após `ace77ee00f` (as crates tocadas até o fecho, incluindo `ph2d-app-physics`, `ph2d-timeline`, `ph2d-host-desktop`).
 - Gate de LOC `the_shell_only_shrinks_and_every_app_crate_too` (`ph2d-editor-core --test it`) verde.
 - `cargo machete` nas 3 crates com `Cargo.toml` tocado (`ph2d-app-macros`, `ph2d-physics-smoke-scenes`, `ph2d-shape-handles`): nada não usado.
 - Cada cura das ondas tem teste nascido vermelho e mutação sangrada (números nos handoffs de continuação).
@@ -66,11 +73,9 @@ SUPERFÍCIE DE COLISÃO — line/GameEngineFuncional02 contra main
 
 ## 6. Fecho do ABERTO herdado (OUTLINE_E_F3 §11 — tudo fechado)
 
-- **11.1** «Set Scale to 1» em cadeia, um clique, um undo = `3bb9f4e91c` (dono 11/11: um clique endireita tudo; sem mensagem a nomear o que foi reposto — ele não pediu).
-- **11.2(a)** cápsula, raio + altura com chave no mesmo quadro: **não confirmada.** Teste ponta a ponta `raio_e_altura_com_chave_dao_a_capsula_do_tique_no_solver` (`crates/ph2d-app-physics/src/canais_por_tique_tests.rs`, Play e scrub); mutação (inverter a ordem de escrita) → vermelho `a4a841bff6` (também corrigiu o comentário velho de `prop.rs:84`).
-- **11.2(b)** «Delete animation» = 1 Ctrl+Z: **não confirmada** `43593d8140`. **(c)** Bind do Input Map sobre a escuta do cartão: **confirmada e curada** `43593d8140`. **(d)** o censo contar a própria caixa: **não confirmada**, teste `nenhuma_caixa_e_a_sua_propria_outra_ponta` (duas mutações vermelhas) `f261f173f6`.
-- **11.3** crescimento das tabelas do Outline: curado `f486a4e8e2`. **11.4** «Create this action»: já tinha saído por ordem do dono 10/11 `cab51710a9`.
-- **11.5** herdados: 5.1 `5b8fc8ca46` · JUNTA em radianos `ee202ff305` · 5.3 `8e150966ef` · 5.4 `b0c883aa53` · 5.5 `bb5aa69d2c` · 5.6 `d509c7100a`. JUNTA/MUNDO por tique `fe7ed896ec` + livro `e55a3a90bd`.
+- **11.1** «Set Scale to 1» em cadeia, um clique, um undo `3bb9f4e91c`. **11.3** tabelas do Outline `f486a4e8e2`. **11.4** «Create this action» saiu `cab51710a9`.
+- **11.2(a)** cápsula (raio + altura com chave no mesmo quadro): **não confirmada**; teste `raio_e_altura_com_chave_dao_a_capsula_do_tique_no_solver` (`canais_por_tique_tests.rs`), mutação vermelha `a4a841bff6`. **(b)** «Delete animation» = 1 Ctrl+Z: não confirmada. **(c)** Bind do Input Map sobre a escuta: confirmada e curada `43593d8140`. **(d)** censo contar a própria caixa: não confirmada, `nenhuma_caixa_e_a_sua_propria_outra_ponta` `f261f173f6`.
+- **11.5** herdados: 5.1 `5b8fc8ca46` · JUNTA em graus `ee202ff305` · 5.3 `8e150966ef` · 5.4 `b0c883aa53` · 5.5 `bb5aa69d2c` · 5.6 `d509c7100a` · JUNTA/MUNDO por tique `fe7ed896ec` + livro `e55a3a90bd`.
 
 ## 7. Smokes (dono) — o dono JÁ fez; o integrador pode repetir
 
@@ -81,10 +86,19 @@ Smoke do dono 11/11: **OK.** ⚠️ A dica do primeiro smoke usou `PH2D_CARDS=0`
 3. Tem de acontecer: o contorno e a forma acompanham; mudar o Pivot não move a forma no mundo; Ctrl+Z desfaz um passo.
 4. Deu errado se: um campo travado do Outline não apaga, o pivô move a forma, ou aparece o painel clássico (então `PH2D_CARDS=0` ficou no ambiente).
 
+### Smoke da onda 10 — PENDENTE (dono)
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_GAME_SMOKE=1 ./target/smoke/ph2d-host-desktop` (compile antes com `cargo build -p ph2d-host-desktop --profile smoke`).
+2. Clique em Play (▶) na barra de cima.
+3. Tem de acontecer: a janela «PH2D · Game» abre NA FRENTE; o editor fica escurecido com o aviso «Game running in its own window — close it to stop»; clicar no editor escurecido traz o jogo de volta; ao fechar a janela do jogo o aviso some e o editor responde.
+4. Deu errado se: o jogo abre atrás sem aviso, o aviso fica depois de fechar o jogo, ou o clique só faz o ícone piscar na barra de tarefas (então a reativação no Wayland não funciona, §8).
+
 Outras cenas desta linha: `PH2D_PHYSICS_SMOKE=122` (caixote que cresce, Height 1↔2 m), `PH2D_PHYSICS_SMOKE=66 PH2D_PHYSICS_SMOKE_ANIMA=1` (portão com limite e largura animados), `PH2D_GAME_SMOKE=4 PH2D_GAME_SMOKE_FOTO=fisica_esticada`, `PH2D_TRIGGER_SMOKE=1`. Todas já aprovadas pelo dono em 10/11.
 
 ## 8. ABERTO após a linha
 
+- **Smoke do dono da onda 10 pendente** (§7). **Medir `QUADROS_SEM_FICHA = 30`** (raciocinado, não medido). **Reativação no clique em Wayland NÃO verificada em KWin real** (no Wayland pede ficha na superfície do jogo; se falhar, só pisca na barra). Cosmético conhecido: toasts de arranque pintam acima do escurecimento; o ícone do gizmo da câmera fica logo abaixo do cartão.
+- **Lição:** relato de «travou» → primeiro olhe a janela/palco do jogo (abriu atrás?) antes de perfilar.
 - **Nada do §11.** Do que os handoffs de continuação listam: tudo tem commit acima.
 - **Lacuna conhecida, inofensiva** (`e55a3a90bd`): se a curva da junta fica parada depois do quadro 1 não há chamada `driven`, logo nenhuma fusão até ela mudar; o autorado continua o documento.
 - **Limite 5.1:** o censo só vê as linhas que o painel do artista pinta agora (ao vivo se visível, senão o compilado).

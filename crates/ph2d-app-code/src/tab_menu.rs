@@ -6,7 +6,7 @@ use crate::commands::{CMD_RESTART_ASSIST, TabMenu, menu_rows_in, row_state};
 use crate::docs::CodeDocs;
 use crate::help::page_of;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress};
+use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress, more_menu};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -79,6 +79,21 @@ pub fn menu_items(
         });
     }
     out
+}
+
+/// As linhas do menu aberto da barra: o de um título, o do transbordo, ou nenhuma.
+fn open_items(
+    bar: &Bar,
+    state: crate::commands::CommandState,
+    stop: crate::debug::GameStop,
+) -> Vec<MenuItem> {
+    if bar.more {
+        let more = |m: &TabMenu| (m.more_row(), m.title().into(), menu_items(*m, state, stop));
+        return more_menu(bar.painted.hidden.iter().map(more));
+    }
+    bar.open
+        .map(|m| menu_items(m, state, stop))
+        .unwrap_or_default()
 }
 
 /// O que um carregar na barra (fora do menu) pede.
@@ -184,11 +199,7 @@ impl CodeDocs {
             let tip = ph2d_i18n::tr("code.options.pin").to_owned();
             self.bar.painted.tips.push((pin, tip));
         }
-        let items = self
-            .bar
-            .open
-            .map(|m| menu_items(m, state, self.debug.game_stop))
-            .unwrap_or_default();
+        let items = open_items(&self.bar, state, self.debug.game_stop);
         let clock = (self.clock.0, crate::hint::HOVER_PAUSE_NS);
         self.bar.paint_popup(&items, scene, ts, theme, clock);
     }
@@ -256,10 +267,9 @@ impl CodeDocs {
         id: u64,
         k: usize,
     ) -> Option<(ph2d_a11y::NodeId, Option<ph2d_a11y::NodeId>)> {
-        let m = self.bar.open?;
         let doc = self.docs.iter().find(|d| d.script.0 == id);
         let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
-        menu_items(m, state, self.debug.game_stop)
+        open_items(&self.bar, state, self.debug.game_stop)
             .into_iter()
             .flat_map(|it| match it {
                 MenuItem::Cmd { id, live: true, .. } => vec![(id, None)],
@@ -280,6 +290,13 @@ impl CodeDocs {
     /// Abre o menu `m` (o passo da foto do smoke; o clique faz o mesmo).
     pub fn open_tab_menu(&mut self, m: Option<TabMenu>) {
         self.bar.open = m;
+        self.bar.more = false;
+    }
+
+    /// Abre o menu de transbordo `…` e, com `sub`, o submenu do título escondido (a foto do smoke).
+    pub fn open_more_menu(&mut self, sub: Option<TabMenu>) {
+        (self.bar.open, self.bar.more) = (None, true);
+        self.bar.sub = sub.map(TabMenu::more_row);
     }
 }
 

@@ -80,6 +80,12 @@ impl TabMenu {
             Self::Run => "code.menu.run",
         })
     }
+
+    /// A linha do transbordo `…` que abre o submenu deste título quando ele não cabe na barra.
+    #[must_use]
+    pub fn more_row(self) -> ph2d_a11y::NodeId {
+        ph2d_panel_code::tab_bar::menu::more_row(self as usize)
+    }
 }
 
 /// O estado que os comandos de ligar/desligar mostram no rótulo.

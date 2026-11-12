@@ -220,7 +220,7 @@ impl CodeDocs {
             .filter(|d| d.debug.view.header_at(x, y))
             .map(|d| d.debug.view.column_menu())
         {
-            self.bar.open = None;
+            (self.bar.open, self.bar.more) = (None, false);
             self.ctx = Some(ContextMenu {
                 tab: id,
                 at: (x, y),
@@ -263,7 +263,7 @@ impl CodeDocs {
             let a = d.help_anchor(&w, None)?;
             Some((qualified(d, &w), a))
         });
-        self.bar.open = None;
+        (self.bar.open, self.bar.more) = (None, false);
         self.ctx = Some(ContextMenu {
             tab: id,
             at: (x, y),

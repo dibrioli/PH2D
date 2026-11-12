@@ -71,6 +71,35 @@ pub enum MenuPress {
     Taken,
 }
 
+/// A linha do transbordo `…` que abre o submenu do `i`-ésimo título.
+#[must_use]
+pub fn more_row(i: usize) -> NodeId {
+    ph2d_tool_registry::hash_node_id_runtime(&format!("code_tab_menu_more_{i}"))
+}
+
+/// O menu do transbordo `…` (a barra estreita, o idioma do VS Code): cada título escondido
+/// `(linha, nome, linhas do menu dele)` vira um submenu com os comandos que valem e, no lugar de um
+/// submenu, as escolhas dele (com o `✓`).
+pub fn more_menu(hidden: impl Iterator<Item = (NodeId, String, Vec<MenuItem>)>) -> Vec<MenuItem> {
+    let leaves = |it: MenuItem| match it {
+        MenuItem::Cmd {
+            id,
+            name,
+            live: true,
+            ..
+        } => vec![(id, name, false)],
+        MenuItem::Sub { rows, .. } => rows,
+        _ => Vec::new(),
+    };
+    hidden
+        .map(|(id, name, items)| MenuItem::Sub {
+            id,
+            name,
+            rows: items.into_iter().flat_map(leaves).collect(),
+        })
+        .collect()
+}
+
 fn row_inks(hot: bool, live: bool) -> (ColorToken, ColorToken) {
     if hot {
         (ColorToken::AccentFg, ColorToken::AccentFg)
@@ -117,10 +146,10 @@ impl<M: Copy + PartialEq> TabBar<M> {
         self.painted.sub_parents.clear();
         self.painted.popup = None;
         self.painted.sub = None;
-        let Some(m) = self.open else {
+        if !self.is_open() {
             return self.paint_tip(scene, ts, theme, now, pause_ns);
-        };
-        let Some(&(_, title)) = self.painted.titles.iter().find(|t| t.0 == m) else {
+        }
+        let Some(title) = self.anchor() else {
             return;
         };
         let (pad, gap, xs) = (Spacing::Sm.px(), Spacing::Lg.px(), Spacing::Xs.px());
@@ -293,7 +322,35 @@ impl<M: Copy + PartialEq> TabBar<M> {
             .then(|| s.rows.iter().find(|r| r.1.contains(x, y)).map(|r| r.0))
     }
 
+    /// Um menu aberto: o de um título ou o de transbordo.
+    #[must_use]
+    pub fn is_open(&self) -> bool {
+        self.open.is_some() || self.more
+    }
+
+    /// O título sob o menu aberto.
+    fn anchor(&self) -> Option<Rect> {
+        if self.more {
+            return self.painted.more;
+        }
+        let m = self.open?;
+        self.painted.titles.iter().find(|t| t.0 == m).map(|t| t.1)
+    }
+
+    /// O transbordo `…` está em `(x, y)`?
+    fn on_more(&self, x: f32, y: f32) -> bool {
+        self.painted.more.is_some_and(|r| r.contains(x, y))
+    }
+
+    /// Abre o menu do título `m`, ou o transbordo com `None`.
+    fn open_at(&mut self, m: Option<M>) {
+        self.more = m.is_none();
+        self.open = m;
+        self.sub = None;
+    }
+
     fn close(&mut self) {
+        self.more = false;
         self.open = None;
         self.sub = None;
         self.hover = None;
@@ -301,11 +358,13 @@ impl<M: Copy + PartialEq> TabBar<M> {
 
     /// Um carregar primário: `None` = não foi da barra (o menu está fechado e não é um título).
     pub fn press(&mut self, x: f32, y: f32) -> Option<MenuPress> {
-        if self.open.is_none() {
-            let m = self.title_at(x, y)?;
-            self.open = Some(m);
+        if !self.is_open() {
+            if self.on_more(x, y) {
+                self.open_at(None);
+            } else {
+                self.open_at(Some(self.title_at(x, y)?));
+            }
             self.hover = None;
-            self.sub = None;
             return Some(MenuPress::Taken);
         }
         if let Some(at) = self.sub_row_at(x, y) {
@@ -326,10 +385,8 @@ impl<M: Copy + PartialEq> TabBar<M> {
             return Some(MenuPress::Run(id));
         }
         match self.title_at(x, y) {
-            Some(m) if self.open != Some(m) => {
-                self.open = Some(m);
-                self.sub = None;
-            }
+            Some(m) if self.open != Some(m) => self.open_at(Some(m)),
+            None if !self.more && self.on_more(x, y) => self.open_at(None),
             _ => self.close(),
         }
         Some(MenuPress::Taken)
@@ -345,15 +402,16 @@ impl<M: Copy + PartialEq> TabBar<M> {
     /// [`Self::hover_move`] no relógio `now` (ns): a mira até ao submenu parte da âncora (o último ponto
     /// fora dela) e acaba se o rato parar mais de [`AIM_REST_NS`] a caminho.
     pub fn hover_move_at(&mut self, x: f32, y: f32, now: u128) -> bool {
-        if self.open.is_none() {
+        if !self.is_open() {
             return false;
         }
         let rested = now.saturating_sub(std::mem::replace(&mut self.moved_at, now)) > AIM_REST_NS;
         if let Some(m) = self.title_at(x, y)
             && self.open != Some(m)
         {
-            self.open = Some(m);
-            self.sub = None;
+            self.open_at(Some(m));
+        } else if !self.more && self.on_more(x, y) {
+            self.open_at(None);
         }
         if let Some(at) = self.sub_row_at(x, y) {
             self.hover = at;
@@ -380,7 +438,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
             self.hover = None;
             return true;
         }
-        self.open.take().is_some()
+        std::mem::take(&mut self.more) | self.open.take().is_some()
     }
 }
 

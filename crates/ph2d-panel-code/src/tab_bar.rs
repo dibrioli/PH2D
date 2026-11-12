@@ -26,6 +26,10 @@ pub use crate::cards::{bar_height as height, split_bar as split};
 pub struct BarPainted<M> {
     pub header: Rect,
     pub titles: Vec<(M, Rect)>,
+    /// Os títulos que não cabem antes da engrenagem (pela ordem): saem no transbordo [`more`](Self::more).
+    pub hidden: Vec<M>,
+    /// O título de transbordo `…` no fim da fila (só quando falta espaço).
+    pub more: Option<Rect>,
     /// As linhas do menu aberto: o comando (ou a linha de um submenu) e a caixa.
     pub rows: Vec<(NodeId, Rect)>,
     pub popup: Option<Rect>,
@@ -49,6 +53,8 @@ impl<M> Default for BarPainted<M> {
         Self {
             header: Rect::default(),
             titles: Vec::new(),
+            hidden: Vec::new(),
+            more: None,
             rows: Vec::new(),
             popup: None,
             sub_parents: Vec::new(),
@@ -66,6 +72,8 @@ impl<M> Default for BarPainted<M> {
 #[derive(Clone, Debug)]
 pub struct TabBar<M> {
     pub open: Option<M>,
+    /// O menu de transbordo aberto (os títulos escondidos como submenus); exclui [`open`](Self::open).
+    pub more: bool,
     pub hover: Option<NodeId>,
     /// A linha do menu aberto cujo submenu está aberto.
     pub sub: Option<NodeId>,
@@ -83,6 +91,7 @@ impl<M> Default for TabBar<M> {
     fn default() -> Self {
         Self {
             open: None,
+            more: false,
             hover: None,
             sub: None,
             painted: BarPainted::default(),
@@ -146,29 +155,52 @@ impl<M: Copy + PartialEq> TabBar<M> {
             header: r,
             ..BarPainted::default()
         };
-        let bar_bg = resolve(crate::cards::card_tone(), *theme);
+        let side = r.h;
+        let gear = Rect::new(r.x + r.w - pad - side, r.y, side, side);
+        let ws: Vec<f32> = titles
+            .iter()
+            .map(|t| mono_label::width(ts, t.1) + sm * 2.0)
+            .collect();
+        let all: f32 = ws.iter().sum();
+        self.painted.min_w = pad + all + sm + side + pad;
+        // Os títulos que não cabem antes da engrenagem saem no transbordo (o idioma do VS Code).
+        let room = gear.x - sm - (r.x + pad);
+        let more = ph2d_i18n::tr("code.menu.more");
+        let more_w = mono_label::width(ts, more) + sm * 2.0;
+        let shown = if all <= room {
+            titles.len()
+        } else {
+            let mut used = 0.0;
+            ws.iter()
+                .take_while(|w| {
+                    used += *w;
+                    used + more_w <= room
+                })
+                .count()
+        };
         let mut x = r.x + pad;
-        for &(m, title) in titles {
-            let w = mono_label::width(ts, title) + sm * 2.0;
-            let tr = Rect::new(x, r.y, w, r.h);
-            let open = self.open == Some(m);
-            if open {
-                paint_popover_row_highlight(scene, tr, *theme);
-            }
-            let (ink, bg) = if open {
-                (ColorToken::AccentFg, resolve(ColorToken::Accent, *theme))
-            } else {
-                (ColorToken::Text1, bar_bg)
-            };
-            let lr = Rect::new(x + sm, r.y, f32::INFINITY, r.h);
-            mono_label::paint_on(ts, scene, *theme, title, resolve(ink, *theme), bg, lr);
+        for (&(m, title), w) in titles.iter().zip(&ws).take(shown) {
+            let tr = Rect::new(x, r.y, *w, r.h);
+            self.paint_title(tr, title, self.open == Some(m), scene, ts, theme);
             self.painted.titles.push((m, tr));
             x += w;
         }
+        self.painted.hidden = titles[shown..].iter().map(|t| t.0).collect();
+        if self.open.is_some_and(|m| self.painted.hidden.contains(&m)) {
+            self.open = None;
+            self.sub = None;
+        }
+        if self.painted.hidden.is_empty() {
+            self.more = false;
+        } else {
+            let mr = Rect::new(x, r.y, more_w, r.h);
+            self.paint_title(mr, more, self.more, scene, ts, theme);
+            self.painted.more = Some(mr);
+            let tip = ph2d_i18n::tr("code.menu.more_tip").to_owned();
+            self.painted.tips.push((mr, tip));
+            x += more_w;
+        }
         // A engrenagem no fim; o caminho encostado à esquerda dela.
-        let side = r.h;
-        self.painted.min_w = x - r.x + sm + side + pad;
-        let gear = Rect::new(r.x + r.w - pad - side, r.y, side, side);
         let inset = Spacing::Xs.px();
         let glyph = Rect::new(
             gear.x + inset,
@@ -187,6 +219,30 @@ impl<M: Copy + PartialEq> TabBar<M> {
         let gear_tip = ph2d_i18n::tr("code.menu.options_tip").to_owned();
         self.painted.tips.push((gear, gear_tip));
         self.paint_crumb(r, x, gear, crumb, scene, ts, theme);
+    }
+
+    fn paint_title(
+        &self,
+        tr: Rect,
+        title: &str,
+        open: bool,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        theme: &Theme,
+    ) {
+        if open {
+            paint_popover_row_highlight(scene, tr, *theme);
+        }
+        let (ink, bg) = if open {
+            (ColorToken::AccentFg, resolve(ColorToken::Accent, *theme))
+        } else {
+            (
+                ColorToken::Text1,
+                resolve(crate::cards::card_tone(), *theme),
+            )
+        };
+        let lr = Rect::new(tr.x + Spacing::Sm.px(), tr.y, f32::INFINITY, tr.h);
+        mono_label::paint_on(ts, scene, *theme, title, resolve(ink, *theme), bg, lr);
     }
 
     #[allow(clippy::too_many_arguments)]

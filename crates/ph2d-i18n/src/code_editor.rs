@@ -261,6 +261,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.script_options" => "Script Options\u{2026}",
         "code.menu.restart_hint" => "Only needed if suggestions stop working",
         "code.menu.options_tip" => "Script options",
+        // O título de transbordo da barra estreita: os menus que não cabem, como submenus.
+        "code.menu.more" => "\u{2026}",
+        "code.menu.more_tip" => "More menus",
         // 13 §4 item 13: o caminho até o cursor, à direita da barra da aba.
         "code.crumb.line" => "line {line}",
         "code.crumb.go_tip" => "Go to {name}",

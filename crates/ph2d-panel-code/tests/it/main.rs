@@ -30,6 +30,7 @@ mod recorte_do_quadro;
 mod respiro;
 mod sublinhado;
 mod submenu;
+mod transbordo;
 mod valores_ao_vivo;
 mod virtualizacao;
 

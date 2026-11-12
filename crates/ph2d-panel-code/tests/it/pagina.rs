@@ -535,3 +535,40 @@ fn a_pagina_longa_tem_barra_e_a_curta_nao() {
     pinta(&mut v, &quadro(&curta), &mut ts, LARGA);
     assert_eq!(v.probe().bar, None, "a página curta com barra");
 }
+
+/// Auditoria de layout 11/11: uma linha de exemplo mais larga que a caixa acaba em «…» antes do botão
+/// de copiar — nenhuma letra por baixo dele nem fora da caixa.
+///
+/// *Mutação: pintar o trecho da caixa com o `right` da vista ⇒ as letras passam por baixo do botão.*
+#[test]
+fn a_linha_de_exemplo_larga_acaba_antes_do_botao() {
+    let longa = format!(
+        "local closest = math.huge -- {}",
+        "start bigger ".repeat(20)
+    );
+    let doc = HelpDoc {
+        key: 3,
+        title: "x".into(),
+        blocks: vec![Block::Code {
+            lines: vec![vec![codigo(&longa, Ink::Plain)]],
+            copy: 0,
+        }],
+        sections: Vec::new(),
+    };
+    let (mut v, mut ts) = (HelpView::new(), ts());
+    let area = Rect::new(0.0, 0.0, 420.0, 300.0);
+    pinta(&mut v, &quadro(&doc), &mut ts, area);
+    let copiar = v.target_rect(HelpHit::Copy(0)).expect("o botão de copiar");
+    let cut = v.probe().cut;
+    assert_eq!(cut.len(), 1, "a linha larga não acabou em «…»: {cut:?}");
+    let (texto, x, fim) = &cut[0];
+    assert!(
+        texto.ends_with('…') && texto.chars().count() > 10,
+        "{texto}"
+    );
+    let direita = x + texto.chars().count() as f32 * v.metrics().advance;
+    assert!(
+        *fim <= copiar.x && direita <= *fim,
+        "{direita} / {fim} × botão {copiar:?}"
+    );
+}

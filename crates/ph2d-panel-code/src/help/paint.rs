@@ -200,6 +200,7 @@ impl HelpView {
         let a = l.runs.partition_point(|r| r.y + r.h <= top);
         let b = l.runs.partition_point(|r| r.y < bottom).max(a);
         self.shown = a..b;
+        self.cut.clear();
         let tones = Tones::new(*theme);
         scene.push_clip(&rect_to_vello(vp));
         let mut copies = Vec::new();
@@ -259,13 +260,29 @@ impl HelpView {
             let lit = r.link.is_some()
                 && (frame.hover == r.link.map(HelpHit::Link) || frame.focus_link == r.link);
             let s = self.screen(r.x, r.y, r.w, r.h);
-            let (cx, cy) = (s.x + s.w * 0.5, s.y + s.h * 0.5);
-            let on = if boxes.iter().any(|b| b.contains(cx, cy)) {
-                &boxed
-            } else {
-                pal
+            // Pelo começo do trecho: o meio de uma linha mais larga que a caixa cai fora dela.
+            let Some(b) = boxes.iter().find(|b| b.contains(s.x, s.y + s.h * 0.5)) else {
+                self.paint_run(r, lit, right, scene, ts, pal, &tones);
+                continue;
             };
-            self.paint_run(r, lit, right, scene, ts, on, &tones);
+            // Uma linha de exemplo mais larga que a caixa (ou que chega ao botão de copiar) acaba em
+            // «…» dentro dela: nunca passa da caixa nem fica cortada a meio de uma letra.
+            let mut end = b.x + b.w - self.dims.pad;
+            for (_, c) in copies
+                .iter()
+                .filter(|(_, c)| c.y < s.y + s.h && s.y < c.y + c.h)
+            {
+                end = end.min(c.x - Spacing::Xs.px());
+            }
+            if s.x + s.w <= end || r.font != Font::Mono {
+                self.paint_run(r, lit, end, scene, ts, &boxed, &tones);
+                continue;
+            }
+            let cols = ((end - s.x) / self.m.advance.max(1.0)).floor().max(0.0) as usize;
+            let mut cut = r.clone();
+            cut.text = crate::popup::elide(&r.text, cols);
+            self.cut.push((cut.text.clone(), s.x, end));
+            self.paint_run(&cut, lit, end, scene, ts, &boxed, &tones);
         }
         for (n, r) in copies {
             let state = if frame.hover == Some(HelpHit::Copy(n)) {

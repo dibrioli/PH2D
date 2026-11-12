@@ -102,6 +102,8 @@ pub struct HelpView {
     pub(super) section: Option<usize>,
     /// O polegar da barra de rolagem (`None` = a página inteira à vista).
     pub(super) bar: Option<Rect>,
+    /// As linhas de exemplo que acabaram em «…»: o texto pintado, o `x` dele e o fim permitido.
+    pub(super) cut: Vec<(String, f32, f32)>,
 }
 
 impl Default for HelpView {
@@ -128,6 +130,7 @@ impl Default for HelpView {
             focus: None,
             section: None,
             bar: None,
+            cut: Vec::new(),
         }
     }
 }

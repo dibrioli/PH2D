@@ -27,6 +27,8 @@ pub struct HelpProbe {
     pub runs: usize,
     /// O polegar da barra de rolagem (`None` = a página inteira à vista).
     pub bar: Option<Rect>,
+    /// As linhas de exemplo que acabaram em «…»: o texto pintado, o `x` dele e o fim permitido.
+    pub cut: Vec<(String, f32, f32)>,
 }
 
 impl HelpView {
@@ -216,6 +218,7 @@ impl HelpView {
             section: self.section,
             runs: self.shown.len(),
             bar: self.bar,
+            cut: self.cut.clone(),
         };
         let Some(l) = self.laid() else { return p };
         let shown = &l.runs[self.shown.clone()];

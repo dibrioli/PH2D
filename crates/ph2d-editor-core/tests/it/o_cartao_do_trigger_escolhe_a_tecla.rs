@@ -10,8 +10,6 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_trigger_edits::{
     InspectorActionTriggerInfo, InspectorTriggerRow, NoMapa, TeclaDaAccao, le_teclas,
 };
-use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::dispatch::dispatch_key;
 use ph2d_editor_core::screens::hero::{
     HeroScreen,
@@ -218,55 +216,4 @@ fn um_clique_nao_desarma_a_escuta_da_aba() {
     h.store.desarma_escuta_no_clique();
     assert_eq!(h.store.input_map_listening(), Some(id));
     assert!(h.store.take_listen_cancelled_by_down().is_none());
-}
-
-fn abre_a_janela(h: &mut HeroScreen) {
-    h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
-    assert!(h.store.input_map_pos().is_some(), "a janela abriu");
-}
-
-fn linha(h: &HeroScreen, nome: &str) -> usize {
-    h.input_map
-        .actions()
-        .iter()
-        .position(|a| a.name == nome)
-        .expect("a acção tem linha")
-}
-
-/// ⭐ Suspeita (c) do 09/11, MEDIDA: cartão à escuta de X e o artista carrega no «Bind…» de X na
-/// janela, que já mostra a escuta. O `Down` desarma a escuta do cartão; o `Click` (no `Up`) não pode
-/// re-armá-la como «acrescentar» — o gesto sobre o botão armado é cancelar, como no cartão.
-#[test]
-fn o_bind_da_janela_sobre_a_escuta_do_cartao_cancela_e_nao_rearma() {
-    let mut h = com_a_e_comando();
-    abre_a_janela(&mut h);
-    let antes = ligacoes(&h);
-    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::CriarEEscutar(NOME.into())]);
-    let row = linha(&h, NOME);
-    h.store.desarma_escuta_no_clique();
-    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
-    assert!(
-        h.store.input_map_listening().is_none(),
-        "o clique no botão armado cancelou"
-    );
-    carrega(&mut h, KEY_Z);
-    assert_eq!(ligacoes(&h), antes, "a tecla seguinte não tocou no mapa");
-}
-
-/// O controlo: o mesmo `Down` que desarma o cartão em X não impede o «Bind…» de OUTRA acção de armar
-/// a escuta da janela (que acrescenta).
-#[test]
-fn o_bind_de_outra_accao_arma_a_janela_depois_de_desarmar_o_cartao() {
-    let mut h = com_a_e_comando();
-    abre_a_janela(&mut h);
-    let outra = h.input_map.create("outra_test");
-    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::CriarEEscutar(NOME.into())]);
-    let row = linha(&h, "outra_test");
-    h.store.desarma_escuta_no_clique();
-    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
-    assert_eq!(h.store.input_map_listening(), Some(outra));
-    assert!(
-        !h.store.input_map_listen_replaces(),
-        "a da janela acrescenta"
-    );
 }

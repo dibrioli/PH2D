@@ -674,5 +674,8 @@ pub fn paint_hero_screen(
     chrome::paint_tutorial_balao(hero, viewport, scene, text_system);
     // W8 — a apresentação por cima de TUDO (a janela inteira).
     super::board_nav::team::show::paint(hero, viewport, scene, text_system);
+    if hero.view.aviso_da_janela_do_jogo {
+        super::aviso_do_jogo::paint(viewport, scene, text_system, hero.theme);
+    }
     hero.store.end_scroll_frame();
 }

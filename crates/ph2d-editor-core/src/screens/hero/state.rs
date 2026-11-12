@@ -123,6 +123,8 @@ pub struct ViewState {
     /// O depurador parou o jogo: o palco cede ao editor (a aba e o cartão «Stopped») até ao
     /// próximo Play. A família do código liga-o; a shell fecha a janela do jogo e repõe-no no Play.
     pub palco_largado: bool,
+    /// O jogo corre na janela própria: o editor parado mostra o aviso ([`crate::game_stage::aviso_da_janela`]).
+    pub aviso_da_janela_do_jogo: bool,
     /// Como o canvas mostra a câmera do jogo (onda 18): escurecer fora e a vista que segue.
     pub camera_canvas: crate::CameraCanvasView,
 }
@@ -143,6 +145,7 @@ impl Default for ViewState {
             revela_inspector: false,
             palco_do_jogo: false,
             palco_largado: false,
+            aviso_da_janela_do_jogo: false,
             camera_canvas: crate::CameraCanvasView::default(),
         }
     }

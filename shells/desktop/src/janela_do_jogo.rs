@@ -1,9 +1,6 @@
-//! ⭐ **O palco do jogo** (GameEngineFuncional R0b/R0c, `docs/GameEngineFuncional/04_R0_N0_plano.md`).
-//!
-//! Em ecrã cheio e numa janela o jogo é visto como o jogador o vê: o canvas ocupa tudo (o zen) e a
-//! câmara é a do jogo. Na janela o app MUDA-SE para ela enquanto o jogo corre — a janela, o host e a surface trocam
-//! de lugar com os do editor uma vez ao abrir e outra ao fechar, e os alvos seguem pela porta de resize de sempre. O
-//! quadro desenha-se uma só vez, lá; o editor fica com a última imagem (a vista dupla ao vivo é o R1 do plano).
+//! ⭐ O palco do jogo (GEF R0b/R0c, `docs/GameEngineFuncional/04_R0_N0_plano.md`): em ecrã cheio e na
+//! janela própria, como o jogador o vê. Na janela, a janela, o host e a surface trocam de lugar com os do
+//! editor ao abrir e ao fechar; o editor fica com a última imagem e o aviso.
 
 use ph2d_editor_core::game_stage::{GameRun, GameStage};
 use ph2d_host::PlatformHost;
@@ -81,11 +78,39 @@ impl crate::App {
             ph2d_editor_core::screens::hero::transport_bar::publish(hero, run);
         }
         let quer = stage == Some(GameStage::Window) && !largado;
-        match (quer, self.undo.janela_do_jogo.is_some()) {
-            (true, false) => self.abre_a_janela_do_jogo(event_loop),
-            (false, true) => self.fecha_a_janela_do_jogo(),
-            _ => {}
+        use ph2d_editor_core::game_stage::{self as g, PassoDaJanela as P};
+        let aberta = self.undo.janela_do_jogo.is_some();
+        match g::passo_da_janela(quer, aberta, &mut self.undo.pedido_da_janela) {
+            P::PedeAFicha => self.pede_a_ficha(),
+            P::Espera | P::Desiste => self.window.as_ref().map_or((), |w| w.request_redraw()),
+            P::Abre(ficha) => self.abre_a_janela_do_jogo(event_loop, ficha),
+            P::Fecha => self.fecha_a_janela_do_jogo(),
+            P::Nada => {}
         }
+        let pedido = self.undo.pedido_da_janela.is_some();
+        let aviso = g::aviso_da_janela(pedido, self.undo.janela_do_jogo.is_some());
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.view.aviso_da_janela_do_jogo = aviso;
+        }
+    }
+
+    /// A ficha de activação pede-se ao EDITOR, que tem o foco do clique no Play (xdg-activation).
+    fn pede_a_ficha(&mut self) {
+        let Some(w) = self.window.as_ref() else {
+            return;
+        };
+        #[cfg(target_os = "linux")]
+        let pedida =
+            winit::platform::startup_notify::WindowExtStartupNotify::request_activation_token(
+                w.as_ref(),
+            )
+            .is_ok();
+        #[cfg(not(target_os = "linux"))]
+        let pedida = false;
+        if let Some(p) = self.undo.pedido_da_janela.as_mut().filter(|_| !pedida) {
+            p.ficha = ph2d_editor_core::game_stage::Ficha::SemSuporte;
+        }
+        w.request_redraw();
     }
 
     /// `PH2D_GAME_SMOKE` (o jogo de plataforma do plano 03): a cena e a física ligada, com o relógio PARADO.
@@ -397,16 +422,34 @@ impl crate::App {
         }
     }
 
-    /// Só a janela onde o app vive conduz; a outra (o editor atrás) só sabe fechar, e pára o jogo. `true` = era dela.
+    /// Só a janela onde o app vive conduz; a outra (o editor parado) fecha — e pára o jogo — ou, com
+    /// um clique ou tecla, traz a janela do jogo à frente. `true` = o evento não é para o editor.
     pub(crate) fn da_outra_janela(
         &mut self,
         id: winit::window::WindowId,
         event: &winit::event::WindowEvent,
     ) -> bool {
+        use winit::event::{ElementState::Pressed, WindowEvent as E};
+        if let E::ActivationTokenDone { token, .. } = event {
+            if let Some(p) = self.undo.pedido_da_janela.as_mut() {
+                p.ficha = ph2d_editor_core::game_stage::Ficha::Chegou(token.clone());
+            }
+            return true;
+        }
         if self.window.as_ref().is_none_or(|w| w.id() == id) {
             return false;
         }
-        if matches!(event, winit::event::WindowEvent::CloseRequested) {
+        let premido = matches!(event, E::MouseInput { state: Pressed, .. })
+            || matches!(event, E::KeyboardInput { event: k, .. } if k.state == Pressed);
+        let aberta = self.undo.janela_do_jogo.is_some();
+        if let Some(w) = (self.window.as_ref())
+            .filter(|_| ph2d_editor_core::game_stage::reactiva_a_janela(aberta, premido))
+        {
+            // Wayland: a ficha pede-se agora que o editor clicado é a janela activa do app.
+            w.request_user_attention(Some(winit::window::UserAttentionType::Critical));
+            w.focus_window();
+        }
+        if matches!(event, E::CloseRequested) {
             self.jogo_para();
         }
         true
@@ -420,7 +463,11 @@ impl crate::App {
         }
     }
 
-    fn abre_a_janela_do_jogo(&mut self, event_loop: &ActiveEventLoop) {
+    fn abre_a_janela_do_jogo(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        ficha: Option<winit::window::ActivationToken>,
+    ) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -429,6 +476,13 @@ impl crate::App {
         let attrs = Window::default_attributes()
             .with_title(ph2d_i18n::tr("shell.janela_do_jogo.title"))
             .with_inner_size(winit::dpi::LogicalSize::new(w, h));
+        #[cfg(target_os = "linux")]
+        let attrs = match ficha {
+            Some(f) => winit::platform::startup_notify::WindowAttributesExtStartupNotify::with_activation_token(attrs, f),
+            None => attrs,
+        };
+        #[cfg(not(target_os = "linux"))]
+        let _ = ficha;
         let gpu = gfx.surface.gpu().clone();
         let aberta = event_loop
             .create_window(attrs)

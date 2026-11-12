@@ -69,30 +69,9 @@ impl crate::App {
             );
         }
 
-        // ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a cena passa a poder mandar no enquadramento.
-        //
-        // ⚠️ **Aqui, depois dos relógios e ANTES do extract**, e as duas metades são load-bearing:
-        // depois, porque a câmera segue o mundo **deste** quadro (um passe antes dos tiques
-        // enquadraria o quadro anterior, e num alvo rápido isso lê-se como *«a câmera atrasa»*);
-        // antes, porque o extract é quem lê a `camera` para desenhar.
-        //
-        // ⚠️ **Ele não escreve componente registado nenhum** — o `CameraRuntime` não é gravável —,
-        // logo não passa pelo `preview_drive`.
-        // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — *isto explodiu, e a câmera tremeu.*
-        //
-        // ⚠️⚠️ **Aqui, IMEDIATAMENTE antes do passe da câmera, e as duas metades são load-bearing:**
-        // a vista DESTE quadro tem de mostrar o trauma DESTE quadro (corrida depois, o abanão
-        // chegaria sempre um quadro atrasado), e correr **depois dos relógios** dá **latência ZERO
-        // ao contacto da física**, que é o caso de *«isto explodiu»*.
-        //
-        // ⚠️ Um sinal publicado pela TABELA de acções chega no quadro seguinte, e isso não é um
-        // furo: é a janela de graça de um quadro que o outbox dá a **todo** consumidor.
-        //
-        // ⛔ **Ele não escreve componente registado nenhum** (o `CameraShakeRuntime` não é
-        // gravável), logo não passa pelo `preview_drive` — a mesma linha que a câmera já tem.
-        // ⚠️ **O `dt` é o do PASSO FIXO vezes os tiques deste quadro, e nunca o relógio de parede:**
-        // com a corrida em pausa (`ticks == 0`) o abanão **congela**, que é o que a `Factory` e o
-        // `Lifetime` já fazem — e é o que torna um replay reprodutível.
+        // ⭐⭐⭐ A CÂMERA DE JOGO e o ABANÃO: depois dos relógios (segue o mundo DESTE quadro, latência
+        // zero ao contacto) e ANTES do extract (que lê a `camera`). Não escrevem componente registado,
+        // logo não passam pelo `preview_drive`. O `dt` é o do passo fixo × tiques: em pausa congela.
         let passo = self.fixed_step.fixed_dt() * f64::from(report.ticks);
         let abanao = ph2d_app_components::shake_bridge::drive_camera_shake(
             sim,

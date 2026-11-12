@@ -182,6 +182,9 @@ fn trocar_um_knob_de_render_entre_tracos_nao_recompoe_a_tela() {
         emboss[0] != emboss[1] && emboss[1] != emboss[2],
         "o Emboss não mudou: {emboss:?}"
     );
+    // A tela do REPOUSO: o gesto compôs com a luz Simples, que o tique recompõe com a Cheia (B14.2, `afb02a91db`).
+    t.wet_paga_a_divida_cheia();
+    let _ = t.take_preview_arc();
     let antes = t.imagem_aplicada().expect("tela").0;
     t.wet_recomposite_full();
     let depois = t.imagem_aplicada().expect("tela").0;

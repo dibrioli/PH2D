@@ -200,6 +200,19 @@ impl PainterTool {
         }
     }
 
+    /// Tiques a 0 ms até a dívida Cheia (B14.2) acabar: a tela do repouso, a da recomposição inteira. As faixas
+    /// cabem em [`ORCAMENTO_CHEIA`] de relógio, então uma cena de teste sem isto media a meio da dívida.
+    #[cfg(test)]
+    pub(crate) fn wet_paga_a_divida_cheia(&mut self) -> usize {
+        let mut q = 0;
+        while (self.paint.wetpaint.session.as_ref()).is_some_and(|s| s.otica.simples.is_some()) {
+            ph2d_editor_core::Tool::on_tick(self, 0.0);
+            q += 1;
+            assert!(q < 1000, "a dívida Cheia não acaba");
+        }
+        q
+    }
+
     /// O gesto está vivo ou o traço do motor aberto (pinceladas sobrepostas, W16) — o `paint.stroke` sai a meio do lote.
     pub(super) fn wet_pincel_na_tela(&self) -> bool {
         let w = &self.paint.wetpaint;

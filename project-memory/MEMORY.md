@@ -40,6 +40,7 @@
 - ⭐⭐⭐ [Painter (31/10): Pigmento + Água = só a DILUIÇÃO; o VOLUME ao papel é outro controlo — um controlo, uma grandeza](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
 - ⛔⛔⛔ [O APP é SÓ em inglês — toda string de UI, e a ajuda/tooltip em Plain English para qualquer país (31/10)](feedback_app_ui_english_only.md)
 - ⛔⛔ [Hora de trocar de janela = prompt de continuação COMPLETO sem o dono pedir — handoff e prompt só DEPOIS do smoke (25/10)](feedback_always_hand_the_full_continuation_prompt.md)
+- ⛔⛔ [Smoke ao dono na UI de CARTÕES; `PH2D_CARDS=0` ele lê como regressão (11/11)](feedback_smoke_for_the_owner_runs_in_the_card_ui.md)
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
 - ⭐ [Dono 09/11: escolhas de acabamento = estado da arte, sem perguntar](feedback_finish_choices_go_to_the_state_of_the_art.md)
 - ⛔ [A linha acaba no HANDOFF — ordem das linhas e árvore suja são do INTEGRADOR](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)

@@ -28,14 +28,26 @@ impl PapelLiso {
         let (zw, zh) = (zx1 + 1 - zx0, zy1 + 1 - zy0);
         let sw = zw + 1;
         let mut soma = vec![0u32; sw * (zh + 1)];
-        for y in 0..zh {
-            let mut linha = 0u32;
-            for x in 0..zw {
-                let (gx, gy) = ((zx0 + x) as isize, (zy0 + y) as isize);
-                let alto =
-                    campo.at_fina(gx, gy).to_bits() != 0 || campo.at_sombra(gx, gy).to_bits() != 0;
-                linha += u32::from(alto);
-                soma[(x + 1) + (y + 1) * sw] = soma[(x + 1) + y * sw] + linha;
+        // B11.3: a contagem de cada linha no pool (corria no fio do quadro); depois cada linha soma a de cima — inteiros,
+        // o mesmo número que a passagem única.
+        use rayon::prelude::*;
+        soma[sw..]
+            .par_chunks_mut(sw)
+            .enumerate()
+            .for_each(|(y, s)| {
+                let mut linha = 0u32;
+                for x in 0..zw {
+                    let (gx, gy) = ((zx0 + x) as isize, (zy0 + y) as isize);
+                    let alto = campo.at_fina(gx, gy).to_bits() != 0
+                        || campo.at_sombra(gx, gy).to_bits() != 0;
+                    linha += u32::from(alto);
+                    s[x + 1] = linha;
+                }
+            });
+        for y in 1..zh {
+            let (cima, baixo) = soma.split_at_mut((y + 1) * sw);
+            for (b, c) in baixo[..sw].iter_mut().zip(&cima[y * sw..]) {
+                *b += *c;
             }
         }
         Self {

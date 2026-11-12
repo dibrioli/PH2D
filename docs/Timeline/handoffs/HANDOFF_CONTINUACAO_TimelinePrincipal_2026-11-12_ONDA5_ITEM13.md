@@ -1,6 +1,6 @@
 # HANDOFF CONTINUAÇÃO — line/TimelinePrincipal, onda 5 (item 13), 12/11
 
-Plano: [17_plano_funcoes_novas.md](../17_plano_funcoes_novas.md) (§ «13 — desenho medido e feito»). ADR: [0141](../../architecture/decisions/0141-one-2d-channel-and-separate-axes-are-a-mode.md) agora **ACEITO**, com «Emenda — item 13». Anterior: [itens 11 e 12](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-12_ONDA5_ITENS_11_12.md). Leitor: a próxima LLM.
+Plano: [17_plano_funcoes_novas.md](../17_plano_funcoes_novas.md) (§ «13 — desenho medido e feito»). ADR: [0141](../../architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md) agora **ACEITO**, com «Emenda — item 13». Anterior: [itens 11 e 12](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-12_ONDA5_ITENS_11_12.md). Leitor: a próxima LLM.
 
 ## Decisão do dono (12/11)
 Modelo **A** (After Effects): uma linha «Position» = ritmo ao longo do caminho (`MotionPath`); a FORMA do arco mora no caminho; o easing só muda o ritmo.

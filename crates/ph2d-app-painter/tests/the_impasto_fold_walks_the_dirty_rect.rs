@@ -62,9 +62,9 @@ fn binding(nome: &str) -> &'static str {
 
 /// O corpo do laço que dobra cada janela: do `for … in janelas` até ao `}` que o fecha.
 fn fold_loop() -> &'static str {
-    let start = SRC
-        .find("&plane_win) in janelas.iter()")
-        .expect("o produtor não percorre mais `janelas` — se a decisão foi movida, mova este gate junto");
+    let start = SRC.find("&plane_win) in janelas.iter()").expect(
+        "o produtor não percorre mais `janelas` — se a decisão foi movida, mova este gate junto",
+    );
     let mut depth = 0i32;
     for (o, c) in SRC[start..].char_indices() {
         match c {

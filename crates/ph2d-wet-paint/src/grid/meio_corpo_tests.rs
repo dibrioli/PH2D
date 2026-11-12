@@ -24,13 +24,20 @@ fn passos(e: &mut Engine, n: usize) {
     }
 }
 
-/// ⭐ Medium 0 / 0,5 / 1 → o `meio` da célula e, na lei Pigmento, `Σv·m ÷ Σv` da tinta = Medium ± 1e-6.
+/// ⭐ Medium 0 / 0,5 / 1 → o `meio` da célula e, na lei Pigmento, `Σv·m ÷ Σv` da tinta = o Medium que o motor GUARDOU
+/// ± 1e-6 — o da lei de escrita do knob (B35.6: o degrau Water · Oil, `0,5` = Water), não o número pedido.
 #[test]
 fn o_meio_viaja_do_controlo_ao_deposito() {
-    for medium in [0.0f32, 0.5, 1.0] {
+    for pedido in [0.0f32, 0.5, 1.0] {
         let mut e = Engine::new(L, L);
         e.sim.set_tinta(LeiDaTinta::Pigmento);
-        e.set_knob(Knob::Medium, f64::from(medium));
+        e.set_knob(Knob::Medium, f64::from(pedido));
+        let medium = e.tuning.get(Knob::Medium) as f32;
+        assert_eq!(
+            medium,
+            if pedido > 0.5 { 1.0 } else { 0.0 },
+            "Medium {pedido}: o degrau Water · Oil"
+        );
         e.sliders.water = 0.3;
         e.sliders.pigmento = 1.0;
         e.sliders.pressure = 1.0;

@@ -41,6 +41,7 @@ pub mod style;
 pub mod tab_bar;
 pub mod table_text;
 mod view;
+mod window;
 
 pub use a11y::RUN_CHARS;
 pub use console::{
@@ -65,4 +66,4 @@ pub use popup::{CompletionHit, CompletionPaintedRow};
 pub use script_list::{ListField, ListHit, ListRow, PaintedCount, ScriptList, ScriptListView};
 pub use status::{Counter, StatusLine, Tone, assist_line, badge_line};
 pub use style::Ink;
-pub use view::{CodeView, Hit, Underline};
+pub use view::{CodeView, Hit, LINE_RENDER_BYTES_MAX, Underline};

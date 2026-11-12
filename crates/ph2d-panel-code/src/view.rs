@@ -41,11 +41,16 @@ pub struct Underline {
 /// Uma linha pintada: o que o clique precisa para voltar ao byte.
 pub(crate) struct Row {
     pub line: usize,
-    /// Byte do buffer onde a linha começa e o comprimento dela (sem `\n`).
+    /// Byte do buffer onde o troço pintado começa e o comprimento dele (sem `\n`): a linha inteira,
+    /// ou a janela à vista de uma linha maior que o tecto ([`crate::window`]).
     pub start: usize,
     pub len: usize,
-    /// A linha passa do tecto de pintura (`render_cap`): `len` é só o que se mostra.
+    /// A linha continua depois do troço pintado (o «…» à direita).
     pub cut: bool,
+    /// A linha começa antes do troço pintado (o «…» à esquerda).
+    pub cut_left: bool,
+    /// O x do início do troço, relativo à coluna 0 da linha.
+    pub x_off: f32,
     pub y: f32,
     pub key: u64,
     pub dl: DisplayLine,
@@ -92,6 +97,7 @@ pub struct CodeView {
     /// O byte (e a revisão do texto) que a próxima pintura volta a pôr à vista contra a área FINAL: o pedido chega antes
     /// do layout (a paragem do depurador abre o quadro de baixo no mesmo quadro e encolhe o código).
     pub(crate) reveal: Option<(usize, u64)>,
+    pub(crate) windows: crate::window::WindowMemo,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -138,6 +144,7 @@ impl Default for CodeView {
             bancada_marks: Vec::new(),
             bar_drag: None,
             reveal: None,
+            windows: crate::window::WindowMemo::default(),
         }
     }
 }
@@ -219,6 +226,11 @@ impl CodeView {
     /// O x onde a coluna 0 do texto começa (com a rolagem horizontal), no píxel do ecrã.
     pub(crate) fn text_x0(&self) -> f32 {
         ao_pixel(self.text_rect().x + self.m.text_pad - self.scroll_x)
+    }
+
+    /// O x do byte `row.start` da fila no ecrã (o início do troço pintado).
+    pub(crate) fn row_x0(&self, row: &Row) -> f32 {
+        ao_pixel(self.text_x0() + row.x_off)
     }
 
     /// A rolagem vertical no píxel do ecrã (a guardada acumula as fracções da roda).
@@ -403,9 +415,11 @@ impl CodeView {
         let t = buffer.text();
         let line = t.line_of_byte(byte);
         if let Some(r) = self.row(buffer, line)
+            && (r.start..=r.start + r.len).contains(&byte)
             && let Some(layout) = self.cache.peek(r.key)
         {
-            return geom::x_of_byte(layout, &r.dl, byte - r.start);
+            return self.row_x0(r) - self.text_x0()
+                + geom::x_of_byte(layout, &r.dl, byte - r.start);
         }
         let ls = t.byte_of_line(line);
         let a = self.inlay_cols.partition_point(|c| c.0 < ls);
@@ -501,7 +515,13 @@ impl CodeView {
         if let Some(r) = self.row(buffer, line)
             && let Some(layout) = self.cache.peek(r.key)
         {
-            return Hit::Text(r.start + geom::byte_at_x(layout, &r.dl, local, r.len));
+            // Fora do troço de uma linha longa (atrás do «…»), a conta da mono.
+            let x0 = self.row_x0(r) - self.text_x0();
+            let inside =
+                (!r.cut_left || local >= x0) && (!r.cut || local <= x0 + geom::width(layout));
+            if inside {
+                return Hit::Text(r.start + geom::byte_at_x(layout, &r.dl, local - x0, r.len));
+            }
         }
         let col = (local / self.m.advance + 0.5).max(0.0) as usize;
         Hit::Text(
@@ -516,12 +536,12 @@ impl CodeView {
     /// pintura usou.
     #[must_use]
     pub fn probe_columns(&self) -> Vec<(Column, f32)> {
-        let x0 = self.text_x0();
         let mut out = Vec::new();
         for r in &self.rows {
             let Some(layout) = self.cache.peek(r.key) else {
                 continue;
             };
+            let x0 = self.row_x0(r);
             let mid = r.y + self.m.line_h * 0.5;
             for c in geom::columns(layout, &r.dl) {
                 out.push((

@@ -13,6 +13,7 @@ mod escurecimento_da_ui;
 mod estado;
 mod fundo_por_sitio;
 mod fundo_real;
+mod janela_da_linha_longa;
 mod ligaduras;
 mod medicoes_do_fecho;
 mod nitidez;

@@ -15,7 +15,6 @@ use crate::peso::{label_column_width, paint_text};
 use crate::style::Ink;
 use crate::view::{CodeView, Row, Underline};
 use ph2d_code_buffer::Buffer;
-use ph2d_editor_core::math::safe_clamp_ord;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, rect_to_vello, stroke_polyline, stroke_rect,
 };
@@ -148,6 +147,8 @@ impl CodeView {
         rows.clear();
         self.folds.clear();
         let cap = self.render_cap.max(1);
+        let left = (self.scroll_x / self.m.advance.max(f32::EPSILON)).max(0.0) as usize;
+        let rev = buffer.revision();
         let mut r = span.start;
         while r < span.end {
             let first = self.line_of_row(r);
@@ -156,52 +157,64 @@ impl CodeView {
                 n += 1;
             }
             self.folds.extend((frame.folds)(first..first + n));
-            // Cada fila mostra a linha até ao tecto (`render_cap`); os trechos de cor pedem-se por
-            // bloco de bytes contíguos — uma linha cortada fecha o bloco dela.
+            // Cada fila mostra a linha, ou a janela à vista dela até ao tecto (`render_cap`); os
+            // trechos de cor pedem-se por bloco de bytes contíguos — uma linha cortada fecha o bloco.
             let mut i = 0;
             while i < n {
-                let mut block: Vec<(usize, usize, usize, usize)> = Vec::new();
+                let mut block = Vec::new();
                 while i < n {
                     let line = first + i;
                     let (ls, le) = (t.byte_of_line(line), t.line_end(line));
-                    let shown = if le - ls > cap {
-                        t.floor_char(ls + cap)
-                    } else {
-                        le
-                    };
-                    block.push((r + i, ls, le, shown));
+                    let w = self.windows.window(&t, rev, line, left, cap, self.tab);
+                    block.push((r + i, ls, le, w));
                     i += 1;
-                    if shown < le {
+                    if w.start > ls || w.end < le {
                         break;
                     }
                 }
-                let (bs, be) = (block[0].1, block[block.len() - 1].3);
+                let (bs, be) = (block[0].3.start, block[block.len() - 1].3.end);
                 let mut spans = (frame.spans)(bs..be);
                 spans.sort_by_key(|s| s.0.start);
                 let mut k = 0;
-                for (row, ls, le, shown) in block {
+                for (row, ls, le, w) in block {
+                    let (ws, shown) = (w.start, w.end);
                     let line = self.line_of_row(row);
                     let pre_here = pre
-                        .filter(|(h, _)| (ls..=shown).contains(h))
-                        .map(|(h, s)| (h - ls, s));
-                    let a = inlays.partition_point(|i| i.at < ls);
+                        .filter(|(h, _)| (ws..=shown).contains(h))
+                        .map(|(h, s)| (h - ws, s));
+                    let a = inlays.partition_point(|i| i.at < ws);
                     let b = inlays.partition_point(|i| i.at <= shown);
                     let here: Vec<(usize, &str)> = inlays[a..b.max(a)]
                         .iter()
-                        .map(|i| (i.at - ls, i.label.as_str()))
+                        .map(|i| (i.at - ws, i.label.as_str()))
                         .collect();
-                    let dl = DisplayLine::build(&t.slice(ls..shown), self.tab, pre_here, &here);
+                    // As dicas antes da janela empurram-na como empurram o cursor (`x_in_line`).
+                    let a0 = inlays.partition_point(|i| i.at < ls);
+                    let lead = inlays[a0..a.max(a0)]
+                        .iter()
+                        .map(|i| i.label.chars().count())
+                        .sum::<usize>();
+                    let x_off = (w.col + lead) as f32 * self.m.advance;
+                    let dl = DisplayLine::build_at(
+                        &t.slice(ws..shown),
+                        w.col,
+                        self.tab,
+                        pre_here,
+                        &here,
+                    );
                     add_work(dl.text.len(), 0);
-                    while k < spans.len() && spans[k].0.end <= ls {
+                    while k < spans.len() && spans[k].0.end <= ws {
                         k += 1;
                     }
-                    let ds = display_spans(&spans[k..], ls, shown, &dl);
+                    let ds = dl.spans(&spans[k..], ws, shown);
                     let key = self.cache.touch(ts, &dl.text, &ds, self.m.font_px);
                     rows.push(Row {
                         line,
-                        start: ls,
-                        len: shown - ls,
+                        start: ws,
+                        len: shown - ws,
                         cut: shown < le,
+                        cut_left: ws > ls,
+                        x_off,
                         y: self.row_y(row),
                         key,
                         dl,
@@ -231,7 +244,7 @@ impl CodeView {
             return None;
         }
         let layout = self.cache.peek(row.key)?;
-        let x = self.text_x0();
+        let x = self.row_x0(row);
         let x0 = x + geom::x_of_byte_after(layout, &row.dl, s.max(rs) - rs);
         let mut x1 = x + geom::x_of_byte(layout, &row.dl, e.min(re) - rs);
         if eol && e > re {
@@ -315,12 +328,12 @@ impl CodeView {
             }
         }
         // As dicas de tipo (I9) assentam numa pastilha própria: o olho separa-as do código.
-        let x = self.text_x0();
         let radius = frame_radius(pal.theme, Radius::Sm.px());
         for row in &self.rows {
             let Some(layout) = self.cache.peek(row.key) else {
                 continue;
             };
+            let x = self.row_x0(row);
             for (d, n) in row.dl.inlays() {
                 let (x0, x1) = (geom::x_of_disp(layout, d), geom::x_of_disp(layout, d + n));
                 let r = Rect {
@@ -417,7 +430,10 @@ impl CodeView {
                 if let Some(row) = self.row_of(line)
                     && let Some(layout) = self.cache.peek(row.key)
                 {
-                    let x = self.text_x0() + geom::x_of_byte(layout, &row.dl, c.start - row.start);
+                    let Some(rel) = c.start.checked_sub(row.start).filter(|&b| b <= row.len) else {
+                        continue;
+                    };
+                    let x = self.row_x0(row) + geom::x_of_byte(layout, &row.dl, rel);
                     push(
                         row,
                         Rect {
@@ -447,15 +463,24 @@ impl CodeView {
             .iter()
             .filter(|f| f.folded && f.end > f.start)
             .map(|f| f.start);
-        let cut = self.rows.iter().filter(|r| r.cut).map(|r| r.line);
-        for line in folded.chain(cut) {
+        let cut = self.rows.iter().filter(|r| r.cut).map(|r| (r.line, false));
+        let cut_left = self
+            .rows
+            .iter()
+            .filter(|r| r.cut_left)
+            .map(|r| (r.line, true));
+        for (line, left) in folded.map(|l| (l, false)).chain(cut).chain(cut_left) {
             let Some(row) = self.row_of(line) else {
                 continue;
             };
             let Some(layout) = self.cache.peek(row.key) else {
                 continue;
             };
-            let x = self.text_x0() + geom::width(layout) + Spacing::Sm.px();
+            let x = if left {
+                self.row_x0(row) - w - Spacing::Sm.px()
+            } else {
+                self.row_x0(row) + geom::width(layout) + Spacing::Sm.px()
+            };
             let pill = Rect {
                 x,
                 y: row.y + Spacing::Xxs.px(),
@@ -486,15 +511,19 @@ impl CodeView {
         let buffer = frame.buffer;
         let t = buffer.text();
         let sel = buffer.selection();
-        let x = self.text_x0();
         for (i, r) in sel.ranges().iter().enumerate() {
             let primary = i == sel.primary_index();
             let Some(row) = self.row_of(t.line_of_byte(r.head)) else {
                 continue;
             };
+            // Um cursor fora da janela pintada de uma linha longa está fora da vista.
+            if !(row.start..=row.start + row.len).contains(&r.head) {
+                continue;
+            }
             let Some(layout) = self.cache.peek(row.key) else {
                 continue;
             };
+            let x = self.row_x0(row);
             let pre = primary.then(|| row.dl.preedit_span()).flatten();
             let cx = match pre {
                 Some((d, n)) => {
@@ -527,27 +556,6 @@ impl CodeView {
             }
         }
     }
-}
-
-/// Os trechos de cor de uma linha, em bytes MOSTRADOS (as tabs esticam os trechos que as cobrem).
-fn display_spans(
-    spans: &[(Range<usize>, Ink)],
-    ls: usize,
-    le: usize,
-    dl: &DisplayLine,
-) -> Vec<(Range<usize>, Ink)> {
-    let mut out = Vec::new();
-    for (rg, ink) in spans.iter().take_while(|s| s.0.start < le.max(ls + 1)) {
-        let s = safe_clamp_ord(rg.start, ls, le) - ls;
-        let e = safe_clamp_ord(rg.end, ls, le) - ls;
-        if s < e {
-            out.push((dl.to_disp_after(s)..dl.to_disp(e), *ink));
-        }
-    }
-    // A dica pinta-se na tinta dela, nunca na do código à volta.
-    out.extend(dl.inlays().map(|(d, n)| (d..d + n, Ink::Hint)));
-    out.sort_by_key(|s| s.0.start);
-    out
 }
 
 /// O ziguezague do sublinhado: meia onda de `amp` de largura.

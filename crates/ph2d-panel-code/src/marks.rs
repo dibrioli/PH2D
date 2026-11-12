@@ -45,7 +45,7 @@ impl CodeView {
             let Some(layout) = self.cache.peek(row.key).filter(|_| !row.cut && !folded) else {
                 continue;
             };
-            let x0 = self.text_x0() + geom::width(layout) + Spacing::Lg.px();
+            let x0 = self.row_x0(row) + geom::width(layout) + Spacing::Lg.px();
             let cy = row.y + self.m.line_h * 0.5;
             let mut x = x0;
             for (h, holder) in who.holders.iter().enumerate() {

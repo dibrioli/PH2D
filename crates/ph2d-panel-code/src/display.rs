@@ -2,6 +2,9 @@
 //! cursor e as dicas de tipo (I9) onde o assistente as pôs. A pintura molda ESTE texto; o clique e o cursor voltam ao buffer pelos mesmos mapas, por
 //! isso o byte que a pintura pôs num sítio é o byte que o clique nesse sítio devolve.
 
+use crate::style::Ink;
+use ph2d_editor_core::math::safe_clamp_ord;
+use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// O que uma expansão é.
@@ -42,12 +45,24 @@ impl DisplayLine {
         preedit: Option<(usize, &str)>,
         inlays: &[(usize, &str)],
     ) -> Self {
+        Self::build_at(line, 0, tab, preedit, inlays)
+    }
+
+    /// Como [`Self::build`], para um troço que começa na coluna de ecrã `col0` da linha (a janela
+    /// pintada de uma linha longa): as tabs param nas paragens da LINHA, não do troço.
+    pub fn build_at(
+        line: &str,
+        col0: usize,
+        tab: usize,
+        preedit: Option<(usize, &str)>,
+        inlays: &[(usize, &str)],
+    ) -> Self {
         let tab = tab.max(1);
         let mut out = Self {
             text: String::with_capacity(line.len()),
             exps: Vec::new(),
         };
-        let mut w = 0usize;
+        let mut w = col0 % tab;
         let mut pre = preedit.filter(|(_, s)| !s.is_empty());
         let mut hints = inlays.iter().filter(|(_, s)| !s.is_empty()).peekable();
         for (i, g) in line.grapheme_indices(true) {
@@ -163,6 +178,30 @@ impl DisplayLine {
             .iter()
             .find(|e| e.kind == ExpKind::Preedit)
             .map(|e| (e.disp, e.disp_len))
+    }
+}
+
+impl DisplayLine {
+    /// Os trechos de cor de uma linha, em bytes MOSTRADOS (as tabs esticam os trechos que as cobrem).
+    pub fn spans(
+        &self,
+        spans: &[(Range<usize>, Ink)],
+        ls: usize,
+        le: usize,
+    ) -> Vec<(Range<usize>, Ink)> {
+        let dl = self;
+        let mut out = Vec::new();
+        for (rg, ink) in spans.iter().take_while(|s| s.0.start < le.max(ls + 1)) {
+            let s = safe_clamp_ord(rg.start, ls, le) - ls;
+            let e = safe_clamp_ord(rg.end, ls, le) - ls;
+            if s < e {
+                out.push((dl.to_disp_after(s)..dl.to_disp(e), *ink));
+            }
+        }
+        // A dica pinta-se na tinta dela, nunca na do código à volta.
+        out.extend(dl.inlays().map(|(d, n)| (d..d + n, Ink::Hint)));
+        out.sort_by_key(|s| s.0.start);
+        out
     }
 }
 

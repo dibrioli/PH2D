@@ -91,7 +91,6 @@ impl CodeView {
     /// ⛔ Só os glifos da faixa horizontal à vista (mais uma margem) vão para a cena: uma linha
     /// comprida pinta o que se vê, não o que tem.
     pub(crate) fn paint_glyphs(&self, scene: &mut VectorScene, pal: &Palette) {
-        let x = self.text_x0();
         let tr = self.text_rect();
         let margin = self.m.advance * 4.0; // LITERAL-PX-OK: quatro colunas da mono, não um píxel
         let (left, right) = (tr.x - margin, tr.x + tr.w + margin);
@@ -100,6 +99,7 @@ impl CodeView {
             let Some(layout) = self.cache.peek(row.key) else {
                 continue;
             };
+            let x = self.row_x0(row);
             let top = ao_pixel(row.y + self.m.text_dy);
             'row: for line in layout.lines() {
                 let base = line.metrics().baseline;

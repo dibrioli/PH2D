@@ -125,7 +125,7 @@ impl CodeView {
             let Some(layout) = self.cache.peek(row.key) else {
                 continue;
             };
-            let x = self.text_x0() + geom::width(layout) + Spacing::Lg.px();
+            let x = self.row_x0(row) + geom::width(layout) + Spacing::Lg.px();
             let room = tr.x + tr.w - x - Spacing::Sm.px();
             if room <= 0.0 {
                 continue;

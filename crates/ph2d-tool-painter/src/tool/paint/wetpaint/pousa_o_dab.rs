@@ -7,6 +7,7 @@
 use super::*;
 
 mod a_lane;
+mod corte_das_linhas;
 mod despacho;
 #[cfg(test)]
 #[path = "pousa_o_dab_memo_tests.rs"]
@@ -395,25 +396,36 @@ pub(super) fn pousa_o_dab(
             fp_raio.falloff_t(n[1] as f32 * a, -n[0] as f32 * a) * 1.001,
         )
     });
+    // O corte do motor por LINHA ([`corte_das_linhas`]): fora do intervalo da linha, `fora` sem o `falloff_t`, ao bit.
+    let corte_motor = lips.map(|l| {
+        let a = f64::from(l)
+            * (0.5 * f64::from(lado) + f64::from(folga_ponta))
+            * std::f64::consts::SQRT_2;
+        let limiar = 1.001 + f64::from(desliza) + a * f64::from(inv_r);
+        corte_das_linhas::CorteDasLinhas::nova(&fp_raio, limiar, d.center, inv_r, ratio, lado)
+    });
+    let fora_motor = |cx: i32, cy: i32| -> bool {
+        corte_motor.as_ref().is_some_and(|c| c.fora(cx, cy)) || fora(cx, cy, folga_ponta, desliza)
+    };
     // Com a memo, ela guarda também o `0` de `fora`: a 2.ª leitura da célula (o depósito, o pente, o grão) não paga o
     // corte. A contagem do motor continua a das leituras não cortadas (`v ≠ 0` só sai de quem passou o corte).
     let sil = |cx: i32, cy: i32| -> f64 {
         let Some(m) = memo.as_ref() else {
-            if fora(cx, cy, folga_ponta, desliza) {
+            if fora_motor(cx, cy) {
                 return 0.0;
             }
             crate::wet_diag::conta_sil(0, 1);
             return sil(cx, cy);
         };
-        let v = m.ou(cx, cy, |cx, cy| {
-            if fora(cx, cy, folga_ponta, desliza) {
-                0.0
-            } else {
-                sil(cx, cy)
-            }
-        });
+        let v = m.ou(
+            cx,
+            cy,
+            |cx, cy| {
+                if fora_motor(cx, cy) { 0.0 } else { sil(cx, cy) }
+            },
+        );
         if crate::wet_diag::CONTA_SIL.load(std::sync::atomic::Ordering::Relaxed)
-            && (v != 0.0 || !fora(cx, cy, folga_ponta, desliza))
+            && (v != 0.0 || !fora_motor(cx, cy))
         {
             crate::wet_diag::conta_sil(0, 1);
         }

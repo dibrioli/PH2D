@@ -567,6 +567,55 @@ impl FootprintDeform {
     pub fn falloff_t_lipschitz(&self) -> Option<f32> {
         self.curve.is_flat().then_some(self.inv_minor.max(1.0))
     }
+
+    /// Um SUPERCONJUNTO, em `f64`, do intervalo de `u` onde o [`Self::falloff_t`] exacto da linha `v` fica abaixo de
+    /// `limiar` (curva plana): `t ≥ max(|f|∞, ((1 − q) + q/√2)·|f|₂)` dá duas faixas e uma elipse, convexas.
+    /// `None` = a linha inteira com `t ≥ limiar`. Quem decide pelo `f32` põe a folga dos arredondamentos no `limiar`.
+    #[must_use]
+    pub fn falloff_t_abaixo_na_linha(&self, v: f64, limiar: f64) -> Option<[f64; 2]> {
+        let (c, s, m, q) = self.termos_f64();
+        // `|a·u + b| < w`, em `u`.
+        let faixa = |a: f64, b: f64, w: f64| -> Option<[f64; 2]> {
+            if a == 0.0 {
+                return (b.abs() < w).then_some([f64::NEG_INFINITY, f64::INFINITY]);
+            }
+            let (p, r) = ((-w - b) / a, (w - b) / a);
+            Some([p.min(r), p.max(r)])
+        };
+        let f0 = faixa(c, s * v, limiar)?;
+        let f1 = faixa(-s, c * v, limiar / m)?;
+        let raio = limiar / ((1.0 - q) + q * std::f64::consts::FRAC_1_SQRT_2);
+        let qa = c * c + m * m * s * s;
+        let qb = 2.0 * s * c * v * (1.0 - m * m);
+        let qc = v * v * (s * s + m * m * c * c) - raio * raio;
+        let disc = qb * qb - 4.0 * qa * qc;
+        if disc < 0.0 {
+            return None;
+        }
+        let rd = disc.sqrt();
+        let lo = f0[0].max(f1[0]).max((-qb - rd) / (2.0 * qa));
+        let hi = f0[1].min(f1[1]).min((-qb + rd) / (2.0 * qa));
+        (lo <= hi).then_some([lo, hi])
+    }
+
+    /// O maior `|v|` com alguma linha de [`Self::falloff_t_abaixo_na_linha`] não vazia (a elipse dela), em `f64`.
+    #[must_use]
+    pub fn falloff_t_abaixo_meia_altura(&self, limiar: f64) -> f64 {
+        let (c, s, m, q) = self.termos_f64();
+        let raio = limiar / ((1.0 - q) + q * std::f64::consts::FRAC_1_SQRT_2);
+        let qa = c * c + m * m * s * s;
+        let det = qa * (s * s + m * m * c * c) - (s * c * (1.0 - m * m)).powi(2);
+        raio * (qa / det).sqrt()
+    }
+
+    fn termos_f64(&self) -> (f64, f64, f64, f64) {
+        (
+            f64::from(self.cos),
+            f64::from(self.sin),
+            f64::from(self.inv_minor),
+            f64::from(self.quina),
+        )
+    }
 }
 
 #[cfg(test)]

@@ -577,3 +577,40 @@ fn a_linha_de_exemplo_larga_acaba_antes_do_botao() {
         "{direita} / {fim} × botão {copiar:?}"
     );
 }
+
+/// Caso raro: o trecho de cor seguinte começa exatamente no fim permitido (antes do botão de copiar)
+/// e não mostra letra nenhuma — o «…» vai para o fim do trecho de antes, que cabia inteiro.
+///
+/// *Mutação: `next_hidden` sempre `false` em `paint_content` ⇒ nada visível diz que a linha continua.*
+#[test]
+fn o_trecho_que_comeca_no_fim_permitido_poe_as_reticencias_no_de_antes() {
+    let exemplo = |key, spans: Vec<Span>| HelpDoc {
+        key,
+        title: "x".into(),
+        blocks: vec![Block::Code {
+            lines: vec![spans],
+            copy: 0,
+        }],
+        sections: Vec::new(),
+    };
+    let (mut v, mut ts) = (HelpView::new(), ts());
+    let area = Rect::new(0.0, 0.0, 420.0, 300.0);
+    let longa = exemplo(4, vec![codigo(&"0".repeat(300), Ink::Number)]);
+    pinta(&mut v, &quadro(&longa), &mut ts, area);
+    let (_, x, fim) = v.probe().cut[0].clone();
+    let cols = ((fim - x) / v.metrics().advance).floor() as usize;
+    let justa = exemplo(
+        5,
+        vec![
+            codigo(&"0".repeat(cols), Ink::Number),
+            codigo("tail()", Ink::Function),
+        ],
+    );
+    pinta(&mut v, &quadro(&justa), &mut ts, area);
+    let cut = v.probe().cut;
+    assert_eq!(cut.len(), 1, "cortou sem «…» visível: {cut:?}");
+    let (texto, x2, _) = &cut[0];
+    assert_eq!(*x2, x, "o «…» não está no trecho de antes");
+    assert_eq!(texto.chars().count(), cols, "{texto}");
+    assert!(texto.ends_with('…'), "{texto}");
+}

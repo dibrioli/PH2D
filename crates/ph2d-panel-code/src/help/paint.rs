@@ -261,31 +261,40 @@ impl HelpView {
         // Um exemplo pinta-se sobre a caixa dele, não sobre o poço: o escurecimento decide por ela.
         let mut boxed = pal.clone();
         boxed.bg = tones.code_box;
-        for r in runs {
+        let adv = self.m.advance.max(1.0);
+        for (k, r) in runs.iter().enumerate() {
             let lit = r.link.is_some()
                 && (frame.hover == r.link.map(HelpHit::Link) || frame.focus_link == r.link);
             let s = self.screen(r.x, r.y, r.w, r.h);
-            // Pelo começo do trecho: o meio de uma linha mais larga que a caixa cai fora dela.
-            let Some(b) = boxes.iter().find(|b| b.contains(s.x, s.y + s.h * 0.5)) else {
+            let Some(end) = box_end(s, &boxes, &copies, self.dims.pad) else {
                 self.paint_run(r, lit, right, scene, ts, pal, &tones);
                 continue;
             };
-            // Uma linha de exemplo mais larga que a caixa (ou que chega ao botão de copiar) acaba em
-            // «…» dentro dela: nunca passa da caixa nem fica cortada a meio de uma letra.
-            let mut end = b.x + b.w - self.dims.pad;
-            for (_, c) in copies
-                .iter()
-                .filter(|(_, c)| c.y < s.y + s.h && s.y < c.y + c.h)
-            {
-                end = end.min(c.x - Spacing::Xs.px());
-            }
-            if s.x + s.w <= end || r.font != Font::Mono {
+            let fits = s.x + s.w <= end;
+            if r.font != Font::Mono {
                 self.paint_run(r, lit, end, scene, ts, &boxed, &tones);
                 continue;
             }
-            let cols = ((end - s.x) / self.m.advance.max(1.0)).floor().max(0.0) as usize;
+            // Uma linha de exemplo mais larga que a caixa (ou que chega ao botão de copiar) acaba em
+            // «…» dentro dela: nunca passa da caixa nem fica cortada a meio de uma letra.
+            let cols = ((end - s.x) / adv).floor().max(0.0) as usize;
+            if !fits && cols == 0 {
+                // Nem o «…» cabe: foi para o fim do trecho de antes (o `next_hidden` dele).
+                continue;
+            }
+            // O trecho seguinte da linha que começa no fim permitido não mostra nada: o «…» é deste.
+            let next_hidden = runs.get(k + 1).is_some_and(|n| {
+                let ns = self.screen(n.x, n.y, n.w, n.h);
+                n.y == r.y && n.font == Font::Mono && !n.text.is_empty() && end - ns.x < adv
+            });
+            if fits && !next_hidden {
+                self.paint_run(r, lit, end, scene, ts, &boxed, &tones);
+                continue;
+            }
+            let keep = if fits { r.text.chars().count() } else { cols };
             let mut cut = r.clone();
-            cut.text = crate::popup::elide(&r.text, cols);
+            cut.text = r.text.chars().take(keep.saturating_sub(1)).collect();
+            cut.text.push('…');
             self.cut.push((cut.text.clone(), s.x, end));
             self.paint_run(&cut, lit, end, scene, ts, &boxed, &tones);
         }
@@ -480,4 +489,19 @@ impl HelpView {
             ui.text1,
         );
     }
+}
+
+/// O fim permitido de um trecho que começa em `s`, se ele está numa caixa de exemplo: a borda dela
+/// menos o recuo, e antes do botão de copiar na mesma fila. A caixa decide-se pelo COMEÇO do trecho:
+/// o meio de uma linha mais larga que a caixa cai fora dela.
+fn box_end(s: Rect, boxes: &[Rect], copies: &[(u32, Rect)], pad: f32) -> Option<f32> {
+    let b = boxes.iter().find(|b| b.contains(s.x, s.y + s.h * 0.5))?;
+    let mut end = b.x + b.w - pad;
+    for (_, c) in copies
+        .iter()
+        .filter(|(_, c)| c.y < s.y + s.h && s.y < c.y + c.h)
+    {
+        end = end.min(c.x - Spacing::Xs.px());
+    }
+    Some(end)
 }

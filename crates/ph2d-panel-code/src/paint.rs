@@ -237,7 +237,8 @@ impl CodeView {
         self.rows_in(line..line + 1).first()
     }
 
-    /// O retângulo dos bytes `s..e` na fila; `eol` estica-o meia coluna quando a faixa passa do fim.
+    /// O retângulo dos bytes `s..e` na fila; `eol` estica-o meia coluna quando a faixa passa do fim
+    /// REAL da linha — numa fila cortada (`cut`) a faixa pára na borda da janela, sob o «…».
     fn seg_rect(&self, row: &Row, s: usize, e: usize, eol: bool) -> Option<Rect> {
         let (rs, re) = (row.start, row.start + row.len);
         if e < rs || s > re {
@@ -247,7 +248,7 @@ impl CodeView {
         let x = self.row_x0(row);
         let x0 = x + geom::x_of_byte_after(layout, &row.dl, s.max(rs) - rs);
         let mut x1 = x + geom::x_of_byte(layout, &row.dl, e.min(re) - rs);
-        if eol && e > re {
+        if eol && e > re && !row.cut {
             x1 += self.m.advance * 0.5;
         }
         (x1 > x0).then_some(Rect {
@@ -281,6 +282,14 @@ impl CodeView {
     pub fn probe_segments(&self, buffer: &Buffer, s: usize, e: usize) -> Vec<Rect> {
         let mut out = Vec::new();
         self.each_seg(buffer, s, e, false, |_, r| out.push(r));
+        out
+    }
+
+    /// ⚠️ SONDA: os retângulos que a selecção `s..e` pinta (com o meio-bloco do fim de linha).
+    #[must_use]
+    pub fn probe_selection_segments(&self, buffer: &Buffer, s: usize, e: usize) -> Vec<Rect> {
+        let mut out = Vec::new();
+        self.each_seg(buffer, s, e, true, |_, r| out.push(r));
         out
     }
 
@@ -469,7 +478,15 @@ impl CodeView {
             .iter()
             .filter(|r| r.cut_left)
             .map(|r| (r.line, true));
-        for (line, left) in folded.map(|l| (l, false)).chain(cut).chain(cut_left) {
+        // Uma linha dobrada E cortada mostra um só «…» à direita (os dois cairiam no mesmo x).
+        let mut pills: Vec<_> = folded
+            .map(|l| (l, false))
+            .chain(cut)
+            .chain(cut_left)
+            .collect();
+        pills.sort_unstable();
+        pills.dedup();
+        for (line, left) in pills {
             let Some(row) = self.row_of(line) else {
                 continue;
             };

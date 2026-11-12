@@ -130,3 +130,108 @@ fn uma_linha_curta_pinta_se_inteira_a_partir_da_coluna_0() {
         }
     }
 }
+
+/// As colunas pintadas da linha `line`, por ordem de byte.
+fn colunas_da(v: &CodeView, buf: &Buffer, line: usize) -> Vec<(ph2d_panel_code::Column, f32)> {
+    let mut c: Vec<_> = v
+        .probe_columns()
+        .into_iter()
+        .filter(|(c, _)| buf.text().line_of_byte(c.byte) == line)
+        .collect();
+    c.sort_by_key(|p| p.0.byte);
+    c
+}
+
+/// ⛔ Shift+End do meio de uma linha de 64 KB com a vista no início: a selecção pára na borda da
+/// janela pintada (o «…»), sem o meio-bloco do fim de linha — o fim REAL está a 60 KB dali.
+#[test]
+fn a_selecao_ate_ao_fim_da_linha_cortada_para_no_corte_sem_meia_coluna() {
+    let (mut buf, line) = longa();
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    // Um tecto menor que a vista: o corte cai DENTRO dela (no app, bytes densos por coluna).
+    v.set_render_cap(60);
+    let area = area_para(&mut v, &buf, &mut ts, 10);
+    let t = buf.text();
+    let (ls, fim) = (t.byte_of_line(line), t.line_end(line));
+    let (fim0, b1) = (t.line_end(0), t.byte_of_line(1));
+    // Do fim ao meio: a vista fica no início (o fim REAL fora dela).
+    buf.set_selection(Selection::single(Range::new(fim, ls + 4)));
+    pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+    let cols = colunas_da(&v, &buf, line);
+    let ultima = cols.last().expect("a janela pinta-se").0;
+    assert!(ultima.byte + 64 < fim, "a vista está no início: {ultima:?}");
+    let segs = v.probe_selection_segments(&buf, ls + 4, fim);
+    let seg = segs.first().expect("a selecção pinta-se na fila");
+    assert!(
+        (seg.x + seg.w - ultima.x1).abs() <= 0.5,
+        "a selecção acaba no corte {} e não em {}",
+        ultima.x1,
+        seg.x + seg.w
+    );
+    // Controlo: numa linha curta a selecção que leva o fim de linha ganha a meia coluna.
+    buf.set_selection(Selection::single(Range::new(0, b1)));
+    pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+    let c0 = colunas_da(&v, &buf, 0).last().expect("linha 0").0;
+    assert_eq!(buf.text().next_grapheme(c0.byte), fim0);
+    let s0 = v.probe_selection_segments(&buf, 0, b1);
+    let s0 = s0.first().expect("a selecção da linha 0");
+    let meia = v.metrics().advance * 0.5;
+    assert!(
+        (s0.x + s0.w - (c0.x1 + meia)).abs() <= 0.5,
+        "a linha curta estica meia coluna: {s0:?} × {c0:?}"
+    );
+}
+
+/// ⛔ Uma linha dobrada E cortada pintava dois «…» no mesmo x (a dobra e o corte).
+#[test]
+fn a_linha_dobrada_e_cortada_mostra_um_so_fecho() {
+    let (buf, line) = longa();
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    // Um tecto menor que a vista: o corte cai DENTRO dela (no app, bytes densos por coluna).
+    v.set_render_cap(60);
+    let area = area_para(&mut v, &buf, &mut ts, 10);
+    let d = Deco {
+        folds: vec![ph2d_panel_code::FoldMark {
+            start: line,
+            end: line + 1,
+            folded: true,
+        }],
+        ..Deco::default()
+    };
+    let scene = pinta(&mut v, &buf, &mut ts, area, &d);
+    let cols = colunas_da(&v, &buf, line);
+    let (ultima, mid) = *cols.last().expect("a janela pinta-se");
+    let lh = v.metrics().line_h;
+    let depois: Vec<_> = crate::linhas_de_base(&scene)
+        .into_iter()
+        .filter(|&(_, x, y)| x >= ultima.x1 && (y - mid).abs() < lh * 0.5)
+        .collect();
+    assert_eq!(depois.len(), 1, "um só «…» depois do corte: {depois:?}");
+}
+
+/// ⛔ O clique fora da janela pintada de uma linha longa com caracteres largos (CJK, emoji, cuja
+/// largura moldada não é a da conta da mono): logo depois do corte cai DEPOIS do último byte
+/// pintado, nunca dentro da janela. (O corte esquerdo nunca está à vista: a janela começa na
+/// coluna esquerda ou antes dela.)
+#[test]
+fn o_clique_logo_fora_do_corte_com_caracteres_largos_cai_do_lado_certo() {
+    let l = format!("local s = \"{}\"", "中文字😀".repeat(2048));
+    let buf = Buffer::new(&format!("local a = 1\n{l}\nlocal b = 2"));
+    let line = 1;
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    // Um tecto menor que a vista: o corte cai DENTRO dela (no app, bytes densos por coluna).
+    v.set_render_cap(60);
+    let area = area_para(&mut v, &buf, &mut ts, 10);
+    pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+    let adv = v.metrics().advance;
+    let cols = colunas_da(&v, &buf, line);
+    let (ultima, mid) = *cols.last().expect("a janela pinta-se");
+    assert!(
+        ultima.byte + 64 < buf.text().line_end(line),
+        "cortada à direita"
+    );
+    match v.hit(&buf, ultima.x1 + adv * 0.75, mid) {
+        Hit::Text(b) => assert!(b > ultima.byte, "{b} depois de {}", ultima.byte),
+        h => panic!("{h:?}"),
+    }
+}

@@ -117,3 +117,7 @@ vermelhos por decisão).
 - `PaintState` ganhou 3 campos; um construtor literal noutra linha não compila (cura: `..Default`/`state_default.rs`).
 - **Medições:** a régua é o A×B no mesmo binário (ou 1 fio, `RAYON_NUM_THREADS=1`); a carga foi de 9 a 90, por isso o relógio absoluto vale
   pouco.
+
+## Binário do smoke
+
+Compilado em `target/smoke/ph2d-host-desktop` (HEAD da linha, depois do fecho; `target/*/incremental` reclamado, 21 GB). 2.ª corrida de `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`: zero `Compiling`, `Finished `smoke` profile [optimized] target(s) in 0.21s`.

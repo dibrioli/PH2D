@@ -76,7 +76,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
                 self.show_row(k, rows[i].0);
             }
             Key::Right | Key::Enter | Key::Space if hot.is_some_and(|h| h.2) => {
-                let Some((_, id, _)) = hot else { return None };
+                let (_, id, _) = hot?;
                 self.open_sub(k, id);
                 self.hover =
                     sub_rows(levels[k], id).and_then(|r| selectable(r).first().map(|f| f.1));

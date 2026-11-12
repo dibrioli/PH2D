@@ -395,13 +395,29 @@ pub(super) fn pousa_o_dab(
             fp_raio.falloff_t(n[1] as f32 * a, -n[0] as f32 * a) * 1.001,
         )
     });
+    // Com a memo, ela guarda também o `0` de `fora`: a 2.ª leitura da célula (o depósito, o pente, o grão) não paga o
+    // corte. A contagem do motor continua a das leituras não cortadas (`v ≠ 0` só sai de quem passou o corte).
     let sil = |cx: i32, cy: i32| -> f64 {
-        if fora(cx, cy, folga_ponta, desliza) {
-            return 0.0;
+        let Some(m) = memo.as_ref() else {
+            if fora(cx, cy, folga_ponta, desliza) {
+                return 0.0;
+            }
+            crate::wet_diag::conta_sil(0, 1);
+            return sil(cx, cy);
+        };
+        let v = m.ou(cx, cy, |cx, cy| {
+            if fora(cx, cy, folga_ponta, desliza) {
+                0.0
+            } else {
+                sil(cx, cy)
+            }
+        });
+        if crate::wet_diag::CONTA_SIL.load(std::sync::atomic::Ordering::Relaxed)
+            && (v != 0.0 || !fora(cx, cy, folga_ponta, desliza))
+        {
+            crate::wet_diag::conta_sil(0, 1);
         }
-        crate::wet_diag::conta_sil(0, 1);
-        memo.as_ref()
-            .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
+        v
     };
     let grao_da_cor = grain_basis.as_ref().filter(|_| grao_e_cor);
     let grao_img = grain_image.as_ref();

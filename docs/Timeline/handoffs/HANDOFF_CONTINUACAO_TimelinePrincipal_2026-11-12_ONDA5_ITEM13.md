@@ -53,6 +53,12 @@ Modelo **A** (After Effects): uma linha «Position» = ritmo ao longo do caminho
 4. Errado se: o arco muda de forma depois do easing, X/Y continuam separados, ou «andar» deixa de andar.
 - Atalho: `PH2D_ANIMACAO_SMOKE=7` já abre entortado e com easing.
 
+## Smoke do dono 12/11: OK, com um defeito — curado (`e2f75acee5`)
+
+- Relato: «o objeto tem z-index maior que o ponto da curva; se tento mover o ponto, é o objeto que se move».
+- Mecanismo (medido com arrasto REAL: `xdotool` na Xvfb via `docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh` com `PH2D_ANIMACAO_SMOKE=7 CENA=0 ARRASTA="861 520 950 420"`): a âncora do fim cai no centro do objeto, sobre o `GIZMO_PIVOT`. `over_canvas_or_gizmo` (`shells/desktop/src/vec_text_reopen.rs`) perguntava `gizmo_kind_for_id`, que exclui o pivô ⇒ `false` ⇒ `motion_path_anchor_down` nunca era chamado. Não era z-index: o desenho já estava por cima.
+- Cura: a porta `ph2d_editor_core::gizmo::is_gizmo_id` (pivô incluído). Gate `the_canvas_guard_counts_the_pivot_as_part_of_the_gizmo` (`the_motion_path_is_offered_only_on_the_keys_tab.rs`), mutação sangrou. Foto depois: [ponto final arrastado](../fotos/17_item13_ponto_final_arrastado.png). Shell −1 linha; clippy da shell limpo; vizinhos por nome verdes (gizmo 71, the_motion_path 13, double_click 1, shrinks 4).
+
 ## ABERTO (visto, NÃO feito)
 1. O overlay do Path e `move_path_anchor`/`move_path_tangent` na shell usam coordenadas de MUNDO como se fossem locais: sob pai movido, o caminho é desenhado/arrastado fora do lugar (pré-existente; `drag_alca` já usa `local_for_world`).
 2. No smoke ANIMACAO o herói fica parado no fim do clip enquanto a agulha global passa do comprimento do clip (igual na cena 1; pré-existente).

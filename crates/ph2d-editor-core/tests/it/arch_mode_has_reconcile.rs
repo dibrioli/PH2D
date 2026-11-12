@@ -228,6 +228,18 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
          `edita_textura`, like `set_texture_layer_ramp_mode`",
     ),
     (
+        "set_texture_layer_ramp_mode",
+        "rerender_texture_layer",
+        "Texture LAYER ramp mode without the undo wrapper (the tree before the Painter line's \
+         `edita_textura` lands): re-renders the whole pre-rendered layer directly",
+    ),
+    (
+        "set_texture_layer_ramp_alpha_mode",
+        "rerender_texture_layer",
+        "Texture LAYER ramp alpha action without the undo wrapper: re-renders the layer directly, \
+         like `set_texture_layer_ramp_mode`",
+    ),
+    (
         "set_stroke_op_mode",
         "refill_open_shape",
         "Painter multi-shape Operation mode (Overlay/Add/Remove): retags the active shape's op and \

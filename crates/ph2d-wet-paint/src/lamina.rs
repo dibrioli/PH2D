@@ -113,14 +113,24 @@ impl Engine {
                 let faixa = &mut campo[y0 as usize * s..(y1 as usize + 1) * s];
                 crate::par::walk_rows(mode, faixa, s, |k, linha| {
                     let py = y0 + k as i32;
+                    // O puxão da última cobertura da linha, pelos bits de `w` (o miolo repete o `w`): o `pow` 1×, ao bit.
+                    let mut ultimo: Option<(u64, f64)> = None;
                     for px in x0..=x1 {
                         let w = sil(px, py);
                         if w <= 0.0 {
                             continue;
                         }
+                        let k = match ultimo {
+                            Some((b, k)) if b == w.to_bits() => k,
+                            _ => {
+                                let k = crate::bristles_relevo::puxao(w, passos);
+                                ultimo = Some((w.to_bits(), k));
+                                k
+                            }
+                        };
                         let alvo = altura * perfil(atraves(px, py) * inv);
                         let c = &mut linha[px as usize];
-                        *c = crate::bristles_relevo::penteia(*c, alvo, w, passos);
+                        *c = crate::bristles_relevo::penteia_com(*c, alvo, k);
                     }
                 });
             };

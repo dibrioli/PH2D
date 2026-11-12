@@ -30,6 +30,10 @@ pub(super) struct PontaDasCerdas {
     px_cel: f64,
     /// O desvio de um fio de desvio `1` (px): [`ALCANCE`] da meia-corda.
     meia: f64,
+    /// `comprimento_do_fio(k, rho) − 1` dos fios `k0..` que a silhueta alcança, contado 1× por dab (o hash era por
+    /// célula); fora da faixa, a conta directa — ao bit.
+    k0: i32,
+    desvios: Vec<f64>,
 }
 
 impl PontaDasCerdas {
@@ -60,12 +64,17 @@ impl PontaDasCerdas {
                 b = m;
             }
         }
+        let (k0, k1) = fios.faixa(alcance_px.max(px_cel));
         Some(Self {
             fios,
             rho,
             centro,
             px_cel,
             meia: ALCANCE * a.max(0.5 * px_cel),
+            k0,
+            desvios: (k0..=k1)
+                .map(|k| FiosNoDab::comprimento_do_fio(k, rho) - 1.0)
+                .collect(),
         })
     }
 
@@ -84,12 +93,11 @@ impl PontaDasCerdas {
             (f64::from(cy) - self.centro[1]) * self.px_cel,
         ];
         let fio = self.fios.fio_no_ponto(d);
-        self.desloca(
-            sil,
-            cx,
-            cy,
-            FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0,
-        )
+        let desvio = usize::try_from(fio - self.k0)
+            .ok()
+            .and_then(|i| self.desvios.get(i).copied())
+            .unwrap_or_else(|| FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0);
+        self.desloca(sil, cx, cy, desvio)
     }
 
     /// ⭐ **A ponta que ESFARELA** (W3 K3b, `docs/Painter/Pinceis/W3_K3b_cerda.md`): o desvio de cada célula sai do GRÃO

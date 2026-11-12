@@ -450,6 +450,8 @@ instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) 
 metricas = "metricas"  # pt «métricas» sem acento num campo (`Midia::metricas`, midias_de_fabrica.rs; midias_regua.py)
 # Ship 29/10 (Kanban/Planner, Pixel Art, Constraints): palavras pt em prosa, rótulos e chaves gravadas.
 datas = "datas"  # pt «datas» (dates) — o vocabulário do Kanban e do Planner, em prosa, rótulos e nomes
+periodos = "periodos"  # pt «períodos» sem acento num nome de teste (`…_8_periodos_por_tique`, ritmo_tests.rs do pincel)
+repores = "repores"  # pt «repores» (plural de «repor», os botões de repor de cada secção) — prosa do seam do Wet Tuning
 analise = "analise"  # pt «análise» sem acento, nas chaves gravadas das medições da W4 (`analise_ms_min`)
 tramas = "tramas"  # pt «tramas» (padrões de pontilhado) no doc do smoke do Pixel Art
 percentagens = "percentagens"  # pt-PT «percentagens» no diálogo Sprite Size do Pixel Art

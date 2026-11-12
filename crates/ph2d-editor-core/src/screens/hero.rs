@@ -59,8 +59,8 @@ pub mod style;
 pub mod tool_bar;
 pub mod topbar;
 
-pub(crate) mod board_alert;
 pub(crate) mod aviso_do_jogo;
+pub(crate) mod board_alert;
 pub mod board_bar;
 pub mod board_images;
 pub(crate) mod board_kanban_notes;

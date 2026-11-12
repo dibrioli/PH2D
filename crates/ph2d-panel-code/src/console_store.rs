@@ -160,6 +160,10 @@ impl Store {
         self.entries.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
     pub fn line_of(&self, i: usize) -> Option<u32> {
         self.entries.get(i).and_then(|e| e.line)
     }

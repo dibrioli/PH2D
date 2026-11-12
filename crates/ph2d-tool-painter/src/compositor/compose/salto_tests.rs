@@ -122,6 +122,94 @@ fn o_salto_alfa_zero_e_o_apply_ao_bit() {
     assert!(!normal_transparente_e_identidade([0.5, 0.5, 0.5, 0.3], s0));
 }
 
+/// ⭐ B19.10: the same grid for every OTHER mode under `transparente_e_identidade`, with controls on
+/// the source-colour bound (an ∞ or huge source makes `0·B` a NaN).
+#[test]
+fn o_salto_alfa_zero_e_o_apply_ao_bit_em_todos_os_modos() {
+    let canais = [0.0f32, -0.0, 1e-30, 0.3, 0.5, 1.0, UM_MAIS, f32::NAN];
+    let alfas_d = [0.0f32, -0.0, 0.3, 1.0, UM_MAIS, f32::NAN];
+    let alfas_s = [0.0f32, -0.0, -1.0];
+    let cores_s = [
+        0.0f32,
+        -0.0,
+        1e-38,
+        0.42,
+        0.5,
+        0.999_999_9,
+        1.0,
+        3.0,
+        f32::NAN,
+    ];
+    let mut saltos = 0usize;
+    for m in 1..MAX_BLEND_MODES {
+        let mode = BlendMode::from_u8(m);
+        for &c0 in &canais {
+            for &c1 in &[0.0f32, 0.61, 1.0, -0.0] {
+                for &ad in &alfas_d {
+                    for &cs in &cores_s {
+                        for &cs1 in &[0.0f32, 0.25, 1.0] {
+                            for &as_ in &alfas_s {
+                                let s = [cs, cs1, 1.0 - cs1, as_];
+                                for d in [[c0, c1, 0.9, ad], [c1, c0, 0.0, ad], [0.0; 4]] {
+                                    if transparente_e_identidade(d, s) {
+                                        saltos += 1;
+                                        assert_eq!(
+                                            bits(apply_blend(mode, d, s)),
+                                            bits(d),
+                                            "{mode:?} d {d:?} s {s:?}"
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(saltos > 5000, "the grid must exercise the skip ({saltos})");
+    let d = [0.5f32, 1.0, 0.25, 1.0];
+    let muda = |mode: BlendMode, d: [f32; 4], s: [f32; 4], o_que: &str| {
+        assert!(!transparente_e_identidade(d, s), "{o_que}: guard");
+        assert_ne!(bits(apply_blend(mode, d, s)), bits(d), "{o_que}");
+    };
+    muda(
+        BlendMode::Multiply,
+        d,
+        [f32::INFINITY, 0.5, 0.5, 0.0],
+        "∞ source",
+    );
+    muda(
+        BlendMode::Exclusion,
+        [1.0, 0.5, 0.5, 1.0],
+        [f32::MAX, 0.5, 0.5, 0.0],
+        "huge source",
+    );
+    muda(
+        BlendMode::Multiply,
+        d,
+        [f32::NAN, 0.5, 0.5, 0.0],
+        "NaN source",
+    );
+    muda(
+        BlendMode::Screen,
+        [-0.0, 0.5, 0.5, 1.0],
+        [0.5; 4].map(|_| 0.0),
+        "−0 channel",
+    );
+    assert!(!transparente_e_identidade(
+        [0.5, 0.5, 0.5, 0.3],
+        [0.5, 0.5, 0.5, 0.0]
+    ));
+    assert!(
+        (1..=255u8).any(|b| {
+            let d = [decode_byte(b), 0.5, 0.5, 0.3];
+            apply_blend(BlendMode::Screen, d, [0.5, 0.5, 0.5, 0.0])[0].to_bits() != d[0].to_bits()
+        }),
+        "αb = 0.3 must have a channel the skip would get wrong"
+    );
+}
+
 /// The skipping `blend_window` IS the old loop to the bit, in every mode and opacity, over windows
 /// mixing opaque, partial, zeroed and corrupt accumulator pixels with transparent and opaque sources.
 #[test]
@@ -167,7 +255,7 @@ fn a_janela_com_salto_e_o_laco_antigo_ao_bit() {
         })
         .collect();
     let sample = |gx: u32, gy: u32| fonte[(gy * (rx + rw) + gx) as usize];
-    let mut saltou = false;
+    let mut saltou = [false; 2];
     for m in 0..MAX_BLEND_MODES {
         let mode = BlendMode::from_u8(m);
         for opacity in [1.0f32, 0.37, 0.0] {
@@ -180,14 +268,24 @@ fn a_janela_com_salto_e_o_laco_antigo_ao_bit() {
                 novo.iter().map(|p| bits(*p)).collect(),
             );
             assert!(a == n, "{mode:?}, opacity {opacity}");
-            saltou |= mode == BlendMode::Normal
-                && (0..rw * rh).any(|i| {
-                    let (lx, ly) = (i % rw, i / rw);
-                    let mut s = sample(rx + lx, ry + ly);
-                    s[3] *= opacity;
-                    s[3] <= 0.0 && normal_transparente_e_identidade(acc0[i as usize], s)
-                });
+            let salta = |i: u32| {
+                let (lx, ly) = (i % rw, i / rw);
+                let mut s = sample(rx + lx, ry + ly);
+                s[3] *= opacity;
+                s[3] <= 0.0
+                    && if mode == BlendMode::Normal {
+                        normal_transparente_e_identidade(acc0[i as usize], s)
+                    } else {
+                        transparente_e_identidade(acc0[i as usize], s)
+                    }
+            };
+            if (0..rw * rh).any(salta) {
+                saltou[usize::from(mode != BlendMode::Normal)] = true;
+            }
         }
     }
-    assert!(saltou, "the window must take the skip somewhere");
+    assert!(
+        saltou == [true; 2],
+        "the window must take the skip in Normal and the others"
+    );
 }

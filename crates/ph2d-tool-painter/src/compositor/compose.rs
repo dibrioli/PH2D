@@ -576,13 +576,21 @@ fn blend_window(
     opacity: f32,
     sample: impl Fn(u32, u32) -> [f32; 4],
 ) {
-    let salta = mode == BlendMode::Normal && salto_ligado();
+    let normal = mode == BlendMode::Normal;
+    let salta = salto_ligado() && (normal || !salto_so_normal());
     for ly in 0..rh {
         for lx in 0..rw {
             let mut s = sample(rx + lx, ry + ly);
             s[3] *= opacity;
             let i = (ly * rw + lx) as usize;
-            if salta && s[3] <= 0.0 && normal_transparente_e_identidade(acc[i], s) {
+            if salta
+                && s[3] <= 0.0
+                && if normal {
+                    normal_transparente_e_identidade(acc[i], s)
+                } else {
+                    transparente_e_identidade(acc[i], s)
+                }
+            {
                 continue;
             }
             acc[i] = apply_blend(mode, acc[i], s);
@@ -606,6 +614,23 @@ fn normal_transparente_e_identidade(d: [f32; 4], s: [f32; 4]) -> bool {
         || d.map(f32::to_bits) == [0; 4]
 }
 
+/// B19.10: the same skip for every OTHER mode. With αs = 0 over the same `dst`, `apply` keeps `dst`
+/// whenever `B(Cb, Cs)` is finite (`0·B` vanishes); a source colour in `[0, 1]` keeps every blend
+/// function and `Behind`'s `over` finite (`Clear` keeps `dst` outright). Gate: the same G4.
+#[inline]
+fn transparente_e_identidade(d: [f32; 4], s: [f32; 4]) -> bool {
+    let norm = |c: f32| c.to_bits() <= 1.0f32.to_bits();
+    let fonte = |c: f32| (0.0..=1.0).contains(&c);
+    (d[3].to_bits() == 1.0f32.to_bits()
+        && norm(d[0])
+        && norm(d[1])
+        && norm(d[2])
+        && fonte(s[0])
+        && fonte(s[1])
+        && fonte(s[2]))
+        || d.map(f32::to_bits) == [0; 4]
+}
+
 /// The α = 0 skip, off only for the gate's and the probe's same-process A/B.
 #[cfg(not(test))]
 #[inline]
@@ -618,6 +643,19 @@ pub(super) static SEM_SALTO: std::sync::atomic::AtomicBool =
 #[cfg(test)]
 fn salto_ligado() -> bool {
     !SEM_SALTO.load(std::sync::atomic::Ordering::Relaxed)
+}
+/// The pre-B19.10 skip (`Normal` only), for the same-process A/B.
+#[cfg(not(test))]
+#[inline]
+fn salto_so_normal() -> bool {
+    false
+}
+#[cfg(test)]
+pub(super) static SALTO_SO_NORMAL: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+#[cfg(test)]
+fn salto_so_normal() -> bool {
+    SALTO_SO_NORMAL.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 mod barreira;
@@ -635,3 +673,5 @@ mod prancha_b19a_tests;
 mod recorte_tests;
 #[cfg(test)]
 mod salto_tests;
+#[cfg(test)]
+mod tiras_tests;

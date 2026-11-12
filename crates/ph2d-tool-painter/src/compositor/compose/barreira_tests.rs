@@ -11,7 +11,7 @@ use ph2d_painter_effects::adjustments::{
 use std::sync::atomic::Ordering::Relaxed;
 
 /// ORACLE — `compor_regiao` before B19.6, verbatim but for the name.
-fn compor_regiao_antigo(
+pub(super) fn compor_regiao_antigo(
     stack: &LayerStack,
     src: &(impl LayerPixelSource + Sync),
     width: u32,
@@ -112,13 +112,19 @@ fn tinta(w: u32, h: u32, semente: u32) -> LayerImage {
     img
 }
 
-fn raster(s: &mut LayerStack, src: &mut MapPixelSource, w: u32, h: u32, k: u32) -> LayerId {
+pub(super) fn raster(
+    s: &mut LayerStack,
+    src: &mut MapPixelSource,
+    w: u32,
+    h: u32,
+    k: u32,
+) -> LayerId {
     let id = s.add_raster(format!("L{k}"), w, h).unwrap();
     src.insert(id, tinta(w, h, k));
     id
 }
 
-fn ajuste(s: &mut LayerStack, p: AdjustmentParams) -> LayerId {
+pub(super) fn ajuste(s: &mut LayerStack, p: AdjustmentParams) -> LayerId {
     let id = s.add_adjustment(p.kind()).unwrap();
     s.adjustment_mut(id).unwrap().params = p;
     id
@@ -127,7 +133,7 @@ fn ajuste(s: &mut LayerStack, p: AdjustmentParams) -> LayerId {
 /// Bottom → top: base (glass) · modes 0..8 (mask, clip chains on a hidden and an opacity-0 base) ·
 /// Gaussian · Noise (absolute row) · modes 8..15 · group{raster, Motion} · clipped raster ·
 /// modes 15..22 · Brightness/Contrast. With `espacial = false` the two spatial items are hidden.
-fn pilha(
+pub(super) fn pilha(
     w: u32,
     h: u32,
     espacial: bool,
@@ -207,7 +213,9 @@ fn pilha(
     (s, src, vidros)
 }
 
-fn bits(v: &(Vec<[f32; 4]>, Option<Vec<[f32; 3]>>)) -> (Vec<[u32; 4]>, Option<Vec<[u32; 3]>>) {
+pub(super) fn bits(
+    v: &(Vec<[f32; 4]>, Option<Vec<[f32; 3]>>),
+) -> (Vec<[u32; 4]>, Option<Vec<[u32; 3]>>) {
     (
         v.0.iter().map(|p| p.map(f32::to_bits)).collect(),
         v.1.as_ref()

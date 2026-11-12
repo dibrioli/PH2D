@@ -73,8 +73,7 @@ fn em_faixas(
     fios: usize,
 ) {
     if fios <= 1 {
-        let v = vidros.zip(t);
-        composite_into(acc, ids, stack, src, canvas, r.x, r.y, r.w, r.h, 0, None, v);
+        em_tiras(acc, t, ids, stack, src, canvas, r, vidros);
         return;
     }
     let rpb = (r.h as usize).div_ceil(fios);
@@ -88,13 +87,77 @@ fn em_faixas(
         .zip(t_bands.par_iter_mut())
         .enumerate()
         .for_each(|(bi, (band, tb))| {
-            let band_ry = r.y + (bi * rpb) as u32;
-            let band_rh = (band.len() / (r.w as usize)) as u32;
-            let v = vidros.zip(tb.take());
-            composite_into(
-                band, ids, stack, src, canvas, r.x, band_ry, r.w, band_rh, 0, None, v,
-            );
+            let banda = Region {
+                y: r.y + (bi * rpb) as u32,
+                h: (band.len() / (r.w as usize)) as u32,
+                ..r
+            };
+            em_tiras(band, tb.take(), ids, stack, src, canvas, banda, vidros);
         });
+}
+
+/// B19.10: the band in cache strips of [`linhas_da_tira`] rows — each strip takes EVERY layer of
+/// `ids` before the next (the whole band per layer walked ~8 MB at UHD, out of L2). Per-pixel and
+/// band-safe, so the same bits at any strip height.
+#[allow(clippy::too_many_arguments)]
+fn em_tiras(
+    acc: &mut [[f32; 4]],
+    mut t: Option<&mut [[f32; 3]]>,
+    ids: &[LayerId],
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    canvas: (u32, u32),
+    b: Region,
+    vidros: Option<&super::super::vidro::Vidros>,
+) {
+    let linhas = linhas_da_tira(b.w).clamp(1, b.h.max(1));
+    let tira_px = (linhas as usize) * (b.w as usize);
+    if linhas >= b.h || tira_px == 0 {
+        let v = vidros.zip(t);
+        composite_into(acc, ids, stack, src, canvas, b.x, b.y, b.w, b.h, 0, None, v);
+        return;
+    }
+    for (k, tira) in acc.chunks_mut(tira_px).enumerate() {
+        let ty = b.y + k as u32 * linhas;
+        let th = (tira.len() / (b.w as usize)) as u32;
+        let tt = t
+            .as_deref_mut()
+            .map(|tt| &mut tt[k * tira_px..k * tira_px + tira.len()]);
+        composite_into(
+            tira,
+            ids,
+            stack,
+            src,
+            canvas,
+            b.x,
+            ty,
+            b.w,
+            th,
+            0,
+            None,
+            vidros.zip(tt),
+        );
+    }
+}
+
+/// Rows of a cache strip `w` px wide: ~16 Ki px (4 rows at UHD: the strip's accumulator ~240 KB and
+/// each layer's rows ~60 KB stay in L2 across the whole stack).
+#[cfg(not(test))]
+fn linhas_da_tira(w: u32) -> u32 {
+    (TIRA_PX / w.max(1)).max(1)
+}
+const TIRA_PX: u32 = 1 << 14;
+/// Test/probe override of the strip height (`0` = the production rule, `u32::MAX` = the whole band,
+/// the pre-B19.10 route).
+#[cfg(test)]
+pub(super) static LINHAS_DA_TIRA: std::sync::atomic::AtomicU32 =
+    std::sync::atomic::AtomicU32::new(0);
+#[cfg(test)]
+fn linhas_da_tira(w: u32) -> u32 {
+    match LINHAS_DA_TIRA.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => (TIRA_PX / w.max(1)).max(1),
+        n => n,
+    }
 }
 
 /// The band count of a region of `area` px and `rows` rows.

@@ -124,16 +124,9 @@ impl crate::App {
             // Em que disposição a folha aberta está — a caixa do gizmo envolve-a inteira.
             &tool_preview_bits,
             vec_scene,
-            // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas**
-            // (ADR-0112) — a vectorial fora do Select e do modo Forma (lá, só alças: F10), **a do Flip sempre, e o Pixel Sprite ▸ Edit** (o `ramo_pixel`).
-            // As alças registam hit-rects, e os dois ramos de canvas (`ramo_ferramenta_vetorial` e
-            // `ramo_flip_premidos`) exigem o MESMO `on_canvas`: uma caixa sobre um canvas de
-            // autoria é um ladrão de cliques, seja qual for a família do objecto que a publica.
-            //
-            // ⚠️ **E nunca durante o modo de PREVIEW** (W7r): a caixa é derivada da pose
-            // AUTORADA, então enquanto a máquina move a forma ela fica para trás e passa a
-            // descrever um lugar que a forma já não ocupa — é a razão pela qual o ADR-0128
-            // recusou cinco vezes um gizmo sobre geometria que se move.
+            // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas** (ADR-0112):
+            // a vectorial fora do Select e do modo Forma (F10), a do Flip, o Pixel Sprite ▸ Edit e o preview (W7r).
+            // As alças registam hit-rects; uma caixa sobre um canvas de autoria é um ladrão de cliques.
             caixa != ph2d_app_vec::overlay::ObjectBox::Off
                 && !tools
                     .active()

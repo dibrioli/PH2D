@@ -145,10 +145,15 @@ impl crate::App {
                 });
             }
             EditorAction::PlayerControlsToggle => {
-                let mapa = &hero_screen.as_ref()?.input_map;
-                let s = &mut self.components.jogador;
-                let r = ph2d_player_controls::host::toggle(s, mapa, self.playhead.is_playing());
-                Self::relogio_dos_controles(&mut self.playhead, r);
+                if let Some(hero) = hero_screen.as_ref() {
+                    let s = &mut self.components.jogador;
+                    let r = ph2d_player_controls::host::toggle(
+                        s,
+                        &hero.input_map,
+                        self.playhead.is_playing(),
+                    );
+                    Self::relogio_dos_controles(&mut self.playhead, r);
+                }
             }
             EditorAction::Transport(cmd) => {
                 ph2d_transport::apply(cmd, &mut self.playhead);

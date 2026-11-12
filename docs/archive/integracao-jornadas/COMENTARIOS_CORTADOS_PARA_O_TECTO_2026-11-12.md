@@ -317,3 +317,41 @@ O tecto da shell e o de `ph2d-app-components` em `architecture_the_shell_only_sh
     //! - **M8 → ScriptHost**: `InputState` lives on `App`, but routing into
     //!   `ph2d.input` Luau snapshot is a follow-up.
     //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
+
+## `shells/desktop/src/render_loop/fase_physics_overlay.rs`
+
+```text
+            // ⛔⛔⛔ **A JANELA DA CENA, e nunca a da janela — a QUINTA vez que esta lei é paga**
+            // ([`crate::scene_mapping`], que lista as outras quatro).
+            //
+            // ⚠️ **MEDIDO pela foto da cena `PH2D_RAY_SMOKE=1` (19/09), e a aritmética fecha antes
+            // do código:** com a ferramenta MOTION activa — que o `~/.ph2d/layout.txt` do dono
+            // **reactiva no quadro 1** — a cena desenha num sub-rectângulo `[0, 0, w, h·t]` e a
+            // projecção MUDA (não é um recorte). O [`ph2d_render::Camera2d::world_to_screen`]
+            // deriva os **dois** eixos de `h`, logo com a janela inteira tudo sai `h/(h·t)` vezes
+            // maior e o zero vertical fica em `h/2` em vez de `h·t/2`.
+            //
+            // A conta da foto: janela `1930×1012`, banda `≈557`, `height_world ≈ 11,14 m` ⇒ o raio
+            // do olho, que nasce em `y = +0,35`, tinha de ser desenhado a `≈261 px` e apareceu a
+            // **`≈474`** — `~210 px` abaixo e `1,8×` mais comprido. *Os corpos estavam no sítio
+            // certo e a física que se desenha por cima deles não.*
+            //
+            // ⛔ **E isto NÃO é da timeline estar aberta:** o único escritor de um `CenterSplit` é
+            // o ramo da ferramenta Motion — a correcção que a wave do HUD pagou um dia antes, por
+            // ler *onde o defeito aterrava* como *o que o causava*.
+```
+
+## `shells/desktop/src/render_loop/fase_snapshots_publish.rs`
+
+```text
+            // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas**
+            // (ADR-0112) — a vectorial fora do Select e do modo Forma (lá, só alças: F10), **a do Flip sempre, e o Pixel Sprite ▸ Edit** (o `ramo_pixel`).
+            // As alças registam hit-rects, e os dois ramos de canvas (`ramo_ferramenta_vetorial` e
+            // `ramo_flip_premidos`) exigem o MESMO `on_canvas`: uma caixa sobre um canvas de
+            // autoria é um ladrão de cliques, seja qual for a família do objecto que a publica.
+            //
+            // ⚠️ **E nunca durante o modo de PREVIEW** (W7r): a caixa é derivada da pose
+            // AUTORADA, então enquanto a máquina move a forma ela fica para trás e passa a
+            // descrever um lugar que a forma já não ocupa — é a razão pela qual o ADR-0128
+            // recusou cinco vezes um gizmo sobre geometria que se move.
+```

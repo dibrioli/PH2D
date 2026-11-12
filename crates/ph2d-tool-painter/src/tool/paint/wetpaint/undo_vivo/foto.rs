@@ -61,12 +61,19 @@ impl FotoDoMotor {
     /// Repõe o que fica fora das grades — DEPOIS do `undo`/`redo` do motor (que zera o fluxo). Nada disto é lido pela
     /// óptica (o espelho ignora `oleo_antes` e o fluxo): o sujo é o que o restauro do motor marcou (B12.2).
     pub(super) fn repoe(&self, e: &mut Engine) {
-        for (l, o) in e.layers.iter_mut().zip(&self.oleo_antes) {
-            o.repoe(&mut l.grid.oleo_antes);
+        self.repoe_sobre(e, None);
+    }
+
+    /// O [`Self::repoe`] sobre um motor cujos planos são `ja` ao bit (fotografado dele, sem escrita nesses planos no
+    /// meio): os tiles partilhados com `ja` não se reescrevem.
+    pub(super) fn repoe_sobre(&self, e: &mut Engine, ja: Option<&Self>) {
+        for (i, (l, o)) in e.layers.iter_mut().zip(&self.oleo_antes).enumerate() {
+            o.repoe_sobre(&mut l.grid.oleo_antes, ja.and_then(|j| j.oleo_antes.get(i)));
         }
-        for (l, (fx, fy)) in e.layers.iter_mut().zip(&self.fluxo) {
-            fx.repoe(&mut l.grid.flow_x);
-            fy.repoe(&mut l.grid.flow_y);
+        for (i, (l, (fx, fy))) in e.layers.iter_mut().zip(&self.fluxo).enumerate() {
+            let j = ja.and_then(|j| j.fluxo.get(i));
+            fx.repoe_sobre(&mut l.grid.flow_x, j.map(|j| &j.0));
+            fy.repoe_sobre(&mut l.grid.flow_y, j.map(|j| &j.1));
         }
         let (r, s) = (self.relogio, &mut e.sim);
         s.frame = r.frame;

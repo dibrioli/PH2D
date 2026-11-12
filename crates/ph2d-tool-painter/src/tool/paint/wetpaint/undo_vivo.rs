@@ -25,6 +25,13 @@ mod prancha_b02_tests;
 pub(crate) use casco::Cascos;
 pub(super) use casco::casco_de;
 pub(super) mod fases;
+#[cfg(test)]
+mod repoe_sobre_tests;
+#[cfg(test)]
+thread_local! {
+    /// O `repoe` inteiro de antes no undo (o oráculo do `repoe_sobre`), por fio.
+    static REPOE_CHEIO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
 use fases::marca;
 mod foto;
 mod orla;
@@ -346,7 +353,15 @@ impl PainterTool {
                 "o histórico do motor tinha o passo (verificado ao soltar)"
             );
             marca("volta: caixa + motor undo/redo");
-            foto.repoe(&mut sess.engine);
+            // No undo, o «depois» acabou de ser tirado do motor, e o undo dele não escreve a ladeira nem (sem zerar) o
+            // fluxo: o que ele partilha com a foto já está na grade. ⛔ No redo não: a água correu desde o undo.
+            let ja = (!refaz && foto.repoe_o_fluxo_de(sess.engine.active_layer))
+                .then(|| sess.antes_do_passo.iter().find(|p| p.chave == chave))
+                .flatten()
+                .and_then(|p| p.depois.as_ref());
+            #[cfg(test)]
+            let ja = ja.filter(|_| !REPOE_CHEIO.with(std::cell::Cell::get));
+            foto.repoe_sobre(&mut sess.engine, ja);
             marca("volta: repoe");
             // Uma imagem no ar é de antes do restauro: aplicada, punha a tela de outro passo por cima, e nada a corrigia.
             // Fora do sujo do motor (a caixa do restauro e o que já estava por compor) a grade é a mesma.

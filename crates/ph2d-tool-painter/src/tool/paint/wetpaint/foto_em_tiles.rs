@@ -88,16 +88,28 @@ impl PlanoEmTiles {
 
     /// Devolve o plano ao bit.
     pub(crate) fn repoe(&self, v: &mut Vec<f32>) {
+        self.repoe_sobre(v, None);
+    }
+
+    /// O [`Self::repoe`] sobre um plano que é `ja` ao bit (`ja` fotografado dele, sem escrita no meio): os tiles que as
+    /// duas fotografias partilham (o mesmo `Arc`) já lá estão e não se reescrevem.
+    pub(crate) fn repoe_sobre(&self, v: &mut Vec<f32>, ja: Option<&Self>) {
         if self.tiles.is_empty() {
             v.clear();
             return;
         }
+        let ja = ja
+            .filter(|j| j.s == self.s && j.rows == self.rows && j.tiles.len() == self.tiles.len());
+        let ja = ja.filter(|_| v.len() == self.s * self.rows);
         v.resize(self.s * self.rows, 0.0);
         let n = Self::tiles_por_linha(self.s);
         v.par_chunks_mut(self.s).enumerate().for_each(|(y, linha)| {
             let ty = y / TILE;
             for tx in 0..n {
                 let i = ty * n + tx;
+                if ja.is_some_and(|j| Arc::ptr_eq(&j.tiles[i], &self.tiles[i])) {
+                    continue;
+                }
                 let (x0, x1, y0, _) = Self::caixa(self.s, self.rows, i);
                 let w = x1 - x0;
                 let o = (y - y0) * w;
@@ -250,6 +262,36 @@ mod tests {
         a.repoe(&mut v);
         assert!(v.is_empty());
         assert_eq!(a.bytes(), 0);
+    }
+
+    /// Sobre o plano de que `b` foi tirada, o `repoe_sobre` de `a` dá o bit do `repoe` (o tile do canto mudou, o resto é
+    /// partilhado); CONTROLO: sobre outro plano, os tiles partilhados ficavam o que lá estava.
+    #[test]
+    fn o_repoe_sobre_a_foto_da_grade_da_o_bit_do_repoe() {
+        let (s, rows) = (150, 70);
+        let v = plano(s, rows);
+        let a = PlanoEmTiles::de(&v, s, None);
+        let mut w = v.clone();
+        w[0] = 5.0;
+        w[s * rows - 1] = -0.0;
+        let b = PlanoEmTiles::de(&w, s, Some(&a));
+        assert!(b.bytes_novos() < b.bytes(), "partilham tiles");
+        let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        let (mut cheio, mut sobre) = (w.clone(), w.clone());
+        a.repoe(&mut cheio);
+        a.repoe_sobre(&mut sobre, Some(&b));
+        assert_eq!(bits(&sobre), bits(&cheio));
+        assert_eq!(bits(&cheio), bits(&v));
+        let mut outro = vec![9.0; s * rows];
+        a.repoe_sobre(&mut outro, Some(&b));
+        assert_ne!(bits(&outro), bits(&v), "CONTROLO: o salto é real");
+        let mut curto = vec![9.0; 3];
+        a.repoe_sobre(&mut curto, Some(&b));
+        assert_eq!(
+            bits(&curto),
+            bits(&v),
+            "de outro comprimento, reescreve tudo"
+        );
     }
 
     #[test]

@@ -565,3 +565,7 @@ mod context_menu_overlay_tests;
 #[cfg(test)]
 #[path = "hero/readout_paint_tests.rs"]
 mod readout_paint_tests;
+
+#[cfg(test)]
+#[path = "hero/publish_text_tests.rs"]
+mod publish_text_tests;

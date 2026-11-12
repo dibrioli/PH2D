@@ -101,13 +101,15 @@ impl Palette {
 
 /// O contraste de texto AA da WCAG (4,5:1).
 const AA_TEXT_RATIO: f32 = 4.5; // LITERAL-PX-OK: razão de contraste, não uma medida
+/// O reflexo da fórmula de contraste da WCAG: `(L1 + 0,05) / (L2 + 0,05)`.
+const WCAG_FLARE: f32 = 0.05; // LITERAL-PX-OK: constante da fórmula da WCAG, não uma medida
 
 fn contrast(a: Color, b: Color) -> f32 {
     let (x, y) = (
         a.discard_alpha().relative_luminance(),
         b.discard_alpha().relative_luminance(),
     );
-    (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    (x.max(y) + WCAG_FLARE) / (x.min(y) + WCAG_FLARE)
 }
 
 /// O link (o acento sob Ctrl, sublinhado) lê-se como TEXTO no poço e na linha do cursor: o acento da

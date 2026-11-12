@@ -3,6 +3,7 @@
 use super::menu::{AIM_REST_NS, AUTO_ROLL_ROW_NS, MenuItem, MenuPress};
 use super::{TabBar, height};
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Spacing;
 
@@ -96,7 +97,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
         if self.scroll.len() <= level {
             self.scroll.resize(level + 1, 0.0);
         }
-        let s = self.scroll[level].clamp(0.0, max.max(0.0));
+        let s = safe_clamp(self.scroll[level], 0.0, max.max(0.0));
         self.scroll[level] = s;
         s
     }

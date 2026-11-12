@@ -141,10 +141,10 @@ pub fn font_embolden_for(font_size: f32, ink: ph2d_vector::Color) -> ph2d_vector
     let theme = ui_theme();
     let sim = theme.is_dark()
         && lum(ink)
-            > lum(crate::paint::resolve(
-                ph2d_tokens::STEM_DARKENING_UI_SURFACE,
-                theme,
-            ));
+            > lum({
+                let c = ph2d_tokens::STEM_DARKENING_UI_SURFACE.resolve(theme);
+                ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, c.a)
+            });
     alarga_se(
         ph2d_tokens::stem_darkening_px(text_rendering().params(), font_size),
         sim,
@@ -175,7 +175,3 @@ fn alarga_se(amount: f32, sim: bool) -> ph2d_vector::FontEmbolden {
     }
     ph2d_vector::FontEmbolden::new(ph2d_vector::Diagonal2::new(a, a))
 }
-
-#[cfg(test)]
-#[path = "published_embolden_tests.rs"]
-mod embolden_tests;

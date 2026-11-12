@@ -69,7 +69,7 @@ fn the_exact_weight_scope_keeps_the_stem_darkening() {
 /// A tinta mais escura que a superfície de referência não alarga, nem num tema escuro.
 #[test]
 fn dark_ink_is_never_emboldened() {
-    super::set_ui_theme(Theme::Dark);
+    crate::published::set_ui_theme(Theme::Dark);
     let (a, _) = pinta(TextRendering::CrispPlusDarkened, false, ESCURA);
     assert!(!a.is_empty() && a.iter().all(|a| *a == 0.0), "{a:?}");
 }
@@ -81,7 +81,7 @@ fn dark_ink_is_never_emboldened() {
 fn on_a_dark_theme_every_chrome_ink_lighter_than_the_surface_is_emboldened() {
     let px = f64::from(ph2d_tokens::STEM_DARKENING_PX);
     for theme in [Theme::Dark, Theme::Forge, Theme::Oled] {
-        super::set_ui_theme(theme);
+        crate::published::set_ui_theme(theme);
         for t in [
             ColorToken::Text1,
             ColorToken::Text2,
@@ -96,7 +96,7 @@ fn on_a_dark_theme_every_chrome_ink_lighter_than_the_surface_is_emboldened() {
         }
     }
     for theme in [Theme::Light, Theme::Sunstone] {
-        super::set_ui_theme(theme);
+        crate::published::set_ui_theme(theme);
         for ink in [resolve(ColorToken::Text1, theme), CLARA] {
             let (a, _) = pinta(TextRendering::CrispPlusDarkened, false, ink);
             assert!(
@@ -126,7 +126,7 @@ fn with_a_known_background_the_lighter_ink_is_emboldened() {
 /// O texto RODADO (rótulos verticais) recebe o mesmo escurecimento do preset, e só nele.
 #[test]
 fn rotated_text_is_emboldened_only_in_the_darkened_preset() {
-    super::set_ui_theme(Theme::Dark);
+    crate::published::set_ui_theme(Theme::Dark);
     let corre = |mode| {
         let (mut ts, mut scene) = (TextSystem::without_system_fonts(), VectorScene::new());
         set_text_rendering(mode);
@@ -156,26 +156,4 @@ fn rotated_text_is_emboldened_only_in_the_darkened_preset() {
     );
     assert!(!com.is_empty() && com.iter().all(|a| *a == px), "{com:?}");
     assert!(sem.iter().all(|a| *a == 0.0), "{sem:?}");
-}
-
-/// O pintor do herói publica o preset E o tema do quadro (`publish_text`): sem isso o chrome
-/// decidiria o escurecimento pelo tema de abertura, e um tema claro alargaria a tinta branca.
-#[test]
-fn the_hero_painter_publishes_the_preset_and_the_theme() {
-    use crate::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, HeroScreen, paint_hero_screen};
-    for (theme, mode) in [
-        (Theme::Light, TextRendering::CrispPlusDarkened),
-        (Theme::Forge, TextRendering::CrispHeavy),
-    ] {
-        super::set_ui_theme(Theme::Oled);
-        set_text_rendering(TextRendering::Default);
-        let mut hero = HeroScreen::new(crate::NodeId(1));
-        (hero.theme, hero.text_rendering) = (theme, mode);
-        let vp = crate::zones::Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
-        let mut ts = TextSystem::without_system_fonts();
-        paint_hero_screen(&mut hero, vp, &mut VectorScene::new(), &mut ts);
-        let got = (super::ui_theme(), super::text_rendering());
-        set_text_rendering(TextRendering::default());
-        assert_eq!(got, (theme, mode));
-    }
 }

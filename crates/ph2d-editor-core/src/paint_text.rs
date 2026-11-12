@@ -690,3 +690,7 @@ mod spans_tests;
 #[cfg(test)]
 #[path = "paint_text_elided_tests.rs"]
 mod elided_tests;
+
+#[cfg(test)]
+#[path = "paint_text_embolden_tests.rs"]
+mod embolden_tests;

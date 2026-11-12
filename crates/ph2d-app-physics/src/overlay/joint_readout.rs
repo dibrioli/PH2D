@@ -1,43 +1,9 @@
-//! **O NÚMERO ao lado do joint** (W-J7b) — o que ele está segurando, e o que
-//! ele aguenta.
+//! **O NÚMERO ao lado do joint** (W-J7b) — a carga que ele segura e o que aguenta, para o artista
+//! digitar o teto de quebra em vez de o caçar (lido de `PhysicsWorld::joint_load`, exato).
 //!
-//! Report do Enio, pós-smoke da W-J7: *"é extremamente difícil configurar o
-//! valor exato de quebra que se deseja, necessitando de uma enorme quantidade de
-//! tentativas"*. Isso não é afinação, é **informação que falta**
-//! ([[feedback_ergonomics_verdict_is_a_design_bug]]): o artista digita um teto,
-//! dá Play e recebe uma resposta BINÁRIA — rompeu ou não. Sem saber que carga o
-//! joint de fato carrega, escolher o número é busca binária feita à mão.
-//!
-//! O dado já existia e é EXATO (`PhysicsWorld::joint_load` lê o peso pendurado
-//! com razão 1,0000 — a tabela do W-J7). Ele só nunca chegava ao artista.
-//!
-//! ## O que o readout diz, e por que são esses números
-//!
-//! | estado | mostra | por quê |
-//! |---|---|---|
-//! | segurando, sem teto | `58.9 N` | **o número que se DIGITA.** Sem ele o primeiro teto é sempre um chute — e é preciso poder ler a carga ANTES de armar qualquer coisa |
-//! | segurando, com teto | `58.9 / 60 N` | a comparação sai da cabeça do artista e vai para a tela |
-//! | pico acima do vivo | `+ max 87.2` | um tranco acaba antes de dar para ler; a marca d'água é o que se digita |
-//! | **rompido** | `87.2 / 60 N` em VERMELHO | **a carga que provocou a fratura**, ao lado do que estava configurado |
-//!
-//! ⚠️ **O `max` só aparece quando diz algo novo.** Num rig parado — o caso comum
-//! — o pico da corrida É a carga viva, e repetir o mesmo número duas vezes é
-//! ruído. Ele nasce quando o joint levou um tranco, que é exatamente quando a
-//! carga viva não serve para nada.
-//!
-//! ⚠️ **Num joint rompido o número principal é o PICO, e ele se congela sozinho.**
-//! O wrapper pula um joint desabilitado, então a carga viva de um rompido lê zero
-//! enquanto a marca d'água guarda a carga que cruzou — sem caso especial nenhum.
-//!
-//! ## Quem ganha readout
-//!
-//! **Um joint QUEBRÁVEL, ou o SELECIONADO.** As duas metades têm motivo próprio:
-//! um quebrável tem um teto para comparar (e numa corrente é assim que se vê qual
-//! elo está mais perto do dele); o selecionado é o caso do *bootstrap* — para
-//! escolher um teto é preciso ler a carga **antes** de armar, e sem essa metade o
-//! laço continua começando por um chute.
-//!
-//! Uma cena sem nada armado e sem seleção não desenha número nenhum.
+//! Mostra `58.9 N` (sem teto) · `58.9 / 60 N` (com teto) · `+ max 87.2` só quando o pico difere da
+//! carga viva · `87.2 / 60 N` em vermelho num joint rompido (o pico congela sozinho).
+//! Ganha readout um joint QUEBRÁVEL ou o SELECIONADO; sem nada disso, nenhum número.
 
 use ph2d_ecs::Entity;
 use ph2d_host::WindowSize;

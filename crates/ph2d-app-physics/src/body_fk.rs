@@ -1,41 +1,10 @@
-//! **POSAR PELA JUNTA** (W-FK) — o gesto de cinemática DIRETA.
+//! **POSAR PELA JUNTA** (W-FK) — o gesto de cinemática DIRETA: o artista arrasta um elo e o elo
+//! e os descendentes rodam por geometria exata (a IK do [`crate::body_pose`] acerta um ALVO; a FK
+//! autora um ÂNGULO). Mesma fiação da pose: relógio parado, `Transform` autorado, um passo de undo.
 //!
-//! Irmão do [`crate::body_pose`] em tudo que é fiação (o mesmo relógio parado, o
-//! mesmo `Transform` autorado, o mesmo passo de undo, a mesma porta de escrita)
-//! e o oposto dele em INTENÇÃO:
-//!
-//! | | a POSE (W-IK) | a JUNTA (W-FK) |
-//! |---|---|---|
-//! | o artista arrasta | a **ponta** da cadeia | **um elo** qualquer |
-//! | o que ele pede | *ponha a mão ali* | *dobre o cotovelo assim* |
-//! | quem se move | tudo entre a raiz e a ponta | o elo e os **descendentes** |
-//! | como | um solver amortecido | geometria exata |
-//!
-//! Nenhuma substitui a outra, e é por isso que todo pacote de animação carrega
-//! as duas: a IK acerta um ALVO e a FK autora um ÂNGULO. O artista alterna entre
-//! elas dentro do mesmo plano.
-//!
-//! # As condições, e a que NÃO está aqui
-//!
-//! 1. **O modo de joint em mãos é o FK** — `JointTool::gesture()`, a porta única
-//!    (e é ela que faz o **Alt** suprimir o gesto: Alt significa *leve o rig
-//!    inteiro*, que é um arrasto e não uma pose).
-//! 2. **O relógio está PARADO.** O resultado é `Transform` autorado, e com o
-//!    relógio andando o `readback` o sobrescreveria no mesmo frame.
-//! 3. **Há uma junta com grau de liberdade acima do corpo pego** — respondido
-//!    pelo `fk_begin` da ponte, não por uma cópia da regra aqui.
-//! 4. **A trava é honrada** (`Locked`), como em todo gesto de autoria.
-//!
-//! ⚠️ O toggle `Physics` do transporte **não** é condição, exatamente como na
-//! IK: este gesto não dá passo nenhum no solver, e exigi-lo obrigaria o artista
-//! a armar a simulação para *não* simular.
-//!
-//! # A escrita é a MESMA porta da IK
-//!
-//! [`crate::body_pose::write_world_pose`] converte mundo → local contra o pai,
-//! preserva escala e skew e recusa o não-finito. Uma segunda conversão aqui
-//! divergiria no primeiro corpo parenteado — o defeito que o W5 levou quatro
-//! waves para encontrar porque toda fixture usava corpo-raiz.
+//! Condições: o modo FK em mãos (`JointTool::gesture()`; Alt suprime), relógio PARADO, uma junta
+//! com grau de liberdade acima do corpo (`fk_begin` da ponte), e a trava (`Locked`) honrada. O
+//! toggle `Physics` não é condição. A escrita é a da IK: [`crate::body_pose::write_world_pose`].
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::PhysicsBridge;

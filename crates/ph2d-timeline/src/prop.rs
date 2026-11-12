@@ -81,8 +81,8 @@ pub enum PropKind {
     /// máquina em vez de a assistir.
     ///
     /// ⚠️ **A unidade depende do TIPO do joint** (`JointKind::motor_in_metres`): é
-    /// radiano num Pin e metro num Slider. Por isso [`PropKind::fit_channel`] o
-    /// trata como escalar linear e **não** como ângulo, ao contrário de
+    /// grau num Pin e metro num Slider (o número do cartão, `motor_no_cartao`).
+    /// Por isso [`PropKind::fit_channel`] o trata como escalar linear e **não** como ângulo, ao contrário de
     /// [`PropKind::Rotation`] — desenrolar um sawtooth de ±2π num número que às
     /// vezes é comprimento seria consertar o que não está quebrado e quebrar o que
     /// está certo. E um alvo de servo não CHEGA como sawtooth de qualquer forma:

@@ -202,3 +202,55 @@ fn os_tiques_antes_do_quadro_nao_trocam_o_contorno_autorado() {
         "a fotografia é a do documento"
     );
 }
+
+/// Suspeita (a) do 09/11 pelo caminho do app: raio e Height da cápsula com chave, os dois a mudar
+/// no mesmo tique — o rapier tem a cápsula do documento NAQUELE tique (Play e scrub), sem atraso.
+#[test]
+fn raio_e_altura_com_chave_dao_a_capsula_do_tique_no_solver() {
+    let (mut sim, c, _) = cena();
+    let forma = ph2d_physics_ecs::dono_do_campo(sim.world(), c.to_bits(), f::RAIO);
+    sim.world_mut()
+        .entity_mut(c)
+        .insert(ph2d_physics_ecs::LockRotation);
+    let capsula = ColliderShape::Capsule {
+        half_height: 0.3,
+        radius: 0.2,
+    };
+    (sim.world_mut()
+        .get_mut::<Collider>(Entity::from_bits(forma))
+        .expect("forma"))
+    .shape = capsula;
+    let mut doc = TimelineDoc::new();
+    for (campo, a, z) in [(f::RAIO, 0.2, 0.6), (f::CAPSULA, 1.0, 3.0)] {
+        for (t, v) in [(0.5, a), (2.5, z)] {
+            let (t, v) = (
+                ph2d_anim::RationalTime::from_seconds(t),
+                ph2d_anim::AnimValue::Float(v),
+            );
+            let prop = PropKind::Field(FieldKey::new(FISICA, campo, 0, 0));
+            doc.insert_key(forma, prop, t, v, ph2d_anim::Interp::Linear);
+        }
+    }
+    let (mut b, mut cond) = (PhysicsBridge::new(), ConducaoFisica::default());
+    let mede = |b: &PhysicsBridge, alvo: u64| {
+        let s = ((alvo as f64 * DT - 0.5) / 2.0).clamp(0.0, 1.0) as f32;
+        let ([x0, y0], [x1, y1]) = b.body_aabb(c).expect("corpo");
+        let erro = ((x1 - x0) - 2.0 * (0.2 + 0.4 * s))
+            .abs()
+            .max(((y1 - y0) - (1.0 + 2.0 * s)).abs());
+        assert!(
+            erro < 1e-4,
+            "tique {alvo}: {:.4} × {:.4}, erro {erro}",
+            x1 - x0,
+            y1 - y0
+        );
+    };
+    for alvo in (3..=180).step_by(3) {
+        quadro(&mut sim, &mut doc, &mut b, &mut cond, alvo, true);
+        mede(&b, alvo);
+    }
+    for alvo in [120u64, 61, 95] {
+        quadro(&mut sim, &mut doc, &mut b, &mut cond, alvo, false);
+        mede(&b, alvo);
+    }
+}

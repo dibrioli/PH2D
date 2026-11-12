@@ -303,7 +303,7 @@ pub fn draw(
             .zip(up(d))
             .map(|(a, b)| a * b)
             .sum::<f32>();
-        let fmt = |m: f32| format!("{:.0} {}", u.from_meters(m, ppm), u.suffix());
+        let fmt = |m: f32| crate::curva_do_pulo_numero::numero_da_alca(m, u, ppm);
         let s = ph2d_i18n::tr_with(
             "app.physics.jump_arc.readout",
             &[("height", &fmt(altura)), ("speed", &fmt(d.speed))],

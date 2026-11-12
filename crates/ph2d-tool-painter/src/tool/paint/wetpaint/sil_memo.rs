@@ -99,8 +99,13 @@ impl SilMemo {
 /// uma leitura nunca casa o fio de outra célula, em qualquer ordem de threads — o fio é puro, então ao bit.
 pub(super) struct FioPorLinha {
     y0: i32,
-    v: Vec<AtomicU64>,
+    v: Vec<Linha>,
 }
+
+/// Uma linha por linha de cache: as linhas vizinhas vão em threads diferentes (sem isto, a mesma linha de cache saltava
+/// entre núcleos a cada célula).
+#[repr(align(64))]
+struct Linha(AtomicU64);
 
 impl FioPorLinha {
     const VAZIA: u64 = (i32::MIN as u32 as u64) << 32;
@@ -111,7 +116,7 @@ impl FioPorLinha {
         Self {
             y0: y.round() as i32 - a,
             v: (0..2 * a + 1)
-                .map(|_| AtomicU64::new(Self::VAZIA))
+                .map(|_| Linha(AtomicU64::new(Self::VAZIA)))
                 .collect(),
         }
     }
@@ -125,6 +130,7 @@ impl FioPorLinha {
         else {
             return fio();
         };
+        let s = &s.0;
         let v = s.load(Ordering::Relaxed);
         if (v >> 32) as u32 == cx as u32 {
             return v as u32 as i32;

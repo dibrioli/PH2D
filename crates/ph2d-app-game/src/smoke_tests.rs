@@ -8,7 +8,8 @@ fn o_nivel_le_se_pela_porta_e_fora_da_faixa_e_inerte() {
     assert_eq!(armed_level_in(com("3")), Some(3));
     assert_eq!(armed_level_in(com("5")), Some(5));
     assert_eq!(armed_level_in(com("13")), Some(13));
-    assert_eq!(armed_level_in(com("14")), None);
+    assert_eq!(armed_level_in(com("23")), Some(CENAS));
+    assert_eq!(armed_level_in(com("24")), None);
     assert_eq!(armed_level_in(com("x")), None);
     assert_eq!(armed_level_in(|_| None), None);
 }

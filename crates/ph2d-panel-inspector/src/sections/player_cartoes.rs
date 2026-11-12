@@ -273,7 +273,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
         y,
         0,
         ids::INSP_PLAYER_CARD_WALL,
-        tr("panel.inspector.player.walls"),
+        tr("component.field.platform_player.55"),
         &[
             (
                 K::new("panel.inspector.player.sum_slide"),
@@ -303,7 +303,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
         y,
         1,
         ids::INSP_PLAYER_CARD_DASH,
-        tr("panel.inspector.player.dash"),
+        tr("component.field.platform_player.56"),
         &[(
             K::new("panel.inspector.player.sum_speed"),
             ids::INSP_PLAYER_DASH_SPEED,
@@ -314,7 +314,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
         y,
         2,
         ids::INSP_PLAYER_CARD_CROUCH,
-        tr("panel.inspector.player.crouch"),
+        tr("component.field.platform_player.57"),
         &[(
             K::new("panel.inspector.player.sum_height"),
             ids::INSP_PLAYER_CROUCH_HEIGHT,
@@ -340,7 +340,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
         y,
         3,
         ids::INSP_PLAYER_CARD_SWIM,
-        tr("panel.inspector.player.swim"),
+        tr("component.field.platform_player.58"),
         &[(
             K::new("panel.inspector.player.sum_speed"),
             ids::INSP_PLAYER_SWIM_SPEED,
@@ -351,7 +351,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
         y,
         4,
         ids::INSP_PLAYER_CARD_LEDGE,
-        tr("panel.inspector.player.ledge"),
+        tr("component.field.platform_player.59"),
         &[(
             K::new("panel.inspector.player.sum_grab"),
             ids::INSP_PLAYER_LEDGE_GRAB,
@@ -362,7 +362,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
         y,
         5,
         ids::INSP_PLAYER_CARD_GLIDE,
-        tr("panel.inspector.player.glide"),
+        tr("component.field.platform_player.60"),
         &[(
             K::new("panel.inspector.player.sum_fall"),
             ids::INSP_PLAYER_GLIDE_FALL,

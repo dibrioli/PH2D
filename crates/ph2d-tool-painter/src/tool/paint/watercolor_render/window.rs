@@ -294,7 +294,7 @@ mod prancha_tests;
 #[cfg(test)]
 thread_local! {
     /// O oráculo do B16.2: o pen-up pela UNIÃO da sessão (o caminho antigo, verbatim).
-    pub(super) static COMMIT_PELA_UNIAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    pub(in crate::tool::paint) static COMMIT_PELA_UNIAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 impl PainterTool {

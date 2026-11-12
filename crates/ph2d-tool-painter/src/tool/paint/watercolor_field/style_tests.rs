@@ -138,9 +138,12 @@ fn o_256_o_traco_nao_reescreve_o_estilo_do_255_o() {
 
 /// O ORÁCULO: o tecto `u8` antigo, verbatim ([`super::WetSessionStyles::teto_u8_antigo`]). Até 255
 /// traços o dono `u16` dá o MESMO bit (tela e mapa de donos); no 256.º o oráculo repinta o 255.º —
-/// prova de que a fixture tem o fenómeno.
+/// prova de que a fixture tem o fenómeno. O pen-up pela UNIÃO da sessão: desde o B16.2 cont3 o pen-up
+/// só recompõe o traço ⊕ pad, e a célula do 255.º (fora dela) guardaria o estilo reescrito latente.
 #[test]
 fn ate_255_tracos_o_dono_u16_e_o_u8_antigo_dao_o_mesmo_bit() {
+    use crate::tool::paint::watercolor_render::COMMIT_PELA_UNIAO;
+    let antes_uniao = COMMIT_PELA_UNIAO.replace(true);
     let mut novo = aguada_em_celulas();
     let mut velho = aguada_em_celulas();
     velho.paint.wet_styles.teto_u8_antigo = true;
@@ -159,6 +162,7 @@ fn ate_255_tracos_o_dono_u16_e_o_u8_antigo_dao_o_mesmo_bit() {
     let antes = celula(&velho, 255);
     traco(&mut novo, 256);
     traco(&mut velho, 256);
+    COMMIT_PELA_UNIAO.set(antes_uniao);
     assert_eq!(celula(&novo, 255), antes, "o u16 mantém o 255.º");
     assert_ne!(
         celula(&velho, 255),

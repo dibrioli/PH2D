@@ -29,6 +29,8 @@ mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod texel; // o corpo do laço por texel (B52.R21, LOC split)
 mod window;
 pub(in crate::tool::paint) use window::Alcance;
+#[cfg(test)]
+pub(in crate::tool::paint) use window::COMMIT_PELA_UNIAO;
 pub(in crate::tool::paint) use window::ponto_na_janela;
 
 use super::watercolor_field::*;

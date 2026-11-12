@@ -456,6 +456,13 @@ impl HeroScreen {
         menu_reveal::tick(self);
     }
 
+    /// B23.2: o chrome anima sozinho (molas em voo — hover, cascata, voo da vista — ou um piscar)? O
+    /// laço a pedido pede o quadro seguinte por isto; sem ele a 4 q/s a mola salta e pára a meio.
+    #[must_use]
+    pub fn a_ui_mexe(&self) -> bool {
+        self.motion.in_flight() > 0 || self.store.a_piscar()
+    }
+
     pub fn new(id: NodeId) -> Self {
         // Pure constructor: the host installs `PANEL_REGISTRY` first (`register_all_panels()`;
         // tests `ensure_panel_registry()`) — an auto-install here hid the `panel-*` features (B1).

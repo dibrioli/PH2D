@@ -136,7 +136,7 @@ impl crate::App {
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 (&mut *vector_scene, &mut *paint_ctx.text),
             );
-            // O relógio dos indicadores dos pontos (o quadro é contínuo: `ControlFlow::Poll`).
+            // O relógio dos indicadores dos pontos; «a mexer» pede o quadro seguinte (`pede_o_quadro`).
             ph2d_shape_handles::anima_pontos::passo(
                 sim.world_mut(),
                 camera,

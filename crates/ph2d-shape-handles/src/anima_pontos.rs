@@ -44,9 +44,33 @@ impl AnimaPontos {
     }
 }
 
+/// O último [`passo`] disse «ainda a mexer»: o laço a pedido (B23.2) pede o quadro seguinte por isto.
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PontosAMexer(pub bool);
+
+/// Os indicadores dos pontos pedem o quadro seguinte? (o que o último [`passo`] devolveu).
+#[must_use]
+pub fn a_mexer(world: &World) -> bool {
+    world.get_resource::<PontosAMexer>().is_some_and(|m| m.0)
+}
+
 /// Avança o relógio dos indicadores. `true` = ainda está a mexer (crescer ou pulso da fusão): o quadro seguinte
-/// tem de vir.
+/// tem de vir. Grava-o em [`PontosAMexer`].
 pub fn passo(
+    world: &mut World,
+    cam: &Camera2d,
+    win: WindowSize,
+    ponteiro: (f32, f32),
+    agora_ms: f64,
+) -> bool {
+    let mexe = passo_sem_marca(world, cam, win, ponteiro, agora_ms);
+    if a_mexer(world) != mexe {
+        world.insert_resource(PontosAMexer(mexe));
+    }
+    mexe
+}
+
+fn passo_sem_marca(
     world: &mut World,
     cam: &Camera2d,
     win: WindowSize,

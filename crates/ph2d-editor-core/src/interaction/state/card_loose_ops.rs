@@ -298,6 +298,16 @@ impl WidgetStore {
         }
     }
 
+    /// B23.2: algum piscar do chrome a correr pelo relógio de parede (o anel do comando, `Ctrl+K`, ou o
+    /// lampejo do cartão solto)? Com o laço a pedido, é um produtor de quadro (`Produtor::UiAnima`).
+    #[must_use]
+    pub fn a_piscar(&self) -> bool {
+        let solto = |c: &LooseCard| {
+            c.flash.is_some_and(|t| t.elapsed().as_secs_f64() < ph2d_card_stack::metrics::LOOSE_FLASH_S)
+        };
+        self.flashing(true).is_some() || self.card_lists.loose.values().any(solto)
+    }
+
     /// Por cima de todos (o último tocado); `flash` = pisca para o artista o achar.
     pub fn raise_loose_card(&mut self, section: NodeId, flash: bool) {
         let z = self.next_loose_z();

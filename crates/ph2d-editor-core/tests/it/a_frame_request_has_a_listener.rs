@@ -172,3 +172,35 @@ fn cada_fase_do_quadro_marca_as_faltas() {
         );
     }
 }
+
+/// B23.2 (12/11): as molas do chrome (hover, cascata, voo da vista), o piscar do `Ctrl+K`/cartão solto e os
+/// indicadores dos pontos andam pelo relógio de parede; sem leitor, a 4 q/s a mola salta e pára a meio.
+#[test]
+fn o_chrome_que_anima_sozinho_pede_quadro() {
+    let corpo = corpo_do_leitor();
+    for p in [".a_ui_mexe()", "anima_pontos::a_mexer"] {
+        assert!(corpo.contains(p), "o `pede_o_quadro` não lê `{p}`: o chrome anda a 4 q/s");
+    }
+}
+
+/// A lei por trás do leitor: a mola em voo e o piscar pedem quadro; assentados, deixam o laço dormir.
+#[test]
+fn as_molas_e_o_piscar_do_chrome_pedem_quadro_ate_assentar() {
+    use ph2d_a11y::NodeId;
+    use ph2d_editor_core::motion::Role;
+    ph2d_editor_core::test_support::ensure_panel_registry();
+    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(NodeId(1));
+    assert!(!hero.a_ui_mexe(), "parado de fábrica não pede quadro");
+    hero.motion.animate(NodeId(7), 0.0, Role::Surface);
+    hero.motion.animate(NodeId(7), 1.0, Role::Surface);
+    assert!(hero.a_ui_mexe(), "a mola em voo tem de pedir o quadro seguinte");
+    for _ in 0..600 {
+        hero.motion.advance(1.0 / 60.0);
+    }
+    assert!(!hero.a_ui_mexe(), "assentada, a mola larga o laço");
+    hero.store.note_clock(1);
+    hero.store.flash(NodeId(9));
+    assert!(hero.a_ui_mexe(), "o piscar do comando tem de pedir quadro");
+    hero.store.note_clock(10_000_000_000);
+    assert!(!hero.a_ui_mexe(), "o piscar acabou (3 pulsos): o laço dorme");
+}

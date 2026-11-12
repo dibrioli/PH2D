@@ -186,12 +186,12 @@ fn na_largura_do_dono_os_nomes_da_cena_do_jogo_saem_inteiros_sem_hover() {
         "o olho FECHADO tem de ficar à vista sem hover"
     );
     // Smoke do dono 11/11: em repouso, nenhum ícone de componente — nem no escondido.
-    for i in 0..CENA.len() {
-        for c in CENA[i].2 {
+    for (i, linha) in CENA.iter().enumerate() {
+        for c in linha.2 {
             assert!(
                 mesa.rect(ids::hier_component_icon(id_de(i), *c)).is_none(),
                 "o ícone {c:?} da linha {:?} pinta-se sem hover",
-                CENA[i].0
+                linha.0
             );
         }
     }

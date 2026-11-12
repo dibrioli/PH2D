@@ -67,6 +67,7 @@ pub(in crate::tool::paint) const MAX_RATIO: u8 = 30;
 pub(in crate::tool::paint) const DEFAULT_RATIO: u8 = 1;
 
 /// Clampa uma razão vinda de fora (o chip numérico do painel) à faixa viva.
+#[inline]
 pub(in crate::tool::paint) fn clamp_ratio(r: u8) -> u8 {
     r.clamp(MIN_RATIO, MAX_RATIO)
 }
@@ -127,6 +128,7 @@ pub(in crate::tool::paint) fn cell_center_px(c: i32, ratio: u8) -> f32 {
 /// ⚠️ Um amostrador de imagem indexa uma grade de texels, então ele não pode
 /// receber a coordenada contínua: ele recebe o texel onde o centro da célula
 /// caiu. Em `ratio == 1` é `c - 1`, o que aqueles três chamadores já passavam.
+#[inline]
 pub(in crate::tool::paint) fn cell_center_texel(c: i32, ratio: u8) -> i64 {
     let r = i64::from(clamp_ratio(ratio));
     i64::from(c - 1) * r + r / 2
@@ -172,6 +174,7 @@ pub(in crate::tool::paint) fn cell_subsamples(ratio: u8) -> (u8, f32) {
 ///
 /// `i` vai de `0` a `n-1`; com `n == 1` isto É [`cell_center_px`] (o mesmo `f32`,
 /// sem ramo — `0.5 * r` é o meio da célula).
+#[inline]
 pub(in crate::tool::paint) fn cell_subsample_px(c: i32, ratio: u8, i: u8, step: f32) -> f32 {
     let r = f32::from(clamp_ratio(ratio));
     (c - 1) as f32 * r + step * (f32::from(i) + 0.5)

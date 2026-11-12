@@ -221,16 +221,23 @@ pub(super) fn pousa_o_dab(
         .filter(|_| com_corte_fora() && sil_input.is_none() && spec.falloff_weight(1.0) == 0.0);
     // `desliza`: o que um deslocamento conhecido soma a `t` (a métrica da pegada na direcção dele — `falloff_t` é a
     // norma de `apply`, linear com a curva plana).
-    let fora = move |cx: i32, cy: i32, folga: f32, desliza: f32| -> bool {
+    let t_do_centro = move |cx: i32, cy: i32| -> f32 {
+        let sx = grid_map::cell_subsample_px(cx, ratio, 0, lado);
+        let sy = grid_map::cell_subsample_px(cy, ratio, 0, lado);
+        fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r)
+    };
+    let fora_t = move |t: f32, folga: f32, desliza: f32| -> bool {
         lips.is_some_and(|l| {
-            let sx = grid_map::cell_subsample_px(cx, ratio, 0, lado);
-            let sy = grid_map::cell_subsample_px(cy, ratio, 0, lado);
-            let t = fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
             t - l * (0.5 * lado + folga) * std::f32::consts::SQRT_2 * inv_r - desliza >= 1.001
         })
     };
+    let fora = move |cx: i32, cy: i32, folga: f32, desliza: f32| -> bool {
+        lips.is_some() && fora_t(t_do_centro(cx, cy), folga, desliza)
+    };
     let sil = |cx: i32, cy: i32| -> f64 {
-        if fora(cx, cy, 0.0, 0.0) {
+        // Com `aa_n = 1` o único sub-ponto do AA é o centro de `fora` (`lado = aa_step`): o mesmo `t`, contado 1×.
+        let t0 = (aa_n == 1).then(|| t_do_centro(cx, cy));
+        if t0.map_or_else(|| fora(cx, cy, 0.0, 0.0), |t| fora_t(t, 0.0, 0.0)) {
             return 0.0;
         }
         crate::wet_diag::conta_sil(2, 1);
@@ -240,7 +247,9 @@ pub(super) fn pousa_o_dab(
             let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
             for i in 0..aa_n {
                 let sx = grid_map::cell_subsample_px(cx, ratio, i, aa_step);
-                let t = fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
+                let t = t0.unwrap_or_else(|| {
+                    fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r)
+                });
                 let v = ph2d_painter_brush::dab::silhouette_at(
                     &spec,
                     sil_input,

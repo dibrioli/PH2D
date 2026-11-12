@@ -555,7 +555,7 @@ fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
         assert!(t.wet_pincel_na_tela(), "{onde}: premissa: o pincel na tela");
         let (gesto, repouso) = (composta(&mut t, true), composta(&mut t, false));
         assert!(
-            gesto.chunks_exact(4).any(|p| p != [255, 255, 255, 255]),
+            gesto.as_chunks::<4>().0.iter().any(|p| *p != [255; 4]),
             "{onde}: premissa: há tinta na tela"
         );
         assert_eq!(

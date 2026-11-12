@@ -52,19 +52,23 @@ echo "  merge-base $(git rev-parse --short "$MB")   ·   $(git rev-list --count 
 echo "───────────────────────────────────────────────────────────────────────────────"
 
 # --- helper: valor de uma const aqui e na base ---------------------------------
-# ⚠️ o valor vem DEPOIS do último '=' ou ',' — um `head -1` ingênuo devolve o "32" de `u32`
-# (bug real, apanhado pelo controle em 2026-08-18: os cinco schemas liam 32).
-val() { sed -E 's/.*[=,] *([0-9]+).*/\1/; t; s/.*/—/'; }
+# ⚠️ o valor vem DEPOIS do último '=', ',' ou '+' — um `head -1` ingênuo devolve o "32" de `u32`
+# (bug real, apanhado pelo controle em 2026-08-18: os cinco schemas liam 32). O '+' é o dos
+# espelhos que derivam (`so_ecs.len() + K`, d184af3b53): sem ele a regex CASAVA e o `val` dava
+# «—» dos dois lados — sonda cega de 07/11 a 12/11, com o caminho certo (be050b8807).
+val() { sed -E 's/.*[=,+] *([0-9]+).*/\1/; t; s/.*/—/'; }
 
 # ⚠️ <arquivos> é uma LISTA de candidatos: a `line/physics` PARTIU o `project.rs` em 15/08 e
 # levou a const para o irmão `project_schema.rs`. Uma worktree forkada antes disso ainda a tem
 # no arquivo antigo — e um scanner de um caminho só reporta "—", que se lê como "não existe".
+# Um candidato pode ser uma PASTA (o `src/` do crate): acha-se a const pelo NOME onde quer que
+# ela more, aqui (`grep -r`) e na base (`git grep` no merge-base). Ponha-a como último candidato.
 num() {  # num <rótulo> "<arquivo> [arquivo2 ...]" <regex>
   local rot="$1" arqs="$2" re="$3" aqui base marca arq
   for arq in $arqs; do
-    [ -z "${aqui:-}" ] && aqui=$(grep -hoE "$re" "$arq" 2>/dev/null | head -1 | val)
+    [ -z "${aqui:-}" ] && aqui=$(grep -rhoE "$re" "$arq" 2>/dev/null | head -1 | val)
     [ "${aqui:-—}" = "—" ] && aqui=""
-    [ -z "${base:-}" ] && base=$(git show "$MB:$arq" 2>/dev/null | grep -hoE "$re" | head -1 | val)
+    [ -z "${base:-}" ] && base=$(git grep -hoE -e "$re" "$MB" -- "$arq" 2>/dev/null | head -1 | val)
     [ "${base:-—}" = "—" ] && base=""
   done
   [ -z "$aqui" ] && aqui="—"; [ -z "$base" ] && base="—"
@@ -83,7 +87,9 @@ num "PROJECT_SCHEMA"        "shells/desktop/src/project_schema.rs shells/desktop
 # defeito que ela existe para pegar é justamente um deles andar sozinho.
 TRI_A=$(grep -hoE '\([0-9]+, *[0-9]+, *[0-9]+\)' shells/desktop/src/project_schema_tests.rs 2>/dev/null | head -1)
 TRI_B=$(git show "$MB:shells/desktop/src/project_schema_tests.rs" 2>/dev/null | grep -hoE '\([0-9]+, *[0-9]+, *[0-9]+\)' | head -1)
-[ "$TRI_A" = "$TRI_B" ] && M="  " || M="⚠ "
+# vazia dos dois lados é a mesma sonda cega do `num` (o ficheiro do gate mudou de sítio).
+if [ -z "$TRI_A" ] && [ -z "$TRI_B" ]; then M="✗ "; CEGO="${CEGO:+$CEGO, }tripla do gate"
+elif [ "$TRI_A" = "$TRI_B" ]; then M="  "; else M="⚠ "; fi
 printf "  %s%-34s %6s   (base: %s)\n" "$M" "  └ tripla do gate" "${TRI_A:-—}" "${TRI_B:-—}"
 num "VEC_SCENE_SCHEMA"      "crates/ph2d-vec-scene/src/schema.rs crates/ph2d-vec-scene/src/lib.rs" 'VEC_SCENE_SCHEMA_VERSION: u32 = [0-9]+'
 num "FLIP_SCHEMA"           "crates/ph2d-flip/src/lib.rs"                'FLIP_SCHEMA_VERSION: u32 = [0-9]+'
@@ -97,8 +103,8 @@ fi
 echo
 echo "▸ REGISTRO DE COMPONENTES — o contador é TRÊS, cada um roda só na suíte da própria crate"
 num "ph2d-ecs"    "crates/ph2d-ecs/src/scene/registry_tests.rs crates/ph2d-ecs/src/scene/registry.rs" 'reg\.len\(\), *[0-9]+'
-num "ph2d-render (espelho = ecs + K)" "crates/ph2d-render/src/registry.rs" 'so_ecs\.len\(\) *\+ *[0-9]+'
-num "ph2d-script (espelho = ecs + K)" "crates/ph2d-script/src/registry.rs" 'so_ecs\.len\(\) *\+ *[0-9]+'
+num "ph2d-render (espelho = ecs + K)" "crates/ph2d-render/src/registry.rs crates/ph2d-render/src" 'so_ecs\.len\(\) *\+ *[0-9]+'
+num "ph2d-script (espelho = ecs + K)" "crates/ph2d-script/src/registry.rs crates/ph2d-script/src" 'so_ecs\.len\(\) *\+ *[0-9]+'
 
 echo
 echo "▸ CONTRATO CONGELADO (§6) — deve ser INTOCADO; se não, exige ADR"

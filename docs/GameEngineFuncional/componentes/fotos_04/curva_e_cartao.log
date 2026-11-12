@@ -1,0 +1,20 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Ctrl+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   270ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   296ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   296ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   305ms] M11: VelloPass initialized (1024×768 intermediate)
+[   312ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   326ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   356ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   365ms] lifecycle: Foreground
+[   365ms] resize: 1024x768 @ 1.00x scale
+[game-smoke] =2 o nível feito SÓ com o menu Add (Add ▸ Game) e a arte do Kenney em vetor: chão e plataformas (Static Body), parede invisível (Collision Shape), tecto baixo (segure ↓), jogador (Character), moedas e bandeira (Animated Sprite), céu, nuvens e montes em parallax. o botão Play in a Window: cada moeda tocada faz «plim», soma 1 ao contador do HUD e some.
+[game-smoke] =4 o nível 2 com «heroi_azul» e «montes_por_do_sol» na biblioteca (plano 12): escolha a imagem dos montes e a folha do Player pela ranhura Image do Inspector.
+[ph2d-gpu] surface present mode → Immediate
+[   382ms] resize: 1930x1972 @ 1.00x scale
+warn: dropped 0.233s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

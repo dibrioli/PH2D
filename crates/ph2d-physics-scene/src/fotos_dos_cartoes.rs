@@ -35,6 +35,9 @@ pub enum CasoFisica {
     PlayerCartoes,
     /// O mesmo com a curva do pulo no canvas (ficha GEF 04): «Show Jump Arc» marcado e um pulo do ar.
     PlayerPulo,
+    /// O mesmo sobre a «Platform Low» (12/11): o Full desce ao chão de baixo, o Standing pousa na
+    /// «Platform High» e o Short pára na parede dela.
+    PlayerPuloTerreno,
     /// Uma forma sem corpo acima: a «Collision Shape» acabada de nascer do menu Add.
     Solta,
     /// Uma forma dentro de um corpo.
@@ -177,6 +180,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "player" => CasoFisica::Player,
         "player_cartoes" => CasoFisica::PlayerCartoes,
         "player_pulo" => CasoFisica::PlayerPulo,
+        "player_pulo_terreno" => CasoFisica::PlayerPuloTerreno,
         "solta" => CasoFisica::Solta,
         "peca" => CasoFisica::Peca,
         "vazia" => CasoFisica::Vazia,
@@ -233,6 +237,20 @@ pub fn imagem_de(sim: &SimWorld, alvo: u64) -> u64 {
         .map_or(alvo, |c| c.parent().to_bits())
 }
 
+/// Do pé do player à borda direita da «Platform Low» (m). Sonda de 12/11 com os padrões: a 2,1 m o Standing
+/// pousa na alta (x 9,46), o Full desce ao chão (11,78) e o Short bate na parede da alta (6,8); a 0,5 m o
+/// Standing já passa por cima dela.
+pub const RECUO_DA_BORDA: f32 = 2.1;
+
+/// A borda direita e o topo da «Platform Low», pelo desenho do bloco (o azulejo tem o tamanho dele).
+fn borda_da_baixa(sim: &mut SimWorld) -> Option<[f32; 2]> {
+    let e = por_nome(sim, "Platform Low")?;
+    let w = sim.world();
+    let (t, s) = (w.get::<Transform>(e)?, w.get::<Sprite>(e)?);
+    let meia = [0.5 * s.size[0] * t.scale.x, 0.5 * s.size[1] * t.scale.y];
+    Some([t.translation.x + meia[0], t.translation.y + meia[1]])
+}
+
 /// Monta o caso no mundo e devolve quem fica selecionado: o corpo nas fotos do cartão Body, a filha
 /// «Collision Shape» nas da forma (o Pivot da [`CasoFisica::FormaPivo`] é da imagem: o pai dela).
 pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u64> {
@@ -246,14 +264,23 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         CasoFisica::Player | CasoFisica::PlayerCartoes | CasoFisica::FormaPlayer => {
             return por_nome(sim, "Player").map(|e| e.to_bits());
         }
-        CasoFisica::PlayerPulo => {
+        CasoFisica::PlayerPulo | CasoFisica::PlayerPuloTerreno => {
             let e = por_nome(sim, "Player")?;
-            if let Some(mut p) = sim
-                .world_mut()
-                .get_mut::<ph2d_physics_ecs::PlatformPlayer>(e)
-            {
+            let borda = match caso {
+                CasoFisica::PlayerPuloTerreno => Some(borda_da_baixa(sim)?),
+                _ => None,
+            };
+            let w = sim.world_mut();
+            let mut float = 0.0;
+            if let Some(mut p) = w.get_mut::<ph2d_physics_ecs::PlatformPlayer>(e) {
                 p.show_jump_arc = true;
                 p.air_jumps = 1;
+                float = p.float_height;
+            }
+            if let Some([direita, topo]) = borda
+                && let Some(mut t) = w.get_mut::<Transform>(e)
+            {
+                t.translation = Vec2::new(direita - RECUO_DA_BORDA, topo + float);
             }
             return Some(e.to_bits());
         }
@@ -271,6 +298,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         | CasoFisica::Player
         | CasoFisica::PlayerCartoes
         | CasoFisica::PlayerPulo
+        | CasoFisica::PlayerPuloTerreno
         | CasoFisica::FormaPlayer
         | CasoFisica::Baixa
         | CasoFisica::Larga => {
@@ -482,3 +510,7 @@ pub fn estado_do_player(sim: &mut SimWorld) -> String {
                 .and_then(|s| s.look.map(|l| (l.size, l.tiled.map(|t| t.tile)))))),
     )
 }
+
+#[cfg(test)]
+#[path = "fotos_dos_cartoes_tests.rs"]
+mod tests;

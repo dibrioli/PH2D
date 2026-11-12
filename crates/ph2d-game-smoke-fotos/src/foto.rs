@@ -235,6 +235,9 @@ pub struct FotoDaCamera {
 
 /// A vista do editor nas fotos da câmera: a câmera do nível ao lado do vão, com margem à volta.
 const VISTA_DA_CAMERA: ([f32; 2], f32) = ([-6.0, 3.0], 15.0);
+/// A vista da curva no terreno (GEF 04): o smoke centra-a no Player selecionado (`SetViewFocus`), e 16 m de
+/// altura alcançam o pouso do Full no chão da direita (x ≈ 11,8) entre a Hierarchy e o Inspector.
+const VISTA_DO_TERRENO: ([f32; 2], f32) = ([2.6, 1.6], 16.0);
 
 /// O que a foto pede, já resolvido no mundo — os gestos que o shell executa pelas MESMAS portas da mão.
 #[derive(Clone, Debug, PartialEq)]
@@ -316,6 +319,14 @@ pub fn plano_da_foto(
         Foto::Fisica(c) => {
             use ph2d_physics_scene::fotos_dos_cartoes as fisica;
             plano.alvo = fisica::prepara(sim, c, ONDE_LARGA)?;
+            if c == fisica::CasoFisica::PlayerPuloTerreno {
+                plano.camera = Some(FotoDaCamera {
+                    formato: ph2d_editor_core::GameFormat::default(),
+                    olhar: false,
+                    vista: VISTA_DO_TERRENO,
+                    canvas: ph2d_editor_core::CameraCanvasView::default(),
+                });
+            }
             if c == fisica::CasoFisica::Larga {
                 plano.edicoes = vec![(plano.alvo, ph2d_editor_core::ImageUseEdit::Width(4.0))];
             }

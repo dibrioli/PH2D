@@ -16,7 +16,7 @@ Maquete: [`f4_maquete.html`](f4_maquete.html) · [foto](f4_maquete.png).
   com o botão solto na subida → `cut_gravity` (`:550`, não desarma); `|v| ≤ peak_speed` → `peak_gravity`;
   descendo → `fall_gravity`. O passo do jogador inteiro é `lib.rs:180` `player_motor(...)`; o andar no ar é
   `walk.rs` (`air_acceleration`, padrão 20).
-- **Consequência medida:** a altura REAL do ápice ≠ `jump_height` (o doc do módulo avisa: «altura de gravidade
+- **Consequência medida (antes de 12/11; hoje o ápice É a Jump Height):** a altura REAL do ápice ≠ `jump_height` (o doc do módulo avisa: «altura de gravidade
   neutra»). Com os padrões, 2,00 m autorados sobem 2,04 m. **Não há** função que derive o arco (ápice, tempo,
   alcance); a única medição é por simulação num teste ignorado (`ph2d-physics-ecs/tests/it/platform_jump.rs:281`).
 - **Parâmetros** — `JumpConfig` (`jump_config.rs:89`, padrões `:234`: H 2 · Air Jumps 0 · Air H 2 · Takeoff G 1
@@ -51,8 +51,8 @@ Maquete: [`f4_maquete.html`](f4_maquete.html) · [foto](f4_maquete.png).
 
 ### Canvas (com o player selecionado e a caixa marcada)
 
-Origem: os pés do player, para o lado em que ele olha. Chão de referência: a linha dos pés (o arco termina ao voltar
-a ela; não segue o terreno — ver «Aberto»).
+Origem: os pés do player, para o lado em que ele olha. Cada curva termina onde toca o terreno da cena (12/11,
+abaixo).
 
 | Curva | O que simula (a LEI, 60 Hz, gravidade do mundo) |
 |---|---|
@@ -118,9 +118,7 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
 ## Aberto (para o dono decidir ou depois)
 
 - **A ou B** na maquete (recomendo B).
-- O arco termina na linha dos pés; seguir o terreno da cena (bater em plataformas) é outro passo.
-- O campo Jump Height do cartão continua a dizer a altura «de gravidade neutra» (2,00) quando a alça mostra o
-  ápice real (2,04). Proposta: o rótulo da alça mostra o real; o campo fica como está.
+- ~~O arco termina na linha dos pés~~ e ~~Jump Height 2,00 × 2,04~~: fechados em 12/11 (abaixo).
 
 ## O que foi construído (10/11, aguarda o smoke do dono)
 
@@ -141,3 +139,25 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
 - **Fotos:** [`fotos_04/curva_no_canvas.png`](fotos_04/curva_no_canvas.png) ·
   [`fotos_04/curva_zoom.png`](fotos_04/curva_zoom.png) · [`fotos_04/curva_e_cartao.png`](fotos_04/curva_e_cartao.png)
   (`PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_FOTO=fisica_player_pulo`: caixa marcada e 1 pulo do ar).
+
+## 12/11 — o terreno e a altura real
+
+- **A curva pousa no terreno** (`ced6a4ac0a`): a lei desce abaixo do arranque (`MAX_FALL_M` 24) e cada curva é
+  cortada no primeiro toque com as formas sólidas da cena (`ph2d-physics-ecs/src/arc_terrain.rs`, varredura
+  `ph2d-physics/src/world/arc_cast.rs`): sem sensores, sem formas desligadas, sem o player e as peças dele, pela
+  matriz de camadas, mão única só por cima. O painel pinta um **anel de pouso** na cor de cada curva.
+- **O ápice real é a Jump Height** (`f3a92736ab`): `launch_speed` resolve v₀ pelas bandas de gravidade; o cartão
+  diz 2,00 e a alça fica a 2,00.
+- **Fotos** (`PH2D_GAME_SMOKE=4`): [`curva_terreno.png`](fotos_04/curva_terreno.png) ·
+  [`curva_terreno_zoom.png`](fotos_04/curva_terreno_zoom.png) com `PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno`
+  (o Player sobre a «Platform Low», 2,1 m antes da borda: o Full desce ao chão da direita, o Standing pousa na
+  «Platform High», o Short pára na parede dela) · [`curva_e_cartao.png`](fotos_04/curva_e_cartao.png) refeita
+  com `fisica_player_pulo`. Gate da pose: `a_foto_do_terreno_desce_ao_chao_e_pousa_na_plataforma_alta`
+  (`ph2d-physics-scene`; mutações recuo 0,5 m e pose não movida ⇒ vermelho).
+- **Custo medido:** `launch_speed` 0,20 µs por chamada; lei + corte **54,3 µs** por chamada com 3 formas e Air
+  Jumps 1 — 2 chamadas por quadro, só com a curva ligada e o relógio parado. Escala com o número de formas: se
+  um nível grande o mostrar, cache por (config, pose, versão das formas).
+- **Visto nas fotos (para o smoke):** o anel do Short fica no ar, ~0,2 m antes e abaixo do canto da «Platform High»:
+  o anel marca o PÉ, e quem bate é o topo da cápsula (pé + 0,8 m) contra o canto de baixo — leitura certa da lei,
+  mas pode ler-se como «parou do nada». O pulo do ar sai pela direita da vista (pousa além dos 13 m, atrás do
+  Inspector) e a vista é larga (16 m: o smoke centra no Player selecionado).

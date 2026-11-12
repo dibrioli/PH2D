@@ -120,6 +120,26 @@ fn a_coluna_do_cursor_e_a_da_palavra_sob_ele() {
     }
 }
 
+/// Smoke do dono 11/11: um separador de vários bytes antes da palavra («») fazia `caret_column` cortar a
+/// meio do caráter e o app caía (pânico de fronteira de char).
+#[test]
+fn a_coluna_do_cursor_atravessa_separadores_de_varios_bytes() {
+    let who = quem();
+    let t = "-- «speed» é a velocidade\nlocal x = 1 —lives";
+    let casos: [(&str, usize, Option<usize>); 6] = [
+        ("speed»", 2, Some(SPEED)),
+        ("speed»", 0, Some(SPEED)),
+        ("» é", 0, Some(SPEED)),
+        ("» é", 2, None),
+        ("é a", 2, None),
+        ("lives", 3, Some(LIVES)),
+    ];
+    for (agulha, mais, esperado) in casos {
+        let b = cursor_em(t, agulha, mais);
+        assert_eq!(caret_column(&b, &who), esperado, "cursor em {agulha:?}+{mais}");
+    }
+}
+
 #[test]
 fn a_frase_nunca_fica_vazia_nem_com_marcadores_por_trocar() {
     let who = quem();

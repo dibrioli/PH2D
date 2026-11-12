@@ -199,7 +199,11 @@ pub fn caret_column(buf: &Buffer, who: &Who) -> Option<usize> {
     let s = t.slice(start..t.byte_of_line(line + 1).max(start));
     let at = (head - start).min(s.len());
     let word = |c: char| c.is_alphanumeric() || c == '_';
-    let a = s[..at].rfind(|c: char| !word(c)).map_or(0, |i| i + 1);
+    let a = s[..at]
+        .char_indices()
+        .rev()
+        .find(|&(_, c)| !word(c))
+        .map_or(0, |(i, c)| i + c.len_utf8());
     let b = s[at..].find(|c: char| !word(c)).map_or(s.len(), |i| at + i);
     let w = &s[a..b];
     who.columns.iter().position(|c| c.name == w)

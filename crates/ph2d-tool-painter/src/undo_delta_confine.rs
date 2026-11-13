@@ -110,7 +110,7 @@ impl<T> StoredPlane<T> {
             Self::Whole { before, after } if before.is_empty() && after.is_empty() => {
                 PlaneReach::Untouched
             }
-            Self::Whole { .. } => PlaneReach::Whole,
+            Self::Whole { .. } | Self::Nova { .. } => PlaneReach::Whole,
         }
     }
 }
@@ -448,6 +448,7 @@ impl<T> StoredPlane<T> {
             Self::Patch { .. } => "patch",
             Self::Tiles { .. } => "tiles",
             Self::Whole { .. } => "WHOLE",
+            Self::Nova { .. } => "NOVA",
         }
     }
 }

@@ -174,6 +174,10 @@ pub(crate) enum StoredPlane<T> {
         before: Arc<Vec<T>>,
         after: Arc<Vec<T>>,
     },
+    /// **A camada nova do «+»** (n.º 7 item 3): o `before` inteiro (a tela da camada que saiu) sem diff e o
+    /// `after` todo neutro (`T::default()`), que não se segura: o refazer recria-o. Pesa no tecto como o
+    /// `Whole` de um lado só.
+    Nova { before: Arc<Vec<T>> },
 }
 
 /// Um plano vazio — o que fica no `ModelSnapshot` guardado depois que o delta tomou os pixels.
@@ -301,6 +305,11 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             Self::Whole { before, after } => {
                 Some(Arc::clone(if want_before { before } else { after }))
             }
+            Self::Nova { before } => Some(if want_before {
+                Arc::clone(before)
+            } else {
+                Arc::new(vec![T::default(); before.len()])
+            }),
             Self::Patch { win, before, after } => {
                 if cursor.len() != win.plane_len {
                     return None;
@@ -348,6 +357,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
                     + rects.len() * size_of::<PlaneWindow>()
             }
             Self::Whole { before, after } => (before.len() + after.len()) * size_of::<T>(),
+            Self::Nova { before } => before.len() * size_of::<T>(),
         }
     }
 }

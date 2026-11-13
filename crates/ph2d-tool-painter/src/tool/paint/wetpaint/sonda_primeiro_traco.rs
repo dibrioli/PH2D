@@ -96,7 +96,14 @@ fn sonda_primeiro_traco() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);
-    let rotas: Vec<bool> = match std::env::var("PH2D_SONDA_VIDRO").as_deref() {
+    // `PH2D_SONDA_MAIS` (mesmos valores): o eixo A×B passa a ser a chave `MAIS_SEM_DIFF` do «+» (n.º 7 item 3).
+    let eixo_mais = std::env::var("PH2D_SONDA_MAIS").is_ok();
+    let eixo = if eixo_mais {
+        "PH2D_SONDA_MAIS"
+    } else {
+        "PH2D_SONDA_VIDRO"
+    };
+    let rotas: Vec<bool> = match std::env::var(eixo).as_deref() {
         Ok("0") => vec![false; repete],
         Ok("ab") => (0..repete)
             .flat_map(|r| {
@@ -114,8 +121,13 @@ fn sonda_primeiro_traco() {
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
         .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
     for (n, rota) in corridas {
-        crate::undo::window::set_vidro_pelo_journal(rota);
-        println!("ROTA\t{n}\tvidro_pelo_journal={rota}");
+        if eixo_mais {
+            crate::undo_planes::MAIS_SEM_DIFF.set(rota);
+            println!("ROTA\t{n}\tmais_sem_diff={rota}");
+        } else {
+            crate::undo::window::set_vidro_pelo_journal(rota);
+            println!("ROTA\t{n}\tvidro_pelo_journal={rota}");
+        }
         let mut t = PainterTool::default();
         t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
         t.set_paint_tool_mode("wetpaint");
@@ -161,7 +173,7 @@ fn sonda_primeiro_traco() {
                 let _ = t.take_preview_arc();
             }
             println!(
-                "  «+» {:.1} ms · {:.1} MB novos",
+                "  «+» rota={rota} {:.1} ms · {:.1} MB novos",
                 t0.elapsed().as_secs_f64() * 1e3,
                 (faltas() - f0) as f64 * 4096.0 / 1e6
             );
@@ -214,4 +226,5 @@ fn sonda_primeiro_traco() {
     super::preparo::liga_no_teste(false);
     forca_no_teste(None);
     crate::undo::window::set_vidro_pelo_journal(true);
+    crate::undo_planes::MAIS_SEM_DIFF.set(true);
 }

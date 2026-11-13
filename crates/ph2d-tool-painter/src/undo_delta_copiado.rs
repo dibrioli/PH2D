@@ -11,7 +11,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             Self::Patch { before, after, .. } | Self::Tiles { before, after, .. } => {
                 (before.len() + after.len()) * size_of::<T>()
             }
-            Self::Unchanged | Self::Whole { .. } => 0,
+            Self::Unchanged | Self::Whole { .. } | Self::Nova { .. } => 0,
         }
     }
 }

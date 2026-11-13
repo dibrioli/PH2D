@@ -377,6 +377,9 @@ pub struct UndoController {
     /// A transação do PRÓXIMO passo simples que o registo guardar (W8, a reescrita de uma etapa
     /// editada); quem a pôs limpa-a depois do registo (um passo descartado não a leva).
     pub(crate) transacao_seguinte: Option<u64>,
+    /// **A tela do PRÓXIMO registo estrutural nasceu toda neutra** (o «+» transparente, n.º 7 item 3): o
+    /// registo guarda-a sem diff ([`crate::undo_delta::StoredPlane::Nova`]). Uso único: o registo apaga-o.
+    pub(crate) tela_nova_neutra: bool,
     /// **A marca do artista** da imagem deste documento e o passo em curso (W9, [`marca_viva`]).
     pub(crate) marca: marca_viva::MarcaViva,
     /// **A base de todo delta**: o endpoint adjacente ao topo, materializado — o `after` da entrada no
@@ -424,6 +427,11 @@ impl Default for UndoController {
 impl UndoController {
     /// O cursor segura este plano do vidro da camada `l`? (ADR-0204 passo 0: quem segura o plano.)
     #[cfg(test)]
+    pub(crate) fn cursor_canvas_ptr(&self) -> Option<*const Vec<u8>> {
+        self.cursor.as_ref().map(|c| Arc::as_ptr(&c.canvas_rgba))
+    }
+
+    #[cfg(test)]
     pub(crate) fn cursor_segura_o_vidro(
         &self,
         l: crate::layers::LayerId,
@@ -443,6 +451,7 @@ impl UndoController {
             undo: Vec::new(),
             redo: Vec::new(),
             transacao_seguinte: None,
+            tela_nova_neutra: false,
             marca: marca_viva::MarcaViva::default(),
             cursor: None,
             #[cfg(test)]

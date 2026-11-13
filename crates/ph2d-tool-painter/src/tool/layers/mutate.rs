@@ -239,8 +239,10 @@ impl PainterTool {
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
+        let nasce_neutra = rgba.is_none();
         let rgba = rgba.unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         self.replace_canvas(Arc::new(rgba));
+        self.undo.tela_nova_neutra = nasce_neutra;
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(id);
         if mantem {

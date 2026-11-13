@@ -136,6 +136,8 @@ pub(crate) mod watercolor_vidro; // a transparência POR CANAL da aguada sobre o
 #[cfg(test)]
 mod watercolor_vidro_journal_tests;
 #[cfg(test)]
+mod mais_sem_diff_tests;
+#[cfg(test)]
 mod watercolor_vidro_segue_tests;
 #[cfg(test)]
 mod watercolor_vidro_restauro_tests;

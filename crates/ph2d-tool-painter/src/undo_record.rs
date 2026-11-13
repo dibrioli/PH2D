@@ -169,17 +169,29 @@ impl UndoController {
         after: ModelSnapshot,
         hint: Option<crate::compositor::Region>,
     ) {
+        let nova = std::mem::take(&mut self.tela_nova_neutra);
+        let (mut before, mut after) = (before, after);
         self.absorb_foreign_writes(&before);
         let marca = self.marca_do_passo_held(&before, &after, hint);
         // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
         // um clone de `Arc`s, não de pixels.
         let cursor = after.clone();
+        // O «+» transparente: a tela de antes vai inteira, sem varrer contra a nova (14 ms a 4K), e a nova
+        // (toda neutra) não fica segura pela entrada (o 1.º traço nela não copia a tela).
+        let tela_que_saiu = if nova {
+            crate::undo_planes::PlaneDeltas::tira_a_tela_nova(&mut before, &mut after)
+        } else {
+            None
+        };
         // ⚠️ **A ORDEM aqui carrega peso: o split vem ANTES do `set_cursor`.** O delta do relevo sai dos
         // journals do passo, e o `set_cursor` **os zera** (os dois fatos são o mesmo fato — ver a doc
         // dele). Instalar o cursor primeiro deixaria o journal vazio quando o delta fosse partido, e o
         // guard cairia no caminho de sempre — silenciosamente, com todos os gates verdes.
         let src = self.relief_source(&before, &cursor);
         let mut entry = UndoEntry::split(before, after, None, hint, src);
+        if let Some(a) = tela_que_saiu {
+            entry.planes.poe_a_tela_nova(a);
+        }
         entry.transacao = self.transacao_seguinte.take();
         entry.marca = marca;
         if self.discard_if_relief_is_lost(&entry, &cursor) {

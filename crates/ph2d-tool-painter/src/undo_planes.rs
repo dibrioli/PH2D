@@ -8,6 +8,7 @@
 use crate::layers::LayerId as RtLayerId;
 use crate::undo_delta::{StoredImages, StoredMap, StoredPlane, Strides};
 use ph2d_painter_brush::material::MaterialBytes;
+use std::sync::Arc;
 
 /// Os instrumentos que leem a lista (relatórios de variante e de alcance, e as divergências de dois
 /// snapshots) — só de teste e debug, cortados daqui pelo tecto de LOC, POR ASSUNTO.
@@ -32,6 +33,13 @@ pub(crate) struct ReliefSource<'a> {
     pub(crate) writes: u64,
     /// A camada de que os journals falam.
     pub(crate) layer: RtLayerId,
+}
+
+thread_local! {
+    /// A×B do «+» sem diff ([`PlaneDeltas::tira_a_tela_nova`]; `false` = o `split` varre a tela, a rota
+    /// antiga). Só a sonda e o gate o desligam.
+    #[doc(hidden)]
+    pub static MAIS_SEM_DIFF: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
 }
 
 #[cfg(test)]
@@ -172,6 +180,36 @@ impl PlaneDeltas {
         c.add_plano(sculpt_pre_mats);
         c.add_plano(sculpt_pre_rgba);
         c.finish_caixas()
+    }
+
+    /// **O «+» transparente** (n.º 7 item 3, chave [`MAIS_SEM_DIFF`]): tira as duas telas dos endpoints
+    /// e devolve a de antes, se os dois a seguram (sem elisão) com o mesmo comprimento; os endpoints ficam
+    /// com o MESMO plano vazio (o `split` lê `Unchanged`) e [`Self::poe_a_tela_nova`] guarda a de antes.
+    /// `None` = deixa tudo como estava (o `split` varre, a rota antiga).
+    pub(crate) fn tira_a_tela_nova(
+        before: &mut crate::undo::ModelSnapshot,
+        after: &mut crate::undo::ModelSnapshot,
+    ) -> Option<Arc<Vec<u8>>> {
+        if !MAIS_SEM_DIFF.get()
+            || before.canvas_elided.is_some()
+            || after.canvas_elided.is_some()
+            || before.canvas_rgba.len() != after.canvas_rgba.len()
+            || Arc::ptr_eq(&before.canvas_rgba, &after.canvas_rgba)
+        {
+            return None;
+        }
+        debug_assert!(
+            after.canvas_rgba.iter().all(|&b| b == 0),
+            "a tela da camada nova não nasceu neutra: o refazer do «+» perderia píxeis"
+        );
+        let vazio = Arc::new(Vec::new());
+        after.canvas_rgba = Arc::clone(&vazio);
+        Some(std::mem::replace(&mut before.canvas_rgba, vazio))
+    }
+
+    /// Ver [`Self::tira_a_tela_nova`].
+    pub(crate) fn poe_a_tela_nova(&mut self, before: Arc<Vec<u8>>) {
+        self.canvas_rgba = StoredPlane::Nova { before };
     }
 
     /// Extrai os deltas dos dois endpoints e **esvazia os dois**: depois disto os `ModelSnapshot`

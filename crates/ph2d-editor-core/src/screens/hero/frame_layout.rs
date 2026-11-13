@@ -98,7 +98,7 @@ pub(super) fn frame_layout(
         // dependia da largura da área: resolvia-se o layout com a faixa a zero, lia-se a largura, e
         // resolvia-se outra vez. Hoje a altura é constante ⇒ uma passagem só. *A cura de um defeito
         // de espaço apagou uma dependência circular que ninguém tinha ido lá buscar.*
-        bands.tool_bar_h = super::tool_bar::tool_bar_h(hero.store.rail_button_size(), 1);
+        bands.tool_bar_h = super::tool_bar::tool_bar_h_da_loja(&hero.store);
     }
     let mut layout = HeroLayout::for_viewport_bands(
         viewport,

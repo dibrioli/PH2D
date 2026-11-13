@@ -28,8 +28,13 @@ fn legenda(e: &ToolRailEntry) -> Option<&str> {
 ///
 /// A régua é o que foi PINTADO (o instrumento das elisões), sobre a fila real: as quatro
 /// composições (Painter × Image Tools), cada uma desenhada como o quadro a desenha.
+///
+/// Dono 12/11: em cartões a fila é FINA e não tem legenda (ver
+/// `a_fila_fina_nao_tem_legenda_e_nenhuma_face_e_cortada`); esta régua fica com a saída de referência
+/// (`PH2D_CARDS=0`), que ainda pinta a legenda por cima do chip.
 #[test]
 fn nenhuma_legenda_da_fila_de_ferramentas_e_cortada() {
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(false));
     let acusados = em_todo_estilo(|ts| {
         let mut fora = Vec::new();
         for size in [
@@ -78,6 +83,7 @@ fn nenhuma_legenda_da_fila_de_ferramentas_e_cortada() {
         }
         fora
     });
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(None);
     assert!(
         acusados.is_empty(),
         "legendas cortadas ({}):\n  {}",
@@ -286,4 +292,59 @@ fn a_coluna_do_pixel_guarda_o_seletor_de_modo_na_fila() {
         !tem_chip(ToolBars::default(), &mut ts),
         "controlo: as barras de um módulo (F16) também o mostram"
     );
+}
+
+/// ⭐⭐ **Dono 12/11 (maquete C `.c15tl`): a fila em cartões é FINA** — `TOOL_ROW_H_PX` de altura,
+/// nenhuma legenda pintada, nenhuma face (Global, Selected, Object Mode) cortada, em toda fonte, peso
+/// e tamanho de texto; e cada botão tem nome, que é o que a dica mostra sem a legenda.
+#[test]
+fn a_fila_fina_nao_tem_legenda_e_nenhuma_face_e_cortada() {
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(true));
+    let acusados = em_todo_estilo(|ts| {
+        let mut fora = Vec::new();
+        let mut store = WidgetStore::default();
+        for painter in [false, true] {
+            for image_tools in [false, true] {
+                let rail = bar_rail(&store, ts, painter, image_tools);
+                if !super::fila_fina(&rail) {
+                    fora.push(format!(
+                        "painter={painter} image={image_tools}: a fila não é fina"
+                    ));
+                    continue;
+                }
+                let legendas: Vec<&str> = rail.entries.iter().filter_map(legenda).collect();
+                for e in &rail.entries {
+                    if e.node_id().is_some() && e.label().is_none_or(str::is_empty) {
+                        fora.push(format!("{:?} sem nome para a dica", e.node_id()));
+                    }
+                }
+                let faixa = Rect::new(0.0, 0.0, 4000.0, ph2d_tokens::TOOL_ROW_H_PX);
+                let mut scene = VectorScene::new();
+                let barra = crate::widget::cromo_barra::Barra::de(Theme::default())
+                    .expect("cartões ligados nesta thread");
+                let (_, medidos) = crate::text_elide::elisao::medindo(|| {
+                    crate::widget::paint_fila_fina(
+                        barra,
+                        &rail,
+                        faixa,
+                        &mut scene,
+                        ts,
+                        Theme::default(),
+                        &store,
+                    );
+                });
+                for m in &medidos {
+                    if legendas.contains(&m.texto.as_str()) && !m.texto.is_empty() {
+                        fora.push(format!("legenda pintada: «{}»", m.texto));
+                    }
+                    if !m.coube() {
+                        fora.push(format!("face cortada: «{}» -> «{}»", m.texto, m.pintado));
+                    }
+                }
+            }
+        }
+        fora
+    });
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(None);
+    assert!(acusados.is_empty(), "{}", acusados.join("\n"));
 }

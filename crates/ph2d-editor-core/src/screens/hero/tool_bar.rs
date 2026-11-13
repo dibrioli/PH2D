@@ -91,6 +91,9 @@ pub fn bar_split(
     area_w: f32,
 ) -> (ToolRail, Vec<crate::widget::ToolRailEntry>) {
     let rail = bar_rail(store, text_system, painter_active, image_tools_on);
+    if fila_fina(&rail) {
+        return bar_split_fina(rail, area_w);
+    }
     let size = store.rail_button_size();
     let content_w = (area_w - Spacing::Xs.px() * 2.0).max(0.0);
     // Cabe tudo? Então não há `⋯` nenhum — e um chip de transbordo vazio seria um controlo morto.
@@ -140,6 +143,97 @@ pub fn bar_split(
         ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), fits),
         over,
     )
+}
+
+/// ⭐ **A altura da faixa neste quadro**: `TOOL_ROW_H_PX` quando a fila é fina ([`fila_fina_da_loja`]),
+/// senão a de sempre ([`tool_bar_h`]).
+#[must_use]
+pub fn tool_bar_h_da_loja(store: &WidgetStore) -> f32 {
+    if fila_fina_da_loja(store) {
+        ph2d_tokens::TOOL_ROW_H_PX
+    } else {
+        tool_bar_h(store.rail_button_size(), 1)
+    }
+}
+
+/// A pergunta do [`fila_fina`] sem montar a fila (o layout não tem o `TextSystem`): em cartões, a
+/// fila da cena é fina; a barra de um módulo só se todas as entradas dela forem glifos ou opções.
+#[must_use]
+pub fn fila_fina_da_loja(store: &WidgetStore) -> bool {
+    crate::widget::lista_flutuante::cromo_em_cartoes()
+        && store.tool_bars().is_none_or(|b| {
+            b.row_lead
+                .iter()
+                .chain(b.row_tail.iter())
+                .all(crate::widget::entrada_fina)
+        })
+}
+
+/// ⭐ **A fila é FINA** (dono 12/11, maquete C `.c15tl`): em cartões, quando todas as entradas são
+/// glifos ou opções. A faixa tem `TOOL_ROW_H_PX` em cartões ([`tool_bar_h`]); uma fila com campos
+/// numéricos (a barra de um módulo) não cabe nela e usa a geometria de sempre, cortada pela faixa.
+#[must_use]
+pub fn fila_fina(rail: &ToolRail) -> bool {
+    crate::widget::lista_flutuante::cromo_em_cartoes() && crate::widget::cabe_na_fila_fina(rail)
+}
+
+/// O transbordo da fila fina: a mesma pergunta (*a fila com esta entrada e o `⋯` cabe?*), pela porta
+/// da fila fina ([`crate::widget::fila_fina_cabe`]).
+fn bar_split_fina(rail: ToolRail, area_w: f32) -> (ToolRail, Vec<crate::widget::ToolRailEntry>) {
+    if crate::widget::fila_fina_cabe(&rail, area_w) {
+        return (rail, Vec::new());
+    }
+    let mut more = ToolRail::new(
+        NodeId(203),
+        "",
+        vec![
+            crate::widget::ToolRailEntry::icon(
+                ids::TOOL_BAR_OVERFLOW,
+                tr("chrome.tool_bar.more"),
+                crate::icons::IconId::MoreHorizontal,
+            )
+            .with_sub(""),
+        ],
+    );
+    let mut fits: Vec<crate::widget::ToolRailEntry> = Vec::new();
+    let mut over: Vec<crate::widget::ToolRailEntry> = Vec::new();
+    for entry in rail.entries {
+        let mut probe = fits.clone();
+        probe.push(entry.clone());
+        probe.extend(more.entries.iter().cloned());
+        let cabe = crate::widget::fila_fina_cabe(&ToolRail::new(NodeId(203), "", probe), area_w);
+        if over.is_empty() && cabe {
+            fits.push(entry);
+        } else {
+            over.push(entry);
+        }
+    }
+    while matches!(fits.last(), Some(crate::widget::ToolRailEntry::Divider)) {
+        fits.pop();
+    }
+    while matches!(over.first(), Some(crate::widget::ToolRailEntry::Divider)) {
+        over.remove(0);
+    }
+    fits.append(&mut more.entries);
+    (
+        ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), fits),
+        over,
+    )
+}
+
+/// ⭐ **Onde cai cada entrada da fila** — fina ou alta, a porta que o pintor, o hit e os popovers
+/// perguntam.
+#[must_use]
+pub fn row_slots(
+    rail: &ToolRail,
+    bar: Rect,
+    size: RailButtonSize,
+) -> Vec<crate::widget::EntrySlot> {
+    if fila_fina(rail) {
+        crate::widget::fila_fina_slots(rail, bar)
+    } else {
+        entry_rects(rail, content_rect(bar), size, RailAxis::Horizontal)
+    }
 }
 
 /// **O rectângulo em que os chips de facto correm** — a faixa menos o respiro.
@@ -240,7 +334,11 @@ pub fn bar_rail(
         }
     }
     let mut rail = ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), entries);
-    crate::widget::size_row_pulldowns(&mut rail, text_system);
+    if fila_fina(&rail) {
+        crate::widget::medir_fila_fina(&mut rail, text_system);
+    } else {
+        crate::widget::size_row_pulldowns(&mut rail, text_system);
+    }
     rail
 }
 
@@ -290,20 +388,25 @@ pub fn paint_tool_bar(
     // vertical regista desde 2026-07-16, pela mesma razão e depois do mesmo report do Enio.
     // ⚠️ Antes dos chips, de propósito: o `HitIndex` caminha de trás para a frente.
     hit_index.register(ids::RAIL_BACKDROP, bar);
-    paint_tool_rail_axis(
-        &rail,
-        content,
-        scene,
-        text_system,
-        theme,
-        store,
-        &|id| Some(motion.get(id).unwrap_or(0.0)),
-        motion.travels(),
-        RailAxis::Horizontal,
-    );
+    match crate::widget::cromo_barra::Barra::de(theme) {
+        Some(barra) if fila_fina(&rail) => {
+            crate::widget::paint_fila_fina(barra, &rail, bar, scene, text_system, theme, store);
+        }
+        _ => paint_tool_rail_axis(
+            &rail,
+            content,
+            scene,
+            text_system,
+            theme,
+            store,
+            &|id| Some(motion.get(id).unwrap_or(0.0)),
+            motion.travels(),
+            RailAxis::Horizontal,
+        ),
+    }
     let mut shapes_chip: Option<Rect> = None;
     let mut mask_group_chip: Option<Rect> = None;
-    for slot in entry_rects(&rail, content, size, RailAxis::Horizontal) {
+    for slot in row_slots(&rail, bar, size) {
         let Some(id) = slot.id else {
             continue; // o divisor não se clica
         };
@@ -548,16 +651,23 @@ pub fn publish_overflow(
     }
     let (rail, over) = bar_split(store, text_system, painter_active, image_tools_on, bar.w);
     store.set_tool_overflow(over);
+    // A fila fina não tem legenda: o nome de cada botão vai na dica (dono 12/11). Quem já tem dica
+    // própria (os do gizmo, undo/redo) fica com ela.
+    if fila_fina(&rail) {
+        for entry in &rail.entries {
+            if let (Some(id), Some(nome)) = (entry.node_id(), entry.label())
+                && store.tooltip_for(id).is_none()
+                && !nome.is_empty()
+            {
+                store.set_tooltip(id, nome.to_owned());
+            }
+        }
+    }
     // F16: a mesma porta da geometria que o pintor e o hit perguntam — a âncora dos popovers.
-    let slots = entry_rects(
-        &rail,
-        content_rect(bar),
-        store.rail_button_size(),
-        RailAxis::Horizontal,
-    )
-    .into_iter()
-    .filter_map(|s| s.id.map(|id| (id, s.rect)))
-    .collect();
+    let slots = row_slots(&rail, bar, store.rail_button_size())
+        .into_iter()
+        .filter_map(|s| s.id.map(|id| (id, s.rect)))
+        .collect();
     store.set_tool_row_slots(slots);
 }
 

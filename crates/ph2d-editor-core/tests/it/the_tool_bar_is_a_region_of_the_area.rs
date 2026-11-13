@@ -118,14 +118,9 @@ fn the_painted_bar_registers_every_chip_where_the_door_says() {
     // ⭐ **A MESMA porta que o pintor usou** — `bar_rail`, não uma lista remontada aqui. Uma
     // segunda montagem seria a tabela paralela que este ficheiro inteiro existe para proibir.
     let rail = tool_bar::bar_rail(&h.store, &mut text, false, h.image_edit.mode_on);
-    let content = tool_bar::content_rect(l.tool_bar);
     let mut seen = 0usize;
-    for slot in entry_rects(
-        &rail,
-        content,
-        h.store.rail_button_size(),
-        RailAxis::Horizontal,
-    ) {
+    // A porta da fila (fina em cartões, alta na saída de referência): `row_slots`.
+    for slot in tool_bar::row_slots(&rail, l.tool_bar, h.store.rail_button_size()) {
         let Some(id) = slot.id else { continue };
         seen += 1;
         let got = h

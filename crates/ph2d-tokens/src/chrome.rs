@@ -63,6 +63,18 @@ pub const PANEL_RESIZE_HANDLE_SIZE_PX: f32 = crate::generated::CHROME_PANEL_RESI
 /// LeftRail tool chip square edge. Per tokens.json `chrome.tool-chip`.
 pub const TOOL_CHIP_PX: f32 = crate::generated::CHROME_TOOL_CHIP;
 
+/// A fila de ferramentas FINA debaixo da faixa (maquete C `.c15tl`, dono 12/11): a altura.
+/// Per tokens.json `chrome.tool-row-h`.
+pub const TOOL_ROW_H_PX: f32 = crate::generated::CHROME_TOOL_ROW_H;
+/// O glifo da fila fina. Per tokens.json `chrome.tool-row-icon`.
+pub const TOOL_ROW_ICON_PX: f32 = crate::generated::CHROME_TOOL_ROW_ICON;
+/// O respiro lateral da fila fina. Per tokens.json `chrome.tool-row-pad`.
+pub const TOOL_ROW_PAD_PX: f32 = crate::generated::CHROME_TOOL_ROW_PAD;
+/// O vão entre dois itens da fila fina. Per tokens.json `chrome.tool-row-gap`.
+pub const TOOL_ROW_GAP_PX: f32 = crate::generated::CHROME_TOOL_ROW_GAP;
+/// O vão entre dois glifos do MESMO grupo. Per tokens.json `chrome.tool-row-group-gap`.
+pub const TOOL_ROW_GROUP_GAP_PX: f32 = crate::generated::CHROME_TOOL_ROW_GROUP_GAP;
+
 /// LeftRail divider gap. Per tokens.json `chrome.divider-gap`.
 pub const DIVIDER_GAP_PX: f32 = crate::generated::CHROME_DIVIDER_GAP;
 

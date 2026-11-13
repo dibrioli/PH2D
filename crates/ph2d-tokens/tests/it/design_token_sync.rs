@@ -38,7 +38,8 @@ use ph2d_tokens::{
     HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, ICON_BTN_SIZE_PX,
     INLINE_ICON_PX, INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX,
     PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius, Spacing, StrokeToken,
-    TOOL_CHIP_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
+    TOOL_CHIP_PX, TOOL_ROW_GAP_PX, TOOL_ROW_GROUP_GAP_PX, TOOL_ROW_H_PX, TOOL_ROW_ICON_PX,
+    TOOL_ROW_PAD_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
 };
 use serde_json::Value;
 
@@ -191,6 +192,11 @@ fn chrome_consts_match_tokens_json() {
         ("panel-head-pad", PANEL_HEAD_PAD_PX),
         ("panel-resize-handle-size", PANEL_RESIZE_HANDLE_SIZE_PX),
         ("tool-chip", TOOL_CHIP_PX),
+        ("tool-row-h", TOOL_ROW_H_PX),
+        ("tool-row-icon", TOOL_ROW_ICON_PX),
+        ("tool-row-pad", TOOL_ROW_PAD_PX),
+        ("tool-row-gap", TOOL_ROW_GAP_PX),
+        ("tool-row-group-gap", TOOL_ROW_GROUP_GAP_PX),
         ("divider-gap", DIVIDER_GAP_PX),
         ("pill-padding", PILL_PADDING_PX),
         ("checkbox-box", CHECKBOX_BOX_PX),

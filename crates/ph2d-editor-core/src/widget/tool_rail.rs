@@ -470,9 +470,14 @@ pub use geometry::{
 #[path = "tool_rail/caption.rs"]
 mod caption;
 pub use caption::{paint_caption, sub_label_font_px};
+mod fila_fina;
 #[path = "tool_rail/paint.rs"]
 mod paint;
 mod paint_cartao;
+pub use fila_fina::{
+    cabe_na_fila_fina, entrada_fina, fila_fina_cabe, fila_fina_slots, lado_do_glifo,
+    medir_fila_fina, paint_fila_fina,
+};
 pub use paint::{paint_tool_rail, paint_tool_rail_axis, paint_tool_rail_t};
 
 #[cfg(test)]

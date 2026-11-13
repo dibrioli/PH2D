@@ -3,6 +3,7 @@
 //! filme da proteção, vista cinza, tinta viva do Wet, depois do undo). E nos estados normais o cache fica.
 
 use super::super::*;
+use super::cache::TROCA_RECOMPOE_SEMPRE;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_painter_effects::adjustments::AdjustmentKind as K;
 
@@ -18,6 +19,13 @@ fn ruido(semente: u32) -> Vec<u8> {
             s ^= s << 5;
             (s >> 24) as u8
         })
+        .collect()
+}
+
+fn relevo(semente: u32) -> Vec<f32> {
+    ruido(semente)[..N]
+        .iter()
+        .map(|&b| f32::from(b) / 64.0)
         .collect()
 }
 
@@ -207,6 +215,17 @@ fn a_troca_sem_recompor_mostra_a_figura_da_recomposicao_inteira() {
             },
             false,
         ),
+        ("papel aceso", |d| d.t.set_substrate_depth(1.0), true),
+        (
+            "relevo de impasto",
+            |d| {
+                d.t.set_substrate_depth(1.0);
+                d.t.heights.insert(d.b, Arc::new(relevo(3)));
+                d.t.covers.insert(d.b, Arc::new(vec![180u8; N]));
+                d.t.invalidate_composite();
+            },
+            true,
+        ),
         (
             "depois do undo",
             |d| {
@@ -264,4 +283,39 @@ fn a_troca_com_a_tinta_viva_do_wet_recompoe_e_mostra_a_figura_certa() {
         traco(&mut d.t, 10.0 + f32::from(alvo.0 as u8 % 5) * 6.0);
     }
     let _ = troca_e_confere(&mut d.t, a, "wet, depois do último traço");
+}
+
+/// N7 — a pista da PLACA drena com `composited = None`: sem sujo nem pista velha, a troca não pede drenagem
+/// (o slot fica) e a figura é, bit a bit, a da recomposição inteira de antes. Com e sem o papel aceso; o
+/// controlo (`TROCA_RECOMPOE_SEMPRE`) volta a pedir.
+#[test]
+fn a_troca_na_pista_da_placa_nao_pede_drenagem_e_a_figura_fica() {
+    for (papel, antes) in [(false, false), (true, false), (true, true)] {
+        let mut d = doc(false);
+        if papel {
+            d.t.set_substrate_depth(1.0);
+            d.t.heights.insert(d.a, Arc::new(relevo(5)));
+        }
+        let (a, b, c) = (d.a, d.b, d.c);
+        for alvo in [a, c, b, a] {
+            if d.t.layers.active() == Some(alvo) {
+                continue;
+            }
+            let certa = inteira(&mut d.t);
+            d.t.pede_a_composicao_inteira();
+            assert!(d.t.take_preview_dirty(), "a placa drena");
+            assert!(d.t.composited.is_none() && !d.t.gpu_lane_stale);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+            d.t.select_layer(alvo);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+            assert_eq!(
+                d.t.preview_dirty, antes,
+                "papel={papel} antes={antes}: a troca pediu (ou não) a drenagem da placa"
+            );
+            assert!(
+                inteira(&mut d.t) == certa,
+                "papel={papel}: a figura depois da troca não é a de antes"
+            );
+        }
+    }
 }

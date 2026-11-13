@@ -25,6 +25,12 @@ impl PainterTool {
         self.paint.stroke_undo.is_some() || self.paint.wetpaint.session.is_some()
     }
 
+    /// N7: o relevo só lê a activa pelo traço aberto (`stroke_height`/`stroke_film`, vazios fora dele); a tinta
+    /// do papel lê os mesmos bytes na tela ou em `images`.
+    pub(crate) fn o_relevo_nao_le_a_activa(&self) -> bool {
+        self.paint.relief.stroke_height.is_empty() && self.paint.relief.stroke_film.is_empty()
+    }
+
     /// Só um traço aberto (sem a tinta viva do Wet, que adormece e marca o próprio sujo: B18.4).
     pub(crate) fn traco_por_fechar(&self) -> bool {
         self.paint.stroke_undo.is_some()

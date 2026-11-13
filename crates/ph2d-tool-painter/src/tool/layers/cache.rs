@@ -11,6 +11,23 @@ thread_local! {
     pub(crate) static TROCA_RECOMPOE_SEMPRE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// N7 (A×B em execução): `true` = a troca com relevo aceso ou na pista da placa recompõe, como antes.
+/// `PH2D_TROCA_RECOMPOE=1` no arranque; a sonda vira-a no mesmo processo.
+pub static TROCA_RECOMPOE_COMO_ANTES: std::sync::atomic::AtomicU8 =
+    std::sync::atomic::AtomicU8::new(2);
+
+fn troca_recompoe_como_antes() -> bool {
+    use std::sync::atomic::Ordering::Relaxed;
+    match TROCA_RECOMPOE_COMO_ANTES.load(Relaxed) {
+        2 => {
+            let v = std::env::var_os("PH2D_TROCA_RECOMPOE").is_some_and(|v| v == "1");
+            TROCA_RECOMPOE_COMO_ANTES.store(u8::from(v), Relaxed);
+            v
+        }
+        v => v == 1,
+    }
+}
+
 impl PainterTool {
     /// Bump the panel's publish revision — and **nothing else**.
     ///
@@ -81,7 +98,10 @@ impl PainterTool {
         if TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
             return false;
         }
-        self.composited.as_ref().is_some_and(|c| c.len() == n)
+        let antes = troca_recompoe_como_antes();
+        // N7: a pista da placa drena com `composited = None`; sem sujo nem pista velha, o slot dela é a figura.
+        let placa_em_dia = !antes && self.composited.is_none() && !self.gpu_lane_stale;
+        (self.composited.as_ref().is_some_and(|c| c.len() == n) || placa_em_dia)
             && !self.preview_dirty
             && self.canvas_rgba.len() == n
             && (self.layers.active() == Some(alvo)
@@ -94,7 +114,7 @@ impl PainterTool {
             && !self.traco_ou_tinta_viva()
             && !self.mask_scratch_active()
             && self.mask_view_grayscale.is_none()
-            && !self.impasto_visible()
+            && (!self.impasto_visible() || (!antes && self.o_relevo_nao_le_a_activa()))
             && !self.papel_atravessa_vidro()
     }
 

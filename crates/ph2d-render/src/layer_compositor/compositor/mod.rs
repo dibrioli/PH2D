@@ -475,6 +475,8 @@ impl LayerCompositor {
             array: None,
             out: None,
             cache: BTreeMap::new(),
+            zeros: None,
+            bytes_enviados: std::cell::Cell::new(0),
             clock: 0,
             scratch_ops: GpuOpScratch::new(),
             op_buffer: None,

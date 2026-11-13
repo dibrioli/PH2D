@@ -537,6 +537,10 @@ pub struct LayerCompositor {
     array: Option<LayerArray>,
     out: Option<OutTex>,
     cache: BTreeMap<u64, CachedSlice>,
+    /// B18.4: a faixa de zeros (só na placa) que limpa a fatia de uma camada nascida transparente.
+    zeros: Option<wgpu::Buffer>,
+    /// B18.4: bytes da CPU enviados às fatias desde a construção (o gate do 1.º toque).
+    bytes_enviados: std::cell::Cell<u64>,
     /// Monotonic frame clock for LRU eviction.
     clock: u64,
     /// Reusable scratch for the flattened GPU op-list (HR-3: no per-frame

@@ -274,6 +274,9 @@ pub struct PainterTool {
     /// Set by `on_deactivate` when it KEEPS the working canvas (there were unbaked edits) instead of
     /// tearing it down, so the shell can bake it back to the sprite before finishing the teardown.
     deferred_bake: bool,
+    /// B18.4: `(chave, versão)` da camada que o «+» fez nascer transparente sem recompor — a placa limpa-lhe
+    /// a fatia sem envio ([`Self::take_camada_nova_limpa`]).
+    camada_nova_limpa: Option<(u64, u64)>,
     /// Structural (layer-model) undo/redo. Driven by the layer ops in
     /// [`crate::tool`] via `commit_structural_edit`.
     undo: crate::undo::UndoController,
@@ -457,6 +460,7 @@ impl Default for PainterTool {
             pending_commit: false,
             edited_since_bind: false,
             deferred_bake: false,
+            camada_nova_limpa: None,
             undo: crate::undo::UndoController::default(),
             undo_writes: 0,
             dirty_rect: None,

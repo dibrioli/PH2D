@@ -18,6 +18,19 @@ impl PainterTool {
         }
     }
 
+    /// **B18.4 — a camada que o «+» fez nascer transparente**, `(chave, versão)`, se a versão ainda é a do
+    /// nascimento (os pixels são os zeros): a prévia na placa limpa-lhe a fatia e acrescenta-a à pilha guardada
+    /// sem recompor (α = 0 deixa a figura). Consome-se: um quadro só.
+    pub fn take_camada_nova_limpa(&mut self) -> Option<(u64, u64)> {
+        let (k, v) = self.camada_nova_limpa.take()?;
+        let agora = self
+            .layer_pixel_versions
+            .get(&RtLayerId(k))
+            .copied()
+            .unwrap_or(0);
+        (agora == v && self.layers.active() == Some(RtLayerId(k))).then_some((k, v))
+    }
+
     /// O cache de composite está quente? — só para diagnóstico.
     #[cfg(test)]
     pub(crate) const fn composited_is_some(&self) -> bool {

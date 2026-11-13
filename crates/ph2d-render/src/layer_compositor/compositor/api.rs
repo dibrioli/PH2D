@@ -374,6 +374,95 @@ impl LayerCompositor {
         Ok(())
     }
 
+    /// **B18.4 — a camada `key` nasceu TRANSPARENTE (α = 0 na tela toda) na `version` do provider:** a fatia
+    /// zera-se NA PLACA (cópia de uma faixa de zeros, que a wgpu zera ao criar) e fica residente nessa versão —
+    /// nenhum byte da CPU; o próximo toque remenda só o sujo. `ops` dimensiona o array como a composição.
+    pub fn nasce_limpa(
+        &mut self,
+        gpu: &GpuContext,
+        ops: &[LayerOp],
+        key: u64,
+        (width, height): (u32, u32),
+        version: u64,
+    ) -> Result<(), LayerCompositeError> {
+        const FAIXA: u32 = 64;
+        let max = gpu.device.limits().max_texture_dimension_2d;
+        if width == 0 || height == 0 || width > max || height > max {
+            return Err(LayerCompositeError::InvalidCanvas { width, height });
+        }
+        validate_op_list(ops)?;
+        self.refuse_adjustments_in_light(ops)?;
+        self.clock += 1;
+        let epoch = self.clock;
+        let cap = self.cache_cap(width, height).max(1);
+        self.ensure_array(gpu, width, height, ops, cap)?;
+        let slice = match self.cache.get(&key) {
+            Some(c) => c.slice,
+            None => {
+                let array_cap = self.array.as_ref().map_or(0, |a| a.capacity).min(cap);
+                self.alloc_slice(array_cap, epoch)?
+            }
+        };
+        self.cache.insert(
+            key,
+            CachedSlice {
+                slice,
+                version,
+                last_used: epoch,
+            },
+        );
+        let pitch = (width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+        let need = u64::from(pitch) * u64::from(FAIXA);
+        if self.zeros.as_ref().is_none_or(|b| b.size() < need) {
+            self.zeros = Some(gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-render layer_composite zeros"),
+                size: need,
+                usage: wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            }));
+        }
+        let (Some(array), Some(zeros)) = (&self.array, &self.zeros) else {
+            return Err(LayerCompositeError::MissingOrMalformedLayer { key });
+        };
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-render layer_composite clear slice"),
+            });
+        for y in (0..height).step_by(FAIXA as usize) {
+            let linhas = FAIXA.min(height - y);
+            enc.copy_buffer_to_texture(
+                wgpu::TexelCopyBufferInfo {
+                    buffer: zeros,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(pitch),
+                        rows_per_image: Some(linhas),
+                    },
+                },
+                wgpu::TexelCopyTextureInfo {
+                    texture: &array.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x: 0, y, z: slice },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::Extent3d {
+                    width,
+                    height: linhas,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+        gpu.queue.submit([enc.finish()]);
+        Ok(())
+    }
+
+    /// Bytes da CPU enviados às fatias desde a construção (B18.4).
+    #[must_use]
+    pub fn bytes_enviados(&self) -> u64 {
+        self.bytes_enviados.get()
+    }
+
     /// Read the output texture back to a region-sized straight-sRGB8 `Vec<u8>`.
     /// Test/verification path only (blocks on `device.poll`); the shell blits
     /// the texture directly. Returns `None` before the first composite.

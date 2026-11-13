@@ -245,6 +245,8 @@ impl PainterTool {
         self.reset_selection_to(id);
         if mantem {
             self.troca_sem_mudar_a_figura(); // B18.4: o «+» transparente não recompõe nem dobra o relevo
+            let v = self.layer_pixel_versions.get(&id).copied().unwrap_or(0);
+            self.camada_nova_limpa = Some((id.0, v));
             if let Some(id) = adormece {
                 self.a_tinta_que_adormeceu_muda(id);
             }

@@ -59,6 +59,8 @@ pub struct PainterGpuPreview {
 thread_local! {
     /// O caminho antigo (semente inteira em todo quadro), o oráculo de `a_regiao_suja_e_a_tela_inteira_ao_bit`.
     pub(crate) static SEMPRE_INTEIRA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// B18.4: o caminho de antes da cura (a camada nova sobe inteira no 1.º toque), o controlo do gate.
+    pub(crate) static NOVA_SEM_LIMPAR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// B20.1: o retângulo sujo + 1 px, ou `None` = semente inteira (1.º quadro, renasce, a CPU foi dona,
@@ -87,6 +89,33 @@ fn regiao_suja(
     let r = painter.preview_gpu_region()?;
     let mesmo_slot = slot.is_some_and(|g| (g.width, g.height) == (w, h));
     (s.dona && mesmas && mesmo_slot).then(|| halo(r, w, h))
+}
+
+/// B18.4: a camada nascida transparente entra na pilha guardada sem recompor (α = 0 deixa a figura) e a sua
+/// fatia zera-se na placa — o 1.º toque compõe e envia só o sujo. Só quando a pilha antiga é a nova sem ela.
+fn nasce_limpa(
+    s: Option<&mut PainterGpuPreview>,
+    ops: &[LayerOp],
+    (key, versao): (u64, u64),
+    wh: (u32, u32),
+) {
+    #[cfg(test)]
+    if SEMPRE_INTEIRA.get() || NOVA_SEM_LIMPAR.get() {
+        return;
+    }
+    let Some(s) = s else { return };
+    let e_ela = |o: &LayerOp| matches!(*o, LayerOp::Layer { key: k, mask: None, clipping: false, .. } if k == key);
+    let sem = ops.iter().filter(|o| !e_ela(o));
+    if ops.iter().filter(|o| e_ela(o)).count() != 1 || !sem.eq(s.entradas.0.iter()) {
+        return;
+    }
+    if s.compositor
+        .nasce_limpa(&s.gpu, ops, key, wh, versao)
+        .is_ok()
+    {
+        s.entradas.0 = ops.to_vec();
+        s.entregue.push((key, versao));
+    }
 }
 
 /// O retângulo alargado 1 texel para cada lado, preso à tela.
@@ -236,6 +265,14 @@ pub(super) fn try_drive(
         return false;
     }
     let renasce = session_slot.as_ref().is_some_and(|s| s.geracao != geracao);
+    if let Some(nova) = painter.take_camada_nova_limpa() {
+        nasce_limpa(
+            session_slot.as_mut().filter(|s| s.dona && !renasce),
+            &ops,
+            nova,
+            (w, h),
+        );
+    }
     if painter.take_preview_dirty() || renasce {
         let sujo = regiao_suja(
             session_slot.as_mut().filter(|_| !renasce),
@@ -628,3 +665,7 @@ fn release_slot(
 #[cfg(test)]
 #[path = "painter_gpu_preview_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "painter_gpu_preview_nova_tests.rs"]
+mod nova_tests;

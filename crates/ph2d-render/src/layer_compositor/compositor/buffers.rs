@@ -190,6 +190,11 @@ impl LayerCompositor {
         }
     }
 
+    fn conta_envio(&self, w: u32, h: u32) {
+        let b = u64::from(w) * u64::from(h) * 4;
+        self.bytes_enviados.set(self.bytes_enviados.get() + b);
+    }
+
     /// Upload one canvas-sized straight-sRGB8 layer into array `slice`.
     pub(super) fn upload_slice(
         &self,
@@ -200,6 +205,7 @@ impl LayerCompositor {
         rgba8: &[u8],
     ) {
         let Some(array) = &self.array else { return };
+        self.conta_envio(width, height);
         gpu.queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &array.texture,
@@ -252,6 +258,7 @@ impl LayerCompositor {
             return;
         }
         let offset = (u64::from(ry) * u64::from(width) + u64::from(rx)) * 4;
+        self.conta_envio(rw, rh);
         gpu.queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &array.texture,

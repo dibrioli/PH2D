@@ -178,6 +178,8 @@ pub struct JointEditorDoc {
     /// A frase do pé: o que a última queda fez.
     pub(crate) note: Option<String>,
     pub(crate) area: Rect,
+    /// O painel de baixo, como a última pintura o deixou.
+    pub panel: Rect,
     /// Onde cada alça pintada mede o cursor.
     pub(crate) geo: Vec<(Handle, crate::paint_stage::Geo)>,
 }
@@ -203,6 +205,7 @@ impl Default for JointEditorDoc {
             counts: Vec::new(),
             note: None,
             area: Rect::default(),
+            panel: Rect::default(),
             geo: Vec::new(),
         }
     }

@@ -228,6 +228,37 @@ fn o_painel_edita_as_duas_rodas_ou_uma_e_abre_o_inspector() {
     );
 }
 
+/// ⭐ **O painel do carro é compacto** (dono 13/11): cartões por assunto, a letra dentro da caixa. Antes (W3)
+/// o Car pedia `350` px (folgas 18, faixa 34, alcance 34, 4 filas de números × 49, Drive 34, Breakable 34);
+/// o alvo é metade, e nenhuma caixa de número estica pelo painel.
+#[test]
+fn o_painel_do_carro_cabe_em_metade_da_altura_e_os_campos_sao_estreitos() {
+    use ph2d_app_joint_editor::doc::Field;
+    use ph2d_card_stack::metrics as cm;
+    const ANTES: f32 = 350.0;
+    let mut m = Mesa::aberta();
+    m.drop("Kart Body", 0);
+    m.drop("Kart Rear Wheel", 1);
+    m.drop("Kart Front Wheel", 2);
+    let h = m.tab().doc.panel.h;
+    assert!(
+        h <= ANTES * 0.5,
+        "o painel do Car pede {h} px (antes {ANTES})"
+    );
+    use Field::{Damping, LimitMax, LimitMin, MotorForce, MotorSpeed, Stiffness, Wheelbase};
+    let fields = [
+        Stiffness, Damping, LimitMin, LimitMax, MotorSpeed, MotorForce, Wheelbase,
+    ];
+    for f in fields {
+        let r = m
+            .tab()
+            .doc
+            .hits_for(&Hit::Field(f))
+            .unwrap_or_else(|| panic!("{f:?} pintado"));
+        assert!(r.w <= cm::FIELD_VALUE_MIN_W * 2.5, "{f:?} mede {} px", r.w);
+    }
+}
+
 impl Mesa {
     fn tab_mut(&mut self) -> &mut JointEditorTab {
         self.hero

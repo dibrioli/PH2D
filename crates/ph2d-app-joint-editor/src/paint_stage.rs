@@ -537,6 +537,5 @@ fn paint_foot(ui: &mut Ui<'_>, r: Rect) {
         r.w - m::CARD_PAD_X * 2.0,
         m::FIELD_H,
     );
-    let c = ui.c(tok);
-    w::text(ui.ts, ui.scene, &s, fr, m::VALUE_PX, c);
+    ui.put(&s, fr, m::VALUE_PX, tok);
 }

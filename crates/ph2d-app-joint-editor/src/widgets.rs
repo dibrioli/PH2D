@@ -2,13 +2,15 @@
 //! regista o alvo dele em `doc.hits` com o rótulo que o leitor de ecrã lê: pintou ⟹ clicável.
 
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, paint_text_elided, stroke_rounded_rect,
+use ph2d_editor_core::paint::{fill_rounded_rect, folga_do_texto, paint_icon, paint_text_elided};
+use ph2d_editor_core::widget::card_field::{
+    Glyph, handle_rect, paint_field_caret, paint_field_frame, value_rect,
 };
 use ph2d_editor_core::widget::card_ink::CardInk;
+use ph2d_editor_core::widget::{card_check_rect, paint_card_check};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::ColorToken;
+use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{Color, VectorScene};
 
 use crate::doc::{Field, Hit, JointEditorDoc};
@@ -17,6 +19,8 @@ use crate::doc::{Field, Hit, JointEditorDoc};
 pub const LIST_W: f32 = 220.0;
 /// O painel de baixo quando não há junta (o título e uma frase).
 pub const PANEL_MIN_H: f32 = 96.0;
+/// A caixa de um número do painel: a célula da letra e um valor de até ~7 caracteres com a unidade.
+pub const NUM_W: f32 = m::FIELD_VALUE_MIN_W * 2.0;
 /// A folga do gabarito dentro do palco (o rótulo da peça cabe por baixo da forma).
 pub const STAGE_PAD: f32 = 48.0;
 /// O maior zoom do desenho, px por metro: o carro de fábrica (2,4 m) fica com ~670 px e sobra palco.
@@ -93,6 +97,17 @@ impl Ui<'_> {
         self.doc.hover.as_ref() == Some(h) || self.doc.pressed.as_ref() == Some(h)
     }
 
+    /// Uma linha de texto na cor `t`.
+    pub fn put(&mut self, s: &str, r: Rect, px: f32, t: ColorToken) {
+        let c = self.c(t);
+        text(self.ts, self.scene, s, r, px, c);
+    }
+
+    pub fn put_centred(&mut self, s: &str, r: Rect, px: f32, t: ColorToken) {
+        let c = self.c(t);
+        text_centred(self.ts, self.scene, s, r, px, c);
+    }
+
     pub fn label(&mut self, s: &str, r: Rect) {
         let c = self.c(ColorToken::CardLabel);
         text(self.ts, self.scene, s, r, m::LABEL_PX, c);
@@ -151,83 +166,81 @@ impl Ui<'_> {
         }
     }
 
-    /// Um número: o rótulo por cima, a caixa com o valor (ou o que se está a escrever, com o cursor).
-    pub fn number(&mut self, r: Rect, label: &str, f: Field, value: Option<f32>) {
-        let lr = Rect::new(r.x, r.y, r.w, m::LABEL_PX + m::LABEL_BOTTOM);
-        self.label(label, lr);
-        let b = Rect::new(r.x, r.y + lr.h, r.w, m::FIELD_H);
+    /// A largura de um botão do tamanho do texto.
+    pub fn button_w(&mut self, label: &str) -> f32 {
+        self.ts.prefix_width(label, m::VALUE_PX) + m::CARD_PAD_X * 2.0
+    }
+
+    /// A largura de uma escolha segmentada: segmentos iguais, do tamanho do maior texto.
+    pub fn segmented_w(&mut self, opts: &[(String, Hit, bool)]) -> f32 {
+        let widest = opts
+            .iter()
+            .map(|(l, _, _)| self.ts.prefix_width(l, m::SEG_TEXT_PX))
+            .fold(0.0, f32::max);
+        #[allow(clippy::cast_precision_loss)]
+        let n = opts.len() as f32;
+        (widest + m::SEG_INSET * 2.0) * n + m::SEG_PAD * 2.0
+    }
+
+    /// ⭐ O campo do cartão do app (`card_field`): a letra ou o ícone na caixa, na cor do rótulo; o valor (ou
+    /// o que se escreve, com o cursor) e a unidade apagada. `name` é o rótulo acessível com a unidade.
+    pub fn number(&mut self, b: Rect, glyph: Glyph<'_>, name: &str, unit: &str, f: Field) {
         let typing = self.doc.typing_shown(f);
-        let bg = if typing.is_some() || self.hot(&Hit::Field(f)) {
-            ColorToken::CardFieldHover
-        } else {
-            ColorToken::CardField
-        };
-        fill_rounded_rect(self.scene, b, m::FIELD_RADIUS, self.c(bg));
-        if typing.is_some() {
-            stroke_rounded_rect(
-                self.scene,
-                b,
-                m::FIELD_RADIUS,
-                m::FIELD_BORDER,
-                self.c(ColorToken::FocusRing),
-            );
+        let hot = self.hot(&Hit::Field(f));
+        paint_field_frame(self.scene, self.ink, b, hot, typing.is_some());
+        let cell = handle_rect(b);
+        let tint = self.c(ColorToken::CardLabel);
+        let mut area = value_rect(b);
+        match glyph {
+            Glyph::Icon(icon) => {
+                let g = m::ICON_GLYPH;
+                let (gx, gy) = (cell.x + (cell.w - g) * 0.5, cell.y + (cell.h - g) * 0.5);
+                let r = Rect::new(gx, gy, g, g);
+                paint_icon(self.scene, icon, r, tint, StrokeToken::Default.px());
+            }
+            Glyph::Text(t) => {
+                // Uma pega mais larga que a célula («Min») empurra o valor em vez de lhe tocar.
+                let gw = self.ts.prefix_width(t, m::LABEL_PX) + m::SEG_INSET * 2.0;
+                let cell = Rect::new(cell.x, cell.y, cell.w.max(gw), cell.h);
+                text_centred(self.ts, self.scene, t, cell, m::LABEL_PX, tint);
+                let x = cell.x + cell.w;
+                area = Rect::new(x, area.y, (area.x + area.w - x).max(0.0), area.h);
+            }
         }
         let shown = typing
             .clone()
-            .unwrap_or_else(|| value.map_or_else(String::new, format));
-        let inner = Rect::new(b.x + m::FIELD_PAD_R, b.y, b.w - m::FIELD_PAD_R * 2.0, b.h);
+            .unwrap_or_else(|| self.doc.value(f).map_or_else(String::new, format));
         let c = self.c(ColorToken::Text1);
-        text(self.ts, self.scene, &shown, inner, m::VALUE_PX, c);
+        text(self.ts, self.scene, &shown, area, m::VALUE_PX, c);
+        let vw = self.ts.prefix_width(&shown, m::VALUE_PX).min(area.w);
         if typing.is_some() {
-            let x = inner.x + self.ts.prefix_width(&shown, m::VALUE_PX).min(inner.w);
-            let caret = Rect::new(
-                x,
-                b.y + m::SEG_PAD * 2.0,
-                m::FIELD_BORDER,
-                b.h - m::SEG_PAD * 4.0,
-            );
-            fill_rounded_rect(self.scene, caret, 0.0, c);
+            let y = area.y + folga_do_texto(area.h, m::VALUE_PX);
+            paint_field_caret(self.scene, self.ink, area.x + vw, y, m::VALUE_PX);
+        } else if !unit.is_empty() {
+            let x = area.x + vw + m::SEG_PAD * 2.0;
+            let u = Rect::new(x, b.y, (area.x + area.w - x).max(0.0), b.h);
+            text(self.ts, self.scene, unit, u, m::LABEL_PX, tint);
         }
-        self.hit(b, Hit::Field(f), label);
+        self.hit(b, Hit::Field(f), name);
     }
 
-    /// Uma caixa de marcar com o rótulo à direita (caixas, nunca toggles: dono 10/11).
-    pub fn check(&mut self, r: Rect, label: &str, h: Hit, on: bool) {
-        let side = m::CHECK_BOX;
-        let b = Rect::new(r.x, r.y + (r.h - side) * 0.5, side, side);
-        if on {
-            fill_rounded_rect(self.scene, b, m::SEG_RADIUS, self.c(ColorToken::Accent));
-            let c = self.c(ColorToken::AccentFg);
-            let tick = [
-                (b.x + side * 0.25, b.y + side * 0.52),
-                (b.x + side * 0.43, b.y + side * 0.70),
-                (b.x + side * 0.76, b.y + side * 0.32),
-            ];
-            ph2d_editor_core::paint::stroke_polyline(self.scene, &tick, LINE, c);
-        } else {
-            let bg = if self.hot(&h) {
-                ColorToken::CardFieldHover
-            } else {
-                ColorToken::CardField
-            };
-            fill_rounded_rect(self.scene, b, m::SEG_RADIUS, self.c(bg));
-            stroke_rounded_rect(
-                self.scene,
-                b,
-                m::SEG_RADIUS,
-                m::FIELD_BORDER,
-                self.c(ColorToken::Border),
-            );
-        }
-        let t = Rect::new(
-            b.x + side + m::CHECK_GAP,
-            r.y,
-            r.w - side - m::CHECK_GAP,
-            r.h,
-        );
-        let c = self.c(ColorToken::Text1);
-        text(self.ts, self.scene, label, t, m::VALUE_PX, c);
-        self.hit(r, h, label);
+    /// A largura de uma caixa de marcar na moldura.
+    pub fn check_w(&mut self, label: &str) -> f32 {
+        let t = self.ts.prefix_width(label, m::VALUE_PX);
+        m::SEG_INSET + m::CHECK_BOX + m::CHECK_GAP + t + m::FIELD_PAD_R
+    }
+
+    /// A caixa de marcar do app numa MOLDURA, como a Godot (dono 13/11): caixa e texto dentro do fundo
+    /// de um campo, a moldura inteira clicável. Caixa, nunca toggle (dono 10/11).
+    pub fn check(&mut self, r: Rect, label: &str, name: &str, h: Hit, on: bool) {
+        let hot = self.hot(&h);
+        paint_field_frame(self.scene, self.ink, r, hot, false);
+        let bx = card_check_rect(r.x + m::SEG_INSET, r.y, r.h);
+        paint_card_check(self.scene, self.ink, bx, on, hot);
+        let x = r.x + m::SEG_INSET + m::CHECK_BOX + m::CHECK_GAP;
+        let t = Rect::new(x, r.y, r.x + r.w - x, r.h);
+        self.put(label, t, m::VALUE_PX, ColorToken::Text1);
+        self.hit(r, h, name);
     }
 }
 

@@ -65,13 +65,15 @@ pub fn paint(
     doc.area = area;
     let ink = CardInk::of_list(theme);
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));
-    let l = Layout::of(area, crate::panel::wanted(doc));
     let mut ui = Ui {
         doc,
         scene,
         ts,
         ink,
     };
+    let want = crate::panel::wanted(&mut ui, Layout::of(area, 0.0).panel.w);
+    let l = Layout::of(area, want);
+    ui.doc.panel = l.panel;
     for r in [l.list, l.top, l.stage, l.panel] {
         fill_rounded_rect(ui.scene, r, m::CARD_RADIUS, ui.c(ColorToken::KanbanCard));
     }
@@ -154,23 +156,17 @@ fn paint_list(ui: &mut Ui<'_>, r: Rect) {
         );
         let tx = row.x + m::FIELD_PAD_R + dot + m::CHECK_GAP;
         let cw = ui.ts.prefix_width(&count, m::VALUE_PX) + m::FIELD_PAD_R;
-        let c = ui.c(ColorToken::Text1);
-        w::text(
-            ui.ts,
-            ui.scene,
+        ui.put(
             &name,
             Rect::new(tx, row.y, (row.x + row.w - cw - tx).max(0.0), row.h),
             m::VALUE_PX,
-            c,
+            ColorToken::Text1,
         );
-        let c2 = ui.c(ColorToken::Text2);
-        w::text(
-            ui.ts,
-            ui.scene,
+        ui.put(
             &count,
             Rect::new(row.x + row.w - cw, row.y, cw, row.h),
             m::VALUE_PX,
-            c2,
+            ColorToken::Text2,
         );
         ui.hit(row, h, &name);
         y += m::FIELD_H + m::FIELD_ROW_GAP;
@@ -187,14 +183,11 @@ fn paint_list(ui: &mut Ui<'_>, r: Rect) {
         ui.button(rm, tr("joint_editor.remove"), Hit::Remove, false);
     } else {
         fill_rounded_rect(ui.scene, rm, m::FIELD_RADIUS, ui.c(ColorToken::CardField));
-        let c = ui.c(ColorToken::TextDisabled);
-        w::text_centred(
-            ui.ts,
-            ui.scene,
+        ui.put_centred(
             tr("joint_editor.remove"),
             rm,
             m::VALUE_PX,
-            c,
+            ColorToken::TextDisabled,
         );
     }
 }
@@ -369,23 +362,17 @@ fn paint_menu(ui: &mut Ui<'_>, top: Rect, menu: Menu) {
         }
         let tw = (row.x + row.w - m::FIELD_PAD_R - tx).max(0.0);
         let half_h = row.h * 0.5;
-        let c = ui.c(ColorToken::Text1);
-        w::text(
-            ui.ts,
-            ui.scene,
+        ui.put(
             &name,
             Rect::new(tx, row.y + m::SEG_PAD, tw, half_h),
             m::VALUE_PX,
-            c,
+            ColorToken::Text1,
         );
-        let c2 = ui.c(ColorToken::Text2);
-        w::text(
-            ui.ts,
-            ui.scene,
+        ui.put(
             &sub,
             Rect::new(tx, row.y + half_h - m::SEG_PAD, tw, half_h),
             w::SMALL_PX,
-            c2,
+            ColorToken::Text2,
         );
         let a11y = format!("{name}: {sub}");
         ui.hit(row, hit, &a11y);

@@ -346,94 +346,11 @@ pub(crate) fn vidro_neutro(v: &crate::compositor::vidro::Vidro) -> bool {
     *v == [0; 7]
 }
 
-/// A janela dos píxeis com alfa de um plano RGBA8 de `w` píxeis por linha; `Untouched` se nenhum. É onde virar
-/// a marca do Wet de uma camada muda a luz do papel: alfa 0 deixa-o inteiro nas duas leis
-/// (`relief_fields::papel_a_vista`), então fora dela a figura é a mesma (B10c). Com 1 texel de moldura: a altura
-/// do papel muda nesses texels e a normal dos vizinhos lê-a (diferença central).
-pub(crate) fn janela_da_tinta(rgba: &[u8], w: usize) -> PlaneReach {
-    let (px, resto) = rgba.as_chunks::<4>();
-    if !resto.is_empty() {
-        return PlaneReach::Whole;
-    }
-    let janela = if JANELA_DA_TINTA_PARALELA.with(std::cell::Cell::get) {
-        janela_do_alfa_paralela(px, w)
-    } else {
-        janela_fora_do_neutro(
-            px,
-            w,
-            |l| l.iter().fold(0u8, |a, p| a | p[3]) == 0,
-            |p| p[3] == 0,
-        )
-    };
-    match janela {
-        PlaneReach::Window(j) => {
-            let linhas = px.len() / w;
-            let (row, col) = (j.row.saturating_sub(1), j.col.saturating_sub(1));
-            PlaneReach::Window(PlaneWindow {
-                row,
-                rows: (j.row + j.rows + 1).min(linhas) - row,
-                col,
-                cols: (j.col + j.cols + 1).min(w) - col,
-                ..j
-            })
-        }
-        outro => outro,
-    }
-}
-
-thread_local! {
-    /// **A chave do A×B** (n.º 7 item 3, o «+» do Wet): `true` = a janela do alfa por faixas de linhas em paralelo;
-    /// `false` = a busca em série de sempre (o oráculo). As duas dão a mesma janela.
-    pub(crate) static JANELA_DA_TINTA_PARALELA: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
-}
-
-/// Linhas por faixa da busca paralela (4K: 2160 linhas → 34 faixas de ~1 MB).
-const LINHAS_POR_FAIXA: usize = 64;
-
-/// A janela dos texels de alfa ≠ 0, por faixas de linhas em paralelo: cada faixa devolve (1.ª linha, última linha,
-/// menor coluna, maior coluna + 1) dos texels com alfa, e a redução junta-as. Mesmo resultado que
-/// [`janela_fora_do_neutro`] com o neutro «alfa 0».
-fn janela_do_alfa_paralela(px: &[[u8; 4]], stride: usize) -> PlaneReach {
-    use rayon::prelude::*;
-    if stride == 0 || px.is_empty() || !px.len().is_multiple_of(stride) {
-        return PlaneReach::Whole;
-    }
-    #[cfg(test)]
-    TEXELS_VARRIDOS.with(|c| c.set(c.get() + px.len()));
-    type Caixa = Option<(usize, usize, usize, usize)>;
-    let junta = |a: Caixa, b: Caixa| match (a, b) {
-        (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.max(b.1), a.2.min(b.2), a.3.max(b.3))),
-        (x, None) | (None, x) => x,
-    };
-    let caixa = px
-        .par_chunks(stride * LINHAS_POR_FAIXA)
-        .enumerate()
-        .map(|(f, faixa)| {
-            let mut c: Caixa = None;
-            for (k, l) in faixa.chunks_exact(stride).enumerate() {
-                if l.iter().fold(0u8, |a, p| a | p[3]) == 0 {
-                    continue;
-                }
-                let r = f * LINHAS_POR_FAIXA + k;
-                let ini = l.iter().position(|p| p[3] != 0).unwrap_or(0);
-                let fim = l.iter().rposition(|p| p[3] != 0).unwrap_or(ini) + 1;
-                c = junta(c, Some((r, r, ini, fim)));
-            }
-            c
-        })
-        .reduce(|| None, junta);
-    match caixa {
-        None => PlaneReach::Untouched,
-        Some((row, last, col, end)) => PlaneReach::Window(PlaneWindow {
-            row,
-            rows: last - row + 1,
-            col,
-            cols: end - col,
-            stride,
-            plane_len: px.len(),
-        }),
-    }
-}
+#[path = "undo_delta_confine_janela.rs"]
+mod janela;
+#[cfg(test)]
+pub(crate) use janela::JANELA_DA_TINTA_POR_PALAVRAS;
+pub(crate) use janela::janela_da_tinta;
 
 #[cfg(test)]
 thread_local! {
@@ -542,49 +459,6 @@ impl<T> StoredMap<T> {
 #[cfg(test)]
 mod tests {
     use super::PlaneWindow;
-
-    /// **A janela da tinta em paralelo é a da série** (n.º 7 item 3): planos com tinta na 1.ª e na última linha, a
-    /// cavalo de duas faixas, num texel só, nas colunas extremas, e vazios. Controlo: as duas chaves passam pela
-    /// porta pública ([`super::janela_da_tinta`]) e a série é o oráculo.
-    #[test]
-    fn a_janela_da_tinta_paralela_e_a_da_serie() {
-        use super::{JANELA_DA_TINTA_PARALELA, PlaneReach, janela_da_tinta};
-        let w = 37usize;
-        let h = super::LINHAS_POR_FAIXA * 3 + 5;
-        let casos: &[&[(usize, usize)]] = &[
-            &[],
-            &[(0, 0)],
-            &[(h - 1, w - 1)],
-            &[(63, 5), (64, 30)],
-            &[(10, 36), (150, 0), (70, 12)],
-            &[(128, 7)],
-            &[(0, 3), (h - 1, 3)],
-        ];
-        let mut vistas = 0;
-        for alfas in casos {
-            let mut rgba = vec![0u8; w * h * 4];
-            for &(r, c) in *alfas {
-                rgba[(r * w + c) * 4 + 3] = 9;
-            }
-            // RGB sem alfa não conta como tinta.
-            rgba[(5 * w + 6) * 4] = 200;
-            let com = |p| {
-                JANELA_DA_TINTA_PARALELA.with(|c| c.set(p));
-                let j = janela_da_tinta(&rgba, w);
-                JANELA_DA_TINTA_PARALELA.with(|c| c.set(true));
-                j
-            };
-            let (par, ser) = (com(true), com(false));
-            assert_eq!(par, ser, "tinta em {alfas:?}");
-            if alfas.is_empty() {
-                assert_eq!(ser, PlaneReach::Untouched);
-            } else {
-                vistas += 1;
-                assert!(matches!(ser, PlaneReach::Window(_)), "{alfas:?}: {ser:?}");
-            }
-        }
-        assert_eq!(vistas, casos.len() - 1);
-    }
 
     /// **A região CONTÉM a janela de que ela veio** — a propriedade, não a igualdade.
     ///

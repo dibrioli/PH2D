@@ -243,7 +243,7 @@ impl PainterTool {
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
         let nasce_neutra = rgba.is_none();
-        let rgba = rgba.unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+        let rgba = rgba.unwrap_or_else(|| tela_transparente((w as usize) * (h as usize) * 4));
         crate::sonda_partes::parte("mais.tela_zero");
         self.replace_canvas(Arc::new(rgba));
         crate::sonda_partes::parte("mais.replace_canvas");
@@ -604,5 +604,76 @@ pub(crate) fn reparent_in(
             find(stack, t).is_some_and(|tgt| stack.move_to_sibling_of(d, tgt, true))
         }
         PanelRowDrop::End => stack.move_to_root_bottom_above_base(d),
+    }
+}
+
+thread_local! {
+    /// **A chave do A×B** (n.º 7 item 3, a tela do «+»): `true` = [`tela_transparente`] pede ao alocador acima do
+    /// tecto do limiar dinâmico do mmap; `false` = o `vec![0u8; n]` de antes. Os bytes são os mesmos.
+    pub(crate) static TELA_NOVA_PELO_MMAP: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
+/// Acima disto o `calloc` do glibc vai SEMPRE ao `mmap` (o limiar dinâmico pára em `DEFAULT_MMAP_THRESHOLD_MAX` =
+/// 32 MiB em 64 bits); páginas de `mmap` nascem zeradas e só pesam quando escritas.
+const PISO_DO_MMAP: usize = 32 * 1024 * 1024 + 4096;
+
+/// Abaixo disto o `memset` do heap custa menos que um `mmap`/`munmap`.
+const TELA_MINIMA_PELO_MMAP: usize = 1024 * 1024;
+
+/// **A tela transparente do «+»**: `n` zeros sem tocar uma página. Um plano de 4K tem 31,6 MiB, abaixo do tecto de
+/// 32 MiB do limiar dinâmico do glibc: depois de libertar um plano destes, o limiar sobe acima dele e o
+/// `vec![0u8; n]` seguinte sai do heap com `memset` (medido: 18–29 ms e 33,2 MB tocados no fio do «+»). Pedir a
+/// capacidade acima do tecto leva-o sempre ao `mmap`; a folga é só endereço, nunca escrita. Os clones do plano
+/// (`Arc::make_mut`) copiam o `len`, não a capacidade.
+pub(crate) fn tela_transparente(n: usize) -> Vec<u8> {
+    if !TELA_NOVA_PELO_MMAP.get() || !(TELA_MINIMA_PELO_MMAP..PISO_DO_MMAP).contains(&n) {
+        return vec![0u8; n];
+    }
+    // `vec![0; _]` vai pelo `alloc_zeroed` (o `calloc`); o `truncate` guarda a capacidade, então o bloco é libertado
+    // com o mesmo tamanho com que nasceu.
+    let mut v = vec![0u8; PISO_DO_MMAP];
+    v.truncate(n);
+    v
+}
+
+#[cfg(test)]
+mod tela_transparente_tests {
+    use super::{PISO_DO_MMAP, TELA_NOVA_PELO_MMAP, tela_transparente};
+
+    /// As faltas de página menores deste fio × 4 KiB.
+    fn faltas_do_fio() -> u64 {
+        let s = std::fs::read_to_string("/proc/thread-self/stat").unwrap_or_default();
+        let resto = s.rsplit_once(") ").map_or("", |(_, r)| r);
+        resto
+            .split(' ')
+            .nth(7)
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0)
+            * 4096
+    }
+
+    /// **A tela do «+» a 4K não toca páginas e é só zeros** (n.º 7 item 3). O alocador é aquecido como no app: três
+    /// planos de 4K alocados e libertados sobem o limiar dinâmico acima do plano. Controlo, no mesmo fio: a
+    /// chave desligada dá os mesmos bytes; o tamanho abaixo do mínimo fica no `vec!` (capacidade exacta).
+    #[test]
+    fn a_tela_nova_de_4k_nasce_sem_tocar_paginas() {
+        let n = 3840 * 2160 * 4;
+        for _ in 0..3 {
+            let v = std::hint::black_box(vec![7u8; n]);
+            drop(v);
+        }
+        let f0 = faltas_do_fio();
+        let t = tela_transparente(n);
+        let tocado = faltas_do_fio() - f0;
+        assert!(t.capacity() >= PISO_DO_MMAP, "capacidade {}", t.capacity());
+        assert!(tocado < 1 << 20, "a tela nova tocou {tocado} bytes");
+        assert_eq!(t.len(), n);
+        TELA_NOVA_PELO_MMAP.set(false);
+        let antes = tela_transparente(n);
+        TELA_NOVA_PELO_MMAP.set(true);
+        assert_eq!(antes.capacity(), n);
+        assert!(t == antes, "os bytes da tela nova são os de antes");
+        assert!(t.iter().all(|&b| b == 0));
+        assert_eq!(tela_transparente(64 * 64 * 4).capacity(), 64 * 64 * 4);
     }
 }

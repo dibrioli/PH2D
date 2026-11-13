@@ -126,3 +126,36 @@ abaixo.
 - **Falta medir:** a decomposição 3,8 + 2 é do handoff, não foi re-medida (sem sonda neste subagente). Quem
   retomar: ponha `crate::sonda_partes::parte` em volta do `bring_home` e do `abre_o_passo` no pen-down Wet e use
   a mesma sonda com `PH2D_SONDA_TOQUES`.
+
+## Continuação 2 (13/11): o «+» do Wet por dentro (sonda `N7_ITEM3_sonda_wet_partes_r1.log`, load 2,7–6)
+
+Medição própria: um teste temporário, não comitado, com a cena da sonda (Wet Wash 4K, 2 traços, «+», 2 quadros).
+As variantes eram intercaladas no MESMO processo, 8 blocos, perfil `smoke`, e o resumo é o mínimo.
+
+- **`tela_zero`: curado** (chave `TELA_NOVA_PELO_MMAP`, `tool/layers/mutate.rs`). Já era `vec![0u8; n]`, um calloc.
+  O defeito é do glibc. 4K são 31,6 MiB, abaixo do tecto de 32 MiB do limiar dinâmico do mmap. Depois de se
+  libertar um plano destes, o limiar sobe e o calloc seguinte sai do heap com `memset`: 18–29 ms e 33,2 MB tocados.
+  `tela_transparente` pede `PISO_DO_MMAP` (32 MiB + 4 KiB) e faz `truncate(n)`, então vai sempre ao mmap. A folga
+  é só endereço, e os clones copiam o `len`. A partir de 1 MiB. Sem `unsafe` (o crate o proíbe). A×B: na rota nova
+  a parte nunca passou de 0,3 ms; na antiga, 2,5–29 ms. Nada lê a tela nova inteira a seguir: o commit
+  (`tela_nova_neutra`) não a varre, o adormeceu lê a camada que saiu, e o preview compõe só a caixa suja.
+  Gate `a_tela_nova_de_4k_nasce_sem_tocar_paginas`: o alocador é aquecido com 3 planos, o gate pede menos de 1 MB
+  tocado, a capacidade e os mesmos bytes da chave desligada. Mutação: `vec![0; n]` deu vermelho.
+- **`adormeceu_muda`: o custo é CONTENÇÃO, não a varredura.** A mesma `janela_da_tinta`, repetida 30 ms depois,
+  custa 2–3 ms. Logo após o «+», custa 12–14 ms, porque um fio de fundo nascido no flush disputa a memória. O
+  provável é `encolhe_num_fio` do `wet_guarda_adormecida`; isto não está provado. A paralela (rayon) era a PIOR,
+  com 14–46 ms contra 9–12 ms da série, porque o pool está ocupado. Por isso SAIU, com o gate dela. No lugar dela
+  entrou `janela_do_alfa_por_palavras`: OR de `u64` com a máscara do alfa, e nas linhas da faixa só se procura onde
+  a caixa pode alargar. Chave `JANELA_DA_TINTA_POR_PALAVRAS`. Mínimo sob contenção: 5,7 contra 12,2 ms; em calma,
+  2,0 contra 3,0 ms. Gate `a_janela_da_tinta_por_palavras_e_a_da_serie` com largura par e ímpar, a última coluna
+  fora das palavras e os dois píxeis de uma palavra. Mutação: o 1.º píxel do par sempre, deu vermelho.
+  **Próximo alvo:** adiar o fio de compressão para depois do «+», ou fazer a varredura antes de ele nascer.
+- **`preview` (5,5–31 ms): NÃO curado, só medido.** O braço é `PartialComposite` sobre a caixa suja, que é a janela
+  da tinta. A cena da sonda tem 2 traços, cerca de 400 × 360 px. O custo varia de 4 a 31 ms com a mesma caixa, a
+  mesma família de contenção. O cache do fundo cobre: a pilha não é recomposta inteira.
+- ⚠️ **Defeito visto, não tocado:** `a_tinta_que_adormeceu_muda` → `mark_dirty` sobe a versão da camada ACTIVA, que
+  depois do «+» já é a nova. Com isso o `camada_nova_limpa` (a fatia sem envio da pista GPU) nunca casa no «+» do
+  Wet. Pode ser por acaso o certo, porque a pista GPU tem de ver a mudança da janela da tinta. Não mexer sem um gate
+  da pista GPU.
+- Vizinhos verdes por nome: `adormec` 29, `confin` 28, `janela` 17, `mais_sem_diff` 3. A sonda tem o eixo novo
+  `PH2D_SONDA_TELA_ZERO=ab`; `PH2D_SONDA_JANELA` passa a ser a chave por palavras.

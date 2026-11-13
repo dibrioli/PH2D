@@ -98,9 +98,13 @@ fn sonda_primeiro_traco() {
         .unwrap_or(1);
     // `PH2D_SONDA_MAIS` (mesmos valores): o eixo A×B passa a ser a chave `MAIS_SEM_DIFF` do «+» (n.º 7 item 3).
     let eixo_mais = std::env::var("PH2D_SONDA_MAIS").is_ok();
-    // `PH2D_SONDA_JANELA` (mesmos valores): o eixo é a chave `JANELA_DA_TINTA_PARALELA` (o «adormeceu» do «+»).
+    // `PH2D_SONDA_JANELA` (mesmos valores): o eixo é a chave `JANELA_DA_TINTA_POR_PALAVRAS` (o «adormeceu» do «+»).
     let eixo_janela = std::env::var("PH2D_SONDA_JANELA").is_ok();
-    let eixo = if eixo_janela {
+    // `PH2D_SONDA_TELA_ZERO` (mesmos valores): o eixo é a chave `TELA_NOVA_PELO_MMAP` (a tela do «+»).
+    let eixo_tela = std::env::var("PH2D_SONDA_TELA_ZERO").is_ok();
+    let eixo = if eixo_tela {
+        "PH2D_SONDA_TELA_ZERO"
+    } else if eixo_janela {
         "PH2D_SONDA_JANELA"
     } else if eixo_mais {
         "PH2D_SONDA_MAIS"
@@ -125,8 +129,11 @@ fn sonda_primeiro_traco() {
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
         .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
     for (n, rota) in corridas {
-        if eixo_janela {
-            crate::undo_delta::confine::JANELA_DA_TINTA_PARALELA.with(|c| c.set(rota));
+        if eixo_tela {
+            crate::tool::layers::TELA_NOVA_PELO_MMAP.set(rota);
+            println!("ROTA\t{n}\ttela_pelo_mmap={rota}");
+        } else if eixo_janela {
+            crate::undo_delta::confine::JANELA_DA_TINTA_POR_PALAVRAS.with(|c| c.set(rota));
             println!("ROTA\t{n}\tjanela_paralela={rota}");
         } else if eixo_mais {
             crate::undo_planes::MAIS_SEM_DIFF.set(rota);
@@ -246,5 +253,6 @@ fn sonda_primeiro_traco() {
     forca_no_teste(None);
     crate::undo::window::set_vidro_pelo_journal(true);
     crate::undo_planes::MAIS_SEM_DIFF.set(true);
-    crate::undo_delta::confine::JANELA_DA_TINTA_PARALELA.with(|c| c.set(true));
+    crate::undo_delta::confine::JANELA_DA_TINTA_POR_PALAVRAS.with(|c| c.set(true));
+    crate::tool::layers::TELA_NOVA_PELO_MMAP.set(true);
 }

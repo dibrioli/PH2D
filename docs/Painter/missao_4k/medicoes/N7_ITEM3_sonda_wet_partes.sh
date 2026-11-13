@@ -1,6 +1,6 @@
 #!/bin/bash
 # Sonda do n.º 7 item 3 (resto do «+»): Wet Wash 4K, as PARTES do «+» (ms e MB do fio principal, `sonda_partes`)
-# e a chave `JANELA_DA_TINTA_PARALELA` ligada × desligada (PH2D_SONDA_JANELA=ab), 4 blocos rodados.
+# e a chave `JANELA_DA_TINTA_POR_PALAVRAS` ligada × desligada (a paralela saiu; `PH2D_SONDA_TELA_ZERO=ab` é o eixo da tela do «+») (PH2D_SONDA_JANELA=ab), 4 blocos rodados.
 # Fila pesada (coordenador): bash scripts/fila-pesada.sh pôr 'bash docs/Painter/missao_4k/medicoes/N7_ITEM3_sonda_wet_partes.sh'
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor || exit 1
 cat /proc/loadavg

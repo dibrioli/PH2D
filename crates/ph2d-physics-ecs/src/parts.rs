@@ -59,6 +59,19 @@ pub fn tem_corpo(world: &World, e: Entity) -> bool {
     world.get::<RigidBody>(e).is_some() || owner_body(world, e).is_some()
 }
 
+/// **A ponte ignora o atrito desta forma** (Bug #14): o corpo dela (`e` ou o dono) é um
+/// `PlatformPlayer`, e a ponte (`player_sem_atrito`) impõe-lhe atrito 0 + `Min`. A pergunta do Inspector e a
+/// da ponte são esta mesma função.
+#[must_use]
+pub fn atrito_ignorado(world: &World, e: Entity) -> bool {
+    let corpo = if world.get::<RigidBody>(e).is_some() {
+        Some(e)
+    } else {
+        owner_body(world, e)
+    };
+    corpo.is_some_and(|c| world.get::<crate::PlatformPlayer>(c).is_some())
+}
+
 /// O `BodyKind` que governa esta forma: o dela mesma se `e` for corpo, senão o do
 /// dono. `None` quando não há corpo nenhum acima — aquela forma **não é
 /// simulada**, e quem desenha ou descreve tem de dizer isso em vez de inventar
@@ -320,6 +333,31 @@ mod shapes_tests {
             ..Collider::default()
         };
         world.spawn((Name::new(nome), c, ChildOf(pai))).id()
+    }
+
+    /// Bug #14: a forma do player (no corpo, filha ou neta por um grupo) tem o atrito ignorado; a de
+    /// um corpo sem `PlatformPlayer`, e um corpo filho do player, não.
+    #[test]
+    fn so_a_forma_de_um_player_tem_o_atrito_ignorado() {
+        let mut w = World::new();
+        let rb = |kind| RigidBody { kind };
+        let bola = ColliderShape::Ball { radius: 0.5 };
+        let player = w
+            .spawn((rb(BodyKind::Dynamic), crate::PlatformPlayer::default()))
+            .id();
+        let filha = forma(&mut w, "Collision Shape", player, bola);
+        let grupo = w.spawn(ChildOf(player)).id();
+        let neta = forma(&mut w, "Feet", grupo, bola);
+        let caixa = w.spawn((rb(BodyKind::Dynamic), ChildOf(player))).id();
+        let da_caixa = forma(&mut w, "Box shape", caixa, bola);
+        let chao = w.spawn(rb(BodyKind::Static)).id();
+        let do_chao = forma(&mut w, "Floor shape", chao, bola);
+        for e in [player, filha, neta] {
+            assert!(atrito_ignorado(&w, e), "{e:?} é do player");
+        }
+        for e in [caixa, da_caixa, chao, do_chao] {
+            assert!(!atrito_ignorado(&w, e), "{e:?} não é do player");
+        }
     }
 
     /// O «Floor» da cena 120 com mais formas: um grupo no meio, um corpo filho (que leva as dele) e uma

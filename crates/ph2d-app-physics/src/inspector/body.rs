@@ -201,6 +201,7 @@ pub fn build_physics_info(
             dominance: 0,
             restitution_combine_tag: 0,
             friction_combine_tag: 0,
+            friction_ignored: false,
             linear_damping: 0.0,
             angular_damping: 0.0,
             damp_mode_tag: 0,
@@ -337,6 +338,7 @@ pub fn build_physics_info(
         dominance,
         restitution_combine_tag: material.restitution.tag(),
         friction_combine_tag: material.friction.tag(),
+        friction_ignored: ph2d_physics_ecs::atrito_ignorado(world, entity),
         linear_damping: damping.linear,
         angular_damping: damping.angular,
         damp_mode_tag: damping.mode.tag(),
@@ -441,6 +443,30 @@ mod tests {
         )
         .expect("idem");
         assert!(info.signal.is_empty() && info.signal_leave.is_empty());
+    }
+
+    /// Bug #14: o retrato diz que a ponte ignora o atrito da forma do player (o corpo e a filha).
+    #[test]
+    fn o_retrato_do_player_diz_que_o_atrito_e_ignorado() {
+        let mut world = World::new();
+        let rb = RigidBody {
+            kind: BodyKind::Dynamic,
+        };
+        let t = Transform::IDENTITY;
+        let corpo = world.spawn((t, rb, Collider::default())).id();
+        let filha = world
+            .spawn((t, Collider::default(), ph2d_ecs::ChildOf(corpo)))
+            .id();
+        let ignorado = |w: &World, e: ph2d_ecs::Entity| {
+            let tags = ph2d_tags::TagTree::new();
+            build_physics_info(w, e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0, &tags)
+                .expect("§11")
+                .friction_ignored
+        };
+        assert!(!ignorado(&world, corpo) && !ignorado(&world, filha));
+        let player = ph2d_physics_ecs::PlatformPlayer::default();
+        world.entity_mut(corpo).insert(player);
+        assert!(ignorado(&world, corpo) && ignorado(&world, filha));
     }
 
     /// **Selecting a zone shows the frame it was AUTHORED with** (W-AreaFrame).

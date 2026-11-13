@@ -21,6 +21,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.signals" => "Signals",
         "card.insp.phys.zone_force" => "Zone force",
         "card.insp.phys.bounce_friction" => "Bounce and Friction",
+        "card.insp.phys.no_friction" => {
+            "No friction on a player: the Platform Player walks and brakes."
+        }
         "card.insp.phys.density" => "Density",
         "card.insp.phys.loose" => "No body above this shape. Nothing bumps into it yet.",
         "card.insp.phys.no_shape" => "This body has no collision shape, so nothing will touch it.",

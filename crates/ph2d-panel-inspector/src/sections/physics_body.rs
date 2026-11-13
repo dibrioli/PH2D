@@ -217,6 +217,7 @@ pub(super) fn paint_body_face(
         yy,
         info.restitution_combine_tag,
         info.friction_combine_tag,
+        !info.friction_ignored,
     );
 
     // How this collider takes part in a collision: which LAYER it is on, whether it

@@ -92,7 +92,18 @@ fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         if info.kind_tag == KIND_STATIC {
             y = uma_via(t, y, info);
         }
-        y = paint_bounce_friction(t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y);
+        y = paint_bounce_friction(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
+            y,
+            !info.friction_ignored,
+        );
+        y = sem_atrito(t, y, info);
     }
     if info.is_sensor {
         y = dobra_zona(t, y, info);
@@ -315,7 +326,16 @@ pub(super) fn dobra_offset(t: &mut Tinta<'_>, y: f32) -> f32 {
     })
 }
 
-/// Os nomes das duas regras: um só quando concordam.
+/// A forma de um player (Bug #14): diz porque o Friction não está ali.
+pub(super) fn sem_atrito(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    if info.friction_ignored {
+        t.frase(y, tr("card.insp.phys.no_friction"), ColorToken::Text3)
+    } else {
+        y
+    }
+}
+
+/// Os nomes das duas regras: um só quando concordam; só a do Bounce numa forma de player.
 fn regras(info: &InspectorPhysicsInfo) -> String {
     let nome = |tag: u8| {
         super::physics_rows::COMBINE_LABELS
@@ -326,7 +346,7 @@ fn regras(info: &InspectorPhysicsInfo) -> String {
         nome(info.restitution_combine_tag),
         nome(info.friction_combine_tag),
     );
-    if a == b {
+    if a == b || info.friction_ignored {
         a.to_string()
     } else {
         format!("{a} \u{b7} {b}")
@@ -348,19 +368,38 @@ pub(super) fn dobra_material(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsI
             y,
             info.restitution_combine_tag,
             info.friction_combine_tag,
+            !info.friction_ignored,
         )
     })
 }
 
 fn dobra_quique(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    let resumo = format!(
-        "{} \u{b7} {}",
-        t.numero(ids::INSP_PHYS_RESTITUTION),
-        t.numero(ids::INSP_PHYS_FRICTION)
-    );
-    let titulo = tr("card.insp.phys.bounce_friction");
+    let resumo = if info.friction_ignored {
+        t.numero(ids::INSP_PHYS_RESTITUTION)
+    } else {
+        format!(
+            "{} \u{b7} {}",
+            t.numero(ids::INSP_PHYS_RESTITUTION),
+            t.numero(ids::INSP_PHYS_FRICTION)
+        )
+    };
+    let titulo = tr(if info.friction_ignored {
+        "component.field.collider.2"
+    } else {
+        "card.insp.phys.bounce_friction"
+    });
     t.dobra(y, ids::INSP_PHYS_FOLD_BOUNCE, titulo, &resumo, |t, y| {
-        let y = paint_bounce_friction(t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y);
+        let y = paint_bounce_friction(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
+            y,
+            !info.friction_ignored,
+        );
         paint_combine_rows(
             t.scene,
             t.text,
@@ -372,6 +411,7 @@ fn dobra_quique(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             y,
             info.restitution_combine_tag,
             info.friction_combine_tag,
+            !info.friction_ignored,
         )
     })
 }

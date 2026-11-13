@@ -103,6 +103,7 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         dominance: 0,
         restitution_combine_tag: 0,
         friction_combine_tag: 0,
+        friction_ignored: false,
         linear_damping: 0.0,
         angular_damping: 0.0,
         damp_mode_tag: 0,

@@ -33,6 +33,8 @@ pub enum CasoFisica {
     Player,
     /// O Player com os cartões de cima dobrados, para Body e Shape caberem na foto.
     PlayerCartoes,
+    /// A filha «Collision Shape» do Player (Bug #14): o cartão Shape sem Friction nem Friction Combine.
+    PlayerForma,
     /// O mesmo com a curva do pulo no canvas (ficha GEF 04): «Show Jump Arc» marcado e um pulo do ar.
     PlayerPulo,
     /// O mesmo sobre a «Platform Low» (12/11): o Full desce ao chão de baixo, o Standing pousa na
@@ -168,7 +170,7 @@ pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
 /// Os nomes que [`caso`] aceita, separados por espaço; o arranque do smoke recusa o nome que nenhum leitor aceita
 /// (`ph2d_game_smoke_fotos::nomes`), e o censo de lá confere esta lista contra os braços de [`caso`].
 pub const NOMES: &str = "fisica_dynamic fisica_kinematic fisica_static fisica_baixa fisica_larga fisica_sensor fisica_bola \
-    fisica_esticada fisica_player fisica_player_cartoes fisica_player_pulo fisica_player_pulo_terreno \
+    fisica_esticada fisica_player fisica_player_cartoes fisica_player_forma fisica_player_pulo fisica_player_pulo_terreno \
     fisica_solta fisica_peca fisica_vazia fisica_camadas fisica_camada_sozinha fisica_camada_com_pares \
     fisica_camadas_no_painel fisica_forma_caixa fisica_forma_arrasto fisica_forma_bola \
     fisica_forma_player fisica_forma_rodado fisica_forma_espelho fisica_forma_pivo fisica_forma_desfaz \
@@ -190,6 +192,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "esticada" => CasoFisica::Esticada,
         "player" => CasoFisica::Player,
         "player_cartoes" => CasoFisica::PlayerCartoes,
+        "player_forma" => CasoFisica::PlayerForma,
         "player_pulo" => CasoFisica::PlayerPulo,
         "player_pulo_terreno" => CasoFisica::PlayerPuloTerreno,
         "solta" => CasoFisica::Solta,
@@ -276,6 +279,10 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         CasoFisica::Player | CasoFisica::PlayerCartoes | CasoFisica::FormaPlayer => {
             return por_nome(sim, "Player").map(|e| e.to_bits());
         }
+        CasoFisica::PlayerForma => {
+            let e = por_nome(sim, "Player")?;
+            return ph2d_physics_ecs::forma_para_editar(sim.world(), e).map(|f| f.to_bits());
+        }
         CasoFisica::PlayerPulo | CasoFisica::PlayerPuloTerreno => {
             let e = por_nome(sim, "Player")?;
             let borda = match caso {
@@ -309,6 +316,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         | CasoFisica::FormaFitFica
         | CasoFisica::Player
         | CasoFisica::PlayerCartoes
+        | CasoFisica::PlayerForma
         | CasoFisica::PlayerPulo
         | CasoFisica::PlayerPuloTerreno
         | CasoFisica::FormaPlayer

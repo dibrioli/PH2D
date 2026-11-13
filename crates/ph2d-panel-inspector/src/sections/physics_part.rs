@@ -156,6 +156,7 @@ pub(super) fn paint_part_face(
         yy,
         info.restitution_combine_tag,
         info.friction_combine_tag,
+        !info.friction_ignored,
     );
     yy = super::physics_rows::paint_collision_rows(
         scene,

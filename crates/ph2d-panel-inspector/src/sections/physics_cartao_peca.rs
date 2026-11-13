@@ -3,7 +3,8 @@
 
 use super::physics_cartao::Tinta;
 use super::physics_cartao_forma::{
-    dobra_material, dobra_offset, dobra_sinais, dobra_superficie, medidas_e_estado, toque,
+    dobra_material, dobra_offset, dobra_sinais, dobra_superficie, medidas_e_estado, sem_atrito,
+    toque,
 };
 use super::physics_rows::paint_bounce_friction;
 use super::rows::num_row;
@@ -16,7 +17,18 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
     let mut y = de_quem_e(t, y, info);
     y = medidas_e_estado(t, y, info);
     y = toque(t, y, info);
-    y = paint_bounce_friction(t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y);
+    y = paint_bounce_friction(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
+        y,
+        !info.friction_ignored,
+    );
+    y = sem_atrito(t, y, info);
     y = dobra_densidade(t, y);
     y = dobra_offset(t, y);
     y = dobra_material(t, y, info);

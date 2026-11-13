@@ -469,6 +469,7 @@ pub fn fisica_armada() -> InspectorPhysicsInfo {
         dominance: 0,
         restitution_combine_tag: 1,
         friction_combine_tag: 1,
+        friction_ignored: false,
         linear_damping: 0.1,
         angular_damping: 0.1,
         damp_mode_tag: 1,

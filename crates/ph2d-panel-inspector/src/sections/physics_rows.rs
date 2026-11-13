@@ -128,8 +128,19 @@ pub(super) fn paint_material_rows(
     y: f32,
     restitution_combine_tag: u8,
     friction_combine_tag: u8,
+    com_atrito: bool,
 ) -> f32 {
-    let yy = paint_bounce_friction(scene, text_system, theme, hit_index, store, x, w, y);
+    let yy = paint_bounce_friction(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        com_atrito,
+    );
     paint_combine_rows(
         scene,
         text_system,
@@ -141,10 +152,12 @@ pub(super) fn paint_material_rows(
         yy,
         restitution_combine_tag,
         friction_combine_tag,
+        com_atrito,
     )
 }
 
 /// T56: no cartão, Bounce | Friction numa linha (o par do material, como o Physics Material 2D da Unity).
+/// `com_atrito` falso (forma de player, Bug #14: a ponte ignora o atrito): só Bounce.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_bounce_friction(
     scene: &mut VectorScene,
@@ -155,7 +168,22 @@ pub(super) fn paint_bounce_friction(
     x: f32,
     w: f32,
     y: f32,
+    com_atrito: bool,
 ) -> f32 {
+    if !com_atrito {
+        return num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            TextKey::new("component.field.collider.2"),
+            ids::INSP_PHYS_RESTITUTION,
+        );
+    }
     par_row(
         scene,
         text_system,
@@ -181,7 +209,7 @@ pub(super) fn paint_bounce_friction(
     )
 }
 
-/// As duas regras de combinar — lado a lado quando cabem.
+/// As duas regras de combinar — lado a lado quando cabem; sem `com_atrito`, só a do Bounce.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_combine_rows(
     scene: &mut VectorScene,
@@ -194,8 +222,26 @@ pub(super) fn paint_combine_rows(
     y: f32,
     restitution_combine_tag: u8,
     friction_combine_tag: u8,
+    com_atrito: bool,
 ) -> f32 {
     let combine = COMBINE_LABELS.map(TextKey::tr);
+    if !com_atrito {
+        return seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            TextKey::new("component.field.material_combine.0"),
+            ids::INSP_LIVE_PHYSICS_REST_COMBINE,
+            &ids::INSP_PHYS_REST_COMBINE,
+            &combine,
+            restitution_combine_tag,
+        );
+    }
     seg_par_row(
         scene,
         text_system,

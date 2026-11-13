@@ -1454,8 +1454,8 @@ sem atrito (`platform_wall_sem_atrito`, 4,330 m × 4,330 m).
 `CharacterBody2D`): o corpo do player não raspa em nada — `bridge::bodies::player_sem_atrito`
 impõe atrito 0 + regra `Min` à forma de todo corpo com `PlatformPlayer` (e às peças dele), na porta
 única `desc_do_corpo` (o agachar herda pelo `rest`). O material autorado no Collider do player deixa
-de valer (**aberto, UI**: o Inspector ainda mostra Friction/Combine no player — controlo morto a
-esconder, fora desta linha).
+de valer; o Inspector deixou de mostrar Friction e Friction Combine na forma do player (corpo, filha e
+peças, cartões e `PH2D_CARDS=0`), pela mesma pergunta da ponte (`ph2d_physics_ecs::atrito_ignorado`).
 
 **O que o atrito escondia, curado pela lei (não reposto):** o freio da parede (`wall_slide`)
 somava-se ao boost do pulo de parede no tique da saída — dois donos do eixo — e o pulo saía 0,24 m/s

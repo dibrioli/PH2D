@@ -371,7 +371,7 @@ pub(super) fn player_sem_atrito(
     owner: Entity,
     desc: BodyDesc,
 ) -> BodyDesc {
-    if world.get::<crate::PlatformPlayer>(owner).is_none() {
+    if !crate::atrito_ignorado(world, owner) {
         return desc;
     }
     BodyDesc {

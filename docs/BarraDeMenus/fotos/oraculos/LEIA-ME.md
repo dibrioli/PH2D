@@ -20,3 +20,9 @@ Corrida: `PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/BarraDeMenus/ferramentas
 | Godot 4.7 (`godot_menu.png`) | 23 px | 2 px, 1,2:1 | 10,7:1 | 3,2:1 | não no menu principal |
 | Maquete C (`.c15it`) | 23 px | 1 px, ~1,3:1 | — | — | 16 px, vão 7 |
 | **PH2D onda 8** | **24** (`chrome.menu-row-h`) | **≥ 1,5:1** | **≥ 4,5** | **≥ 4,5** | **16 px nítidos, ≥ 3:1** |
+
+### Peso do texto dos menus (dono 13/11: «mais leve, sem perder definição em 1920×1080»)
+`ferramentas/regua_texto.py` — % dos pixels de tinta com cobertura ≥ 90 % (traço que cai cheio num pixel), «Open Project…»/«Save As…»:
+antes (500 + preferência do app) 32,7/25,3 · exato 400 7,4/6,2 · 450 11,3/8,5 · 500 14,9/12,9 · **550 16,8/16,3** · 600 16,4/13,3 ·
+VS Code 20,0 · Godot 13,6. Escolhido 550: o mais leve que fica na faixa dos oráculos e sem o cinza do 400
+(foto `../onda8b_pesos_x3.png`).

@@ -10,11 +10,11 @@ use super::menu_tons::{TonsDoMenu, atalho_aceso};
 use crate::icons::IconId;
 use crate::interaction::{ContextMenuKind, WidgetStore};
 use crate::paint::{
-    fill_rounded_rect, folga_do_texto, paint_icon_nitido, paint_text, paint_text_elided,
+    fill_rounded_rect, folga_do_texto, paint_icon_nitido, paint_text_in_weight,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{BAR_ICON_PX, MENU_W_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
 
@@ -57,6 +57,11 @@ pub fn icone_da_linha(
             })
         })
 }
+
+/// O peso do texto dos menus da barra, EXATO (sem o acréscimo da preferência do app). Dono 13/11: «mais leve,
+/// sem perder definição em 1920×1080». Medido (`ferramentas/regua_texto.py`, traço que cai cheio num pixel): antes
+/// 25–33 %, 400 → 6–7 % (cinza, fraco), 500 → 13–15 %, 550 → 16–17 %, 600 → 13–16 %; VS Code 20 %, Godot 14 %.
+pub const PESO: FontWeight = FontWeight::new(550.0);
 
 /// O que vai na coluna do glifo.
 #[derive(Clone, Copy, Debug)]
@@ -148,22 +153,23 @@ pub fn pinta(
     let fim = chev.x - Spacing::Md.px();
     let fim_do_rotulo = match l.atalho {
         Some(k) => {
-            let kw = text_system.prefix_width(k, font);
-            paint_text(text_system, scene, k, fim - kw, y, font, kw, atalho);
+            let kw = ph2d_text::com_peso_exato(|| text_system.prefix_width_weighted(k, font, PESO));
+            paint_text_in_weight(text_system, scene, k, [fim - kw, y], font, kw + 1.0, atalho, PESO);
             fim - kw - Spacing::Lg.px()
         }
         None => fim,
     };
     let x = x_do_rotulo(l.r);
-    paint_text_elided(
+    // Peso EXATO (sem o acréscimo da preferência do app) e uma linha com «…» (`ElideToOne`).
+    paint_text_in_weight(
         text_system,
         scene,
         l.rotulo,
-        x,
-        y,
+        [x, y],
         font,
         (fim_do_rotulo - x).max(0.0),
         rotulo,
+        PESO,
     );
     if l.abre_submenu {
         paint_icon_nitido(scene, IconId::ChevronRight, chev, icone, false);

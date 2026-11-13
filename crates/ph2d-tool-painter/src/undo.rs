@@ -422,6 +422,19 @@ impl Default for UndoController {
 }
 
 impl UndoController {
+    /// O cursor segura este plano do vidro da camada `l`? (ADR-0204 passo 0: quem segura o plano.)
+    #[cfg(test)]
+    pub(crate) fn cursor_segura_o_vidro(
+        &self,
+        l: crate::layers::LayerId,
+        p: &std::sync::Arc<Vec<crate::compositor::vidro::Vidro>>,
+    ) -> bool {
+        self.cursor
+            .as_ref()
+            .and_then(|c| c.vidros.get(&l))
+            .is_some_and(|v| std::sync::Arc::ptr_eq(v, p))
+    }
+
     /// New controller with an explicit retained-BYTES ceiling.
     #[must_use]
     pub fn new(max_bytes: usize) -> Self {

@@ -117,3 +117,70 @@ fn o_traco_que_cruza_tiles_guarda_so_os_tiles_tocados() {
     );
     traco_conferido(&mut t, [505.0, 375.0], [517.0, 387.0], "canto parcial");
 }
+
+/// **ADR-0204 passo 0 — quem segura o plano do vidro no 2.º pen-down** (a contagem não depende do tamanho da
+/// tela). Imprime, por dono, quem segura o plano vivo antes e depois do 1.º quadro do 2.º traço, e as cópias.
+/// Asserta só que a conta fecha: nenhum dono sem nome.
+#[test]
+fn quem_segura_o_vidro_no_segundo_pen_down() {
+    use super::watercolor_vidro::COPIAS_DO_VIDRO;
+    use std::sync::Arc;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+    t.set_paint_media(PaintMedia::Watercolor);
+    crate::tool::paint::tests::aquarela_neutra(&mut t);
+    crate::tool::paint::tests::watercolor_basic_de_antes(&mut t);
+    t.set_brush_size_px(10.0);
+    let traco = |t: &mut PainterTool, y: f32| {
+        ev(t, [40.0, y], PointerPhase::Down);
+        for k in 1..=6 {
+            ev(t, [40.0 + 20.0 * k as f32, y], PointerPhase::Move);
+        }
+        ev(t, [160.0, y], PointerPhase::Up);
+        for _ in 0..3 {
+            t.on_tick(1000.0 / 60.0);
+        }
+    };
+    traco(&mut t, 60.0);
+    let c = t.layers.active().expect("camada");
+    let donos = |t: &PainterTool, quando: &str| {
+        let p = t.vidros.get(&c).expect("o vidro existe").clone();
+        let total = Arc::strong_count(&p) - 1; // menos o clone desta linha
+        let antes = t
+            .paint
+            .stroke_undo
+            .as_ref()
+            .and_then(|s| s.vidros.get(&c))
+            .is_some_and(|v| Arc::ptr_eq(v, &p));
+        let cursor = t.undo.cursor_segura_o_vidro(c, &p);
+        let congelado = t
+            .vidro_congelado
+            .aguada
+            .as_ref()
+            .is_some_and(|b| Arc::ptr_eq(&b.2, &p));
+        let nomeados = 1 + usize::from(antes) + usize::from(cursor) + usize::from(congelado);
+        println!(
+            "{quando}: strong={total} · mapa=1 · before={antes} · cursor={cursor} · congelado={congelado} · sem nome={}",
+            total as isize - nomeados as isize
+        );
+        (total, nomeados)
+    };
+    let repouso = donos(&t, "repouso depois do 1.º traço");
+    COPIAS_DO_VIDRO.set(0);
+    traco(&mut t, 110.0);
+    println!("cópias do plano no 2.º traço: {}", COPIAS_DO_VIDRO.get());
+    let repouso_3 = donos(&t, "repouso depois do 2.º traço");
+    COPIAS_DO_VIDRO.set(0);
+    traco(&mut t, 140.0);
+    println!("cópias do plano no 3.º traço: {}", COPIAS_DO_VIDRO.get());
+    // O 1.º traço CRIOU o plano: a entrada dele guarda o `after` (OnlyAfter) e segura-o até ao 2.º traço.
+    assert_eq!(
+        repouso.0,
+        repouso.1 + 1,
+        "depois do 1.º traço: mapa + cursor + a entrada que o criou"
+    );
+    assert_eq!(
+        repouso_3.0, repouso_3.1,
+        "depois do 2.º traço: só mapa + cursor"
+    );
+}

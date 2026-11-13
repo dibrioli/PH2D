@@ -38,7 +38,8 @@ fn celulas(snap: &TimelineViewSnapshot, view: BarView) -> ([Icone; N], [Option<C
 /// A aba: em cima da lista do painel, encostada à esquerda dela (dentro da janela).
 pub(super) fn aba(painel: Rect, viewport: Rect) -> Rect {
     let lista = banda::geometria(painel).lista;
-    let (w, h) = (banda::icones_w(N) + FOLGA * 2.0, m::FIELD_H + FOLGA * 2.0);
+    // Sem folga em baixo: o fundo da caixa dos botões assenta na linha do topo da lista (dono 13/11).
+    let (w, h) = (banda::icones_w(N) + FOLGA * 2.0, m::FIELD_H + FOLGA);
     Rect::new(lista.x, (lista.y - h).max(viewport.y), w, h)
 }
 

@@ -334,3 +334,93 @@ fn a_binding_da_cena_atravessa_o_ficheiro_e_recola() {
     let b = &loaded.doc.bindings()[0];
     assert_eq!((b.entity, b.missing, b.prop), (cena2, false, g));
 }
+
+/// **O «Done» não solta as faixas** (dono 12/11). Depois do Done a Timeline fica parada: o apply não
+/// corre, e era ele o único que via a binding morta. O restauro da cena dá bits novos ao objecto
+/// (o MESMO `StableId`); só o `upkeep` corre — e tem de recolar a faixa sozinho, senão a linha lê
+/// «#bits» e o caminho do canvas some.
+///
+/// *Mutação: tirar do `upkeep` a marca das bindings mortas ⇒ a faixa fica no bit velho.*
+#[test]
+fn o_upkeep_recola_a_faixa_sem_apply_depois_do_restauro() {
+    let mut sim = SimWorld::new();
+    let e = heroi(&mut sim);
+    let h = e.to_bits();
+    let mut timeline = TimelineState::new();
+    let andar = timeline.doc.add_clip_for("andar".into(), h).unwrap();
+    timeline.doc.set_active(andar);
+    timeline.doc.upsert_key(
+        h,
+        ph2d_timeline::PropKind::TranslationX,
+        ph2d_anim::RationalTime::from_seconds(0.0),
+        ph2d_anim::AnimValue::Float(1.0),
+        ph2d_anim::Interp::Linear,
+    );
+    upkeep(&mut timeline, sim.world_mut()); // carimba a identidade em vida
+    let id = *sim.world().get::<StableId>(e).unwrap();
+
+    // O restauro: despawn + respawn com o mesmo id, bits novos — e NENHUM apply no meio.
+    sim.world_mut().despawn(e);
+    let novo = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Herói"), id))
+        .id()
+        .to_bits();
+    assert_ne!(novo, h);
+    assert!(!upkeep(&mut timeline, sim.world_mut()), "curar não é reset");
+    assert!(
+        timeline
+            .doc
+            .bindings()
+            .iter()
+            .all(|b| b.entity == novo && !b.missing),
+        "a faixa ficou no bit velho: {:?}",
+        timeline
+            .doc
+            .bindings()
+            .iter()
+            .map(|b| (b.entity, b.missing))
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        timeline.doc.clip_belongs_to(andar, novo),
+        "o clip segue o dono"
+    );
+}
+
+/// **O restauro não troca o clip em edição** (dono 12/11: no «Done» o «pular» virava «andar»). Logo
+/// depois do restauro a seleção já tem os bits novos e o dono do clip ainda os velhos; seguir a seleção
+/// nesse intervalo lia «sem Animação», ia à Cena e, no quadro seguinte, ao PRIMEIRO clip do Herói.
+///
+/// *Mutação: tirar o `recola` do `follow_selection` ⇒ o activo cai no «andar».*
+#[test]
+fn seguir_a_selecao_depois_do_restauro_mantem_o_clip_em_edicao() {
+    let mut sim = SimWorld::new();
+    let e = heroi(&mut sim);
+    let h = e.to_bits();
+    let mut timeline = TimelineState::new();
+    timeline.doc.add_clip_for("andar".into(), h).unwrap();
+    let pular = timeline.doc.add_clip_for("pular".into(), h).unwrap();
+    timeline.doc.set_active(pular);
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    upkeep(&mut timeline, sim.world_mut());
+    crate::follow_selection(&mut timeline, &mut ph, sim.world_mut(), Some(h));
+    assert_eq!(timeline.doc.active_index(), pular);
+    let id = *sim.world().get::<StableId>(e).unwrap();
+
+    sim.world_mut().despawn(e);
+    let novo = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Herói"), id))
+        .id()
+        .to_bits();
+    for _ in 0..2 {
+        crate::follow_selection(&mut timeline, &mut ph, sim.world_mut(), Some(novo));
+        upkeep(&mut timeline, sim.world_mut());
+    }
+    assert_eq!(
+        timeline.doc.active_index(),
+        pular,
+        "o restauro trocou o clip em edição"
+    );
+}

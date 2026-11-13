@@ -25,13 +25,17 @@ fn ancestors(world: &World, bits: u64) -> Vec<u64> {
     out
 }
 
-/// **O passo de cada quadro, antes dos pedidos do painel:** a Timeline segue a selecção.
+/// **O passo de cada quadro, antes dos pedidos do painel:** a Timeline segue a selecção — depois de
+/// recolar os donos ao mundo deste instante ([`crate::recola`]), senão um restauro recente lia-se
+/// como «o seleccionado não tem Animação» e o clip em edição trocava.
 pub fn follow_selection(
     timeline: &mut TimelineState,
     playhead: &mut Playhead,
-    world: &World,
+    world: &mut World,
     selected: Option<u64>,
 ) {
+    crate::recola(timeline, world);
+    let world = &*world;
     let chain = selected.map(|s| ancestors(world, s)).unwrap_or_default();
     ph2d_timeline::animation_view::follow(timeline, playhead, selected, &chain);
 }

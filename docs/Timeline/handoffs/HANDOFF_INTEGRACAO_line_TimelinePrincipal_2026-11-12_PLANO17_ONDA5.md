@@ -77,6 +77,27 @@ Suíte completa e `nextest-impacted` NÃO corridos (regra do dono 23/10: são do
 3. O arco mantém a forma, só a velocidade muda; Ctrl+Z desfaz o entortar num passo; o ponto do fim (sobre o pivô) arrasta-se; Done leva a agulha ao início; com Play da Timeline, as alças arrastam-se a tocar.
 4. Errado se: o arco muda de forma depois do easing, as linhas X/Y continuam separadas, o objeto se move em vez do ponto, ou a aba volta sozinha a Keys.
 
+## Acréscimo — ajustes do dono 12/11 (depois do fecho; commits `aabe9342da`, `e524303f92` e o deste acréscimo)
+
+Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-12_AJUSTES_DA_BARRA.md).
+1. **Barra:** caixa vazia com contorno 6,2:1; «Record while playing» na engrenagem; «Show clips as a list»; «Edit Path»; Time/Frame compactos com ícones (`FilmFrame` novo); transporte em traço Thick.
+2. **Ícones da lista de clipes = os do chip** (filme / cubo): `transport_clips::{CLIP_GLYPH, CONTAINER_GLYPH}` passam a `Film`/`Cube` (eram `Layer`/`Prefab`) e são a fonte única que `barra_clips::glifo_do_tipo` lê.
+   Teste `o_glifo_do_chip_e_o_da_lista_aberta`. Foto: [antes/depois](../fotos/17_ajustes_12_11_icones_da_lista_antes_depois.png).
+3. **Defeito do Done (reproduzido em `ANIMACAO_SMOKE=1` e `=7`):** depois do Done as faixas liam «#7290» e não o nome do objeto, o caminho do canvas sumia, e na cena 7 o clip em edição trocava de «pular» para «andar».
+   - Mecanismo: o restauro da cena dá bits novos a todo objeto (o mesmo `StableId`). Com o Done a Timeline fica parada (`timeline_bridge.rs`, `if sessao.1 {}`), e o apply era o único que marcava `binding.missing` (`apply.rs:284`). Sem a marca, a cura do `upkeep` nunca corria.
+     E o `follow_selection` corre ANTES do `upkeep`: no quadro do restauro lia «o selecionado não tem Animação» e ia ao 1.º clip.
+   - Cura (`ph2d-timeline-persist`): o `upkeep` marca também as bindings mortas e extrai a cura para `fn cura`. Novo `pub fn recola` (cura sem purga), chamado pelo `follow_selection`, que passa a `&mut World`. Único chamador: `fase_timeline_drain.rs:88`, onde `sim.world()` passa a `sim.world_mut()` (shell ±0).
+   - Testes `o_upkeep_recola_a_faixa_sem_apply_depois_do_restauro` e `seguir_a_selecao_depois_do_restauro_mantem_o_clip_em_edicao`; as duas mutações sangraram.
+     Fotos: [o defeito](../fotos/17_done_solta_as_faixas_antes_depois.png) · [depois da cura, cena 1](../fotos/17_done_mantem_as_faixas_depois_da_cura.png) · [depois da cura, cena 7](../fotos/17_done_mantem_clip_e_curvas_depois_da_cura.png).
+- **Foundational tocado:** `ph2d-editor-core` (cards_banda, cards_banda_tons, checkbox `card_box.rs`, icons + `film-frame.svg`; ⚠️ o discriminante do `IconId` desloca-se uma casa depois de `film`, e ninguém grava o número, só o slug).
+  `ph2d-timeline-persist`: **assinatura mudada** de `follow_selection(…, world: &mut World, …)`; nova `recola`.
+- **Superfície a mais:** `ph2d-panel-timeline/src/{barra_clips,transport_clips,barra_menus,transport_sources,event,state}.rs` + `tests/it/clipes_em_lista.rs`; `ph2d-i18n/src/timeline.rs`; `ph2d-timeline-persist/src/{lib,animation,timeline_owner_tests}.rs`; shell `render_loop/fase_timeline_drain.rs`.
+- **Bateria por nome (re-corrida 12/11, load 9–15):** fmt ✓ · clippy `-D warnings` (panel-timeline, timeline-persist, host-desktop) ✓ · censos 13/13 ✓.
+  `ph2d-timeline-persist`: owner_tests 11, clip_names 3, purga_itens 3, item_apagado 4, reset_guard 3, publish_tests 4, textos 1, vetor_ids 1, tests:: 43.
+  `ph2d-timeline`: `apply_from_doc_is_zero_alloc_steady_state` 1. `ph2d-panel-timeline`: os_cartoes 35, clipes_em_lista 2, transport 25, glyph 3, o_glifo_do_chip 1, seam 131, card 5.
+  `ph2d-host-desktop`: the_motion_path 13, autokey 67, timeline 86, undo 94. Arquitetura: the_shell_only_shrinks 2, file_loc_cap 2, hr15 1. Tudo ✓.
+- **Smoke ao dono (Done):** `PH2D_ANIMACAO_SMOKE=7`, Done ⇒ continua em «pular», o arco curvo continua no canvas, as faixas dizem «Herói»/«Espada».
+
 ## Aberto (visto, NÃO feito)
 
 1. **Limite conhecido:** com o pai ANIMADO durante o clip, o duplo-clique na curva projeta pelo pai na 1.ª chave (desenho e âncoras são exatos por instante). Foto de cena com pai rodado não tirada.

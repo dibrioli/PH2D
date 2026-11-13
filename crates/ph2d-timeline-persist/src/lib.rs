@@ -130,12 +130,58 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     if !copias.is_empty() {
         copy_animations(timeline, &copias);
     }
+    let by_wire = cura(timeline, world);
+    {
+        let world = &*world;
+        // ⭐ A17 — o lugar que mudou de dono atravessa o undo GLOBAL: ENTRE a cura e a purga, que
+        // senão apagava a track de um dono que o undo desfez.
+        ph2d_timeline::rehome_moved_places(
+            timeline,
+            |w| by_wire.get(&w.0).copied().flatten(),
+            |bits| {
+                Entity::try_from_bits(bits)
+                    .and_then(|e| world.get::<ph2d_ecs::ChildOf>(e))
+                    .map(|c| c.parent().to_bits())
+            },
+        );
+    }
+    // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
+    // sobre o mundo que já está na mão; o nome resolve-se no `purge`, depois da purga dos donos.
+    let ossos: Vec<(Entity, String)> = world
+        .iter_entities()
+        .filter_map(|er| Some((er.id(), er.get::<ph2d_skeleton_ecs::SmartBone>()?)))
+        .filter(|(_, sb)| !sb.clip.is_empty())
+        .map(|(e, sb)| (e, sb.clip.clone()))
+        .collect();
+    let reset = purge_the_dead(timeline, &by_wire, (&*world, &ossos));
+    purga_itens::decide(timeline, world);
+    // ⭐ Depois da purga e da ressurreição: os bits publicados são os DESTE quadro.
+    publica_os_nomes(&timeline.doc, world);
+    reset
+}
+
+/// **A cura das bindings**: marca as mortas (dono de clip e faixa) e recola-as ao objecto vivo com a
+/// mesma identidade. Sem alocação quando nada falta (o mapa só se constrói com uma morta).
+fn cura(
+    timeline: &mut TimelineState,
+    world: &mut World,
+) -> std::collections::BTreeMap<u64, Option<u64>> {
     // O DONO de um clip morre com o objecto — a liveness das bindings é do apply; a do dono é
     // daqui, que é quem tem o mundo e a cura (doc_owner.rs).
     for o in timeline.doc.clip_owners_mut() {
         if !o.missing {
             o.missing =
                 !Entity::try_from_bits(o.entity).is_some_and(|e| world.get_entity(e).is_ok());
+        }
+    }
+    // ⭐ A binding cujo objecto morreu também se vê AQUI, não só no apply: depois do «Done» a
+    // Timeline fica parada (o apply não corre) e o restauro da cena dá bits novos a todo objecto —
+    // sem esta marca a cura nunca corria e as faixas ficavam «#bits», soltas (dono 12/11).
+    for b in timeline.doc.bindings_mut() {
+        if !b.missing
+            && !Entity::try_from_bits(b.entity).is_some_and(|e| world.get_entity(e).is_ok())
+        {
+            b.missing = true;
         }
     }
     let any_missing = timeline
@@ -170,31 +216,17 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
             |bits| wire_of(world, bits),
             |w| by_wire.get(&w.0).copied().flatten(),
         );
-        // ⭐ A17 — o lugar que mudou de dono atravessa o undo GLOBAL: ENTRE a cura e a purga, que
-        // senão apagava a track de um dono que o undo desfez.
-        ph2d_timeline::rehome_moved_places(
-            timeline,
-            |w| by_wire.get(&w.0).copied().flatten(),
-            |bits| {
-                Entity::try_from_bits(bits)
-                    .and_then(|e| world.get::<ph2d_ecs::ChildOf>(e))
-                    .map(|c| c.parent().to_bits())
-            },
-        );
     }
-    // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
-    // sobre o mundo que já está na mão; o nome resolve-se no `purge`, depois da purga dos donos.
-    let ossos: Vec<(Entity, String)> = world
-        .iter_entities()
-        .filter_map(|er| Some((er.id(), er.get::<ph2d_skeleton_ecs::SmartBone>()?)))
-        .filter(|(_, sb)| !sb.clip.is_empty())
-        .map(|(e, sb)| (e, sb.clip.clone()))
-        .collect();
-    let reset = purge_the_dead(timeline, &by_wire, (&*world, &ossos));
-    purga_itens::decide(timeline, world);
-    // ⭐ Depois da purga e da ressurreição: os bits publicados são os DESTE quadro.
-    publica_os_nomes(&timeline.doc, world);
-    reset
+    by_wire
+}
+
+/// ⭐ **Recola as faixas e os donos ao mundo deste instante, sem purgar** — para quem decide pela
+/// seleção ANTES do `upkeep` do quadro: depois de um restauro (o «Done», o undo) os objectos têm
+/// bits novos e o dono do clip ainda aponta aos velhos; quem seguisse a seleção nesse intervalo via
+/// «sem Animação» e trocava o clip em edição (dono 12/11: o «pular» virava «andar» no Done).
+pub fn recola(timeline: &mut TimelineState, world: &mut World) {
+    ph2d_ecs::assign_missing_stable_ids(world);
+    cura(timeline, world);
 }
 
 /// Os `(dono, nome)` de cada clip vivo, na ordem do documento — `SCENE` para a Cena.

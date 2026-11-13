@@ -55,12 +55,13 @@ fn tem_menu(on: bool, opcao: &DropdownOption<usize>) -> bool {
     on && !matches!(crate::transport_clips::source_at(opcao.id), Some(Ok(_)))
 }
 
-/// O glifo do TIPO no chip (onda 1b, maquete B1): clipe = filme, container = cubo. A lista suspensa
-/// de sempre (e `PH2D_CARDS=0`) guarda os glifos dela; uma opção sem tipo fica com o seu.
-fn glifo_do_tipo(opcao: &DropdownOption<usize>) -> Option<IconId> {
+/// O glifo do TIPO no chip (onda 1b, maquete B1) — o MESMO da lista aberta (dono 12/11): uma fonte
+/// só, `transport_clips::{CLIP_GLYPH, CONTAINER_GLYPH}`. Uma opção sem tipo fica com o seu.
+pub(crate) fn glifo_do_tipo(opcao: &DropdownOption<usize>) -> Option<IconId> {
+    use crate::transport_clips::{CLIP_GLYPH, CONTAINER_GLYPH};
     match crate::transport_clips::source_at(opcao.id) {
-        Some(Ok(_)) => Some(IconId::Cube),
-        Some(Err(_)) => Some(IconId::Film),
+        Some(Ok(_)) => Some(CONTAINER_GLYPH),
+        Some(Err(_)) => Some(CLIP_GLYPH),
         None => opcao.icon,
     }
 }

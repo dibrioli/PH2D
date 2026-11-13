@@ -13,7 +13,10 @@ commit `79810cba51`); depois disso o dono pediu ajustes, feitos no commit `aabe9
 - Fotos: [barra](../fotos/17_ajustes_12_11_barra.png) · [engrenagem](../fotos/17_ajustes_12_11_opcoes.png) · [clips em lista](../fotos/17_ajustes_12_11_clips_lista.png).
 - Shell intocada; `PROJECT_SCHEMA` 237 e `DOC_VERSION` 25 intocados.
 
-## ABERTO (pedido do dono, NÃO feito)
+## ABERTO → estado em 12/11 (2.ª janela)
+Os itens 1, 2 e 4 foram FEITOS: ver o «Acréscimo» do [handoff de integração](HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-12_PLANO17_ONDA5.md). O item 2 era defeito (o Done soltava as faixas e trocava o clip). O item 3 continua sendo decisão do dono.
+
+### Texto original
 1. **Os ícones DENTRO da lista suspensa de clipes têm de ser os mesmos de fora** (o chip usa `barra_clips::glifo_do_tipo`: clipe = `Film`, container = `Cube`; a lista aberta de `TIMELINE_CLIP_DD` usa o `DropdownOption::icon` de `transport_clips::source_options`). Cura provável: uma porta só para o glifo do tipo, lida pelo chip, pela lista em modo «as a list» e pela lista aberta. Foto antes/depois.
 2. **«Antes de apertar Done, as curvas Bezier e de velocidade não aparecem na Timeline»** — reproduzir no app (`PH2D_ANIMACAO_SMOKE=1`, fotos antes/depois do Done). Leitura do código (explorador): nada liga `animating` à pintura das curvas; a banda do grafo só pinta com a linha EXPANDIDA (`linhas.rs:163`, `tracks.rs:302`, `state.expanded`, ▶). Medir se o Done (restauro/`apply_project_with`) expande linhas ou se outra coisa muda; se for defeito, `/pd-bug-causa`.
 3. O dono ainda não vê o porquê do Done (explicado: «terminei de animar» — pára, rebobina, desliga Auto Key, devolve a pose; a prévia não entra no undo). Se ele decidir mudar, é decisão de produto dele.

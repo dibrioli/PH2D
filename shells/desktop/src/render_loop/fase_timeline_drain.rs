@@ -88,7 +88,7 @@ impl crate::App {
         ph2d_timeline_persist::follow_selection(
             &mut self.timeline,
             active_playhead,
-            sim.world(),
+            sim.world_mut(),
             selected_now,
         );
         self.timeline.flags.auto_key &= !ph2d_panel_timeline::take_done(active_playhead);

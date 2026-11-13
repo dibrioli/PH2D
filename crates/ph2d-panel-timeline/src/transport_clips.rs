@@ -203,11 +203,13 @@ fn clip_rows(snap: &TimelineViewSnapshot, tab: Tab) -> usize {
 /// diferente do ícone de clips"*). A glyph pair has to be compared as PIXELS, never as
 /// identifiers.
 ///
-/// A sheet of drawing against a packed BOX: a clip is one animation, a container is a piece
-/// with several inside — the Symbol of Animate, whose icon is a box for the same reason.
-pub(crate) const CLIP_GLYPH: IconId = IconId::Layer;
+/// A strip of film against a BOX: a clip is one animation, a container is a piece with several
+/// inside. ONE source for every place that marks the kind — the chip (`barra_clips`), the
+/// «as a list» field and the open list (Enio, 12/11: the icons inside the list must be the
+/// ones outside; it was `Layer`/`Prefab` inside and `Film`/`Cube` on the chip).
+pub(crate) const CLIP_GLYPH: IconId = IconId::Film;
 /// …and the box. See [`CLIP_GLYPH`].
-const CONTAINER_GLYPH: IconId = IconId::Prefab;
+pub(crate) const CONTAINER_GLYPH: IconId = IconId::Cube;
 
 /// **What a picked option IS** — read off the id ARRAY it belongs to, never off arithmetic.
 ///
@@ -477,6 +479,23 @@ mod tests {
     /// **Cada linha diz de que TIPO ela é** — um glifo discreto, e os dois nunca coincidem
     /// (Enio, 2026-07-21). Numa lista com clips e containers misturados sem marca, o artista
     /// descobre o tipo colocando um deles e vendo o que acontece.
+    /// **O glifo de dentro da lista é o de fora** (dono 12/11): o chip e a lista aberta lêem o
+    /// mesmo tipo, opção a opção, nas duas abas (Keys só com clipes; Arrange com containers).
+    #[test]
+    fn o_glifo_do_chip_e_o_da_lista_aberta() {
+        for tab in [Tab::Keys, Tab::Arrange] {
+            for o in source_options(&snap(), tab) {
+                assert_eq!(
+                    crate::barra_clips::glifo_do_tipo(&o),
+                    o.icon,
+                    "{tab:?} «{}»: o chip e a lista mostram ícones diferentes",
+                    o.label
+                );
+            }
+        }
+        assert_eq!((CLIP_GLYPH, CONTAINER_GLYPH), (IconId::Film, IconId::Cube));
+    }
+
     #[test]
     fn every_row_carries_the_glyph_of_its_kind() {
         let opts = source_options(&snap(), Tab::Arrange);

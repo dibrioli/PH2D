@@ -164,6 +164,8 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("wet_mistura", TRACO),
     ("watercolor_base", TRACO),
     ("wet_backdrop", TRACO),
+    // n.º 7 item 3f: o fundo de baixo composto num fio desde a troca de camada (o preview compõe o seu).
+    ("aquecimento", CACHE),
     ("grid_show", UI),
     ("grid_erase", TRACO),
     ("impasto_live_edit", UI),

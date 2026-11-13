@@ -156,7 +156,7 @@ pub(super) fn paint_part_face(
         yy,
         info.restitution_combine_tag,
         info.friction_combine_tag,
-        !info.friction_ignored,
+        !info.player_shape,
     );
     yy = super::physics_rows::paint_collision_rows(
         scene,
@@ -169,7 +169,7 @@ pub(super) fn paint_part_face(
         yy,
         info.layer,
         info.is_sensor,
-        info.one_way,
+        (!info.player_shape).then_some(info.one_way),
         info.no_wall_cling,
         info.signal_tag,
         &info.signal_tag_path,

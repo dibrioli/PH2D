@@ -292,9 +292,10 @@ pub struct InspectorPhysicsInfo {
     /// [`restitution_combine_tag`](InspectorPhysicsInfo::restitution_combine_tag),
     /// from the same `MaterialCombine` component.
     pub friction_combine_tag: u8,
-    /// A forma é de um corpo com `PlatformPlayer`: a ponte impõe atrito 0 + `Min` (Bug #14), então
-    /// Friction e Friction Combine não têm leitor e o painel não os pinta.
-    pub friction_ignored: bool,
+    /// A forma é de um corpo com `PlatformPlayer` (`ph2d_physics_ecs::forma_do_player`): a ponte impõe
+    /// atrito 0 + `Min` e ignora o one-way (Bug #14), então Friction, Friction Combine e One-Way não têm
+    /// leitor e o painel não os pinta.
+    pub player_shape: bool,
     /// Per-body linear damping (drag) — decays translation (W-Damping). Mirrors the
     /// optional `DampingOverride` component's `linear`; absent means the world default.
     /// Dynamic-only (damping decays a velocity the solver owns).

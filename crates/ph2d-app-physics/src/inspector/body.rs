@@ -201,7 +201,7 @@ pub fn build_physics_info(
             dominance: 0,
             restitution_combine_tag: 0,
             friction_combine_tag: 0,
-            friction_ignored: false,
+            player_shape: false,
             linear_damping: 0.0,
             angular_damping: 0.0,
             damp_mode_tag: 0,
@@ -338,7 +338,7 @@ pub fn build_physics_info(
         dominance,
         restitution_combine_tag: material.restitution.tag(),
         friction_combine_tag: material.friction.tag(),
-        friction_ignored: ph2d_physics_ecs::atrito_ignorado(world, entity),
+        player_shape: ph2d_physics_ecs::forma_do_player(world, entity),
         linear_damping: damping.linear,
         angular_damping: damping.angular,
         damp_mode_tag: damping.mode.tag(),
@@ -461,7 +461,7 @@ mod tests {
             let tags = ph2d_tags::TagTree::new();
             build_physics_info(w, e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0, &tags)
                 .expect("§11")
-                .friction_ignored
+                .player_shape
         };
         assert!(!ignorado(&world, corpo) && !ignorado(&world, filha));
         let player = ph2d_physics_ecs::PlatformPlayer::default();

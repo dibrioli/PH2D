@@ -2,7 +2,8 @@
 
 /// **O número com que cada habilidade nasce**, para que marcar a caixa já dê um movimento no primeiro
 /// Play (a lei de antes nascia com `0`, que desligava). Valores das cenas de smoke da física
-/// (`ph2d-physics-smoke-scenes`: parede 3 e 2, beirada 0,6, nado 4, planeio 2), o dash do
+/// (`ph2d-physics-smoke-scenes`: parede 3 e 2, nado 4, planeio 2; `ph2d-physics-smoke-jump`: beirada
+/// 0,6), o dash do
 /// `physics_smoke_out` (14) e o agachar a 0,6 da perna de partida; o teto de queda (10 m/s) só
 /// corta quedas longas: o pulo de 2 m com Fall Gravity 2 aterra a ~12,5 m/s.
 pub(super) struct Pronto {

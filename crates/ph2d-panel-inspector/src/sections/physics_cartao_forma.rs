@@ -101,7 +101,7 @@ fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             t.x,
             t.w,
             y,
-            !info.friction_ignored,
+            !info.player_shape,
         );
         y = sem_atrito(t, y, info);
     }
@@ -232,7 +232,11 @@ pub(super) fn toque(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f
     )
 }
 
+/// A forma do próprio player não tem a linha: a ponte ignora-lhe o one-way (Bug #14).
 pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    if info.player_shape {
+        return y;
+    }
     seg_row(
         t.scene,
         t.text,
@@ -328,7 +332,7 @@ pub(super) fn dobra_offset(t: &mut Tinta<'_>, y: f32) -> f32 {
 
 /// A forma de um player (Bug #14): diz porque o Friction não está ali.
 pub(super) fn sem_atrito(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    if info.friction_ignored {
+    if info.player_shape {
         t.frase(y, tr("card.insp.phys.no_friction"), ColorToken::Text3)
     } else {
         y
@@ -346,7 +350,7 @@ fn regras(info: &InspectorPhysicsInfo) -> String {
         nome(info.restitution_combine_tag),
         nome(info.friction_combine_tag),
     );
-    if a == b || info.friction_ignored {
+    if a == b || info.player_shape {
         a.to_string()
     } else {
         format!("{a} \u{b7} {b}")
@@ -368,13 +372,13 @@ pub(super) fn dobra_material(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsI
             y,
             info.restitution_combine_tag,
             info.friction_combine_tag,
-            !info.friction_ignored,
+            !info.player_shape,
         )
     })
 }
 
 fn dobra_quique(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    let resumo = if info.friction_ignored {
+    let resumo = if info.player_shape {
         t.numero(ids::INSP_PHYS_RESTITUTION)
     } else {
         format!(
@@ -383,7 +387,7 @@ fn dobra_quique(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             t.numero(ids::INSP_PHYS_FRICTION)
         )
     };
-    let titulo = tr(if info.friction_ignored {
+    let titulo = tr(if info.player_shape {
         "component.field.collider.2"
     } else {
         "card.insp.phys.bounce_friction"
@@ -398,7 +402,7 @@ fn dobra_quique(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             t.x,
             t.w,
             y,
-            !info.friction_ignored,
+            !info.player_shape,
         );
         paint_combine_rows(
             t.scene,
@@ -411,7 +415,7 @@ fn dobra_quique(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             y,
             info.restitution_combine_tag,
             info.friction_combine_tag,
-            !info.friction_ignored,
+            !info.player_shape,
         )
     })
 }
@@ -427,6 +431,7 @@ pub(super) fn dobra_superficie(
     } else {
         "card.insp.phys.wall_cling_on"
     });
+    let com_uma_via = com_uma_via && !info.player_shape;
     let resumo = if com_uma_via {
         let via = tr(if info.one_way {
             "card.insp.phys.one_way_on"

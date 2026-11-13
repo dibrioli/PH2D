@@ -1,6 +1,6 @@
 //! **O personagem não cola na parede** (dono 04/11), com o rapier de verdade.
 //!
-//! Desde o Bug #14 o corpo de TODO player é sem atrito (`player_sem_atrito`: atrito 0 + `Min`,
+//! Desde o Bug #14 o corpo de TODO player é sem atrito (`lei_da_forma_do_player`: atrito 0 + `Min`,
 //! imposto pela ponte), qualquer que seja o material autorado — antes o padrão (0,5 `Average`)
 //! colava (0,08 m em 30 tiques contra 0,90 solto) e o atrito 0 com `Average` ainda freava.
 

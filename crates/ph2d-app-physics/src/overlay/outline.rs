@@ -107,7 +107,8 @@ pub fn outlines(
             col,
             kind,
             triggered.contains(&e),
-            ghost && one_way.is_some(),
+            // A forma do player não é de uma via: a ponte ignora-lhe o marcador (Bug #14).
+            ghost && one_way.is_some() && !ph2d_physics_ecs::forma_do_player(world, e),
         );
         // O Look da forma (GEF02 onda 8): cor, opacidade e traço; sem Look, os do tema e do corpo.
         let look = world.get::<ph2d_physics_ecs::ShapeLook>(e);

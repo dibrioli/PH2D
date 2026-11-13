@@ -3,8 +3,9 @@
 //! Grip, Belt e Wall Cling são lidos só pelos raios de chão e de parede de UM player
 //! (`Surfaces::at`/`clings_at`), que excluem o próprio corpo: na forma do player sozinho não
 //! mudam um bit. Mas DECIDEM para OUTRO player que pise nele ou deslize no flanco dele, então
-//! ficam no Inspector (ao contrário do atrito, que a ponte sobrescreve sempre). One-Way é do par
-//! de contacto (o gancho do rapier) e decide para o próprio player: ele cai pelo chão.
+//! ficam no Inspector (ao contrário do atrito, que a ponte sobrescreve sempre). One-Way era do par
+//! de contacto (o gancho do rapier) e só fazia o próprio player cair pelo chão (y final −16,671 ×
+//! 0,900): a ponte ignora-o na forma do player (`forma_do_player`), e o Inspector esconde-o.
 //! A régua compara a trajectória inteira, bit a bit, contra o mesmo mundo sem o componente.
 
 use bevy_ecs::world::World;
@@ -126,23 +127,23 @@ fn dois(na: Na) -> Vec<Vec<[u32; 2]>> {
     out
 }
 
-/// ⭐ **Na forma do player sozinho**, Grip, Belt e Wall Cling não mudam um bit da trajectória;
-/// One-Way muda (decide). **Mutação que deve sangrar:** a ponte calar o `OneWayPlatform` de um
-/// player (`one_way = … && !atrito_ignorado`, em `desc_do_corpo`).
+/// ⭐ **Na forma do player sozinho**, nenhum dos quatro muda um bit da trajectória: Grip, Belt e
+/// Wall Cling porque os raios dele o excluem, One-Way porque a ponte o ignora na forma de um player.
+/// **Mutação que deve sangrar:** a ponte voltar a ler o `OneWayPlatform` do player (tirar o
+/// `one_way: false` de `lei_da_forma_do_player`): ele atravessa o chão.
 #[test]
-fn a_superficie_na_forma_do_player_sozinho_so_o_one_way_decide() {
+fn a_superficie_na_forma_do_player_sozinho_nenhum_decide() {
     let base = sozinho(Na::Nada);
-    for na in [Na::Grip, Na::Belt, Na::SemCling] {
-        assert_eq!(
-            sozinho(na),
-            base,
-            "{na:?} na forma do player mudou a trajectória dele"
+    let y = |v: &[Vec<[u32; 2]>]| f32::from_bits(v.last().expect("tiques")[0][1]);
+    for na in [Na::Grip, Na::Belt, Na::SemCling, Na::UmaVia] {
+        let v = sozinho(na);
+        assert!(
+            v == base,
+            "{na:?} na forma do player mudou a trajectória dele (y final {:.3} contra {:.3})",
+            y(&v),
+            y(&base)
         );
     }
-    let uma_via = sozinho(Na::UmaVia);
-    let y = |v: &[Vec<[u32; 2]>]| f32::from_bits(v.last().expect("tiques")[0][1]);
-    eprintln!("One-Way: y final {:.3} contra {:.3}", y(&uma_via), y(&base));
-    assert_ne!(uma_via, base, "One-Way na forma do player não decidiu nada");
 }
 
 /// A medição que separa «morto» de «só lido por OUTRO player»: com um segundo player em cima/ao lado,

@@ -217,7 +217,7 @@ pub(super) fn paint_body_face(
         yy,
         info.restitution_combine_tag,
         info.friction_combine_tag,
-        !info.friction_ignored,
+        !info.player_shape,
     );
 
     // How this collider takes part in a collision: which LAYER it is on, whether it
@@ -235,7 +235,7 @@ pub(super) fn paint_body_face(
         yy,
         info.layer,
         info.is_sensor,
-        info.one_way,
+        (!info.player_shape).then_some(info.one_way),
         info.no_wall_cling,
         info.signal_tag,
         &info.signal_tag_path,

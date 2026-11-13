@@ -414,7 +414,8 @@ pub(super) fn paint_collision_rows(
     y: f32,
     layer: u8,
     is_sensor: bool,
-    one_way: bool,
+    // `None` na forma do próprio player: a ponte ignora o one-way dela (Bug #14), a linha não existe.
+    one_way: Option<bool>,
     no_wall_cling: bool,
     // ⭐ O FILTRO por tag dos sinais (TOP-20 #9, W3c): `None` = sem componente, `Some(0)` = anexado
     // e por escolher, e o CAMINHO vazio com um id vivo = a tag foi apagada.
@@ -451,7 +452,7 @@ pub(super) fn paint_collision_rows(
         &SENSOR_LABELS.map(TextKey::tr),
         u8::from(is_sensor),
     );
-    if !is_sensor {
+    if let (false, Some(one_way)) = (is_sensor, one_way) {
         // A SOLID collider: which side is it solid from?
         yy = seg_row(
             scene,

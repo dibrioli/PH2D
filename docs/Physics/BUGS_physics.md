@@ -1451,11 +1451,21 @@ andar e a travagem são da lei (`ground_velocity`, walk/brake) — o andar no ch
 sem atrito (`platform_wall_sem_atrito`, 4,330 m × 4,330 m).
 
 **Cura.** Estado da arte dos character controllers (Unity `CharacterController`, Godot
-`CharacterBody2D`): o corpo do player não raspa em nada — `bridge::bodies::player_sem_atrito`
+`CharacterBody2D`): o corpo do player não raspa em nada — `bridge::bodies::lei_da_forma_do_player`
 impõe atrito 0 + regra `Min` à forma de todo corpo com `PlatformPlayer` (e às peças dele), na porta
 única `desc_do_corpo` (o agachar herda pelo `rest`). O material autorado no Collider do player deixa
 de valer; o Inspector deixou de mostrar Friction e Friction Combine na forma do player (corpo, filha e
-peças, cartões e `PH2D_CARDS=0`), pela mesma pergunta da ponte (`ph2d_physics_ecs::atrito_ignorado`).
+peças, cartões e `PH2D_CARDS=0`), pela mesma pergunta da ponte (`ph2d_physics_ecs::forma_do_player`).
+
+**One-Way na forma do próprio player** (irmão, 13/11): a auditoria da Surface
+(`superficie_do_player_tests`) mediu que o `OneWayPlatform` na forma do player só fazia uma coisa — o
+par de contacto com o chão deixava-o atravessar tudo (y final −16,671 × 0,900). Feature pior que não
+existir: a mesma `lei_da_forma_do_player` dá `one_way: false` (corpo, filha, peças), o Inspector
+esconde a linha One-Way (e o resumo da dobra Surface) pela mesma `forma_do_player`
+(`InspectorPhysicsInfo::player_shape`), e o contorno do Play deixa de a tingir de uma via. Num corpo
+que não é player nada muda. Gates: `a_superficie_na_forma_do_player_sozinho_nenhum_decide` (bit a
+bit igual sem o componente) e `a_forma_do_player_nao_mostra_atrito` (One-Way ausente com player,
+clique real sem).
 
 **O que o atrito escondia, curado pela lei (não reposto):** o freio da parede (`wall_slide`)
 somava-se ao boost do pulo de parede no tique da saída — dois donos do eixo — e o pulo saía 0,24 m/s
@@ -1473,5 +1483,5 @@ do lábio e pára (geometria, não a lei); o gate passou a `< 2 cm` e parado.
 
 **Gate novo:** `a_jump_against_a_wall_rises_the_full_jump_height` — alturas 1/1,5/2/2,5 × Dynamic/Snap
 × paredes desligadas/slide/grab: encostado = livre ±1 mm. **Mutações:** tirar o
-`player_sem_atrito` de `desc_do_corpo` ⇒ o gate novo reprova; tirar o `&& !jumped` do freio ⇒
+`lei_da_forma_do_player` de `desc_do_corpo` ⇒ o gate novo reprova; tirar o `&& !jumped` do freio ⇒
 `no_jump_leaves_faster…` reprova; restauradas, verdes.

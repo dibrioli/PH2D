@@ -1,11 +1,11 @@
 //! **Bug #14 — pular encostado na parede sobe a Jump Height inteira.**
 //!
-//! O corpo do player não raspa em nada (`player_sem_atrito`, na ponte): com atrito, a força do andar
+//! O corpo do player não raspa em nada (`lei_da_forma_do_player`, na ponte): com atrito, a força do andar
 //! contra a face × μ comia a subida (0,774 m de 2,0, μ 0,5 Average). Medido nesta fixture, antes da
 //! cura: player μ 0 sozinho 1,105 (a `Average` deixa 0,25), parede μ 0 sozinha 1,105, os dois 0 ⇒
 //! 2,000; `Min` com o player a 0 ⇒ 2,000; o Snap (cinemático) já subia 2,000.
 //!
-//! **Mutação que deve sangrar:** tirar o `player_sem_atrito` de `desc_do_corpo`.
+//! **Mutação que deve sangrar:** tirar o `lei_da_forma_do_player` de `desc_do_corpo`.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};

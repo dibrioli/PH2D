@@ -10,7 +10,7 @@
 //!
 //! Até 13/11 o corpo do player raspava na parede (atrito de Coulomb contra a normal que o
 //! controle aéreo sustenta) e, sem a capacidade, descia só 9 cm em 1 s — a «cola». O corpo do
-//! player agora não tem atrito com nada (`player_sem_atrito`): sem a capacidade ele CAI, e a
+//! player agora não tem atrito com nada (`lei_da_forma_do_player`): sem a capacidade ele CAI, e a
 //! única coisa que o segura numa parede é a lei autorada.
 //!
 //! A tabela está no `measure_wall`.

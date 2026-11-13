@@ -26,7 +26,7 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
         t.x,
         t.w,
         y,
-        !info.friction_ignored,
+        !info.player_shape,
     );
     y = sem_atrito(t, y, info);
     y = dobra_densidade(t, y);

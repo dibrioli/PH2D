@@ -1,8 +1,10 @@
-//! Bug #14: a ponte impõe atrito 0 + `Min` à forma de todo corpo com `PlatformPlayer`
-//! (`ph2d_physics_ecs::atrito_ignorado`), então Friction e Friction Combine dessa forma não têm leitor.
-//! Controlo morto não fica à vista: nas duas faces (cartões e `PH2D_CARDS=0`), no corpo e na forma filha,
-//! as linhas não são pintadas nem registadas; Bounce e Bounce Combine continuam vivos ao clique real.
-//! **Mutação que deve sangrar:** `paint_bounce_friction`/`paint_combine_rows` ignorarem `com_atrito`.
+//! Bug #14: a ponte impõe atrito 0 + `Min` à forma de todo corpo com `PlatformPlayer` e ignora-lhe o
+//! `OneWayPlatform` (`ph2d_physics_ecs::forma_do_player`), então Friction, Friction Combine e One-Way
+//! dessa forma não têm leitor. Controlo morto não fica à vista: nas duas faces (cartões e
+//! `PH2D_CARDS=0`), no corpo e na forma filha, as linhas não são pintadas nem registadas; Bounce e
+//! Bounce Combine continuam vivos ao clique real, e sem player o One-Way responde ao clique.
+//! **Mutações que devem sangrar:** `paint_bounce_friction`/`paint_combine_rows` ignorarem `com_atrito`;
+//! `uma_via`/`paint_collision_rows` pintarem o One-Way sempre.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -18,12 +20,13 @@ use crate::seam_physics::with_body;
 fn mortos() -> Vec<NodeId> {
     let mut v = vec![INSP_PHYS_FRICTION];
     v.extend(INSP_PHYS_FRIC_COMBINE);
+    v.extend(INSP_PHYS_ONEWAY);
     v
 }
 
 fn player(info: InspectorPhysicsInfo) -> InspectorPhysicsInfo {
     InspectorPhysicsInfo {
-        friction_ignored: true,
+        player_shape: true,
         ..info
     }
 }
@@ -68,6 +71,7 @@ fn cartoes(nome: &str, info: InspectorPhysicsInfo) {
     );
     sai();
     // O controlo: sem player, as linhas continuam.
+    let info_bits = info.entity_bits;
     let (mut host, mut st) = cena(info, [1.0, 1.0]);
     let (r, avisos) = ph2d_panel_inspector::censo_dos_avisos::medindo(|| pinta(&mut host, &mut st));
     for id in mortos() {
@@ -76,6 +80,15 @@ fn cartoes(nome: &str, info: InspectorPhysicsInfo) {
     assert!(
         !avisos.iter().any(|a| a.texto == dica()),
         "{nome}: dica sem player"
+    );
+    let on = achado(&r, INSP_PHYS_ONEWAY[1]).unwrap_or_else(|| panic!("{nome}: One-Way on"));
+    assert_eq!(
+        clica(&mut host, &mut st, on),
+        [EditorAction::InspectorPhysicsEdit {
+            entity_bits: info_bits,
+            edit: E::OneWay(true),
+        }],
+        "{nome}: o clique no One-Way sem player"
     );
     sai();
 }

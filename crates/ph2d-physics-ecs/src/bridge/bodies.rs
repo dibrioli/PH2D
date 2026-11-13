@@ -253,7 +253,7 @@ impl PhysicsBridge {
             shape_off,
             ..desc
         };
-        (shape, Some(player_sem_atrito(world, e, desc)))
+        (shape, Some(lei_da_forma_do_player(world, e, desc)))
     }
 }
 
@@ -365,17 +365,19 @@ pub(super) fn area_effect(
 /// qualquer superfície. Aderência e travagem são da LEI (walk/brake e a mola da perna), nunca de
 /// Coulomb — com atrito, a força do andar contra uma parede × μ travava a subida do pulo (0,77 m de
 /// 2,0). O estado da arte dos character controllers (Unity `CharacterController`, Godot
-/// `CharacterBody2D`). Medição: [BUGS_physics.md #14](../../../../docs/Physics/BUGS_physics.md).
-pub(super) fn player_sem_atrito(
+/// `CharacterBody2D`). E não é plataforma de uma via: o par de contacto dela com o chão deixava-o
+/// atravessar tudo (y final −16,671 × 0,900). Medição: [BUGS_physics.md #14](../../../../docs/Physics/BUGS_physics.md).
+pub(super) fn lei_da_forma_do_player(
     world: &bevy_ecs::world::World,
     owner: Entity,
     desc: BodyDesc,
 ) -> BodyDesc {
-    if !crate::atrito_ignorado(world, owner) {
+    if !crate::forma_do_player(world, owner) {
         return desc;
     }
     BodyDesc {
         friction: 0.0,
+        one_way: false,
         material: ph2d_physics::CombineRules {
             friction: ph2d_physics::CoefficientCombineRule::Min,
             ..desc.material

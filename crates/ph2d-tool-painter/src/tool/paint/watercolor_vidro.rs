@@ -71,6 +71,7 @@ impl PainterTool {
         &mut self,
         base: &Arc<Vec<u8>>,
         backdrop: &Arc<Vec<u8>>,
+        area: Option<Region>,
     ) -> Option<VidroDoQuadro> {
         #[cfg(test)]
         if self.sem_vidro {
@@ -80,13 +81,14 @@ impl PainterTool {
             .layers
             .active()
             .filter(|&id| !self.layers.is_mask(id))?;
-        let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
         let (plano, vbase) = abre_o_vidro(
             &mut self.vidros,
             &mut self.vidro_congelado.aguada,
             camada,
-            n,
+            self.source_size,
             base,
+            &self.undo.write_state,
+            area,
         )?;
         let fresca = |w: &Weak<Vec<u8>>, a: &Arc<Vec<u8>>| Weak::ptr_eq(w, &Arc::downgrade(a));
         let chao_preto = match &self.vidro_congelado.chao_preto {
@@ -142,11 +144,13 @@ impl PainterTool {
             });
         let (x0, y0) = (r.x as usize, r.y as usize);
         let (x1, y1) = ((x0 + r.w as usize).min(w), (y0 + r.h as usize).min(h));
-        let plano = self.vidros.get_mut(&camada)?;
-        if Arc::strong_count(plano) > 1 {
-            *plano = Arc::new(crate::plane_copy::par_clone(plano));
-        }
-        let plano = Arc::get_mut(plano).expect("o plano é só nosso");
+        let plano = super::plane_fork::fork_vidro(
+            self.vidros.get_mut(&camada)?,
+            &self.undo.write_state,
+            camada,
+            self.source_size,
+            Some(r),
+        );
         let tela = &self.canvas_rgba;
         let tecto = tecto.map(|t| t.as_slice());
         use rayon::prelude::*;
@@ -257,9 +261,12 @@ pub(super) fn abre_o_vidro(
     vidros: &mut crate::compositor::vidro::Vidros,
     congelado: &mut Option<BaseCongelada>,
     camada: RtLayerId,
-    n: usize,
+    size: (u32, u32),
     base: &Arc<Vec<u8>>,
+    win: &crate::undo::window::WriteState,
+    area: Option<Region>,
 ) -> Option<PlanoEBase> {
+    let n = (size.0 as usize) * (size.1 as usize);
     if n == 0 || base.len() != n * 4 {
         return None;
     }
@@ -280,14 +287,17 @@ pub(super) fn abre_o_vidro(
     // O plano é escrito no lugar: quem o partilha (o desfazer, a base congelada) fica com a cópia. O que
     // nasceu AGORA é zeros: a cópia é outro plano zerado, cujas páginas só existem onde o traço escreve
     // (B18.4 WB: a 4K, 58 MB copiados no 1.º toque de cada camada nova).
-    if Arc::strong_count(&plano) > 1 {
-        plano = Arc::new(if nasce {
-            vec![[0u8; 7]; n]
-        } else {
-            #[cfg(test)]
+    if nasce {
+        win.note_absent_vidro(camada);
+        if Arc::strong_count(&plano) > 1 {
+            plano = Arc::new(vec![[0u8; 7]; n]);
+        }
+    } else {
+        #[cfg(test)]
+        if Arc::strong_count(&plano) > 1 {
             COPIAS_DO_VIDRO.with(|c| c.set(c.get() + 1));
-            crate::plane_copy::par_clone(&plano)
-        });
+        }
+        super::plane_fork::fork_vidro(&mut plano, win, camada, size, area);
     }
     Some((plano, vbase))
 }

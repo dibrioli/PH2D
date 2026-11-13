@@ -121,7 +121,7 @@ impl PainterTool {
         );
 
         // O VIDRO (doc 48): o plano da camada sai do mapa ANTES dos empréstimos do laço.
-        let vidro = self.vidro_do_quadro(&base_arc, &backdrop_arc);
+        let vidro = self.vidro_do_quadro(&base_arc, &backdrop_arc, Some(region));
         let lut = luts();
         let brush = &self.paint.brush;
         let base = &**base_arc;

@@ -175,6 +175,8 @@ pub struct WriteState {
     journal_since: std::cell::Cell<Option<u64>>,
     /// Os bytes velhos dos três planos de RELEVO — ver [`ReliefJournals`].
     relief: std::cell::RefCell<ReliefJournals>,
+    /// Os bytes velhos do plano do VIDRO, por tile (ADR-0204 D1).
+    vidro: std::cell::RefCell<vidro::VidroJournal>,
     /// O endereço da tela que a sessão molhada viva pintou por último (0 = nenhuma).
     tela_vigiada: std::cell::Cell<usize>,
     /// Essa tela, retida quando alguém que não é a sessão a escreve ou troca: é com ela que o guarda sabe o que mudou
@@ -429,12 +431,14 @@ impl WriteState {
             + r.heights.heap_bytes()
             + r.covers.heap_bytes()
             + r.mats.heap_bytes()
+            + self.vidro.borrow().heap_bytes()
     }
 
     /// O passo fechou: o journal esquece o que capturou.
     pub(crate) fn reset_journal(&self) {
         self.canvas.borrow_mut().reset();
         self.relief.borrow_mut().reset();
+        self.vidro.borrow_mut().reset();
         self.journal_since.set(None);
     }
 
@@ -513,6 +517,9 @@ impl WriteState {
 #[path = "undo_window_relief.rs"]
 mod relief;
 pub(crate) use relief::ReliefPlane;
+
+#[path = "undo_window_vidro.rs"]
+mod vidro;
 
 #[cfg(test)]
 mod tests {

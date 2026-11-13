@@ -262,8 +262,15 @@ impl PainterTool {
                 &mut self.vidros,
                 &mut self.vidro_congelado.molhada,
                 c,
-                w * h,
+                self.source_size,
                 &sess.base,
+                &self.undo.write_state,
+                Some(Region {
+                    x: px0 as u32,
+                    y: py0 as u32,
+                    w: (px1 - px0) as u32,
+                    h: (py1 - py0) as u32,
+                }),
             )
             .map(|(p, b)| (c, p, b))
         });

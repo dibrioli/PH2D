@@ -120,6 +120,24 @@ pub(super) fn fork_heights<'a>(
     fork_par_raw(arc)
 }
 
+/// **A porta do VIDRO** (ADR-0204 D1) — captura no journal do vidro os tiles que `area` toca e devolve o
+/// plano para escrita. Não abre acesso na janela: a escrita do vidro vai com a da tela, que o mesmo
+/// `declare_wrote` fecha (abrir aqui deixava um acesso sem `mark`).
+pub(super) fn fork_vidro<'a>(
+    arc: &'a mut Arc<Vec<crate::compositor::vidro::Vidro>>,
+    win: &WriteState,
+    layer: crate::layers::LayerId,
+    size: (u32, u32),
+    area: Option<crate::compositor::Region>,
+) -> &'a mut Vec<crate::compositor::vidro::Vidro> {
+    if arc.len() == (size.0 as usize) * (size.1 as usize) {
+        win.capture_vidro(layer, arc, size.0 as usize, elems(area, 1));
+    } else {
+        win.note_absent_vidro(layer);
+    }
+    fork_par_raw(arc)
+}
+
 /// Ver [`fork_heights`].
 pub(super) fn fork_covers<'a>(
     arc: &'a mut Arc<Vec<u8>>,

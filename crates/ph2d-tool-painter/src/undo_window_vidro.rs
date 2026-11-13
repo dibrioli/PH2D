@@ -1,0 +1,157 @@
+//! **O VIDRO na janela** (ADR-0204 D1) — filho de [`super`]: o journal por tile do plano do vidro, a
+//! 5.ª família do documento, no molde de [`super::ReliefJournals`] (um mapa por camada: dois planos de
+//! camadas diferentes têm a mesma forma, e um 2.º dono marca o journal como misturado).
+
+use super::WriteState;
+use crate::compositor::vidro::Vidro;
+
+/// Os bytes velhos do plano do vidro, mais de QUE camada eles falam.
+#[derive(Clone, Debug, Default)]
+pub(super) struct VidroJournal {
+    layer: Option<crate::layers::LayerId>,
+    mixed: bool,
+    incomplete: bool,
+    /// O plano foi escrito sem forma de canvas (1.º toque da camada): não há antes a descrever (`OnlyAfter`).
+    absent: bool,
+    tiles: crate::undo::journal::TileJournal<Vidro>,
+}
+
+impl VidroJournal {
+    fn note_layer(&mut self, l: crate::layers::LayerId) {
+        match self.layer {
+            None => self.layer = Some(l),
+            Some(cur) if cur == l => {}
+            Some(_) => {
+                self.mixed = true;
+                self.tiles.reset();
+            }
+        }
+    }
+
+    pub(super) fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    pub(super) fn heap_bytes(&self) -> usize {
+        self.tiles.heap_bytes()
+    }
+}
+
+impl WriteState {
+    /// **Captura o vidro da `layer` antes de ele ser escrito** — `area` em texels (um elemento por pixel).
+    pub(crate) fn capture_vidro(
+        &self,
+        layer: crate::layers::LayerId,
+        buf: &[Vidro],
+        stride: usize,
+        area: Option<(usize, usize, usize, usize)>,
+    ) {
+        let mut j = self.vidro.borrow_mut();
+        // O plano nasceu neste passo: não há antes a descrever (`OnlyAfter`), e os bytes de agora não o são.
+        if j.absent && j.layer == Some(layer) {
+            return;
+        }
+        j.note_layer(layer);
+        j.tiles.capture(buf, stride, area);
+    }
+
+    /// Uma escrita chegou a um vidro SEM forma de canvas: com o journal vazio o plano não existia no começo
+    /// do passo (`absent`); com tiles já tomados ele perdeu a forma no meio (`incomplete`).
+    pub(crate) fn note_absent_vidro(&self, layer: crate::layers::LayerId) {
+        let mut j = self.vidro.borrow_mut();
+        if !j.tiles.is_empty() {
+            j.incomplete = true;
+            return;
+        }
+        j.note_layer(layer);
+        j.absent = true;
+    }
+
+    /// `true` se o journal do vidro pode responder pela camada `l`.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn vidro_speaks_for(&self, l: crate::layers::LayerId) -> bool {
+        let j = self.vidro.borrow();
+        !j.mixed && !j.incomplete && j.layer.is_none_or(|cur| cur == l)
+    }
+
+    /// O antes do texel `i`, se o journal o capturou (`antes[i] = journal.get(i).unwrap_or(vivo[i])`, §5.28).
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn vidro_before(&self, i: usize) -> Option<Vidro> {
+        self.vidro.borrow().tiles.get(i)
+    }
+
+    /// Os bytes que o journal do vidro retém.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn vidro_journal_bytes(&self) -> usize {
+        self.vidro.borrow().heap_bytes()
+    }
+
+    /// O plano foi escrito sem forma de canvas neste passo.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn vidro_absent(&self) -> bool {
+        self.vidro.borrow().absent
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layers::LayerId;
+
+    /// O texel `(x, y)` de um plano `w` de largura, com um padrão que não se repete entre tiles.
+    fn texel(x: usize, y: usize, k: u8) -> Vidro {
+        let v = (x * 31 + y * 17) as u8;
+        [v, v ^ k, k, 1, 2, 3, v.wrapping_add(k)]
+    }
+
+    /// ADR-0204 D1: a captura toma os tiles que a região toca (os parciais pelo tamanho real), só a 1.ª vez,
+    /// e o antes reconstruído é o plano de antes ao bit; outra camada mistura o journal.
+    #[test]
+    fn o_journal_do_vidro_guarda_os_tiles_que_a_regiao_toca_e_so_a_primeira_vez() {
+        let (w, h) = (300usize, 200usize); // tiles: x 128·128·44, y 128·72
+        let antes: Vec<Vidro> = (0..w * h).map(|i| texel(i % w, i / w, 0)).collect();
+        let ws = WriteState::default();
+        let l = LayerId(7);
+        assert_eq!(ws.vidro_journal_bytes(), 0);
+        ws.capture_vidro(l, &antes, w, Some((100, 50, 200, 140)));
+        let t = |a: usize, b: usize| a * b * size_of::<Vidro>();
+        assert_eq!(
+            ws.vidro_journal_bytes(),
+            2 * t(128, 128) + 2 * t(128, 72),
+            "quatro tiles, os de baixo parciais"
+        );
+        // O passo escreve; a 2.ª captura dos mesmos tiles não os toma de novo.
+        let depois: Vec<Vidro> = (0..w * h).map(|i| texel(i % w, i / w, 9)).collect();
+        ws.capture_vidro(l, &depois, w, Some((150, 0, 290, 10)));
+        assert_eq!(
+            ws.vidro_journal_bytes(),
+            2 * t(128, 128) + 2 * t(128, 72) + t(44, 128),
+            "só o tile (2, 0) é novo"
+        );
+        for (x, y) in [
+            (0, 0),
+            (127, 127),
+            (128, 0),
+            (255, 199),
+            (256, 0),
+            (299, 127),
+        ] {
+            let i = y * w + x;
+            assert_eq!(
+                ws.vidro_before(i).unwrap_or(depois[i]),
+                if x < 256 { antes[i] } else { depois[i] },
+                "o antes de ({x}, {y})"
+            );
+        }
+        assert!(ws.vidro_speaks_for(l));
+        ws.capture_vidro(LayerId(8), &depois, w, Some((0, 0, 1, 1)));
+        assert!(!ws.vidro_speaks_for(l), "outra camada mistura o journal");
+        ws.reset_journal();
+        assert_eq!(ws.vidro_journal_bytes(), 0);
+        assert!(ws.vidro_speaks_for(l));
+    }
+}

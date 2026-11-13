@@ -398,9 +398,13 @@ impl PainterTool {
         }
         // B18.3: com a figura igual antes e depois, o quadro seguinte não recompõe a pilha.
         let mantem = self.a_troca_mantem_a_figura(target);
+        // N7 onda 3: só a tinta viva impede — a que adormece (e a que acorda) marca a janela dela.
+        let salvo_a_tinta = !mantem && self.a_troca_mantem_salvo_a_tinta(target);
+        let saida = self.layers.active().filter(|_| self.tinta_viva());
         self.fecha_a_forma_aberta();
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
+        let dormiu = !self.tinta_viva();
         #[cfg(test)]
         if super::cache::TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
             self.carrega_a_tela_da_activa(target); // a sonda A/B: o caminho de antes
@@ -413,6 +417,14 @@ impl PainterTool {
         self.wet_acorda_da_camada();
         if mantem && self.a_troca_mantem_a_figura(target) {
             self.troca_sem_mudar_a_figura();
+        } else if (mantem || salvo_a_tinta) && dormiu && self.a_troca_mantem_salvo_a_tinta(target) {
+            self.troca_sem_mudar_a_figura();
+            if let Some(id) = saida {
+                self.a_tinta_que_adormeceu_muda(id);
+            }
+            if self.tinta_viva() {
+                self.a_tinta_que_acordou_muda();
+            }
         } else {
             self.invalidate_composite();
         }

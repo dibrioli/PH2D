@@ -81,3 +81,41 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && cargo
   apagar/duplicar/grupo pagarem só a caixa da tinta; confirmar na matriz.
 - **Aberto:** Wet a trocar (58–66 ms: a tinta viva força a recomposição inteira — confinar à janela da adormecida como
   o «+»); apagar/duplicar/grupo com aguada no papel de cor (provar que tirar o último vidro não muda a figura fora da tinta).
+
+## Onda 3 (13/11) — o Wet a trocar de camada só na janela da tinta
+
+- **Mecanismo:** `a_troca_mantem_a_figura` recusava toda troca com a sessão viva (`traco_ou_tinta_viva`), e a do alvo
+  que acorda também caía na 2.ª pergunta → `invalidate_composite` (pilha 4K inteira + dobra). A tinta viva do Wet vive
+  NA tela da camada (o motor escreve no `canvas_rgba`; `wet_ultima_imagem` pousa a última imagem e marca o próprio
+  sujo), então a figura só muda onde a tinta mexe.
+- **Cura** (`mutate.rs::set_active_layer`, `cache.rs::a_troca_mantem_salvo_a_tinta` / `a_tinta_que_acordou_muda`): se o
+  único impeditivo é a tinta viva (traço por fechar continua a recusar), a sessão adormeceu de facto (`dormiu`) e a
+  pergunta salvo-a-tinta vale depois do acordar, o cache fica e marca-se a janela da tinta da que adormeceu
+  (`a_tinta_que_adormeceu_muda`, como o «+») e da que acordou. Chave em execução: `PH2D_TROCA_RECOMPOE=1` /
+  `TROCA_RECOMPOE_COMO_ANTES` = o caminho de antes.
+- **Gate** `a_troca_com_a_tinta_viva_do_wet_marca_so_a_janela_da_tinta` (sem papel, papel aceso, controlo
+  `TROCA_RECOMPOE_SEMPRE`): cache fica, janela < tela, figura = recomposição inteira ao bit, undo/redo.
+  Mutação M4 (ramo novo desligado) → vermelho. M5/M6 (sem a marca da adormecida / da que acorda) → verdes:
+  EQUIVALENTES na pista CPU, porque a sessão marca o próprio sujo; ficam como no «+» pela pista da placa (versão da
+  camada), sem gate da placa que as decida — custo ≈ 2 varreduras `janela_da_tinta` (~1–3 ms a 4K).
+- **Números** (teste temporário não comitado, 4K, Textured Paper, `--profile smoke`, ABBA 6 blocos × 3 trocas, load ~4–6):
+
+  | pincel | variante | troca (chamada) ms | drenagem seguinte ms |
+  |---|---|---|---|
+  | Wet Wash | antes | 2,0–8,5 | **44,9–59,7** |
+  | Wet Wash | agora | 4,4–10,4 | 3,6–7,0 |
+  | Express Oil | antes | 2,6–5,5 | **42,5–46,9** |
+  | Express Oil | agora | 5,0–8,4 | 3,1–5,9 |
+  | Filbert | antes | 1,8–5,3 | **43,9–51,2** |
+  | Filbert | agora | 4,6–7,8 | 3,6–6,5 |
+
+  Troca + quadro: ~45–64 → ~8–17 ms. O `flush.bring_home` (espera do motor) é 0,5–6,6 ms: sobrepô-lo não paga o risco
+  de ordem, ficou.
+- **Os 235 ms da camada nova (Express Oil/Filbert): NÃO reproduzidos** nesta cena (pior troca 10,4 ms, «+» 2,2–6,1 ms,
+  2 camadas, 3 trocas após «+» e traço). Hipótese a conferir na matriz: o fio da compressão da adormecida (Continuação 3
+  do item 3: um traço 300–760 ms após o «+» ainda o encontra) ou o 1.º aquecimento do fundo; a matriz traz a marca.
+- **Apagar/duplicar/grupo com aguada no papel de cor: NÃO provado, continua a recompor tudo** (guarda
+  `papel_atravessa_vidro` de `a_nova_transparente_mantem_a_figura`). Sem prova de que a composição pelo vidro não lê
+  o vidro da vizinha fora da janela da tinta+vidro, não entra (o prazo do agente acabou antes da prova).
+- `cargo build -p ph2d-tool-painter --profile smoke --tests` compila. Vizinhos verdes por nome: `troca` 37 · `fundo` 6 ·
+  `duplicate` 2 · `camadas_integridade` 9 · `o_fundo_do_toque` 3 · `adormec` 32 · `mais_sem_diff` 3 · `vidro` 32.

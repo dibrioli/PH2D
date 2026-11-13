@@ -445,3 +445,66 @@ fn apagar_duplicar_e_agrupar_recompoem_so_a_janela_da_tinta() {
         }
     }
 }
+
+/// N7 onda 3 — a troca com a tinta viva do Wet: a sessão adormece (e a do alvo acorda) e a figura muda só na janela
+/// da tinta delas; o cache fica fora dela e a figura é, bit a bit, a da recomposição inteira (undo/redo também), com
+/// e sem o papel aceso. O controlo (`TROCA_RECOMPOE_SEMPRE`) recompõe tudo e dá a mesma figura.
+#[test]
+fn a_troca_com_a_tinta_viva_do_wet_marca_so_a_janela_da_tinta() {
+    for (papel, antes) in [(false, false), (true, false), (false, true)] {
+        // Tinta só numa faixa de cada camada: a janela não é a tela inteira.
+        let faixa = |semente: u32, y0: usize| -> Vec<u8> {
+            let mut px = ruido(semente);
+            let l = LADO as usize * 4;
+            for (y, linha) in px.chunks_mut(l).enumerate() {
+                if !(y0..y0 + 6).contains(&y) {
+                    linha.fill(0);
+                }
+            }
+            px
+        };
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; N * 4], LADO, LADO);
+        t.set_wet_relogio_fixo(true);
+        let a = t.add_raster_layer_with_pixels("A", faixa(7, 2)).expect("A");
+        let b = t
+            .add_raster_layer_with_pixels("B", faixa(11, 30))
+            .expect("B");
+        let c = t
+            .add_raster_layer_with_pixels("C", faixa(13, 40))
+            .expect("C");
+        let _ = t.take_preview_arc();
+        let mut d = Doc { t, a, b, c };
+        if papel {
+            d.t.set_substrate_depth(1.0);
+        }
+        d.t.select_layer(d.b);
+        d.t.set_paint_tool_mode("wetpaint");
+        traco(&mut d.t, 24.0);
+        assert!(d.t.tinta_viva(), "controlo: a sessão viva");
+        let (a, b, c) = (d.a, d.b, d.c);
+        for (k, alvo) in [a, b, c, b, a].into_iter().enumerate() {
+            let caso = format!("papel={papel} antes={antes} passo {k}");
+            let _ = na_tela(&mut d.t);
+            let viva = d.t.tinta_viva();
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+            d.t.select_layer(alvo);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+            let ficou = d.t.composited_is_some();
+            assert_eq!(ficou, !antes, "{caso}: o cache ficou (ou não); viva={viva}");
+            if ficou && d.t.preview_dirty {
+                let r = d.t.dirty_rect.expect("a janela da tinta");
+                assert!(
+                    r.w < LADO || r.h < LADO,
+                    "{caso}: a janela é a tela inteira ({r:?})"
+                );
+            }
+            confere_a_figura(&mut d.t, &caso);
+            assert!(d.t.undo_last(), "{caso}: desfaz");
+            confere_a_figura(&mut d.t, &format!("{caso} · undo"));
+            assert!(d.t.redo_last(), "{caso}: refaz");
+            confere_a_figura(&mut d.t, &format!("{caso} · redo"));
+            traco(&mut d.t, 10.0 + 6.0 * k as f32);
+        }
+    }
+}

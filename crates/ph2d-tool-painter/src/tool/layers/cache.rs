@@ -93,6 +93,16 @@ impl PainterTool {
     /// máscara, o relevo aceso (salvo o que não lê a activa), a tinta viva do Wet (adormecer escreve a última
     /// imagem na tela), uma forma aberta (fecha-se na tela) e um traço aberto. Pergunta-se antes E depois.
     pub(crate) fn a_troca_mantem_a_figura(&self, alvo: RtLayerId) -> bool {
+        self.a_troca_mantem_com(alvo, true)
+    }
+
+    /// N7 onda 3: a mesma pergunta, salvo a tinta viva do Wet — quem adormece ou acorda na troca marca só a janela
+    /// da tinta dela ([`Self::a_tinta_que_adormeceu_muda`]), como no «+». Com a chave de antes, nunca.
+    pub(crate) fn a_troca_mantem_salvo_a_tinta(&self, alvo: RtLayerId) -> bool {
+        !troca_recompoe_como_antes() && self.a_troca_mantem_com(alvo, false)
+    }
+
+    fn a_troca_mantem_com(&self, alvo: RtLayerId, tinta_conta: bool) -> bool {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize) * 4;
         #[cfg(test)]
@@ -112,7 +122,7 @@ impl PainterTool {
                     .is_some_and(|i| i.width == w && i.height == h && i.rgba8.len() == n))
             && !self.is_editing_shape()
             && !self.has_parked_shapes()
-            && !self.traco_ou_tinta_viva()
+            && !(if tinta_conta { self.traco_ou_tinta_viva() } else { self.traco_por_fechar() })
             && !self.mask_scratch_active()
             && self.mask_view_grayscale.is_none()
             && (!self.impasto_visible() || (!antes && self.o_relevo_nao_le_a_activa()))
@@ -198,6 +208,26 @@ impl PainterTool {
                 janela_da_tinta(&i.rgba8, w as usize)
             }
             _ => PlaneReach::Whole,
+        };
+        match alcance {
+            PlaneReach::Untouched => {}
+            PlaneReach::Window(j) => match j.to_region(w) {
+                Some(r) => self.mark_dirty(r),
+                None => self.invalidate_composite(),
+            },
+            PlaneReach::Whole => self.invalidate_composite(),
+        }
+    }
+
+    /// A tinta da activa acordou na troca (N7 onda 3): a figura muda só na janela da tinta da tela dela (a assentada →
+    /// a ótica viva), o inverso de [`Self::a_tinta_que_adormeceu_muda`].
+    pub(crate) fn a_tinta_que_acordou_muda(&mut self) {
+        use crate::undo_delta::confine::{PlaneReach, janela_da_tinta};
+        let (w, h) = self.source_size;
+        let alcance = if self.canvas_rgba.len() == (w as usize) * (h as usize) * 4 {
+            janela_da_tinta(&self.canvas_rgba, w as usize)
+        } else {
+            PlaneReach::Whole
         };
         match alcance {
             PlaneReach::Untouched => {}

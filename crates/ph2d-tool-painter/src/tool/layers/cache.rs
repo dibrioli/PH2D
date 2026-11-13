@@ -151,6 +151,11 @@ impl PainterTool {
     /// (cada uma marca o próprio sujo) ficam dentro; só um traço aberto e o que lê a activa ficam de fora. O sujo
     /// pendente (cache vazio, pista GPU velha) fica como estava: nada se acrescenta, nada se perde.
     pub(crate) fn a_nova_transparente_mantem_a_figura(&self) -> bool {
+        self.nada_le_a_activa() && !self.papel_atravessa_vidro()
+    }
+
+    /// As guardas do «+» salvo o vidro: nada aberto que se feche na tela, nada que leia a activa.
+    fn nada_le_a_activa(&self) -> bool {
         #[cfg(test)]
         if TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
             return false;
@@ -160,7 +165,6 @@ impl PainterTool {
             && !self.has_parked_shapes()
             && !self.mask_scratch_active()
             && self.mask_view_grayscale.is_none()
-            && !self.papel_atravessa_vidro()
     }
 
     /// **Onde a figura pode mudar quando a camada raster `id` sai, ganha uma cópia por cima ou entra num grupo**
@@ -173,7 +177,7 @@ impl PainterTool {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize) * 4;
         if troca_recompoe_como_antes()
-            || !self.a_nova_transparente_mantem_a_figura()
+            || !self.nada_le_a_activa()
             || !matches!(
                 self.layers.get(id)?.kind,
                 LayerKind::Raster(_) | LayerKind::Texture(_)
@@ -194,7 +198,25 @@ impl PainterTool {
         } else {
             &self.images.get(&id)?.rgba8
         };
-        (px.len() == n).then(|| crate::undo_delta::confine::janela_da_tinta(px, w as usize))
+        if px.len() != n {
+            return None;
+        }
+        use crate::undo_delta::confine::{janela_da_tinta, janela_do_vidro, uniao};
+        let tinta = janela_da_tinta(px, w as usize);
+        // n.º 8 (B18.6): sobre o papel de cor o vidro da camada tira a transparência também onde o alfa é 0.
+        let vidro = match self
+            .vidros
+            .get(&id)
+            .filter(|_| self.papel_atravessa_vidro())
+        {
+            Some(v) if v.len() * 4 == n => janela_do_vidro(v, w as usize),
+            Some(_) => return None,
+            None => PlaneReach::Untouched,
+        };
+        match uniao(tinta, vidro) {
+            PlaneReach::Whole => None,
+            j => Some(j),
+        }
     }
 
     /// [`Self::alcance_da_tinta_de`] e, quando provado, a lista achatada da placa ANTES do gesto (N7 onda 5).

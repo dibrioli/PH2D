@@ -40,6 +40,33 @@ pub(crate) fn janela_da_tinta(rgba: &[u8], w: usize) -> PlaneReach {
     }
 }
 
+/// **A janela do vidro** de uma camada (n.º 8, B18.6): onde o plano tem um texel selado. Sobre o papel de cor o vidro
+/// tira a transparência de cada canal também em texels de alfa 0 (a orla de pigmento, `compositor::vidro::atravessa`),
+/// então a figura que a camada faz mora em tinta ∪ vidro; fora dos dois o texel é `[0; 7]` e não tira nada.
+pub(crate) fn janela_do_vidro(p: &[crate::compositor::vidro::Vidro], w: usize) -> PlaneReach {
+    super::janela_dos_selados(p, w)
+}
+
+/// A menor janela que contém as duas (o mesmo plano em texels de `stride` igual); `Whole` se não casam.
+pub(crate) fn uniao(a: PlaneReach, b: PlaneReach) -> PlaneReach {
+    match (a, b) {
+        (PlaneReach::Untouched, x) | (x, PlaneReach::Untouched) => x,
+        (PlaneReach::Window(a), PlaneReach::Window(b))
+            if a.stride == b.stride && a.plane_len == b.plane_len =>
+        {
+            let (row, col) = (a.row.min(b.row), a.col.min(b.col));
+            PlaneReach::Window(PlaneWindow {
+                row,
+                rows: (a.row + a.rows).max(b.row + b.rows) - row,
+                col,
+                cols: (a.col + a.cols).max(b.col + b.cols) - col,
+                ..a
+            })
+        }
+        _ => PlaneReach::Whole,
+    }
+}
+
 thread_local! {
     /// **A chave do A×B** (n.º 7 item 3, o «+» do Wet): `true` = a janela do alfa por palavras de 64 bits
     /// ([`janela_do_alfa_por_palavras`]); `false` = a busca em série por texel de sempre (o oráculo). As duas dão a

@@ -350,7 +350,7 @@ pub(crate) fn vidro_neutro(v: &crate::compositor::vidro::Vidro) -> bool {
 mod janela;
 #[cfg(test)]
 pub(crate) use janela::JANELA_DA_TINTA_POR_PALAVRAS;
-pub(crate) use janela::janela_da_tinta;
+pub(crate) use janela::{janela_da_tinta, janela_do_vidro, uniao};
 
 #[cfg(test)]
 thread_local! {

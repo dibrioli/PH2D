@@ -24,6 +24,8 @@ pub(crate) use mutate::TELA_NOVA_PELO_MMAP;
 #[cfg(test)]
 mod copias_de_plano_tests;
 mod estrutura;
+#[cfg(test)]
+mod estrutura_vidro_tests;
 mod model;
 mod mutate;
 mod passo;

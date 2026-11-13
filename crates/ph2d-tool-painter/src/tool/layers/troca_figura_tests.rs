@@ -366,7 +366,7 @@ fn a_troca_com_a_aguada_no_papel_de_cor_nao_recompoe_e_a_figura_fica() {
 /// N7 — apagar, duplicar e agrupar mudam a figura só onde a camada tem tinta: a recomposição fica confinada à
 /// janela dela (o cache fica fora), e a figura é, bit a bit, a da recomposição inteira — com modos e opacidade,
 /// o papel aceso e a aguada sobre o papel de cor; undo/redo também. O controlo (`TROCA_RECOMPOE_SEMPRE`)
-/// recompõe tudo e dá a mesma figura; o ajuste na pilha e o vidro (a aguada no papel de cor) não são provados e recompõem tudo.
+/// recompõe tudo e dá a mesma figura; o ajuste na pilha não é provado e recompõe tudo (o vidro: `estrutura_vidro_tests`).
 #[test]
 fn apagar_duplicar_e_agrupar_recompoem_so_a_janela_da_tinta() {
     use crate::tool::paint::media::PaintMedia;
@@ -385,7 +385,7 @@ fn apagar_duplicar_e_agrupar_recompoem_so_a_janela_da_tinta() {
     let casos = [
         ("normal", false, false, false, true),
         ("modos e opacidade", false, true, false, true),
-        ("aguada no papel de cor", true, true, false, false),
+        ("aguada no papel de cor", true, true, false, true),
         ("ajuste", false, false, true, false),
     ];
     for (gesto, faz) in gestos {

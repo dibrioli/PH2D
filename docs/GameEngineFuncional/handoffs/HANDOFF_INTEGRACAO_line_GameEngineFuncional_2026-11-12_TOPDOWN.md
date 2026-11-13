@@ -58,70 +58,41 @@ Colado da saída (merge-base `4f46a3573c`, 8 commits, 70 arquivos):
 
 - Tecto da shell: reconte pelo integrador (§4).
 - Herdados da curva do pulo ([handoff](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)): ~~a curva termina nos pés e não segue o terreno~~ e ~~Jump Height 2,00 × ápice 2,04~~ — FECHADOS na rodada de 12/11 (adendo abaixo).
-- Defeito do wall jump (GEF02, adendo §A.3) · ~~`layer_override` por forma não lido pelo corte da curva (§A.2)~~ — FECHADO (adendo «Últimos abertos»).
+- ~~Defeito do wall jump (Bug #11)~~ — FECHADO (rodada da física, abaixo) · ~~`layer_override` por forma não lido pelo corte da curva (§A.2)~~ — FECHADO (adendo «Últimos abertos»).
 - Seguinte na fila: Projectile Motion ([plano](../23_refundacao_plano.md)).
 
-## Adendo — Rodada dos abertos (12/11) · `git log --oneline 3ee0bd34f4..HEAD`
 
-Mecanismo no código e nas mensagens dos commits; aqui só o que o integrador precisa.
+Adendos anteriores (rodada dos abertos, smoke do dono, últimos abertos; 12/11): […_TOPDOWN_ADENDOS.md](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-12_TOPDOWN_ADENDOS.md). Nele, os abertos «world_steps», «conta do degrau» e «Bug #11» estão riscados por esta rodada.
 
-### A.1 Commits
+## Adendo — Rodada da física (12–13/11, ordem do dono: corrija tudo) · `git log --oneline e2d1f616d4..HEAD` (19)
 
-- `c6c0848c00` — `HORARIO_24` com trechos só ←/↓/↑ (11 gestos); gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda`; `fotos_05` refeitas no app.
-- `9c1f51706b` — `scripts/collision-surface.sh`: a sonda dos espelhos `ph2d-render`/`ph2d-script` (`so_ecs.len() + K`) era CEGA (`val()` não lia `+`, desde `be050b8807`, 07/11, já no main). Prova `scripts/processo.prova.d/C.sh`. **O integrador beneficia:** a coluna destes espelhos passa a valer.
-- `f3a92736ab` — **LEI DO PULO MUDOU (contrato partilhado):** `launch_speed` (`ph2d-platformer/src/jump_config.rs`) resolve `v0` para o ápice real = `jump_height` (forma fechada por bandas de gravidade + 3 secantes contra `discrete_apex`; 0,20 µs/chamada). `apply_feel` só escreve gravidades; `set_feel` sem argumento de mundo; `apply_player_edit_in` fundido em `apply_player_edit`; `height_for_apex` saiu. Gates novos `o_pulo_do_jogo_sobe_a_jump_height`, `a_alca_poe_o_apice_onde_foi_pedido` (`ph2d-physics-ecs/tests/it/jump_arc.rs`). Fixturas `platform_corner`/`player_ceiling`/`platform_wall` levadas ao ápice velho (`OLD_LAW_JUMP_HEIGHT` 2,1056 e 1,3146) para manterem o mesmo `v0`. Resíduo: a lei não vê os sub-passos do mundo (erro ~`v0·dt/(2·substeps)`, < 2 cm até 2,5 m). **Merge:** outra linha que meça o pulo contra Jump Height antiga reconta.
-- `1979ca5c5d` — ordem das cenas: `CENAS = topdown::CENA` com `const assert topdown::CENA == input_map::ULTIMA + 1` (`ULTIMA` contada de `CODIGOS`); culpado `e0b66565dd`. Mutações: `CENAS = CENA + 1` ⇒ vermelho; 19.º código na aba ⇒ não compila.
-- `ced6a4ac0a` — a curva pousa no terreno: lei simula abaixo do arranque (`MAX_FALL_M` 24, `air_time` = volta à linha); varredura sem mundo `crates/ph2d-physics/src/world/arc_cast.rs` (`sweep_path`); corte pela verdade do ECS em `crates/ph2d-physics-ecs/src/arc_terrain.rs` (fora de `bridge/`; exclui sensores, forma desligada, o player e as peças dele; matriz de camadas pela forma principal; Outline = caixa da imagem). Custo 54,3 µs/chamada (3 formas, Air Jumps 1), 2×/quadro só com a curva ligada e o relógio parado; sem cache (cachear por config+pose+versão das formas se um nível grande mostrar).
-- `f591d5a3a2` — fotos da curva no terreno (`PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno`) e ficha 04.
-- `ef83e62d9b` — pouso × choque (normal vs max slope), contorno-fantasma do corpo no choque, anéis `Spacing::Md`. **`JumpArc.touch` mudou de tipo.**
+**ATENÇÃO, INTEGRADOR:** o dono autorizou nesta rodada a linha a editar a PONTE (`ph2d-physics-ecs/src/bridge*`, `physics_apply.rs`), porque a GEF02 foi integrada e fechada. A colisão com outras linhas é contra o `main`: confira `collision-surface.sh` em `bridge/` e `ph2d-platformer`. Mecanismo de cada bug: [BUGS_physics.md](../../Physics/BUGS_physics.md) (#11, #12, #12b, #13, #14).
 
-### A.2 Prova de fecho
+### R.1 Commits (por tema)
 
-- Verificador 1× (antes de `f591d5a3a2`/`ef83e62d9b`): build smoke ✓ · fmt ✓ · `clippy --workspace -D warnings` ✓ · censos 13/13 e 135/135 ✓ · `processo.prova.sh` ✓ · `collision-surface` sem ✗ ✓ · 25 grupos de testes por nome ✓. `ef83e62d9b`: fmt+clippy das 5 crates ✓ e testes por nome.
-- `PROJECT_SCHEMA` não muda (nada gravado novo).
+- **world_steps do projeto** — `eb83c15600`: a ponte escreve `cfg.jump.world_steps` do mundo vivo; `launch_speed` corrige até `LAUNCH_TOL` = 1e-5 m. Gate `os_passos_do_projeto_sao_os_da_lei` (2×8, 8×2, 1×1).
+- **Degrau único** — `895cfb7883`: `WalkConfig::step_limit() → StepLimit::refuses` (`ph2d-platformer` `walk_brink.rs`); `cast_leg` e o `Leg` da curva leem-na; a cópia em `arc_terrain.rs` sai. Gates gémeos em `eb83c15600`.
+- **Bug #11 wall jump** — `937f4ce952` (+ registo `3173bc8a57`): pé de fora nascido dentro da matéria (distância 0, normal nula) não conta como chão (`normal_is_known`); o wall jump a 1,5–2,05 m já não sai a 27 m/s.
+- **Bug #12 teto baixo** — `a9430052cd`: teto e quina perguntam `JumpState::on_ground` (sensor E não no ar), não o sensor cru. Gate `every_ceiling_in_reach_is_bonked_once_at_every_jump_height`.
+- **Bug #12b teto no tique do arranque** — `e13112fe92`, `a7ea182ff4`: `bridge/ceiling_fact.rs` mede o teto DEPOIS do passo (par do `tick_contacts` com impact>0 e normal de teto, `libm::cosf` de `walk.max_slope_deg`); `Bonked.speed` = subida pretendida (um só contrato, também sob Snap). Gate `a_ceiling_inside_the_takeoff_tick_is_bonked_with_the_launch_speed`.
+- **Tique dividido** — `62c9ff8e9c`: o tique parte-se onde a velocidade cruza o limiar de faixa (`tick_gravity_scale`, aceleração constante por trecho, analítica; corte, takeoff, janela do ápice, queda). Acaba a serra do pulo cortado; `launch_speed` 0,73 µs/chamada; `discrete_apex` modela o mesmo integrador.
+- **Bug #13 Snap** — `eb729a2253`, `73f18304eb`, `f820043427`: `KinematicState::stood`; `bridge/player_seat.rs` encaixa à Godot só no pouso/nascimento; `kin_in` provado pelo pulo do buffer no tique do pouso; o índice de consultas é atualizado antes do primeiro passo por refresh INCREMENTAL (`query_index_dirty`, 0,1 µs por corpo movido entre 5000); a descida mede o cling a partir do contacto. Cena da água re-medida.
+- **Cenas recalibradas** — `1898193799`: cena 110 pela lei do ápice real (multi_jump; `kin_water`, `ledge` recalibradas pela lei nova).
+- **Bug #14 atrito na parede** — `8e2ae5e662`: o corpo de todo `PlatformPlayer` leva atrito 0 + regra Min (`desc_do_corpo` e peças); pular encostado sobe a Jump Height (0,774 → 2,000 m); o travão do wall slide cala-se no tique do pulo (escondia +0,24 m/s). Cena 111 re-derivada (lábio 3,7; `REACH_ONE` = jump_height), 110 ensina o pulo junto à parede.
+- **Controlos mortos** — `47b3817e05`, `2e0aa6840c`: porta `ph2d_physics_ecs::forma_do_player`, `InspectorPhysicsInfo::player_shape`; atrito e One-Way da forma do PRÓPRIO player são ignorados pela ponte e saem do Inspector.
+- **Auditoria Surface** — `ba4376222a`: Grip, Belt e Wall Cling agem sobre OUTRO player (ficam); One-Way decide para o próprio (cai pelo chão).
+- **Crate nova** — `0ec3202b6f`: cenas 110/111 e o gate do pulo na parede saem para `ph2d-physics-smoke-jump`; `ph2d-app-physics` re-exporta. Tectos: `ph2d-physics-smoke-scenes` 19 008 → 18 422 (medido 18 061), a nova 1 258 (medido 1 158). Os censos da shell (régua, alça, every_word) leem a pasta nova e passam a REPROVAR braço do roteador sem corpo (mutação: tirar a pasta ⇒ vermelho).
 
-### A.3 Smokes
+### R.2 O que um merge pode partir
 
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && cargo build --profile smoke -p ph2d-host-desktop && PH2D_GAME_SMOKE=24 PH2D_GAME_SMOKE_DRIVE=editor ./target/smoke/ph2d-host-desktop` — Play: só ←, só ↓, só ↑ depois da diagonal. Errado: herói preso numa seta ou fora do sentido.
-2. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && PH2D_GAME_SMOKE=4 PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno ./target/smoke/ph2d-host-desktop` — a curva pousa na plataforma/chão, para na parede, corpo-fantasma onde a cabeça ou o lado batem. Errado: a curva atravessa o terreno ou termina nos pés no ar.
+- Tecto `ph2d-physics-smoke-scenes` e a crate nova: outra linha que some cenas ali reconta pelo `main`.
+- `bridge/player*.rs`, `bridge/ceiling_fact.rs`, `bridge/player_seat.rs`, `ph2d-platformer` (`kinematic.rs`, `walk_brink.rs`, `jump_config.rs`): quem mede pulo, teto ou pouso contra a lei antiga reconta. Fixturas que dependiam do atrito do player na parede (Bug #14) mudam.
+- Cenas 110/111 e as de multi_jump/água/ledge: números re-derivados.
+- `PROJECT_SCHEMA`: nenhum commit da rodada declara formato gravado novo (`KinematicState` é estado de execução); confirme por `python3 scripts/schema-recount.py`.
 
-### A.4 ABERTO (depois da rodada)
+### R.3 ABERTO
 
-- **Wall jump (GEF02 / [BUGS_physics.md Bug #11](../../Physics/BUGS_physics.md)):** com wall jump height ~1,9–2,0 o controle «parede sólida» de `platform_wall` é atirado ~23 m/s ao topo da parede (y≈12,9). É da ponte, não da lei do pulo; as fixturas seguram `OLD_LAW_WALL_JUMP_HEIGHT`.
-- ~~`layer_override` por forma NÃO é lido pelo corte da curva~~ — FECHADO em `15429fc87f`.
-- Tecto da shell: reconte pelo integrador (§4).
-
-## Adendo — Smoke do dono 12/11 — números e sombra
-
-Commits `adcd392fc7..HEAD` (5, só a curva do pulo, GEF 04):
-
-- `7ac5a60521` — a curva lê-se em fundo claro: halo sob linhas, pontos e texto. Helper partilhado `crates/ph2d-editor-core/src/paint_halo.rs` (`stroke_com_halo`, `fill_com_halo`, `paint_text_centered_com_halo`); tokens `BgScrim` · `OUTLINE_SHADOW_ALPHA`, `StrokeToken::Thin`. `JumpApex` ganha braço próprio em `gizmo/point.rs`; o readout passa a `ObjPlayer`.
-- `48afab6f40` — o número da alça e o do cartão são o mesmo. Mecanismo: o rapier aplica a gravidade a CADA iteração do solver (4 sub-passos × 4 iterações = 16 passos por tique), logo a queda por tique é `g·dt²·(n+1)/(2n)`. A lei e o arco passam a integrar esses passos: `JumpConfig::world_steps` (`DEFAULT_WORLD_STEPS` = 16), `ArcWorld::solver_iterations`, `ph2d_physics_ecs::world_steps`. Desenho e jogo ficam a ≤ 0,3 mm de `jump_height` (antes 1,984 / 1,996 para 2,00). Gates apertados a 1 mm (4 sensações × 0,5/1/2/2,5 m). O readout `{:.0}` cortava decimais em metros: agora `curva_do_pulo_numero::numero_da_alca`. Mutações (lei sem passos, arco sem iterações, readout `{:.0}`, fábrica 4) ⇒ vermelho.
-- `e175a655da` — o readout da alça formata por `numero_da_alca`.
-- `b4d52331de` — teste do texto pintado (`ouve_o_texto` público): o readout desenhado a arrastar é o texto do campo Jump Height.
-- `092c7995a6` — a foto `fisica_player_pulo` rola o Inspector ao cartão Platform Player (janela de 1040 px). O nome da foto precisa do prefixo `fisica_`; nome desconhecido falha calado (ABERTO).
-
-### ABERTO para o INTEGRADOR / GEF02
-
-- ~~**Ponte:** `world_steps` do projeto para a lei~~ — FECHADO em `eb83c15600` (ver «Ponte autorizada»).
-- ~~Menor: abaixo de ~1 m a perna do jogo apanha o corpo antes da linha de pouso~~ — FECHADO em `15429fc87f`.
-- ~~Foto com nome sem prefixo `fisica_` falha calado~~ — FECHADO em `3b1060f92d`.
-
-## Adendo — Últimos abertos (12/11, smoke do dono OK nos números e na sombra)
-
-Commits `e20eaea286..HEAD` (3):
-
-- `15429fc87f` — o pouso da curva usa o critério da PERNA do jogo: alcance `float_height + cling_distance`, leitura na pose do fim do tique anterior, velocidade do fim do tique ≤ 0. Prova: 48/48 casos (4 feels × 4 alturas × correndo/parado/curto) pousam no MESMO tique e a ≤ 1 cm. `ph2d_physics::Terrain` (`cast_ray`, `sweep_body`) substitui `sweep_path`; o corte filtra por `layer_override::pair_collides` (a regra dos contactos): o player pela forma principal, cada forma da cena com a sua `CollisionOverride`. Custo medido (profile smoke): 68,5 µs/chamada (era 54,3). **Para o INTEGRADOR:** `arc_terrain.rs` repete a conta do degrau caminhável e o `STEP_EPS` de `bridge/player_leg.rs` (cópia, porque a ponte é proibida a esta linha) — unificar. Limitação: o modo em que a lei move o corpo sem mola não está modelado.
-- `3b1060f92d` — `PH2D_GAME_SMOKE_FOTO` e `PH2D_GAME_SMOKE_DRIVE` com nome desconhecido recusam alto (stderr com sugestão, exit 2, antes da janela). Uma fonte da verdade: cada leitor expõe NOMES, a união está em `crates/ph2d-game-smoke-fotos/src/nomes.rs`, a recusa em `ph2d-app-game` `smoke.rs`, uma linha em `shells/desktop/src/main.rs`; censo em `shells/game-scenes/tests/it/jogo_nomes_do_smoke.rs`. `ph2d-game-smoke-fotos` está a 1075 de 1077 no tecto. Docs antigos com nomes sem prefixo `fisica_` agora recusam alto.
-- `536b62470b` — a foto do terreno com recuo 1,5 m (o Full agarrava a borda da Platform High a 2,1 m — verdade do jogo, medida); gate novo `a_foto_do_terreno_e_o_que_o_player_real_faz`.
-
-### Fechados por estes commits
-
-Pouso em pulo baixo (perna do jogo) · `layer_override` por forma no corte da curva · nome de foto calado.
-
-### ABERTO (o que resta)
-
-- ~~**Ponte:** `world_steps` do projeto para a lei~~ — FECHADO em `eb83c15600`: a ponte escreve `cfg.jump.world_steps` do mundo VIVO (`settings_vivos`) e `arc::simulate` os do `ArcWorld`; `launch_speed` corrige até `LAUNCH_TOL` = 1e-5 m (os 3 passos fixos deixavam 1,6 mm a 1×1). Gate `os_passos_do_projeto_sao_os_da_lei` (2×8, 8×2, 1×1; ≤ 1 mm, desenho = jogo).
-- ~~Unificar a conta do degrau (`arc_terrain.rs` × `bridge/player_leg.rs`)~~ — FECHADO em `895cfb7883`: UMA régua, `WalkConfig::step_limit() → StepLimit::refuses` (`STEP_EPS` em `ph2d-platformer` `walk_brink.rs`), a cópia sai. Gates gémeos `player_foot_fan::the_leg_refuses_an_outer_foot_on_a_step_steeper_than_the_limit` e `jump_arc::a_curva_recusa_o_degrau_que_a_perna_recusa` (eb83c15600).
-- **Bug #11 do wall jump** (GEF02, [BUGS_physics.md](../../Physics/BUGS_physics.md)).
-- **Tecto da shell:** reconte pelo integrador (§4).
+- Linha `main.rs` 984/600 no mapa genérico (tecto real 984): do integrador.
+- Tecto da shell (§4): reconte pelo integrador.
+- Fechados nesta rodada e riscados acima: `world_steps` da ponte, conta do degrau, Bug #11.
+- Smoke do dono: Bug #14 (pular encostado na parede sobe a Jump Height) e Bug #13 (player Snap nasce assente), ainda não vistos pelo dono.

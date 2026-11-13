@@ -515,4 +515,38 @@ mod tests {
         w.step();
         assert!(!w.query_index_stale(), "o passo limpa a marca");
     }
+
+    /// **Uma plataforma movida por `set_body_pose` a cada tique, antes da consulta** (o refresh é
+    /// incremental: só os colliders marcados se mexem) — o raio vê-a onde está AGORA em cada tique,
+    /// entre colliders parados que ninguém marcou, e o checkpoint leva as marcas.
+    #[test]
+    fn a_platform_moved_by_set_body_pose_is_seen_where_it_is_now() {
+        let mut w = PhysicsWorld::new();
+        for i in 0..50 {
+            w.add_static_cuboid(i as f32 * 1.5, -20.0, 0.5, 0.5);
+        }
+        let (ball, _) = w.add_dynamic_circle(0.0, 5.0, 0.2, 1.0);
+        let (platform, _) = w.add_static_cuboid(0.0, 0.0, 2.0, 0.25);
+        w.step();
+        for k in 0..6 {
+            let y = -0.5 * k as f32;
+            w.set_body_pose(platform, 0.0, y, 0.0, true);
+            assert!(w.query_index_stale(), "mover marca o indice");
+            let cp = w.checkpoint();
+            w.refresh_query_index();
+            let hit = w
+                .cast_ray([0.0, 5.0], [0.0, -1.0], 30.0, Some(ball), 0)
+                .expect("o raio ve a plataforma");
+            let want = 5.0 - (y + 0.25);
+            assert!(
+                (hit.distance - want).abs() < 1.0e-3,
+                "tique {k}: raio {} contra {want}",
+                hit.distance
+            );
+            // O checkpoint levou as marcas: restaurado, o índice volta a estar atrás.
+            w.restore(&cp);
+            assert!(w.query_index_stale(), "o checkpoint leva as marcas");
+            w.step();
+        }
+    }
 }

@@ -69,7 +69,7 @@ impl PhysicsWorld {
             .colliders
             .insert_with_parent(collider, body, &mut self.bodies);
         self.stamp_layer(handle, desc.layer as usize);
-        self.mark_query_index();
+        self.query_index_dirty.push(handle);
         // Uma peça-sensor com efeito é uma zona própria (GEF02 B6, efector por collider).
         super::effector::register(&mut self.effectors, handle, body, desc);
         Some(handle)
@@ -94,7 +94,7 @@ impl PhysicsWorld {
         let place = Pose::from_parts(Vector::new(local[0], local[1]), Rotation::new(local[2]));
         self.copia_colisor(handle, &fresh, desc, place * *fresh.position());
         self.stamp_layer(handle, desc.layer as usize);
-        self.mark_query_index();
+        self.query_index_dirty.push(handle);
         super::effector::register(&mut self.effectors, handle, body, desc);
         if let Some(b) = self.bodies.get_mut(body) {
             b.wake_up(true);

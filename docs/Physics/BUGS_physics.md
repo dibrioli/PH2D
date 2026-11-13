@@ -1390,7 +1390,7 @@ e teleporte antes do 1.º passo); `player_snap_settle` (3; nascido a 0,9 assenta
 | mutação | resultado |
 |---|---|
 | M1 `world_steps` do mundo sob Snap | ✗ `the_first_jump_on_the_ground_rises_the_jump_height` (H = 1: 0,9559) |
-| M2 `kin_in` desligado | ⚠️ **sobrevive** — com o refresh, o encaixe do tique do pouso e o `rest` já tiram a queda; aberto: provar se `kin_in` ainda é preciso ou retirá-lo |
+| M2 `kin_in` desligado | ✗ (13/11, 2.ª ronda) `a_buffered_jump_fired_on_the_landing_tick_rises_the_jump_height` — o pulo BUFERIZADO que dispara no tique do pouso é engolido (largado de 2 m: sobe −0,146; de 4 m: −0,216; com `kin_in`: 1,0000 a partir da pose de decolagem). Na 1.ª ronda sobrevivia porque nenhum gate disparava o pulo NO tique do pouso |
 | M3 encaixe da banda desligado | ✗ `the_kinematic_landing_does_not_slide_along_the_ramp_normal`, `a_snap_player_settles_where_it_lands` |
 | M4 encaixe do nascimento desligado | ✗ `the_ground_snap_is_load_bearing_again`, `a_player_born_in_reach_of_its_leg_settles`, `a_snap_player_settles_where_it_lands` |
 | M5 `stood` ignorado | ✗ `the_step_it_climbs_is_the_number_the_artist_authored` |
@@ -1402,3 +1402,27 @@ e teleporte antes do 1.º passo); `player_snap_settle` (3; nascido a 0,9 assenta
 afunda 1,1712 contra 1,0855 prometido) **já em `eb729a2253`, sem este diff** (e com o refresh desligado):
 o player DINÂMICO, fora do Snap — aberto, por bissectar entre `62c9ff8e9c` e `eb729a2253`.
 `ph2d-host-game-scenes` 80/80 · `ph2d-physics-scene` 16/16 · `ph2d-app-game` 1/1.
+
+**2.ª ronda (13/11) — as três pontas:**
+
+1. **Refresh INCREMENTAL.** A flag `query_index_stale` passou a ser `query_index_dirty: Vec<ColliderHandle>`
+   (o `modified_colliders` do rapier): inserir, `retune_part`, reshape empurram o collider; `set_body_pose`,
+   `nudge_body` e o empurrão do reshape empurram os colliders do corpo. O refresh ordena pelo índice da arena
+   (`into_raw_parts`, determinista), tira repetições e só trata esses; o `step` limpa; o checkpoint leva o
+   vetor. Um collider não marcado já está na sua caixa gorda (o `set_aabb` dele seria `Unchanged`), então o
+   mundo é o mesmo da passada completa. Antes (sonda `query_index::tests::measure_the_refresh_cost`, profile
+   smoke, 1 corpo movido): 100 colliders 1,8 µs · 1000 17,1 · 5000 91,7 (passo 97,8). Gate novo
+   `cast::tests::a_platform_moved_by_set_body_pose_is_seen_where_it_is_now` (plataforma movida a cada tique
+   entre 50 colliders parados, raio antes do passo; o checkpoint leva as marcas).
+2. **`kin_in` NÃO é morto** — é o pulo buferizado no tique do pouso (M2 acima). Fica, com gate.
+3. **A água (`physics_smoke_kin_water`) — culpado `62c9ff8e9c`** (o tique dividido no limiar de faixa).
+   Bissecção: `50f6a8f6fa` verde; `62c9ff8e9c`, `a9430052cd`, `e13112fe92`, `a7ea182ff4`, `eb729a2253`
+   vermelhos com o MESMO 1,1712. Mecanismo, medido no mesmo binário em `62c9ff8e9c` com
+   `tick_gravity_scale` a devolver a faixa do INÍCIO do tique por variável: volta a 1,0855 / 1,0860 / bob
+   1,4357 / 1,4394 exactos. Não é a água (a lei cala `waterborne`): o player SAI da água a cada bobeio (até
+   ~1,5 m) e no ar a gravidade por faixa age — a média do tique dividido muda a fase do arco. O número da
+   cena é uma amostra única em t = 4 s de uma oscilação de 1,4 m, por isso 8 cm. **A física nova está certa**
+   (é a lei contínua por trechos); a cena foi re-medida: `SANK` 1,1070 / 1,1712 / 1,0079, `BOB` 1,4803 /
+   1,4123, e a frase «concordam na quarta decimal» (acaso de fase da faixa antiga) passa a ser a diferença
+   calculada dos `BOB` (~5 %). O cinemático também reprovava (1,0079 contra 1,0860), escondido atrás do
+   `assert` do dinâmico.

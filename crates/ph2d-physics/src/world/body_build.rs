@@ -116,7 +116,7 @@ impl PhysicsWorld {
             .colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
         self.stamp_layer(collider_handle, desc.layer as usize);
-        self.mark_query_index();
+        self.query_index_dirty.push(collider_handle);
         // Force zone (W-Area / W-AreaDrag). `zone_effect` is the single door — it
         // refuses a solid collider (an area you cannot enter is not an area, and the
         // narrow phase reports no overlap for it) and an INERT one (no force and no

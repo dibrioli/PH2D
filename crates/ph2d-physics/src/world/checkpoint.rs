@@ -26,7 +26,7 @@ use std::collections::VecDeque;
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IslandManager, MultibodyJointSet, RigidBodySet, SoftBodySet,
 };
-use rapier2d::geometry::{BroadPhaseBvh, ColliderSet, NarrowPhase};
+use rapier2d::geometry::{BroadPhaseBvh, ColliderHandle, ColliderSet, NarrowPhase};
 
 use super::PhysicsWorld;
 
@@ -55,8 +55,8 @@ pub struct PhysicsCheckpoint {
     ccd_solver: CCDSolver,
     island_manager: IslandManager,
     broad_phase: BroadPhaseBvh,
-    /// O índice das consultas atrás do mundo no tique capturado (`world::query_index`).
-    query_index_stale: bool,
+    /// Os colliders com a folha atrás do mundo no tique capturado (`world::query_index`).
+    query_index_dirty: Vec<ColliderHandle>,
     narrow_phase: NarrowPhase,
     step_count: u64,
     /// **Quanto cada guincho já recolheu** (W2) — o décimo campo, e o primeiro que não
@@ -129,7 +129,7 @@ impl PhysicsWorld {
             ccd_solver: self.ccd_solver.clone(),
             island_manager: self.island_manager.clone(),
             broad_phase: self.broad_phase.clone(),
-            query_index_stale: self.query_index_stale,
+            query_index_dirty: self.query_index_dirty.clone(),
             narrow_phase: self.narrow_phase.clone(),
             step_count: self.step_count,
             pulley_payout: self.pulley_payout.clone(),
@@ -153,7 +153,7 @@ impl PhysicsWorld {
         self.ccd_solver = cp.ccd_solver.clone();
         self.island_manager = cp.island_manager.clone();
         self.broad_phase = cp.broad_phase.clone();
-        self.query_index_stale = cp.query_index_stale;
+        self.query_index_dirty.clone_from(&cp.query_index_dirty);
         self.narrow_phase = cp.narrow_phase.clone();
         self.step_count = cp.step_count;
         self.pulley_payout = cp.pulley_payout.clone();

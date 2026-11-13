@@ -95,9 +95,9 @@ pub struct PhysicsWorld {
     integration_parameters: IntegrationParameters,
     island_manager: IslandManager,
     broad_phase: BroadPhaseBvh,
-    /// O BVH está atrás da geometria (inserção/teleporte fora do passo): `world::query_index`.
-    query_index_stale: bool,
-    query_index_scratch: Vec<(ColliderHandle, Pose, rapier2d::geometry::Aabb)>,
+    /// Os colliders cuja folha do BVH está atrás da geometria (inserção/teleporte fora do passo),
+    /// ordenados e sem repetição no refresh: `world::query_index`.
+    query_index_dirty: Vec<ColliderHandle>,
     narrow_phase: NarrowPhase,
     gravity: Vector,
     /// Step counter — exposes a deterministic "tick number" so tests
@@ -345,8 +345,7 @@ impl PhysicsWorld {
             integration_parameters,
             island_manager: IslandManager::new(),
             broad_phase: BroadPhaseBvh::new(),
-            query_index_stale: false,
-            query_index_scratch: Vec::new(),
+            query_index_dirty: Vec::new(),
             narrow_phase: NarrowPhase::new(),
             gravity: Vector::new(0.0, Self::DEFAULT_GRAVITY_Y),
             step_count: 0,
@@ -487,7 +486,7 @@ impl PhysicsWorld {
             b.set_position(Pose::new(Vector::new(x, y), rotation), wake);
             b.set_linvel(Vector::ZERO, wake);
             b.set_angvel(0.0, wake);
-            self.mark_query_index();
+            self.query_index_dirty.extend_from_slice(b.colliders());
         }
     }
 

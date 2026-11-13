@@ -94,8 +94,8 @@ const DYNAMIC_SETTLE: usize = 21;
 /// **(b) Pulo preso no PRIMEIRO tique em que a lei diz `Ground` sobe a Jump Height ± 1 mm**, Snap e
 /// dinâmico, H 0,5–2,5; Snap nascido à altura do dinâmico (cai até à faixa da perna) e dentro dela.
 ///
-/// ⚠️ **Mutações:** `kin_in` devolver o `was` → Snap a 0,9 sobe 0,556 a H = 1; `world_steps` sob
-/// Snap = o do mundo → todo Snap sai 0,956 a H = 1.
+/// ⚠️ **Mutação:** `world_steps` sob Snap = o do mundo → todo Snap sai 0,956 a H = 1. (`kin_in`
+/// já não morde aqui depois do refresh das consultas: o seu gate é o (d).)
 #[test]
 fn the_first_jump_on_the_ground_rises_the_jump_height() {
     let mut bad = Vec::new();
@@ -143,4 +143,39 @@ fn a_snap_player_settles_where_it_lands() {
     let (ys, _) = run(true, FLOAT, 1.0, None, 240);
     let n = settle_tick(&ys);
     assert!(n <= SNAP_SETTLE, "nascido a {FLOAT}: assentou no tique {n}");
+}
+
+/// **(d) O pulo BUFERIZADO que dispara no próprio tique do pouso sobe a Jump Height** — premido 1–5
+/// tiques antes de tocar (dentro do `jump_buffer` 0,1 s), largado de 0,9 a 4 m, Snap. É o único
+/// tique em que a velocidade que o integrador traz (a da queda) e a que a lei julgou (`vel`, sem a
+/// queda que o chão segura) diferem E o pulo soma o `boost` a uma delas: `kin_in` é o que faz o
+/// integrador partir da da lei. Medido a partir da pose de antes do tique da decolagem (o pulo sai
+/// de dentro da faixa da perna, 0,146 m acima do repouso a 2 m e 0,216 a 4 m).
+///
+/// ⚠️ **Mutação:** `kin_in` devolver o `was` → a 2 m e a 4 m o pulo é ENGOLIDO (sobe −0,146 e
+/// −0,216: o `boost` soma-se à queda e o corpo assenta). A 0,9 o pouso é o nascimento e não morde.
+#[test]
+fn a_buffered_jump_fired_on_the_landing_tick_rises_the_jump_height() {
+    let mut bad = Vec::new();
+    for spawn in [0.9_f32, 2.0, 4.0] {
+        let (_, ground) = run(true, spawn, 1.0, None, 240);
+        let first = ground.iter().position(|g| *g).expect("nunca no chao") as u64;
+        for early in 1..=5_u64 {
+            let Some(press) = first.checked_sub(early).filter(|p| *p >= 1) else {
+                continue;
+            };
+            let (ys, _) = run(true, spawn, 1.0, Some(press), first + 140);
+            let top = ys[first as usize..]
+                .iter()
+                .copied()
+                .fold(f32::MIN, f32::max);
+            let rise = top - ys[first as usize - 1];
+            if (rise - 1.0).abs() > 1.0e-3 {
+                bad.push(format!(
+                    "y0={spawn}: premido {early} tiques antes do pouso ({first}), subiu {rise:.4}"
+                ));
+            }
+        }
+    }
+    assert!(bad.is_empty(), "{bad:#?}");
 }

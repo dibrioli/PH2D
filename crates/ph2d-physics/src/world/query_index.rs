@@ -6,11 +6,14 @@
 //! tique 1, antes do primeiro passo, e o encaixe do nascimento não achava nada — assentava no 16.
 //!
 //! A cura é a do Box2D (a forma entra na árvore ao ser criada; `b2Body_SetTransform` move a
-//! folha): quem muda a geometria fora do passo marca o índice ([`PhysicsWorld::mark_query_index`]),
-//! e [`PhysicsWorld::refresh_query_index`] — um `bool` quando nada mudou — põe cada collider na
-//! pose que o passo lhe daria (corpo · pose no corpo) e a folha dele pelo `BroadPhaseBvh::set_aabb`,
-//! a porta que o rapier documenta para consultar sem passo («change detection accounts for it
-//! during the next broad-phase update»). O passo seguinte recomputa tudo do mesmo jeito.
+//! folha), INCREMENTAL como o `modified_colliders` do rapier: quem muda a geometria fora do passo
+//! empurra o handle do collider (ou os do corpo) para `query_index_dirty`, e
+//! [`PhysicsWorld::refresh_query_index`] — um `is_empty` quando nada mudou — ordena-os pelo índice
+//! da arena (determinista; nunca `HashSet`), tira repetições, e põe SÓ esses na pose que o passo
+//! lhe daria (corpo · pose no corpo) e a folha deles pelo `BroadPhaseBvh::set_aabb`, a porta que o
+//! rapier documenta para consultar sem passo. Um collider que não mudou desde o passo já está na
+//! sua caixa gorda (o `set_aabb` dele seria `Unchanged`), por isso a passada por todos era só custo:
+//! 5000 colliders, 91,7 µs contra um passo de 97,8 (`tests::measure_the_refresh_cost`).
 //!
 //! ⚠️ **Não é chamado pelo `step` nem por quem insere** — mexer na árvore muda a ordem dos pares
 //! do primeiro passo. Só o chamador que vai CONSULTAR fora do passo o pede (a ponte, à cabeça dos
@@ -21,30 +24,27 @@ use rapier2d::geometry::{Aabb, BoundingVolume};
 use super::PhysicsWorld;
 
 impl PhysicsWorld {
-    /// A geometria mudou fora do passo: a próxima [`Self::refresh_query_index`] trabalha.
-    pub(crate) fn mark_query_index(&mut self) {
-        self.query_index_stale = true;
-    }
-
     /// **O índice das consultas está atrás do mundo?** — `true` depois de inserir ou teleportar,
     /// `false` depois de um passo ou de um refresh.
     #[must_use]
     pub fn query_index_stale(&self) -> bool {
-        self.query_index_stale
+        !self.query_index_dirty.is_empty()
     }
 
-    /// **Põe o índice das consultas no mundo de agora.** No-op (um `bool`) quando nada mudou desde
-    /// o último passo ou refresh; senão uma passada pelos colliders na ordem da arena
-    /// (determinista), e só as folhas que saíram da sua caixa gorda se mexem.
+    /// **Põe o índice das consultas no mundo de agora.** No-op quando nada mudou desde o último
+    /// passo ou refresh; senão só os colliders marcados, na ordem da arena.
     pub fn refresh_query_index(&mut self) {
-        if !self.query_index_stale {
+        if self.query_index_dirty.is_empty() {
             return;
         }
-        self.query_index_stale = false;
+        let mut dirty = std::mem::take(&mut self.query_index_dirty);
+        dirty.sort_unstable_by_key(|h| h.into_raw_parts());
+        dirty.dedup();
         let half_prediction = self.integration_parameters.prediction_distance() / 2.0;
-        let mut moved = std::mem::take(&mut self.query_index_scratch);
-        moved.clear();
-        for (h, c) in self.colliders.iter() {
+        for &h in &dirty {
+            let Some(c) = self.colliders.get(h) else {
+                continue;
+            };
             if !c.is_enabled() {
                 continue;
             }
@@ -59,9 +59,6 @@ impl PhysicsWorld {
                 .shape()
                 .compute_aabb(&pose)
                 .loosened(c.contact_skin() + half_prediction);
-            moved.push((h, pose, aabb));
-        }
-        for &(h, pose, aabb) in &moved {
             // A pose que o passo lhe daria: a consulta testa a forma em `position()`, não na folha.
             if let Some(c) = self.colliders.get_mut(h)
                 && *c.position() != pose
@@ -71,7 +68,9 @@ impl PhysicsWorld {
             self.broad_phase
                 .set_aabb(&self.integration_parameters, h, aabb);
         }
-        self.query_index_scratch = moved;
+        // Guarda a capacidade: o próximo tique marca sem alocar.
+        dirty.clear();
+        self.query_index_dirty = dirty;
     }
 }
 
@@ -79,8 +78,9 @@ impl PhysicsWorld {
 mod tests {
     use super::PhysicsWorld;
 
-    /// Sonda de custo: o refresh percorre todos os colliders quando um só se teleporta (o pior caso
-    /// por tique), contra o passo do mesmo mundo; mínimo de 200 tiques intercalados.
+    /// Sonda de custo: o refresh quando UM corpo se move entre `n` colliders parados (a plataforma
+    /// cinemática movida a cada tique), contra o passo do mesmo mundo; mínimo de 200 tiques
+    /// intercalados. Antes de ser incremental: 100 → 1,8 µs · 1000 → 17,1 · 5000 → 91,7 (passo 97,8).
     #[test]
     #[ignore = "sonda de custo"]
     fn measure_the_refresh_cost() {

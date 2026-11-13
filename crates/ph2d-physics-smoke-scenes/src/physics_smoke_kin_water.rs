@@ -20,7 +20,7 @@
 //! acompanhar os outros dois, pare.*
 //!
 //! ⚠️ **E o que se julga é o CONJUNTO, não uma altura:** nesta poça o player
-//! bobeia ~1,44 m de amplitude nos **dois** modos (a cápsula solta faz 0,81) —
+//! bobeia ~1,41–1,48 m de amplitude nos **dois** modos (a cápsula solta faz 0,81) —
 //! isso é anterior a esta wave e é o que os dois players fazem. *Uma amostra
 //! única de um sistema que oscila não é um repouso*, e foi exatamente esse erro
 //! que a primeira medição desta cura cometeu.
@@ -69,13 +69,20 @@ const DROP_Y: f32 = 1.5;
 /// `measure_player_in_water`, que tem outra geometria) e o gate os reprovou —
 /// que é exactamente para isso que ele existe. *Uma cena cuja mensagem cita
 /// números tem de medir os DELA.*
-pub const SANK: [f32; 3] = [1.1070, 1.0855, 1.0860];
+///
+/// ⚠️ **É uma amostra única de um sistema que oscila 1,4 m**, e a fase dela
+/// depende do arco no ar de cada bobeio (o player sai da água até ~1,5 m e a lei
+/// do pulo age lá fora): o tique dividido no limiar de faixa (`62c9ff8e9c`,
+/// `tick_gravity_scale`) moveu-a de `1,0855 / 1,0860` para `1,1712 / 1,0079`,
+/// medido com a faixa antiga e a nova no MESMO binário (13/11, Bug #13).
+pub const SANK: [f32; 3] = [1.1070, 1.1712, 1.0079];
 /// A amplitude da oscilação entre o 3.º e o 6.º segundo — dinâmico e cinemático.
 ///
-/// ⚠️ **Os dois números são o gate desta cena em prosa:** eles concordam na
-/// quarta decimal, e é isso que *"a espécie do corpo não é uma pergunta que a
-/// água faça"* quer dizer.
-pub const BOB: [f32; 2] = [1.4357, 1.4394];
+/// ⚠️ **Os dois números são o gate desta cena em prosa:** eles concordam a
+/// menos de 5 % (a quarta decimal de antes, 1,4357 / 1,4394, era acaso de fase
+/// da faixa lida no início do tique), e é isso que *"a espécie do corpo não é
+/// uma pergunta que a água faça"* quer dizer.
+pub const BOB: [f32; 2] = [1.4803, 1.4123];
 
 const DOCK_RGBA: [f32; 4] = [0.55, 0.50, 0.44, 1.0];
 const WATER_RGBA: [f32; 4] = [0.20, 0.34, 0.46, 1.0];
@@ -214,7 +221,7 @@ pub fn physics_smoke_kin_water(ctx: &mut crate::SceneCtx<'_>) {
               infinita: era o PAR que nao existia.\n\n  \
            3. ELES TEM DE BOBEAR JUNTOS. Isto NAO e' um repouso: o player\n     \
               oscila ~{ba:.2} m (ambar) e ~{bk:.2} m (azul) entre o 3o e o 6o\n     \
-              segundo -- concordam na quarta decimal. A capsula VERDE oscila\n     \
+              segundo -- a {db:.0}% um do outro. A capsula VERDE oscila\n     \
               menos (0,81), e essa diferenca e' da lei de player, anterior a\n     \
               esta wave. O que se julga aqui e' o AMBAR e o AZUL fazerem A\n     \
               MESMA COISA, nao uma altura.\n\n  \
@@ -235,5 +242,6 @@ pub fn physics_smoke_kin_water(ctx: &mut crate::SceneCtx<'_>) {
         k = SANK[2],
         ba = BOB[0],
         bk = BOB[1],
+        db = (BOB[0] - BOB[1]).abs() / BOB[0].max(BOB[1]) * 100.0,
     );
 }

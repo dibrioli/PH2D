@@ -15,6 +15,12 @@ pub const TIMELINE_END_STOP: NodeId = hash_node_id("timeline.end_stop");
 pub const TIMELINE_END_LOOP: NodeId = hash_node_id("timeline.end_loop");
 /// «… Ping-Pong».
 pub const TIMELINE_END_PINGPONG: NodeId = hash_node_id("timeline.end_pingpong");
+/// O widget do fim na 2.ª fileira (dono 13/11): o nome do escolhido abre a lista; `‹` e `›` andam.
+pub const TIMELINE_END_DD: NodeId = hash_node_id("timeline.end_dd");
+/// O `‹` do widget do fim.
+pub const TIMELINE_END_PREV: NodeId = hash_node_id("timeline.end_prev");
+/// O `›` do widget do fim.
+pub const TIMELINE_END_NEXT: NodeId = hash_node_id("timeline.end_next");
 
 /// «Edit curves on canvas» (dono 10/11): a caixa da barra, só na aba Keys e nos cartões; ligada, o
 /// canvas mostra as alças que entortam o caminho do objeto.

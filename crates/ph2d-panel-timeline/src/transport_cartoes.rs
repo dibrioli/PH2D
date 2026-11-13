@@ -139,7 +139,7 @@ fn prepara(store: &mut WidgetStore, snap: &TimelineViewSnapshot, view: BarView) 
     }
     espelha(ids::TIMELINE_CURVES_ON_CANVAS, view.curves_on_canvas);
     espelha(ids::TIMELINE_CLIPS_AS_LIST, view.clips_as_list);
-    for (id, chave) in DICAS {
+    for (id, chave) in DICAS.into_iter().chain(crate::fim_do_clip::DICAS) {
         if store.tooltip_for(id).is_none() {
             store.set_tooltip(id, ph2d_i18n::tr(chave));
         }
@@ -204,6 +204,8 @@ fn texto_do_fps(snap: &TimelineViewSnapshot) -> String {
 pub(crate) struct Fluxo {
     body: Rect,
     lim: (f32, f32),
+    /// A largura guardada à direita das fileiras do interior (o widget do fim do clipe).
+    reserva: f32,
     x: f32,
     y: f32,
     fileiras: usize,
@@ -214,6 +216,7 @@ impl Fluxo {
         Self {
             body,
             lim: (strip.x, strip.w),
+            reserva: 0.0,
             x: strip.x,
             y: strip.y,
             fileiras: 0,
@@ -223,7 +226,7 @@ impl Fluxo {
     /// Começa uma fileira nova no interior.
     pub(crate) fn quebra(&mut self) {
         self.fileiras += 1;
-        self.lim = (self.body.x, self.body.w);
+        self.lim = (self.body.x, self.body.w - self.reserva);
         let passo = m::FIELD_H + m::FIELD_ROW_GAP;
         self.y = self.body.y + (self.fileiras - 1) as f32 * passo - banda::SOBRA_DO_CABECALHO;
         self.x = self.lim.0;
@@ -267,6 +270,24 @@ impl Fluxo {
         at
     }
 
+    /// Guarda `w` à direita desta fileira (e das seguintes); [`Self::solta`] devolve-a.
+    fn guarda_a_direita(&mut self, w: f32) {
+        self.reserva = w + m::FIELD_GAP;
+        self.lim.1 -= self.reserva;
+    }
+
+    /// Devolve a reserva à fileira (o que vem a seguir não cabe ao lado dela).
+    pub(crate) fn larga_reserva(&mut self) {
+        self.lim.1 += self.reserva;
+        self.reserva = 0.0;
+    }
+
+    /// Larga a reserva e põe nela a peça de largura `w`, encostada à direita (ou na fileira seguinte).
+    fn solta(&mut self, w: f32) -> (f32, f32) {
+        self.larga_reserva();
+        self.a_direita(w)
+    }
+
     fn depois(&self) -> f32 {
         if self.fileiras > 0 {
             self.y + m::FIELD_H + banda::VAO_ATE_A_FOLHA
@@ -284,6 +305,7 @@ pub(crate) struct Barra {
     pub(crate) anim: Option<ClipChip>,
     pub(crate) opcoes: Option<Rect>,
     pub(crate) menu_do_clip: Option<Rect>,
+    pub(crate) fim: Option<Rect>,
 }
 
 fn cartao<'a>(ctx: &'a mut PaintCtx, ink: CardInk, body: Rect) -> CardCtx<'a> {
@@ -505,14 +527,20 @@ pub(crate) fn paint_bar(
     grupo_do_tempo(ctx, theme, &mut f, snap, body);
     let (anim, opcoes) = dono_e_opcoes(ctx, theme, &mut f, (snap, view), body);
     f.quebra();
+    // O fim do clipe encosta à direita da 2.ª fileira (dono 13/11); os clipes dobram antes dele.
+    let fim_w = crate::fim_do_clip::largura(ctx);
+    f.guarda_a_direita(fim_w);
     grupo_de_gravar(ctx, theme, &mut f, snap, body);
     let clips = crate::barra_clips::paint(ctx, theme, &mut f, (snap, view), body);
+    let at = f.solta(fim_w);
+    let fim = crate::fim_do_clip::pinta(ctx, theme, at, (snap, view.fim_aberto));
     Barra {
         depois: f.depois(),
         clip: clips.chip,
         anim: Some(anim),
         opcoes: Some(opcoes),
         menu_do_clip: clips.menu,
+        fim: Some(fim),
     }
 }
 

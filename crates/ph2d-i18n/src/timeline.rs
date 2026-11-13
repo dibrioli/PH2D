@@ -78,7 +78,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Playing only this stretch, in a loop. Click to play the whole clip again"
         }
         "panel.timeline.card.length_long" => "Length (s)",
-        "panel.timeline.card.when_ends" => "When the clip ends",
         "panel.timeline.card.end_stop" => "Stop",
         "panel.timeline.card.snap" => "Snap to frames",
         "panel.timeline.card.physics" => "Run physics during Play",
@@ -100,6 +99,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.tip.time" => "Time, in seconds. Drag the icon to scrub",
         "panel.timeline.tip.frame" => "Frame number. Drag the icon to scrub",
         "panel.timeline.tip.clip_menu" => "Clip options",
+        "panel.timeline.tip.end_dd" => "What the clip does when it ends. Click to choose",
+        "panel.timeline.tip.end_prev" => "Previous choice for when the clip ends",
+        "panel.timeline.tip.end_next" => "Next choice for when the clip ends",
+        "panel.timeline.tip.end_stop" => "When the clip ends, stop on the last frame",
+        "panel.timeline.tip.end_loop" => "When the clip ends, start again from the beginning",
+        "panel.timeline.tip.end_pingpong" => {
+            "When the clip ends, play it backwards, then forwards again"
+        }
         "panel.timeline.tip.starts_with" => "The game starts by playing this clip",
         "panel.timeline.tip.go_start" => "Go to start",
         "panel.timeline.tip.stop" => "Stop and go back to the start",
@@ -187,7 +194,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.curves_on_canvas" => "Edit Path",
         // A pílula da sessão de animar (doc 17 item 9): «Animating jump» + «Done».
         "panel.timeline.animating" => "Animating {clip}",
-        "panel.timeline.animating.done" => "Done",
         "panel.timeline.animating.done.tip" => "Put the scene back as it was. Your keys stay",
         "panel.timeline.curves_on_canvas.tip" => {
             "Show handles on the canvas to bend the object's path"

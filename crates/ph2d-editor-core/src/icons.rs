@@ -279,6 +279,8 @@ pub enum IconId {
     Lock,
     LockKeyhole,
     LockKeyholeOpen,
+    /// O fim do clipe que recomeça (Timeline, dono 13/11).
+    Loop,
     Macro,
     MakeSquare,
     MarqueeBox,
@@ -317,6 +319,8 @@ pub enum IconId {
     Pause,
     Physics,
     Pin,
+    /// O fim do clipe que volta para trás (Timeline, dono 13/11).
+    PingPong,
     Pivot,
     PixelBlur,
     PixelContour,

@@ -104,6 +104,7 @@ fn release_everything_a_hidden_panel_must_not_hold(
     // As janelinhas da barra não voltam abertas com o painel.
     state.opcoes_abertas = false;
     state.menu_do_clip = false;
+    state.fim_aberto = false;
     crate::signal_ouvintes::larga(state);
     // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
     // marquee to resolve (or repaint) when it comes back — nor an undo
@@ -139,7 +140,7 @@ type Barra = (
     Option<transport::ClipChip>,
     Option<transport::ClipChip>,
     Rect,
-    (Option<Rect>, Option<Rect>),
+    (Option<Rect>, Option<Rect>, Option<Rect>),
 );
 
 /// A moldura e a barra do transporte, nos cartões ou na cara de antes.
@@ -179,7 +180,7 @@ fn paint_barra(
             b.clip,
             b.anim,
             mol.corpo,
-            (b.opcoes, b.menu_do_clip),
+            (b.opcoes, b.menu_do_clip, b.fim),
         );
     }
     let title_size = paint_chrome(ctx, theme, rect);
@@ -195,7 +196,7 @@ fn paint_barra(
         snapshot,
         crate::transport_sources::bar_view(state, snapshot),
     );
-    (y, clip, anim, body, (None, None))
+    (y, clip, anim, body, (None, None, None))
 }
 
 #[path = "paint_passos.rs"]

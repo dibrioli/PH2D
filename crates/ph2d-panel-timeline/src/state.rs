@@ -105,6 +105,8 @@ pub struct TimelinePanelState {
     pub opcoes_abertas: bool,
     /// O menu do «⋯» do clipe ativo (barra em cartões, doc 15 onda 1).
     pub menu_do_clip: bool,
+    /// A lista do widget do fim do clipe (dono 13/11, [`crate::fim_do_clip`]).
+    pub fim_aberto: bool,
     /// O cartão «quem ouve» do marcador com sinal (doc 17 item 8); não se desfaz.
     pub sinal_aberto: Option<crate::signal_ouvintes::Aberto>,
     /// O clipe que a vista enquadrou da última vez (cartões, doc 15 onda 2): abrir o painel ou trocar de
@@ -323,6 +325,7 @@ impl Default for TimelinePanelState {
             add_track_open: false,
             opcoes_abertas: false,
             menu_do_clip: false,
+            fim_aberto: false,
             sinal_aberto: None,
             enquadrado: None,
             enquadre: None,

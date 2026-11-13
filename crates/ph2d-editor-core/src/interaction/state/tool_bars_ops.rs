@@ -118,6 +118,12 @@ impl WidgetStore {
         self.tool_bars.reduced_motion = on;
     }
 
+    /// O «movimento reduzido» do artista, como o `hero` o espelhou neste quadro.
+    #[must_use]
+    pub fn reduced_motion(&self) -> bool {
+        self.tool_bars.reduced_motion
+    }
+
     /// ⭐ **Um pulso cíclico de «ligado»** (`0..=1`), no ritmo do token `Slow` × 2 (1,25 Hz ÷ 2, abaixo
     /// do tecto de 3 por segundo da WCAG 2.3.1): sobe e desce suave. Com movimento reduzido, `1` fixo.
     #[must_use]

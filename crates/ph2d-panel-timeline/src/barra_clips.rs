@@ -527,16 +527,12 @@ pub(crate) fn paint(
         chip: None,
         menu: None,
     };
-    // ⭐ UMA fileira só: a Cena com muitos objectos animados chega a ~100 clipes, e chips em fileiras
-    // sem fim comeriam a folha. O que não cabe vai para o «+N ▾», que abre a lista de sempre
-    // (`TIMELINE_CLIP_DD`, com rolagem) — os mesmos ids, o mesmo clique.
+    // ⭐ UMA fileira só (a Cena chega a ~100 clipes): o que não cabe vai para o «+N ▾» (`TIMELINE_CLIP_DD`).
     let pecas = pecas(ctx, (snap, view), &opcoes, escolhida);
     let medida = mede(ctx, &pecas, opcoes.len());
-    // Depois do gravar (onda 1b) o grupo inteiro desce se não cabe no resto e cabe numa fileira.
     let nome = ph2d_i18n::tr("panel.timeline.card.clips");
     let nome_w = ctx.text_system.prefix_width(nome, m::LABEL_PX).ceil();
-    // Nem o 1.º chip cabe no resto (a pílula «Animating» abriu a fileira): desce, para o chip não
-    // sumir inteiro no «+N».
+    // O grupo desce inteiro se cabe numa fileira; se nem o 1.º chip cabe no resto, desce também.
     let um = pecas
         .first()
         .map_or(0.0, |p| p.w + m::FIELD_GAP + medida.mais + medida.reserva);
@@ -545,8 +541,12 @@ pub(crate) fn paint(
         f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + medida.clipes);
         f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + minimo);
     }
-    // O separador do Marker (onda 1c): nunca no início de uma fileira.
+    // Nem um chip ao lado do fim do clipe: ele desce.
+    if f.resta() < banda::SEPARADOR_W + m::FIELD_GAP * 2.0 + nome_w + minimo {
+        f.larga_reserva();
+    }
     if !f.no_inicio() {
+        // O separador do Marker nunca abre uma fileira.
         let (x, y) = f.poe(banda::SEPARADOR_W);
         let (store, hit) = ctx.host.store_and_hit_index_mut();
         CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w)

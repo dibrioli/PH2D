@@ -1,19 +1,16 @@
 //! ⭐ **As duas janelinhas da barra em cartões** (`docs/Timeline/15_plano_redesenho_molde_rive.md`, onda 1):
 //! «Timeline options» (a engrenagem) e o menu do clipe (o «⋯» do chip escolhido). Nenhuma linha é função
-//! nova: cada uma é o controlo que antes vivia solto na barra, com o mesmo id e o mesmo evento. Só as
-//! três células de «When the clip ends» têm ids próprios — pedem os eventos de `TIMELINE_LOOP` e
-//! `TIMELINE_PINGPONG`, exatamente o que a caixa de antes pedia.
+//! nova: cada uma é o controlo que antes vivia solto na barra, com o mesmo id e o mesmo evento. O fim
+//! do clipe saiu daqui para a barra (dono 13/11, [`crate::fim_do_clip`]).
 //!
 //! Abrem-se pelo clique na porta e fecham-se pelo clique de fora (`publish_own_list`, a lei do «+ Track»).
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::{HitIndex, WidgetEvent};
 use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
-use ph2d_editor_core::panel::cards::{CardCtx, Seg, Widget};
+use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal, camada_das_listas};
-use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
@@ -23,38 +20,8 @@ use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 use crate::ids;
-use crate::state::{self, TimelinePanelState};
+use crate::state::TimelinePanelState;
 use crate::transport::BarView;
-
-/// O que o relógio faz no fim do clipe — a leitura das duas caixas de antes.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Fim {
-    Para,
-    Laco,
-    PingPong,
-}
-
-fn fim_de(snap: &TimelineViewSnapshot) -> Fim {
-    match (snap.loop_range.is_some(), snap.loop_ping_pong) {
-        (false, _) => Fim::Para,
-        (true, false) => Fim::Laco,
-        (true, true) => Fim::PingPong,
-    }
-}
-
-/// O evento que a caixa de antes pedia para ir de `agora` a `quer` — `None` se já está lá.
-fn toggle_que_pede(agora: Fim, quer: Fim) -> Option<(NodeId, bool)> {
-    if agora == quer {
-        return None;
-    }
-    Some(match quer {
-        // Desmarcar a caixa que estava marcada.
-        Fim::Para if agora == Fim::PingPong => (ids::TIMELINE_PINGPONG, false),
-        Fim::Para => (ids::TIMELINE_LOOP, false),
-        Fim::Laco => (ids::TIMELINE_LOOP, true),
-        Fim::PingPong => (ids::TIMELINE_PINGPONG, true),
-    })
-}
 
 /// O que a caixa da Length lê, se não é o do store: sem duração autorada, ∞; o store fica com o
 /// finito, que é o que se edita.
@@ -93,33 +60,18 @@ pub(crate) fn apply_event(
     if id == ids::TIMELINE_OPTIONS {
         state.opcoes_abertas = !state.opcoes_abertas;
         state.menu_do_clip = false;
+        state.fim_aberto = false;
         state.add_track_open = false;
         return Some(EventOutcome::Consumed);
     }
     if id == ids::TIMELINE_CLIP_MENU {
         state.menu_do_clip = !state.menu_do_clip;
         state.opcoes_abertas = false;
+        state.fim_aberto = false;
         state.add_track_open = false;
         return Some(EventOutcome::Consumed);
     }
-    let quer = [
-        (ids::TIMELINE_END_STOP, Fim::Para),
-        (ids::TIMELINE_END_LOOP, Fim::Laco),
-        (ids::TIMELINE_END_PINGPONG, Fim::PingPong),
-    ]
-    .into_iter()
-    .find_map(|(i, f)| (i == id).then_some(f))?;
-    if let Some((caixa, on)) = toggle_que_pede(fim_de(&state::current_snapshot()), quer) {
-        if let Some(InteractiveState::Toggle { on: no_store, .. }) = host.store_mut().get_mut(caixa)
-        {
-            *no_store = on;
-        }
-        host.bus_mut()
-            .push(EditorAction::TimelinePanelEvent(PanelEvent::Toggle(
-                caixa, on,
-            )));
-    }
-    Some(EventOutcome::Consumed)
+    crate::fim_do_clip::apply_event(state, host, id)
 }
 
 /// Os dois cliques de fora deste quadro fecham o que estava aberto.
@@ -130,6 +82,9 @@ pub(crate) fn fecha_pelo_clique_de_fora(state: &mut TimelinePanelState, ctx: &mu
     }
     if store.take_own_list_dismissed(ids::TIMELINE_CLIP_MENU) {
         state.menu_do_clip = false;
+    }
+    if store.take_own_list_dismissed(ids::TIMELINE_END_DD) {
+        state.fim_aberto = false;
     }
     crate::signal_ouvintes::fecha_se_preciso(state, ctx);
 }
@@ -145,33 +100,7 @@ fn corpo_das_opcoes(
     snap: &TimelineViewSnapshot,
     view: BarView,
 ) -> f32 {
-    let fim = fim_de(snap);
-    let segs = [
-        Seg {
-            id: ids::TIMELINE_END_STOP,
-            icon: None,
-            text: tr("panel.timeline.card.end_stop"),
-            on: fim == Fim::Para,
-        },
-        Seg {
-            id: ids::TIMELINE_END_LOOP,
-            icon: None,
-            text: tr("panel.timeline.loop"),
-            on: fim == Fim::Laco,
-        },
-        Seg {
-            id: ids::TIMELINE_END_PINGPONG,
-            icon: None,
-            text: tr("panel.timeline.ping_pong"),
-            on: fim == Fim::PingPong,
-        },
-    ];
-    // A Length mora na barra, entre as abas e o Time (dono 13/11).
-    let mut y = c.full(
-        Some(tr("panel.timeline.card.when_ends")),
-        Widget::Choice(&segs),
-        y,
-    );
+    let mut y = y;
     let valor = |id| crate::transport::cartoes::valor_da_caixa(snap, view, id);
     for (id, chave) in [
         (ids::TIMELINE_RECORD, "panel.timeline.card.record"),
@@ -248,7 +177,7 @@ fn largura_de_dentro(ctx: &mut PaintCtx, chaves: &[&str]) -> f32 {
 }
 
 /// Uma janelinha de cartão pendurada em `ancora`, alinhada pela ESQUERDA (`a_esquerda`) ou pela direita.
-fn flutua(
+pub(crate) fn flutua(
     ctx: &mut PaintCtx,
     theme: Theme,
     (dono, ancora, a_esquerda): (NodeId, Rect, bool),
@@ -345,7 +274,7 @@ pub(crate) fn paint(
     theme: Theme,
     state: &TimelinePanelState,
     (snap, view): (&TimelineViewSnapshot, BarView),
-    (opcoes, menu): (Option<Rect>, Option<Rect>),
+    (opcoes, menu, fim): (Option<Rect>, Option<Rect>, Option<Rect>),
 ) {
     match opcoes.filter(|_| state.opcoes_abertas) {
         Some(a) => {
@@ -388,6 +317,7 @@ pub(crate) fn paint(
             .store_mut()
             .publish_own_list(ids::TIMELINE_CLIP_MENU, None),
     }
+    crate::fim_do_clip::paint_lista(ctx, theme, state, snap, fim);
     crate::signal_ouvintes::paint(ctx, theme, state, snap);
 }
 
@@ -405,29 +335,5 @@ mod tests {
         assert_eq!(valor_lido_da_dur(&snap), Some(f64::INFINITY));
         snap.view_length_explicit = true;
         assert_eq!(valor_lido_da_dur(&snap), None);
-    }
-
-    /// ⭐⭐ Cada célula pede o que a caixa de antes pedia, e a escolhida não pede nada (re-armar o Loop
-    /// repunha a faixa dele). *Mutação: tirar o `agora == quer` ⇒ o Loop aceso pede outra vez.*
-    #[test]
-    fn cada_celula_do_fim_pede_o_toggle_de_antes() {
-        use Fim::*;
-        assert_eq!(toggle_que_pede(Laco, Laco), None);
-        assert_eq!(
-            toggle_que_pede(Para, Laco),
-            Some((ids::TIMELINE_LOOP, true))
-        );
-        assert_eq!(
-            toggle_que_pede(Laco, PingPong),
-            Some((ids::TIMELINE_PINGPONG, true))
-        );
-        assert_eq!(
-            toggle_que_pede(Laco, Para),
-            Some((ids::TIMELINE_LOOP, false))
-        );
-        assert_eq!(
-            toggle_que_pede(PingPong, Para),
-            Some((ids::TIMELINE_PINGPONG, false))
-        );
     }
 }

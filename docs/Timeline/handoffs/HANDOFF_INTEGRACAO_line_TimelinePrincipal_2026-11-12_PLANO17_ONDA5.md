@@ -167,7 +167,21 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
     `controles_flutuantes::o_stop_para_e_volta_ao_inicio` agora exige o `take_done`; a mutação «sem `para()`» sangrou.
   - O Edit Path ligado pulsa: o `Accent` a `TIMELINE_LIGADO_BRILHO_ALPHA × on_pulse()` por cima do corpo (`alternador.rs`). [Foto: três instantes](../fotos/20_edit_path_pulsa_tres_instantes.png).
   - Por nome ✓: it 42 (controles_flutuantes, os_cartoes, o_cartao_estreito, animating_done, curves_on_canvas), animando 4, editor-core it 18 · clippy panel-timeline ✓ · fmt ✓.
-- **PEDIDO ABERTO para a próxima janela:** o widget do fim do clip ([continuação](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-13_FIM_DO_CLIP.md)).
+- ~~PEDIDO ABERTO para a próxima janela: o widget do fim do clip~~ — feito no acréscimo 5.
+
+## Acréscimo 5 — dono 13/11: o fim do clipe na barra (Stop · Loop · Ping-Pong)
+
+- **Pedido** ([continuação, verbatim](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-13_FIM_DO_CLIP.md)): um widget original na 2.ª fileira — lista suspensa com `‹ ›` nas laterais e, perto delas, os ícones das outras opções; clicar no ícone escolhe direto; a troca é animada.
+- **`src/fim_do_clip.rs`** (novo; `transport_cartoes` e `barra_clips` no tecto de 600): `‹ [vizinha] [ícone NOME ▾] [vizinha] ›`, encostado à direita da fileira dos clipes. Roda `Stop → Loop → Ping-Pong`; `‹`/`›` andam um passo (com volta); o ícone da vizinha usa o id da opção (`TIMELINE_END_STOP|LOOP|PINGPONG`, já registados); o centro (`TIMELINE_END_DD`, novo) abre a lista (`barra_menus::flutua`, fecha pelo clique de fora, como a engrenagem). Ids novos `TIMELINE_END_DD/PREV/NEXT` (`ids/timeline_barra.rs`, registados em `populate`). Estado `TimelinePanelState::fim_aberto` e `BarView::fim_aberto`; o abrir de uma janelinha fecha as outras; esconder o painel fecha.
+- **O evento é o de antes:** `toggle_que_pede` (mudou-se de `barra_menus` com o `Fim`) pede o `Toggle` de `TIMELINE_LOOP`/`TIMELINE_PINGPONG` que a caixa pedia; a escolhida não pede nada.
+- **Saiu da engrenagem** «When the clip ends» (um só lugar); a chave `panel.timeline.card.when_ends` saiu da tabela. E a órfã `panel.timeline.animating.done` (a pílula que saiu no acréscimo 4) também — o portão `every_key_of_this_crate_exists_on_both_sides` estava vermelho por ela.
+- **Animação:** `fenda(op, (de, para), t)` — cada ícone desliza da fenda velha para a nova (−1 · 0 · +1); o que dá a volta à roda sai por um lado transparente e entra pelo outro; o nome só se vê dentro do centro e cruza a meia fenda. `Duration::Default` (240 ms) com smoothstep, relógio `clock_ns`; com movimento reduzido é seco — `WidgetStore::reduced_motion()` (getter novo, `tool_bars_ops.rs`). A troca vive num `thread_local` do módulo (a 1.ª vista não anima).
+- **Fileira:** `Fluxo::guarda_a_direita` reserva a largura do widget nas fileiras do interior antes do gravar/clipes; `solta` põe-no lá. Se nem um chip cabe ao lado (painel estreito, ex.: 266 px nos testes), `barra_clips` chama `larga_reserva` e o widget desce para a fileira seguinte em vez de esmagar os clipes.
+- **Ícones novos** `IconId::Loop` (Lucide «repeat») e `IconId::PingPong` (Lucide «arrow-left-right»), ISC, `docs/design/icons/{loop,ping-pong}.svg`; o Stop é o `IconId::Stop`. Dicas em inglês (`panel.timeline.tip.end_*`).
+- **Fotos** (tiradas com um gancho TEMPORÁRIO que trocava sozinho e deixava a troca 8× mais lenta — removido, não commitado): [troca a meio + lista aberta](../fotos/21_fim_do_clip_troca_e_lista.png) · [na barra](../fotos/22_fim_do_clip_na_barra.png).
+- **Testes:** novos `fim_do_clip::tests` (4: toggles, roda, `fenda` a meio e na volta, movimento reduzido) e `os_cartoes::o_fim_do_clipe_mora_na_barra_e_as_setinhas_pedem_o_do_lado` (ordem, mesma fileira do Marker, sem pisar os clipes, `‹` = ícone da esquerda, lista abre e fecha por fora, a engrenagem já não o tem). `onde_mora` e `stop_pede_o_que_desmarcar_a_caixa_pedia` atualizados (Loop/Ping-Pong agora na barra; a escolhida clica-se na lista).
+- Por nome ✓: panel-timeline os_cartoes 36, o_cartao_estreito 3, os_chips_da_barra 7, every_word 3, controles_flutuantes 3, clipes_em_lista 2, barra_menus 1, fim_do_clip 4 · editor-core icons 9, on_pulse 1 · registry-init toda_dica 2 · i18n tests 10 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core, i18n) ✓.
+- Smoke do dono: pendente.
 
 ## Aberto (visto, NÃO feito)
 

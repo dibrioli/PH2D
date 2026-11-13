@@ -139,12 +139,12 @@ const NO_MENU: [NodeId; 5] = [
 ];
 
 /// Em cartões, abre a janelinha onde `id` mora agora, e devolve o id a clicar (o Loop e o Ping-Pong
-/// viraram células de «When the clip ends»).
+/// são ícones do widget do fim do clipe, na barra — dono 13/11; o documento está em Stop).
 fn onde_mora(mesa: &mut Mesa<TimelinePanel>, id: NodeId) -> NodeId {
     let (porta, alvo) = if id == ids::TIMELINE_LOOP {
-        (Some(ids::TIMELINE_OPTIONS), ids::TIMELINE_END_LOOP)
+        (None, ids::TIMELINE_END_LOOP)
     } else if id == ids::TIMELINE_PINGPONG {
-        (Some(ids::TIMELINE_OPTIONS), ids::TIMELINE_END_PINGPONG)
+        (None, ids::TIMELINE_END_PINGPONG)
     } else if NAS_OPCOES.contains(&id) {
         (Some(ids::TIMELINE_OPTIONS), id)
     } else if NO_MENU.contains(&id) {
@@ -640,7 +640,6 @@ fn stop_pede_o_que_desmarcar_a_caixa_pedia() {
             format!("{a:?} | {:?}", drain_intents())
         };
         let mut m = mesa_em(true, JANELA, snap.clone());
-        let _ = onde_mora(&mut m, ids::TIMELINE_LOOP);
         let a = m.clica(ids::TIMELINE_END_STOP);
         assert_eq!(
             antes,
@@ -652,6 +651,8 @@ fn stop_pede_o_que_desmarcar_a_caixa_pedia() {
         } else {
             ids::TIMELINE_END_LOOP
         };
+        // A escolhida mora no centro; na lista aberta, clicá-la não pede nada.
+        let _ = m.clica(ids::TIMELINE_END_DD);
         m.assenta_em(JANELA);
         let a = m.clica(escolhida);
         assert!(a.is_empty(), "a célula escolhida pediu {a:?}");
@@ -793,4 +794,76 @@ fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
         "a aba ainda troca"
     );
     ferramenta::force_cards_on_this_thread(None);
+}
+
+/// ⭐⭐ **O fim do clipe mora na barra** (dono 13/11): `‹ Stop [Loop ▾] Ping-Pong ›` à direita da fileira
+/// dos clipes; a setinha pede o mesmo que o ícone do lado dela; o nome abre a lista, que fecha pelo
+/// clique de fora; a engrenagem já não o tem. *Mutações: `‹` andar para a direita ⇒ vermelho; tirar a
+/// reserva da fileira ⇒ o widget desce.*
+#[test]
+fn o_fim_do_clipe_mora_na_barra_e_as_setinhas_pedem_o_do_lado() {
+    let snap = TimelineViewSnapshot {
+        loop_range: Some((0.0, 4.0)),
+        ..documento()
+    };
+    let pede = |id| {
+        let mut m = mesa_em(true, JANELA, snap.clone());
+        let a = m.clica(id);
+        format!("{a:?} | {:?}", drain_intents())
+    };
+    assert_eq!(pede(ids::TIMELINE_END_PREV), pede(ids::TIMELINE_END_STOP));
+    assert_eq!(
+        pede(ids::TIMELINE_END_NEXT),
+        pede(ids::TIMELINE_END_PINGPONG)
+    );
+    assert_ne!(pede(ids::TIMELINE_END_PREV), pede(ids::TIMELINE_END_NEXT));
+
+    let mut m = mesa_em(true, JANELA, snap.clone());
+    let marker = m.rect(ids::TIMELINE_ADD_MARKER).expect("Marker");
+    let ordem = [
+        ids::TIMELINE_END_PREV,
+        ids::TIMELINE_END_STOP,
+        ids::TIMELINE_END_DD,
+        ids::TIMELINE_END_PINGPONG,
+        ids::TIMELINE_END_NEXT,
+    ];
+    let rects: Vec<_> = ordem
+        .iter()
+        .map(|&id| m.rect(id).expect("pintado"))
+        .collect();
+    for w in rects.windows(2) {
+        assert!(w[0].x + w[0].w <= w[1].x + 0.5, "fora de ordem: {rects:?}");
+    }
+    for r in &rects {
+        assert!(
+            (r.y - marker.y).abs() < 0.5,
+            "fora da fileira dos clipes: {r:?} × {marker:?}"
+        );
+    }
+    let chip = m.rect(ids::TIMELINE_CLIP_OPT[0]).expect("chip");
+    assert!(chip.x + chip.w <= rects[0].x, "o widget pisa os clipes");
+    assert!(
+        m.rect(ids::TIMELINE_END_LOOP).is_none(),
+        "a escolhida fora da lista"
+    );
+
+    let _ = m.clica(ids::TIMELINE_END_DD);
+    m.assenta_em(JANELA);
+    assert!(m.st.fim_aberto, "o nome não abriu a lista");
+    assert!(
+        m.rect(ids::TIMELINE_END_LOOP).is_some(),
+        "a lista não tem a escolhida"
+    );
+    let ev = m.host.click_at(chip.x + 2.0, chip.y + chip.h * 0.5);
+    let _ = m.aplica(ev);
+    m.assenta_em(JANELA);
+    assert!(!m.st.fim_aberto, "o clique de fora não fechou a lista");
+
+    let _ = m.clica(ids::TIMELINE_OPTIONS);
+    m.assenta_em(JANELA);
+    assert!(m.st.opcoes_abertas);
+    assert!(
+        m.rect(ids::TIMELINE_END_LOOP).is_none(),
+        "a engrenagem ainda tem o fim do clipe"
+    );
 }

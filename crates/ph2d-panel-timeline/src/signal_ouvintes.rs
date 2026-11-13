@@ -73,6 +73,7 @@ pub(crate) fn abre(state: &mut TimelinePanelState, snap: &TimelineViewSnapshot, 
     if state.sinal_aberto.is_some() {
         state.opcoes_abertas = false;
         state.menu_do_clip = false;
+        state.fim_aberto = false;
     }
 }
 

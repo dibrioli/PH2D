@@ -24,6 +24,7 @@ pub use animando::{animating, parked, resume, sessao, take_done, take_ended};
 mod breadcrumb;
 pub mod chip_drag;
 mod faixa_marcadores;
+mod fim_do_clip;
 mod folha_tinta;
 mod ruler_clock;
 mod ruler_trecho;

@@ -24,6 +24,8 @@ use ph2d_vector::{Affine, BezPath, Brush, Fill};
 use crate::alca_estado::EstadoAlca;
 use crate::ids;
 
+#[path = "ruler_degraus.rs"]
+pub(crate) mod degraus;
 #[path = "ruler_fim.rs"]
 pub(crate) mod fim;
 #[path = "ruler_veil.rs"]
@@ -31,10 +33,9 @@ pub(crate) mod veil;
 
 pub(crate) const RULER_H: f32 = 22.0; // LITERAL-PX-OK: ruler strip height
 pub(crate) const TICK_MAJOR_H: f32 = 10.0; // LITERAL-PX-OK: labelled second tick height
-const TICK_MINOR_H: f32 = 5.0; // LITERAL-PX-OK: half-second tick height
+const TICK_MINOR_H: f32 = 4.0; // LITERAL-PX-OK: frame tick height
+const TICK_MID_H: f32 = 7.0; // LITERAL-PX-OK: mid tick height
 const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
-const TICK_MAJOR_S: f64 = 1.0; // LITERAL-PX-OK: labelled tick interval (seconds), not a UI metric
-const TICK_MINOR_S: f64 = 0.5; // LITERAL-PX-OK: unlabelled tick interval (seconds), not a UI metric
 /// Visible width of a loop brace's vertical bar.
 const BRACE_W: f32 = 3.0; // LITERAL-PX-OK: loop-brace bar width
 /// Half-width of a brace's grab target — wider than the bar so it is easy to hit.
@@ -118,29 +119,20 @@ pub(crate) fn paint(
         crate::history_band::paint(ctx, theme, region, RULER_H, &on_axis);
     }
 
-    // Minor + major ticks (+ labels on majors).
-    paint_ticks(
-        ctx,
-        theme,
-        region,
-        view_start,
-        span,
-        TICK_MINOR_S,
-        TICK_MINOR_H,
-        false,
-        &time_to_x,
-    );
-    paint_ticks(
-        ctx,
-        theme,
-        region,
-        view_start,
-        span,
-        TICK_MAJOR_S,
-        TICK_MAJOR_H,
-        true,
-        &time_to_x,
-    );
+    // Os riscos pelo zoom (`ruler_degraus`): miúdo · meio · rotulado (com número), o maior por cima.
+    let fps = if snap.fps > 0.0 { snap.fps } else { 0.0 };
+    let d = degraus::degraus(px_per_s, fps);
+    let (forte, fraco) = tons_dos_riscos(theme);
+    for (passo, h, cor, rotulo) in [
+        (d.miudo, TICK_MINOR_H, fraco, false),
+        (d.meio, TICK_MID_H, fraco, false),
+        (Some(d.rotulo), TICK_MAJOR_H, forte, true),
+    ] {
+        if let Some(passo) = passo {
+            let riscos = (view_start, span, passo, (h, cor), rotulo);
+            paint_ticks(ctx, region, riscos, &time_to_x);
+        }
+    }
 
     // The END line (cards): over the veil and every piece, under the playhead and the braces.
     if clock.loop_band && ph2d_editor_core::panel::cards::ferramenta::cards_on() {
@@ -491,48 +483,53 @@ fn register_brace(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, edge: u8, rect: Rec
     ctx.host.hit_index_mut().register(id, rect);
 }
 
-/// Paint ticks at `step`-second intervals across the visible span; labels on
-/// majors (whole seconds).
-#[allow(clippy::too_many_arguments)]
+/// As tintas dos riscos: `(rotulado e número, meio e miúdo)`. O traço de antes (`ReguaTraco`, 1,3:1
+/// contra a régua) não se via; agora ≥ 3:1 (WCAG 1.4.11).
+pub(crate) fn tons_dos_riscos(theme: Theme) -> (ph2d_vector::Color, ph2d_vector::Color) {
+    use ph2d_tokens::TimelineTinta as T;
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        let t = |x| crate::folha_tinta::tinta(x, theme);
+        (t(T::TextoPropriedade), t(T::TextoValor))
+    } else {
+        (
+            resolve(ColorToken::Text2, theme),
+            resolve(ColorToken::Text3, theme),
+        )
+    }
+}
+
+/// Riscos a cada `passo` segundos no que se vê; com número no degrau rotulado.
 fn paint_ticks(
     ctx: &mut PaintCtx,
-    theme: Theme,
     region: Rect,
-    view_start: f64,
-    span: f64,
-    step: f64,
-    tick_h: f32,
-    label: bool,
+    (view_start, span, passo, (tick_h, cor), rotulo): (
+        f64,
+        f64,
+        f64,
+        (f32, ph2d_vector::Color),
+        bool,
+    ),
     time_to_x: &impl Fn(f64) -> f32,
 ) {
-    if step <= 0.0 {
-        return;
-    }
-    let first = (view_start / step).ceil();
-    let last = ((view_start + span) / step).floor();
+    let first = (view_start / passo).ceil();
+    let last = ((view_start + span) / passo).floor();
     let mut i = first;
     while i <= last {
-        let t = i * step;
+        let t = i * passo;
         let x = time_to_x(t);
         let tick = Rect::new(x, region.y + RULER_H - tick_h, 1.0, tick_h); // LITERAL-PX-OK: 1px tick
-        fill_rounded_rect(
-            ctx.scene,
-            tick,
-            Radius::Xs.px(),
-            crate::folha_tinta::cor(ColorToken::TimelineRulerTick, theme),
-        );
-        let (font, txt) = (TypeToken::Sm.px(), format!("{}", t.round() as i64));
-        let x0 = x + Spacing::Xxs.px();
-        if label {
+        fill_rounded_rect(ctx.scene, tick, Radius::Xs.px(), cor);
+        if rotulo {
+            let font = TypeToken::Sm.px();
             paint_text(
                 ctx.text_system,
                 ctx.scene,
-                &txt,
-                x0,
+                &degraus::texto(t),
+                x + Spacing::Xxs.px(),
                 crate::ruler_trecho::y_do_texto(region, font),
                 font,
                 region.x + region.w - x,
-                crate::folha_tinta::cor(ColorToken::Text2, theme),
+                cor,
             );
         }
         i += 1.0;

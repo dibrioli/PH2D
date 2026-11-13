@@ -373,6 +373,8 @@ pub enum IconId {
     Sprite,
     Step,
     Stop,
+    /// A placa de «pare»: o fim do clipe que para (Timeline, dono 13/11).
+    StopSign,
     StrokeCenter,
     StrokeInside,
     StrokeOutside,
@@ -441,7 +443,7 @@ impl IconId {
     /// O miolo também se pinta (o SVG tem `fill="currentColor"`): o estado «ligado» de um par vazio e cheio.
     #[must_use]
     pub fn cheio(self) -> bool {
-        matches!(self, Self::CardStarOn)
+        matches!(self, Self::CardStarOn | Self::StopSign)
     }
 
     /// Kebab-case slug matching the source SVG filename

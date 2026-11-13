@@ -64,7 +64,7 @@ impl Fim {
 
     fn icone(self) -> IconId {
         match self {
-            Fim::Para => IconId::Stop,
+            Fim::Para => IconId::StopSign,
             Fim::Laco => IconId::Loop,
             Fim::PingPong => IconId::PingPong,
         }

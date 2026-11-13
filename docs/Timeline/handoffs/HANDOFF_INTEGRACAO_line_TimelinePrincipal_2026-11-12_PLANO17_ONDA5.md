@@ -183,6 +183,16 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 - Por nome ✓: panel-timeline os_cartoes 36, o_cartao_estreito 3, os_chips_da_barra 7, every_word 3, controles_flutuantes 3, clipes_em_lista 2, barra_menus 1, fim_do_clip 4 · editor-core icons 9, on_pulse 1 · registry-init toda_dica 2 · i18n tests 10 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core, i18n) ✓.
 - Smoke do dono: pendente.
 
+## Acréscimo 6 — dono 13/11: sem setinhas, escolhida com cor, placa de pare, régua legível
+
+- **Setinhas `‹ ›` saíram** (dono: «parecem supérfluas»): ids `TIMELINE_END_PREV/NEXT` e chaves `tip.end_prev/next` apagados. O widget é `[vizinha] [escolhida ▾] [vizinha]`, `largura = 2·FIELD_H + centro`.
+- **A escolhida com cor** (dono: «mais destacada, com cor»): o centro veste o chip escolhido da barra (`tons_da_barra`: `ativa_fundo` + `ativa_texto`); sob o rato/aberta, `sob_o_rato` com o contorno `ativa_fundo`. [Foto](../fotos/21_fim_do_clip_sem_setinhas_com_cor.png). Teste renomeado `o_fim_do_clipe_mora_na_barra_e_cada_lado_pede_a_sua_opcao`.
+- **Placa de pare** (dono: «o ícone de stop está muito simples… talvez de placa»): `IconId::StopSign` (novo, `stop-sign.svg`, desenho próprio): octógono CHEIO (`cheio()`, `fill="currentColor"`) com a barra vazada por enrolamento contrário. O octógono de contorno (Lucide `octagon-minus`) e o de quinas vivas lidos a 16 px pareciam um círculo — fotografados e recusados. O `IconId::Stop` do transporte fica. [Foto](../fotos/22_placa_de_pare.png).
+- **A régua** (dono: «poucas marcações e as que tem são quase invisíveis»): medido — o traço `ReguaTraco` contra `FitaRegua` dava **1,3:1**, e os riscos eram fixos a 1 s / 0,5 s em qualquer zoom. Agora `src/ruler_degraus.rs` (novo; `ruler.rs` no tecto): três degraus pelo espaço em píxeis — número (≥ 90 px, passos 0,1 · 0,25 · 0,5 · 1 · 2 · 5 · … · 600 s), meio (metade, ≥ 24 px) e miúdo (um QUADRO quando ≥ 6 px e divide o número; senão ⅒ · ⅕ · ¼ · ½) — alturas 10/7/4 px. Tintas `tons_dos_riscos`: número e risco grande `TextoPropriedade`, meio e miúdo `TextoValor` (≥ 3:1 em todo tema, WCAG 1.4.11); no clássico Text2/Text3. Números «0.25», «1.5». No zoom de fábrica (~480 px/s, 24 fps): número a cada ¼ s, meio a cada ⅛ s, um risco por quadro. [Foto](../fotos/22_regua_com_riscos_por_quadro.png).
+- Testes novos `ruler::degraus::tests` (4: zoom de fábrica, todo zoom × fps cabe e divide, contraste em todo tema, texto do número).
+- Por nome ✓: panel-timeline ruler 30, os_cartoes 36, fim_do_clip 5, every_word 3 · editor-core icons 9 (inclui o portão do ícone cheio) · registry-init toda_dica 2 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core) ✓.
+- Smoke do dono: pendente.
+
 ## Aberto (visto, NÃO feito)
 
 1. **Limite conhecido:** com o pai ANIMADO durante o clip, o duplo-clique na curva projeta pelo pai na 1.ª chave (desenho e âncoras são exatos por instante). Foto de cena com pai rodado não tirada.

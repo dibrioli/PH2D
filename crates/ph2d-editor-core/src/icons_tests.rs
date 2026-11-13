@@ -471,6 +471,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::Sprite,
     IconId::Step,
     IconId::Stop,
+    IconId::StopSign,
     IconId::StrokeCenter,
     IconId::StrokeInside,
     IconId::StrokeOutside,

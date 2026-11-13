@@ -4,7 +4,7 @@
 use super::*;
 use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 
-/// **O rascunho vira o grid.** Com a faixa viva a cobrir quase a folha (o wash), TROCA os três planos com o
+/// **O rascunho vira o grid.** Com a faixa viva maior que o resto da folha (o wash), TROCA os três planos com o
 /// rascunho e copia de volta só o COMPLEMENTO (o que a faixa não reescreveu); senão copia a faixa. As duas
 /// rotas dão o mesmo grid ao bit (`flow_bit_tests`, `advect_bit_tests`) — o rascunho é derivado.
 /// A rota lê [`crate::flow::COMMIT_ROTA`] (0 = pela faixa, o produto; 1/2 forçam, gates e sonda).
@@ -19,7 +19,9 @@ pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
             if lo > hi { 0 } else { (hi - lo + 1) as usize }
         })
         .sum();
-    let auto = (g.cells - viva) * 4 <= viva;
+    // A troca copia o complemento; a cópia, a faixa: a que move menos bytes (B13.12 cura 3, 4K 6 traços:
+    // estágio 3 19,5 → 16,9 ms mín.; o limiar de antes, complemento ≤ ¼ da faixa, nunca trocava no wash).
+    let auto = g.cells - viva <= viva;
     let rota = crate::flow::COMMIT_ROTA.load(std::sync::atomic::Ordering::Relaxed);
     if !match rota {
         1 => false,

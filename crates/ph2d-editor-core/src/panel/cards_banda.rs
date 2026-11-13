@@ -607,6 +607,26 @@ impl CardCtx<'_> {
         let aceso = aberta || self.store.hover_live(id) > 0.0;
         paint_card_chip(self.scene, self.text_system, self.ink, r, texto, aceso);
     }
+
+    /// A [`Self::lista_em`] com o ícone do escolhido à esquerda do valor.
+    pub fn lista_com_icone_em(
+        &mut self,
+        id: NodeId,
+        valor: (Option<crate::icons::IconId>, &str),
+        aberta: bool,
+        r: Rect,
+    ) {
+        self.hit_index.register(id, r);
+        let aceso = aberta || self.store.hover_live(id) > 0.0;
+        crate::widget::paint_card_chip_com_icone(
+            self.scene,
+            self.text_system,
+            self.ink,
+            r,
+            valor,
+            aceso,
+        );
+    }
 }
 
 #[path = "cards_banda_tons.rs"]

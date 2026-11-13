@@ -262,7 +262,10 @@ fn como_lista(
     opcao: Option<&DropdownOption<usize>>,
 ) -> Clips {
     let texto = opcao.map_or("", |o| o.label.as_str());
-    let w = texto_w(ctx, texto) + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
+    // O glifo do tipo também na lista FECHADA (dono 12/11): o mesmo do chip e da lista aberta.
+    let icone = opcao.and_then(glifo_do_tipo);
+    let li = ph2d_editor_core::widget::card_chip_icone_w(icone);
+    let w = li + texto_w(ctx, texto) + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
     let menu = opcao.is_some_and(|o| tem_menu(true, o));
     let fim = if menu { m::FIELD_H + m::FIELD_GAP } else { 0.0 };
     f.guarda_para(w + m::FIELD_GAP + fim + banda::icones_w(1));
@@ -273,12 +276,8 @@ fn como_lista(
         store.get(ids::TIMELINE_CLIP_DD),
         Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: true, .. })
     );
-    CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w).lista_em(
-        ids::TIMELINE_CLIP_DD,
-        texto,
-        open,
-        r,
-    );
+    CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w)
+        .lista_com_icone_em(ids::TIMELINE_CLIP_DD, (icone, texto), open, r);
     let menu = menu.then(|| {
         let (x, y) = f.poe(m::FIELD_H);
         let b = Rect::new(x, y, m::FIELD_H, m::FIELD_H);

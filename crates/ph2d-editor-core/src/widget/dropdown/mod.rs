@@ -488,6 +488,9 @@ mod geometria;
 mod largura;
 mod popover;
 pub use card_chip::chip as paint_card_chip;
+pub use card_chip::{
+    chip_com_icone as paint_card_chip_com_icone, largura_do_icone as card_chip_icone_w,
+};
 pub use geometria::{dropdown_chevron_size, dropdown_chip_width_for, dropdown_label_budget};
 pub use largura::popover_width_for;
 pub use popover::{

@@ -25,6 +25,16 @@ impl PainterTool {
         self.paint.stroke_undo.is_some() || self.paint.wetpaint.session.is_some()
     }
 
+    /// Só um traço aberto (sem a tinta viva do Wet, que adormece e marca o próprio sujo: B18.4).
+    pub(crate) fn traco_por_fechar(&self) -> bool {
+        self.paint.stroke_undo.is_some()
+    }
+
+    /// A tinta viva do Wet está no ar (a sessão da activa).
+    pub(crate) fn tinta_viva(&self) -> bool {
+        self.paint.wetpaint.session.is_some()
+    }
+
     /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo
     /// **before** painting so the whole stroke restores to the pre-stroke pixels.
     pub(super) fn paint_begin(&mut self, ev: CanvasPointer) {

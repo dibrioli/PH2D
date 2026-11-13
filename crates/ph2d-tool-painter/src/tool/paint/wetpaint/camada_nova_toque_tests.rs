@@ -100,6 +100,48 @@ fn no_papel_do_dono_o_mais_transparente_nao_reivindica_nada() {
     );
 }
 
+/// O «+» COM a tinta Wet viva (o caso do dono: pintar, «+», pintar): a sessão adormece e a figura muda só na janela
+/// da tinta da camada de baixo — o quadro reivindica essa caixa, não a tela (o caminho antigo, o controlo).
+#[test]
+fn com_a_tinta_viva_o_mais_reivindica_so_a_caixa_da_tinta() {
+    let mede = |antigo: bool| {
+        let mut t = no_papel_do_dono();
+        for _ in 0..3 {
+            let _ = reivindicada(&mut t);
+        }
+        let _ = pior_do_toque(&mut t, 100.0);
+        let _ = pior_do_toque(&mut t, 160.0);
+        assert!(t.tinta_viva(), "a tinta Wet está viva antes do «+»");
+        let base = t.layers.active().expect("a base");
+        crate::tool::layers::TROCA_RECOMPOE_SEMPRE.with(|c| c.set(antigo));
+        let nova = t.add_raster_layer("nova").expect("a camada nova");
+        t.select_layer(nova);
+        crate::tool::layers::TROCA_RECOMPOE_SEMPRE.with(|c| c.set(false));
+        let caixa = match crate::undo_delta::confine::janela_da_tinta(
+            &t.images.get(&base).expect("a base em images").rgba8,
+            W as usize,
+        ) {
+            crate::undo_delta::confine::PlaneReach::Window(j) => {
+                let r = j.to_region(W).expect("a região");
+                u64::from(r.w) * u64::from(r.h)
+            }
+            _ => panic!("a base tem uma janela de tinta"),
+        };
+        let pior = (0..3).map(|_| reivindicada(&mut t)).max().unwrap_or(0);
+        (pior, caixa)
+    };
+    let ((antes, _), (depois, caixa)) = (mede(true), mede(false));
+    let tela = u64::from(W) * u64::from(H);
+    eprintln!(
+        "o «+» com tinta viva (texels; tela {tela}): caminho antigo {antes} · cura {depois} · caixa da tinta {caixa}"
+    );
+    assert_eq!(antes, tela, "controlo: o caminho antigo reivindica a tela");
+    assert!(
+        depois <= caixa,
+        "o «+» com tinta viva reivindicou {depois} texels (caixa da tinta {caixa}, tela {tela})"
+    );
+}
+
 /// O documento do dono: o «Textured Paper» do New Image (Relief 0,5).
 pub(super) fn no_papel_do_dono() -> PainterTool {
     let mut t = PainterTool::default();

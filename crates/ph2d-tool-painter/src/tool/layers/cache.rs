@@ -107,12 +107,33 @@ impl PainterTool {
         if TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
             return false;
         }
-        !self.traco_ou_tinta_viva()
+        !self.traco_por_fechar()
             && !self.is_editing_shape()
             && !self.has_parked_shapes()
             && !self.mask_scratch_active()
             && self.mask_view_grayscale.is_none()
             && !self.papel_atravessa_vidro()
+    }
+
+    /// A tinta viva da camada `id` adormeceu no «+» (B18.4): a figura muda só na janela da tinta dela (a ótica viva
+    /// → a assentada); fora dela nada muda.
+    pub(crate) fn a_tinta_que_adormeceu_muda(&mut self, id: RtLayerId) {
+        use crate::undo_delta::confine::{PlaneReach, janela_da_tinta};
+        let (w, h) = self.source_size;
+        let alcance = match self.images.get(&id) {
+            Some(i) if i.rgba8.len() == (w as usize) * (h as usize) * 4 => {
+                janela_da_tinta(&i.rgba8, w as usize)
+            }
+            _ => PlaneReach::Whole,
+        };
+        match alcance {
+            PlaneReach::Untouched => {}
+            PlaneReach::Window(j) => match j.to_region(w) {
+                Some(r) => self.mark_dirty(r),
+                None => self.invalidate_composite(),
+            },
+            PlaneReach::Whole => self.invalidate_composite(),
+        }
     }
 
     /// A troca da activa com a figura provada igual ([`Self::a_troca_mantem_a_figura`]): o painel publica e

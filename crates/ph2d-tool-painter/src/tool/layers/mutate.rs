@@ -234,6 +234,7 @@ impl PainterTool {
         }
         self.fecha_a_forma_aberta();
         let mantem = rgba.is_none() && self.a_nova_transparente_mantem_a_figura();
+        let adormece = self.layers.active().filter(|_| mantem && self.tinta_viva());
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
@@ -244,6 +245,9 @@ impl PainterTool {
         self.reset_selection_to(id);
         if mantem {
             self.troca_sem_mudar_a_figura(); // B18.4: o «+» transparente não recompõe nem dobra o relevo
+            if let Some(id) = adormece {
+                self.a_tinta_que_adormeceu_muda(id);
+            }
         } else {
             self.invalidate_composite();
         }

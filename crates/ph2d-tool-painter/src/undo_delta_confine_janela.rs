@@ -47,6 +47,31 @@ pub(crate) fn janela_do_vidro(p: &[crate::compositor::vidro::Vidro], w: usize) -
     super::janela_dos_selados(p, w)
 }
 
+/// **A janela do corpo** de uma camada (n.º 8 item 3, Impasto): onde o plano `p` (de `w` texels por linha) sai do
+/// `neutro` — a altura `±0`, a cobertura 0, o material `[0; 7]`. A luz lê a altura composta pela diferença central, por
+/// isso a janela leva 1 texel de moldura (a [`dilata`] do chamador).
+pub(crate) fn janela_do_corpo<T>(p: &[T], w: usize, neutro: impl Fn(&T) -> bool) -> PlaneReach {
+    super::janela_fora_do_neutro(p, w, |l| l.iter().all(&neutro), &neutro)
+}
+
+/// A janela crescida `k` texels para cada lado, cortada pelo plano.
+pub(crate) fn dilata(r: PlaneReach, k: usize) -> PlaneReach {
+    match r {
+        PlaneReach::Window(j) if j.stride > 0 => {
+            let linhas = j.plane_len / j.stride;
+            let (row, col) = (j.row.saturating_sub(k), j.col.saturating_sub(k));
+            PlaneReach::Window(PlaneWindow {
+                row,
+                rows: (j.row + j.rows + k).min(linhas) - row,
+                col,
+                cols: (j.col + j.cols + k).min(j.stride) - col,
+                ..j
+            })
+        }
+        outro => outro,
+    }
+}
+
 /// A menor janela que contém as duas (o mesmo plano em texels de `stride` igual); `Whole` se não casam.
 pub(crate) fn uniao(a: PlaneReach, b: PlaneReach) -> PlaneReach {
     match (a, b) {

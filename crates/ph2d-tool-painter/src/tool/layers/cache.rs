@@ -182,9 +182,6 @@ impl PainterTool {
                 self.layers.get(id)?.kind,
                 LayerKind::Raster(_) | LayerKind::Texture(_)
             )
-            || self.heights.contains_key(&id)
-            || self.covers.contains_key(&id)
-            || self.mats.contains_key(&id)
             || self.layers.all_ids().any(|l| {
                 self.layers
                     .get(l)
@@ -201,8 +198,12 @@ impl PainterTool {
         if px.len() != n {
             return None;
         }
-        use crate::undo_delta::confine::{janela_da_tinta, janela_do_vidro, uniao};
+        use crate::undo_delta::confine::{dilata, janela_da_tinta, janela_do_vidro, uniao};
         let tinta = janela_da_tinta(px, w as usize);
+        let tinta = match self.corpo_da_camada(id, w as usize, n / 4) {
+            Some(corpo) => uniao(tinta, dilata(corpo, 1)),
+            None => return None,
+        };
         // n.º 8 (B18.6): sobre o papel de cor o vidro da camada tira a transparência também onde o alfa é 0.
         let vidro = match self
             .vidros
@@ -217,6 +218,26 @@ impl PainterTool {
             PlaneReach::Whole => None,
             j => Some(j),
         }
+    }
+
+    /// n.º 8 item 3: onde o corpo (altura, cobertura) da camada `id` não é neutro; `Untouched` sem corpo,
+    /// `None` com um plano de outro tamanho (não provado).
+    fn corpo_da_camada(&self, id: RtLayerId, w: usize, n: usize) -> Option<PlaneReach> {
+        use crate::undo_delta::confine::{janela_do_corpo, uniao};
+        let mut r = PlaneReach::Untouched;
+        if let Some(h) = self.heights.get(&id) {
+            (h.len() == n).then_some(())?;
+            r = uniao(
+                r,
+                janela_do_corpo(h, w, |v: &f32| v.to_bits() & 0x7fff_ffff == 0),
+            );
+        }
+        if let Some(c) = self.covers.get(&id) {
+            (c.len() == n).then_some(())?;
+            r = uniao(r, janela_do_corpo(c, w, |v: &u8| *v == 0));
+        }
+        // O material só se lê onde a camada cobre (`ReliefFields::material_at`): dentro da cobertura ∪ tinta.
+        (r != PlaneReach::Whole).then_some(r)
     }
 
     /// [`Self::alcance_da_tinta_de`] e, quando provado, a lista achatada da placa ANTES do gesto (N7 onda 5).

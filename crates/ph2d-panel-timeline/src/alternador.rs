@@ -24,6 +24,17 @@ pub(crate) fn pinta(
         (t.corpo_da_peca, t.discreta_texto)
     };
     ph2d_editor_core::paint::fill_rounded_rect(c.scene, r, m::FIELD_RADIUS, fundo);
+    // Ligado, pulsa sem parar (dono 13/11): o acento acende e apaga por cima do corpo.
+    if on {
+        let alfa = ph2d_tokens::chrome::TIMELINE_LIGADO_BRILHO_ALPHA * c.store.on_pulse();
+        let acento = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Accent, theme);
+        ph2d_editor_core::paint::fill_rounded_rect(
+            c.scene,
+            r,
+            m::FIELD_RADIUS,
+            acento.multiply_alpha(alfa),
+        );
+    }
     let (x, y) = (
         r.x + m::FIELD_PAD_R,
         r.y + ph2d_editor_core::paint::folga_do_texto(r.h, m::VALUE_PX),

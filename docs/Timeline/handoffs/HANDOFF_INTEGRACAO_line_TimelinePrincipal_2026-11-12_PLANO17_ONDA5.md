@@ -162,6 +162,11 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 - **Edit Path é um botão que acende, só com o nome** (dono: «mais compacto tirando o checkbox e colocando como toggle button só com o nome»). `src/alternador.rs` (novo; saiu de `transport_cartoes`, que estava no tecto de 600). Ligado leva `ativa_fundo` + `ativa_texto` (o chip escolhido); o mesmo id e o mesmo clique (o store espelha a caixa em `prepara`).
   ⚠️ Desvio consciente da regra da casa «liga/desliga = checkbox» (dono 10/11): pedido EXPLÍCITO do dono para este botão. [Foto](../fotos/20_edit_path_botao_e_sem_animating.png).
 - Por nome ✓: panel-timeline it 73, lib abas_laterais 8, animando 4, a_caixa_vazia_da_barra 1 · editor-core it 20 (file_loc_cap, hr15, the_shell_only_shrinks, panel_loc_cap, censo), lib flash/on_pulse/bottom_hud 9 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core, tokens) ✓.
+- **Smoke do dono do acréscimo 4: OK** (13/11). E mais dois pedidos (verbatim: «Stop deve desativar Auto Rec · Edit Path deve piscar continuamente se ativado»):
+  - O ■ chama `animando::para()` (novo: liga o `FEITO` sem estacionar a sessão). A shell já desliga o Auto Key por `take_done` em `fase_timeline_drain.rs:94`, e esse `take_done` também pára e volta ao início. Shell intocada.
+    `controles_flutuantes::o_stop_para_e_volta_ao_inicio` agora exige o `take_done`; a mutação «sem `para()`» sangrou.
+  - O Edit Path ligado pulsa: o `Accent` a `TIMELINE_LIGADO_BRILHO_ALPHA × on_pulse()` por cima do corpo (`alternador.rs`). [Foto: três instantes](../fotos/20_edit_path_pulsa_tres_instantes.png).
+  - Por nome ✓: it 42 (controles_flutuantes, os_cartoes, o_cartao_estreito, animating_done, curves_on_canvas), animando 4, editor-core it 18 · clippy panel-timeline ✓ · fmt ✓.
 - **PEDIDO ABERTO para a próxima janela:** o widget do fim do clip ([continuação](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-13_FIM_DO_CLIP.md)).
 
 ## Aberto (visto, NÃO feito)

@@ -89,11 +89,19 @@ fn o_gravar_liga_o_auto_key() {
     ferramenta::force_cards_on_this_thread(None);
 }
 
-/// O ■ pára e volta ao início. *Mutação: tirar o braço do Stop ⇒ nada drenado ⇒ vermelho.*
+/// O ■ pára e volta ao início, e desliga o Auto Key (dono 13/11): a shell lê o `take_done` e apaga o
+/// Auto Key. *Mutações: tirar o braço do Stop ⇒ nada drenado; tirar o `para()` ⇒ o `take_done` diz
+/// `false` ⇒ vermelho.*
 #[test]
 fn o_stop_para_e_volta_ao_inicio() {
     let mut m0 = mesa();
+    let mut agulha = ph2d_core::Playhead::default();
+    let _ = ph2d_panel_timeline::take_done(&mut agulha);
     let _ = m0.clica(ids::TIMELINE_STOP);
+    assert!(
+        ph2d_panel_timeline::take_done(&mut agulha),
+        "o Stop não pediu à shell para desligar o Auto Key"
+    );
     let i = drain_intents();
     assert!(
         i.contains(&TimelineIntent::Pause) && i.contains(&TimelineIntent::Scrub(0.0)),

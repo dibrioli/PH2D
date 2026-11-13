@@ -69,6 +69,8 @@ fn clique_dos_cartoes(id: NodeId, host: &mut dyn PanelHostInternal) -> bool {
     match id {
         _ if id == crate::ids::TIMELINE_ANIMATING_DONE => crate::animando::done(),
         _ if id == crate::ids::TIMELINE_STOP => {
+            // Dono 13/11: o Stop também desliga o Auto Key (a mesma porta do Done na shell).
+            crate::animando::para();
             crate::state::push_intent(TimelineIntent::Pause);
             crate::state::push_intent(TimelineIntent::Scrub(0.0));
         }

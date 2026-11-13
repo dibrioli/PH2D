@@ -77,6 +77,12 @@ pub fn take_done(agulha: &mut ph2d_core::Playhead) -> bool {
     feito
 }
 
+/// O clique no ■ Stop (dono 13/11): pára, volta ao início e desliga o Auto Key como o Done, mas não
+/// estaciona a sessão.
+pub(crate) fn para() {
+    FEITO.with(|c| c.set(true));
+}
+
 /// O clique no Done.
 pub(crate) fn done() {
     PARADO.with(|c| c.set(true));

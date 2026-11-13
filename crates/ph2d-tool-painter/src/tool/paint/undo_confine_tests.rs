@@ -193,7 +193,10 @@ fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
             crate::undo::window::set_vidro_pelo_journal(false);
             let antigo = papel_texturizado(256, meio, true);
             crate::undo::window::set_vidro_pelo_journal(true);
-            let velho = antigo.undo.peek_confine_diagnosis(false).unwrap_or_default();
+            let velho = antigo
+                .undo
+                .peek_confine_diagnosis(false)
+                .unwrap_or_default();
             assert!(
                 velho.contains("v=WHOLE"),
                 "controlo: sem a chave o vidro aparece inteiro — {velho}"

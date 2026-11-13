@@ -30,3 +30,12 @@ Gate: `o_vidro_composto_da_o_documento_do_vidro_segurado` (composta × segurada 
 refazer; controlos: as duas dispararam). Mutação: o `before` do journal trocado pelo vivo ⇒ vermelho.
 
 ⏳ Re-medir em calma (load < 5) junto com o item 1.
+
+### Vermelhos do filtro `wet` (13/11, depois de `8a1714c8d0`) — nenhum é desta mudança
+
+Vermelhos SOZINHOS e também na base `88ac5f8653` (restaurada por `git restore --source`): `a_primeira_marca_do_wet_refaz_a_imagem_inteira`,
+`com_as_opcoes_desligadas_o_s_e_a_bancada_sao_os_de_hoje_ao_byte`, `a_secao_desligada_e_o_traco_de_hoje_ao_byte`,
+`cada_preset_de_fabrica_mapeia_por_funcao`, `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao`,
+`o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde` (+ `receita_e4`, já no prompt n.º 9). Verdes sozinhos, vermelhos
+só em lote (o flake de isolamento da contagem de leituras): `a_silhueta_alem_da_pegada_nao_e_avaliada…`,
+`o_motor_nao_le_a_ponta_alem_da_pegada…`. Os filtros `undo` (187), `vidro` (34) e `absorb` (17): verdes.

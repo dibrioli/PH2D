@@ -9,6 +9,9 @@ use ph2d_editor_core::Tool as _;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
+/// Uma mudança da pilha ou dos pixels, aplicada à ferramenta.
+type Passo = Box<dyn Fn(&mut PainterTool)>;
+
 const W: u32 = 96;
 const H: u32 = 64;
 
@@ -83,7 +86,7 @@ fn o_fundo_em_cache_e_o_composto_do_zero_e_so_se_recompoe_quando_algo_abaixo_mud
     assert!(*c == o, "depois de pintar na camada de cima");
     assert!(Arc::ptr_eq(&b, &c), "pintar em cima não muda o de baixo");
 
-    let mut passos: Vec<(&str, Box<dyn Fn(&mut PainterTool)>)> = vec![
+    let mut passos: Vec<(&str, Passo)> = vec![
         (
             "opacidade",
             Box::new(move |t| t.set_layer_opacity(meio, 0.3)),

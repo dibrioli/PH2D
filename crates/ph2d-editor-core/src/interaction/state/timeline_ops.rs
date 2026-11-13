@@ -11,6 +11,27 @@ use super::*;
 use crate::interaction::types::{TimelineGesture, TimelineHitKind, TimelineWheel};
 
 impl WidgetStore {
+    /// ⭐ **Quem sabe o estado de um menu é o painel que o abriu**: a timeline publica, a cada
+    /// quadro em que o menu `kind` está aberto, as linhas que são o estado corrente (a
+    /// interpolação da chave, a extrapolação da faixa). O pintor do menu acende-as.
+    ///
+    /// ⚠️ Presas ao `kind` (que traz a chave/faixa): as de um menu já fechado nunca acendem outro.
+    pub fn set_menu_marks(&mut self, kind: crate::interaction::ContextMenuKind, ids: &[NodeId]) {
+        self.menu_marks.0 = Some(kind);
+        self.menu_marks.1.clear();
+        self.menu_marks.1.extend_from_slice(ids);
+    }
+
+    /// A linha `id` do menu `kind` foi publicada como acesa por [`Self::set_menu_marks`].
+    #[must_use]
+    pub fn menu_row_is_marked(
+        &self,
+        kind: crate::interaction::ContextMenuKind,
+        id: NodeId,
+    ) -> bool {
+        self.menu_marks.0 == Some(kind) && self.menu_marks.1.contains(&id)
+    }
+
     /// Stash one timeline pointer gesture (dispatch → panel).
     pub fn push_timeline_gesture(&mut self, gesture: TimelineGesture) {
         self.timeline_gestures.push(gesture);

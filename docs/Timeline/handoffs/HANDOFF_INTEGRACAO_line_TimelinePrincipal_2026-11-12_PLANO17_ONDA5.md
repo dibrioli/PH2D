@@ -181,7 +181,7 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 - **Fotos** (tiradas com um gancho TEMPORÁRIO que trocava sozinho e deixava a troca 8× mais lenta — removido, não commitado): [troca a meio + lista aberta](../fotos/21_fim_do_clip_troca_e_lista.png) · [na barra](../fotos/22_fim_do_clip_na_barra.png).
 - **Testes:** novos `fim_do_clip::tests` (4: toggles, roda, `fenda` a meio e na volta, movimento reduzido) e `os_cartoes::o_fim_do_clipe_mora_na_barra_e_as_setinhas_pedem_o_do_lado` (ordem, mesma fileira do Marker, sem pisar os clipes, `‹` = ícone da esquerda, lista abre e fecha por fora, a engrenagem já não o tem). `onde_mora` e `stop_pede_o_que_desmarcar_a_caixa_pedia` atualizados (Loop/Ping-Pong agora na barra; a escolhida clica-se na lista).
 - Por nome ✓: panel-timeline os_cartoes 36, o_cartao_estreito 3, os_chips_da_barra 7, every_word 3, controles_flutuantes 3, clipes_em_lista 2, barra_menus 1, fim_do_clip 4 · editor-core icons 9, on_pulse 1 · registry-init toda_dica 2 · i18n tests 10 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core, i18n) ✓.
-- Smoke do dono: pendente.
+- **Smoke do dono: aprovado (13/11, «ótimo»).**
 
 ## Acréscimo 6 — dono 13/11: sem setinhas, escolhida com cor, placa de pare, régua legível
 
@@ -191,6 +191,20 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 - **A régua** (dono: «poucas marcações e as que tem são quase invisíveis»): medido — o traço `ReguaTraco` contra `FitaRegua` dava **1,3:1**, e os riscos eram fixos a 1 s / 0,5 s em qualquer zoom. Agora `src/ruler_degraus.rs` (novo; `ruler.rs` no tecto): três degraus pelo espaço em píxeis — número (≥ 90 px, passos 0,1 · 0,25 · 0,5 · 1 · 2 · 5 · … · 600 s), meio (metade, ≥ 24 px) e miúdo (um QUADRO quando ≥ 6 px e divide o número; senão ⅒ · ⅕ · ¼ · ½) — alturas 10/7/4 px. Tintas `tons_dos_riscos`: número e risco grande `TextoPropriedade`, meio e miúdo `TextoValor` (≥ 3:1 em todo tema, WCAG 1.4.11); no clássico Text2/Text3. Números «0.25», «1.5». No zoom de fábrica (~480 px/s, 24 fps): número a cada ¼ s, meio a cada ⅛ s, um risco por quadro. [Foto](../fotos/22_regua_com_riscos_por_quadro.png).
 - Testes novos `ruler::degraus::tests` (4: zoom de fábrica, todo zoom × fps cabe e divide, contraste em todo tema, texto do número).
 - Por nome ✓: panel-timeline ruler 30, os_cartoes 36, fim_do_clip 5, every_word 3 · editor-core icons 9 (inclui o portão do ícone cheio) · registry-init toda_dica 2 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core) ✓.
+- **Smoke do dono: aprovado (13/11, «ótimo»).**
+
+## Acréscimo 7 — dono 13/11: a cara dos menus do botão direito da Timeline
+
+- **Pedido** ([continuação](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-13_MENUS_DO_BOTAO_DIREITO.md), verbatim: «Agora é hora de melhorar a aparência os menus de botão direito»).
+- **A porta é ÚNICA e partilhada:** `editor-core/src/screens/hero/context_menu_overlay.rs` pinta todo menu do app. A cara nova só se liga a ids da timeline: o novo `screens/hero/menu_row_look.rs` responde `icone(id)`, `abre_submenu(kind, id)`, `destrutiva(id)`, `risco_antes(id)`; um id fora dele pinta como antes (o `SettingsMenu` mantém a seta). Menu com ícones ALARGA ao rótulo mais longo medido (`prefix_width`), senão fica nos `MENU_W` 200.
+- **Riscos** entre grupos saem da cara da linha, não da tabela (a tabela também alimenta a paleta de comandos): chave `Hold·Nearest·Linear | Ease In·Out·In-Out | Custom·Rove`; faixa `conversões | Extrapolation Pre·Post | Delete`; pista `modos | Rename | Delete`; tira `Enter·Duplicate | Once·Loop·Ping-Pong·Reset | Delete`; marcador `Rename·Signal | Delete`.
+- **Delete por último** em todas as tabelas (`TIMELINE_{TRACK,AXIS_TRACK,PATH_TRACK,STRIP}_MENU` reordenadas; ninguém indexava por posição), rótulo e ícone em `ColorToken::Danger`.
+- **Seta de submenu**: o «▶» saiu das cinco chaves i18n (`ease_in/out/in_out`, `extrapolation_pre/post`); `IconId::ChevronRight` em `Text3` à direita, e o rótulo reserva a largura dela.
+- **Marca do estado atual**: canal novo `WidgetStore::set_menu_marks(kind, ids)` / `menu_row_is_marked(kind, id)` (campo `menu_marks`, preso ao `kind`, que traz chave/faixa). Quem publica é o painel: `panel-timeline/src/menu_marcas.rs` (chamado no `paint` logo após `publish_view`) acende a interpolação da chave (Column só se todas as chaves concordam; Rove junto se rova), a família no submenu de easing (só no modo dela, via `preset_for`) e a extrapolação Pre/Post. O pintor usa a bolinha `Accent` de sempre + ícone em `Accent` + texto `Text1`.
+- **Peso do texto:** mantido o do app (os cartões pintam todos os rótulos no mesmo peso); trocar só aqui deixaria o menu diferente do resto.
+- **Fotos** (Xvfb + clique direito real, `PH2D_ANIMACAO_SMOKE=1`): [faixa antes × depois](../fotos/30_menu_da_faixa_lado_a_lado.png) · [chave antes × depois](../fotos/30_menu_da_chave_lado_a_lado.png) · [submenu de extrapolação com Hold marcado](../fotos/30_submenu_extrapolacao_depois.png).
+- **Testes novos:** `editor-core screens::hero::menu_row_look::tests` (2: toda linha da timeline tem ícone exceto as famílias; o destrutivo é a última linha e nenhum rótulo leva «▶») · `panel-timeline menu_marcas::tests` (1: chave Hold/Ease Out, família só no modo dela, extrapolação Pre/Post, chave inexistente não acende).
+- Por nome ✓: editor-core context_menu 31, menu_row 13, every_menu_row 5, every_timeline_menu 3, timeline 45 · panel-timeline menu_marcas 1, timeline_presets_menu 10, extrapolation 5, grupo_de_canais 5, every_word 3 · i18n tests 10 · host-desktop timeline_presets 14 · fmt ✓ · clippy `-D warnings` (editor-core, panel-timeline, `--all-targets`) ✓ · `cargo build --profile smoke` ✓.
 - Smoke do dono: pendente.
 
 ## Aberto (visto, NÃO feito)

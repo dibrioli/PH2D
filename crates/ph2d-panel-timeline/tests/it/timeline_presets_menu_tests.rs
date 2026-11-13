@@ -243,7 +243,7 @@ fn a_column_rove_selects_the_column_and_toggles_it() {
 /// até 2026-10-25, antes de a lei descer para cá).
 ///
 /// ⚠️ Ele compara **famílias**, não modos: as rows de modo da cascata são decoradas
-/// (*"Ease In ▶"*) porque ali são rows de um menu, e exigir que a decoração de um consumidor
+/// (*"Ease In"* + seta de submenu) porque ali são rows de um menu, e exigir que a decoração de um consumidor
 /// fosse o nome canónico seria fazer o catálogo servir a um layout.
 #[test]
 fn the_easing_menu_names_every_family_exactly_as_the_catalogue_does() {

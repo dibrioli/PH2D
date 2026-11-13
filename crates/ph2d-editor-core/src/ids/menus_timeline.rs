@@ -139,18 +139,18 @@ pub const TIMELINE_EXTRAP_MENU: [MenuRow; 4] = [
     menu_row(CTX_MENU_TL_EXTRAP_CONTINUE, "chrome.timeline_menu.continue"),
 ];
 
-/// The plain track-row menu, in paint order: Delete + the two extrapolation
-/// cascades. One table, three consumers — the overlay paints it, `pre_populate`
+/// The plain track-row menu, in paint order: the two extrapolation cascades, then
+/// Delete LAST (the destructive row ends every menu, Enio 13/11). One table, three consumers — the overlay paints it, `pre_populate`
 /// registers it, and the timeline panel's `apply_event` resolves every row (a row
 /// added here and unhandled there is a menu item that silently does nothing — the
 /// bug this table shape prevents).
 pub const TIMELINE_TRACK_MENU: [MenuRow; 3] = [
+    TIMELINE_EXTRAP_CASCADES[0],
+    TIMELINE_EXTRAP_CASCADES[1],
     menu_row(
         CTX_MENU_TL_DELETE_TRACK,
         "chrome.timeline_menu.delete_track",
     ),
-    TIMELINE_EXTRAP_CASCADES[0],
-    TIMELINE_EXTRAP_CASCADES[1],
 ];
 
 /// The **Time Remap** track menu: Delete only. A Time Remap track is sampled
@@ -180,15 +180,15 @@ pub const CTX_MENU_TL_TO_AXES: NodeId = hash_node_id("ctx_menu_tl_to_axes");
 /// qualquer canal).
 pub const TIMELINE_AXIS_TRACK_MENU: [MenuRow; 4] = [
     menu_row(
-        CTX_MENU_TL_DELETE_TRACK,
-        "chrome.timeline_menu.delete_track",
-    ),
-    menu_row(
         CTX_MENU_TL_TO_PATH,
         "chrome.timeline_menu.convert_to_motion_path",
     ),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
+    menu_row(
+        CTX_MENU_TL_DELETE_TRACK,
+        "chrome.timeline_menu.delete_track",
+    ),
 ];
 
 /// O menu de uma track de **trajetória** — o de cima mais o auto-orient.
@@ -201,10 +201,6 @@ pub const TIMELINE_AXIS_TRACK_MENU: [MenuRow; 4] = [
 /// mesma ação, e dar-lhe um segundo id seriam duas portas para uma pergunta. O
 /// `node_id_collisions` deduplica por `(id, label)` exatamente por isto.
 pub const TIMELINE_PATH_TRACK_MENU: [MenuRow; 5] = [
-    menu_row(
-        CTX_MENU_TL_DELETE_TRACK,
-        "chrome.timeline_menu.delete_track",
-    ),
     menu_row(CTX_MENU_TL_AUTO_ORIENT, "chrome.timeline_menu.auto_orient"),
     menu_row(
         CTX_MENU_TL_TO_AXES,
@@ -212,6 +208,10 @@ pub const TIMELINE_PATH_TRACK_MENU: [MenuRow; 5] = [
     ),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
+    menu_row(
+        CTX_MENU_TL_DELETE_TRACK,
+        "chrome.timeline_menu.delete_track",
+    ),
 ];
 
 // ── Timeline lane menu (ADR-0115 B5) ────────────────────────────────────────
@@ -278,16 +278,16 @@ pub const TIMELINE_STRIP_MENU: [MenuRow; 7] = [
         CTX_MENU_TL_STRIP_DUPLICATE,
         "chrome.timeline_menu.duplicate_strip",
     ),
-    menu_row(
-        CTX_MENU_TL_STRIP_DELETE,
-        "chrome.timeline_menu.delete_strip",
-    ),
     menu_row(CTX_MENU_TL_STRIP_ONCE, "chrome.timeline_menu.play_once"),
     menu_row(CTX_MENU_TL_STRIP_LOOP, "chrome.timeline_menu.loop"),
     menu_row(CTX_MENU_TL_STRIP_PINGPONG, "chrome.timeline_menu.ping_pong"),
     menu_row(
         CTX_MENU_TL_STRIP_RESET_SPEED,
         "chrome.timeline_menu.reset_speed",
+    ),
+    menu_row(
+        CTX_MENU_TL_STRIP_DELETE,
+        "chrome.timeline_menu.delete_strip",
     ),
 ];
 

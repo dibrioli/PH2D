@@ -26,6 +26,7 @@ pub(super) const ROW_H: f32 = ROW_H_PX;
 /// Quanto o centro óptico de uma linha de texto desce do centro da caixa, em fração do corpo
 /// (medido nas fotos da onda 2: o «›» ficava ~2 px acima do texto de 13 px).
 const OPTICAL_DROP: f32 = 0.12; // LITERAL-PX-OK: fração do corpo, não pixels
+const BULLET_COL_W: f32 = 10.0; // LITERAL-PX-OK: chrome-specific bullet→text gap
 
 /// ⚠️ `fn` e nao `const`: a escala e AUTORAVEL (plano UI/UX W4c.2), entao este numero e lido
 /// por quadro em vez de assado na compilacao.
@@ -70,6 +71,7 @@ pub(super) fn anchor_y(
 /// paint user-placed notes.
 pub use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 
+use super::menu_row_look as look;
 use super::menu_row_mark::{MenuRow, contributed_row_is_current, id_is_currently_selected};
 
 /// Paint the open context menu (if any) and register hit rects for each item. Called last in the hero
@@ -161,20 +163,10 @@ fn paint_nivel(
     // `menu_rows::menu_rows`.
     // ⭐ Uma linha que não vale para ESTE alvo não se pinta, e o que não se pinta não entra no
     // `hit_index` — a lista que se vê e a que o clique acerta são a mesma (`menu_row_is_hidden`).
-    // ⭐ Os menus da BARRA lêem-se em grupos: um risco antes de cada linha de
-    //   `menu_bar::GROUP_BREAKS` (nunca antes da primeira) — o mesmo `MenuRow::Divider` do contribuído.
-    let da_barra = super::menu_bar::is_bar_menu(req.kind);
-    let rows: Vec<MenuRow<'_>> = statics
+    let todas = statics
         .iter()
         .filter(|&&(id, ..)| !store.menu_row_is_hidden(req.kind, id))
-        .enumerate()
-        .flat_map(|(i, &(id, key, swatch))| {
-            let risco = (da_barra && i > 0 && super::menu_bar::GROUP_BREAKS.contains(&id))
-                .then_some(MenuRow::Divider);
-            risco
-                .into_iter()
-                .chain(std::iter::once(MenuRow::Item(id, key.tr(), swatch)))
-        })
+        .map(|&(id, key, swatch)| MenuRow::Item(id, key.tr(), swatch))
         .chain(contrib.iter().map(|e| {
             match (e.node_id(), e.label()) {
                 (Some(id), Some(label)) => MenuRow::Item(id, label, None),
@@ -187,11 +179,34 @@ fn paint_nivel(
             store
                 .doc_menu_rows(req.kind)
                 .map(|(id, l)| MenuRow::Item(id, l, None)),
-        )
-        .collect();
+        );
+    // ⭐ O RISCO entre grupos sai da cara da linha (`menu_row_look::risco_antes`, que lê também os
+    // `GROUP_BREAKS` da barra), nunca da tabela: a tabela é também a lista da paleta, que não tem grupos.
+    let mut rows: Vec<MenuRow<'_>> = Vec::new();
+    for row in todas {
+        if let MenuRow::Item(id, ..) = row
+            && look::risco_antes(id)
+            && matches!(rows.last(), Some(MenuRow::Item(..)))
+        {
+            rows.push(MenuRow::Divider);
+        }
+        rows.push(row);
+    }
+    // Uma linha com ícone alinha TODAS as do menu pela coluna do ícone.
+    let tem_icones = rows
+        .iter()
+        .any(|r| matches!(r, MenuRow::Item(id, ..) if look::icone(*id).is_some()));
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
-        paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
+        super::context_menu_scene_list::paint_scene_list(
+            req,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            viewport,
+        );
         return;
     }
     // ⭐⭐ **O transbordo da fila** — os chips que não couberam, com os MESMOS ids. Ver
@@ -270,10 +285,31 @@ fn paint_nivel(
         );
     }
     let total_h = rows.iter().map(MenuRow::h).sum::<f32>() + pad_y() * 2.0;
+    // ⭐ Com ícones o rótulo começa uma coluna mais à direita: o menu ALARGA ao rótulo mais longo
+    // (medido), em vez de cortar «Convert to Separate Axes» em reticências.
+    let menu_w = if tem_icones {
+        let lead = Spacing::Xs.px() + Spacing::Md.px() + BULLET_COL_W;
+        let ic = INLINE_ICON_PX + ph2d_tokens::icon_label_gap_px();
+        rows.iter()
+            .filter_map(|r| match r {
+                MenuRow::Item(id, l, _) => Some(
+                    lead + ic
+                        + text_system.prefix_width(l, TypeToken::Sm.px())
+                        + Spacing::Md.px()
+                        + Spacing::Xs.px()
+                        + if look::abre_submenu(*id) { ic } else { 0.0 },
+                ),
+                MenuRow::Divider => None,
+            })
+            .fold(MENU_W, f32::max)
+            .ceil()
+    } else {
+        MENU_W
+    };
     let rect = clamp_to_viewport(
         req.x,
         anchor_y(store, req, total_h),
-        MENU_W,
+        menu_w,
         total_h,
         viewport,
     );
@@ -287,7 +323,7 @@ fn paint_nivel(
     // Bullet column width — same gap SceneList uses (bullet x +
     // 10 px → text x). Painted on every row so labels align whether
     // the row is current or not.
-    let bullet_col_w: f32 = 10.0; // LITERAL-PX-OK: chrome-specific bullet→text gap
+    let bullet_col_w = BULLET_COL_W;
     let mut row_y = rect.y + pad_y();
     for row in &rows {
         let h = row.h();
@@ -323,7 +359,9 @@ fn paint_nivel(
         // [`contributed_row_is_current`]. ⛔ Uma tabela só teria de conhecer os ids de todo editor
         // do app, que é o acoplamento que a **D2** existe para não ter.
         let is_current = id_is_currently_selected(*id, theme, store, project, motion, luz)
-            || contributed_row_is_current(*id, contrib, store);
+            || contributed_row_is_current(*id, contrib, store)
+            || store.menu_row_is_marked(req.kind, *id);
+        let destrutiva = look::destrutiva(*id);
         let bullet_x = r.x + pad_x;
         if is_current {
             let dot = ph2d_vector::Circle::new(
@@ -345,8 +383,23 @@ fn paint_nivel(
         let tema = super::theme_menu::tema_da_linha(*id, theme);
         let has_glyph = tema.is_some()
             || swatch.is_some()
-            || matches!(req.kind, ContextMenuKind::CreateNote { .. });
-        if let Some(t) = tema {
+            || matches!(req.kind, ContextMenuKind::CreateNote { .. })
+            || tem_icones;
+        if let Some(icone) = look::icone(*id) {
+            let cor = match (indisponivel, destrutiva, is_current) {
+                (true, ..) => ColorToken::Text3,
+                (_, true, _) => ColorToken::Danger,
+                (_, _, true) => ColorToken::Accent,
+                _ => ColorToken::Text2,
+            };
+            paint_icon(
+                scene,
+                icone,
+                Rect::new(glyph_x, icon_y, icon_size, icon_size),
+                superficie.cor(cor),
+                StrokeToken::Default.px(),
+            );
+        } else if let Some(t) = tema {
             paint_theme_swatch(
                 scene,
                 Rect::new(glyph_x, icon_y, icon_size, icon_size),
@@ -402,6 +455,9 @@ fn paint_nivel(
                 );
                 kx - Spacing::Md.px()
             }
+            None if look::abre_submenu(*id) => {
+                fim_do_texto - icon_size - ph2d_tokens::icon_label_gap_px()
+            }
             None => fim_do_texto,
         };
         paint_text(
@@ -414,6 +470,8 @@ fn paint_nivel(
             (fim_do_nome - text_x).max(0.0),
             superficie.cor(if indisponivel {
                 ColorToken::Text3
+            } else if destrutiva {
+                ColorToken::Danger
             } else if is_current {
                 ColorToken::Text1
             } else {
@@ -421,7 +479,7 @@ fn paint_nivel(
             }),
         );
         // «›» só onde HÁ submenu (dono 12/11) — a porta é `menu_cascade::opens_submenu`.
-        if super::menu_cascade::opens_submenu(*id) {
+        if look::abre_submenu(*id) {
             // O centro óptico do texto fica abaixo do centro da caixa: o «›» desce com ele.
             let cy = icon_y + TypeToken::Sm.px() * OPTICAL_DROP;
             let chev = Rect::new(r.x + r.w - pad_x - icon_size, cy, icon_size, icon_size);
@@ -462,143 +520,6 @@ pub(super) fn paint_theme_swatch(scene: &mut VectorScene, sw: Rect, tema: Theme,
     }
     // FRAME-RAW-OK: a moldura da AMOSTRA de um tema, pela mesma razão da amostra de cor.
     stroke_rounded_rect(scene, sw, raio, 1.0, resolve(ColorToken::Border, do_menu)); // LITERAL-PX-OK: o traço de 1 px da amostra
-}
-
-/// Paint the Scene List popover.
-///
-/// Layout: TextInput search field at the top + up to 8 filtered
-/// scene rows below. The search uses the regular TextInput state at
-/// `CTX_SCENE_SEARCH` (its buffer is the filter query). Each visible
-/// result row registers a unique `CTX_SCENE_ROWS[i]` hit so the
-/// dispatch / `apply_event` chain can route the selection.
-fn paint_scene_list(
-    req: crate::interaction::ContextMenuRequest,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    viewport: Rect,
-) {
-    let menu_w = 260.0_f32; // LITERAL-PX-OK: scene-list popover width (chrome-specific)
-    let search_h = 30.0_f32; // LITERAL-PX-OK: scene-list search field height (chrome-specific)
-    let row_h = ROW_H;
-    let max_rows = ids::CTX_SCENE_ROWS.len();
-    // Read the current search query directly from the TextInput
-    // state at CTX_SCENE_SEARCH. Empty string when the user hasn't
-    // typed anything yet.
-    let (query, caret, anchor, ti_state) = match store.get(ids::CTX_SCENE_SEARCH) {
-        Some(InteractiveState::TextInput {
-            text,
-            caret,
-            selection_anchor,
-            state,
-        }) => (text.as_str(), *caret, *selection_anchor, *state),
-        _ => ("", 0, None, crate::widget::TextInputState::Normal),
-    };
-    // Filter scenes case-insensitively. Empty query matches all.
-    let lower_q = query.to_lowercase();
-    let filtered: Vec<&'static str> = fixture::scenes()
-        .iter()
-        .copied()
-        .filter(|s| lower_q.is_empty() || s.to_lowercase().contains(&lower_q))
-        .take(max_rows)
-        .collect();
-
-    let row_count = filtered.len().max(1); // reserve at least one row for "No matches"
-    let total_h = pad_y() * 2.0 + search_h + Spacing::Xs.px() + row_count as f32 * row_h;
-    let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
-
-    let superficie = Superficie::de(theme);
-    superficie.moldura(scene, rect);
-
-    // Search input row.
-    let inner_x = rect.x + Spacing::Xs.px();
-    let inner_w = rect.w - Spacing::Xs.px() * 2.0;
-    let search_rect = Rect::new(inner_x, rect.y + pad_y(), inner_w, search_h);
-    hit_index.register(ids::CTX_SCENE_SEARCH, search_rect);
-    let ti = TextInput::new(ids::CTX_SCENE_SEARCH, "")
-        .placeholder(tr("chrome.menu.search_scenes"))
-        .visual((ti_state, store.hover_live(ids::CTX_SCENE_SEARCH)));
-    let pinta_busca = |scene: &mut VectorScene, text_system: &mut TextSystem| {
-        paint_text_input_with_buffer(
-            &ti,
-            Some(query),
-            Some(caret),
-            anchor,
-            search_rect,
-            scene,
-            text_system,
-            theme,
-        );
-    };
-    match superficie.tinta() {
-        Some(ink) => crate::widget::card_ink::com(ink, || pinta_busca(scene, text_system)),
-        None => pinta_busca(scene, text_system),
-    }
-
-    // Result rows.
-    let rows_y0 = search_rect.y + search_rect.h + Spacing::Xs.px();
-    let pad_x = Spacing::Md.px();
-    let font = TypeToken::Sm.px();
-    if filtered.is_empty() {
-        let r = Rect::new(inner_x, rows_y0, inner_w, row_h);
-        paint_text(
-            text_system,
-            scene,
-            ph2d_i18n::tr("chrome.no_matches"),
-            r.x + pad_x,
-            r.y + (r.h - font) * 0.5,
-            font,
-            r.w - pad_x * 2.0,
-            superficie.cor(ColorToken::Text3),
-        );
-    } else {
-        for (i, name) in filtered.iter().enumerate() {
-            let row_id = ids::CTX_SCENE_ROWS[i];
-            let r = Rect::new(inner_x, rows_y0 + i as f32 * row_h, inner_w, row_h);
-            hit_index.register(row_id, r);
-            if Some(row_id) == store.hot_id() {
-                superficie.realce(scene, r);
-            }
-            // Highlight the currently-active scene with an accent
-            // bullet so the user sees "this is what's loaded".
-            let is_current = *name == store.current_scene_name();
-            let bullet_x = r.x + pad_x;
-            let bullet_y = r.y + r.h * 0.5;
-            if is_current {
-                let dot = ph2d_vector::Circle::new(
-                    ph2d_vector::Point::new(bullet_x as f64, bullet_y as f64),
-                    3.0, // LITERAL-PX-OK: scene-list bullet dot radius (chrome-specific accent)
-                );
-                scene.inner_mut().fill(
-                    ph2d_vector::Fill::NonZero,
-                    ph2d_vector::Affine::IDENTITY,
-                    &ph2d_vector::Brush::Solid(superficie.cor(ColorToken::Accent)),
-                    None,
-                    &dot,
-                );
-            }
-            let text_x = bullet_x + 10.0; // LITERAL-PX-OK: bullet → text gap (chrome-specific)
-            let text_y = r.y + (r.h - font) * 0.5;
-            paint_text(
-                text_system,
-                scene,
-                name,
-                text_x,
-                text_y,
-                font,
-                r.w - (text_x - r.x) - pad_x,
-                superficie.cor(if is_current {
-                    ColorToken::Text1
-                } else {
-                    ColorToken::Text2
-                }),
-            );
-            let _ = VelloColor::from_rgba8(0, 0, 0, 0); // LITERAL-COLOR-OK: import-keepalive no-op (keeps the VelloColor import live for conditional paths)
-            let _ = IconId::Search; // keep IconId import in scope
-        }
-    }
 }
 
 // The centered dialog-style popovers (API-key / vector-prompt / palette-rename) live in the sibling

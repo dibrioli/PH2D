@@ -81,6 +81,7 @@ pub use macro_steps::pedido_ao_largar;
 mod marker_drag;
 mod marker_menu;
 mod marker_rename;
+mod menu_marcas;
 mod no_lugar;
 mod no_lugar_paint;
 mod paint;

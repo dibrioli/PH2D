@@ -30,6 +30,7 @@ pub mod chrome;
 pub mod color_picker_demo;
 mod context_menu_dialogs;
 pub mod context_menu_overlay;
+mod context_menu_scene_list;
 mod cromo_smoke;
 /// ⭐⭐⭐ **O interruptor de uma coluna** — fechar e reabrir como uma involução, e não como duas
 /// perguntas a factos diferentes.
@@ -43,6 +44,7 @@ pub mod global_palette;
 /// ⭐⭐⭐ **A camada da grade** — à frente dos objectos (no chrome) ou ATRÁS deles (numa cena que
 /// a shell monta antes dos sprites). Report do dono de 2026-09-24.
 pub mod grid_layer;
+pub(crate) mod menu_row_look;
 pub(crate) mod menu_row_mark;
 pub mod panel_ids;
 pub(crate) mod text_style_rows;

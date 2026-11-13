@@ -151,8 +151,8 @@ impl EasingMode {
     ///
     /// ⚠️ Curto de propósito: quem o pinta é uma fileira de três chips ao lado do nome da família,
     /// e ali *"Ease In"* repetiria uma palavra que a linha inteira já diz. O menu da timeline
-    /// decora os seus (*"Ease In ▶"*) porque ali eles são rows de uma cascata — o gate compara as
-    /// **famílias**, que são o vocabulário partilhado, e não a decoração de cada consumidor.
+    /// diz *"Ease In"* com a seta de submenu porque ali eles são rows de uma cascata — o gate
+    /// compara as **famílias**, que são o vocabulário partilhado, e não a decoração de cada consumidor.
     #[must_use]
     pub const fn label_key(self) -> &'static str {
         match self {

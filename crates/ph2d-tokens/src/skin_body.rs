@@ -211,6 +211,7 @@ impl ColorToken {
             | T::ObjJoint
             | T::ObjBody
             | T::ObjCollider
+            | T::ObjAssembly
             | T::ObjLayer0
             | T::ObjLayer1
             | T::ObjLayer2

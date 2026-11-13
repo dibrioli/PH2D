@@ -110,6 +110,31 @@ fn rows_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointI
     out
 }
 
+/// A altura que o painel pede: a faixa, o alcance e as linhas do tipo da junta.
+#[must_use]
+pub fn wanted(doc: &crate::doc::JointEditorDoc) -> f32 {
+    let Some(a) = doc.assembly() else {
+        return w::PANEL_MIN_H;
+    };
+    let line = m::FIELD_H + m::FIELD_ROW_GAP;
+    let field = m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::FIELD_ROW_GAP;
+    let mut h = m::CARD_PAD_TOP + m::CARD_PAD_BOTTOM + line;
+    if scope_options(a.template).len() > 1 && !a.joints.is_empty() {
+        h += line;
+    }
+    let Some(info) = doc.targets().first().and_then(|j| j.info.clone()) else {
+        return (h + line).max(w::PANEL_MIN_H);
+    };
+    let kind = ph2d_app_physics::joint::kind_of(info.kind_tag);
+    for row in rows_of(kind, &info, doc.wheelbase().is_some()) {
+        h += match row {
+            Row::Two(..) | Row::One(..) => field,
+            _ => line,
+        };
+    }
+    h.max(w::PANEL_MIN_H)
+}
+
 pub fn paint(ui: &mut Ui<'_>, r: Rect) {
     let i = Rect::new(
         r.x + m::CARD_PAD_X,

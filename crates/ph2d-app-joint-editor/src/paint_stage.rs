@@ -68,7 +68,7 @@ pub fn paint(ui: &mut Ui<'_>, r: Rect) {
         .zip(&placed)
         .map(|(ro, &n)| shown_count(ro, n))
         .collect();
-    let map = StageMap::fit(t, &counts, r, w::STAGE_PAD);
+    let map = StageMap::fit(t, &counts, r, w::STAGE_PAD, w::MAX_SCALE);
     ui.doc.map = Some(map);
     ui.doc.counts.clone_from(&counts);
     // O chão do desenho.
@@ -117,7 +117,9 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                     stroke_rounded_rect(ui.scene, s, rad, w::LINE, ui.c(ColorToken::Text2));
                 }
                 (Some(_), None) => {
-                    fill_rounded_rect(ui.scene, s, rad, ui.c(w::palette(i)));
+                    let c = ui.c(w::palette(i));
+                    fill_rounded_rect(ui.scene, s, rad, c.multiply_alpha(w::PART_FILL_ALPHA));
+                    stroke_rounded_rect(ui.scene, s, rad, w::LINE, c);
                 }
                 (None, None) => {
                     stroke_rounded_rect_dashed(ui.scene, s, rad, w::LINE, m::LOOSE_DASH, ui.c(ColorToken::Text2));
@@ -130,7 +132,8 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                 None => role.name.to_owned(),
             };
             let below = Rect::new(s.x - s.w, s.y + s.h + m::SEG_PAD, s.w * 3.0, m::LABEL_PX + m::LABEL_BOTTOM);
-            let inside = Rect::new(s.x, s.y, s.w, s.h);
+            // Vazio, o nome mora DENTRO da forma, no terço de baixo (o eixo passa pelo meio).
+            let inside = Rect::new(s.x, s.y + s.h * 0.62, s.w, m::LABEL_PX + m::LABEL_BOTTOM);
             let (lr, px, c) = if part.is_some() {
                 (below, w::SMALL_PX, ui.c(ColorToken::Text1))
             } else {
@@ -138,7 +141,7 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
             };
             // Numa fila longa (a ponte) só a primeira e a última dizem o nome: o resto não cabe.
             if role.many.is_none() || n == 0 || n + 1 == counts[i] {
-                w::text_centred(ui.ts, ui.scene, &label, lr, px, c);
+                tag(ui, &label, lr, px, c);
             }
             let a11y = tr_with("joint_editor.shape_a11y", &[("role", &role.name), ("name", &label)]);
             ui.hit(s, Hit::Shape(ri, n), &a11y);
@@ -149,6 +152,14 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
             }
         }
     }
+}
+
+/// Um rótulo com fundo do palco por trás: legível por cima de linhas e formas.
+fn tag(ui: &mut Ui<'_>, s: &str, r: Rect, px: f32, c: Color) {
+    let tw = ui.ts.prefix_width(s, px).min(r.w) + m::SEG_PAD * 4.0;
+    let bg = Rect::new(r.x + (r.w - tw) * 0.5, r.y, tw, r.h);
+    fill_rounded_rect(ui.scene, bg, m::SEG_RADIUS, ui.c(ColorToken::KanbanCard));
+    w::text_centred(ui.ts, ui.scene, s, r, px, c);
 }
 
 /// Os pares de formas que cada regra liga, no desenho.
@@ -218,10 +229,10 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
             match rule.kind {
                 JointKind::Wheel | JointKind::Slider => {
                     let dir = screen_dir(rule.axis.unwrap_or(0.0));
-                    let reach = t.role(rule.b).map_or(0.3, |r| r.guide.half()[1].max(r.guide.half()[0])) * map.scale * 1.6;
+                    let reach = t.role(rule.b).map_or(0.3, |r| r.guide.half()[1].max(r.guide.half()[0])) * map.scale * 1.15;
                     let axis = [add(pa, dir, -reach), add(pa, dir, reach)];
                     dashed_line(ui, axis, warn);
-                    if limits.0 {
+                    if limits.0 && row.is_some() {
                         let (lo, hi) = (live(ui, Handle::LimitMin, limits.1), live(ui, Handle::LimitMax, limits.2));
                         let bar = [add(pa, dir, lo * map.scale), add(pa, dir, hi * map.scale)];
                         stroke_polyline(ui.scene, &bar, w::BAR, warn);
@@ -235,8 +246,10 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                             handle(ui, bar[1], Handle::LimitMax, geo, tr("joint_editor.handle.max"));
                         }
                     }
+                    let wheel_r = t.role(rule.b).map_or(0.3, |r| r.guide.half()[0]) * map.scale;
+                    let motor = motor && row.is_some();
                     if motor && rule.kind == JointKind::Wheel {
-                        motor_arc(ui, pa, reach * 0.55, speed, ok);
+                        motor_arc(ui, pa, wheel_r * 0.6, speed, ok);
                     } else if motor {
                         let tip = add(pa, dir, reach * speed.signum());
                         stroke_polyline(ui.scene, &[pa, tip], w::LINE, ok);
@@ -249,7 +262,7 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                     let cb = t.role(rule.b).map_or(ea, |r| centre_of(r, n[1]));
                     let zero = libm::atan2f(cb[1] - ea[1], cb[0] - ea[0]);
                     let rad = t.role(rule.b).map_or(0.3, |r| r.guide.half()[0].max(r.guide.half()[1])) * map.scale * 0.8;
-                    if rule.kind == JointKind::Pin && limits.0 {
+                    if rule.kind == JointKind::Pin && limits.0 && row.is_some() {
                         let (lo, hi) = (live(ui, Handle::LimitMin, limits.1), live(ui, Handle::LimitMax, limits.2));
                         let arc: Vec<(f32, f32)> = (0..=24)
                             .map(|k| {
@@ -265,7 +278,7 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                             handle(ui, ends.1, Handle::LimitMax, geo, tr("joint_editor.handle.max"));
                         }
                     }
-                    if motor {
+                    if motor && row.is_some() {
                         motor_arc(ui, pa, rad * 0.6, speed, ok);
                     }
                 }
@@ -355,6 +368,8 @@ fn paint_foot(ui: &mut Ui<'_>, r: Rect) {
         (d.line.clone(), if d.ok { ColorToken::Accent } else { ColorToken::Danger })
     } else if let Some(n) = &ui.doc.note {
         (n.clone(), ColorToken::Text2)
+    } else if ui.doc.assembly().is_some() {
+        (tr("joint_editor.hint_assembled").to_owned(), ColorToken::Text2)
     } else {
         (tr("joint_editor.hint").to_owned(), ColorToken::Text2)
     };

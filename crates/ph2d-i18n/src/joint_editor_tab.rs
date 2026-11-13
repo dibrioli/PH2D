@@ -18,6 +18,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.scene" => "The scene",
         "joint_editor.use_scene" => "Pin to the scene",
         "joint_editor.hint" => "Drag objects from the Hierarchy into the dashed shapes. Each one becomes that part.",
+        "joint_editor.hint_assembled" => "Drag the round handles to change travel, limits and wheelbase. Click a part to select it. Drop more objects into empty shapes.",
         "joint_editor.drop.over_a_shape" => "Let go over one of the dashed shapes.",
         "joint_editor.drop.new_assembly" => "a new {template}",
         "joint_editor.drop.one" => "Let go: {name} becomes the {role} of {assembly}. Its joint is made when the part it holds on to is in too.",

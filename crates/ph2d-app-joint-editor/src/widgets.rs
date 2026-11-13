@@ -15,10 +15,14 @@ use crate::doc::{Field, Hit, JointEditorDoc};
 
 /// A coluna das montagens.
 pub const LIST_W: f32 = 220.0;
-/// O painel de baixo (os números das juntas).
-pub const PANEL_H: f32 = 252.0;
+/// O painel de baixo quando não há junta (o título e uma frase).
+pub const PANEL_MIN_H: f32 = 96.0;
 /// A folga do gabarito dentro do palco (o rótulo da peça cabe por baixo da forma).
-pub const STAGE_PAD: f32 = 36.0;
+pub const STAGE_PAD: f32 = 48.0;
+/// O maior zoom do desenho, px por metro: o carro de fábrica (2,4 m) fica com ~670 px e sobra palco.
+pub const MAX_SCALE: f32 = 280.0;
+/// O véu da cor de uma peça (o contorno vai cheio).
+pub const PART_FILL_ALPHA: f32 = 0.35;
 /// O traço das linhas do desenho.
 pub const LINE: f32 = 2.0;
 /// O traço da barra do curso (laranja grosso, como na maquete B).

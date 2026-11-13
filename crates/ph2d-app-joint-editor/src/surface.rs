@@ -26,6 +26,8 @@ pub struct JointEditorTab {
     open: bool,
     focus: Option<u64>,
     claim: bool,
+    /// A faixa do HUD pintada POR CIMA (`chrome_over`): a aba pára acima dela.
+    over: Option<Rect>,
     /// A cena de smoke já abriu a aba (uma vez só).
     pub(crate) smoke_done: bool,
 }
@@ -40,6 +42,15 @@ impl JointEditorTab {
     pub const fn is_open(&self) -> bool {
         self.open
     }
+}
+
+/// A área sem a faixa do HUD que a tapa por baixo (a mesma lei da aba Input Map).
+fn above(area: Rect, over: Option<Rect>) -> Rect {
+    let Some(o) = over.filter(|o| o.x < area.x + area.w && o.x + o.w > area.x) else {
+        return area;
+    };
+    let bottom = o.y.clamp(area.y, area.y + area.h);
+    Rect::new(area.x, area.y, area.w, bottom - area.y)
 }
 
 /// O id de acessibilidade de um alvo: estável entre quadros (o mesmo alvo, o mesmo nó).
@@ -65,7 +76,11 @@ impl DocumentSurface for JointEditorTab {
     }
 
     fn paint(&mut self, _id: u64, area: Rect, scene: &mut VectorScene, text: &mut TextSystem, theme: &Theme) {
-        crate::paint::paint(&mut self.doc, area, scene, text, *theme);
+        crate::paint::paint(&mut self.doc, above(area, self.over), scene, text, *theme);
+    }
+
+    fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
+        self.over = over;
     }
 
     fn pointer(

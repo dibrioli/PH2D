@@ -36,11 +36,13 @@ pub enum ObjectType {
     Joint,
     Body,
     Collider,
+    /// Uma montagem de juntas («Car 1», Joint Editor).
+    Assembly,
 }
 
 impl ObjectType {
     /// Todos, na ordem de PRECEDÊNCIA entre os definidos por componente.
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 18] = [
         Self::Empty,
         Self::Image,
         Self::Vector,
@@ -58,6 +60,7 @@ impl ObjectType {
         Self::Joint,
         Self::Body,
         Self::Collider,
+        Self::Assembly,
     ];
 
     /// O glifo — um por tipo, nenhum repetido.
@@ -81,6 +84,7 @@ impl ObjectType {
             Self::Joint => IconId::Joint,
             Self::Body => IconId::Body,
             Self::Collider => IconId::Collider,
+            Self::Assembly => IconId::Link,
         }
     }
 
@@ -105,6 +109,7 @@ impl ObjectType {
             Self::Joint => ColorToken::ObjJoint,
             Self::Body => ColorToken::ObjBody,
             Self::Collider => ColorToken::ObjCollider,
+            Self::Assembly => ColorToken::ObjAssembly,
         }
     }
 
@@ -122,6 +127,7 @@ impl ObjectType {
             Self::Joint => Some("ph2d::physics::PhysicsJoint"),
             Self::Body => Some("ph2d::physics::RigidBody"),
             Self::Collider => Some("ph2d::physics::Collider"),
+            Self::Assembly => Some("ph2d::physics::JointAssembly"),
             Self::Empty
             | Self::Image
             | Self::Vector

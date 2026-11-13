@@ -32,9 +32,9 @@ pub fn centre_of(role: &Role, n: u16) -> [f32; 2] {
 }
 
 impl StageMap {
-    /// Enquadra o gabarito em `r` (com `pad` píxeis de folga), sem deformar.
+    /// Enquadra o gabarito em `r` (com `pad` píxeis de folga), sem deformar e sem passar de `max_scale` px/m.
     #[must_use]
-    pub fn fit(t: &Template, counts: &[u16], r: Rect, pad: f32) -> Self {
+    pub fn fit(t: &Template, counts: &[u16], r: Rect, pad: f32, max_scale: f32) -> Self {
         let (mut lo, mut hi) = ([f32::MAX, 0.0_f32], [f32::MIN, 0.0_f32]);
         for (i, role) in t.roles.iter().enumerate() {
             let n = counts.get(i).copied().unwrap_or(1).max(1);
@@ -51,7 +51,7 @@ impl StageMap {
         }
         let (bw, bh) = ((hi[0] - lo[0]).max(f32::EPSILON), (hi[1] - lo[1]).max(f32::EPSILON));
         let (aw, ah) = ((r.w - pad * 2.0).max(1.0), (r.h - pad * 2.0).max(1.0));
-        let scale = (aw / bw).min(ah / bh);
+        let scale = (aw / bw).min(ah / bh).min(max_scale);
         let cx = r.x + r.w * 0.5 - (lo[0] + hi[0]) * 0.5 * scale;
         let cy = r.y + r.h * 0.5 + (lo[1] + hi[1]) * 0.5 * scale;
         Self {
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn o_carro_cabe_no_palco_e_volta() {
         let r = Rect::new(100.0, 50.0, 600.0, 300.0);
-        let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0);
+        let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0, f32::MAX);
         for (i, role) in car().roles.iter().enumerate() {
             let s = m.shape_rect(role, 0);
             assert!(s.x >= r.x && s.x + s.w <= r.x + r.w + 0.01, "papel {i} sai na horizontal");
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn a_roda_ganha_ao_corpo_sob_o_cursor() {
         let r = Rect::new(0.0, 0.0, 800.0, 400.0);
-        let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0);
+        let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0, f32::MAX);
         for (i, role) in car().roles.iter().enumerate() {
             let c = m.px(centre_of(role, 0));
             assert_eq!(role_at(&m, car(), &[1, 1, 1], c.0, c.1), Some(i as u16));

@@ -26,14 +26,15 @@ pub struct Layout {
 
 impl Layout {
     #[must_use]
-    pub fn of(area: Rect) -> Self {
+    pub fn of(area: Rect, panel_want: f32) -> Self {
         let g = m::CARD_GAP;
         let list = Rect::new(area.x + g, area.y + g, w::LIST_W, (area.h - g * 2.0).max(0.0));
         let x = list.x + list.w + g;
         let rw = (area.x + area.w - g - x).max(0.0);
         let top_h = m::CARD_PAD_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::CARD_PAD_BOTTOM;
         let top = Rect::new(x, list.y, rw, top_h);
-        let panel_h = w::PANEL_H.min((area.h * 0.45).max(0.0));
+        // O painel cresce com as linhas do tipo, até metade da aba; o palco fica com o resto.
+        let panel_h = panel_want.min((area.h * 0.5).max(0.0));
         let panel = Rect::new(x, area.y + area.h - g - panel_h, rw, panel_h);
         let sy = top.y + top.h + g;
         let stage = Rect::new(x, sy, rw, (panel.y - g - sy).max(0.0));
@@ -58,7 +59,7 @@ pub fn paint(
     doc.area = area;
     let ink = CardInk::of_list(theme);
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));
-    let l = Layout::of(area);
+    let l = Layout::of(area, crate::panel::wanted(doc));
     let mut ui = Ui {
         doc,
         scene,
@@ -184,7 +185,7 @@ fn paint_top(ui: &mut Ui<'_>, r: Rect) {
 /// A miniatura de um gabarito: as formas-guia tracejadas, sem rótulos (desenho, não campo).
 pub fn thumbnail(ui: &mut Ui<'_>, t: &ph2d_joint_templates::Template, r: Rect) {
     let counts: Vec<u16> = t.roles.iter().map(|ro| shown_count(ro, 0)).collect();
-    let map = StageMap::fit(t, &counts, r, m::SEG_PAD * 2.0);
+    let map = StageMap::fit(t, &counts, r, m::SEG_PAD * 2.0, f32::MAX);
     let c = ui.c(ColorToken::Text2);
     for (k, role) in t.roles.iter().enumerate() {
         for n in 0..counts[k] {

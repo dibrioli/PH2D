@@ -85,3 +85,43 @@ fn o_container_aberto_e_mais_uma_aba() {
     assert_eq!(abas.len(), 4);
     assert!(abas[2].ativa && abas[2].inteiro == "Walk");
 }
+
+/// ⭐ Dono 13/11 (2.ª volta): as abas ocupam a lateral INTEIRA da lista (entre as quinas) e crescem
+/// com ela; a ativa é a maior. *Mutação: altura fixa por aba ⇒ a soma não acompanha ⇒ vermelho.*
+#[test]
+fn as_abas_ocupam_a_lateral_inteira_e_crescem_com_ela() {
+    use ph2d_editor_core::panel::cards::banda::metrics as m;
+    let mut alturas = Vec::new();
+    for h in [300.0, 600.0] {
+        let lista = Rect { h, ..LISTA };
+        let abas = pilha(lista, &snap(&[]), Tab::Containers, &mut largura);
+        let topo = abas[0].alvo.y;
+        let fim = abas.last().map_or(0.0, |a| a.alvo.y + a.alvo.h);
+        assert!((topo - (lista.y + m::LIST_RADIUS)).abs() < 0.01);
+        assert!(
+            (fim - (lista.y + lista.h - m::LIST_RADIUS)).abs() < 0.01,
+            "{fim}"
+        );
+        assert!(abas[1].alvo.h > abas[0].alvo.h && abas[1].alvo.h > abas[2].alvo.h);
+        alturas.push(abas[1].alvo.h);
+    }
+    assert!(
+        alturas[1] > alturas[0] * 1.9,
+        "a ativa cresce com a lista: {alturas:?}"
+    );
+}
+
+/// O contorno é uma aba: a base (lado da moldura) mais comprida que o lado de fora.
+#[test]
+fn o_contorno_tem_a_base_mais_comprida_que_o_lado_de_fora() {
+    let p = contorno(Rect::new(0.0, 0.0, 28.0, 100.0));
+    let extensao = |x: f32| {
+        let ys: Vec<f32> = p
+            .iter()
+            .filter(|q| (q.0 - x).abs() < 0.01)
+            .map(|q| q.1)
+            .collect();
+        ys.iter().copied().fold(f32::MIN, f32::max) - ys.iter().copied().fold(f32::MAX, f32::min)
+    };
+    assert!(extensao(28.0) > extensao(0.0) + 1.0);
+}

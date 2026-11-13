@@ -114,11 +114,15 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 
 ## Acréscimo 3 — dono 13/11: abas laterais de pasta e o Done verde no clipe
 
-- **Keys · Containers · (container aberto) · Arrange viram ABAS DE PASTA na borda esquerda** (`src/abas_laterais.rs`, novo; testes em `abas_laterais_tests.rs`, 3).
-  Mesma lista, escolhida e ids de sempre (`transport_tabs::items/selected`), o mesmo clique. Empilhadas de cima para baixo a partir de `lista.y + LIST_RADIUS`, texto rodado 90° (`paint_text_rotated_ccw`, de baixo para cima).
-  A ATIVA mede o nome + 2·`SEG_INSET` + `FIELD_RADIUS`, tinta `KanbanList`, pintada DEPOIS da moldura e entra `SEG_INSET` nela (junta invisível).
-  As INATIVAS medem `ESPIA = 1,5·FIELD_H` com só o começo do nome (`comeco`, por carácter, sem reticência). Pintam-se ANTES da moldura (`pinta_de_tras`, chamado em `paint.rs::paint_barra`), a `TIMELINE_ABA_INATIVA_ALPHA = 0,55` (token novo em `ph2d-tokens/src/chrome.rs`), e acendem sob o rato.
-  Cada uma estende-se `SOB = FIELD_RADIUS` para baixo da vizinha do lado da ativa (a sobreposição); a mais longe pinta-se primeiro. O alvo da inativa é a parte À VISTA. A dica de cada aba é o nome inteiro (`set_tooltip`).
+- **Keys · Containers · (container aberto) · Arrange viram ABAS DE PASTA na borda esquerda** (`src/abas_laterais.rs`, novo; testes em `abas_laterais_tests.rs`, 5).
+  Mesma lista, escolhida e ids de sempre (`transport_tabs::items/selected`), o mesmo clique. Texto rodado 90° (`paint_text_rotated_ccw`, de baixo para cima), `VALUE_PX`, âncora arredondada ao pixel.
+  - **2.ª volta do dono (13/11, verbatim):** «mal posicionada, mal renderizada, abas pequenas e feias. Sobrepostas de forma errada. Deve ocupar toda lateral da timeline e se expandir quando a timeline crescer.»
+    Defeitos da 1.ª versão: as inativas eram translúcidas (alfa 0,55), pintadas ANTES da moldura, e a sombra da lista caía-lhes em cima (faixa escura). A sobreposição de duas translúcidas fazia uma risca. As abas tinham tamanho fixo (42 px).
+  - **Agora:** as abas dividem a altura INTEIRA da lista, entre as quinas (`lista.y + LIST_RADIUS` … `fim − LIST_RADIUS`). A ativa pesa `PESO_ATIVA = 2`, as outras 1, e a ativa nunca fica menor que o nome. Crescem com o painel.
+    Contorno de aba de navegador (`contorno`): base reta do lado da moldura, passando `PONTA = FIELD_RADIUS` da fatia de cada lado; lado de fora mais curto; pontas inclinadas; quinas de fora redondas (quadrática amostrada; `paint_shapes::fill_polygon`, sem trig nem Affine).
+    Todas se pintam DEPOIS da moldura (`pinta`, chamada em `paint_bar`): a mais longe da ativa primeiro, a ativa por último. Cores SÓLIDAS: ativa `KanbanList` + `TextoCabecalho` (entra `SEG_INSET` na moldura); inativa `CardField` + `TextoValor`; sob o rato `CardFieldHover` + `TextoPropriedade`.
+    O nome fica ao centro da fatia; se não cabe, mostra o começo (`comeco`, sem reticência), lido a partir de baixo. O alvo é a fatia; a dica é o nome inteiro (`set_tooltip`).
+  - O token `TIMELINE_ABA_INATIVA_ALPHA` da 1.ª versão saiu. Mutação «altura fixa da ativa» sangrou em `as_abas_ocupam_a_lateral_inteira_e_crescem_com_ela`.
 - **A calha:** o cartão reserva `ESPESSURA = FIELD_H` à esquerda (`abas_laterais::sem_a_calha`). Moldura, barra, folha (`paint.rs::area_da_folha`), faixa de arrastar (`cartao_solto::faixa_do_titulo`) e a aba dos controlos medem-se do rect sem a calha. As alças de redimensionar continuam no rect inteiro (as abas registam-se depois e ganham-lhes).
 - A 1.ª fileira perdeu as abas: `abas_e_migalha` → `migalha`, `segs_das_abas` apagada. O separador antes da Length só se pinta se algo vem antes (`f.no_inicio()`): a Length encosta ao «TIMELINE».
 - **O Done** (dono 13/11, verbatim: «agregado ao próprio clip ou, se os clips estão no modo dropdown, à direita do dropdown depois do ⋯; não como Done (palavra) mas como um botão verde com ícone de checado»):
@@ -128,9 +132,10 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
   - Id, clique e lei da sessão inalterados (`TIMELINE_ANIMATING_DONE`). `pilula_w` ganhou um vão (`tw.ceil() + gap`): a reticência comia «andar».
 - **Testes ajustados:** `os_cartoes` — a 1.ª fileira mede-se pela Length; o alvo da aba em pé: a ATIVA tem de comprido ≥ 36,8/69,9/55,2 e a inativa ≥ 24×24; a folha começa depois da barra sem contar as abas. `controles_flutuantes` — a fila começa à direita das abas. `o_cartao_estreito` — a sombra envolve a moldura sem a calha.
   Teste novo `animating_done_seam::o_done_e_um_botao_colado_ao_clipe_depois_do_menu` (chips e lista); a mutação «⋯ sem descontar o Done» sangrou.
-- **Por nome ✓ (13/11):** panel-timeline it 73 (os_cartoes, o_cartao_estreito, controles_flutuantes, view_tabs, animating_done, curves_on_canvas, clipes_em_lista, os_chips_da_barra, no_lugar); lib abas_laterais 3, animando 4, transport_tabs 3, container_list 9.
+  `numa_janela_estreita_a_barra_quebra_e_nada_sai`: as abas descem AO LADO da folha (à esquerda de `+ Track`), não por cima.
+- **Por nome ✓ (13/11):** panel-timeline it 73 (os_cartoes, o_cartao_estreito, controles_flutuantes, view_tabs, animating_done, curves_on_canvas, clipes_em_lista, os_chips_da_barra, no_lugar); lib abas_laterais 5, animando 4, transport_tabs 3, container_list 9.
   editor-core it 20 (file_loc_cap, hr15, the_shell_only_shrinks, panel_loc_cap, censo). fmt ✓ · clippy `-D warnings` (panel-timeline, tokens) ✓. `barra_clips.rs` = 600 linhas (no tecto).
-- `PH2D_CARDS=0` intocado. Shell intocada. Fotos: [Keys + Done verde](../fotos/19_abas_laterais_keys_e_done_verde.png) · [Containers](../fotos/19_abas_laterais_containers.png) · [Arrange](../fotos/19_abas_laterais_arrange.png) · [clips em lista](../fotos/19_done_verde_clips_em_lista.png).
+- `PH2D_CARDS=0` intocado. Shell intocada. Fotos da 2.ª volta: [Keys · Containers · Arrange](../fotos/19_abas_laterais_v2_keys_containers_arrange.png) · [zoom](../fotos/19_abas_laterais_v2_zoom.png). 1.ª volta (recusada): [Keys + Done verde](../fotos/19_abas_laterais_keys_e_done_verde.png) · [Containers](../fotos/19_abas_laterais_containers.png) · [Arrange](../fotos/19_abas_laterais_arrange.png). Done em lista: [foto](../fotos/19_done_verde_clips_em_lista.png).
 
 ## Aberto (visto, NÃO feito)
 

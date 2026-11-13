@@ -1,8 +1,10 @@
 //! ⭐ **As abas da Timeline são abas de PASTA na borda esquerda** (dono 13/11,
-//! `docs/Timeline/fotos/18_pedido_abas_laterais_esboco.png`): Keys · Containers · (um por container
-//! aberto) · Arrange, empilhadas de cima para baixo, coladas à moldura, por fora, texto a ler de baixo
-//! para cima. A ATIVA inteira, à frente, na tinta da lista (painel e aba leem-se como um objecto); as
-//! INATIVAS por trás da moldura, apagadas, sobrepostas à vizinha, com só o começo do nome à vista.
+//! `docs/Timeline/fotos/18_pedido_abas_laterais_esboco.png`; 2.ª volta: «devem ocupar toda a lateral e
+//! crescer com a Timeline»). Keys · Containers · (um por container aberto) · Arrange dividem a altura
+//! inteira da lista, de cima para baixo, coladas à moldura por fora, texto a ler de baixo para cima.
+//! A ATIVA leva o dobro da altura de uma inativa ([`PESO_ATIVA`]), na tinta da lista (painel e aba
+//! leem-se como um objecto), e fica à frente; as INATIVAS, sólidas e apagadas, por trás dela. Cada aba
+//! tem as pontas inclinadas (como abas de navegador): as das vizinhas cruzam-se e a da frente cobre.
 //!
 //! A lista de abas, a escolhida e os ids são os de [`crate::transport_tabs`] — o clique é o de sempre.
 //! O cartão reserva a calha delas à esquerda ([`sem_a_calha`]): o painel pode estar encostado à borda
@@ -13,21 +15,29 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::banda::{self, metrics as m};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, Theme, TimelineTinta};
 
 use crate::tab::Tab;
 
 /// A grossura de uma aba (a largura da calha): a altura de um campo da barra.
 pub(crate) const ESPESSURA: f32 = m::FIELD_H;
 
-/// O comprimento à vista de uma aba INATIVA: o começo do nome (dono 13/11).
-const ESPIA: f32 = m::FIELD_H * 1.5;
+/// Quanto a base de uma aba passa da fatia dela, de cada lado (a ponta inclinada que se cruza com a
+/// da vizinha).
+const PONTA: f32 = m::FIELD_RADIUS;
 
-/// O pedaço de uma inativa que fica escondido debaixo da vizinha da frente (a sobreposição).
-const SOB: f32 = m::FIELD_RADIUS;
+/// O raio das quinas de fora.
+const RAIO: f32 = m::FIELD_RADIUS;
 
-/// O tamanho do nome numa aba: o das abas da barra de antes.
-const TEXTO_PX: f32 = m::SEG_TEXT_PX;
+/// O tamanho do nome numa aba: o dos valores dos campos.
+const TEXTO_PX: f32 = m::VALUE_PX;
+
+/// A ativa pesa o dobro de uma inativa na divisão da altura (o esboço do dono: a 1.ª alta, as outras
+/// menores).
+const PESO_ATIVA: f32 = 2.0;
+
+/// Pontos por quina arredondada (a quina é uma quadrática amostrada, sem trigonometria).
+const PASSOS_DA_QUINA: usize = 4;
 
 /// O rect do cartão SEM a calha das abas: é dele que a moldura, a barra e a folha se medem.
 pub(crate) fn sem_a_calha(rect: Rect) -> Rect {
@@ -39,13 +49,13 @@ pub(crate) fn sem_a_calha(rect: Rect) -> Rect {
     )
 }
 
-/// Uma aba posta: o alvo (a parte À VISTA), o desenho (o que se pinta, com o pedaço escondido) e o
-/// nome que cabe à vista.
+/// Uma aba posta: o alvo (a fatia dela na lateral), o desenho (a fatia com as pontas) e o nome que
+/// cabe à vista.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Aba {
     pub(crate) id: ph2d_a11y::NodeId,
     pub(crate) nome: String,
-    /// O nome inteiro (a dica da aba: a inativa só mostra o começo).
+    /// O nome inteiro (a dica da aba: a inativa estreita mostra só o começo).
     pub(crate) inteiro: String,
     pub(crate) alvo: Rect,
     pub(crate) desenho: Rect,
@@ -54,7 +64,7 @@ pub(crate) struct Aba {
     pub(crate) fundo: usize,
 }
 
-/// O começo de `nome` que cabe em `w` (por carácter, sem reticências: a aba cobre o resto).
+/// O começo de `nome` que cabe em `w` (por carácter, sem reticências: a aba da frente cobre o resto).
 fn comeco(nome: &str, w: f32, largura: &mut dyn FnMut(&str) -> f32) -> String {
     if largura(nome) <= w {
         return nome.to_owned();
@@ -70,9 +80,12 @@ fn comeco(nome: &str, w: f32, largura: &mut dyn FnMut(&str) -> f32) -> String {
     nome[..fim].to_owned()
 }
 
-/// ⭐ **A pilha**: cada aba na ordem de [`crate::transport_tabs::items`], de cima para baixo a partir
-/// do fim da quina da lista. A ativa mede o nome inteiro; as outras, [`ESPIA`]. Pura (a largura do
-/// texto entra por fora), para o gate medir sem pintar.
+/// A folga do nome em cada ponta da aba: a ponta inclinada e o recuo de um segmento.
+const FOLGA: f32 = PONTA + m::SEG_INSET;
+
+/// ⭐ **A pilha**: as abas na ordem de [`crate::transport_tabs::items`] dividem a lateral inteira da
+/// lista (entre as quinas dela), a ativa com [`PESO_ATIVA`] e nunca menos que o nome inteiro. Pura (a
+/// largura do texto entra por fora), para o gate medir sem pintar.
 pub(crate) fn pilha(
     lista: Rect,
     snap: &TimelineViewSnapshot,
@@ -84,41 +97,68 @@ pub(crate) fn pilha(
     let n = celulas.len();
     let x = lista.x - ESPESSURA;
     let topo = lista.y + m::LIST_RADIUS;
-    // A ativa cabe no que sobra da altura da lista depois das espias (painel baixo: o nome corta).
-    let cabe = (lista.h - m::LIST_RADIUS * 2.0 - ESPIA * n.saturating_sub(1) as f32).max(ESPIA);
-    let pad = m::SEG_INSET;
+    let altura = (lista.h - m::LIST_RADIUS * 2.0).max(0.0);
+    let pesos = PESO_ATIVA + n.saturating_sub(1) as f32;
+    let nome_da_ativa = celulas
+        .get(escolhida)
+        .map_or(0.0, |(_, t)| largura(t) + FOLGA * 2.0);
+    let ativa_h = (altura * PESO_ATIVA / pesos).max(nome_da_ativa.min(altura));
+    let inativa_h = (altura - ativa_h).max(0.0) / n.saturating_sub(1).max(1) as f32;
     let mut y = topo;
     let mut out = Vec::with_capacity(n);
     for (i, (id, nome)) in celulas.into_iter().enumerate() {
         let ativa = i == escolhida;
-        let h = if ativa {
-            // O nome, a folga de cada ponta e o raio da quina de fora.
-            (largura(&nome) + pad * 2.0 + m::FIELD_RADIUS).clamp(ESPIA, cabe.max(ESPIA)) // CLAMP-OK: cabe ≥ ESPIA
-        } else {
-            ESPIA
-        };
-        let alvo = Rect::new(x, y, ESPESSURA, h);
-        // A ativa entra um pouco na moldura (a junta não se vê); a inativa estende-se para baixo da
-        // vizinha do lado da ativa.
-        let desenho = if ativa {
-            Rect::new(x, y, ESPESSURA + m::SEG_INSET, h)
-        } else if i < escolhida {
-            Rect::new(x, y, ESPESSURA + m::LIST_RADIUS, h + SOB)
-        } else {
-            Rect::new(x, y - SOB, ESPESSURA + m::LIST_RADIUS, h + SOB)
-        };
+        let h = if ativa { ativa_h } else { inativa_h };
+        // A ativa entra um pouco na moldura (a junta não se vê); a base passa a fatia pelas pontas.
+        let dentro = if ativa { m::SEG_INSET } else { 0.0 };
         out.push(Aba {
             id,
-            nome: comeco(&nome, h - pad * 2.0, largura),
+            nome: comeco(&nome, h - FOLGA * 2.0, largura),
             inteiro: nome,
-            alvo,
-            desenho,
+            alvo: Rect::new(x, y, ESPESSURA, h),
+            desenho: Rect::new(x, y - PONTA, ESPESSURA + dentro, h + PONTA * 2.0),
             ativa,
             fundo: i.abs_diff(escolhida),
         });
         y += h;
     }
     out
+}
+
+/// Os pontos da quadrática `a → c → b` (o canto `c`), sem o `a`.
+fn quina(out: &mut Vec<(f32, f32)>, a: (f32, f32), c: (f32, f32), b: (f32, f32)) {
+    for k in 1..=PASSOS_DA_QUINA {
+        let t = k as f32 / PASSOS_DA_QUINA as f32;
+        let u = 1.0 - t;
+        out.push((
+            u * u * a.0 + 2.0 * u * t * c.0 + t * t * b.0,
+            u * u * a.1 + 2.0 * u * t * c.1 + t * t * b.1,
+        ));
+    }
+}
+
+/// O contorno de uma aba: a base (o lado da moldura) reta e mais comprida, o lado de fora mais
+/// curto, as pontas inclinadas e as quinas de fora redondas.
+pub(crate) fn contorno(d: Rect) -> Vec<(f32, f32)> {
+    let (fora, base) = (d.x, d.x + d.w);
+    let (cima, baixo) = (d.y, d.y + d.h);
+    let (fc, fb) = (cima + PONTA * 2.0, baixo - PONTA * 2.0);
+    // Ao longo de cada ponta inclinada, a fracção que a quina come.
+    let r = (RAIO / d.w.max(1.0)).min(0.5);
+    let perto = |de: (f32, f32), canto: (f32, f32)| {
+        (
+            de.0 + (canto.0 - de.0) * (1.0 - r),
+            de.1 + (canto.1 - de.1) * (1.0 - r),
+        )
+    };
+    let (c1, c2) = ((fora, fc), (fora, fb));
+    let a1 = perto((base, cima), c1);
+    let mut p = vec![(base, cima), a1];
+    quina(&mut p, a1, c1, (fora, fc + RAIO));
+    p.push((fora, fb - RAIO));
+    quina(&mut p, (fora, fb - RAIO), c2, perto((base, baixo), c2));
+    p.push((base, baixo));
+    p
 }
 
 fn pilha_pintada(
@@ -133,71 +173,60 @@ fn pilha_pintada(
 }
 
 fn pinta_uma(ctx: &mut PaintCtx, theme: Theme, a: &Aba) {
-    let tons = crate::transport::cartoes::tons_da_barra(theme);
-    let fundo = paint::resolve(ColorToken::KanbanList, theme);
+    let t = |x| crate::folha_tinta::tinta(x, theme);
     let hover = ctx.host.store().hover_live(a.id) > 0.0;
-    let (cor, texto) = if a.ativa {
-        (fundo, tons.ativa_texto)
+    let (fundo, texto) = if a.ativa {
+        (ColorToken::KanbanList, t(TimelineTinta::TextoCabecalho))
     } else if hover {
-        (fundo, tons.inativa_texto)
-    } else {
-        let alfa = ph2d_tokens::chrome::TIMELINE_ABA_INATIVA_ALPHA;
         (
-            fundo.multiply_alpha(alfa),
-            tons.inativa_texto.multiply_alpha(alfa),
+            ColorToken::CardFieldHover,
+            t(TimelineTinta::TextoPropriedade),
         )
+    } else {
+        (ColorToken::CardField, t(TimelineTinta::TextoValor))
     };
-    let r = m::FIELD_RADIUS;
-    paint::fill_rounded_rect_radii(ctx.scene, a.desenho, (r, 0.0, 0.0, r), cor);
+    ph2d_editor_core::paint_shapes::fill_polygon(
+        ctx.scene,
+        &contorno(a.desenho),
+        paint::resolve(fundo, theme),
+    );
+    // O nome ao centro da fatia; se não cabe, o começo a partir de baixo (onde se começa a ler).
+    let w = ctx.text_system.prefix_width(&a.nome, TEXTO_PX);
+    let vao = a.alvo.h - FOLGA * 2.0;
+    let pe = a.alvo.y + a.alvo.h - FOLGA - ((vao - w) * 0.5).max(0.0);
     let tx = a.alvo.x + paint::folga_do_texto(a.alvo.w, TEXTO_PX);
-    let ty = a.alvo.y + a.alvo.h - m::SEG_INSET;
     paint::paint_text_rotated_ccw(
         ctx.text_system,
         ctx.scene,
         &a.nome,
-        tx,
-        ty,
+        tx.round(),
+        pe.round(),
         TEXTO_PX,
-        a.alvo.h,
+        w.ceil() + 1.0,
         texto,
     );
 }
 
-/// As INATIVAS, por trás: pintam-se ANTES da moldura, que lhes cobre o pedaço de dentro.
-pub(crate) fn pinta_de_tras(
+/// Pinta as abas DEPOIS da moldura (a sombra dela não lhes cai em cima): a mais longe da ativa
+/// primeiro, a ativa por último; e regista o alvo de cada uma (a fatia dela).
+pub(crate) fn pinta(
     ctx: &mut PaintCtx,
     theme: Theme,
     painel: Rect,
     (snap, tab): (&TimelineViewSnapshot, Tab),
 ) {
     let mut abas = pilha_pintada(ctx, painel, snap, tab);
-    abas.retain(|a| !a.ativa);
-    // A mais longe da ativa primeiro: cada uma fica por baixo da vizinha mais perto da frente.
-    abas.sort_by_key(|a| std::cmp::Reverse(a.fundo));
-    for a in &abas {
-        pinta_uma(ctx, theme, a);
-    }
-}
-
-/// A ATIVA, à frente (depois da moldura), e os alvos de todas: o da ativa é ela inteira, o de cada
-/// inativa a parte à vista.
-pub(crate) fn pinta_da_frente(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    painel: Rect,
-    (snap, tab): (&TimelineViewSnapshot, Tab),
-) {
-    let abas = pilha_pintada(ctx, painel, snap, tab);
     ph2d_editor_core::widget::composto::grupo(abas.iter().map(|a| a.id));
-    if let Some(a) = abas.iter().find(|a| a.ativa) {
-        pinta_uma(ctx, theme, a);
-    }
     for a in &abas {
         ctx.host.hit_index_mut().register(a.id, a.alvo);
         let store = ctx.host.store_mut();
         if store.tooltip_for(a.id) != Some(a.inteiro.as_str()) {
             store.set_tooltip(a.id, a.inteiro.clone());
         }
+    }
+    abas.sort_by_key(|a| std::cmp::Reverse(a.fundo));
+    for a in &abas {
+        pinta_uma(ctx, theme, a);
     }
 }
 

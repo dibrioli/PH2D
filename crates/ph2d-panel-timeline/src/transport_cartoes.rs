@@ -494,7 +494,7 @@ pub(crate) fn paint_bar(
 ) -> Barra {
     prepara(ctx.host.store_mut(), snap, view);
     flutuante::pinta(ctx, theme, painel, (snap, view));
-    crate::abas_laterais::pinta_da_frente(ctx, theme, painel, (snap, view.tab));
+    crate::abas_laterais::pinta(ctx, theme, painel, (snap, view.tab));
     let mut f = Fluxo::novo(strip, body);
     migalha(ctx, theme, &mut f, snap);
     grupo_do_tempo(ctx, theme, &mut f, snap, body);

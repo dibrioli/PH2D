@@ -484,7 +484,12 @@ fn numa_janela_estreita_a_barra_quebra_e_nada_sai() {
     for id in NA_BARRA.iter() {
         let r = m0.rect(*id).unwrap_or_else(|| panic!("{id:?} não pintado"));
         assert!(r.x + r.w <= lista.x + lista.w + 0.5, "{id:?} sai: {r:?}");
-        assert!(r.y + r.h <= add.y + 0.5, "{id:?} em cima da folha: {r:?}");
+        // As abas laterais (dono 13/11) descem AO LADO da folha, à esquerda dela.
+        let ao_lado = r.x + r.w <= add.x + 0.5;
+        assert!(
+            r.y + r.h <= add.y + 0.5 || ao_lado,
+            "{id:?} em cima da folha: {r:?}"
+        );
     }
 }
 

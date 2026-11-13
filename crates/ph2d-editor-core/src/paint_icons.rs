@@ -34,6 +34,47 @@ pub fn paint_icon(
     paint_icon_path(scene, &path, rect, color, stroke_width);
 }
 
+/// ⭐ **O glifo NÍTIDO das barras do topo** (faixa, fila fina; onda 7, dono 13/11: «ícones melhores e
+/// mais nítidos»). A viewbox 24 enche o lado do `rect` (sem o respiro do [`icon_pad`]: os glifos já
+/// trazem 2 unidades de margem) com a origem no pixel inteiro, e o traço é [`BAR_ICON_STROKE_PX`] de
+/// ECRÃ — o [`paint_icon`] escala o traço com a viewbox, e a 13 px saía `1,5 × 0,43 = 0,65` px, o glifo
+/// lavado (contraste de pico 0,16–0,40 contra 0,50 do texto; VS Code, Godot e Blender: o do texto).
+/// `cheio` pinta também o miolo (o transporte: Play, Pause, Stop).
+///
+/// [`BAR_ICON_STROKE_PX`]: ph2d_tokens::BAR_ICON_STROKE_PX
+pub fn paint_icon_nitido(
+    scene: &mut VectorScene,
+    icon: IconId,
+    rect: Rect,
+    color: Color,
+    cheio: bool,
+) {
+    const VIEWBOX: f64 = 24.0; // LITERAL-PX-OK: a viewbox dos SVG
+    let lado = f64::from(rect.w.min(rect.h));
+    if lado <= 0.0 {
+        return;
+    }
+    let mut path = BezPath::new();
+    for cmd in icon.cmds() {
+        path.extend(cmd_to_path(*cmd));
+    }
+    // A origem no MEIO do pixel: a 16 px as linhas da grade (múltiplos de 3 unidades) caem em pixels
+    // inteiros + ½, o centro de um pixel, e o traço de 1,5 cobre-o inteiro (o «−» media 0,28 de pico
+    // contra 0,50 do texto com a origem no canto).
+    let (l, meio) = (lado as f32, crate::ui_scale::meio_pixel());
+    let tx = crate::ui_scale::ao_pixel(rect.x + (rect.w - l) * 0.5 - meio) + meio;
+    let ty = crate::ui_scale::ao_pixel(rect.y + (rect.h - l) * 0.5 - meio) + meio;
+    path.apply_affine(
+        Affine::translate((f64::from(tx), f64::from(ty))) * Affine::scale(lado / VIEWBOX),
+    );
+    let brush = Brush::Solid(color);
+    if cheio || icon.cheio() {
+        scene.fill_path(&path, &brush, Affine::IDENTITY);
+    }
+    let stroke = Stroke::new(f64::from(ph2d_tokens::BAR_ICON_STROKE_PX));
+    scene.stroke_path(&stroke, Affine::IDENTITY, &brush, &path);
+}
+
 /// **Um ícone RODADO em torno do centro da própria viewbox.**
 ///
 /// ⚠️ **A rotação acontece DENTRO da viewbox (24×24), antes do encaixe** — o [`paint_icon_path`]
@@ -180,6 +221,45 @@ pub fn paint_icon_toned(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐⭐ **Onda 7 (dono 13/11: «ícones mais nítidos»): o glifo das barras tem o traço do token em px
+    /// de ECRÃ em todo lado e enche a caixa.** O [`paint_icon`] escala o traço
+    /// com a viewbox: a 13 px saía 0,65 px e o glifo media 10 px (pico de contraste 0,16–0,40 contra 0,50
+    /// do texto na foto; VS Code, Godot e Blender: o do texto).
+    #[test]
+    fn o_glifo_das_barras_tem_o_traco_do_token_em_qualquer_lado() {
+        use ph2d_tokens::BAR_ICON_STROKE_PX;
+        use ph2d_vector::{DrawOp, Shape};
+        for lado in [13.0_f32, 16.0, 22.0] {
+            let mut scene = VectorScene::new();
+            scene.record();
+            let r = Rect::new(10.3, 4.6, lado, lado);
+            paint_icon_nitido(&mut scene, IconId::Search, r, Color::WHITE, false);
+            let ops = scene.take_record();
+            let Some(DrawOp::Stroke {
+                style,
+                transform,
+                path,
+                ..
+            }) = ops.first()
+            else {
+                panic!("{lado}: o glifo não se traçou");
+            };
+            assert_eq!(
+                *transform,
+                Affine::IDENTITY,
+                "{lado}: o traço escalaria com o glifo"
+            );
+            assert_eq!(style.width, f64::from(BAR_ICON_STROKE_PX), "{lado}");
+            let bb = path.bounding_box();
+            // A lupa ocupa 17 de 24 unidades (70,8 % do lado); com o respiro antigo eram 56 %.
+            assert!(
+                bb.width() >= f64::from(lado) * 0.70,
+                "{lado}: o glifo encolheu ({})",
+                bb.width()
+            );
+        }
+    }
 
     /// O SVG cheio (`fill="currentColor"`) e o `cheio()` dizem o mesmo, e a tinta vem com ele: miolo + contorno.
     #[test]

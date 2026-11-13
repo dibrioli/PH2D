@@ -74,3 +74,57 @@ fn o_play_tem_nome_e_a_seta_ao_lado() {
     let play = f.jogo[0].2;
     assert!(play.w > play.h, "o Play com nome é mais largo que um ícone");
 }
+
+/// ⭐⭐ **Onda 7 (dono 13/11: «não bem alinhada»): UMA linha de centro e UMA altura.** Todo controlo da
+/// faixa (o «Menu», o campo, a pílula do jogo, o Play, o Pause, o Stop, o «Controls», − □ ×) tem
+/// `MENU_BAR_CTL_H_PX` de alto e o centro no centro da faixa, com a borda no pixel inteiro; o
+/// segmento (o Play, a aba escolhida) tem o mesmo centro. A aba das colunas tem a altura da fila de
+/// ferramentas e começa na borda da marca «PH2D». Antes eram quatro alturas: 22, 24, 28 e 22.
+/// A régua de pixels da foto é `docs/BarraDeMenus/ferramentas/regua_faixa.py`.
+#[test]
+fn todo_controlo_da_faixa_tem_uma_altura_e_um_centro() {
+    use ph2d_tokens::{MENU_BAR_CTL_H_PX, TOOL_ROW_CHIP_PX, TOOL_ROW_H_PX};
+    for largura in [1930.0, 1366.0] {
+        let bar = Rect::new(0.0, 0.0, largura, MENU_BAR_H);
+        let mut ts = TextSystem::without_system_fonts();
+        let f = faixa(bar, &mut ts, Some(false));
+        let meio = bar.y + bar.h * 0.5;
+        let mut caixas = vec![("Menu", f.menu), ("campo", f.find)];
+        caixas.extend(f.jogo.iter().map(|(_, _, r)| ("jogo", *r)));
+        caixas.extend(f.janela.iter().map(|(_, _, r)| ("janela", *r)));
+        assert!(caixas.len() >= 9, "controlo: a régua viu o jogo e a janela");
+        if let Some(u) = super::super::transport_bar::pilula(&f.jogo) {
+            caixas.push(("pílula do jogo", u));
+        }
+        for (nome, r) in caixas {
+            let c = caixa(r);
+            assert_eq!(c.h, MENU_BAR_CTL_H_PX, "{largura}: {nome} com outra altura");
+            assert!(
+                (c.y + c.h * 0.5 - meio).abs() < 1e-3,
+                "{largura}: {nome} fora do centro"
+            );
+            assert_eq!(
+                c.y,
+                c.y.round(),
+                "{largura}: {nome} com a borda a meio pixel"
+            );
+            let s = segmento(r);
+            assert!(
+                (s.y + s.h * 0.5 - meio).abs() < 1e-3,
+                "{largura}: segmento de {nome}"
+            );
+        }
+    }
+    // A aba das colunas: a altura da fila, o segmento do lado do chip, a borda da marca.
+    assert_eq!(super::super::slot_tabs::TAB_BAR_H, TOOL_ROW_H_PX);
+    let fila = Rect::new(0.0, MENU_BAR_H, 400.0, TOOL_ROW_H_PX);
+    let aba = super::super::slot_tabs::tab_rects(fila, &[90.0])[0];
+    let mut ts = TextSystem::without_system_fonts();
+    let f = faixa(Rect::new(0.0, 0.0, 1930.0, MENU_BAR_H), &mut ts, None);
+    assert_eq!(
+        aba.x,
+        f.menu.x + Spacing::Xs.px(),
+        "a aba começa na borda da marca"
+    );
+    assert!(aba.h >= TOOL_ROW_CHIP_PX);
+}

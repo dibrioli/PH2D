@@ -333,7 +333,7 @@ pub fn paint(
                 .map(|(_, r)| *r),
         ),
     ) {
-        b.pilula(scene, u);
+        b.pilula_em(scene, super::menu_faixa::caixa(u));
     }
     for &(t, r) in &tabs {
         if let (Target::Board(b), Some((_, buf))) =
@@ -353,7 +353,7 @@ pub fn paint(
                 ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
             );
         let fg = if let Some(b) = barra {
-            b.segmento(scene, r, is_on, hover)
+            b.segmento_em(scene, super::menu_faixa::segmento(r), is_on, hover)
         } else {
             let bg = if is_on {
                 Some(ColorToken::AccentSoft)
@@ -377,19 +377,19 @@ pub fn paint(
         };
         match t {
             Target::Prev | Target::Next => {
-                let s = INLINE_ICON_PX;
+                let s = ph2d_tokens::BAR_ICON_PX;
                 let icon = Rect::new(r.x + (r.w - s) / 2.0, r.y + (r.h - s) / 2.0, s, s);
                 let glyph = if t == Target::Prev {
                     IconId::ChevronLeft
                 } else {
                     IconId::ChevronRight
                 };
-                paint_icon(scene, glyph, icon, fg, StrokeToken::Default.px());
+                crate::paint::paint_icon_nitido(scene, glyph, icon, fg, false);
             }
             Target::New => {
-                let s = INLINE_ICON_PX;
+                let s = ph2d_tokens::BAR_ICON_PX;
                 let icon = Rect::new(r.x + (r.w - s) / 2.0, r.y + (r.h - s) / 2.0, s, s);
-                paint_icon(scene, IconId::Plus, icon, fg, StrokeToken::Default.px());
+                crate::paint::paint_icon_nitido(scene, IconId::Plus, icon, fg, false);
             }
             Target::Scene => {
                 paint_text_centered(

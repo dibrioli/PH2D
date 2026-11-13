@@ -43,12 +43,12 @@ use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Spacing, TOOL_ROW_H_PX, Theme};
 use ph2d_vector::VectorScene;
 
-/// A altura da fila de abas — **uma linha**, o mesmo token da barra de menus e de uma linha de
-/// menu. ⚠️ Não é um número escolhido: uma aba é um rótulo clicável, que é o que uma linha é.
-pub const TAB_BAR_H: f32 = ROW_H_PX;
+/// A altura da fila de abas — a da fila de ferramentas, que ela ladeia (onda 7: as abas «Hierarchy» e
+/// «Inspector» moram na mesma banda; com uma linha de menu, 22 em 26, subiam 2 px).
+pub const TAB_BAR_H: f32 = TOOL_ROW_H_PX;
 
 // ⭐ **A CARA de uma aba vive no irmão [`super::slot_tabs_face`]** — o glifo, o nome e o recuo
 // deles. Re-exportado AQUI pela mesma razão que o gesto de arrastar: um corte por tecto de LOC
@@ -362,7 +362,8 @@ pub fn tab_rects(bar: Rect, widths: &[f32]) -> Vec<Rect> {
     if widths.is_empty() || bar.w <= 0.0 || bar.h <= 0.0 {
         return Vec::new();
     }
-    let mut x = bar.x + Spacing::Xs.px();
+    // A borda esquerda da primeira aba é a da marca «PH2D» na faixa (`Xs + Xs` do canto).
+    let mut x = bar.x + Spacing::Md.px();
     widths
         .iter()
         .map(|w| {
@@ -605,7 +606,10 @@ pub fn paint_slot_tabs(
             .button_state(tab_node_id(o.node))
             .unwrap_or(ButtonState::Normal);
         if let Some(b) = barra {
-            let _ = b.segmento(scene, r, is_on, state != ButtonState::Normal);
+            // O segmento tem o lado do chip da fila de ferramentas que a aba ladeia (24 em 32).
+            let d = ((r.h - ph2d_tokens::TOOL_ROW_CHIP_PX) * 0.5).max(0.0);
+            let miolo = Rect::new(r.x, r.y + d, r.w, r.h - d * 2.0);
+            let _ = b.segmento_em(scene, miolo, is_on, state != ButtonState::Normal);
         } else if let Some(bg) = tab_bg(is_on, state) {
             fill_rounded_rect_radii(scene, r, radii, resolve(bg, theme));
         }

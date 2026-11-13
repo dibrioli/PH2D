@@ -26,7 +26,7 @@
 //! LOC foi o gatilho; a fronteira é a que já lá estava.
 
 use crate::icons::IconId;
-use crate::paint::{paint_icon, paint_text, resolve};
+use crate::paint::{paint_text, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -168,7 +168,7 @@ pub fn paint(
 ) {
     let f = face(r, title, text_system);
     let color = resolve(fg, theme);
-    paint_icon(scene, icon, f.icon, color, StrokeToken::Default.px());
+    crate::paint::paint_icon_nitido(scene, icon, f.icon, color, false);
     if let Some((shown, x, y)) = f.label {
         paint_text(
             text_system,

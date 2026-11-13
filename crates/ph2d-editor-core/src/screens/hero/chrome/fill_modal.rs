@@ -100,12 +100,13 @@ pub fn paint_fill_adjust_modal(
     // ── Title band = the drag handle (Primary Down here starts a modal-move, shell-driven). ──
     let handle_rect = Rect::new(rect.x, rect.y, rect.w, pad_y + row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_HANDLE, handle_rect);
+    let ty = cy + crate::paint::folga_do_texto(row_h, font);
     paint_text(
         text_system,
         scene,
         ph2d_i18n::tr("chrome.fill.title"),
         inner_x,
-        cy + (row_h - font) * 0.5,
+        ty,
         font,
         inner_w,
         crate::widget::card_ink::tinta(ColorToken::Text1, theme),
@@ -117,12 +118,13 @@ pub fn paint_fill_adjust_modal(
     // o que mede.
     let (slider_x, slider_w) = if superficie.tinta().is_some() {
         let rotulo = tr("chrome.fill.threshold");
+        let ty = cy + crate::paint::folga_do_texto(row_h, font);
         paint_text(
             text_system,
             scene,
             rotulo,
             inner_x,
-            cy + (row_h - font) * 0.5,
+            ty,
             font,
             inner_w,
             crate::widget::card_ink::tinta(ColorToken::Text1, theme),

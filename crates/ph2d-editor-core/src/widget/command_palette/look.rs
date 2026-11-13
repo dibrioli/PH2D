@@ -112,6 +112,8 @@ pub(super) fn look(model: &PaletteModel) -> Look {
         // A lista: o acabamento da referência numa janela mais estreita, a busca com o foco.
         Look {
             card_max_w: super::lista::LIST_MAX_W,
+            // O campo tem a altura de uma linha da lista (o campo é `header_h − Sm`).
+            header_h: super::lista::item_h() + Spacing::Sm.px(),
             ..compact()
         }
     } else if model.select.is_some() {

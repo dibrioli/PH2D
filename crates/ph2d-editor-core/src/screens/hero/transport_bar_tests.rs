@@ -632,10 +632,12 @@ fn na_tela_cheia_a_moldura_e_o_separador_sao_os_da_barra_do_editor() {
             })
             .collect();
         let fundo = faixas(&ops, b.tinta().color(ColorToken::AccentSoft));
-        assert_eq!(
-            traco.first(),
-            realce.first(),
-            "a moldura pintada (o 1.º traço; o 2.º é o glifo) ≠ o realce do Pause"
+        // ±1e-6 px: o contorno arredondado sai de arcos em Bézier (2e-15 de folga, onda 7); um erro de
+        // geometria é de pixel.
+        let (t, r) = (traco.first().copied(), realce.first().copied());
+        assert!(
+            matches!((t, r), (Some(a), Some(b)) if (a.0 - b.0).abs() < 1e-6 && (a.1 - b.1).abs() < 1e-6),
+            "a moldura pintada (o 1.º traço; o 2.º é o glifo) ≠ o realce do Pause: {t:?} × {r:?}"
         );
         assert_eq!(fundo, [realce[0]], "o fundo aceso ≠ o realce do Pause");
         let normal = gravado(|scene| {

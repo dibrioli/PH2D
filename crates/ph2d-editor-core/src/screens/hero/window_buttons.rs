@@ -9,7 +9,7 @@
 use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, icon_glyph_side, paint_icon, resolve};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::ButtonState;
 use crate::widget::cromo_barra::Barra;
 use crate::zones::Rect;
@@ -18,7 +18,7 @@ use ph2d_a11y::NodeId;
 pub use crate::interaction::state::window_frame::{
     Edge, PressAction, WindowPress, WindowRequest, edge_at, edge_band,
 };
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Largura de cada botão: a altura da faixa e um vão de cada lado (o glifo fica ao centro).
@@ -94,14 +94,14 @@ pub fn paint(
                 theme,
             )
         };
-        let lado = icon_glyph_side(super::transport_bar::controlo(r.h));
+        let lado = ph2d_tokens::BAR_ICON_PX;
         let glifo = Rect::new(
             r.x + (r.w - lado) * 0.5,
             r.y + (r.h - lado) * 0.5,
             lado,
             lado,
         );
-        paint_icon(scene, *icon, glifo, tinta, StrokeToken::Default.px());
+        crate::paint::paint_icon_nitido(scene, *icon, glifo, tinta, false);
         hit_index.register(*id, *r);
     }
 }

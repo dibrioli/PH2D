@@ -114,12 +114,13 @@ pub fn paint_onion_modal(
     let close_x = rect.x + rect.w - CLOSE_W - Spacing::Sm.px();
     let handle_rect = Rect::new(rect.x, rect.y, close_x - rect.x, pad_y + row_h);
     hit_index.register(ids::TIMELINE_ONION_MODAL_HANDLE, handle_rect);
+    let ty = cy + crate::paint::folga_do_texto(row_h, font);
     paint_text(
         text_system,
         scene,
         ph2d_i18n::tr("panel.timeline.onion_settings"),
         inner_x,
-        cy + (row_h - font) * 0.5,
+        ty,
         font,
         inner_w - CLOSE_W,
         crate::widget::card_ink::tinta(ColorToken::Text1, theme),
@@ -169,12 +170,13 @@ pub fn paint_onion_modal(
     ] {
         let v = store.slider(id).map_or(0.5, |(_, v)| v);
         let label = slider_label(id, ph2d_i18n::tr(key), v);
+        let ty = cy + crate::paint::folga_do_texto(row_h, font);
         paint_text(
             text_system,
             scene,
             &label,
             inner_x,
-            cy + (row_h - font) * 0.5,
+            ty,
             font,
             SLIDER_LABEL_W,
             crate::widget::card_ink::tinta(ColorToken::Text1, theme),
@@ -201,12 +203,13 @@ pub fn paint_onion_modal(
             "panel.timeline.onion_color_after",
         ),
     ] {
+        let ty = cy + crate::paint::folga_do_texto(row_h, font);
         paint_text(
             text_system,
             scene,
             ph2d_i18n::tr(key),
             inner_x,
-            cy + (row_h - font) * 0.5,
+            ty,
             font,
             inner_w - SWATCH_W - gap,
             crate::widget::card_ink::tinta(ColorToken::Text1, theme),

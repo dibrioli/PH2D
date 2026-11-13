@@ -63,13 +63,22 @@ impl Barra {
 
     /// A pílula que leva os segmentos de uma fila de abas (`r` é a união das abas).
     pub fn pilula(self, scene: &mut VectorScene, r: Rect) {
+        self.pilula_em(scene, encolhe_y(r, m::FIELD_BORDER));
+    }
+
+    /// A pílula pintada EXACTAMENTE em `caixa` (a faixa já mediu a altura do controlo).
+    pub fn pilula_em(self, scene: &mut VectorScene, caixa: Rect) {
         let cor = self.ink.color(ColorToken::CardField);
-        fill_rounded_rect(scene, encolhe_y(r, m::FIELD_BORDER), m::FIELD_RADIUS, cor);
+        fill_rounded_rect(scene, caixa, m::FIELD_RADIUS, cor);
     }
 
     /// Um segmento da pílula, com o fundo que o estado pede; devolve a cor do texto.
     pub fn segmento(self, scene: &mut VectorScene, r: Rect, on: bool, hover: bool) -> Color {
-        let miolo = encolhe_y(r, m::FIELD_BORDER + m::SEG_PAD);
+        self.segmento_em(scene, encolhe_y(r, m::FIELD_BORDER + m::SEG_PAD), on, hover)
+    }
+
+    /// O segmento pintado EXACTAMENTE em `miolo` (a faixa já mediu a altura do controlo).
+    pub fn segmento_em(self, scene: &mut VectorScene, miolo: Rect, on: bool, hover: bool) -> Color {
         if let Some(fundo) = fundo_de_estado(on, hover) {
             fill_rounded_rect(scene, miolo, m::SEG_RADIUS, self.ink.color(fundo));
         }

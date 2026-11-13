@@ -8,7 +8,7 @@ use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{ContextMenuKind, HitIndex, WidgetStore};
 use crate::paint::{
-    fill_rounded_rect, icon_glyph_side, paint_icon, paint_text, paint_text_centered,
+    fill_rounded_rect, folga_do_texto, paint_icon_nitido, paint_text, paint_text_centered,
     rect_for_label, resolve,
 };
 use crate::widget::ButtonState;
@@ -18,7 +18,9 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_i18n::tr;
 use ph2d_text::{FontWeight, TextSystem};
-use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{
+    BAR_ICON_PX, ColorToken, MENU_BAR_CTL_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
+};
 use ph2d_vector::VectorScene;
 
 use super::context_menu_overlay::MENU_W;
@@ -45,7 +47,7 @@ fn menu_w(text_system: &mut TextSystem) -> f32 {
     Spacing::Xs.px() * 2.0
         + marca_w(text_system)
         + rect_for_label(rotulo)
-        + INLINE_ICON_PX
+        + BAR_ICON_PX
         + Spacing::Xs.px()
 }
 
@@ -101,12 +103,25 @@ pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Fa
     }
 }
 
-/// A caixa de um controlo dentro da faixa: uma linha de menu de alto, centrada (maquete C: os
-/// controlos de 22 px na faixa de 30), nunca a tocar o topo nem o fundo.
+/// A caixa de um controlo dentro da faixa: `MENU_BAR_CTL_H_PX` de alto, centrada, nunca a tocar o topo
+/// nem o fundo. TODO controlo da faixa tem esta altura (onda 7: eram quatro — 22, 24, 28 e 22).
 pub(super) fn caixa(r: Rect) -> Rect {
     let d = m::FIELD_BORDER;
-    let h = (r.h - d * 2.0).min(ph2d_tokens::ROW_H_PX).max(0.0);
+    let h = (r.h - d * 2.0).min(MENU_BAR_CTL_H_PX).max(0.0);
     Rect::new(r.x, r.y + (r.h - h) * 0.5, r.w, h)
+}
+
+/// O segmento DENTRO de uma pílula da faixa (a aba escolhida, o Play, o Pause): a [`caixa`] menos o
+/// respiro do segmento de cada lado — a pílula e o controlo solto têm a mesma altura.
+pub(super) fn segmento(r: Rect) -> Rect {
+    let c = caixa(r);
+    let d = m::SEG_PAD;
+    Rect::new(
+        c.x + d,
+        c.y + d,
+        (c.w - d * 2.0).max(0.0),
+        (c.h - d * 2.0).max(0.0),
+    )
 }
 
 /// ⭐ **A caixa do nome de um botão «glifo + nome»** (o «Menu», o Play), do fim do glifo (`de`) à
@@ -186,14 +201,12 @@ pub fn paint(
     let nome_w = ph2d_text::com_peso_exato(|| {
         text_system.prefix_width_weighted(marca_nome, xs, FontWeight::BOLD)
     });
+    let marca_y = marca.y + folga_do_texto(marca.h, xs);
     crate::paint::paint_text_elided_in_weight(
         text_system,
         scene,
         marca_nome,
-        [
-            marca.x + (marca.w - nome_w) * 0.5,
-            marca.y + (marca.h - xs) * 0.5,
-        ],
+        [marca.x + (marca.w - nome_w) * 0.5, marca_y],
         xs,
         marca.w,
         tons.marca_texto,
@@ -201,7 +214,7 @@ pub fn paint(
     );
     // O nome «Menu» e a seta.
     let rotulo = tr("chrome.menu_bar.menu");
-    let seta = INLINE_ICON_PX;
+    let seta = BAR_ICON_PX;
     let fim_nome = f.menu.x + f.menu.w - seta - Spacing::Xs.px();
     let caixa_nome = Rect::new(
         marca.x + marca.w,
@@ -211,13 +224,7 @@ pub fn paint(
     );
     paint_text_centered(text_system, scene, rotulo, caixa_nome, font, tinta);
     let glifo = Rect::new(fim_nome, f.menu.y + (f.menu.h - seta) * 0.5, seta, seta);
-    paint_icon(
-        scene,
-        IconId::ChevronDown,
-        glifo,
-        tinta,
-        StrokeToken::Default.px(),
-    );
+    paint_icon_nitido(scene, IconId::ChevronDown, glifo, tinta, false);
     hit_index.register(ids::MENUBAR_W, f.menu);
 
     // ── «Find anything» ── um campo que é um botão: clicar abre a busca.
@@ -238,7 +245,7 @@ pub fn paint(
         if hover { tons.texto } else { tons.contorno },
     );
     let apagado = if hover { tons.texto } else { tons.apagado };
-    let lupa = INLINE_ICON_PX;
+    let lupa = BAR_ICON_PX;
     let pad = Spacing::Md.px();
     let lx = if f.lupa {
         cx.x + (cx.w - lupa) * 0.5
@@ -246,13 +253,7 @@ pub fn paint(
         cx.x + pad
     };
     let glifo = Rect::new(lx, cx.y + (cx.h - lupa) * 0.5, lupa, lupa);
-    paint_icon(
-        scene,
-        IconId::Search,
-        glifo,
-        apagado,
-        StrokeToken::Default.px(),
-    );
+    paint_icon_nitido(scene, IconId::Search, glifo, apagado, false);
     hit_index.register(ids::MENUBAR_FIND, f.find);
     if f.lupa {
         return;
@@ -268,29 +269,22 @@ pub fn paint(
         ph,
     );
     fill_rounded_rect(scene, placa, Radius::Sm.px().min(ph * 0.5), tons.tecla);
+    let tecla_y = placa.y + folga_do_texto(placa.h, xs);
     paint_text(
         text_system,
         scene,
         tecla,
         placa.x + Spacing::Sm.px(),
-        placa.y + (placa.h - xs) * 0.5,
+        tecla_y,
         xs,
         tw,
         tons.tecla_texto,
     );
-    let ty = cx.y + (cx.h - font) * 0.5;
+    let convite = tr("chrome.menu_bar.find");
+    let ty = cx.y + folga_do_texto(cx.h, font);
     let x = lx + lupa + ph2d_tokens::icon_label_gap_px();
     let max_w = (placa.x - Spacing::Md.px() - x).max(0.0);
-    paint_text(
-        text_system,
-        scene,
-        tr("chrome.menu_bar.find"),
-        x,
-        ty,
-        font,
-        max_w,
-        apagado,
-    );
+    paint_text(text_system, scene, convite, x, ty, font, max_w, apagado);
 }
 
 #[cfg(test)]

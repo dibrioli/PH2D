@@ -43,13 +43,14 @@ fn nome_do_play() -> &'static str {
 pub fn play_width(text_system: &mut ph2d_text::TextSystem, bar_h: f32) -> f32 {
     let nome = text_system.prefix_width(nome_do_play(), TypeToken::Sm.px());
     Spacing::Sm.px()
-        + crate::paint::icon_glyph_side(controlo(bar_h))
+        + ph2d_tokens::BAR_ICON_PX
+        + Spacing::Sm.px()
         + crate::paint::rect_for_label(nome)
 }
 
 /// O lado de um controlo na faixa: uma linha de menu (maquete C), nunca mais alto que a faixa.
 pub(super) fn controlo(bar_h: f32) -> f32 {
-    ph2d_tokens::ROW_H_PX.min(bar_h)
+    ph2d_tokens::MENU_BAR_CTL_H_PX.min(bar_h)
 }
 
 /// A largura da seta do palco.
@@ -158,9 +159,9 @@ pub fn separador(botoes: &[(NodeId, IconId, Rect)]) -> Option<Rect> {
     let i = botoes.iter().position(|(id, ..)| *id == CONTROLS.0)?;
     let (antes, r) = (botoes.get(i.checked_sub(1)?)?.2, botoes[i].2);
     let w = StrokeToken::Thin.px();
-    let inset = Spacing::Xs.px();
+    let h = ph2d_tokens::BAR_ICON_PX.min(r.h);
     let x = (antes.x + antes.w + r.x - w) * 0.5;
-    Some(Rect::new(x, r.y + inset, w, r.h - inset * 2.0))
+    Some(Rect::new(x, r.y + (r.h - h) * 0.5, w, h))
 }
 
 /// ⭐ **A shell publica a corrida a cada quadro** (`palco_janela`): o hero completa-a com o mapa (o jogo tem a tela?)
@@ -241,13 +242,10 @@ pub fn aceso(id: NodeId, run: GameRun) -> bool {
 #[must_use]
 pub fn caixa_do_controls(r: Rect, theme: Theme) -> (Rect, f32) {
     use ph2d_card_stack::metrics as m;
-    let recuo = m::FIELD_BORDER + m::SEG_PAD;
-    let caixa = Rect::new(
-        r.x + recuo,
-        r.y + recuo,
-        r.w - recuo * 2.0,
-        r.h - recuo * 2.0,
-    );
+    // A altura de um segmento (o Play, o Pause, o Stop ao lado), dentro do alvo.
+    let seg = super::menu_faixa::segmento(r);
+    let lado = seg.h.min(r.w);
+    let caixa = Rect::new(r.x + (r.w - lado) * 0.5, seg.y, lado, lado);
     let raio = crate::widget::cromo_barra::Barra::de(theme).map_or_else(
         || crate::paint::frame_radius(theme, Radius::Sm.px()),
         |_| m::SEG_RADIUS,
@@ -318,7 +316,7 @@ pub fn paint(
 ) {
     let barra = crate::widget::cromo_barra::Barra::de(theme);
     if let (Some(b), Some(u)) = (barra, pilula(botoes)) {
-        b.pilula(scene, u);
+        b.pilula_em(scene, super::menu_faixa::caixa(u));
     }
     if let Some(s) = separador(botoes) {
         let cor = barra.map_or_else(|| resolve(ColorToken::Border, theme), |b| b.divisoria());
@@ -337,8 +335,8 @@ pub fn paint(
             // ⭐ O Play é a pílula cheia da maquete C (onda 6): o tom de sucesso do tema, com o
             // contraste dos `faixa_tons`; pairado, o filete do texto diz «carrega aqui».
             let t = super::faixa_tons::tons(theme);
-            let caixa = super::menu_faixa::caixa(*r);
-            let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
+            let caixa = super::menu_faixa::segmento(*r);
+            let raio = ph2d_card_stack::metrics::SEG_RADIUS;
             fill_rounded_rect(scene, caixa, raio, t.play);
             if hover || on {
                 let fino = StrokeToken::Thin.px();
@@ -353,7 +351,7 @@ pub fn paint(
             }
             t.play_texto
         } else if let Some(b) = barra {
-            b.segmento(scene, *r, on, hover)
+            b.segmento_em(scene, super::menu_faixa::segmento(*r), on, hover)
         } else {
             let fundo = if on {
                 Some(ColorToken::AccentSoft)
@@ -374,18 +372,18 @@ pub fn paint(
             )
         };
         let com_nome = *id == ids::TOPBAR_PLAY_BUTTON && r.w > r.h;
-        let lado = if *id == ids::MENUBAR_PLAY_MENU {
-            ph2d_tokens::INLINE_ICON_PX
-        } else {
-            crate::paint::icon_glyph_side(controlo(r.h))
-        };
+        let lado = ph2d_tokens::BAR_ICON_PX;
         let gx = if com_nome {
             r.x + Spacing::Sm.px()
         } else {
             r.x + (r.w - lado) * 0.5
         };
         let glifo = Rect::new(gx, r.y + (r.h - lado) * 0.5, lado, lado);
-        crate::paint::paint_icon(scene, *icon, glifo, cor, StrokeToken::Default.px());
+        let cheio = matches!(
+            *id,
+            ids::TOPBAR_PLAY_BUTTON | ids::TOPBAR_PAUSE | ids::TOPBAR_RESET
+        );
+        crate::paint::paint_icon_nitido(scene, *icon, glifo, cor, cheio);
         if com_nome {
             let nome = super::menu_faixa::caixa_do_nome(text_system, nome_do_play(), *r, gx + lado);
             let px = TypeToken::Sm.px();

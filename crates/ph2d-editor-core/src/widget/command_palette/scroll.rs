@@ -112,11 +112,11 @@ pub(super) fn metrics(
     }
 }
 
-/// Onde o topo da paleta em lista assenta: por baixo da faixa da barra de menus (a altura dela é
-/// a de uma linha, `MENU_BAR_H = ROW_H_PX`).
+/// Onde o topo da paleta em lista assenta: por baixo da faixa (`MENU_BAR_H_PX`), com um vão. Era
+/// `ROW_H_PX` (22), de quando a faixa media uma linha: com a faixa a 30 a lista tapava meio campo.
 #[must_use]
 pub fn list_top() -> f32 {
-    ph2d_tokens::ROW_H_PX
+    ph2d_tokens::MENU_BAR_H_PX + Spacing::Xs.px()
 }
 
 /// ⭐ **Até onde a roda pode levar a lista** — `0` quando tudo cabe.

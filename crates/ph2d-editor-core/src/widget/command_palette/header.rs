@@ -202,9 +202,8 @@ pub(super) fn paint_header(
             lado,
             lado,
         );
-        let traco = ph2d_tokens::StrokeToken::Default.px();
         let tinta = superficie.cor(ColorToken::Text2);
-        crate::paint::paint_icon(scene, crate::icons::IconId::Search, r, tinta, traco);
+        crate::paint::paint_icon_nitido(scene, crate::icons::IconId::Search, r, tinta, false);
         lado + Spacing::Xs.px()
     } else {
         0.0
@@ -279,12 +278,13 @@ pub(super) fn paint_header(
         crate::paint::paint_icon(scene, crate::icons::IconId::Close, icone, tinta, traco);
         return close_rect;
     }
+    let ty = close_rect.y + crate::paint::folga_do_texto(CLOSE_W, font);
     paint_text(
         ts,
         scene,
         "X",
         close_rect.x + CLOSE_W * 0.3, // LITERAL-PX-OK: o X recua 30% para dentro do quadrado (fração, não medida)
-        close_rect.y + (CLOSE_W - font) * 0.5,
+        ty,
         font,
         CLOSE_W,
         resolve(ColorToken::Text1, theme),

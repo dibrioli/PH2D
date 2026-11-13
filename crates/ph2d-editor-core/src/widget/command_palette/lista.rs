@@ -193,10 +193,10 @@ fn height(row: &Row<'_>) -> f32 {
     }
 }
 
-/// A altura de uma linha de item: a do campo do cartão (maquete C: `.c15it.tall`, 30 px).
+/// A altura de uma linha de item (onda 7: 32, a do campo da busca — o campo e as linhas alinham).
 #[must_use]
 pub fn item_h() -> f32 {
-    m::FIELD_H
+    m::FIELD_H + Spacing::Xs.px()
 }
 
 /// A altura que a lista pede.
@@ -391,7 +391,7 @@ pub(super) fn paint_rows(
     let superficie = Superficie::de(theme);
     let t = tons(theme);
     let (sm, xs) = (TypeToken::Sm.px(), TypeToken::Xs.px());
-    let pad = Spacing::Sm.px();
+    let pad = Spacing::Md.px();
     let gap = Spacing::Sm.px();
     let q = query.strip_prefix('>').unwrap_or(query);
     let inner_w = (w - pad * 2.0).max(0.0);

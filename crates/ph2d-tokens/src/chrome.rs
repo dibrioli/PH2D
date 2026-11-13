@@ -68,6 +68,8 @@ pub const TOOL_CHIP_PX: f32 = crate::generated::CHROME_TOOL_CHIP;
 pub const TOOL_ROW_H_PX: f32 = crate::generated::CHROME_TOOL_ROW_H;
 /// O glifo da fila fina. Per tokens.json `chrome.tool-row-icon`.
 pub const TOOL_ROW_ICON_PX: f32 = crate::generated::CHROME_TOOL_ROW_ICON;
+/// O chip (quadrado) de um glifo da fila fina. Per tokens.json `chrome.tool-row-chip`.
+pub const TOOL_ROW_CHIP_PX: f32 = crate::generated::CHROME_TOOL_ROW_CHIP;
 /// O respiro lateral da fila fina. Per tokens.json `chrome.tool-row-pad`.
 pub const TOOL_ROW_PAD_PX: f32 = crate::generated::CHROME_TOOL_ROW_PAD;
 /// O vão entre dois itens da fila fina. Per tokens.json `chrome.tool-row-gap`.
@@ -77,6 +79,15 @@ pub const TOOL_ROW_GROUP_GAP_PX: f32 = crate::generated::CHROME_TOOL_ROW_GROUP_G
 /// A faixa do topo (barra de menus, maquete C `.c15mb`, dono 12/11: «a altura é melhor na
 /// maquete»). Per tokens.json `chrome.menu-bar-h`.
 pub const MENU_BAR_H_PX: f32 = crate::generated::CHROME_MENU_BAR_H;
+/// A altura de um controlo dentro da faixa (campo, Play, «Menu», abas). Per tokens.json
+/// `chrome.menu-bar-ctl-h`. Medido 13/11 (onda 7): VS Code 24 em 35, Blender 21 em 27.
+pub const MENU_BAR_CTL_H_PX: f32 = crate::generated::CHROME_MENU_BAR_CTL_H;
+/// O lado do glifo nas barras do topo (faixa e fila fina), desenhado SEM respiro. Per tokens.json
+/// `chrome.bar-icon`. Medido 13/11: VS Code, Godot e Blender desenham 14–16 px.
+pub const BAR_ICON_PX: f32 = crate::generated::CHROME_BAR_ICON;
+/// O traço do glifo das barras em px de ECRÃ (não da viewbox 24). Per tokens.json
+/// `chrome.bar-icon-stroke`.
+pub const BAR_ICON_STROKE_PX: f32 = crate::generated::CHROME_BAR_ICON_STROKE;
 
 /// LeftRail divider gap. Per tokens.json `chrome.divider-gap`.
 pub const DIVIDER_GAP_PX: f32 = crate::generated::CHROME_DIVIDER_GAP;

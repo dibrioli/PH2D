@@ -94,7 +94,10 @@ const TABLETS: [(&str, f32, f32); 3] = [
 /// ⭐ **Subiu em 13/11** (line/BarraDeMenus, onda 6, ordem do dono com a maquete C ao lado): a faixa
 /// de cima foi de 22 para 30 px, a fila de ferramentas de ~54 para 26 px (sem legendas); o saldo
 /// mediu `51,6 · 50,9 · 50,4 %` (era `50,5 · 49,3 · 48,6`), e o piso trava o ganho.
-const FLOOR: [(&str, f32); 3] = [("iPad 12.9", 51.5), ("iPad 11", 50.8), ("iPad mini", 50.3)];
+/// ⭐ **Desceu em 13/11** (onda 7, dono no smoke da onda 6: *«as barras poderiam ser um pouco mais
+/// largas»*): faixa 30 → 36, fila 26 → 32 (VS Code 35, Godot 39, Blender 27/28, medidos); o saldo
+/// mediu `51,0 · 50,1 · 49,5 %`, ainda acima de antes da onda 6.
+const FLOOR: [(&str, f32); 3] = [("iPad 12.9", 50.9), ("iPad 11", 50.0), ("iPad mini", 49.4)];
 
 /// Quanto acima do piso é «ganhou-se área e a barra ficou obsoleta».
 const STALE_ABOVE: f32 = 2.0;

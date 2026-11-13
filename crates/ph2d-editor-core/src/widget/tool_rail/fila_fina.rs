@@ -8,7 +8,9 @@
 use super::*;
 use crate::widget::cromo_barra::Barra;
 use ph2d_card_stack::metrics as m;
-use ph2d_tokens::{TOOL_ROW_GAP_PX, TOOL_ROW_GROUP_GAP_PX, TOOL_ROW_ICON_PX, TOOL_ROW_PAD_PX};
+use ph2d_tokens::{
+    TOOL_ROW_CHIP_PX, TOOL_ROW_GAP_PX, TOOL_ROW_GROUP_GAP_PX, TOOL_ROW_ICON_PX, TOOL_ROW_PAD_PX,
+};
 
 /// As cores da fila fina, por papel. O gate de contraste lê ESTA tabela.
 pub struct TintaFina {
@@ -33,10 +35,10 @@ pub const TINTA: TintaFina = TintaFina {
     texto: ColorToken::Text2,
 };
 
-/// O lado do chip de um glifo: o glifo e o respiro, metade de cada lado.
+/// O lado do chip de um glifo (o glifo de `TOOL_ROW_ICON_PX` ao meio).
 #[must_use]
 pub fn lado_do_glifo() -> f32 {
-    TOOL_ROW_ICON_PX + Spacing::Sm.px()
+    TOOL_ROW_CHIP_PX
 }
 
 /// O respiro do texto de uma opção dentro do chip dela.
@@ -229,7 +231,6 @@ pub fn paint_fila_fina(
     theme: Theme,
     store: &WidgetStore,
 ) {
-    let traco = StrokeToken::Default.px();
     for slot in fila_fina_slots(rail, rect) {
         let r = slot.rect;
         let Some(entry) = rail.entries.get(slot.index) else {
@@ -255,7 +256,7 @@ pub fn paint_fila_fina(
                 } else {
                     TINTA.glifo
                 };
-                paint_icon(scene, *icon, glifo, cor(barra, fg), traco);
+                crate::paint::paint_icon_nitido(scene, *icon, glifo, cor(barra, fg), false);
             }
             ToolRailEntry::Glyph {
                 id, path, active, ..

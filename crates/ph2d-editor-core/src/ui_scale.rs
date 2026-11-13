@@ -59,6 +59,12 @@ pub fn ao_pixel(v: f32) -> f32 {
     (v * s).round() / s
 }
 
+/// Meio pixel do ECRÃ em px lógicos (`0,5` a `100 %`).
+#[must_use]
+pub fn meio_pixel() -> f32 {
+    0.5 / GRELHA.with(std::cell::Cell::get)
+}
+
 /// Publica a escala do quadro — o `paint_hero_screen` chama-a, como faz com o estilo do texto.
 pub fn publish(scale: UiScale) {
     ACTIVE.with(|c| c.set(scale));

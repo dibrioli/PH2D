@@ -63,6 +63,7 @@ fn rota(r: &str) {
     ph2d_wet_paint::flow::COMMIT_ROTA.store(0, Relaxed);
     ph2d_wet_paint::solver::COMMIT_NO_BLOCO.store(1, Relaxed);
     ph2d_wet_paint::solver::SAIA_COLUNAS.store(1, Relaxed);
+    ph2d_wet_paint::solver::TRANSPORTE_LANES.store(1, Relaxed);
     use ph2d_wet_paint::assenta as asn;
     asn::MEMO_ASSENTA.store(1, Relaxed);
     let n = r.get(1..).and_then(|v| v.parse().ok());
@@ -77,6 +78,8 @@ fn rota(r: &str) {
         // N.º 7 advecção: `q` = o commit em passe à parte (o de antes do complemento nos blocos).
         (Some(b'q'), _) => ph2d_wet_paint::solver::COMMIT_NO_BLOCO.store(0, Relaxed),
         (Some(b'k'), _) => ph2d_wet_paint::solver::SAIA_COLUNAS.store(0, Relaxed),
+        // N.º 7: `v` = o transporte na rota escalar (o de antes das lanes).
+        (Some(b'v'), _) => ph2d_wet_paint::solver::TRANSPORTE_LANES.store(0, Relaxed),
         (Some(b'c'), Some(n)) => {
             ph2d_wet_paint::flow::COMMIT_ROTA.store(u8::try_from(n).unwrap_or(0), Relaxed)
         }

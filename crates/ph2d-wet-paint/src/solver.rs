@@ -640,6 +640,7 @@ pub use advect::advect;
 #[doc(hidden)]
 pub use advect_jacobi::{
     ADVECT_FASES, BLOCO_LINHAS, COMMIT_NO_BLOCO, MEIO_PARADO, MOMENTO_FORA, SAIDA_BLOCO,
+    TRANSPORTE_LANES,
 };
 pub use advect_jacobi::{
     advect_jacobi, advect_jacobi_partes, advect_jacobi_rows, destination_reach,

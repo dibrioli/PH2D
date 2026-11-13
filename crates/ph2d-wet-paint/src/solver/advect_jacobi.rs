@@ -485,18 +485,63 @@ pub(super) fn transport_row(
     uv: &[[f32; 2]],
     ubase: usize,
 ) {
-    let s = c.s;
-    let (film, susp, susp_rgb) = (c.film, c.susp, c.susp_rgb);
+    if !c.km_mean && lanes::TRANSPORTE_LANES.load(std::sync::atomic::Ordering::Relaxed) == 1 {
+        lanes::transport_row_lanes(c, y, fr, sr, cr, outflow, obase, uv, ubase);
+        return;
+    }
+    transport_row_escalar(c, y, fr, sr, cr, outflow, obase, uv, ubase);
+}
+
+/// A rota escalar do [`transport_row`]: o oráculo das lanes e a rota do `km_mean`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn transport_row_escalar(
+    c: &Ctx,
+    y: i32,
+    fr: &mut [f32],
+    sr: &mut [f32],
+    cr: &mut [[f32; 3]],
+    outflow: &[f32],
+    obase: usize,
+    uv: &[[f32; 2]],
+    ubase: usize,
+) {
     let (lo, hi) = c.span(y);
     if lo > hi {
         return;
     }
-    let mut km_colors = [0.0f64; 12];
-    let mut km_weights = [0.0f64; 4];
-    let mut km_out = [0.0f64; 3];
+    let mut km = ([0.0f64; 12], [0.0f64; 4], [0.0f64; 3]);
     for (ra, rb) in c.runs(y) {
-        let mut i = ra as usize + y as usize * s;
         for x in ra..=rb {
+            transport_cell(c, y, x, fr, sr, cr, outflow, obase, uv, ubase, &mut km);
+        }
+    }
+}
+
+/// O rascunho do K–M de uma célula.
+type Km = ([f64; 12], [f64; 4], [f64; 3]);
+
+/// Uma célula `(x, y)` do [`transport_row_escalar`].
+#[allow(clippy::too_many_arguments)]
+#[inline(always)]
+pub(super) fn transport_cell(
+    c: &Ctx,
+    y: i32,
+    x: i32,
+    fr: &mut [f32],
+    sr: &mut [f32],
+    cr: &mut [[f32; 3]],
+    outflow: &[f32],
+    obase: usize,
+    uv: &[[f32; 2]],
+    ubase: usize,
+    km: &mut Km,
+) {
+    let s = c.s;
+    let (film, susp, susp_rgb) = (c.film, c.susp, c.susp_rgb);
+    let (km_colors, km_weights, km_out) = km;
+    let i = x as usize + y as usize * s;
+    {
+        {
             let f0 = film[i] as f64;
             let m0 = susp[i] as f64;
             // O que SAI (vale para toda célula com massa, ativa ou não —
@@ -566,7 +611,7 @@ pub(super) fn transport_row(
                             km_weights[1] = p10;
                             km_weights[2] = p01;
                             km_weights[3] = p11;
-                            km_weighted_mean_color(&km_colors, &km_weights, 4, inv, &mut km_out);
+                            km_weighted_mean_color(km_colors, km_weights, 4, inv, km_out);
                             r_in = km_out[0];
                             g_in = km_out[1];
                             b_in = km_out[2];
@@ -599,7 +644,6 @@ pub(super) fn transport_row(
             fr[x as usize] = new_film as f32;
             sr[x as usize] = new_susp as f32;
             cr[x as usize] = new_rgb;
-            i += 1;
         }
     }
 }
@@ -615,8 +659,12 @@ use commit::{commit_rows, walk_rows2_reduce};
 #[path = "advect_fundida.rs"]
 mod fundida;
 
+#[path = "advect_lanes.rs"]
+mod lanes;
 #[path = "advect_saida.rs"]
 mod saida;
+#[doc(hidden)]
+pub use lanes::TRANSPORTE_LANES;
 #[doc(hidden)]
 pub use saida::SAIDA_BLOCO;
 
@@ -636,3 +684,7 @@ mod advect_jacobi_measure;
 #[cfg(test)]
 #[path = "advect_bit_tests.rs"]
 mod advect_bit_tests;
+
+#[cfg(test)]
+#[path = "advect_lanes_tests.rs"]
+mod advect_lanes_tests;

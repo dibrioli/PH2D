@@ -70,3 +70,97 @@ fn o_primeiro_toque_da_camada_nova_envia_so_a_caixa_ao_bit() {
         primeiro[0]
     );
 }
+
+/// **N7 onda 5 — apagar, duplicar e agrupar compõem na placa só o sujo com a lista NOVA, ao bit.** Duas pistas com
+/// o mesmo documento e os mesmos gestos: a antiga (`SEMPRE_INTEIRA`, a tela inteira em todo quadro) é o oráculo do
+/// slot (placa × placa). Controlo: a pista nova confinou com a lista nova; com `ESTRUTURA_RECOMPOE` (a mutação), não.
+/// Sem adaptador (a CI sem placa) não há nada a afirmar e o teste sai; com placa corre por nome (240², segundos).
+#[test]
+fn apagar_duplicar_e_agrupar_compoem_na_placa_so_o_sujo_ao_bit() {
+    use crate::painter_preview_pipeline_tests::assert_screen_equals;
+    use ph2d_editor_core::tool::RasterEditTool as _;
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        eprintln!("sem adaptador de placa: nada a afirmar");
+        return;
+    };
+    let lado = 240u32;
+    // Tinta só numa faixa de cada camada: a janela do gesto não é a tela inteira.
+    let faixa = |semente: u32, y0: u32| -> Vec<u8> {
+        let mut s = semente | 1;
+        let mut px = vec![0u8; (lado * lado * 4) as usize];
+        for (i, b) in px.iter_mut().enumerate() {
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            let y = (i as u32 / 4) / lado;
+            if (y0..y0 + 30).contains(&y) {
+                *b = (s >> 24) as u8;
+            }
+        }
+        px
+    };
+    for gesto in 0u8..3 {
+        for controlo in [false, true] {
+            ESTRUTURA_RECOMPOE.set(controlo);
+            CONFINADAS_POR_ESTRUTURA.set(0);
+            let pista = || {
+                let mut t = PainterTool::default();
+                t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
+                t.add_raster_layer_with_pixels("A", faixa(7, 20))
+                    .expect("A");
+                let b = t
+                    .add_raster_layer_with_pixels("B", faixa(11, 100))
+                    .expect("B");
+                t.add_raster_layer_with_pixels("C", faixa(13, 180))
+                    .expect("C");
+                t.select_layer(b);
+                let r = SpriteRenderer::new(
+                    gpu.clone(),
+                    ph2d_render::GameRt::FORMAT,
+                    ph2d_render::TextureAtlas::dummy(&gpu),
+                    8,
+                );
+                (t, b, r, None, None, ToastQueue::default())
+            };
+            let mut pistas = [pista(), pista()];
+            // 0 = a semente; 1 = o gesto; 2 = undo; 3 = redo.
+            for passo in 0u8..4 {
+                let mut telas = Vec::new();
+                for (antigo, (t, b, r, s, g, toasts)) in pistas.iter_mut().enumerate() {
+                    SEMPRE_INTEIRA.set(antigo == 1);
+                    match passo {
+                        1 => match gesto {
+                            0 => assert!(t.delete_layer(*b)),
+                            1 => assert!(t.duplicate_layer(*b).is_some()),
+                            _ => assert!(t.group_active().is_some()),
+                        },
+                        2 => assert!(t.undo_last()),
+                        3 => assert!(t.redo_last()),
+                        _ => {}
+                    }
+                    if passo == 0 {
+                        // A 1.ª drenagem cria a sessão (a lista guardada nasce na 2.ª).
+                        assert!(try_drive(s, r, t, Some(1), g, toasts), "a semente");
+                        t.pede_a_composicao_inteira();
+                    }
+                    assert!(try_drive(s, r, t, Some(1), g, toasts), "a placa é dona");
+                    let id = g.expect("o slot da placa").texture_id;
+                    telas.push(r.individual().readback(&gpu, id).expect("readback").2);
+                }
+                SEMPRE_INTEIRA.set(false);
+                let ctx = format!("gesto {gesto} · controlo={controlo} · passo {passo}");
+                assert_screen_equals(&telas[0], &telas[1], lado, &ctx);
+            }
+            ESTRUTURA_RECOMPOE.set(false);
+            let n = CONFINADAS_POR_ESTRUTURA.get();
+            if controlo {
+                assert_eq!(n, 0, "gesto {gesto}: o controlo confinou {n} drenagens");
+            } else {
+                assert!(
+                    n >= 1,
+                    "gesto {gesto}: a placa não confinou com a lista nova"
+                );
+            }
+        }
+    }
+}

@@ -153,16 +153,6 @@ impl PainterTool {
         self.guarda_o_chao_preto(&fundo, preto);
     }
 
-    /// O corte do aquecimento por colher (o gate do fio descartado).
-    #[cfg(test)]
-    pub(super) fn corte_do_aquecimento(&self) -> Option<Arc<Corte>> {
-        self.paint
-            .aquecimento
-            .0
-            .as_ref()
-            .map(|a| Arc::clone(&a.cancela))
-    }
-
     /// O fio do aquecimento já acabou (`None` = não há aquecimento por colher).
     #[cfg(test)]
     pub(super) fn aquecimento_acabou(&self) -> Option<bool> {

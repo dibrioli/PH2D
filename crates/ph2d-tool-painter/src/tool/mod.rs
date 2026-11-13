@@ -277,6 +277,9 @@ pub struct PainterTool {
     /// B18.4: `(chave, versão)` da camada que o «+» fez nascer transparente sem recompor — a placa limpa-lhe
     /// a fatia sem envio ([`Self::take_camada_nova_limpa`]).
     camada_nova_limpa: Option<(u64, u64)>,
+    /// N7 onda 5: a lista achatada da placa antes e depois do último gesto de estrutura CONFINADO (apagar,
+    /// duplicar, agrupar), tomada por [`Self::take_estrutura_confinada`]: a placa compõe só o sujo com a nova.
+    estrutura_confinada: Option<(Vec<ph2d_layer_ops::LayerOp>, Vec<ph2d_layer_ops::LayerOp>)>,
     /// Structural (layer-model) undo/redo. Driven by the layer ops in
     /// [`crate::tool`] via `commit_structural_edit`.
     undo: crate::undo::UndoController,
@@ -461,6 +464,7 @@ impl Default for PainterTool {
             edited_since_bind: false,
             deferred_bake: false,
             camada_nova_limpa: None,
+            estrutura_confinada: None,
             undo: crate::undo::UndoController::default(),
             undo_writes: 0,
             dirty_rect: None,

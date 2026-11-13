@@ -61,19 +61,29 @@ thread_local! {
     pub(crate) static SEMPRE_INTEIRA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// B18.4: o caminho de antes da cura (a camada nova sobe inteira no 1.º toque), o controlo do gate.
     pub(crate) static NOVA_SEM_LIMPAR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// N7 onda 5: a lista nova de um gesto de estrutura confinado não confina a placa (a mutação/o controlo).
+    pub(crate) static ESTRUTURA_RECOMPOE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Quantas drenagens confinaram com a lista nova de um gesto de estrutura (o controlo do gate).
+    pub(crate) static CONFINADAS_POR_ESTRUTURA: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// B20.1: o retângulo sujo + 1 px, ou `None` = semente inteira (1.º quadro, renasce, a CPU foi dona,
-/// slot de outro tamanho, ou mudou uma entrada global).
+/// slot de outro tamanho, ou mudou uma entrada global). N7 onda 5: a lista que mudou por um gesto de estrutura
+/// confinado (`estrutura`, a `(antes, depois)` da ferramenta) conta como a mesma quando a guardada é `antes`.
 fn regiao_suja(
     s: Option<&mut PainterGpuPreview>,
     painter: &PainterTool,
     (ops, luts): (&[LayerOp], &[f32]),
     (w, h): (u32, u32),
     slot: Option<PainterPreviewGpu>,
+    estrutura: Option<(Vec<LayerOp>, Vec<LayerOp>)>,
 ) -> Option<(u32, u32, u32, u32)> {
     let s = s?;
-    let mesmas = s.entradas.0 == ops && s.entradas.1 == luts && s.entradas.2 == painter.papel();
+    let mesma_lista = s.entradas.0 == ops;
+    let lista = mesma_lista
+        || (!estrutura_recompoe_como_antes()
+            && estrutura.is_some_and(|(antes, depois)| s.entradas.0 == antes && depois == ops));
+    let mesmas = lista && s.entradas.1 == luts && s.entradas.2 == painter.papel();
     s.entradas.0.clear();
     s.entradas.0.extend_from_slice(ops);
     s.entradas.1.clear();
@@ -88,7 +98,22 @@ fn regiao_suja(
     }
     let r = painter.preview_gpu_region()?;
     let mesmo_slot = slot.is_some_and(|g| (g.width, g.height) == (w, h));
+    #[cfg(test)]
+    if s.dona && mesmas && mesmo_slot && !mesma_lista {
+        CONFINADAS_POR_ESTRUTURA.set(CONFINADAS_POR_ESTRUTURA.get() + 1);
+    }
     (s.dona && mesmas && mesmo_slot).then(|| halo(r, w, h))
+}
+
+/// N7 onda 5, a chave A×B em execução: `PH2D_ESTRUTURA_RECOMPOE=1` = a placa compõe a tela inteira depois de
+/// apagar, duplicar ou agrupar (o caminho de antes). Lida uma vez.
+fn estrutura_recompoe_como_antes() -> bool {
+    #[cfg(test)]
+    if ESTRUTURA_RECOMPOE.get() {
+        return true;
+    }
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var_os("PH2D_ESTRUTURA_RECOMPOE").is_some_and(|v| v == "1"))
 }
 
 /// B18.4: a camada nascida transparente entra na pilha guardada sem recompor (α = 0 deixa a figura) e a sua
@@ -274,12 +299,14 @@ pub(super) fn try_drive(
         );
     }
     if painter.take_preview_dirty() || renasce {
+        let estrutura = painter.take_estrutura_confinada();
         let sujo = regiao_suja(
             session_slot.as_mut().filter(|_| !renasce),
             painter,
             (&ops, &adj_luts),
             (w, h),
             *painter_preview_gpu,
+            estrutura,
         );
         if !drive(
             session_slot,

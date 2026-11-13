@@ -608,3 +608,74 @@ fn a_troca_com_um_sujo_pendente_nao_recompoe_e_a_figura_fica() {
         }
     }
 }
+
+/// N7 onda 5 — apagar, duplicar e agrupar com a tinta viva do Wet: a que adormece (de outra camada) ou acorda (na
+/// nova activa) marca só a janela da tinta dela; o cache fica e a figura é, bit a bit, a da recomposição inteira
+/// (undo/redo também). A placa recebe `(antes, depois)`. O controlo (`TROCA_RECOMPOE_SEMPRE`) recompõe tudo.
+#[test]
+fn apagar_duplicar_e_agrupar_com_a_tinta_viva_do_wet_marcam_so_a_janela() {
+    type Gesto = fn(&mut PainterTool, RtLayerId, RtLayerId);
+    let gestos: [(&str, Gesto); 4] = [
+        ("apagar a viva", |t, b, _| assert!(t.delete_layer(b))),
+        ("duplicar a viva", |t, b, _| {
+            t.duplicate_layer(b).expect("a cópia");
+        }),
+        ("duplicar outra", |t, _, c| {
+            t.duplicate_layer(c).expect("a cópia");
+        }),
+        ("grupo", |t, _, _| {
+            t.group_active().expect("o grupo");
+        }),
+    ];
+    let faixa = |semente: u32, y0: usize| -> Vec<u8> {
+        let mut px = ruido(semente);
+        for (y, linha) in px.chunks_mut(LADO as usize * 4).enumerate() {
+            if !(y0..y0 + 6).contains(&y) {
+                linha.fill(0);
+            }
+        }
+        px
+    };
+    for (gesto, faz) in gestos {
+        for antes in [false, true] {
+            let mut t = PainterTool::default();
+            t.abre_a_sprite(vec![255u8; N * 4], LADO, LADO);
+            t.set_wet_relogio_fixo(true);
+            t.add_raster_layer_with_pixels("A", faixa(7, 2)).expect("A");
+            let b = t
+                .add_raster_layer_with_pixels("B", faixa(11, 30))
+                .expect("B");
+            let c = t
+                .add_raster_layer_with_pixels("C", faixa(13, 40))
+                .expect("C");
+            t.select_layer(b);
+            t.set_paint_tool_mode("wetpaint");
+            traco(&mut t, 24.0);
+            assert!(t.tinta_viva(), "controlo: a sessão viva");
+            let _ = na_tela(&mut t);
+            let caso = format!("{gesto} · antes={antes}");
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+            faz(&mut t, b, c);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+            let ficou = t.composited_is_some();
+            assert_eq!(ficou, !antes, "{caso}: o cache ficou (ou não)");
+            assert_eq!(
+                t.take_estrutura_confinada().is_some(),
+                !antes,
+                "{caso}: a placa recebe a lista (ou não)"
+            );
+            if ficou && t.preview_dirty {
+                let r = t.dirty_rect.expect("a janela da tinta");
+                assert!(
+                    r.w < LADO || r.h < LADO,
+                    "{caso}: a janela é a tela inteira ({r:?})"
+                );
+            }
+            confere_a_figura(&mut t, &caso);
+            assert!(t.undo_last(), "{caso}: desfaz");
+            confere_a_figura(&mut t, &format!("{caso} · undo"));
+            assert!(t.redo_last(), "{caso}: refaz");
+            confere_a_figura(&mut t, &format!("{caso} · redo"));
+        }
+    }
+}

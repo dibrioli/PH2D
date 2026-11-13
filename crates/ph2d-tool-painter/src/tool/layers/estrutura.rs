@@ -71,7 +71,7 @@ impl PainterTool {
             return false;
         }
         self.fecha_a_forma_aberta();
-        let alcance = self.alcance_da_tinta_de(id);
+        let alcance = self.mede_a_estrutura(id);
         let undo_before = self.snapshot_model();
         let activa = self.layers.active();
         self.layers.remove(id); // drops subtree + mask
@@ -103,7 +103,7 @@ impl PainterTool {
             return None;
         }
         self.fecha_a_forma_aberta();
-        let alcance = self.alcance_da_tinta_de(id);
+        let alcance = self.mede_a_estrutura(id);
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let (w, h) = self.source_size;

@@ -18,6 +18,15 @@ impl PainterTool {
         }
     }
 
+    /// **N7 onda 5 — o último gesto de estrutura confinado** (apagar, duplicar, agrupar): `(antes, depois)`, a lista
+    /// achatada da placa nos dois lados. Fora do sujo a figura é a mesma com as duas, então a placa que guardou
+    /// `antes` compõe só o sujo com `depois`. Consome-se.
+    pub fn take_estrutura_confinada(
+        &mut self,
+    ) -> Option<(Vec<ph2d_layer_ops::LayerOp>, Vec<ph2d_layer_ops::LayerOp>)> {
+        self.estrutura_confinada.take()
+    }
+
     /// **B18.4 — a camada que o «+» fez nascer transparente**, `(chave, versão)`, se a versão ainda é a do
     /// nascimento (os pixels são os zeros): a prévia na placa limpa-lhe a fatia e acrescenta-a à pilha guardada
     /// sem recompor (α = 0 deixa a figura). Consome-se: um quadro só.

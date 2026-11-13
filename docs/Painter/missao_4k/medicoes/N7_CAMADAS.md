@@ -171,3 +171,35 @@ Vizinhos verdes por nome (`--profile smoke`): `troca` 36 · `fundo` 6 · `duplic
 
 Re-correr (coordenador): a mesma linha do «Re-correr a matriz» acima. Esperado: Wet trocar/voltar caem para ~13–20 ms;
 duplicar/apagar/grupo ficam iguais até ao item 2.
+
+## Onda 5 (13/11) — duplicar/apagar/grupo na placa e com a tinta viva do Wet
+
+1. **Item 2 da onda 4 (piso ~24 ms na placa): curado.** A ferramenta mede a lista achatada da placa ANTES do gesto
+   (`cache.rs::mede_a_estrutura`) e, quando o gesto confina (`a_estrutura_muda_so_em`, ramos Untouched/Window), guarda
+   `(antes, depois)` em `estrutura_confinada` (consumida por `take_estrutura_confinada` na drenagem; `invalidate_composite`
+   larga-a). `painter_gpu_preview.rs::regiao_suja` aceita a lista nova quando a guardada é `antes` e a nova é `depois`
+   (luts e papel iguais como antes). `composite_region_into_canvas` recompõe a região com a lista nova a partir das
+   fatias por chave (sem cache por lista): apagar/agrupar não reenviam nada; a cópia do duplicar tem chave nova e sobe
+   inteira uma vez (a fatia não se partilha: custo de upload, não de composição). Chave A×B em execução:
+   `PH2D_ESTRUTURA_RECOMPOE=1` = a placa compõe a tela inteira como antes.
+   - Gate `apagar_duplicar_e_agrupar_compoem_na_placa_so_o_sujo_ao_bit` (`painter_gpu_preview_nova_tests.rs`): placa ×
+     placa contra `SEMPRE_INTEIRA`, semente/gesto/undo/redo, controlo `ESTRUTURA_RECOMPOE` (0 drenagens confinadas) e a
+     pista nova ≥ 1. Não é `#[ignore]`: sem adaptador sai (a CI sem placa), com placa corre por nome em ~2 s.
+     Mutação (a aceitação volta a `false`): vermelho.
+   - Achado: a 1.ª drenagem cria a sessão depois de `regiao_suja`, então a lista guardada nasce só na 2.ª (o gate semeia
+     duas vezes). Uma vez por sessão; não curado.
+2. **Wet duplicar/apagar/grupo: curado na CPU.** `alcance_da_tinta_de` deixa de recusar a `tinta_viva()`; a medida
+   guarda a activa viva (`saida`) e, no fim do gesto, a que adormeceu (outra camada) marca a janela dela
+   (`a_tinta_que_adormeceu_muda`) e a que acordou na nova activa marca a sua (`a_tinta_que_acordou_muda`), como na troca
+   da onda 3. Gate `apagar_duplicar_e_agrupar_com_a_tinta_viva_do_wet_marcam_so_a_janela` (apagar a viva, duplicar a viva,
+   duplicar outra, grupo; cache fica, figura ao bit com undo/redo, a placa recebe a lista; controlo
+   `TROCA_RECOMPOE_SEMPRE`). Mutação (volta `|| self.tinta_viva()`): vermelho. Chave: a de sempre, `PH2D_TROCA_RECOMPOE=1`.
+3. **WB (aguada + papel de cor) duplicar/apagar/grupo: NÃO provado, continua a recompor.** Não houve prazo para a prova
+   «figura igual fora de tinta ∪ vidro» (o vidro de cada camada também tem de entrar na janela; `papel_atravessa_vidro`
+   continua a recusar em `a_nova_transparente_mantem_a_figura`).
+4. `corte_do_aquecimento` (`watercolor_aquece.rs`, `#[cfg(test)]`, de `d218f859f4`, sem chamador): apagado.
+
+Vizinhos verdes (`--profile smoke`): `troca fundo duplicate camadas_integridade o_fundo_do_toque adormec mais_sem_diff vidro
+estrutura` 109 · `painter_gpu_preview` 17. `cargo build -p ph2d-tool-painter -p ph2d-app-painter --profile smoke --tests`
+compila sem avisos. Matriz do app não re-corrida (coordenador): esperado duplicar/apagar/grupo digital ~24 ms → poucos ms,
+Wet duplicar/grupo 44–50 → ~10 ms.

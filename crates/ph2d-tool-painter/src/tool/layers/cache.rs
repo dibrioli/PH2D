@@ -6,6 +6,18 @@
 use super::super::*;
 use crate::undo_delta::confine::PlaneReach;
 
+/// Um gesto de estrutura medido ANTES dele ([`PainterTool::mede_a_estrutura`]).
+pub(crate) struct MedidaDaEstrutura {
+    /// A camada do gesto.
+    id: RtLayerId,
+    /// Onde a figura pode mudar (`None` = não provado).
+    alcance: Option<PlaneReach>,
+    /// A lista achatada da placa antes do gesto (N7 onda 5).
+    lista: Option<Vec<ph2d_layer_ops::LayerOp>>,
+    /// A activa com a tinta viva do Wet antes do gesto (N7 onda 5).
+    saida: Option<RtLayerId>,
+}
+
 #[cfg(test)]
 thread_local! {
     /// A sonda A/B do B18.3 no mesmo processo: `true` = a troca recompõe sempre, como antes.
@@ -65,6 +77,7 @@ impl PainterTool {
             );
         }
         self.composited = None;
+        self.estrutura_confinada = None;
         self.larga_a_luz_guardada();
         // Drop any accumulated dirty-rect: a structural edit (opacity / blend /
         // visibility / reorder / add / select) can change the composite OUTSIDE
@@ -153,14 +166,14 @@ impl PainterTool {
     /// **Onde a figura pode mudar quando a camada raster `id` sai, ganha uma cópia por cima ou entra num grupo**
     /// (N7): só onde ela tem α > 0 — fora dela não compõe nada, em qualquer modo, opacidade, ordem ou grupo. Medida
     /// ANTES do gesto. `None` = não provado (o caminho de antes recompõe tudo): o que espalha para fora do α ou
-    /// lê a vizinha (ajuste, recorte, relevo/material próprio, tinta viva) fica de fora.
+    /// lê a vizinha (ajuste, recorte, relevo/material próprio) fica de fora. A tinta viva do Wet entra (onda 5): a
+    /// que adormece ou acorda marca a janela dela em [`Self::a_estrutura_muda_so_em`].
     pub(crate) fn alcance_da_tinta_de(&self, id: RtLayerId) -> Option<PlaneReach> {
         use crate::layers::LayerKind;
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize) * 4;
         if troca_recompoe_como_antes()
             || !self.a_nova_transparente_mantem_a_figura()
-            || self.tinta_viva()
             || !matches!(
                 self.layers.get(id)?.kind,
                 LayerKind::Raster(_) | LayerKind::Texture(_)
@@ -184,19 +197,61 @@ impl PainterTool {
         (px.len() == n).then(|| crate::undo_delta::confine::janela_da_tinta(px, w as usize))
     }
 
-    /// O fim do gesto medido por [`Self::alcance_da_tinta_de`]: a figura recompõe-se só na janela da tinta.
-    pub(crate) fn a_estrutura_muda_so_em(&mut self, alcance: Option<PlaneReach>) {
+    /// [`Self::alcance_da_tinta_de`] e, quando provado, a lista achatada da placa ANTES do gesto (N7 onda 5).
+    pub(crate) fn mede_a_estrutura(&self, id: RtLayerId) -> MedidaDaEstrutura {
+        let alcance = self.alcance_da_tinta_de(id);
+        let lista = alcance
+            .is_some()
+            .then(|| crate::flatten_for_gpu(&self.layers).map(|(ops, _)| ops))
+            .flatten();
+        let saida = self.layers.active().filter(|_| self.tinta_viva());
+        MedidaDaEstrutura {
+            id,
+            alcance,
+            lista,
+            saida,
+        }
+    }
+
+    /// O fim do gesto medido por [`Self::mede_a_estrutura`]: a figura recompõe-se só na janela da tinta, e a
+    /// placa recebe `(antes, depois)` para compor só o sujo com a lista nova. A tinta viva do Wet que adormeceu
+    /// (de outra camada) ou acordou (na nova activa) marca a janela da tinta dela, como na troca (onda 3).
+    pub(crate) fn a_estrutura_muda_so_em(&mut self, m: MedidaDaEstrutura) {
+        let MedidaDaEstrutura {
+            id,
+            alcance,
+            lista: antes,
+            saida,
+        } = m;
         let (w, _) = self.source_size;
-        match alcance {
-            Some(PlaneReach::Untouched) => self.troca_sem_mudar_a_figura(),
+        let confinada = match alcance {
+            Some(PlaneReach::Untouched) => {
+                self.troca_sem_mudar_a_figura();
+                true
+            }
             Some(PlaneReach::Window(j)) => match j.to_region(w) {
                 Some(r) => {
                     self.troca_sem_mudar_a_figura();
                     self.mark_dirty(r);
+                    true
                 }
-                None => self.invalidate_composite(),
+                None => false,
             },
-            _ => self.invalidate_composite(),
+            _ => false,
+        };
+        if !confinada {
+            self.invalidate_composite();
+            return;
+        }
+        let depois = crate::flatten_for_gpu(&self.layers).map(|(ops, _)| ops);
+        self.estrutura_confinada = antes.zip(depois);
+        // Depois da lista: um `invalidate_composite` aqui larga-a.
+        let activa = self.layers.active();
+        if let Some(s) = saida.filter(|&s| s != id && Some(s) != activa) {
+            self.a_tinta_que_adormeceu_muda(s);
+        }
+        if self.tinta_viva() && activa != saida {
+            self.a_tinta_que_acordou_muda();
         }
     }
 

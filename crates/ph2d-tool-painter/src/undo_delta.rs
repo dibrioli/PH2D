@@ -359,6 +359,13 @@ pub(crate) enum StoredEntry<T> {
     Both(StoredPlane<T>),
     OnlyBefore(Arc<Vec<T>>),
     OnlyAfter(Arc<Vec<T>>),
+    /// Um `OnlyAfter` que guarda só a janela fora do neutro (`T::default()`), sem segurar o plano vivo:
+    /// o refazer recria-o ([`aparece`], ADR-0204). `win = None` = nasceu todo neutro.
+    Aparece {
+        len: usize,
+        win: Option<PlaneWindow>,
+        after: Box<[T]>,
+    },
 }
 
 /// Um mapa `LayerId -> plano` guardado como delta (os três planos de impasto: `heights`, `covers`,
@@ -426,6 +433,11 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
                 StoredEntry::OnlyAfter(v) => {
                     if !want_before {
                         out.insert(*k, Arc::clone(v));
+                    }
+                }
+                StoredEntry::Aparece { len, win, after } => {
+                    if !want_before {
+                        out.insert(*k, Arc::new(aparece::recria(*len, *win, after)));
                     }
                 }
             }

@@ -231,6 +231,9 @@ impl PlaneDeltas {
             crate::undo_delta::confine::linha_sem_vidro,
             crate::undo_delta::confine::vidro_neutro,
         );
+        if crate::undo::window::vidro_pelo_journal() {
+            vidros.larga_os_planos_que_aparecem();
+        }
         Self {
             relief_indescribable: relief_indescribable || canvas_lost || vidro_indescribable,
             canvas_rgba,

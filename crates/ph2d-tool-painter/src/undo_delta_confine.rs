@@ -141,6 +141,7 @@ impl<T> StoredEntry<T> {
         match self {
             Self::Both(p) => p.reach(),
             Self::OnlyBefore(_) | Self::OnlyAfter(_) => PlaneReach::Whole,
+            Self::Aparece { win, .. } => win.map_or(PlaneReach::Untouched, PlaneReach::Window),
         }
     }
 }
@@ -225,6 +226,9 @@ impl Confine {
                         .unwrap_or_else(|| janela_dos_selados(p, w));
                     self.add(r);
                 }
+                StoredEntry::Aparece { win, .. } => {
+                    self.add(win.map_or(PlaneReach::Untouched, PlaneReach::Window));
+                }
             }
         }
     }
@@ -248,6 +252,9 @@ impl Confine {
                         .janela_que_aparece(k, w)
                         .unwrap_or_else(|| janela_fora_do_neutro(p, w, linha_neutra, neutro));
                     self.add(r);
+                }
+                StoredEntry::Aparece { win, .. } => {
+                    self.add(win.map_or(PlaneReach::Untouched, PlaneReach::Window));
                 }
             }
         }
@@ -452,6 +459,7 @@ impl<T> StoredEntry<T> {
             Self::Both(p) => p.variant(),
             Self::OnlyBefore(_) => "ONLY-BEFORE",
             Self::OnlyAfter(_) => "ONLY-AFTER",
+            Self::Aparece { .. } => "APARECE",
         }
     }
 }

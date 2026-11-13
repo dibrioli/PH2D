@@ -77,9 +77,30 @@ fn o_vidro_segue_a_base_que_o_borrao_move_sem_copiar_o_plano() {
 }
 
 /// O 1.º traço de uma camada sem vidro não COPIA o plano que acabou de nascer zerado (a 4K, 58 MB tocados no
-/// 1.º toque); o 2.º traço copia (o desfazer segura o plano): a régua vê a cópia quando ela existe.
+/// 1.º toque). Controlo: sem a chave `VIDRO_PELO_JOURNAL` o 2.º traço copia (o desfazer segura o plano), e
+/// a régua vê a cópia quando ela existe; com ela (ADR-0204) não copia.
 #[test]
 fn o_primeiro_traco_da_camada_nao_copia_o_vidro_que_nasce_zerado() {
+    for journal in [false, true] {
+        crate::undo::window::set_vidro_pelo_journal(journal);
+        let (primeiro, segundo) = primeiro_e_segundo_traco();
+        crate::undo::window::set_vidro_pelo_journal(true);
+        assert_eq!(
+            primeiro, 0,
+            "chave={journal}: o 1.º traço copiou o vidro recém-nascido {primeiro} vez(es)"
+        );
+        if journal {
+            assert_eq!(segundo, 0, "com a chave o 2.º traço copiou o vidro");
+        } else {
+            assert!(
+                segundo >= 1,
+                "controlo: sem a chave o 2.º traço copia o vidro que o desfazer segura ({segundo})"
+            );
+        }
+    }
+}
+
+fn primeiro_e_segundo_traco() -> (usize, usize) {
     use super::watercolor_vidro::COPIAS_DO_VIDRO;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
@@ -106,13 +127,5 @@ fn o_primeiro_traco_da_camada_nao_copia_o_vidro_que_nasce_zerado() {
         COPIAS_DO_VIDRO.get()
     };
     let primeiro = traco(&mut t, 50.0);
-    let segundo = traco(&mut t, 110.0);
-    assert!(
-        segundo >= 1,
-        "controlo: o 2.º traço copia o vidro que o desfazer segura ({segundo})"
-    );
-    assert_eq!(
-        primeiro, 0,
-        "o 1.º traço copiou o vidro recém-nascido {primeiro} vez(es)"
-    );
+    (primeiro, traco(&mut t, 110.0))
 }

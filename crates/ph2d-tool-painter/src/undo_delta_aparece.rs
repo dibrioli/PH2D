@@ -47,6 +47,47 @@ impl<T> StoredMap<T> {
     }
 }
 
+impl<T: Copy + Default + PartialEq> StoredMap<T> {
+    /// **O plano que aparece deixa de ser segurado** (ADR-0204, o 2.º traço): cada `OnlyAfter` com a janela
+    /// já achada ([`Self::guarda_janelas_que_aparecem`]) troca o `Arc` vivo por essa janela. Só vale onde o
+    /// neutro é `T::default()` (o vidro: `[0; 7]`); senão o refazer recriaria outro plano.
+    pub(crate) fn larga_os_planos_que_aparecem(&mut self) {
+        for (k, e) in &mut self.entries {
+            let StoredEntry::OnlyAfter(p) = e else {
+                continue;
+            };
+            let win = match self.aparece.get(k) {
+                Some(PlaneReach::Untouched) => None,
+                Some(PlaneReach::Window(w)) if w.plane_len == p.len() => Some(*w),
+                _ => continue,
+            };
+            let after = win.map_or_else(Box::default, |w| w.extract(p));
+            debug_assert!(
+                recria(p.len(), win, &after) == **p,
+                "o plano que aparece não é o neutro fora da janela — o refazer recriaria outro (ADR-0204)"
+            );
+            *e = StoredEntry::Aparece {
+                len: p.len(),
+                win,
+                after,
+            };
+        }
+    }
+}
+
+/// O plano de [`StoredEntry::Aparece`]: o neutro com a janela escrita.
+pub(super) fn recria<T: Copy + Default>(
+    len: usize,
+    win: Option<PlaneWindow>,
+    after: &[T],
+) -> Vec<T> {
+    let mut v = vec![T::default(); len];
+    if let Some(w) = win {
+        w.blit(after, &mut v);
+    }
+    v
+}
+
 /// [`janela_fora_do_neutro`] restrita às linhas e colunas de `w`; a janela devolvida é do plano inteiro.
 fn janela_dentro<T>(
     p: &[T],

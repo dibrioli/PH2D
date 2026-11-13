@@ -21,6 +21,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredEntry<T> {
         match self {
             Self::Both(p) => p.heap_bytes(),
             Self::OnlyBefore(v) | Self::OnlyAfter(v) => v.len() * size_of::<T>(),
+            Self::Aparece { after, .. } => after.len() * size_of::<T>(),
         }
     }
 
@@ -28,6 +29,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredEntry<T> {
         match self {
             Self::Both(p) => p.copiado_bytes(),
             Self::OnlyBefore(_) | Self::OnlyAfter(_) => 0,
+            Self::Aparece { after, .. } => after.len() * size_of::<T>(),
         }
     }
 }

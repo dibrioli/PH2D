@@ -173,11 +173,13 @@ fn quem_segura_o_vidro_no_segundo_pen_down() {
     COPIAS_DO_VIDRO.set(0);
     traco(&mut t, 140.0);
     println!("cópias do plano no 3.º traço: {}", COPIAS_DO_VIDRO.get());
-    // O 1.º traço CRIOU o plano: a entrada dele guarda o `after` (OnlyAfter) e segura-o até ao 2.º traço.
+    // O 1.º traço CRIOU o plano: sem a chave a entrada dele (`OnlyAfter`) segura-o até ao 2.º traço; com
+    // ela guarda só a janela (`Aparece`, ADR-0204) e não segura nada.
+    let da_entrada = usize::from(!crate::undo::window::vidro_pelo_journal());
     assert_eq!(
         repouso.0,
-        repouso.1 + 1,
-        "depois do 1.º traço: mapa + cursor + a entrada que o criou"
+        repouso.1 + da_entrada,
+        "depois do 1.º traço: mapa + cursor (+ a entrada que o criou, sem a chave)"
     );
     assert_eq!(
         repouso_3.0, repouso_3.1,
@@ -305,4 +307,38 @@ fn o_vidro_do_traco_volta_ao_bit_no_desfazer_e_no_refazer() {
     assert!(o.undo_last());
     confere(&j, &o, "desfeito o traço novo");
     crate::undo::window::set_vidro_pelo_journal(true);
+}
+
+/// **ADR-0204: o 2.º traço (e cada um depois) não copia o plano do vidro.** A entrada do 1.º traço guarda só a
+/// janela fora do neutro (`StoredEntry::Aparece`); o cursor e o `before` descrevem o vidro pelo journal. O
+/// controlo é a chave desligada no mesmo processo: lá o 2.º traço copia (a régua mede alguma coisa).
+#[test]
+fn o_segundo_traco_nao_copia_o_plano_do_vidro() {
+    use super::watercolor_vidro::COPIAS_DO_VIDRO;
+    const N: usize = 8;
+    let copias = |journal: bool| {
+        let mut t = tool_wb(journal);
+        traco_k(&mut t, 0);
+        let c = t.layers.active().expect("camada");
+        assert!(t.vidros.contains_key(&c), "o 1.º traço criou o vidro");
+        (1..N)
+            .map(|k| {
+                COPIAS_DO_VIDRO.set(0);
+                traco_k(&mut t, k);
+                COPIAS_DO_VIDRO.get()
+            })
+            .collect::<Vec<_>>()
+    };
+    let com = copias(true);
+    let sem = copias(false);
+    crate::undo::window::set_vidro_pelo_journal(true);
+    println!("cópias por traço (2.º..{N}.º): com a chave {com:?} · sem {sem:?}");
+    assert!(
+        sem[0] >= 1,
+        "controlo: sem a chave o 2.º traço copia o plano ({sem:?}) — senão a régua não mede nada"
+    );
+    assert!(
+        com.iter().all(|&n| n == 0),
+        "com a chave nenhum traço do 2.º ao {N}.º copia o plano do vidro: {com:?}"
+    );
 }

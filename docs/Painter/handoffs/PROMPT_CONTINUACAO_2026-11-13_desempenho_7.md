@@ -12,6 +12,15 @@ não vazio): a linha está sobre o `main` `4f46a3573c`. Cópia de segurança de 
 12/11: «vamos seguir até ter o app plenamente otimizado». «Se esforce para resolver todos os problemas de performance do módulo a todo
 custo. … Não esqueça do handoff de integração ao final de tudo. Não integre.»
 
+## ⭐ Decisões do dono 13/11 (verbatim: «1- tente · 2- pode · 3- sim») — fazem-se PRIMEIRO, nesta ordem
+
+1. **Sim a 6 traços em tempo real:** autorizado mudar a aritmética da `assenta` (física). Meça pela MÉDIA (alvo ≥ 1,0
+   sim-s/s a 6 traços, 4K), mostre-lhe o antes/depois no smoke (o pincel muda um pouco: ele aprova a olho).
+2. **Desfazer em janela/tiles do vidro (e do canvas) por traço:** autorizado. ADR primeiro (o contrato do `stroke_undo.vidros`),
+   depois o código; alvo: os 11,5 ms · 115 MB do `vidro_do_quadro` no 2.º pen-down do Watercolor Basic a 4K.
+3. **O «+» a 4K com o desfazer a lembrar menos passos:** autorizado (o `Whole` sem diff no `UndoEntry::split` da camada nova,
+   com a contabilidade do tecto de bytes). Alvo: os 14 ms do split e a cópia da tela no 1.º traço da camada nova.
+
 ## Leia primeiro
 
 1. [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-13_PRIMEIRO_TOQUE_4K.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-13_PRIMEIRO_TOQUE_4K.md)

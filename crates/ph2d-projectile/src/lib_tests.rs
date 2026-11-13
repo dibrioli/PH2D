@@ -185,7 +185,11 @@ fn a_perseguicao_vira_sem_mudar_a_rapidez() {
     let mut st = ProjectileState::default();
     for _ in 0..240 {
         let v = advance(&mut st, &law, 0.0, Some([10.0, 40.0]), [0.0, 0.0], DT);
-        assert!((len(v) - 12.0).abs() < 1.0e-3, "a rapidez mudou: {}", len(v));
+        assert!(
+            (len(v) - 12.0).abs() < 1.0e-3,
+            "a rapidez mudou: {}",
+            len(v)
+        );
     }
 }
 
@@ -204,7 +208,12 @@ fn a_perseguicao_nao_mexe_na_rapidez_do_avanco() {
     for _ in 0..60 {
         let va = advance(&mut a, &so_avanco, 0.0, None, [0.0, 0.0], DT);
         let vb = advance(&mut b, &com_pull, 0.0, Some([0.0, 40.0]), [0.0, 0.0], DT);
-        assert!((len(va) - len(vb)).abs() < 1.0e-3, "{} × {}", len(va), len(vb));
+        assert!(
+            (len(va) - len(vb)).abs() < 1.0e-3,
+            "{} × {}",
+            len(va),
+            len(vb)
+        );
     }
 }
 
@@ -222,7 +231,14 @@ fn o_missil_lancado_para_baixo_da_a_volta_e_acerta_sem_tecto() {
     let mut p = [0.0_f32, 0.0];
     let mut perto = f32::MAX;
     for _ in 0..600 {
-        let v = advance(&mut st, &law, -core::f32::consts::FRAC_PI_2, Some(alvo), p, DT);
+        let v = advance(
+            &mut st,
+            &law,
+            -core::f32::consts::FRAC_PI_2,
+            Some(alvo),
+            p,
+            DT,
+        );
         p = [p[0] + v[0] * DT, p[1] + v[1] * DT];
         perto = perto.min(len([alvo[0] - p[0], alvo[1] - p[1]]));
     }

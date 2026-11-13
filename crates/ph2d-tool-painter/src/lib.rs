@@ -21,6 +21,7 @@
 //! abrir app sem panic. Pill ainda não aparece (T1.2 implementa).
 
 pub mod compositor;
+pub mod fila_da_caneta; // a fila da caneta (B27.1), reexportada pela ph2d-app-painter
 pub mod icon;
 pub mod ids;
 pub mod layers;

@@ -61,6 +61,31 @@ impl LayerCompositor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
             ..Default::default()
         });
+        // B18.4: só a capacidade cresceu (o «+» de uma camada) ⇒ as fatias residentes passam à textura nova NA
+        // PLACA e o cache fica; senão cada camada voltava a subir inteira da CPU (N × 33 MB a 4K).
+        let carrega = self
+            .array
+            .as_ref()
+            .filter(|a| (a.width, a.height) == (width, height) && a.capacity <= capacity);
+        if let Some(velha) = carrega {
+            let mut enc = gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("ph2d-render layer_composite array grow"),
+                });
+            enc.copy_texture_to_texture(
+                velha.texture.as_image_copy(),
+                texture.as_image_copy(),
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: velha.capacity,
+                },
+            );
+            gpu.queue.submit([enc.finish()]);
+        } else {
+            self.cache.clear();
+        }
         self.array = Some(LayerArray {
             texture,
             view,
@@ -68,8 +93,6 @@ impl LayerCompositor {
             height,
             capacity,
         });
-        // Dims/capacity changed → existing slice assignments are invalid.
-        self.cache.clear();
         Ok(())
     }
 
@@ -91,7 +114,9 @@ impl LayerCompositor {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         })
     }

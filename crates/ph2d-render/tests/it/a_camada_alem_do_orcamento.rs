@@ -148,3 +148,44 @@ fn o_array_recusado_recua_o_orcamento() {
     );
     assert!(comp.cache_budget_bytes() < 999 * u64::from(s) * u64::from(s) * 4);
 }
+
+/// B18.4: o array que CRESCE (o «+» de uma camada) leva as fatias residentes na placa — só a camada nova
+/// sobe da CPU, e a saída é a de um compositor novo com a pilha inteira, ao bit.
+#[test]
+fn o_array_que_cresce_guarda_as_fatias_ao_bit() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let (w, h) = (64u32, 48u32);
+    let fatia = u64::from(w) * u64::from(h) * 4;
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, tela(w, h, 1));
+    prov.insert(1, 1, tela(w, h, 2));
+    let op = |key, opacity| LayerOp::Layer {
+        key,
+        blend_mode: 0,
+        opacity,
+        mask: None,
+        clipping: false,
+    };
+    let duas = [op(0, 1.0), op(1, 0.5)];
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &duas[..1], &prov, w, h, Region::full(w, h))
+        .expect("uma camada");
+    let antes = comp.bytes_enviados();
+    comp.composite(&gpu, &duas, &prov, w, h, Region::full(w, h))
+        .expect("duas camadas");
+    assert_eq!(
+        comp.bytes_enviados() - antes,
+        fatia,
+        "a base voltou a subir"
+    );
+    let mut novo = LayerCompositor::new(&gpu);
+    novo.composite(&gpu, &duas, &prov, w, h, Region::full(w, h))
+        .expect("oráculo");
+    let saida = comp.read_output(&gpu).expect("saída");
+    assert!(
+        saida == novo.read_output(&gpu).expect("saída"),
+        "a fatia levada ≠ a enviada"
+    );
+}

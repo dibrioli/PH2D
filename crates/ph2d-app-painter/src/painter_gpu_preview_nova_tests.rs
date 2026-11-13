@@ -27,28 +27,29 @@ fn o_primeiro_toque_da_camada_nova_envia_so_a_caixa_ao_bit() {
     let enviados =
         |s: &Option<PainterGpuPreview>| s.as_ref().map_or(0, |s| s.compositor.bytes_enviados());
     let mut primeiro = [0u64; 2];
-    // 0 = um quadro parado; 1 = o «+»; 2.. = o traço na camada nova (2 = o 1.º toque).
-    for passo in 0u8..=9 {
+    // 0..=2 = um traço na base (o relevo é o que dá a tela à placa); 3 = o «+»; 4.. = o traço na
+    // camada nova (4 = o 1.º toque).
+    for passo in 0u8..=11 {
         let mut telas = Vec::new();
         for (antigo, (t, r, s, g, toasts)) in pistas.iter_mut().enumerate() {
             NOVA_SEM_LIMPAR.set(antigo == 1);
-            match passo {
-                0 => {}
-                1 => {
-                    t.add_raster_layer("nova".to_string());
-                }
-                _ => {
-                    let fase = match passo {
-                        2 => PointerPhase::Down,
-                        9 => PointerPhase::Up,
-                        _ => PointerPhase::Move,
-                    };
-                    t.on_canvas_pointer(cp([60.0 + 12.0 * f32::from(passo), 120.0], fase));
-                }
+            if passo == 3 {
+                t.add_raster_layer("nova".to_string());
+            } else {
+                let fase = match passo {
+                    0 | 4 => PointerPhase::Down,
+                    2 | 11 => PointerPhase::Up,
+                    _ => PointerPhase::Move,
+                };
+                let y = if passo < 3 { 60.0 } else { 120.0 };
+                t.on_canvas_pointer(cp([40.0 + 16.0 * f32::from(passo), y], fase));
             }
             let antes = enviados(s);
-            assert!(try_drive(s, r, t, Some(1), g, toasts), "a placa é dona");
-            if passo == 2 {
+            assert!(
+                try_drive(s, r, t, Some(1), g, toasts),
+                "a placa é dona (passo {passo})"
+            );
+            if passo == 4 {
                 primeiro[antigo] = enviados(s) - antes;
             }
             let id = g.expect("o slot da placa").texture_id;

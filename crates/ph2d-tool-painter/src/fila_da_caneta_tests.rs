@@ -1,6 +1,6 @@
 use super::*;
+use crate::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
-use ph2d_tool_painter::PainterTool;
 
 fn ev(i: u32) -> Evento {
     let t = i as f32;

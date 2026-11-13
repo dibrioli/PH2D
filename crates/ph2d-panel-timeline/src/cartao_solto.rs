@@ -89,7 +89,7 @@ pub(crate) fn alcas(rect: Rect) -> [(ph2d_a11y::NodeId, u8, Rect); 8] {
 /// A faixa do título que arrasta: a fileira do cabeçalho até ao «encaixar» (os controlos da barra
 /// registam-se DEPOIS e ganham-lhe onde a cobrem).
 pub(crate) fn faixa_do_titulo(rect: Rect) -> Rect {
-    let g = geometria(rect);
+    let g = geometria(crate::abas_laterais::sem_a_calha(rect));
     let fim = g.vizinha_do_fecho.x;
     Rect::new(
         g.lista.x,

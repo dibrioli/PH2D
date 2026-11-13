@@ -179,6 +179,9 @@ pub const TIMELINE_ALCA_GUIA_ALPHA: f32 = 0.8; // LITERAL-PX-OK: opacidade da gu
 /// peça, como a área fora do trabalho do After Effects) e as listras claras a 45° por cima dele (a
 /// mistura vai a 135°). Pisos medidos em `pecas_cartoes_tests` (12 temas × 6 peças + fita).
 pub const TIMELINE_ALEM_VEU_ALPHA: f32 = 0.65; // LITERAL-PX-OK: opacidade do véu além do fim
+/// ⭐ **As abas laterais inativas, apagadas** (dono 13/11): a tinta da lista e o nome a esta opacidade,
+/// por trás da moldura; sob o rato acendem inteiras.
+pub const TIMELINE_ABA_INATIVA_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade da aba lateral inativa
 /// As listras de «além do fim».
 pub const TIMELINE_ALEM_LISTRA_ALPHA: f32 = 0.42; // LITERAL-PX-OK: opacidade das listras além do fim
 /// A espessura de uma listra de «além do fim».

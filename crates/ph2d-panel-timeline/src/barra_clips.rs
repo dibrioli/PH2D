@@ -93,6 +93,9 @@ fn largura(ctx: &mut PaintCtx, ch: &Chip<'_>) -> f32 {
     if ch.menu {
         w += m::FIELD_H - m::SEG_INSET;
     }
+    if ch.done {
+        w += m::FIELD_H;
+    }
     w
 }
 
@@ -101,6 +104,8 @@ struct Chip<'a> {
     on: bool,
     estrela: bool,
     menu: bool,
+    /// O Done (verde, ✓) no fim do chip: o clipe escolhido enquanto se anima (dono 13/11).
+    done: bool,
     /// Onde o container é usado (`crate::uso::rotulo`); `None` num clipe.
     uso: Option<String>,
     /// A cor da fonte quando este chip está na mão (`chip_drag`).
@@ -118,7 +123,8 @@ fn uso_de(snap: &TimelineViewSnapshot, opcao: &DropdownOption<usize>) -> Option<
 /// Pinta um chip em `r`; devolve o rect do «⋯», se tem.
 fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Option<Rect> {
     let menu_w = if ch.menu { m::FIELD_H } else { 0.0 };
-    let corpo = Rect::new(r.x, r.y, r.w - menu_w, r.h);
+    let done_w = if ch.done { m::FIELD_H } else { 0.0 };
+    let corpo = Rect::new(r.x, r.y, r.w - menu_w - done_w, r.h);
     let hover = ctx.host.store().hover_live(ch.opcao.id) > 0.0;
     let fundo = if ch.on {
         ColorToken::AccentSoft
@@ -222,10 +228,13 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
             StrokeToken::Default.px(),
         );
     }
+    if ch.done {
+        crate::animando::botao_done_no_chip(ctx, r);
+    }
     if !ch.menu {
         return None;
     }
-    let b = Rect::new(r.x + r.w - menu_w, r.y, menu_w, r.h);
+    let b = Rect::new(r.x + r.w - done_w - menu_w, r.y, menu_w, r.h);
     pinta_reticencias(ctx, ink, b);
     Some(b)
 }
@@ -259,7 +268,7 @@ fn como_lista(
     ink: CardInk,
     f: &mut Fluxo,
     body: Rect,
-    opcao: Option<&DropdownOption<usize>>,
+    (opcao, animando_done): (Option<&DropdownOption<usize>>, bool),
 ) -> Clips {
     let texto = opcao.map_or("", |o| o.label.as_str());
     // O glifo do tipo também na lista FECHADA (dono 12/11): o mesmo do chip e da lista aberta.
@@ -267,7 +276,9 @@ fn como_lista(
     let li = ph2d_editor_core::widget::card_chip_icone_w(icone);
     let w = li + texto_w(ctx, texto) + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
     let menu = opcao.is_some_and(|o| tem_menu(true, o));
-    let fim = if menu { m::FIELD_H + m::FIELD_GAP } else { 0.0 };
+    let done = animando_done;
+    let fim = if menu { m::FIELD_H + m::FIELD_GAP } else { 0.0 }
+        + if done { m::FIELD_H + m::FIELD_GAP } else { 0.0 };
     f.guarda_para(w + m::FIELD_GAP + fim + banda::icones_w(1));
     let (x, y) = f.poe(w);
     let r = Rect::new(x, y, w, m::FIELD_H);
@@ -284,6 +295,11 @@ fn como_lista(
         pinta_reticencias(ctx, ink, b);
         b
     });
+    if done {
+        let (x, y) = f.poe(m::FIELD_H);
+        let b = Rect::new(x, y, m::FIELD_H, m::FIELD_H);
+        crate::animando::botao_done(ctx, ctx.host.theme(), b, m::FIELD_RADIUS);
+    }
     pinta_o_mais(ctx, ink, f, body);
     Clips {
         chip: Some(ClipChip {
@@ -371,6 +387,7 @@ fn pecas<'a>(
                 on,
                 estrela: comeca_com(snap, view, opcao),
                 menu: tem_menu(on, opcao),
+                done: on && crate::animando::rotulo(snap).is_some(),
                 uso: uso_de(snap, opcao),
                 arrastado: crate::chip_drag::tinta_do_chip(opcao.id, snap, &opcao.label),
             };
@@ -537,7 +554,8 @@ pub(crate) fn paint(
     }
     rotulo(ctx, ink, f, nome);
     if view.clips_as_list {
-        return como_lista(ctx, ink, f, body, opcoes.get(escolhida));
+        let done = crate::animando::rotulo(snap).is_some();
+        return como_lista(ctx, ink, f, body, (opcoes.get(escolhida), done));
     }
     let corte = corta(&pecas, &medida, f.resta());
     for (k, p) in pecas.iter().enumerate() {

@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 
+mod abas_laterais;
 mod alca_estado;
 mod animando;
 pub use animando::{animating, parked, resume, sessao, take_done, take_ended};

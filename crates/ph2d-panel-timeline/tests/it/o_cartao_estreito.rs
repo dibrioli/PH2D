@@ -97,8 +97,11 @@ fn prova_que_nada_sai(mesa: &mut Mesa<TimelinePanel>) -> (Rect, Rect) {
     assert!((c.w - LARGURA).abs() < 1.0, "o cartão estreitou: {c:?}");
     let caixas = caixas_pintadas(&cena);
     assert!(caixas.len() > 50, "a régua leu a cena: {}", caixas.len());
-    // A sombra do cartão (o único primitivo que ENVOLVE o cartão inteiro) é dele, por fora de propósito.
-    let sombra = |r: &Rect| dentro(c, *r, 0.0);
+    // A sombra da moldura (o único primitivo que a ENVOLVE inteira) é dela, por fora de propósito. A
+    // moldura é o cartão sem a calha das abas laterais (dono 13/11), um campo de largo à esquerda.
+    let calha = ph2d_editor_core::panel::cards::banda::metrics::FIELD_H;
+    let moldura = Rect::new(c.x + calha, c.y, c.w - calha, c.h);
+    let sombra = |r: &Rect| dentro(moldura, *r, 0.0);
     // E os controlos de tocar moram numa ABA colada ao topo do cartão (dono 13/11): a fila do ● ao ⏭,
     // com a tinta da lista que desce um raio para dentro da moldura e cobre a junta.
     let regs = mesa.host.registos_da_ultima_pintura();

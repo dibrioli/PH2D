@@ -84,3 +84,38 @@ fn the_classic_panel_has_no_session() {
     assert_eq!(sessao(true, false), (false, false));
     ferramenta::force_cards_on_this_thread(None);
 }
+
+/// ⭐ Dono 13/11: o Done é um botão (✓ verde) colado ao clipe — no fim do chip escolhido, depois do
+/// «⋯»; com os clipes em lista, à direita do «⋯» da lista e antes do «+». A pílula «Animating» fica só
+/// com o aviso. *Mutação: o Done de volta à pílula ⇒ fica à esquerda do «⋯» ⇒ vermelho.*
+#[test]
+fn o_done_e_um_botao_colado_ao_clipe_depois_do_menu() {
+    let mut m = mesa(true);
+    let r = |m: &Mesa<TimelinePanel>, id| m.rect(id).unwrap_or_else(|| panic!("{id:?}"));
+    for lista in [false, true] {
+        m.st.clips_as_list = lista;
+        m.assenta_em(JANELA);
+        let (done, menu, mais) = (
+            r(&m, ids::TIMELINE_ANIMATING_DONE),
+            r(&m, ids::TIMELINE_CLIP_MENU),
+            r(&m, ids::TIMELINE_ADD_CLIP),
+        );
+        assert!(
+            done.x >= menu.x + menu.w - 0.5,
+            "lista={lista}: o Done antes do ⋯"
+        );
+        assert!(
+            done.x + done.w <= mais.x + 0.5,
+            "lista={lista}: o Done depois do +"
+        );
+        assert!(
+            ((done.y + done.h * 0.5) - (menu.y + menu.h * 0.5)).abs() < 0.5,
+            "lista={lista}: fora da fileira do clipe"
+        );
+        assert!(
+            (done.w - done.h).abs() < 0.5,
+            "um botão quadrado/redondo, sem palavra"
+        );
+    }
+    ferramenta::force_cards_on_this_thread(None);
+}

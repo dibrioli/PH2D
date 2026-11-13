@@ -208,8 +208,15 @@ fn a_folha_nao_perde_linhas_para_o_cromo() {
 fn a_folha_cabe_na_moldura_e_comeca_depois_da_barra() {
     let m0 = mesa(true);
     let banda = m0.host.store().panel_rect(PAINEL).expect("rect");
+    // As abas são de pasta na borda esquerda, ao lado da folha (dono 13/11): não são da barra.
+    let abas = [
+        ids::TIMELINE_TAB_KEYS,
+        ids::TIMELINE_TAB_CONTAINERS,
+        ids::TIMELINE_TAB_ARRANGE,
+    ];
     let fundo_da_barra = NA_BARRA
         .iter()
+        .filter(|i| !abas.contains(i))
         .chain(std::iter::once(&ids::TIMELINE_ADD_MARKER))
         .map(|i| {
             let r = m0.rect(*i).unwrap_or_else(|| panic!("{i:?} não pintado"));
@@ -495,7 +502,7 @@ fn sem_cartoes_e_o_painel_de_antes() {
     let _ = PointerKind::Move;
 }
 
-/// ⭐⭐ **Duas fileiras** (doc 15, onda 1b, dono 09/11; dono 13/11): na do título, abas | Length |
+/// ⭐⭐ **Duas fileiras** (doc 15, onda 1b, dono 09/11; dono 13/11): na do título, Length |
 /// Time · Frame · fps … dono · engrenagem; na 2.ª, Marker ANTES do 1.º chip, depois os chips e o «+».
 /// O tocar e o gravar flutuam acima do painel (`controles_flutuantes.rs`). *Mutações: `f.quebra()`
 /// antes do tempo ⇒ o Time desce; os chips antes do Marker ⇒ o Marker passa à direita do chip.*
@@ -508,9 +515,8 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
         let r = r(id);
         r.y + r.h * 0.5
     };
-    let titulo = y(ids::TIMELINE_TAB_KEYS);
+    let titulo = y(ids::TIMELINE_LENGTH_NUM);
     for id in [
-        ids::TIMELINE_LENGTH_NUM,
         ids::TIMELINE_TIME_NUM,
         ids::TIMELINE_FRAME_NUM,
         ids::TIMELINE_ANIM_DD,
@@ -523,7 +529,6 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     }
     // A ordem da 1.ª: abas, Length, Time, Frame e, encostados à direita, o dono e a engrenagem.
     let ordem = [
-        ids::TIMELINE_TAB_ARRANGE,
         ids::TIMELINE_LENGTH_NUM,
         ids::TIMELINE_TIME_NUM,
         ids::TIMELINE_FRAME_NUM,
@@ -744,10 +749,26 @@ fn com_muitos_clipes_os_chips_ficam_numa_fileira_e_o_resto_vai_para_a_lista() {
 #[test]
 fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
     let mut mesa = mesa(true);
+    // As abas são de pasta na borda esquerda (dono 13/11): em pé, a ATIVA mede de comprido o que a
+    // aba deitada media de largo; a inativa (só o começo do nome) é um alvo de pelo menos 24 × 24.
+    for (id, comprido) in [
+        (ids::TIMELINE_TAB_ARRANGE, 55.2),
+        (ids::TIMELINE_TAB_CONTAINERS, 69.9),
+        (ids::TIMELINE_TAB_KEYS, 36.8),
+    ] {
+        let r = mesa.rect(id).expect("a aba está pintada");
+        assert!(r.w >= 24.0 && r.h >= 24.0, "{id:?} inativa: alvo {r:?}");
+        let _ = mesa.clica(id);
+        mesa.assenta_em(JANELA);
+        let r = mesa.rect(id).expect("a aba está pintada");
+        assert!(
+            r.w >= 24.0 && r.h >= comprido,
+            "{id:?} ativa: alvo {}×{} < 24×{comprido}",
+            r.w,
+            r.h
+        );
+    }
     for (id, w, h) in [
-        (ids::TIMELINE_TAB_KEYS, 36.8, 24.0),
-        (ids::TIMELINE_TAB_CONTAINERS, 69.9, 24.0),
-        (ids::TIMELINE_TAB_ARRANGE, 55.2, 24.0),
         (ids::TIMELINE_AUTOKEY, 28.0, 28.0),
         (ids::TIMELINE_ADD_MARKER, 75.0, 28.0),
     ] {

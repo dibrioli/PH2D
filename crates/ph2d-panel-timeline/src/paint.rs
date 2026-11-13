@@ -153,6 +153,9 @@ fn paint_barra(
 ) -> Barra {
     if cartoes {
         let barra = crate::transport_sources::bar_view(state, snapshot);
+        // A calha das abas laterais fica à esquerda; as inativas pintam-se por trás da moldura.
+        let rect = crate::abas_laterais::sem_a_calha(rect);
+        crate::abas_laterais::pinta_de_tras(ctx, theme, rect, (snapshot, barra.tab));
         ctx.host.store_mut().mark_card_list_close(
             ph2d_editor_core::ids::TIMELINE_PANEL,
             crate::ids::TIMELINE_CLOSE,
@@ -532,7 +535,7 @@ fn paint_overlays(
 /// fundo), dá o interior da moldura de cartões.
 fn area_da_folha(rect: Rect) -> Rect {
     use ph2d_editor_core::panel::cards::banda;
-    let c = banda::geometria(rect).corpo;
+    let c = banda::geometria(crate::abas_laterais::sem_a_calha(rect)).corpo;
     Rect::new(
         c.x - PANEL_HEAD_PAD,
         rect.y,

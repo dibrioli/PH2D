@@ -6,9 +6,10 @@
 
 use std::cell::Cell;
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, fill_rounded_rect_radii, folga_do_texto, label_column_width,
-    paint_text_elided, resolve, stroke_rounded_rect,
+    fill_rounded_rect, folga_do_texto, label_column_width, paint_icon, paint_text_elided, resolve,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
@@ -117,25 +118,17 @@ fn medidas() -> (f32, f32, f32) {
     (TypeToken::Sm.px(), Spacing::Sm.px(), Spacing::Xs.px())
 }
 
-/// A largura do segmento «Done», encostado à direita da pílula, de cima a baixo.
-fn done_w(ctx: &mut PaintCtx, done: &str) -> f32 {
-    let (font, pad, _) = medidas();
-    pad + label_column_width(ctx.text_system, font, [done]) + pad
-}
-
-/// A largura da pílula «● Animating jump [Done]».
+/// A largura da pílula «● Animating jump» (o Done mora no chip do clipe, [`botao_done`]).
 pub(crate) fn pilula_w(ctx: &mut PaintCtx, texto: &str) -> f32 {
     let (font, pad, gap) = medidas();
-    let done = ph2d_i18n::tr("panel.timeline.animating.done");
     let tw = label_column_width(ctx.text_system, font, [texto]);
-    pad + gap * 2.0 + gap + tw + gap + done_w(ctx, done)
+    // Um vão a mais: a medida da coluna arredonda abaixo da do pintor e a reticência comia o nome.
+    pad + gap * 2.0 + gap + tw.ceil() + gap + pad
 }
 
-/// Pinta a pílula em `r` (o raio dos campos do cartão, B7) e regista o Done: o segmento cheio
-/// encostado à direita, da altura toda, redondo só do lado de fora.
+/// Pinta a pílula «● Animating jump» em `r` (o raio dos campos do cartão, B7): só o aviso.
 pub(crate) fn pilula(ctx: &mut PaintCtx, theme: Theme, r: Rect, texto: &str) {
     let (font, pad, gap) = medidas();
-    let done = ph2d_i18n::tr("panel.timeline.animating.done");
     let azul = resolve(ColorToken::Accent, theme);
     let raio = m::FIELD_RADIUS;
     fill_rounded_rect(ctx.scene, r, raio, resolve(ColorToken::AccentSoft, theme));
@@ -143,39 +136,47 @@ pub(crate) fn pilula(ctx: &mut PaintCtx, theme: Theme, r: Rect, texto: &str) {
     let cy = r.y + r.h * 0.5;
     let bolinha = Rect::new(r.x + pad, cy - ponto * 0.5, ponto, ponto);
     fill_rounded_rect(ctx.scene, bolinha, ponto * 0.5, azul);
-    let dw = done_w(ctx, done);
-    let botao = Rect::new(r.x + r.w - dw, r.y, dw, r.h);
     let tx = bolinha.x + ponto + gap;
-    let tw = label_column_width(ctx.text_system, font, [texto]).min((botao.x - tx).max(0.0));
+    let tw =
+        label_column_width(ctx.text_system, font, [texto]).min((r.x + r.w - pad - tx).max(0.0));
     let ty = r.y + folga_do_texto(r.h, font);
     let claro = resolve(ColorToken::Text1, theme);
     paint_text_elided(ctx.text_system, ctx.scene, texto, tx, ty, font, tw, claro);
-    let sob = ctx.host.store().hover_live(TIMELINE_ANIMATING_DONE) > 0.0;
-    let fundo = if sob {
-        ColorToken::AccentHover
-    } else {
-        ColorToken::Accent
-    };
-    let raios = (0.0, raio, raio, 0.0);
-    fill_rounded_rect_radii(ctx.scene, botao, raios, resolve(fundo, theme));
     // FRAME-RAW-OK: o contorno azul É a marca de «animando» (a pílula acesa), não moldura de repouso.
     stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Thin.px(), azul);
+}
+
+/// O Done redondo dentro da ponta direita do chip `chip`, com a folga de um segmento.
+pub(crate) fn botao_done_no_chip(ctx: &mut PaintCtx, chip: Rect) {
+    let p = m::SEG_PAD * 2.0;
+    let d = chip.h - p * 2.0;
+    let b = Rect::new(chip.x + chip.w - p - d, chip.y + p, d, d);
+    botao_done(ctx, ctx.host.theme(), b, d * 0.5);
+}
+
+/// ⭐ **O Done é um botão VERDE com ✓, colado ao clipe** (dono 13/11): no fim do chip escolhido,
+/// depois do «⋯», ou à direita do «⋯» da lista suspensa. `r` é a caixa do botão; o raio é o de quem o
+/// leva (o chip é pílula, a lista é campo).
+pub(crate) fn botao_done(ctx: &mut PaintCtx, theme: Theme, r: Rect, raio: f32) {
+    let sob = ctx.host.store().hover_live(TIMELINE_ANIMATING_DONE) > 0.0;
+    fill_rounded_rect(ctx.scene, r, raio, resolve(ColorToken::Success, theme));
     let fg = resolve(ColorToken::AccentFg, theme);
-    let texto_done = botao.w - pad * 2.0;
-    let dy = botao.y + folga_do_texto(botao.h, font);
-    paint_text_elided(
-        ctx.text_system,
+    if sob {
+        // FRAME-RAW-OK: o anel claro É o realce do botão sob o rato.
+        stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Default.px(), fg);
+    }
+    let g = m::ICON_GLYPH;
+    paint_icon(
         ctx.scene,
-        done,
-        botao.x + pad,
-        dy,
-        font,
-        texto_done,
+        IconId::Check,
+        Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g),
         fg,
+        StrokeToken::Thick.px(),
     );
     ctx.host
         .hit_index_mut()
-        .register(TIMELINE_ANIMATING_DONE, botao);
+        .register(TIMELINE_ANIMATING_DONE, r);
+    ph2d_editor_core::panel::cards::dicas::icone(TIMELINE_ANIMATING_DONE);
 }
 
 /// A moldura da fita fica AZUL enquanto se anima (B7) — por cima do vermelho do Auto Key, cujo

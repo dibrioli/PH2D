@@ -59,7 +59,11 @@ fn os_controlos_flutuam_acima_do_painel() {
             assert!(fila[i - 1].x < r.x, "fora de ordem no {i}.º");
         }
     }
-    assert!(fila[0].x <= abas.x, "a fila não começa no canto esquerdo");
+    // As abas são de pasta na borda esquerda (dono 13/11): a fila começa logo à direita delas.
+    assert!(
+        fila[0].x >= abas.x + abas.w,
+        "a fila não começa no canto da moldura"
+    );
     let tempo = m0.rect(ids::TIMELINE_TIME_NUM).expect("o Time");
     let dur = m0
         .rect(ids::TIMELINE_LENGTH_NUM)

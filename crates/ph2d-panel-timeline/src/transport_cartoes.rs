@@ -5,8 +5,8 @@
 //! «⋯» do clipe e na engrenagem (`crate::barra_menus`). `PH2D_CARDS=0` pinta a barra de [`super::paint_bar`].
 
 use super::*;
+use ph2d_editor_core::panel::cards::CardCtx;
 use ph2d_editor_core::panel::cards::banda::{self, Emoldurada, Icone, Sinal, metrics as m};
-use ph2d_editor_core::panel::cards::{CardCtx, Seg};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
 
@@ -144,19 +144,6 @@ fn prepara(store: &mut WidgetStore, snap: &TimelineViewSnapshot, view: BarView) 
             store.set_tooltip(id, ph2d_i18n::tr(chave));
         }
     }
-}
-
-fn segs_das_abas<'a>(celulas: &'a [(ph2d_a11y::NodeId, String)], escolhida: usize) -> Vec<Seg<'a>> {
-    celulas
-        .iter()
-        .enumerate()
-        .map(|(i, (id, nome))| Seg {
-            id: *id,
-            icon: None,
-            text: nome,
-            on: i == escolhida,
-        })
-        .collect()
 }
 
 fn fileira_do_transporte(snap: &TimelineViewSnapshot, view: BarView) -> [Icone; 5] {
@@ -304,22 +291,9 @@ fn cartao<'a>(ctx: &'a mut PaintCtx, ink: CardInk, body: Rect) -> CardCtx<'a> {
     CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w)
 }
 
-/// 1.ª fileira, à esquerda: abas · migalha (o tocar vem a seguir, [`grupo_de_tocar`]).
-fn abas_e_migalha(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    f: &mut Fluxo,
-    (snap, view): (&TimelineViewSnapshot, BarView),
-    body: Rect,
-) {
-    let ink = CardInk::of_list(theme);
-    let celulas = crate::transport_tabs::items(snap);
-    {
-        let mut c = cartao(ctx, ink, body);
-        let segs = segs_das_abas(&celulas, crate::transport_tabs::selected(view.tab, snap));
-        let at = f.poe(c.segmentos_em_fila_w(&segs));
-        c.abas_em(&segs, at.0, at.1, tons_da_barra(theme));
-    }
+/// 1.ª fileira, à esquerda: a migalha (as abas são de pasta na borda esquerda, dono 13/11,
+/// [`crate::abas_laterais`]).
+fn migalha(ctx: &mut PaintCtx, theme: Theme, f: &mut Fluxo, snap: &TimelineViewSnapshot) {
     let w = crate::breadcrumb::width(snap);
     if w > 0.0 {
         let (x, y) = f.poe(w);
@@ -419,8 +393,11 @@ fn grupo_do_tempo(
         + banda::SEPARADOR_W;
     f.guarda_para(w);
     let mut c = cartao(ctx, ink, body);
-    let (x, y) = f.poe(banda::SEPARADOR_W);
-    c.separador_em(x, y);
+    // Sem nada antes (as abas foram para a borda), a Length encosta ao título sem separador.
+    if !f.no_inicio() {
+        let (x, y) = f.poe(banda::SEPARADOR_W);
+        c.separador_em(x, y);
+    }
     let at = f.poe(banda::CAMPO_COMPACTO_W);
     let nome = ph2d_i18n::tr("panel.timeline.card.length_long");
     let glifo = Glyph::Icon(IconId::CardLen);
@@ -517,8 +494,9 @@ pub(crate) fn paint_bar(
 ) -> Barra {
     prepara(ctx.host.store_mut(), snap, view);
     flutuante::pinta(ctx, theme, painel, (snap, view));
+    crate::abas_laterais::pinta_da_frente(ctx, theme, painel, (snap, view.tab));
     let mut f = Fluxo::novo(strip, body);
-    abas_e_migalha(ctx, theme, &mut f, (snap, view), body);
+    migalha(ctx, theme, &mut f, snap);
     grupo_do_tempo(ctx, theme, &mut f, snap, body);
     let (anim, opcoes) = dono_e_opcoes(ctx, theme, &mut f, (snap, view), body);
     f.quebra();

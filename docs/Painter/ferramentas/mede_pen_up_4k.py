@@ -31,7 +31,7 @@ def matriz(pasta, saida=None):
         quadros, agua, ultimo = [], [], 0
         for linha in open(tag + ".log", errors="replace"):
             if linha.startswith("[quadro-lento]"):
-                d = dict(kv.split("=") for kv in linha.split()[1:])
+                d = dict(kv.split("=", 1) for kv in linha.split()[1:] if "=" in kv)
                 ultimo = int(d["parede"])
                 quadros.append((ultimo, float(d["intervalo"]), float(d["quadro"])))
             elif "TAXA DA AGUA" in linha and ultimo:
@@ -638,7 +638,7 @@ if os.path.exists(base + ".ups_parede"):
     lentos = []
     for linha in open(base + ".log", errors="replace"):
         if linha.startswith("[quadro-lento]"):
-            d = dict(kv.split("=") for kv in linha.split()[1:])
+            d = dict(kv.split("=", 1) for kv in linha.split()[1:] if "=" in kv)
             lentos.append((int(d["parede"]), float(d["intervalo"]), float(d["quadro"])))
     print(f"\nquadros lentos: {len(lentos)} no total")
     for k, u in enumerate(upsp):

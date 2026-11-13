@@ -54,3 +54,18 @@ outra medição que mostre a conta ≫ 1,5 ms.
   11 278 — nenhuma das duas tocada nesta onda.
 - `quantas_entradas_tem_cada_painel::a_carga_de_comandos_de_um_painel_so_encolhe`: `wet_tuning` 12 × 14 (a catraca
   desce; número que soma entre linhas — reconta-o o integrador).
+
+## Bateria 2 (13/11) — ⚠️ load 15–19 (outro agente a compilar a frio): os ms NÃO valem; as PARTES sim
+
+`target/n8/bateria2.sh`, NOVA=1, o `[quadro-lento]` agora com as partes do Painter (`3026ea2e53`). Quadros > 25 ms:
+
+| gesto | quadro ms | Painter (dispatch · preview · dobra) | leitura |
+|---|---|---|---|
+| Impasto duplicar (+48 ms) | 35,4 | 7,3 · 7,3 · 0,6 | ~28 ms FORA do Painter (shell/apresentação/placa) — medir lá |
+| Filbert trocar (+63 ms) | 54,0 | 30,7 · 30,5 · **16,1** | a DOBRA do relevo inteira na troca (`fold_full`?) |
+| Filbert duplicar (+367 ms) | 35,3 | 0,4 · 0,2 · 0 | fora do Painter, ~370 ms depois: o fio da compressão? |
+| Filbert Ctrl+Z (+51 / +188 ms) | 40,2 / 73,5 | 24,2 · 24,1 · 0,4 / 18,0 · 17,9 · 12,3 | preview 18–24 + dobra 12 |
+
+Próximo (n.º 9): (a) a dobra inteira na troca/Ctrl+Z do Wet (porque `dobra` 12–16 ms — o `fold_full` do FrameInfo diz se foi
+inteira); (b) o tempo fora do Painter nos gestos de camada (o perfil da shell no quadro: `PH2D_PAINT_PERF` não o cobre);
+(c) re-medir a matriz com load < 5 (item 3 no app: Impasto dup/apagar/grupo).

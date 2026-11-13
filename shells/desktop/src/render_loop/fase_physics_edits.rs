@@ -78,12 +78,8 @@ impl crate::App {
                         editor_queue,
                         component_registry,
                     );
-                    // FLUSH por edição, pela razão que o ramo abaixo
-                    // documenta: `paste_joint_properties` só ENFILEIRA, e
-                    // ele read-modify-writes o componente inteiro — um
-                    // segundo paste no mesmo frame que lesse um primeiro
-                    // ainda não aplicado o descartaria em silêncio, que é
-                    // exatamente o caso do fan-out sobre dez joints.
+                    // FLUSH por edição, pela razão do ramo abaixo (o paste só ENFILEIRA e reescreve o
+                    // componente inteiro: o fan-out sobre dez joints perderia pastes).
                     if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
                         sim.world_mut(),
                         editor_queue,
@@ -108,17 +104,9 @@ impl crate::App {
                     editor_queue,
                     component_registry,
                 );
-                // ⚠️ FLUSH per edit, exactly as `inspector_commits::dispatch`
-                // does for every OTHER Inspector edit type (§11 physics,
-                // ordering, blend, name…). `apply_joint_edit` only QUEUES a
-                // `SetComponent`; this block was moved OUT of that dispatch
-                // and shipped without the flush, so a joint parameter edit
-                // sat in the queue until some other edit happened to drain it
-                // — "sometimes it works". And it must be PER edit, not once
-                // after the loop: `apply_joint_edit` read-modify-writes the
-                // WHOLE component, so a second edit in the same frame that
-                // read a not-yet-applied first one would silently drop it
-                // (the same reason the ordering loop flushes per iteration).
+                // ⚠️ FLUSH per edit, as `inspector_commits::dispatch` does: `apply_joint_edit` only QUEUES
+                // a `SetComponent` (without the flush an edit waited for another to drain it), and it
+                // read-modify-writes the WHOLE component, so a 2nd edit in the frame would drop the 1st.
                 if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
                     sim.world_mut(),
                     editor_queue,

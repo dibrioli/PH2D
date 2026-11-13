@@ -14,6 +14,14 @@
 //! desacoplado do `ph2d-ecs` e da crate de física, e a shell mapeia tags ↔ enums
 //! na fronteira.
 
+/// Uma linha do bloco «Joints» no cartão de um CORPO (Joint Editor W2): uma junta que nomeia o
+/// corpo, pelo título do papel («Front wheel · Car 1») ou pelo nome do objeto-junta.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InspectorBodyJoint {
+    pub joint_bits: u64,
+    pub label: String,
+}
+
 /// §12 Physics Joint snapshot (W3) — the selected **joint object**.
 ///
 /// A joint is an entity, so this is the section that describes it: what kind

@@ -105,6 +105,19 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     if crate::recibo_fisica::click(host, ev) || crate::sections::physics_colide::clique(host, ev) {
         return true;
     }
+    // O bloco «Joints» do corpo: a linha `i` seleciona a junta `i` da lista pintada.
+    if let WidgetEvent::Click(id) = ev
+        && let rows = crate::state_components::current_inspector_body_joints()
+        && let Some(row) = (0..rows.len())
+            .find(|&i| crate::ids::insp_body_joint_row(i) == id)
+            .map(|i| &rows[i])
+    {
+        host.bus_mut().push(EditorAction::SelectSprite {
+            entity_bits: row.joint_bits,
+            modifier: ph2d_editor_core::action_bus::SelectModifier::Replace,
+        });
+        return true;
+    }
     // A metade do CLIQUE: um chip, um botao. Resolvida por uma fn pura
     // (`click_edit`) e nao inline, pelo cap de 200 LOC das fns de painel — o
     // corte e o que as duas metades JA eram, *que controle foi apertado* contra

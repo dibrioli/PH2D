@@ -506,6 +506,16 @@ fn paint_body_actions(
             info.join_draw_armed,
             info.rig_parts,
         );
+        yy = super::physics_join_rows::paint_body_joints(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+        );
     }
 
     let mut paint_at = |id, label: &str, yy: &mut f32| -> Rect {

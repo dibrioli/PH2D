@@ -133,6 +133,51 @@ pub(crate) fn paint_join_gesture(
     yy
 }
 
+/// **O bloco «Joints» do CORPO** (Joint Editor W2): uma linha por junta que nomeia o corpo, pelo
+/// título do papel; clicar seleciona a junta (abre o cartão dela). Nada pintado sem juntas. Chamado
+/// pelos DOIS pintores da §11 (cartão e clássico), logo depois do gesto de criação.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_body_joints(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let rows = crate::state_components::current_inspector_body_joints();
+    if rows.is_empty() {
+        return y;
+    }
+    let font = TypeToken::Sm.px();
+    let top = y + Spacing::Xs.px();
+    paint_text(
+        text_system,
+        scene,
+        tr("panel.inspector.joints.title"),
+        x,
+        top + (ROW_H_PX - font) * 0.5,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let mut yy = top + ROW_H_PX;
+    for (i, row) in rows.iter().enumerate() {
+        let id = ids::insp_body_joint_row(i);
+        let rect =
+            ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &row.label);
+        let btn = Button::new(id, &row.label)
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(id));
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(id, rect);
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
+    }
+    yy
+}
+
 /// O rotulo do botao de DESENHAR, que e um toggle (W-J4b).
 ///
 /// ⚠️ **"Cancel Joint Drawing", nao "Cancel Joint"**: nao existe joint nenhum

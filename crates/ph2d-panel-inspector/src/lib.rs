@@ -358,7 +358,7 @@ pub use state_components::{
 };
 pub use state_components::{
     audio_sound_slot_pick, camera_target_slot_pick, joint_body_slot_pick, script_object_slot_pick,
-    script_prop_name,
+    script_prop_name, set_current_inspector_body_joints,
 };
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{

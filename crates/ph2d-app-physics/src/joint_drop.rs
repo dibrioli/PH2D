@@ -24,6 +24,18 @@ pub fn drop_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, stable_id: u
         && crate::joint::set_joint_body(sim, joint_bits, slot_b, target)
 }
 
+/// [`drop_body`] e, se religou, desarma o conta-gotas armado NAQUELE lado (`side` = junta, lado B).
+pub fn drop_disarming(
+    sim: &mut SimWorld,
+    pick: &mut Option<(u64, bool)>,
+    side: (u64, bool),
+    stable_id: u64,
+) {
+    if drop_body(sim, side.0, side.1, stable_id) && *pick == Some(side) {
+        *pick = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

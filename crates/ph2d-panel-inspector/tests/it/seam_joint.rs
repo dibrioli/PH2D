@@ -24,7 +24,7 @@ use ph2d_panel_inspector::{
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-const ENTITY: u64 = 0x5EED_0042;
+pub(crate) const ENTITY: u64 = 0x5EED_0042;
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
@@ -35,7 +35,7 @@ const VIEWPORT: Rect = Rect {
 /// A joint of `kind_tag`, with both Pin switches ON so the section paints
 /// every row it has. `bound`, because a connected joint is the state an artist
 /// is in when they tune one.
-fn joint(kind_tag: u8) -> InspectorJointInfo {
+pub(crate) fn joint(kind_tag: u8) -> InspectorJointInfo {
     InspectorJointInfo {
         entity_bits: ENTITY,
         kind_tag,
@@ -100,7 +100,7 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
 
 /// Paint the section, then click the middle of the widget with `id` — through
 /// the real pointer dispatcher. Returns the actions the panel raised.
-fn click_real(info: InspectorJointInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+pub(crate) fn click_real(info: InspectorJointInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(info));
@@ -216,7 +216,7 @@ const SPRING_ROWS: [ph2d_a11y::NodeId; 2] = [
 ];
 
 /// Tudo o que a §12 pinta para este joint.
-fn painted_ids(info: InspectorJointInfo) -> Vec<ph2d_a11y::NodeId> {
+pub(crate) fn painted_ids(info: InspectorJointInfo) -> Vec<ph2d_a11y::NodeId> {
     let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(info));
@@ -1125,6 +1125,9 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         not_a_number.extend_from_slice(group);
     }
     not_a_number.extend_from_slice(&[
+        // Joint Editor W2: a linha inteira de Body A/B, alvo de queda (não é controlo).
+        ph2d_panel_inspector::ids::INSP_JOINT_BODY_ROW_A,
+        ph2d_panel_inspector::ids::INSP_JOINT_BODY_ROW_B,
         ph2d_panel_inspector::ids::INSP_JOINT_KIND_GROUP,
         ph2d_panel_inspector::ids::INSP_JOINT_LIMITS_GROUP,
         ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_GROUP,

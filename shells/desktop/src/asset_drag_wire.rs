@@ -251,16 +251,14 @@ impl crate::App {
                 slot_b,
                 stable_id,
             } => {
-                if let Some(gfx) = self.gfx.as_mut()
-                    && ph2d_app_physics::joint_drop::drop_body(
+                if let Some(gfx) = self.gfx.as_mut() {
+                    let (pick, side) = (&mut self.joint_body_pick, (entity_bits, slot_b));
+                    ph2d_app_physics::joint_drop::drop_disarming(
                         &mut gfx.sim,
-                        entity_bits,
-                        slot_b,
+                        pick,
+                        side,
                         stable_id,
-                    )
-                    && self.joint_body_pick == Some((entity_bits, slot_b))
-                {
-                    self.joint_body_pick = None;
+                    );
                 }
             }
             DropAction::Refuse => {

@@ -129,17 +129,19 @@ fn paint_body_rows(
         &[tr("component.field.joint.1"), tr("component.field.joint.2")],
     );
     let gap = Spacing::Xs.px();
-    for (slot_label, name, id, armed) in [
+    for (slot_label, name, id, row_id, armed) in [
         (
             tr("component.field.joint.1"),
             &info.body_a_name,
             ids::INSP_JOINT_PICK_A,
+            ids::INSP_JOINT_BODY_ROW_A,
             info.pick_armed == 1,
         ),
         (
             tr("component.field.joint.2"),
             &info.body_b_name,
             ids::INSP_JOINT_PICK_B,
+            ids::INSP_JOINT_BODY_ROW_B,
             info.pick_armed == 2,
         ),
     ] {
@@ -196,6 +198,8 @@ fn paint_body_rows(
         // The eyedropper, right-aligned. Pressed (accent) while its pick is
         // ARMED, so the artist sees which end is waiting for a body click.
         let brect = Rect::new(vx + vw - icon_w, cy + (ch - icon_w) * 0.5, icon_w, icon_w);
+        // A linha inteira recebe um objecto arrastado; registada ANTES do ícone, que ganha o clique.
+        hit_index.register(row_id, Rect::new(x, cy, w, ch));
         let state = if armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {

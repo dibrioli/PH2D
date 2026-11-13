@@ -21,7 +21,10 @@ fn assembly_of(world: &World, id: u64) -> Option<Entity> {
         .flatten()
 }
 
-fn rule_of(world: &World, joint: &PhysicsJoint) -> Option<(Entity, &'static Template, &'static JointRule)> {
+fn rule_of(
+    world: &World,
+    joint: &PhysicsJoint,
+) -> Option<(Entity, &'static Template, &'static JointRule)> {
     let asm = assembly_of(world, joint.assembly)?;
     let t = ph2d_joint_templates::by_id(world.get::<JointAssembly>(asm)?.template)?;
     Some((asm, t, t.joints.get(usize::from(joint.role))?))
@@ -57,6 +60,47 @@ pub fn card_context(world: &World, joint: &PhysicsJoint) -> CardContext {
     }
 }
 
+/// **O bloco «Joints» do corpo `body_bits`** (Joint Editor W2): toda junta que o nomeia (lado A ou B),
+/// pelo título do papel ou, fora de montagem, pelo `Name` do objeto-junta. Ordem estável: montagem,
+/// papel, bits.
+#[must_use]
+pub fn body_joints(
+    world: &mut World,
+    body_bits: Option<u64>,
+) -> Vec<ph2d_editor_core::screens::hero::InspectorBodyJoint> {
+    // A junta nomeia o corpo pela IDENTIDADE (`StableId`, `name_refs::resolve_body_names`).
+    let Some(id) = body_bits
+        .and_then(|b| ph2d_ecs::stable_id_of(world, Entity::from_bits(b)))
+        .map(|s| s.0)
+    else {
+        return Vec::new();
+    };
+    let mut q = world.query::<(Entity, &PhysicsJoint)>();
+    let mut found: Vec<(Entity, PhysicsJoint)> = q
+        .iter(world)
+        .filter(|(_, j)| j.body_a == id || j.body_b == id)
+        .map(|(e, j)| (e, *j))
+        .collect();
+    found.sort_by_key(|(e, j)| (j.assembly, j.role, e.to_bits()));
+    found
+        .into_iter()
+        .map(|(e, j)| {
+            let title = card_context(world, &j).title;
+            let label = if title.is_empty() {
+                world
+                    .get::<Name>(e)
+                    .map_or_else(String::new, |n| n.as_str().to_owned())
+            } else {
+                title
+            };
+            ph2d_editor_core::screens::hero::InspectorBodyJoint {
+                joint_bits: e.to_bits(),
+                label,
+            }
+        })
+        .collect()
+}
+
 /// As OUTRAS juntas do grupo ligado desta (vazio fora de montagem ou com o grupo desligado).
 #[must_use]
 pub fn linked_siblings(world: &mut World, joint_e: Entity) -> Vec<Entity> {
@@ -66,15 +110,17 @@ pub fn linked_siblings(world: &mut World, joint_e: Entity) -> Vec<Entity> {
     let Some((asm, t, rule)) = rule_of(world, &joint) else {
         return Vec::new();
     };
-    if !world.get::<JointAssembly>(asm).is_some_and(|a| a.is_linked(rule.group)) {
+    if !world
+        .get::<JointAssembly>(asm)
+        .is_some_and(|a| a.is_linked(rule.group))
+    {
         return Vec::new();
     }
     crate::joint_assembly::joints_of(world, joint.assembly)
         .into_iter()
         .filter(|(e, j)| {
             *e != joint_e
-                && t
-                    .joints
+                && t.joints
                     .get(usize::from(j.role))
                     .is_some_and(|r| r.group == rule.group)
         })
@@ -126,7 +172,10 @@ pub fn edit_is_shared(edit: JointFieldEdit) -> bool {
 
 /// As edições do quadro, cada uma estendida às irmãs do grupo ligado. Sem repetir um par.
 #[must_use]
-pub fn with_linked(sim: &mut SimWorld, edits: &[(u64, JointFieldEdit)]) -> Vec<(u64, JointFieldEdit)> {
+pub fn with_linked(
+    sim: &mut SimWorld,
+    edits: &[(u64, JointFieldEdit)],
+) -> Vec<(u64, JointFieldEdit)> {
     let mut out: Vec<(u64, JointFieldEdit)> = Vec::with_capacity(edits.len());
     for &(bits, edit) in edits {
         if !out.contains(&(bits, edit)) {

@@ -356,7 +356,7 @@ fn dobra_joint(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         .map_or("", |k| k.tr());
     let titulo = tr("card.insp.phys.joint");
     t.dobra(y, ids::INSP_PHYS_FOLD_JOINT, titulo, resumo, |t, y| {
-        super::physics_join_rows::paint_join_gesture(
+        let y = super::physics_join_rows::paint_join_gesture(
             t.scene,
             t.text,
             t.theme,
@@ -369,6 +369,9 @@ fn dobra_joint(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             info.join_count,
             info.join_draw_armed,
             info.rig_parts,
+        );
+        super::physics_join_rows::paint_body_joints(
+            t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y,
         )
     })
 }

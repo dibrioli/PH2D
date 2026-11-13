@@ -162,7 +162,9 @@ fn junta(entity_bits: u64, world_anchored: bool) -> ph2d_editor_core::InspectorJ
 /// · aceitar a linha B de um pino de mundo · aceitar um asset na linha.
 #[test]
 fn as_linhas_body_da_junta_recebem_um_objecto() {
-    use ph2d_panel_inspector::ids::{INSP_JOINT_PICK_A, INSP_JOINT_PICK_B};
+    use ph2d_panel_inspector::ids::{
+        INSP_JOINT_BODY_ROW_A, INSP_JOINT_BODY_ROW_B, INSP_JOINT_PICK_A, INSP_JOINT_PICK_B,
+    };
     let objecto = DragPayload::Object { stable_id: 42 };
     ph2d_panel_inspector::set_current_inspector_joint(Some(junta(7, false)));
     let marcas = field_marks(
@@ -172,8 +174,14 @@ fn as_linhas_body_da_junta_recebem_um_objecto() {
     );
     let a = field_target(INSP_JOINT_PICK_A);
     let b = field_target(INSP_JOINT_PICK_B);
+    // A linha INTEIRA (o nome, fora do ícone) é o mesmo campo — `seam_joint_w2` prova o ponto.
+    let linhas = (
+        field_target(INSP_JOINT_BODY_ROW_A),
+        field_target(INSP_JOINT_BODY_ROW_B),
+    );
     ph2d_panel_inspector::set_current_inspector_joint(Some(junta(7, true)));
     let b_mundo = field_target(INSP_JOINT_PICK_B);
+    let linha_b_mundo = field_target(INSP_JOINT_BODY_ROW_B);
     let a_mundo = field_target(INSP_JOINT_PICK_A);
     ph2d_panel_inspector::set_current_inspector_joint(None);
     let sem_junta = field_target(INSP_JOINT_PICK_A);
@@ -211,7 +219,13 @@ fn as_linhas_body_da_junta_recebem_um_objecto() {
     ] {
         assert_eq!(resolve(p, a), DropAction::Refuse, "{p:?}");
     }
+    assert_eq!(
+        linhas,
+        (Some(a), Some(b)),
+        "a linha inteira de Body A/B recebe"
+    );
     assert_eq!(b_mundo, None, "a linha B de um pino de mundo não é campo");
+    assert_eq!(linha_b_mundo, None);
     assert_eq!(a_mundo, Some(a), "a linha A de um pino de mundo continua");
     assert_eq!(sem_junta, None);
 }

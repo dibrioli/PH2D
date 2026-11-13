@@ -512,9 +512,12 @@ pub fn projectile_target_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
 #[must_use]
 pub fn joint_body_slot_pick(id: ph2d_a11y::NodeId) -> Option<(u64, bool)> {
     let info = crate::state::current_inspector_joint()?;
-    if id == crate::ids::INSP_JOINT_PICK_A {
+    use crate::ids::{
+        INSP_JOINT_BODY_ROW_A, INSP_JOINT_BODY_ROW_B, INSP_JOINT_PICK_A, INSP_JOINT_PICK_B,
+    };
+    if id == INSP_JOINT_PICK_A || id == INSP_JOINT_BODY_ROW_A {
         Some((info.entity_bits, false))
-    } else if id == crate::ids::INSP_JOINT_PICK_B && !info.world_anchored {
+    } else if (id == INSP_JOINT_PICK_B || id == INSP_JOINT_BODY_ROW_B) && !info.world_anchored {
         Some((info.entity_bits, true))
     } else {
         None
@@ -527,4 +530,21 @@ pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
 
 pub(crate) fn current_inspector_audio() -> Option<InspectorAudioInfo> {
     CURRENT_INSPECTOR_AUDIO.with(|c| c.borrow().clone())
+}
+
+thread_local! {
+    /// O bloco «Joints» do CORPO selecionado (Joint Editor W2): as juntas que o nomeiam.
+    static CURRENT_INSPECTOR_BODY_JOINTS: std::cell::RefCell<Vec<ph2d_editor_core::screens::hero::InspectorBodyJoint>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub fn set_current_inspector_body_joints(
+    rows: Vec<ph2d_editor_core::screens::hero::InspectorBodyJoint>,
+) {
+    CURRENT_INSPECTOR_BODY_JOINTS.with(|c| *c.borrow_mut() = rows);
+}
+
+pub(crate) fn current_inspector_body_joints()
+-> Vec<ph2d_editor_core::screens::hero::InspectorBodyJoint> {
+    CURRENT_INSPECTOR_BODY_JOINTS.with(|c| c.borrow().clone())
 }

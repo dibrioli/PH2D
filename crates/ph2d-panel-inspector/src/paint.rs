@@ -38,6 +38,13 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         .store_mut()
         .set_panel_rect(ids::INSP_PANEL, ctx.slot);
     sync_inspector_from_snapshots(inspector_state, ctx.host);
+    // O bloco «Joints» do corpo: linhas dinâmicas, registadas antes de pintar (sem repor o hover).
+    for i in 0..crate::state_components::current_inspector_body_joints().len() {
+        let id = crate::ids::insp_body_joint_row(i);
+        if ctx.host.store().get(id).is_none() {
+            crate::populate::register_button_ids(ctx.host.store_mut(), &[id]);
+        }
+    }
     crate::signal_hint::instala();
     let display_unit = ctx.host.project().display_unit;
     let ppm = ctx.host.project().pixels_per_meter;

@@ -531,3 +531,58 @@ fn restoring_the_snapshot_before_the_gesture_removes_the_whole_assembly() {
         "the gesture added one assembly and two joints"
     );
 }
+
+/// ⭐ **O cartão Joint de uma roda do Car** (Joint Editor W2): o título pelo papel, o «Same as» das
+/// irmãs, a afinação que se espalha no grupo ligado (e o Drive que não), e o bloco «Joints» do chassi.
+/// **Mutações que sangram:** `edit_is_shared` a devolver `false` · `MotorEnabled` partilhado ·
+/// `set_linked` a não limpar o bit · `body_joints` sem o lado A ou fora de ordem.
+#[test]
+fn the_car_wheel_card_titles_links_and_lists_its_joints() {
+    use crate::joint_assembly_card::{body_joints, card_context, set_linked, with_linked};
+    use ph2d_editor_core::JointFieldEdit as E;
+    let (mut sim, parts, made) = built(JointKind::Wheel, "Car", false);
+    let id = ph2d_ecs::stable_id_of(sim.world(), made.assembly)
+        .expect("id")
+        .0;
+    let joints = joints_of(sim.world_mut(), id);
+    let ((rear_e, _), (front_e, front)) = (joints[0], joints[1]);
+    let ctx = card_context(sim.world(), &front);
+    assert_eq!(
+        (ctx.title.as_str(), ctx.same_as.as_str()),
+        ("Front wheel · Car 1", "Rear wheel")
+    );
+    let _ = set_linked(sim.world_mut(), front_e, true);
+    let (rear_b, front_b) = (rear_e.to_bits(), front_e.to_bits());
+    let spread = with_linked(&mut sim, &[(front_b, E::Stiffness(9.0))]);
+    assert_eq!(
+        spread,
+        [(front_b, E::Stiffness(9.0)), (rear_b, E::Stiffness(9.0))]
+    );
+    let drive = with_linked(&mut sim, &[(front_b, E::MotorEnabled(true))]);
+    assert_eq!(
+        drive,
+        [(front_b, E::MotorEnabled(true))],
+        "the Drive spread"
+    );
+    assert!(set_linked(sim.world_mut(), front_e, false));
+    let alone = with_linked(&mut sim, &[(front_b, E::Stiffness(9.0))]);
+    assert_eq!(
+        alone,
+        [(front_b, E::Stiffness(9.0))],
+        "an unlinked group spread"
+    );
+    let chassis = part(&parts, 0);
+    let listed = body_joints(sim.world_mut(), Some(chassis.to_bits()));
+    let labels: Vec<_> = listed
+        .iter()
+        .map(|j| (j.joint_bits, j.label.as_str()))
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            (rear_b, "Rear wheel · Car 1"),
+            (front_b, "Front wheel · Car 1")
+        ]
+    );
+    assert_eq!(body_joints(sim.world_mut(), None), []);
+}

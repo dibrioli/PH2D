@@ -106,6 +106,7 @@ mod seam_constraints;
 mod seam_hud;
 mod seam_image_use;
 mod seam_joint;
+mod seam_joint_w2;
 mod seam_luz;
 mod seam_luz_corpo;
 mod seam_open_prefab;

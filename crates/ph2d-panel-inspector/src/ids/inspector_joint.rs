@@ -262,6 +262,22 @@ pub const INSP_JOINT_PICK_A: NodeId = hash_node_id("insp_joint_pick_a");
 
 pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
 
+/// **A linha INTEIRA de Body A / Body B como alvo de queda** (Joint Editor W2). Registada por baixo
+/// do conta-gotas: o ícone continua a ganhar o clique (arma o pick); o resto da linha só recebe um
+/// objecto arrastado — um clique no NOME não arma nada (nenhum despacho conhece estes ids).
+pub const INSP_JOINT_BODY_ROW_A: NodeId = hash_node_id("insp_joint_body_row_a");
+
+pub const INSP_JOINT_BODY_ROW_B: NodeId = hash_node_id("insp_joint_body_row_b");
+
+const INSP_BODY_JOINT_BASE: NodeId = hash_node_id("insp_body_joint_row");
+
+/// A linha `i` do bloco «Joints» do CORPO (Joint Editor W2): clicar seleciona aquela junta. Sem tecto:
+/// uma por junta que nomeia o corpo, registada a cada quadro pelo `paint`.
+#[must_use]
+pub fn insp_body_joint_row(i: usize) -> NodeId {
+    NodeId(INSP_BODY_JOINT_BASE.0.wrapping_add(i as u64))
+}
+
 /// **A que o lado B se prende: a um OBJETO, ou ao MUNDO?** (W-JointWorld.)
 ///
 /// Sem este par o artista **inventa um corpo estático** só para servir de âncora

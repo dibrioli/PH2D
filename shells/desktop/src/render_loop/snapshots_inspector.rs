@@ -233,6 +233,9 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
+        let body_joints =
+            ph2d_app_physics::joint_assembly_card::body_joints(sim.world_mut(), alvo.bits);
+        ph2d_panel_inspector::set_current_inspector_body_joints(body_joints);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);
         ph2d_panel_inspector::set_current_inspector_player(inspector_player);
         ph2d_panel_inspector::set_current_inspector_visibility_section(
@@ -286,15 +289,8 @@ struct LateSections {
 /// As secções de componente opcional que vêm depois do player: animação, timers, acções, áudio, câmara, e a secção
 /// Visibility.
 ///
-/// ⚠️ **Oito argumentos, e a cura seria PIOR do que o aviso.** Eles não são estado partilhado: são
-/// as oito coisas DIFERENTES que as secções tardias perguntam (a selecção, o mundo, a janela, a
-/// pré-visualização da câmera, a árvore de tags, o relógio). Empacotá-las numa struct faria o
-/// chamador construir um valor para o desmontar duas linhas abaixo, e a cada wave que traz uma
-/// secção nova o campo entraria na struct **e** na chamada — dois sítios em vez de um.
-///
-/// ⛔ O aviso chegou aos oito na wave das TAGS + FÁBRICA (`tags` e `clock_playing`) e passou
-/// despercebido ao portão de fecho dela. *Um `-D warnings` que só corre no `ship.sh` é um portão
-/// que a linha não vê.*
+/// ⚠️ **Oito argumentos DIFERENTES** (selecção, mundo, janela, câmera, tags, relógio): uma struct seria
+/// montada para se desmontar logo abaixo, e cada secção nova entraria em dois sítios em vez de um.
 #[allow(clippy::too_many_arguments)]
 fn late(
     hero: &HeroScreen,
@@ -531,13 +527,8 @@ fn identity(alvo: &Alvo, sim: &SimWorld) -> Identity {
             skew_rad: [t.skew_x, t.skew_y],
         })
     });
-    // M14.D: live Visibility snapshot. Absence-equals-visible
-    // is the canonical invariant — entities without a
-    // `Visibility` component render normally, so `None` from
-    // `world.get::<Visibility>` maps to `visible = true`.
-    // Only published when the selection has a `Transform`
-    // (i.e. it's an Inspector-worthy entity); without a
-    // Transform the Inspector hides the whole panel content.
+    // M14.D: live Visibility. Sem `Visibility` = visível (`None` ⇒ `visible = true`); publicado só
+    // com `Transform` (sem ele o Inspector esconde o conteúdo inteiro).
     let inspector_visibility = alvo.bits.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         sim.world().get::<Transform>(entity)?;

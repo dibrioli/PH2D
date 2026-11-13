@@ -1,0 +1,156 @@
+5.07 7.99 8.09 2/1894 2229458
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+   Compiling ph2d-wet-paint v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-wet-paint)
+   Compiling ph2d-painter-brush v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-painter-brush)
+   Compiling ph2d-light v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-light)
+   Compiling ph2d-tool-painter v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-tool-painter)
+warning: method `bytes` is never used
+  --> crates/ph2d-tool-painter/src/tool/paint/watercolor_vidro.rs:54:19
+   |
+27 | impl SessaoDoVidro {
+   | ------------------ method in this implementation
+...
+54 |     pub(super) fn bytes(&self) -> usize {
+   |                   ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ph2d-tool-painter` (lib test) generated 1 warning
+    Finished `smoke` profile [optimized] target(s) in 41.86s
+     Running unittests src/lib.rs (target/smoke/deps/ph2d_tool_painter-1ce851a5572e3826)
+
+running 1 test
+ROTA	Watercolor Basic	vidro_pelo_journal=true
+  ev0 ponteiro 29.0 tique 4.2 saída 0.3 · 239.1 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.3 · 0.1 MB novos
+  ev2 ponteiro 0.2 tique 3.0 saída 0.3 · 0.1 MB novos
+  ev0 ponteiro 17.0 tique 2.9 saída 0.3 · 77.3 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 2.8 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 33.4 · 2.º máx 20.2
+  «+» 1.2 ms · 29.1 MB novos
+  ev0 ponteiro 37.7 tique 3.9 saída 1.1 · 69.2 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 4.2 saída 0.4 · 0.0 MB novos
+  ev0 ponteiro 12.8 tique 3.1 saída 0.4 · 38.7 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [42.6 3.3 4.9 3.7 4.0] máx 42.6 mediana 3.7	2.º [16.3 3.2 4.1 4.1 3.9] máx 16.3 mediana 4.2
+ROTA	Watercolor Basic	vidro_pelo_journal=false
+  ev0 ponteiro 23.5 tique 4.0 saída 0.3 · 64.7 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.1 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 17.1 tique 3.0 saída 0.3 · 91.3 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 27.7 · 2.º máx 20.4
+  «+» 2.1 ms · 0.0 MB novos
+  ev0 ponteiro 33.7 tique 3.7 saída 1.2 · 36.1 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.0 saída 0.4 · 0.0 MB novos
+  ev0 ponteiro 10.6 tique 3.0 saída 0.4 · 147.6 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.2 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [38.5 3.4 3.6 3.7 3.8] máx 38.5 mediana 3.8	2.º [14.0 3.3 4.2 4.2 4.7] máx 14.0 mediana 4.2
+ROTA	Watercolor Basic	vidro_pelo_journal=false
+  ev0 ponteiro 15.5 tique 4.4 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 19.8 tique 3.1 saída 0.3 · 57.9 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.1 · 2.º máx 23.2
+  «+» 2.0 ms · 0.0 MB novos
+  ev0 ponteiro 33.6 tique 3.7 saída 1.1 · 11.7 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.1 saída 0.4 · 0.0 MB novos
+  ev0 ponteiro 14.0 tique 3.0 saída 0.4 · 148.5 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.3 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [38.4 3.3 3.7 3.7 4.2] máx 38.4 mediana 3.8	2.º [17.4 3.3 4.2 4.4 4.0] máx 17.4 mediana 4.1
+ROTA	Watercolor Basic	vidro_pelo_journal=true
+  ev0 ponteiro 14.1 tique 3.6 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.7 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 9.9 tique 3.1 saída 0.3 · 0.1 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 17.9 · 2.º máx 13.2
+  «+» 2.1 ms · 0.0 MB novos
+  ev0 ponteiro 36.7 tique 4.1 saída 1.2 · 35.5 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.6 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 8.4 tique 3.0 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 2.9 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [42.0 3.8 4.4 4.3 4.4] máx 42.0 mediana 4.3	2.º [11.8 3.2 3.9 3.8 3.7] máx 11.8 mediana 3.7
+ROTA	Watercolor Basic	vidro_pelo_journal=true
+  ev0 ponteiro 15.9 tique 4.3 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.6 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 10.1 tique 3.2 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.1 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.6 · 2.º máx 13.6
+  «+» 2.0 ms · 0.0 MB novos
+  ev0 ponteiro 33.9 tique 4.2 saída 1.3 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.5 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 8.9 tique 3.0 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 2.9 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [39.4 3.9 4.3 4.3 4.5] máx 39.4 mediana 4.3	2.º [12.3 3.3 3.9 4.0 3.9] máx 12.3 mediana 4.1
+ROTA	Watercolor Basic	vidro_pelo_journal=false
+  ev0 ponteiro 16.3 tique 4.6 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.6 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.5 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 17.0 tique 3.2 saída 0.3 · 33.2 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 21.2 · 2.º máx 20.4
+  «+» 2.1 ms · 0.0 MB novos
+  ev0 ponteiro 31.2 tique 3.4 saída 1.2 · 3.4 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 2.8 saída 0.4 · 0.0 MB novos
+  ev0 ponteiro 15.2 tique 3.2 saída 0.4 · 148.5 MB novos
+  ev1 ponteiro 0.0 tique 3.1 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.1 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [35.8 3.3 3.4 3.5 3.5] máx 35.8 mediana 3.6	2.º [18.8 3.5 4.1 6.3 4.2] máx 18.8 mediana 4.4
+ROTA	Watercolor Basic	vidro_pelo_journal=false
+  ev0 ponteiro 14.1 tique 3.8 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.6 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 2.7 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 17.3 tique 3.1 saída 0.3 · 33.2 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.0 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 18.2 · 2.º máx 20.7
+  «+» 2.0 ms · 0.0 MB novos
+  ev0 ponteiro 30.3 tique 3.5 saída 1.0 · 3.4 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.5 saída 0.4 · 0.0 MB novos
+  ev0 ponteiro 15.0 tique 3.0 saída 0.4 · 148.5 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [34.8 3.3 4.1 3.7 3.7] máx 34.8 mediana 3.7	2.º [18.4 3.2 4.1 4.1 3.9] máx 18.4 mediana 4.1
+ROTA	Watercolor Basic	vidro_pelo_journal=true
+  ev0 ponteiro 14.6 tique 3.6 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 8.8 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.7 tique 4.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 18.5 · 2.º máx 12.0
+  «+» 2.2 ms · 0.0 MB novos
+  ev0 ponteiro 32.3 tique 3.9 saída 1.2 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.2 tique 3.1 saída 0.4 · 0.0 MB novos
+  ev0 ponteiro 9.8 tique 3.6 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 3.1 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.3 saída 0.6 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [37.4 3.3 3.8 4.1 3.8] máx 37.4 mediana 3.8	2.º [13.9 3.5 4.6 5.0 4.4] máx 13.9 mediana 4.2
+preparo usado (motores, papéis): (0, 0)
+test tool::paint::wetpaint::sonda_primeiro_traco::sonda_primeiro_traco ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3163 filtered out; finished in 20.80s
+
+6.00 7.71 7.99 2/1929 2233392

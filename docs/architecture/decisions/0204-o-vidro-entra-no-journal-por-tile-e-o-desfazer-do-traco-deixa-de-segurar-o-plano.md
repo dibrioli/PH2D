@@ -1,6 +1,6 @@
 # ADR-0204 — O vidro entra no journal por tile e o desfazer do traço deixa de segurar o plano
 
-- **Status:** Accepted — missão Painter 4K; o dono autorizou em 13/11 («2- pode»: desfazer em janela/tiles do vidro e do
+- **Status:** Accepted, **Implementado** (13/11, passos 0–8; ver «Implementado» no fim) — missão Painter 4K; o dono autorizou em 13/11 («2- pode»: desfazer em janela/tiles do vidro e do
   canvas por traço); desenho técnico delegado (padrão-ouro).
 - **Data:** 2026-11-13
 - **Linha:** `line/PainterWatercolor` (onda n.º 7, item 2)
@@ -295,3 +295,42 @@ sobre papel de cor, e o Ctrl+Z tira exactamente um traço.
 `undo_confine.rs` (o braço `vidros: _`) · testes novos ao lado (`watercolor_vidro_journal_tests.rs`). Zero ficheiros em
 `shells/`: o undo por DIFF da shell (`shells/desktop/src/undo.rs`, `ProjectState`) só encadeia a transação do Painter
 no seu degrau (W8, `undo.rs:417`) e não segura os planos dele; o contrato da transação não muda.
+
+## Implementado (13/11)
+
+Estado e números: [`N7_ITEM2_vidro_tiles.md`](../../Painter/missao_4k/medicoes/N7_ITEM2_vidro_tiles.md). Chave
+`VIDRO_PELO_JOURNAL` (`true`); `false` continua o oráculo dos portões.
+
+**O que difere do plano**
+- **D2:** o 2.º traço ainda copiava pela entrada `OnlyAfter` do 1.º; cura `StoredEntry::Aparece` (a janela fora do
+  neutro troca o `Arc` vivo).
+- **D3:** a sessão é um `TileJournal<Vidro>` na `BaseCongelada`, e o `vbase` uma janela densa da caixa do quadro.
+  A guarda da sessão molhada passou a levar a CAMADA (`GuardaDaSessao`): a cópia da camada partilhava o `Arc` e
+  herdava a sessão da original.
+- **D5:** o journal do PASSO soma em `journal_bytes_retidos`; o da SESSÃO (`VidroCongelado::bytes`) soma em
+  `bytes_do_instantaneo`, não em `journal_bytes_retidos` (não é do passo e não reseta com ele). O `journal_heap_bytes`
+  (só em teste) continua tela+relevo, porque cinco gates o lêem como «os bytes da tela».
+- **D7:** não houve sítio a curar. No gesto WB/Wet, os três `fork_canvas` (`watercolor_render.rs`,
+  `wetpaint/composite.rs`, `borracha_morta.rs`) já passavam a caixa desde a n.º 6. Os `None` que restam (Fill,
+  Sculpt, Inpaint, Region, Selection) estão fora do gesto, como o D7 previa.
+- **Cura fora do plano:** sem `debug_assertions` (perfis `smoke` e `release`) a crate não compilava, porque
+  `vidro_antes_na_janela` chamava `TileJournal::get`, só de debug. Passou a ler por corrida com `read_row_into`.
+
+**Números medidos**
+- Cópias do plano do vidro do 2.º ao 8.º traço: `[1;7]` → **`[0;7]`**. Donos do plano em repouso: 3/2 → **1/1**.
+  No 1.º traço na base depois do «+»: oráculo 1, journal **0** (asserido).
+- Gesto aberto (520×390): passo 688 128 B, sessão 917 504 B, plano 1 419 600 B. Com o mesmo `max_bytes`, a pilha
+  retém 4 passos contra 4 do oráculo.
+- Sonda a 4K, `ab` intercalado (r2, depois do D3, load 5–8, relógio só indicativo), 2.º pen-down WB: mínimo
+  **11,8 ms pelo journal × 14,0 ms pela rota antiga**, média 13,6 × 17,2. O alvo de ≈ 4 ms a menos no pen-down
+  inteiro fica perto (−2,2 ms no mínimo, −3,6 ms na média). O alvo de ≤ 1 ms para o `vidro_do_quadro` sozinho está
+  por ler nas partes da sonda.
+- `medida_instantaneo_memoria` (retido ÷ declarado): 1,022 e 1,017.
+
+**Aberto**
+- **Tela:** `fork_par_raw` ainda copia a tela INTEIRA (33 MB a 4K) quando outro dono forte segura o `Arc`. A caixa
+  só reduz o que o journal guarda, não essa cópia. O mesmo vale para `undo_vivo/casco.rs` (`make_mut` se houver
+  pixel fora da caixa). Copiar só a caixa exige uma porta nova (fork por tile), que não cabe numa troca de uma
+  linha. Custo estimado, NÃO medido: ≈ 3–5 ms por cópia a 4K, se ela acontecer no gesto (falta confirmar o `strong` da tela no pen-down; a tela elidida do B17.4 já larga o `before`). Medir com `PH2D_SONDA_PARTES=1`.
+- O «+» e as entradas estruturais (D6, item 3).
+- Os alarmes de pincel e a matriz do app (passo 9) ficam com o fecho da onda.

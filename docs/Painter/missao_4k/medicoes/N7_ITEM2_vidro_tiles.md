@@ -1,7 +1,7 @@
 # N.º 7, item 2 — o vidro no journal por tile (ADR-0204): estado
 
 > ADR: [`0204`](../../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md).
-> Linha `line/PainterWatercolor`, 13/11. 5.º agente (45 min): cópia da camada, cena do Digital, passos 5 e 6 fechados; passos 7 e 8 por fazer.
+> Linha `line/PainterWatercolor`, 13/11. **FECHADO** pelo 6.º agente (passos 7 e 8, mutações dos 5 e 6). ADR-0204 «Implementado».
 
 ## Passos feitos
 
@@ -17,6 +17,8 @@
 | 6 (cópia) | `d1d8940867` | `GuardaDaSessao { tela, camada }`: a guarda da sessão molhada leva a camada dona; a CÓPIA (que partilha o `Arc`, B18.1) não herda a sessão. |
 | D2 Digital | `cd08bc8ef3` | Cena de aguada alfa < 255 (camada transparente) em papel de cor, com dreno por evento: separa o journal do vivo. |
 | 5 + 6 | `f0996ce78b` | `o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer`, `a_camada_nova_e_o_vidro_elidido_dao_o_bit`. |
+| 7 (D5) + mutações 5/6 | `80559a3331` | `VidroCongelado::bytes` em `bytes_do_instantaneo`; gate `o_tecto_do_desfazer_conta_o_journal_do_vidro`; «0 cópias depois do +» asserido; cura do build sem `debug_assertions`. |
+| 8 (D7) | — | Censo: nada a curar (abaixo). |
 
 Sonda pesada do passo 0 a 4K: **na fila** (`bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh`, posição 5): o
 subagente não pode correr `--ignored`. É a mesma sonda para o «depois» do alvo.
@@ -165,6 +167,58 @@ devagar), fluxo < 1. Não simplificar o código.
   vidro) e refaz tudo ao bit. **Cópias do plano no 1.º traço na base depois do «+»: 0** (gravado, não asserido).
 - Gates do ficheiro do journal: 7 verdes por nome (`watercolor_vidro_journal_tests`), do restauro: 3.
 
+## Resumo final (6.º agente, 13/11)
+
+- **Passo 7 (D5).** `SessaoDoVidro::bytes` deixou de ser só de teste. `VidroCongelado::bytes` (as duas sessões)
+  soma em `bytes_do_instantaneo`. Gate `o_tecto_do_desfazer_conta_o_journal_do_vidro` (520×390, 3.º traço aberto):
+  - o passo tem 688 128 B, contados em `journal_bytes_retidos`;
+  - largar a sessão baixa o instantâneo em **917 504 B**, entre os 802 816 B dos tiles mudados desde o início
+    (oráculo `GUARDA_O_INICIO_DA_SESSAO`) e os 1 419 600 B do plano;
+  - com `max_bytes` = metade da pilha cheia do oráculo, a pilha retém 4 passos contra 4 (controlo: o orçamento morde,
+    4 < 8).
+  Mutação «sem a sessão no instantâneo» ⇒ **VERMELHO**. `medida_instantaneo_memoria` está verde por nome
+  (`--profile smoke`): retido ÷ declarado 1,022 (splash 1024²) e 1,017 (worker 512²).
+- **Cura achada pelo caminho:** a crate não compilava sem `debug_assertions` (`smoke`/`release`). O
+  `vidro_antes_na_janela` (D2, produção) chamava `TileJournal::get`, que só existe em debug. Agora lê por corrida com
+  `read_row_into`, guardado por `is_empty`, como `SessaoDoVidro::janela`; `vidro_before` e `vidro_speaks_for` ganharam
+  o `cfg` dos portões. A mutação «o antes lê o vivo» continua **VERMELHA** em
+  `o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal`. O build `smoke` sai sem avisos.
+- **Mutações próprias dos passos 5 e 6:**
+  - passo 5, «a escrita do vidro sem a porta» (`Arc::make_mut` em vez de `fork_vidro`): **VERMELHO**, mas pelo
+    `debug_assert` «indescritível» de `undo_record.rs:71`, não pela comparação ao bit. O sistema acusa o journal
+    recusado; em release o passo seria descartado.
+  - passo 6, «o cursor segura o vidro» (`at.vidros.clear()` desligado): **VERMELHO** pela asserção nova das cópias.
+  - Sobreviveram duas no passo 6, ambas registadas: «sem `note_absent_vidro`» e «sem a troca do `Aparece`». Na base,
+    o traço 1 já tinha trocado o `Arc`, então a entrada do traço 0 não o segura no traço 4.
+- **«0 cópias no 1.º traço na base depois do «+»» agora é asserção.** O journal dá 0; o oráculo dá 1 (controlo).
+- **Passo 8 (D7), censo:** no gesto WB e Wet só há três `fork_canvas`, e todos passam a caixa
+  (`watercolor_render.rs:333`, `wetpaint/composite.rs:302`, `borracha_morta.rs:236` com `Some(regiao)`). O `None` só
+  aparece com o A/B `CAPTURA_PELA_CAIXA` desligado. O `capture_canvas_arc` só existe dentro da porta (`plane_fork.rs:207`, que
+  passa o `Arc` sem copiar) e no `replace_canvas` (Fill, crop, resize). Os `None` que restam (Fill, Sculpt, Inpaint,
+  Region, Selection) estão fora do gesto. **Nada a implementar.**
+- **Vizinhos verdes por nome:** 119 passaram + 15 ignorados (`vidro`, `watercolor_session`, `troca`, `adormec`,
+  `copias_de_plano`, `duplicate`, `captura_da_caixa`, `mask_gate_copia`, `regiao_do_journal`,
+  `o_undo_e_o_redo_dao_o_bit_do_caminho_antigo`).
+- **Sonda 4K do coordenador** (`N7_ITEM2_sonda_r1.log` = antes do D3; `N7_ITEM2_sonda_r2_depois_D3.log` = depois),
+  r2, 2.º pen-down WB 4K, `ab` intercalado:
+
+  | | mínimo | média |
+  |---|---|---|
+  | journal | **11,8 ms** | 13,6 ms |
+  | rota antiga | 14,0 ms | 17,2 ms |
+
+  Load 5–8: o relógio é só indicativo.
+
+### O que fica aberto
+1. **A tela inteira no fork.** `fork_par_raw` copia 33 MB a 4K quando outro dono forte segura o `Arc` da tela; o
+   mesmo vale para `undo_vivo/casco.rs` (`make_mut` com pixel fora da caixa). A caixa reduz só o que o journal
+   guarda. Falta confirmar se isto acontece no pen-down WB (o `strong` da tela). Se acontecer, a cura é uma porta de
+   fork por tile. Custo estimado, NÃO medido: ≈ 3–5 ms por cópia.
+2. Ler o `vidro_do_quadro` nas partes da sonda r2. O alvo do ADR é ≤ 1 ms.
+3. A mutação do passo 5 que pegue pela comparação ao bit, e não pelo `debug_assert`.
+4. O «+» e as entradas estruturais (D6, item 3).
+5. O passo 9: alarmes de pincel, clippy/fmt da crate 1× e a matriz do app, no fecho da onda.
+
 ## Armadilhas achadas
 
 1. **O plano que nasce no 1.º quadro era capturado nos quadros seguintes do MESMO traço** (1 MB a 520×390, sem
@@ -180,6 +234,7 @@ devagar), fluxo < 1. Não simplificar o código.
    medir ANTES do `on_canvas_pointer(Down)`.
 5. `--ignored` e `fila-pesada.sh pôr '…&&…'` são recusados no subagente: a sonda vai num script (`N7_ITEM2_sonda.sh`).
 6. `VIDRO_PELO_JOURNAL` ainda NÃO existe: o passo 1 não muda comportamento. Nasce no passo 2/3.
+9. **Verde em `dev` não é verde em `smoke`/`release`:** um método `cfg(any(test, debug_assertions))` chamado da produção só reprova sem `debug_assertions`. O `--test medida_instantaneo_memoria` (`--profile smoke`) pegou-o.
 
 7. **O `relief_maps` zera `before.relief_elided` inteiro** no sucesso: o vidro tem de sair ANTES (é o que o
    `vidro_map` faz, com `mem::take` das testemunhas do vidro).

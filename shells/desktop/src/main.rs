@@ -960,19 +960,6 @@ impl ApplicationHandler for App {
 // OUTRA vez seriam duas respostas à mesma pergunta, e a que envelhece é a que o artista vê.
 pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 
-/// Query the live cursor position relative to `window` in physical
-/// pixels (top-left origin). Returns `None` if the platform path
-/// fails; callers fall back to a cached value.
-///
-/// Existence rationale: winit 0.30 on macOS does not emit
-/// `CursorMoved` during external file drag operations, so by the
-/// time `DroppedFile` fires the cached cursor is stale. We bypass
-/// the event stream by asking CoreGraphics for the live cursor
-/// directly. Other platforms reach here only as a no-op stub.
-/// Resolve the editor theme from a name (typically read from the
-/// `PH2D_THEME` env var), falling back to [`Theme::Forge`] for
-/// missing/invalid values. Recognised names match `Theme::id()`
-/// (`forge`, `workshop`, `sunstone`, `blueprint`).
 fn main() {
     install_panic_hook();
     ph2d_app_game::smoke::recusa_nomes_desconhecidos(); // nome do smoke que ninguém lê sai ALTO, antes da janela

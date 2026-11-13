@@ -34,6 +34,12 @@ thread_local! {
     pub static VIDRO_SEGUE_A_BASE: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
 }
 
+#[cfg(test)]
+thread_local! {
+    /// As cópias do plano do vidro feitas pelo [`abre_o_vidro`] neste fio (a régua dos portões).
+    pub(super) static COPIAS_DO_VIDRO: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 impl VidroCongelado {
     /// **A base mudou de `Arc`, não de dados** (B18.4, Watercolor Basic a 4K): o borrão escreve a base no lugar e,
     /// com o `Weak` daqui vivo, o `make_mut` MOVE-a para um `Arc` novo — o `Weak` morria, o vidro recongelava a
@@ -257,10 +263,9 @@ pub(super) fn abre_o_vidro(
     if n == 0 || base.len() != n * 4 {
         return None;
     }
-    let mut plano = vidros
-        .remove(&camada)
-        .filter(|p| p.len() == n)
-        .unwrap_or_else(|| Arc::new(vec![[0u8; 7]; n]));
+    let guardado = vidros.remove(&camada).filter(|p| p.len() == n);
+    let nasce = guardado.is_none();
+    let mut plano = guardado.unwrap_or_else(|| Arc::new(vec![[0u8; 7]; n]));
     let vbase = match congelado {
         Some((w, c, v))
             if *c == camada && Weak::ptr_eq(w, &Arc::downgrade(base)) && v.len() == n =>
@@ -272,9 +277,17 @@ pub(super) fn abre_o_vidro(
             Arc::clone(&plano)
         }
     };
-    // O plano é escrito no lugar: quem o partilha (o desfazer, a base congelada) fica com a cópia.
+    // O plano é escrito no lugar: quem o partilha (o desfazer, a base congelada) fica com a cópia. O que
+    // nasceu AGORA é zeros: a cópia é outro plano zerado, cujas páginas só existem onde o traço escreve
+    // (B18.4 WB: a 4K, 58 MB copiados no 1.º toque de cada camada nova).
     if Arc::strong_count(&plano) > 1 {
-        plano = Arc::new(crate::plane_copy::par_clone(&plano));
+        plano = Arc::new(if nasce {
+            vec![[0u8; 7]; n]
+        } else {
+            #[cfg(test)]
+            COPIAS_DO_VIDRO.with(|c| c.set(c.get() + 1));
+            crate::plane_copy::par_clone(&plano)
+        });
     }
     Some((plano, vbase))
 }

@@ -3,14 +3,14 @@
 Leitor: o agente integrador. Os handoffs [MISTURA_E_ENVIO](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-12_MISTURA_E_ENVIO.md),
 [LUZ_E_CAMADAS](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-12_LUZ_E_CAMADAS.md) e
 [DESEMPENHO_TOTAL](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-12_DESEMPENHO_TOTAL.md) **CONTINUAM a valer** (superfície, riscos,
-decisões do dono, abertos). Aqui está só o que esta janela acrescentou: `4cc0e272fb..HEAD` (22 commits). **Nada foi integrado nem enviado.**
+decisões do dono, abertos). Aqui está só o que esta janela acrescentou: `4cc0e272fb..HEAD` (22 commits; a §12 acrescenta `63f5e2ca23..116f9c8072`, +19 commits, HEAD `116f9c8072`). **Nada foi integrado nem enviado.**
 
 ## 1. Identidade
 
 - Branch `line/PainterWatercolor`; merge-base com o main `bc4a6ce930`. A linha **NÃO foi rebaseada**.
-- Tocado: `ph2d-tool-painter`, `ph2d-app-painter` (4 ficheiros: `painter_bridge_selection_overlay.rs`, `painter_bridge_queries.rs` e dois
+- Tocado: `ph2d-tool-painter`, `ph2d-render` e `ph2d-vector` (só a §12), `ph2d-app-painter` (4 ficheiros, mais `painter_gpu_preview.rs`, `lib.rs` e testes na §12: `painter_bridge_selection_overlay.rs`, `painter_bridge_queries.rs` e dois
   testes), `ph2d-wet-paint` (`solver/`) e `docs/`. **Ficaram intocados:** `shells/desktop`, os `Cargo.toml`/`Cargo.lock` e os contratos do §6
-  (conferido pelo `git diff --stat`).
+  (conferido pelo `git diff --stat`, também em `63f5e2ca23..116f9c8072`).
 - Commits (cada mensagem traz o mecanismo e a tabela de medição):
   - B20.11 `d15a917f44` · B01.A1 `7bfcae90f6` · B52.R13 `5ba1c8aa66` · B40.A5 `56bba7ce79` · B40.A4 `9f32dc19f8` · B40.A3 `26a9cc8a68`
     (docs `513f086915`);
@@ -117,6 +117,28 @@ vermelhos por decisão).
 - `PaintState` ganhou 3 campos; um construtor literal noutra linha não compila (cura: `..Default`/`state_default.rs`).
 - **Medições:** a régua é o A×B no mesmo binário (ou 1 fio, `RAYON_NUM_THREADS=1`); a carga foi de 9 a 90, por isso o relógio absoluto vale
   pouco.
+
+## 12. Depois do fecho: os três defeitos do dono (12/11 à noite)
+
+Intervalo `63f5e2ca23..116f9c8072` (19 commits; 53 ficheiros, +3412/−121). Novo fora do Painter: `ph2d-render` (`layer_compositor/compositor/{api,buffers,mod}.rs`, `layer_compositor/mod.rs`, teste `a_camada_alem_do_orcamento.rs`) e `ph2d-vector/src/scene.rs` (+22). `fila_da_caneta{,_tests}.rs` MOVIDA de `ph2d-app-painter` para `ph2d-tool-painter` (catraca verde). `ph2d-wet-paint`: `assenta/memo.rs`, `solver/active_region.rs`, `advect_commit.rs` + 3 `examples/sonda_*_4k.rs`. `shells/desktop`, `Cargo.toml`/`Cargo.lock` e contratos §6 intocados. Colisão: o compositor/`ensure_array` de `ph2d-render` (quem mexa em camadas na placa) e `scene.rs`.
+
+**Defeito 1: «a linha pontilhada da seleção fica invisível a depender do zoom» (B20.11b; `099d47d773`, `906b303443`, `eea0f91ea0`).** As formigas eram texels de 1 px de imagem amostrados por vizinho-mais-próximo. Cura: contorno 128 da máscara em polilinhas (`selection_contorno.rs`, guardado por identidade do `Arc`) traçado em ESPAÇO DE ECRÃ a 1 px (branco + tracejado preto, offset pelo passo); linhas ciano do Offset idem. Acima do orçamento de 20 000 cantos: caminho raster em ecrã (`selection_formigas_raster.rs`). Medido: varinha 4K, 5,26 M lados, 632–939 ms → pior quadro 11,1 ms, passo seguinte 6,9 ms, `bin_data` 10/262 144; 20 k lados = 0,62 ms de encode/quadro. Gates `as_formigas_*` (4 bordas a zoom 0,37/0,5/1/3,3, marcha), `o_contorno_nos_casos_limite`, `o_orcamento_escolhe_o_caminho_dos_dois_lados`. Hang de teste curado (`signum(0.0)` = 1).
+
+**Defeito 2: «o primeiro traço da nova camada em imagem grande com Wet Paint tem delay» (B18.4).** Três causas, todas curadas:
+- (a) o pen-down derrubava a composição inteira quando a marca molhada virava: `1beae71478` (307 200 → ~3 300 texels reivindicados; diag `fc0270453e`);
+- (b) o «+» recompunha a tela: `66c5dcbca7`, `abdb2e67db` (só a caixa da tinta que adormece). «+» Watercolor Basic 73 → 17–31 ms, Wet 89 → 35–47 ms;
+- (c) a placa: `regiao_suja` compunha a tela e enviava a camada nova inteira no 1.º toque. `c39130ac3e`: a camada transparente nasce limpa na placa (`LayerCompositor::nasce_limpa`). `116f9c8072`: `ensure_array` limpava o cache ao crescer a capacidade e re-enviava TODAS as residentes; agora copia as fatias velhas na placa (gate `o_array_que_cresce_guarda_as_fatias_ao_bit`). `o_primeiro_toque_da_camada_nova_envia_so_a_caixa_ao_bit`: 257 956 B → 27 556 B.
+- APP (NOVA=1, matriz 3840×2160 papel, Radeon, 3 rodadas intercaladas, mínimo; antes = `28ee89016d`): 1.º toque na camada nova Wet **51,7 → 23,5 ms** (2.º toque ~17–22); Watercolor Basic 1.º toque 66,9 → 63,9 (sem mudança, ABERTO).
+
+**Defeito 3: «líquido escorrendo em vários traços consecutivos fica lento embora o FPS não mostre queda» (B13.12).** A sim corre fora da UI e não acompanhava o relógio. Medido (`sonda_n_tracos_em_tempo_real`): sim-s/s 1,00/1,00/0,95/0,70/0,57/0,49 para 1..6 traços a 4K. Curas ao bit: `memo::potencia` (`422d809eb1`, secagem 63,1 → 50,8 ms); commit do advect pela rota que move menos bytes (`d8ba3eb20c`, estágio 3 19,5 → 16,7 ms); saia do `rebuild_active_region` por colunas em paralelo (`74346c7354`, estágio 0 8,9 → 3,8 ms). Sob carga: 6 traços 0,49 → ~0,89, 5 → 0,98, 1–4 → 1,00. RECUSAS medidas: sono por tile (`8cbfed0328`: 90–98 % dos tiles mudam por passo; os candidatos mudariam o bit) e sono por célula (B13.3). O advect está na banda de memória (~3,6 ns/célula); premissa dos «30» refutada (`3cccc6bcaf`: secagem 4,4 ns/célula).
+
+**Determinismo (B18.5, `713650f15c`).** O acordar da tinta adormecida dependia do agendamento dos fios (anterior à janela: `48becb76ca`, 06/11). Com relógio fixo/fita/ritmo o acordar espera o fio; no relógio de parede o app não espera. Gate `undo_os_gemeos_da_camada_adormecida_dao_o_mesmo_bit_em_qualquer_largura_do_pool`.
+
+**ABERTO, por impacto:**
+1. A sim a 6 traços a ~0,89: bytes por célula no advect (momentum no bloco, active/uv relidos, dst_rgb) e a cura 1b da secagem (x/y escalares no resolve/assenta); re-medir sim-s/s com calma.
+2. Watercolor Basic, 1.º toque na camada nova ~64 ms (~64 MB de memória a mais, por achar).
+3. O nascer da sessão Wet: 10–14 ms no mouse-down (27 MB).
+4. A matriz do app com load < 5; o ruído do B19.10; B20.6 placa.
 
 ## Binário do smoke
 

@@ -24,6 +24,10 @@ fn a_faixa_tem_contraste_em_todos_os_temas() {
             ("marca/texto", t.marca_texto, t.marca),
             ("play/texto", t.play_texto, t.play),
         ];
+        let r = razao(t.tecla, t.campo);
+        if r < PLACA_MIN {
+            falhas.push(format!("{theme:?} plaquinha/campo: {r:.2}"));
+        }
         for (o_que, fg, bg) in controlos {
             let r = razao(fg, bg);
             min_ctl = min_ctl.min(r);

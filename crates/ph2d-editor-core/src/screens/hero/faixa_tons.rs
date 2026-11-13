@@ -13,6 +13,9 @@ pub const TEXTO_MIN: f64 = 4.5;
 /// O contraste mínimo de um controlo (a borda ou o fundo que o identifica).
 pub const CONTROLO_MIN: f64 = 3.0;
 
+/// Uma plaquinha (a tecla dentro do campo) tem de se ver contra o campo, sem pesar como um botão.
+pub const PLACA_MIN: f64 = 1.5;
+
 /// Os tons de um quadro da faixa.
 #[derive(Clone, Copy, Debug)]
 pub struct Tons {
@@ -109,7 +112,16 @@ pub fn tons(theme: Theme) -> Tons {
     .find(|c| razao(*c, chao) >= CONTROLO_MIN && razao(*c, campo) >= CONTROLO_MIN)
     .unwrap_or(texto);
     let apagado = ate_ler(cor(ColorToken::Text3), texto, campo, TEXTO_MIN);
-    let tecla = pousa(cor(ColorToken::CardFieldHover), campo);
+    let tecla = [
+        ColorToken::CardFieldHover,
+        ColorToken::KanbanCardRaised,
+        ColorToken::Border,
+        ColorToken::BorderStrong,
+    ]
+    .into_iter()
+    .map(|t| pousa(cor(t), campo))
+    .find(|c| razao(*c, campo) >= PLACA_MIN)
+    .unwrap_or_else(|| ate_ler(campo, texto, campo, PLACA_MIN));
     let tecla_texto = ate_ler(cor(ColorToken::Text2), texto, tecla, TEXTO_MIN);
     let escuros = [chao, texto, cor(ColorToken::AccentFg)];
     let (marca, marca_texto) = pilula(cor(ColorToken::Accent), chao, texto, &escuros);

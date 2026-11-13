@@ -11,10 +11,61 @@ use std::sync::{Arc, Weak};
 pub type Polilinha = Vec<[f32; 2]>;
 
 /// Os contornos que a shell traça: o da máscara (formigas) e os dos níveis do Offset (ciano).
+/// `no_raster`: a fronteira passou do orçamento — polilinhas vazias, as formigas saem pelo raster em
+/// ecrã (`selection_formigas_raster`).
 #[derive(Debug, Default, PartialEq)]
 pub struct ContornosDaSelecao {
     pub mascara: Vec<Polilinha>,
     pub niveis: Vec<Polilinha>,
+    pub no_raster: bool,
+}
+
+/// Orçamento do caminho vetorial em CANTOS (os pontos das polilinhas): custo de encode do Vello por
+/// quadro. Tabela medida: `docs/Painter/missao_4k/BACKLOG.md` B20.11b. Múltiplo de 4 (gate).
+pub const ORCAMENTO_DE_LADOS: usize = 20_000;
+/// Orçamento em arestas unitárias: o custo do traçado (`contornos_da_mascara`), uma vez por máscara.
+pub const ORCAMENTO_DE_ARESTAS: usize = 200_000;
+
+/// `(cantos, arestas unitárias)` da fronteira 128 de `mask`, numa passada paralela por linhas de
+/// vértices. Os cantos são EXATAMENTE os pontos que [`contornos_da_mascara`] emite (sela = 2).
+#[must_use]
+pub fn medida_da_fronteira(mask: &[u8], w: usize, h: usize) -> (usize, usize) {
+    if w == 0 || h == 0 || mask.len() != w * h {
+        return (0, 0);
+    }
+    let fila = |y: usize| (y < h).then(|| &mask[y * w..(y + 1) * w]);
+    let linha = |y: usize| -> (u64, u64) {
+        let (cima, baixo) = (y.checked_sub(1).and_then(fila), fila(y));
+        let at = |r: Option<&[u8]>, x: usize| r.is_some_and(|r| x < w && r[x] >= 128);
+        let (mut a, mut c) = (false, false);
+        let (mut cantos, mut arestas) = (0u64, 0u64);
+        for x in 0..=w {
+            let (b, d) = (at(cima, x), at(baixo, x));
+            let n = u8::from(a) + u8::from(b) + u8::from(c) + u8::from(d);
+            cantos += match n {
+                1 | 3 => 1,
+                2 if a == d => 2,
+                _ => 0,
+            };
+            arestas += u64::from(x < w && b != d) + u64::from(y < h && c != d);
+            (a, c) = (b, d);
+        }
+        (cantos, arestas)
+    };
+    let mut buf = vec![0u8; (h + 1) * 16];
+    let threads = crate::compositor::parallel_threads(w * h, h + 1);
+    crate::compositor::em_faixas_de_linhas(&mut buf, 16, threads, |faixa, y0| {
+        for (k, s) in faixa.as_chunks_mut::<16>().0.iter_mut().enumerate() {
+            let (c, a) = linha(y0 + k);
+            s[..8].copy_from_slice(&c.to_le_bytes());
+            s[8..].copy_from_slice(&a.to_le_bytes());
+        }
+    });
+    let u = |b: &[u8]| u64::from_le_bytes(b.try_into().unwrap_or([0; 8])) as usize;
+    buf.as_chunks::<16>()
+        .0
+        .iter()
+        .fold((0, 0), |(c, a), s| (c + u(&s[..8]), a + u(&s[8..])))
 }
 
 /// Direções: 0 = +x, 1 = +y, 2 = −x, 3 = −y (y para baixo).
@@ -112,8 +163,19 @@ thread_local! {
 }
 
 impl PainterTool {
+    /// As máscaras dos níveis do Offset do tamanho da tela (o ciano).
+    pub(super) fn niveis_do_offset_vivos(&self) -> Vec<Arc<Vec<u8>>> {
+        let n = self.source_size.0 as usize * self.source_size.1 as usize;
+        self.selection_offset_contour_levels()
+            .iter()
+            .filter_map(|&l| self.selection_offset_level_mask(l).cloned())
+            .filter(|m| m.len() == n)
+            .collect()
+    }
+
     /// Os contornos da Seleção viva (máscara + níveis do Offset), guardados até a máscara ou os níveis
-    /// trocarem de `Arc`. `None` sem seleção viva.
+    /// trocarem de `Arc`. Acima de [`ORCAMENTO_DE_LADOS`] / [`ORCAMENTO_DE_ARESTAS`] não se traçam
+    /// (`no_raster`). `None` sem seleção viva.
     #[must_use]
     pub fn selection_contornos(&self) -> Option<Arc<ContornosDaSelecao>> {
         if !self.paint.selection_active {
@@ -125,12 +187,7 @@ impl PainterTool {
         if wu == 0 || hu == 0 || mask.len() != wu * hu {
             return None;
         }
-        let niveis: Vec<Arc<Vec<u8>>> = self
-            .selection_offset_contour_levels()
-            .iter()
-            .filter_map(|&l| self.selection_offset_level_mask(l).cloned())
-            .filter(|m| m.len() == wu * hu)
-            .collect();
+        let niveis = self.niveis_do_offset_vivos();
         let chave = Chave {
             tamanho: (w, h),
             mascara: Arc::downgrade(mask),
@@ -138,12 +195,24 @@ impl PainterTool {
         };
         GUARDADO.with_borrow_mut(|g| {
             if g.as_ref().is_none_or(|(c, _)| *c != chave) {
-                let c = ContornosDaSelecao {
-                    mascara: contornos_da_mascara(mask, wu, hu),
-                    niveis: niveis
-                        .iter()
-                        .flat_map(|m| contornos_da_mascara(m, wu, hu))
-                        .collect(),
+                let (cantos, arestas) = std::iter::once(mask)
+                    .chain(&niveis)
+                    .map(|m| medida_da_fronteira(m, wu, hu))
+                    .fold((0, 0), |(c, a), (dc, da)| (c + dc, a + da));
+                let c = if cantos > ORCAMENTO_DE_LADOS || arestas > ORCAMENTO_DE_ARESTAS {
+                    ContornosDaSelecao {
+                        no_raster: true,
+                        ..Default::default()
+                    }
+                } else {
+                    ContornosDaSelecao {
+                        mascara: contornos_da_mascara(mask, wu, hu),
+                        niveis: niveis
+                            .iter()
+                            .flat_map(|m| contornos_da_mascara(m, wu, hu))
+                            .collect(),
+                        no_raster: false,
+                    }
                 };
                 *g = Some((chave, Arc::new(c)));
             }

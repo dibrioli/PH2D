@@ -88,9 +88,8 @@ pub(crate) fn draw_selection_overlay_no_passo(
         window_size,
     );
     vector_scene.draw_stable_image_transformed(&imagem, affine, ph2d_vector::ImageQuality::Low);
-    if let Some(c) = painter.selection_contornos() {
-        ph2d_tool_painter::desenha_formigas(vector_scene, &c, affine, passo);
-    }
+    let ecra = (window_size.width, window_size.height);
+    painter.desenha_formigas_da_selecao(vector_scene, affine, ecra, passo);
 }
 
 #[cfg(test)]

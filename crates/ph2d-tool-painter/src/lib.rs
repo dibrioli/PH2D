@@ -48,11 +48,15 @@ pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
 
 /// A lei única do alfa das rampas de cor do PINCEL (Grain · Shape Color).
 pub use tool::paint::BRUSH_RAMP_ALPHA;
-pub use tool::paint::selection_contorno::{ContornosDaSelecao, Polilinha, contornos_da_mascara};
+pub use tool::paint::selection_contorno::{
+    ContornosDaSelecao, ORCAMENTO_DE_ARESTAS, ORCAMENTO_DE_LADOS, Polilinha, contornos_da_mascara,
+    medida_da_fronteira,
+};
 pub use tool::paint::selection_formigas::{
     PASSO_DAS_FORMIGAS_MS, construcoes_do_overlay_da_selecao,
 };
 pub use tool::paint::selection_formigas_ecra::desenha_formigas;
+pub use tool::paint::selection_formigas_raster::construcoes_das_formigas_raster;
 
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,

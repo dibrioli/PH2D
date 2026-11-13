@@ -265,4 +265,62 @@ fn sonda_contorno_varinha_4k() {
     eprintln!(
         "[contorno varinha 4K] {dentro} texels dentro · {lacos} laços · {lados} lados · {min:.1} ms (mín. de 5)"
     );
+    // B20.11b: o pior quadro com a cura — medir a fronteira (aborta) + amostrar no ecrã 4K + desenhar.
+    let um = ph2d_vector::Affine::IDENTITY;
+    let (mut medir, mut quadro, mut passo_ms) = (f64::INFINITY, f64::INFINITY, f64::INFINITY);
+    let mut palavras = 0;
+    for i in 0..5 {
+        t.paint.selection_mask = std::sync::Arc::new((*mask).clone());
+        let t0 = std::time::Instant::now();
+        let c = t.selection_contornos().expect("viva");
+        medir = medir.min(t0.elapsed().as_secs_f64() * 1e3);
+        assert!(c.no_raster, "a varinha 4K passa do orçamento");
+        let mut vs = ph2d_vector::VectorScene::new();
+        t.desenha_formigas_da_selecao(&mut vs, um, (w, h), i);
+        quadro = quadro.min(t0.elapsed().as_secs_f64() * 1e3);
+        let t1 = std::time::Instant::now();
+        let mut vs2 = ph2d_vector::VectorScene::new();
+        t.desenha_formigas_da_selecao(&mut vs2, um, (w, h), i + 1);
+        passo_ms = passo_ms.min(t1.elapsed().as_secs_f64() * 1e3);
+        palavras = vs.probe_bin_info_words();
+    }
+    eprintln!(
+        "[cura varinha 4K] medir {medir:.2} ms · pior quadro (medir + amostrar + desenhar) {quadro:.2} ms · \
+         passo seguinte {passo_ms:.2} ms · bin_data {palavras} de {} palavras",
+        ph2d_vector::VELLO_BIN_DATA_WORDS
+    );
+}
+
+/// Sonda (B20.11b): a tabela que justifica o orçamento — lados (cantos) × traçar × encode por quadro
+/// × pontos codificados × palavras do bin_data, numa tela 4K com texels isolados. `-- --ignored --nocapture`.
+#[test]
+#[ignore = "sonda de relógio"]
+fn sonda_orcamento_de_lados() {
+    let (w, h) = (3840usize, 2160usize);
+    eprintln!("lados | traçar ms | encode ms/quadro | pontos | bin_data");
+    for n in [1_250usize, 2_500, 5_000, 12_500, 25_000, 75_000] {
+        let mut m = vec![0u8; w * h];
+        for i in 0..n {
+            m[(i / (w / 2)) * 2 * w + (i % (w / 2)) * 2] = 255;
+        }
+        let (mut tr, mut en) = (f64::INFINITY, f64::INFINITY);
+        let (mut pts, mut pal, mut lados) = (0, 0, 0);
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            let c = contornos_da_mascara(&m, w, h);
+            tr = tr.min(t0.elapsed().as_secs_f64() * 1e3);
+            lados = c.iter().map(Vec::len).sum::<usize>();
+            let cs = super::ContornosDaSelecao {
+                mascara: c,
+                ..Default::default()
+            };
+            let t1 = std::time::Instant::now();
+            let mut vs = ph2d_vector::VectorScene::new();
+            crate::desenha_formigas(&mut vs, &cs, ph2d_vector::Affine::IDENTITY, 3);
+            en = en.min(t1.elapsed().as_secs_f64() * 1e3);
+            pts = vs.probe_strokes().1.len();
+            pal = vs.probe_bin_info_words();
+        }
+        eprintln!("{lados} | {tr:.2} | {en:.2} | {pts} | {pal}");
+    }
 }

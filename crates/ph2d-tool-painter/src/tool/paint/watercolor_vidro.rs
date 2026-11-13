@@ -27,6 +27,30 @@ pub(crate) struct VidroCongelado {
     chao_preto: Option<ChaoCongelado>,
 }
 
+thread_local! {
+    /// `false` = o caminho de antes do B18.4 (WB): o borrão deixa o `Weak` do congelado morrer (o oráculo A×B,
+    /// por fio: o borrão corre no fio do traço).
+    #[doc(hidden)]
+    pub static VIDRO_SEGUE_A_BASE: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
+impl VidroCongelado {
+    /// **A base mudou de `Arc`, não de dados** (B18.4, Watercolor Basic a 4K): o borrão escreve a base no lugar e,
+    /// com o `Weak` daqui vivo, o `make_mut` MOVE-a para um `Arc` novo — o `Weak` morria, o vidro recongelava a
+    /// partir do plano JÁ escrito e o copiava inteiro em todo evento (58 MB/quadro a 3840×2160). Religa só o
+    /// `Weak` que apontava exactamente o `Arc` movido (`antes`, vivo um instante antes): sem endereço reaproveitado.
+    pub(super) fn a_base_mudou_de_arc(&mut self, antes: *const Vec<u8>, agora: &Arc<Vec<u8>>) {
+        if std::ptr::eq(antes, Arc::as_ptr(agora)) || !VIDRO_SEGUE_A_BASE.get() {
+            return;
+        }
+        for c in [&mut self.aguada, &mut self.molhada].into_iter().flatten() {
+            if std::ptr::eq(c.0.as_ptr(), antes) && c.0.strong_count() == 0 {
+                c.0 = Arc::downgrade(agora);
+            }
+        }
+    }
+}
+
 /// O vidro de um quadro do núcleo. O plano sai do mapa e volta com [`PainterTool::devolve_o_vidro`].
 pub(super) struct VidroDoQuadro {
     pub camada: RtLayerId,

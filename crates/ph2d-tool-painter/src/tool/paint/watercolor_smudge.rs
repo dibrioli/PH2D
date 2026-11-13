@@ -120,6 +120,7 @@ impl PainterTool {
         let spec = self.paint.brush;
         // Conta o que a cura existe para impedir: mais de um dono forte aqui é uma cópia do documento.
         let forked = Arc::strong_count(base_arc) > 1;
+        let antes = Arc::as_ptr(base_arc);
         let buf = super::plane_fork::fork_plano_de_trabalho(base_arc); // o 1.º fork em paralelo
         // Pre-smear snapshot of the gated footprint (base bytes, row-major within the region).
         let before: Option<Vec<u8>> = gate_region.map(|r| {
@@ -215,6 +216,12 @@ impl PainterTool {
         }
         if shared {
             self.paint.watercolor_base = self.paint.wet_session_base.clone();
+        }
+        // O vidro congelado segue a base que o fork acima pode ter MOVIDO de `Arc` (B18.4).
+        if let Some(agora) =
+            (self.paint.wet_session_base.as_ref()).or(self.paint.watercolor_base.as_ref())
+        {
+            self.vidro_congelado.a_base_mudou_de_arc(antes, agora);
         }
         self.paint.wet_smear_pos = from;
         if let Some(rect) = touched {

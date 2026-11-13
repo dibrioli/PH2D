@@ -9,9 +9,21 @@ use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use std::time::Instant;
 
+/// As faltas de página menores do PROCESSO (`/proc/self/stat`, campo 10): × 4 KiB = memória nova tocada.
+fn faltas() -> u64 {
+    let s = std::fs::read_to_string("/proc/self/stat").unwrap_or_default();
+    let resto = s.rsplit_once(") ").map_or("", |(_, r)| r);
+    resto
+        .split(' ')
+        .nth(7)
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0)
+}
+
 fn traco(t: &mut PainterTool, y: f32) -> Vec<f64> {
     let mut ms = Vec::new();
     let mut ev = |t: &mut PainterTool, x: f32, phase| {
+        let f0 = faltas();
         let t0 = Instant::now();
         t.on_canvas_pointer(CanvasPointer {
             pos: [x, y],
@@ -26,10 +38,11 @@ fn traco(t: &mut PainterTool, y: f32) -> Vec<f64> {
         ms.push(t0.elapsed().as_secs_f64() * 1e3);
         if ms.len() <= 3 && std::env::var("PH2D_SONDA_PARTES").is_ok() {
             println!(
-                "  ev{} ponteiro {p:.1} tique {:.1} saída {:.1}",
+                "  ev{} ponteiro {p:.1} tique {:.1} saída {:.1} · {:.1} MB novos",
                 ms.len() - 1,
                 q - p,
-                ms[ms.len() - 1] - q
+                ms[ms.len() - 1] - q,
+                (faltas() - f0) as f64 * 4096.0 / 1e6
             );
         }
     };
@@ -54,6 +67,9 @@ fn sonda_primeiro_traco() {
         })
         .unwrap_or((1920, 1080));
     forca_no_teste(Some(true));
+    // `PH2D_SONDA_VIDRO_ANTIGO`: o borrão deixa o vidro recongelar em todo evento (o de antes do B18.4).
+    super::super::watercolor_vidro::VIDRO_SEGUE_A_BASE
+        .set(std::env::var("PH2D_SONDA_VIDRO_ANTIGO").is_err());
     super::preparo::liga_no_teste(std::env::var("PH2D_SONDA_PREPARO").is_ok());
     let so = std::env::var("PH2D_SONDA_SO").ok();
     let nomes = [
@@ -96,7 +112,28 @@ fn sonda_primeiro_traco() {
                 let _ = t.take_preview_arc();
             }
         }
-        let (um, dois) = (traco(&mut t, 200.0), traco(&mut t, 500.0));
+        let (mut um, mut dois) = (traco(&mut t, 200.0), traco(&mut t, 500.0));
+        // `PH2D_SONDA_NOVA`: o 1.º e o 2.º traço numa camada NOVA (aba Layers · «+»), como o dono (B18.4).
+        if std::env::var("PH2D_SONDA_NOVA").is_ok() {
+            println!(
+                "TRACO\t{n}\tbase 1.º máx {:.1} · 2.º máx {:.1}",
+                um.iter().copied().fold(0.0, f64::max),
+                dois.iter().copied().fold(0.0, f64::max)
+            );
+            let (f0, t0) = (faltas(), Instant::now());
+            let nova = t.add_raster_layer("nova").expect("a camada nova");
+            t.select_layer(nova);
+            for _ in 0..3 {
+                t.on_tick(1000.0 / 60.0);
+                let _ = t.take_preview_arc();
+            }
+            println!(
+                "  «+» {:.1} ms · {:.1} MB novos",
+                t0.elapsed().as_secs_f64() * 1e3,
+                (faltas() - f0) as f64 * 4096.0 / 1e6
+            );
+            (um, dois) = (traco(&mut t, 800.0), traco(&mut t, 1100.0));
+        }
         // Para o perfil: só pen-downs, com o motor na mão.
         let toques: usize = std::env::var("PH2D_SONDA_TOQUES")
             .ok()

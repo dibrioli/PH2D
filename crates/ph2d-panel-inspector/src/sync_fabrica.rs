@@ -58,10 +58,13 @@ pub(crate) fn sync(
     entity_changed: bool,
 ) {
     let v = numeros();
+    // O Target do Projectile é TEXTO (o nome que o instantâneo resolveu do `stable_name_id`).
+    let alvo = crate::state_components::current_inspector_projectile().map(|p| p.homing_target);
     let mut h = std::hash::DefaultHasher::new();
     for (id, n) in &v {
         (id, n.to_bits()).hash(&mut h);
     }
+    alvo.hash(&mut h);
     let sig = h.finish();
     if !entity_changed && inspector_state.last_fabrica_sig == Some(sig) {
         return;
@@ -73,5 +76,8 @@ pub(crate) fn sync(
         if focus != Some(id) && drag != Some(id) {
             crate::unidade_mundo::semeia(host, id, n);
         }
+    }
+    if let Some(alvo) = alvo {
+        crate::sync_text_field::escreve_texto(host, focus, i::INSP_PJ_HOMING_TARGET, &alvo);
     }
 }

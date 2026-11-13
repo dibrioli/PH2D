@@ -8,8 +8,12 @@ fn o_nivel_le_se_pela_porta_e_fora_da_faixa_e_inerte() {
     assert_eq!(armed_level_in(com("3")), Some(3));
     assert_eq!(armed_level_in(com("5")), Some(5));
     assert_eq!(armed_level_in(com("13")), Some(13));
-    assert_eq!(armed_level_in(com("24")), Some(topdown::CENA)); // a última: o Top-Down Player
-    assert_eq!(armed_level_in(com("25")), None);
+    assert_eq!(armed_level_in(com("24")), Some(topdown::CENA));
+    assert_eq!(armed_level_in(com("25")), Some(projectile::CENA)); // a última: o Projectile Motion
+    assert_eq!(armed_level_in(com("26")), None);
+    assert!(
+        abre_no_jogador(projectile::CENA) && abre_no_jogador(topdown::CENA) && !abre_no_jogador(3)
+    );
     assert_eq!(armed_level_in(com("x")), None);
     assert_eq!(armed_level_in(|_| None), None);
 }

@@ -202,8 +202,7 @@ pub fn troca_para_game_boy(sim: &mut SimWorld) -> Option<EditorAction> {
 mod tests {
     use super::*;
 
-    /// O roteiro do `camera_desfaz` é o de antes da mudança de casa: troca a 40, entrada até 43, Ctrl+Z a 50,
-    /// Ctrl+Y a 60, o último relato a 70 e nada fora deles.
+    /// O roteiro do `camera_desfaz`: troca a 40, entrada até 43, Ctrl+Z a 50, Ctrl+Y a 60, relato a 70.
     #[test]
     fn o_formato_troca_desfaz_e_refaz_por_esta_ordem() {
         let q: Vec<(u32, PassoDoFormato)> = (0..100)

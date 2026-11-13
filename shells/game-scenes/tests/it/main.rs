@@ -26,6 +26,7 @@ mod jogo_moldura_ponteiro;
 mod jogo_nomes_do_smoke;
 mod jogo_object_add;
 mod jogo_palco_alarga;
+mod jogo_projectile;
 mod jogo_smoke;
 mod jogo_topdown;
 mod plataforma_alargada;

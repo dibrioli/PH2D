@@ -360,3 +360,39 @@ fn toda_linha_e_a_dobra_tem_dica_de_hover() {
         );
     }
 }
+
+/// O texto que o store guarda para `id`.
+fn texto(h: &MockPanelHost, id: NodeId) -> Option<String> {
+    match h.store().get(id) {
+        Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) => {
+            Some(text.clone())
+        }
+        _ => None,
+    }
+}
+
+/// ⭐ (f) O Target MOSTRA o alvo: o nome que o instantâneo resolveu chega ao campo pintado, e trocar de
+/// alvo troca o texto. (Mutação: tirar o `escreve_texto` do `sync_fabrica` ⇒ o campo fica vazio e reprova.)
+#[test]
+fn o_target_mostra_o_nome_do_alvo() {
+    nos_dois_modos(|c| {
+        let (mut h, mut st, _) = assente(&cheia(), c, false);
+        assert_eq!(
+            texto(&h, i::INSP_PJ_HOMING_TARGET).as_deref(),
+            Some("Hero"),
+            "cartões {c}"
+        );
+        let outro = InspectorProjectileInfo {
+            homing_target: "Boss".into(),
+            ..cheia()
+        };
+        set_current_inspector_projectile(Some(outro));
+        let _ = pinta(&mut h, &mut st, c);
+        assert_eq!(
+            texto(&h, i::INSP_PJ_HOMING_TARGET).as_deref(),
+            Some("Boss"),
+            "cartões {c}"
+        );
+        set_current_inspector_projectile(None);
+    });
+}

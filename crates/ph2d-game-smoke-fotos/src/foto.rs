@@ -52,8 +52,7 @@ pub enum Foto {
     CameraLimites,
     CameraRetro,
     CameraOlhar,
-    /// Onda 17b: os GESTOS pelo ponteiro ([`crate::mao`]) — o miolo arrastado, o clique sem mexer, a borda dos
-    /// limites e o canto com a cerca.
+    /// Onda 17b: os GESTOS pelo ponteiro ([`crate::mao`]) — miolo, clique, borda dos limites, canto com a cerca.
     CameraArrasta,
     CameraClique,
     CameraBorda,
@@ -63,8 +62,7 @@ pub enum Foto {
     /// Onda 18: o miolo arrastado com o Auto Key ligado e o relógio parado em `PH2D_GAME_SMOKE_TEMPO` (s, 1 por
     /// omissão) — o `Up` conta as chaves da câmera.
     CameraChave,
-    /// Onda 18: o formato passa a Game Boy pelo barramento do Inspector, e Ctrl+Z / Ctrl+Y — o `stderr` diz o
-    /// formato depois de cada um.
+    /// Onda 18: o formato a Game Boy pelo Inspector, e Ctrl+Z / Ctrl+Y — o `stderr` diz o formato a cada um.
     CameraDesfaz,
     /// Onda 18: «Outside: Dimmed» — o canvas fora da moldura escurecido (com a zona morta pintada).
     CameraFora,

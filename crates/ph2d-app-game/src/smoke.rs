@@ -13,6 +13,7 @@ use ph2d_ecs::{
     SpriteAnimations, SpriteAnimator, SpriteGrid, TiledDraw, Transform, ZIndexOverride,
 };
 use ph2d_editor_core::game_stage::GameStage;
+use ph2d_editor_core::{NodeId, interaction::WidgetStore};
 use ph2d_render::{
     CLOUDS_TILE, COIN_FRAME_MS, COIN_SHEET, DIRT_TILE, FLAG_FRAME_MS, FLAG_SHEET, FactoryArt,
     GROUND_TILE, HILLS_TILE, PLATFORM_TILE, Sprite, WHITE_TILE_KEY,
@@ -21,10 +22,37 @@ use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
 /// A última cena do roteiro: 6..=`input_map::ULTIMA` = a aba Input Map (a tabela: `input_map`); a seguinte = o
-/// Top-Down Player. Contada: uma cena nova da aba sem empurrar o Top-Down não compila.
-pub const CENAS: u32 = topdown::CENA;
+/// Top-Down Player, e depois o Projectile Motion. Contada: uma cena nova sem empurrar as seguintes não compila.
+pub const CENAS: u32 = projectile::CENA;
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
-pub use {ph2d_input_map_scene as input_map, ph2d_physics_scene::cena_topdown as topdown};
+const _: () = assert!(projectile::CENA == topdown::CENA + 1);
+pub use ph2d_input_map_scene as input_map;
+pub use ph2d_physics_scene::{cena_projectile as projectile, cena_topdown as topdown};
+
+/// As cenas que abrem com o Inspector no objecto que [`montar`] devolve (o herói, ou o míssil na 25).
+#[must_use]
+pub fn abre_no_jogador(nivel: u32) -> bool {
+    matches!(nivel, 2 | 4 | 5 | topdown::CENA | projectile::CENA)
+}
+
+/// Para onde a vista vai ao abrir: a 25 enquadra a arena inteira (as balas, a parede e o alvo); as outras, a seleção.
+#[must_use]
+pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
+    if nivel == projectile::CENA {
+        ph2d_editor_core::ViewFocusKind::All
+    } else {
+        ph2d_editor_core::ViewFocusKind::Selected
+    }
+}
+
+/// Arruma as gavetas do Inspector da cena `nivel` e pede o cartão dela à vista sobre `heroi`.
+pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
+    if nivel == projectile::CENA {
+        projectile::arruma_o_inspector(store, cartao, heroi);
+    } else {
+        topdown::arruma_o_inspector(store, nivel, cartao, heroi);
+    }
+}
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
 /// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
@@ -195,6 +223,7 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
         topdown::CENA => &HORARIO_24, // ↗ e desliza, depois só ←, só ↓ e só ↑
+        projectile::CENA => &[],      // só o Play: as cinco balas partem sozinhas
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
         _ => &HORARIO_1,
@@ -350,6 +379,14 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
         topdown::CENA => topdown::montar(
             sim,
             topdown::Pecas {
+                estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
+                imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
+                anexa: portas.menu.anexa,
+            },
+        ),
+        projectile::CENA => projectile::montar(
+            sim,
+            projectile::Pecas {
                 estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
                 imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
                 anexa: portas.menu.anexa,

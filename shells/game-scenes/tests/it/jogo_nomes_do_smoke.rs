@@ -58,6 +58,11 @@ fn a_lista_de_cada_leitor_e_o_que_o_match_dele_aceita() {
             "",
         ),
         (
+            "crates/ph2d-physics-scene/src/cena_projectile.rs",
+            "pub fn foto(",
+            "",
+        ),
+        (
             "crates/ph2d-app-game/src/smoke.rs",
             "pub fn conducao_in(",
             "",
@@ -113,6 +118,7 @@ fn so_os_leitores_do_censo_leem_a_variavel() {
     }
     let esperados = [
         "crates/ph2d-game-smoke-fotos/src/foto.rs",
+        "crates/ph2d-physics-scene/src/cena_projectile.rs",
         "crates/ph2d-physics-scene/src/cena_topdown.rs",
         "crates/ph2d-sprite-anim-scene/src/lib.rs",
     ];

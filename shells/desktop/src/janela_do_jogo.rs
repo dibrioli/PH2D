@@ -152,18 +152,16 @@ impl crate::App {
                     }
                 }
             }
-            if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4 | 5 | 24)) {
+            if let Some(hero) = cx
+                .hero_screen
+                .filter(|_| ph2d_app_game::smoke::abre_no_jogador(nivel))
+            {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 let cartao = ph2d_sfx_scene::cartao_que_abre();
-                ph2d_app_game::smoke::topdown::arruma_o_inspector(
-                    &mut hero.store,
-                    nivel,
-                    cartao,
-                    jogador,
-                );
+                ph2d_app_game::smoke::arruma_o_inspector(&mut hero.store, nivel, cartao, jogador);
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
+                        kind: ph2d_app_game::smoke::foco(nivel),
                     });
             }
         }

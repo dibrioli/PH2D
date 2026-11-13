@@ -1223,7 +1223,7 @@ num tique); CONTROLOS: um tique por quadro, e a fita esquecida no recomeço.
 
 ## Bug #11 — O wall jump com altura ~1,9–2,0 atira o controle ao topo da parede — ✅ FECHADO (12/11)
 
-Achado em 12/11 por `f3a92736ab` (a lei do pulo passou a pôr o ápice real = Jump Height); curado na linha GEF.
+Achado em 12/11 por `f3a92736ab` (a lei do pulo passou a pôr o ápice real = Jump Height); curado na linha GEF em `937f4ce952`.
 
 **Sintoma:** `platform_wall`, `wall_jump_rise(0.0)` com Jump Height 2,0: o pulo de parede sai da fresta
 (y=0,988, t=86), afasta-se, volta à parede a 6 m/s perto do ápice (t=132, y=3,048) e no tique seguinte sobe a

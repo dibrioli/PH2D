@@ -442,3 +442,59 @@ fn a_sim_com_a_saida_por_bloco_e_a_de_antes_ao_bit_em_qualquer_fio() {
         }
     }
 }
+
+/// **N.º 7: o complemento da troca DENTRO dos blocos dá o commit à parte ao bit** — a troca forçada
+/// (`COMMIT_ROTA = 2`), blocos de 1, 3, 7 e 32 linhas, série, paralela e medida, `rf` 1 e 4. Entre passos o
+/// grid é escrito FORA da faixa (as colunas da borda de toda linha, como um pincel ou a secagem): sem isso o
+/// rascunho velho já igualava o grid e um complemento partido passava (controlo medido, `N7_ITEM1_sim6.md`).
+#[test]
+fn o_complemento_nos_blocos_da_o_commit_a_parte_ao_bit() {
+    use std::sync::atomic::Ordering::Relaxed;
+    let corre = |mode: Rows, rf: usize, linhas: usize| {
+        let mut e = cena_rf(rf);
+        e.tuning.set(Knob::MaxVelocity, 3.0);
+        let p = e.sim.gather_params(&e.tuning);
+        let g = e.active_grid_mut();
+        let mut h = Fnv(0xcbf2_9ce4_8422_2325);
+        let mut lcg = 0x2545_f491_u32;
+        for k in 0..PASSOS {
+            crate::solver::rebuild_active_region(g);
+            for v in g.flow_x.iter_mut().chain(g.flow_y.iter_mut()) {
+                lcg = lcg.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                *v = (f64::from(lcg >> 8) / f64::from(1u32 << 24) * 6.0 - 3.0) as f32;
+            }
+            let s = g.s;
+            for y in 0..g.cells / s {
+                for x in [0, s - 1] {
+                    let v = (k * 31 + y * 7 + x) as f32 * 1e-3;
+                    (g.film[y * s + x], g.susp[y * s + x], g.susp_rgb[y * s + x]) = (v, v, [v; 3]);
+                }
+            }
+            fundida::advect_fundida_rows(g, &p, 1.5, -0.5, mode, linhas);
+            h.f32s(&g.film);
+            h.f32s(&g.susp);
+            g.susp_rgb.iter().for_each(|c| h.f32s(c));
+            h.f32s(&g.vel_x);
+        }
+        h.0
+    };
+    crate::flow::COMMIT_ROTA.store(2, Relaxed);
+    for (mode, rf) in [
+        (Rows::Serial, 1),
+        (Rows::Parallel, 1),
+        (Rows::Medida(0), 4),
+        (Rows::Parallel, 4),
+    ] {
+        for linhas in [1, 3, 7, 32] {
+            COMMIT_NO_BLOCO.store(0, Relaxed);
+            let parte = corre(mode, rf, linhas);
+            COMMIT_NO_BLOCO.store(1, Relaxed);
+            let bloco = corre(mode, rf, linhas);
+            assert_eq!(
+                bloco, parte,
+                "{mode:?} rf {rf} bloco {linhas}: o complemento mudou bits"
+            );
+        }
+    }
+    crate::flow::COMMIT_ROTA.store(0, Relaxed);
+}

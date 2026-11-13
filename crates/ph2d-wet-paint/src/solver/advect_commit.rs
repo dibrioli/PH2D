@@ -9,28 +9,13 @@ use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 /// rotas dão o mesmo grid ao bit (`flow_bit_tests`, `advect_bit_tests`) — o rascunho é derivado.
 /// A rota lê [`crate::flow::COMMIT_ROTA`] (0 = pela faixa, o produto; 1/2 forçam, gates e sonda).
 pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
-    let s = g.s;
-    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
-    let (by0, by1) = (g.by0, g.by1);
-    let viva: usize = (by0..=by1)
-        .map(|y| {
-            let (lo, hi) = span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y);
-            // Linha sem faixa: as sentinelas `i32::MAX`/`MIN` fazem `hi − lo` transbordar.
-            if lo > hi { 0 } else { (hi - lo + 1) as usize }
-        })
-        .sum();
-    // A troca copia o complemento; a cópia, a faixa: a que move menos bytes (B13.12 cura 3, 4K 6 traços:
-    // estágio 3 19,5 → 16,9 ms mín.; o limiar de antes, complemento ≤ ¼ da faixa, nunca trocava no wash).
-    let auto = g.cells - viva <= viva;
-    let rota = crate::flow::COMMIT_ROTA.load(std::sync::atomic::Ordering::Relaxed);
-    if !match rota {
-        1 => false,
-        2 => true,
-        _ => auto,
-    } {
+    if !commit_troca(g) {
         commit_copia(g, mode);
         return;
     }
+    let s = g.s;
+    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
+    let (by0, by1) = (g.by0, g.by1);
     let Grid {
         scratch,
         film,
@@ -76,6 +61,72 @@ pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
     });
 }
 
+/// O [`commit_rows`] vai pela TROCA dos planos (e não pela cópia da faixa)? Lê só a faixa e as rotas.
+pub(super) fn commit_troca(g: &Grid) -> bool {
+    let (by0, by1) = (g.by0, g.by1);
+    let viva: usize = (by0..=by1)
+        .map(|y| {
+            let (lo, hi) = span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y);
+            // Linha sem faixa: as sentinelas `i32::MAX`/`MIN` fazem `hi − lo` transbordar.
+            if lo > hi { 0 } else { (hi - lo + 1) as usize }
+        })
+        .sum();
+    // A troca copia o complemento; a cópia, a faixa: a que move menos bytes (B13.12 cura 3, 4K 6 traços:
+    // estágio 3 19,5 → 16,9 ms mín.; o limiar de antes, complemento ≤ ¼ da faixa, nunca trocava no wash).
+    let auto = g.cells - viva <= viva;
+    let rota = crate::flow::COMMIT_ROTA.load(std::sync::atomic::Ordering::Relaxed);
+    match rota {
+        1 => false,
+        2 => true,
+        _ => auto,
+    }
+}
+
+/// N.º 7 (13/11): `> 0` (o produto) faz o COMPLEMENTO da troca dentro dos blocos do núcleo fundido (cada
+/// bloco copia do grid para o rascunho o que não reescreveu, as linhas fora da faixa em paralelo com o
+/// núcleo) e o commit vira só a troca; `0` = o commit em passe à parte. O mesmo grid e o mesmo rascunho ao
+/// bit (`advect_bit_tests`); medido em `docs/Painter/missao_4k/medicoes/N7_ITEM1_sim6.md`.
+#[doc(hidden)]
+pub static COMMIT_NO_BLOCO: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+
+/// O commit vai dentro dos blocos? (só na rota de troca)
+pub(super) fn commit_no_bloco(g: &Grid) -> bool {
+    COMMIT_NO_BLOCO.load(std::sync::atomic::Ordering::Relaxed) > 0 && commit_troca(g)
+}
+
+/// O fim do commit quando o complemento já foi copiado dentro dos blocos: só a troca dos três planos.
+pub(super) fn so_troca(g: &mut Grid) {
+    std::mem::swap(&mut g.film, &mut g.scratch.dst_film);
+    std::mem::swap(&mut g.susp, &mut g.scratch.dst_susp);
+    std::mem::swap(&mut g.susp_rgb, &mut g.scratch.dst_rgb);
+}
+
+/// O COMPLEMENTO da linha `y` da faixa (o que o advect não reescreveu), do grid para a linha do rascunho.
+pub(super) fn complemento_linha(
+    c: &Ctx,
+    y: i32,
+    fr: &mut [f32],
+    sr: &mut [f32],
+    cr: &mut [[f32; 3]],
+) {
+    let s = c.s;
+    let base = y as usize * s;
+    let mut volta = |a: usize, b: usize| {
+        fr[a..b].copy_from_slice(&c.film[base + a..base + b]);
+        sr[a..b].copy_from_slice(&c.susp[base + a..base + b]);
+        cr[a..b].copy_from_slice(&c.susp_rgb[base + a..base + b]);
+    };
+    let mut ate = 0usize;
+    let (lo, hi) = c.span(y);
+    if lo <= hi {
+        for (a, b) in c.runs(y) {
+            volta(ate, a as usize);
+            ate = b as usize + 1;
+        }
+    }
+    volta(ate, s);
+}
+
 /// Sonda (fora do produto): o [`advect_jacobi`] em ms por parte `[momentum, núcleo, commit]`, a mesma rota.
 #[doc(hidden)]
 pub fn advect_jacobi_partes(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> [f64; 3] {
@@ -84,6 +135,7 @@ pub fn advect_jacobi_partes(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> [f64;
     let mode = Rows::Parallel;
     g.scratch.ensure(g.cells);
     let fundir = fundida::usa_fundida(mode, (g.by1 - g.by0 + 1).max(0) as usize * g.s);
+    let no_bloco = fundir && commit_no_bloco(g);
     let t = Instant::now();
     if !(fundir && fundida::momento_no_bloco(g)) {
         momentum_rows(g, p, gx, gy, mode);
@@ -92,7 +144,7 @@ pub fn advect_jacobi_partes(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> [f64;
     let t = Instant::now();
     if fundir {
         let linhas = BLOCO_LINHAS.load(std::sync::atomic::Ordering::Relaxed);
-        fundida::fused_rows(g, p, mode, (gx, gy), linhas);
+        fundida::fused_rows(g, p, mode, (gx, gy), linhas, no_bloco);
     } else {
         prepare_rows(g, p, mode);
         outflow_rows(g, p, mode);
@@ -100,7 +152,11 @@ pub fn advect_jacobi_partes(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> [f64;
     }
     let b = ms(t);
     let t = Instant::now();
-    commit_rows(g, mode);
+    if no_bloco {
+        so_troca(g);
+    } else {
+        commit_rows(g, mode);
+    }
     [a, b, ms(t)]
 }
 

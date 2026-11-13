@@ -49,3 +49,33 @@ Para 1,0 sim-s/s a 6 traços faltam ≥ 2,1 ms da média FORA da `assenta`: o ad
 n.º 5 §1: momentum 3,4 · núcleo fundido 12,6 · commit 2,8) é a única alavanca do tamanho certo. Não é física da
 `assenta`: pede outra decisão (o núcleo do advect ao bit, ou a placa). Os ~10 % de `crossbeam_epoch` em espera ativa
 (handoff n.º 5) também continuam não investigados.
+
+## Advecção, cura 1 (13/11): o complemento da troca DENTRO dos blocos — `COMMIT_NO_BLOCO`
+
+Na rota de troca do commit, cada bloco do núcleo fundido copia do grid para o rascunho o complemento das
+suas linhas logo depois de as transportar; as linhas fora da faixa copiam-se ao lado do núcleo (`rayon::join`);
+o commit vira só a troca dos três planos. O grid e o rascunho finais são os da rota de antes por construção.
+Sonda: rota `q` = o commit à parte (o de antes). Carga alta (outro agente): só o A×B vale.
+
+| corrida | load | rota | média ms | sim-s/s | mediana | advect mín (mom · núcleo · commit) | hash |
+|---|---|---|---|---|---|---|---|
+| 24×4 | 5,5→12 | `q` antes | 33,4 | 0,75 | 29,9 | 3,51 · 13,71 · 2,93 = 20,2 | `a9bac64ac5b857c8` |
+| | | **`a` produto** | **32,4** | 0,77 | 29,0 | 3,57 · 14,93 · 0,00 = 18,5 | `a9bac64ac5b857c8` |
+| 24×6 | 11,6→10 | `q` antes | 32,6 | 0,77 | 28,0 | 3,44 · 12,55 · 2,81 = 18,8 | `a9bac64ac5b857c8` |
+| | | **`a` produto** | **30,7** | **0,82** | 25,2 | 3,44 · 13,65 · 0,00 = 17,1 | `a9bac64ac5b857c8` |
+
+Ganho: ~1,7 ms do advect em todo passo (o commit de 2,8 ms some, o núcleo sobe ~1,1 ms), média −1,0 a −1,9 ms.
+Gate por nome `o_complemento_nos_blocos_da_o_commit_a_parte_ao_bit` (troca forçada, blocos 1/3/7/32,
+série/paralela/medida, `rf` 1 e 4, o grid escrito FORA da faixa entre passos). Controlos: sem a cauda da linha
+e sem as pontas fora da faixa ⇒ vermelho; a primeira versão do gate (cena sem escrita fora da faixa) deixava
+a mutação da cauda passar — o rascunho velho já igualava o grid.
+
+### ABERTO para 1,0 (medido com carga alta; reconfirmar calmo)
+
+Média ~30,7 ms ⇒ faltam ~5,7 ms. O resto do advect: momentum 3,4 (passe à parte; no bloco já recusado),
+núcleo ~13,6. Perfil (`perf -k`, 6 traços): `transport_row` 13 %, espera do rayon `crossbeam_epoch` 10 %,
+`outflow_block` 7,6 %, `flow_at_point` 4,2 % (símbolo próprio — o momentum não o inline), `prepare_row` 4 %.
+Próximas a medir: `#[inline(always)]` no `flow_at_point` (ao bit, mesma ordem); os picos (secagem 1 em 6,
+campo de fluxo 1 em 4, project 1 em 3) — a média é o relógio, os picos são ~metade do excesso.
+Alarmes de pincel NÃO corridos nesta cura: a árvore tinha edições alheias em `ph2d-tool-painter` (outro agente)
+que confundiriam a lista dos 77; o motor está provado ao bit pelo hash e pelos gates.

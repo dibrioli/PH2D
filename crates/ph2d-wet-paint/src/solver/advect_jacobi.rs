@@ -155,6 +155,7 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
     if super::remolha_parada::liga(g, p) {
         super::remolha_parada::aplica(g, p);
     }
+    let no_bloco = fundir && commit::commit_no_bloco(g);
     let vmax = if fundir {
         fundida::fused_rows(
             g,
@@ -162,6 +163,7 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
             mode,
             (gx, gy),
             BLOCO_LINHAS.load(std::sync::atomic::Ordering::Relaxed),
+            no_bloco,
         )
     } else {
         let vmax = prepare_rows(g, p, mode);
@@ -175,7 +177,11 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
         }
         vmax
     };
-    commit_rows(g, mode);
+    if no_bloco {
+        commit::so_troca(g);
+    } else {
+        commit_rows(g, mode);
+    }
     vmax
 }
 
@@ -603,7 +609,7 @@ mod momentum;
 pub(super) use momentum::{momentum_row, momentum_rows};
 #[path = "advect_commit.rs"]
 mod commit;
-pub use commit::advect_jacobi_partes;
+pub use commit::{COMMIT_NO_BLOCO, advect_jacobi_partes};
 use commit::{commit_rows, walk_rows2_reduce};
 
 #[path = "advect_fundida.rs"]

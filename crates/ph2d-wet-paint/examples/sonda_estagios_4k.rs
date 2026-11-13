@@ -61,6 +61,7 @@ fn rota(r: &str) {
     ADVECT_FASES.store(0, Relaxed);
     MOMENTO_FORA.store(1, Relaxed);
     ph2d_wet_paint::flow::COMMIT_ROTA.store(0, Relaxed);
+    ph2d_wet_paint::solver::COMMIT_NO_BLOCO.store(1, Relaxed);
     ph2d_wet_paint::solver::SAIA_COLUNAS.store(1, Relaxed);
     use ph2d_wet_paint::assenta as asn;
     asn::MEMO_ASSENTA.store(1, Relaxed);
@@ -73,6 +74,8 @@ fn rota(r: &str) {
         // N.º 7: `z` = o TECTO de qualquer conta do assentar — a secagem sem ela (`MEMO_ASSENTA = 3`, resultado
         // errado). Medido 13/11: 6 traços média 30,5 (produto) × 27,1 ms (`z`) = 0,92 sim-s/s; `N7_ITEM1_sim6.md`.
         (Some(b'z'), _) => asn::MEMO_ASSENTA.store(3, Relaxed),
+        // N.º 7 advecção: `q` = o commit em passe à parte (o de antes do complemento nos blocos).
+        (Some(b'q'), _) => ph2d_wet_paint::solver::COMMIT_NO_BLOCO.store(0, Relaxed),
         (Some(b'k'), _) => ph2d_wet_paint::solver::SAIA_COLUNAS.store(0, Relaxed),
         (Some(b'c'), Some(n)) => {
             ph2d_wet_paint::flow::COMMIT_ROTA.store(u8::try_from(n).unwrap_or(0), Relaxed)

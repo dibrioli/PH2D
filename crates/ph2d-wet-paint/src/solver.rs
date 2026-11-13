@@ -638,7 +638,9 @@ mod sedimenta;
 pub use active_region::{SAIA_COLUNAS, rebuild_active_region, rebuild_active_region_rows};
 pub use advect::advect;
 #[doc(hidden)]
-pub use advect_jacobi::{ADVECT_FASES, BLOCO_LINHAS, MEIO_PARADO, MOMENTO_FORA, SAIDA_BLOCO};
+pub use advect_jacobi::{
+    ADVECT_FASES, BLOCO_LINHAS, COMMIT_NO_BLOCO, MEIO_PARADO, MOMENTO_FORA, SAIDA_BLOCO,
+};
 pub use advect_jacobi::{
     advect_jacobi, advect_jacobi_partes, advect_jacobi_rows, destination_reach,
 };

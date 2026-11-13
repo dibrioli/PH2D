@@ -81,6 +81,7 @@ pub(super) fn fused_rows(
     mode: Rows,
     grav: (f64, f64),
     linhas: usize,
+    complemento: bool,
 ) -> f64 {
     let momento = momento_no_bloco(g);
     let (c, scratch, vel_x, vel_y) = split_vel(g, p);
@@ -102,10 +103,17 @@ pub(super) fn fused_rows(
         vys = vel_y[band.clone()].chunks_mut(n).collect();
     }
     let (mut vxs, mut vys) = (vxs.into_iter(), vys.into_iter());
-    let itens: Vec<Item> = dst_film[band.clone()]
+    // `[..by0)`, a faixa, `(by1..]` — as pontas só as copia o complemento ([`super::commit::so_troca`]).
+    let (pre_f, resto_f) = dst_film.split_at_mut(band.start);
+    let (band_f, pos_f) = resto_f.split_at_mut(band.len());
+    let (pre_s, resto_s) = dst_susp.split_at_mut(band.start);
+    let (band_s, pos_s) = resto_s.split_at_mut(band.len());
+    let (pre_c, resto_c) = dst_rgb.split_at_mut(band.start);
+    let (band_c, pos_c) = resto_c.split_at_mut(band.len());
+    let itens: Vec<Item> = band_f
         .chunks_mut(n)
-        .zip(dst_susp[band.clone()].chunks_mut(n))
-        .zip(dst_rgb[band].chunks_mut(n))
+        .zip(band_s.chunks_mut(n))
+        .zip(band_c.chunks_mut(n))
         .enumerate()
         .map(|(k, ((fr, sr), cr))| Item {
             k,
@@ -123,12 +131,56 @@ pub(super) fn fused_rows(
                 momentum_row(&c, a + r as i32, vx, vy, grav.0, grav.1);
             }
         }
-        BLOCOS.with(|t| bloco(&c, a, it.fr, it.sr, it.cr, &mut t.borrow_mut()))
+        let v = BLOCOS.with(|t| bloco(&c, a, it.fr, it.sr, it.cr, &mut t.borrow_mut()));
+        if complemento {
+            let rows = it
+                .fr
+                .chunks_mut(s)
+                .zip(it.sr.chunks_mut(s))
+                .zip(it.cr.chunks_mut(s));
+            for (r, ((fr, sr), cr)) in rows.enumerate() {
+                super::commit::complemento_linha(&c, a + r as i32, fr, sr, cr);
+            }
+        }
+        v
     };
-    match mode {
+    let nucleo = || match mode {
         Rows::Serial => itens.into_iter().map(job).fold(0.0f64, f64::max),
         Rows::Parallel => itens.into_par_iter().map(job).reduce(|| 0.0f64, f64::max),
         Rows::Medida(piso) => crate::par::medida_reduce(itens, piso, 0.0f64, job, f64::max),
+    };
+    if !complemento {
+        return nucleo();
+    }
+    // As linhas fora da faixa vão inteiras do grid para o rascunho, ao lado do núcleo.
+    let (fim, ini) = (band.end, band.start);
+    let mut pontas = || {
+        // Pedaços de 64 linhas: a ponta de baixo chega a ~2 M células, um `memcpy` só seria um fio só.
+        let k = 64 * s;
+        let fora = [
+            (&mut *pre_f, &mut *pre_s, &mut *pre_c, 0),
+            (&mut *pos_f, &mut *pos_s, &mut *pos_c, fim),
+        ];
+        for (f, sv, cv, o) in fora {
+            f.par_chunks_mut(k)
+                .zip(sv.par_chunks_mut(k))
+                .zip(cv.par_chunks_mut(k))
+                .enumerate()
+                .for_each(|(j, ((f, sv), cv))| {
+                    let (a, b) = (o + j * k, o + j * k + f.len());
+                    f.copy_from_slice(&c.film[a..b]);
+                    sv.copy_from_slice(&c.susp[a..b]);
+                    cv.copy_from_slice(&c.susp_rgb[a..b]);
+                });
+        }
+        debug_assert_eq!(ini, pre_f.len());
+    };
+    match mode {
+        Rows::Parallel => rayon::join(nucleo, pontas).0,
+        _ => {
+            pontas();
+            nucleo()
+        }
     }
 }
 
@@ -221,7 +273,12 @@ pub(super) fn advect_fundida_rows(
     if !momento_no_bloco(g) {
         super::momentum_rows(g, p, gx, gy, mode);
     }
-    let vmax = fused_rows(g, p, mode, (gx, gy), linhas);
-    super::commit_rows(g, mode);
+    let no_bloco = super::commit::commit_no_bloco(g);
+    let vmax = fused_rows(g, p, mode, (gx, gy), linhas, no_bloco);
+    if no_bloco {
+        super::commit::so_troca(g);
+    } else {
+        super::commit_rows(g, mode);
+    }
     vmax
 }

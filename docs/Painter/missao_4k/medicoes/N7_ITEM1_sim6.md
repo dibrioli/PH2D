@@ -158,3 +158,7 @@ scatter-add cuja ordem de soma por célula de saída é a lei do bit; vetorizá-
 A média continua ~28 ms (0,89 sim-s/s; mediana 23 = 1,0). O que resta do núcleo é conta escalar espalhada; o
 próximo degrau de tamanho certo é AVX2 com gather (precisa de abrir `unsafe` num módulo isolado — decisão de
 política) ou os picos (secagem/campo/project a coincidir, ver rodada 2).
+
+## Rodada 4 (13/11): o palpite da `assenta` (`PH2D_ASSENTA_PALPITE=1`, commit `2c3a2185b0`) a olho
+
+Alarmes de pincel exato × palpite: 77 → 80 vermelhos (a mais: largura de Smear Soft, Smear Spikey, Water Brush; 15 miniaturas pintam diferente, Wet Round e Watercolor Basic iguais ao bit) — [n7_assenta/README.md](n7_assenta/README.md), imagens lado a lado para o dono.

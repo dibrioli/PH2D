@@ -503,12 +503,14 @@ pub(crate) fn tons_da_barra(theme: Theme) -> banda::TonsDaBarra {
         ativa_fundo: t(T::ChipEscolhido),
         ativa_texto: t(T::TextoCabecalho),
         inativa_texto: t(T::TextoPropriedade),
-        sob_o_rato: t(T::NomesCabecalho),
         // Dono 12/11 (2.ª vez): Auto Key e Marker «sem contraste» — o texto sobe ao tom das abas
         // não escolhidas (6,6:1 contra a barra; `TextoValor` media 3,7) e o contorno da caixa vazia ao
         // dos títulos.
         discreta_texto: t(T::TextoPropriedade),
         borda_da_caixa: t(T::TextoCabecalho),
+        // O corpo dos outros campos da barra (o chip do clip, Time, Frame) e, sob o rato, o degrau acima.
+        corpo_da_peca: CardInk::of_list(theme).color(ColorToken::CardField),
+        sob_o_rato: CardInk::of_list(theme).color(ColorToken::CardFieldHover),
     }
 }
 
@@ -574,6 +576,9 @@ mod tests {
         };
         for theme in Theme::ALL {
             let t = tons_da_barra(theme);
+            // E o corpo das peças é o dos outros campos da barra (dono 12/11: «soltas no fundo»).
+            let campo = CardInk::of_list(theme).color(ColorToken::CardField);
+            assert_eq!(rgb(t.corpo_da_peca), rgb(campo), "{theme:?}: corpo da peça");
             for (nome, cor) in [("contorno", t.borda_da_caixa), ("texto", t.discreta_texto)] {
                 for fundo in [ColorToken::CardField, ColorToken::KanbanList] {
                     let r = rgb(cor).contrast_ratio(&fundo.resolve(theme));

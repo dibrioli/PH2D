@@ -45,6 +45,9 @@ pub struct TonsDaBarra {
     pub discreta_texto: ph2d_vector::Color,
     /// O contorno da caixa de marcar VAZIA das peças discretas (dono 12/11: «mais contraste com o fundo»).
     pub borda_da_caixa: ph2d_vector::Color,
+    /// O corpo das peças discretas em repouso (dono 12/11: Auto Key e Marker soltos no fundo pedem a
+    /// caixa dos outros campos da barra); sob o rato, [`Self::sob_o_rato`].
+    pub corpo_da_peca: ph2d_vector::Color,
 }
 
 impl CardCtx<'_> {
@@ -117,9 +120,8 @@ impl CardCtx<'_> {
         self.hit_index.register(c.id, r);
         dicas::rotulo(c.id, c.nome);
         let hover = self.store.hover_live(c.id) > 0.0;
-        if hover {
-            fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, t.sob_o_rato);
-        }
+        let corpo = if hover { t.sob_o_rato } else { t.corpo_da_peca };
+        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, corpo);
         let mut cx = x + m::FIELD_PAD_R;
         let caixa = crate::widget::card_check_rect(cx, y, m::FIELD_H);
         crate::widget::paint_card_check_com_borda(
@@ -169,9 +171,12 @@ impl CardCtx<'_> {
     ) {
         self.hit_index.register(id, r);
         dicas::rotulo(id, texto);
-        if self.store.hover_live(id) > 0.0 {
-            fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, t.sob_o_rato);
-        }
+        let corpo = if self.store.hover_live(id) > 0.0 {
+            t.sob_o_rato
+        } else {
+            t.corpo_da_peca
+        };
+        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, corpo);
         let x = r.x + m::FIELD_PAD_R;
         let meio = r.y + r.h * 0.5;
         paint_icon(

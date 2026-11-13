@@ -496,3 +496,138 @@ fn sonda_n_tracos_em_tempo_real() {
             .trim()
     );
 }
+
+/// Banda de cópia (leitura + escrita) em GB/s no pool, o mínimo de 5 cópias de 512 MiB.
+fn banda_gbs(pool: &rayon::ThreadPool) -> f64 {
+    use rayon::prelude::*;
+    const N: usize = 512 << 20;
+    let a = vec![1u8; N];
+    let mut b = vec![0u8; N];
+    let mut melhor = f64::MAX;
+    for _ in 0..5 {
+        let t = Instant::now();
+        pool.install(|| {
+            b.par_chunks_mut(1 << 20)
+                .zip(a.par_chunks(1 << 20))
+                .for_each(|(d, s)| d.copy_from_slice(s));
+        });
+        melhor = melhor.min(t.elapsed().as_secs_f64());
+    }
+    assert_eq!(b[N - 1], 1);
+    2.0 * N as f64 / melhor / 1e9
+}
+
+/// Os bits de todo campo que o passo pode mexer, por célula fina (`film`, `susp`, `sett`, `susp_rgb`) e por célula de
+/// fluxo (`vel`, `flow`).
+fn bits(g: &ph2d_wet_paint::grid::Grid) -> (Vec<[u32; 6]>, Vec<[u32; 4]>) {
+    let fina = (0..g.cells)
+        .map(|i| {
+            let r = g.susp_rgb[i];
+            [g.film[i], g.susp[i], g.sett[i], r[0], r[1], r[2]].map(f32::to_bits)
+        })
+        .collect();
+    let fluxo = (0..g.vel_x.len())
+        .map(|i| [g.vel_x[i], g.vel_y[i], g.flow_x[i], g.flow_y[i]].map(f32::to_bits))
+        .collect();
+    (fina, fluxo)
+}
+
+/// B13.12 passo 1 — QUEM MEXE e se é BANDA: para 1..`PH2D_TRACOS` (6) traços (a cena da
+/// [`sonda_n_tracos_em_tempo_real`]), em cada 10.º de 120 passos no pool de todos os fios: as células da faixa
+/// (`live_span_cells`), as dos troços de tiles vivos (o que os estágios ANDAM), as que têm film > 0, as de fluxo com
+/// vel ≠ 0, e as que o passo MUDOU algum bit (fina e fluxo, contadas também só nos passos sem secagem). Com a banda
+/// de cópia medida no mesmo processo: B* = banda × ms do passo / células dos tiles = os bytes por célula que o passo
+/// teria de mover para ser limitado pela banda (o fundido toca ~110–150 B/célula; B* ≫ isso ⇒ não é banda).
+#[test]
+#[ignore = "sonda: corre à mão, no perfil smoke"]
+fn sonda_quem_mexe_e_a_banda() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let lib = Biblioteca::carregar(&raiz, None);
+    let env = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<usize>().ok());
+    let preset = std::env::var("PH2D_SONDA_PRESET").unwrap_or_else(|_| "Wet Wash".into());
+    let (w, h) = match std::env::var("PH2D_SONO_RES").as_deref() {
+        Ok("1080") => (1920, 1080),
+        _ => (3840, 2160),
+    };
+    let fios = env("PH2D_FIOS").unwrap_or_else(rayon::current_num_threads);
+    let pools = [1, fios].map(|f| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(f)
+            .build()
+            .expect("pool")
+    });
+    let banda = [banda_gbs(&pools[0]), banda_gbs(&pools[1])];
+    println!(
+        "\n  B13.12 quem mexe · {w}x{h} · {preset} · banda de cópia 1 fio {:.1} GB/s · {fios} fios {:.1} GB/s",
+        banda[0], banda[1]
+    );
+    for n in 1..=env("PH2D_TRACOS").unwrap_or(6) {
+        let mut t = tela_n(&lib, w, h, &preset, n);
+        let e: &mut ph2d_wet_paint::painter::Engine =
+            &mut t.paint.wetpaint.session.as_mut().expect("sessao").engine;
+        let idx = e.active_layer;
+        let ph2d_wet_paint::painter::Engine {
+            sim,
+            layers,
+            tuning,
+            ..
+        } = &mut *e;
+        let g = &mut layers[idx].grid;
+        let mut ms = f64::MAX;
+        let mut linhas = Vec::new();
+        for step in 0..120u64 {
+            let medir = step % 10 == 9;
+            let antes = medir.then(|| bits(g));
+            let seca = (sim.frame + 1).is_multiple_of(sim.dry_every);
+            let a = Instant::now();
+            pools[1].install(|| while sim_step_stage(sim, g, tuning).is_none() {});
+            let dt = a.elapsed().as_secs_f64() * 1e3;
+            ms = ms.min(dt);
+            let Some((f0, q0)) = antes else { continue };
+            let (f1, q1) = bits(g);
+            let mudou_f = f0.iter().zip(&f1).filter(|(a, b)| a != b).count();
+            let mudou_q = q0.iter().zip(&q1).filter(|(a, b)| a != b).count();
+            let vel = q1
+                .iter()
+                .filter(|c| c[0] << 1 != 0 || c[1] << 1 != 0)
+                .count();
+            let film = g.film.iter().filter(|v| **v > 0.0).count();
+            let (tw, on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
+            let mut troco = 0u64;
+            for y in g.by0.max(0)..=g.by1 {
+                let (lo, hi) = g.span_x(y);
+                let ts = ph2d_wet_paint::grid::faixa_tiles::tiles_row_of(&g.row_tiles, tw, on, y);
+                for (a, b) in ph2d_wet_paint::grid::faixa_tiles::span_runs(ts, lo, hi) {
+                    troco += u64::try_from(b - a + 1).unwrap_or(0);
+                }
+            }
+            linhas.push((
+                step,
+                seca,
+                dt,
+                g.live_span_cells(),
+                troco,
+                film,
+                vel,
+                mudou_f,
+                mudou_q,
+            ));
+        }
+        println!("    {n} traço(s) · passo mín {ms:.2} ms ({fios} fios)");
+        for (step, seca, dt, faixa, troco, film, vel, mf, mq) in linhas {
+            let bstar = banda[1] * 1e9 * dt * 1e-3 / troco.max(1) as f64;
+            println!(
+                "      passo {step:>3}{} {dt:>6.2} ms · faixa {faixa} · troços {troco} · film>0 {film} · vel≠0 {vel} · mudou fina {mf} ({:.3} da faixa) · fluxo {mq} · {:.2} ns/célula · B* {bstar:.0} B/célula",
+                if seca { " seca" } else { "     " },
+                mf as f64 / faixa.max(1) as f64,
+                dt * 1e6 / troco.max(1) as f64,
+            );
+        }
+    }
+    println!(
+        "  load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+}

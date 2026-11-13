@@ -58,6 +58,33 @@ pub(super) fn pour_hardening(coverage: u8) -> u8 {
 /// trabalho. Mora com o MAPA, que os dois compartilham. Molde: o limiar em bytes do [`crate::plane_copy`].
 pub(super) const WET_PAR_MIN: usize = 64 << 10;
 
+/// Tudo o que [`composite_below`] lê para compor o fundo de baixo (ver [`PainterTool::fundo_de_baixo`]).
+#[derive(Clone)]
+pub(crate) struct ChaveDoFundo {
+    pilha: crate::layers::LayerStack,
+    imagens: Vec<(crate::layers::LayerId, std::sync::Weak<Vec<u8>>, u32, u32)>,
+    papel: [u8; 3],
+    tamanho: (u32, u32),
+}
+
+impl ChaveDoFundo {
+    fn casa(&self, o: &Self) -> bool {
+        self.papel == o.papel
+            && self.tamanho == o.tamanho
+            && self.imagens.len() == o.imagens.len()
+            && self.imagens.iter().zip(&o.imagens).all(|(a, b)| {
+                a.0 == b.0 && a.2 == b.2 && a.3 == b.3 && std::sync::Weak::ptr_eq(&a.1, &b.1)
+            })
+            && self.pilha == o.pilha
+    }
+}
+
+thread_local! {
+    /// A×B do fundo de baixo em cache (`false` = compor a cada pen-down, o de antes). Só a sonda e o gate o desligam.
+    #[doc(hidden)]
+    pub static FUNDO_EM_CACHE: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
 impl PainterTool {
     /// Freeze the watercolor ground for a beginning stroke: the pre-stroke `canvas_rgba` as the
     /// optical base (shared `Arc`, O(1)) + the real **backdrop** under the active layer. The soak
@@ -79,7 +106,7 @@ impl PainterTool {
             return;
         }
         self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
-        self.paint.wet_backdrop = Some(Arc::new(self.build_wet_backdrop()));
+        self.paint.wet_backdrop = Some(self.fundo_de_baixo());
         // A new wet render supersedes any live-editable wash — the previous one is now permanent (it was
         // baked into `canvas_rgba` at its pen-up, which THIS base freeze captured). Drop its snapshot.
         self.clear_wet_editable();
@@ -146,6 +173,38 @@ impl PainterTool {
     /// Runs once per stroke (pen-down); `composite_below` handles an unknown anchor (plain paper).
     fn build_wet_backdrop(&self) -> Vec<u8> {
         self.build_wet_backdrop_sobre(self.cor_do_chao())
+    }
+
+    /// **O fundo de baixo, da cache quando nada do que o compõe mudou** (n.º 6): a pilha, a imagem de cada camada (pela
+    /// identidade da alocação: com o `Weak` vivo nenhuma escrita segura muda o plano no lugar — o `make_mut` copia ou
+    /// MOVE), o papel e o tamanho. Medido a 4K: 10–14 ms por pen-down de aguada (e o chão preto do vidro, que se
+    /// guarda pelo mesmo `Arc`, mais 8 ms). Com uma máscara activa a fonte troca a âncora: compõe sempre.
+    fn fundo_de_baixo(&mut self) -> Arc<Vec<u8>> {
+        let mascara = self
+            .layers
+            .active()
+            .is_some_and(|id| self.layers.is_mask(id));
+        if mascara || !FUNDO_EM_CACHE.get() {
+            return Arc::new(self.build_wet_backdrop());
+        }
+        let chave = ChaveDoFundo {
+            pilha: self.layers.clone(),
+            imagens: self
+                .images
+                .iter()
+                .map(|(&id, img)| (id, Arc::downgrade(&img.rgba8), img.width, img.height))
+                .collect(),
+            papel: self.cor_do_chao(),
+            tamanho: self.source_size,
+        };
+        if let Some((c, fundo)) = &self.paint.fundo_em_cache
+            && c.casa(&chave)
+        {
+            return Arc::clone(fundo);
+        }
+        let fundo = Arc::new(self.build_wet_backdrop());
+        self.paint.fundo_em_cache = Some((chave, Arc::clone(&fundo)));
+        fundo
     }
 
     /// O mesmo chão sobre um papel `paper` qualquer — o vidro pede-o sobre o PRETO
@@ -612,7 +671,7 @@ impl PainterTool {
         // the lift target. Empty union buffers ⇒ `wet_session_continues` passes and the next stroke joins
         // this session (lifting the base) instead of starting fresh over the dry paint.
         self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
-        self.paint.wet_backdrop = Some(Arc::new(self.build_wet_backdrop()));
+        self.paint.wet_backdrop = Some(self.fundo_de_baixo());
         self.paint.wet_session_base = Some(Arc::clone(&self.canvas_rgba));
         self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
         self.paint.stroke_coverage = vec![0u8; n];

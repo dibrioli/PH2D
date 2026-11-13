@@ -390,6 +390,9 @@ pub(crate) struct PaintState {
     /// virtual cream baked into the wash was the "puxa pro bege" bug (Enio 2026-07-06). Frozen with
     /// [`Self::watercolor_base`]; `None` outside a watercolor stroke.
     pub(super) wet_backdrop: Option<Arc<Vec<u8>>>,
+    /// O último fundo de baixo composto, com a chave de tudo o que o compôs (n.º 6): o traço seguinte sobre a mesma
+    /// pilha não o recompõe ([`super::watercolor_backdrop::ChaveDoFundo`]).
+    pub(super) fundo_em_cache: Option<(super::watercolor_backdrop::ChaveDoFundo, Arc<Vec<u8>>)>,
     /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
     /// the backdrop is fully transparent. Default WHITE (a plain canvas); panel swatch
     /// `PAINTER_WATERCOLOR_PAPER_COLOR_THUMB` edits it via the shared picker (Rebelle: canvas colour

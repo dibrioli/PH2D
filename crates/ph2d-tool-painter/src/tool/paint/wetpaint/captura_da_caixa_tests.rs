@@ -38,12 +38,20 @@ struct Corrida {
     refeito: Vec<u8>,
 }
 
-fn corre(nova: bool) -> Corrida {
+fn corre(nova: bool, aguada: bool) -> Corrida {
     CAPTURA_PELA_CAIXA.set(nova);
     CAPTURA_PARTILHADA.set(nova);
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; (W * H * 4) as usize], W, H);
-    t.set_paint_tool_mode("wetpaint");
+    if aguada {
+        // O Watercolor Basic: a aguada óptica do Paint (`watercolor_render`).
+        t.paint.brush.watercolor = true;
+        let seed = t.paint.brush;
+        t.paint.brush_by_mode.fill(seed);
+        assert!(t.watercolor_render_active(), "a fixture: a aguada");
+    } else {
+        t.set_paint_tool_mode("wetpaint");
+    }
     t.set_brush_size_px(24.0);
     for _ in 0..3 {
         t.on_tick(1000.0 / 60.0);
@@ -78,9 +86,19 @@ fn corre(nova: bool) -> Corrida {
 
 #[test]
 fn o_desfazer_do_composite_wet_guarda_a_caixa_e_nao_a_tela() {
+    confere(false);
+}
+
+/// O mesmo no Watercolor Basic (`watercolor_render`, n.º 6): 2.º pen-down da base a 4K 28–29 → 16–17 ms.
+#[test]
+fn o_desfazer_da_aguada_guarda_a_caixa_e_nao_a_tela() {
+    confere(true);
+}
+
+fn confere(aguada: bool) {
     let tela = (W * H * 4) as usize;
-    let velho = corre(false);
-    let novo = corre(true);
+    let velho = corre(false, aguada);
+    let novo = corre(true, aguada);
     eprintln!(
         "pico do journal da tela (B; tela {tela}): antigo {:?} · novo {:?}",
         velho.picos, novo.picos

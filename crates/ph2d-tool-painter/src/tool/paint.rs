@@ -105,6 +105,8 @@ pub(crate) mod watercolor_field;
 mod watercolor_fios;
 /// A forma da borda da aguada: o FLUXO do Ragged Edge e o PAPEL na borda (BUGS #31).
 mod watercolor_flow;
+#[cfg(test)]
+mod watercolor_fundo_cache_tests;
 /// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).
 mod watercolor_lut;
 mod watercolor_mistura; // o Pigment mistura tinta com tinta: nunca com o papel, e molhado sobre molhado

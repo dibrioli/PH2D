@@ -79,6 +79,8 @@ fn sonda_primeiro_traco() {
         std::env::var("PH2D_SONDA_CHAO_ANTIGO").is_err(),
         std::sync::atomic::Ordering::Relaxed,
     );
+    super::super::watercolor_backdrop::FUNDO_EM_CACHE
+        .set(std::env::var("PH2D_SONDA_FUNDO_ANTIGO").is_err());
     super::preparo::liga_no_teste(std::env::var("PH2D_SONDA_PREPARO").is_ok());
     let so = std::env::var("PH2D_SONDA_SO").ok();
     let nomes = [

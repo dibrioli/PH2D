@@ -333,8 +333,51 @@ pub(crate) fn pinta_chave(
     if estado == EstadoAlca::Hover {
         fundo = mistura(fundo, repouso, ph2d_tokens::TIMELINE_ALCA_HOVER_MIX);
     }
+    if escolhida {
+        anel_da_escolhida(ctx, theme, (cx, cy), d, estado == EstadoAlca::Hover);
+    }
     crate::tracks::paint_diamond(ctx, cx, cy, anel, fundo);
-    crate::tracks::paint_diamond(ctx, cx, cy, h, cor(estado, repouso, theme));
+    // A escolhida não desbota no hover (lia-se creme, «quase imperceptível»): acende o anel.
+    let corpo = if escolhida && estado == EstadoAlca::Hover {
+        repouso
+    } else {
+        cor(estado, repouso, theme)
+    };
+    crate::tracks::paint_diamond(ctx, cx, cy, h, corpo);
+}
+
+/// A cor do anel da chave escolhida: o azul dela à opacidade medida na maquete (cheio no hover).
+#[must_use]
+pub(crate) fn cor_do_anel(theme: Theme, aceso: bool) -> Color {
+    let a = if aceso {
+        1.0
+    } else {
+        ph2d_tokens::TIMELINE_KEY_SEL_ANEL_ALPHA
+    };
+    acento(theme).multiply_alpha(a)
+}
+
+/// ⭐ **O anel da chave escolhida** (dono 13/11, maquete `33_chave_escolhida_maquete.png`): um losango
+/// vazado em volta da chave, separado dela por uma folga do fundo da linha — traço, nunca preenchimento,
+/// para a folga ser a cor de QUALQUER linha (propriedade, grupo, Summary).
+pub(crate) fn anel_da_escolhida(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    (cx, cy): (f32, f32),
+    cresce: f32,
+    aceso: bool,
+) {
+    let r = f64::from(ph2d_tokens::TIMELINE_KEY_SEL_ANEL_HALF_PX + cresce);
+    let (x, y) = (f64::from(cx), f64::from(cy));
+    let mut p = BezPath::new();
+    p.move_to((x, y - r));
+    p.line_to((x + r, y));
+    p.line_to((x, y + r));
+    p.line_to((x - r, y));
+    p.close_path();
+    let s = Stroke::new(f64::from(ph2d_tokens::TIMELINE_KEY_SEL_ANEL_PX));
+    let b = Brush::Solid(cor_do_anel(theme, aceso));
+    ctx.scene.stroke_path(&s, Affine::IDENTITY, &b, &p);
 }
 
 /// Uma chave da folha no estado dela, com a leitura do tempo durante o arrasto.

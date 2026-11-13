@@ -200,13 +200,22 @@ fn paint_column(
         ColorToken::BorderStrong
     };
     let id = ids::timeline_summary_hit_id(c.t_bits());
+    let mut keyline = resolve(ring, theme);
+    let mut corpo = resolve(ColorToken::TimelineSummaryKey, theme);
+    // Nos cartões a coluna escolhida tem a cara da chave escolhida (dono 13/11: o âmbar com fio
+    // azul «quase imperceptível»): azul, contorno escuro e o anel da maquete.
+    if c.all_selected && ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        crate::alca_estado::anel_da_escolhida(ctx, theme, (x, cy), 0.0, false);
+        keyline = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::FitaPropriedade, theme);
+        corpo = crate::alca_estado::acento(theme);
+    }
     crate::alca_estado::losango_mestre(
         ctx,
         theme,
         id,
         (x, cy, SUMMARY_DIAMOND_H),
-        (RING_W, resolve(ring, theme)),
-        resolve(ColorToken::TimelineSummaryKey, theme),
+        (RING_W, keyline),
+        corpo,
         c.t_seconds,
     );
     let hit = Rect::new(x - SUMMARY_HIT_HW, row.y, SUMMARY_HIT_HW * 2.0, row.h);

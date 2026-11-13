@@ -230,6 +230,17 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 - Testes: `key_card::tests` 3 (cliques; geometria cabe/sem sobreposição/título no topo; Done fecha, título nada, todo alvo é do cartão). Por nome ✓: editor-core key_card 3, timeline 45, context_menu 31, menu_row 13, every_menu_row 5, every_timeline_menu 3 · panel-timeline menu_marcas 1, timeline_presets_menu 10 · host-desktop timeline_presets 14 · i18n tests 10 · fmt ✓ · clippy `-D warnings` (editor-core, panel-timeline) ✓.
 - Smoke do dono: pendente.
 
+## Acréscimo 10 — dono 13/11: a chave escolhida com o destaque da maquete
+
+- **Pedido** (verbatim): «A seleção de keys é quase imperceptível. Na maquete temos belos destaques para keys selecionados». Antes: a escolhida no hover desbotava para creme (`cor(Hover)` mistura com `Chave`), e a coluna escolhida do Summary ficava âmbar com fio azul de 1,5 px.
+- **Maquete medida** (`magick … %[pixel]`, linha de 22 px): chave azul `(88,156,255)` de meia-diagonal ~5 (= a branca), folga escura ~1,5, **anel** de ~1,5 px com meia-diagonal ~8,7 em `(56,93,151)` sobre `(20,23,38)` = o azul a 0,52. O laranja `(255,158,90)` (anel `(132,87,63)`, mesma geometria) é a tinta `Mudado`/`PecaContainer`; o sentido dele na maquete não está escrito em doc nenhum — **escolhida = azul** (`ChaveEscolhida`); laranja não usado.
+- **`alca_estado::anel_da_escolhida`** (novo): losango vazado (traço, não preenchimento — a folga é o fundo de QUALQUER linha) em `acento × TIMELINE_KEY_SEL_ANEL_ALPHA`, cheio no hover (`cor_do_anel`). `pinta_chave` pinta-o para a escolhida (faixa e linha de grupo, via `chave_da_folha`) e o corpo da escolhida no hover fica azul. `summary_paint::paint_column`: coluna toda escolhida, nos cartões = anel + corpo azul + contorno `FitaPropriedade` (como a chave da faixa). `PH2D_CARDS=0` intocado.
+- **Tokens** (`ph2d-tokens/chrome.rs`, escala da faixa de 30 px = ×1,36): `TIMELINE_KEY_SEL_ANEL_HALF_PX` 11 · `TIMELINE_KEY_SEL_ANEL_PX` 1,5 · `TIMELINE_KEY_SEL_ANEL_ALPHA` 0,55. Nenhuma tinta nova.
+- **Fotos** (Xvfb, clique real): [antes](../fotos/33_chave_escolhida_antes.png) · [maquete](../fotos/33_chave_escolhida_maquete.png) · [depois — coluna do Summary escolhida](../fotos/33_chave_escolhida_depois.png) · [lado a lado](../fotos/33_chave_escolhida_lado_a_lado.png).
+- Testes: `a_chave_escolhida_tem_o_azul_e_o_anel_da_maquete_em_todo_tema` (novo; `Theme::ALL` × fita propriedade/cabeçalho/Summary: corpo ≥ 3:1 WCAG, medido 3,78 no pior; anel composto ΔOK ≥ 0,15, medido 0,224). Por nome ✓ panel-timeline: alca_estado 12, summary 13, tracks 11, linhas 22, ruler 30, os_cartoes 36, chave 7, key 58, losango 6 · tokens: timeline_tinta 2, contrast 10, chrome 1 · fmt ✓ · clippy `-D warnings` (panel-timeline, tokens) ✓.
+- Culling da chave continua por `chave_h()`: o anel (11 px) pode cortar 4 px antes na borda esquerda da folha — não visto em foto.
+- Smoke do dono: pendente.
+
 ## Aberto (visto, NÃO feito)
 
 1. **Limite conhecido:** com o pai ANIMADO durante o clip, o duplo-clique na curva projeta pelo pai na 1.ª chave (desenho e âncoras são exatos por instante). Foto de cena com pai rodado não tirada.

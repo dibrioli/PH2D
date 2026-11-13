@@ -139,6 +139,14 @@ pub const TIMELINE_KEY_RING_PX: f32 = 1.5; // LITERAL-PX-OK: contorno do losango
 /// O alvo de clique da chave: o losango com o contorno inteiro (6,5 + 1,5) e o encaixe ao splitter
 /// (`TIME_GUTTER` 12 − 8 = o `SPLIT_GRIP` de 4).
 pub const TIMELINE_KEY_HIT_HALF_PX: f32 = 8.0; // LITERAL-PX-OK: meia-largura do alvo da chave
+/// **O anel da chave escolhida** (dono 13/11: «na maquete temos belos destaques»). Maquete medida
+/// (`docs/Timeline/fotos/33_chave_escolhida_maquete.png`, linha de 22 px): losango azul de meia-diagonal
+/// ~5, folga escura ~1,5, anel de ~1,5 px com meia-diagonal ~8,7 — escalado à faixa de 30 px (×1,36).
+pub const TIMELINE_KEY_SEL_ANEL_HALF_PX: f32 = 11.0; // LITERAL-PX-OK: meia-diagonal do anel da escolhida
+/// A espessura do anel da chave escolhida (maquete: ~1,5 px).
+pub const TIMELINE_KEY_SEL_ANEL_PX: f32 = 1.5; // LITERAL-PX-OK: espessura do anel da escolhida
+/// O anel é o azul da escolhida a esta opacidade (maquete: (56,93,151) sobre (20,23,38) = 0,52).
+pub const TIMELINE_KEY_SEL_ANEL_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade do anel da escolhida
 /// **A moldura da área das trilhas** (dono 09/11: «uma outline como tem na referência»): maquete B1
 /// medida, um pixel cheio e meio antialiasado, raio do cartão.
 pub const TIMELINE_FRAME_PX: f32 = 1.5; // LITERAL-PX-OK: espessura da moldura medida na maquete

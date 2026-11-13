@@ -477,3 +477,50 @@ mod cursor;
 
 #[path = "faixa_muda_tests.rs"]
 mod faixa_muda;
+
+/// Dono 13/11 («a seleção de keys é quase imperceptível»): a chave escolhida é azul e o anel dela é
+/// o azul à opacidade da maquete. Em TODO tema, sobre as fitas onde ela se pinta (propriedade,
+/// cabeçalho, Summary), o azul tem contraste ≥ 3:1 (WCAG UI; medido 3,78 no pior) e o anel composto
+/// fica a ΔOK ≥ 0,15 do fundo (medido 0,224 no pior).
+#[test]
+fn a_chave_escolhida_tem_o_azul_e_o_anel_da_maquete_em_todo_tema() {
+    use ph2d_tokens::TimelineTinta as T;
+    let opaca = |c: Color| {
+        let u = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let k = c.components;
+        ph2d_tokens::Color {
+            r: u(k[0]),
+            g: u(k[1]),
+            b: u(k[2]),
+            a: 255,
+        }
+    };
+    let sobre = |c: Color, f: Color| {
+        let (a, b, t) = (c.components, f.components, c.components[3]);
+        Color::new([
+            b[0] + (a[0] - b[0]) * t,
+            b[1] + (a[1] - b[1]) * t,
+            b[2] + (a[2] - b[2]) * t,
+            1.0,
+        ])
+    };
+    let mut pior = (f64::MAX, f64::MAX);
+    for theme in Theme::ALL {
+        let azul = acento(theme);
+        assert_eq!(azul, tinta(T::ChaveEscolhida, theme), "{theme:?}");
+        assert_eq!(cor_do_anel(theme, true), azul, "aceso = o azul cheio");
+        for fita in [T::FitaPropriedade, T::FitaCabecalho, T::SummaryFita] {
+            let f = tinta(fita, theme);
+            let corpo = opaca(azul).contrast_ratio(&opaca(f));
+            let anel = dist(sobre(cor_do_anel(theme, false), f), f);
+            eprintln!("{theme:?} {fita:?}: corpo {corpo:.2}:1 · anel ΔOK {anel:.3}");
+            assert!(
+                corpo >= 3.0,
+                "{theme:?} {fita:?}: a escolhida some ({corpo:.2}:1)"
+            );
+            pior = (pior.0.min(corpo), pior.1.min(anel));
+        }
+    }
+    eprintln!("pior: corpo {:.2}:1 · anel ΔOK {:.3}", pior.0, pior.1);
+    assert!(pior.1 >= 0.15, "o anel some no fundo: ΔOK {:.3}", pior.1);
+}

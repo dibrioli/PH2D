@@ -74,11 +74,29 @@
 //!   salto   0.639  0.417  0.417  0.417  0.010  0.010  0.010  0.010 .. 0.010
 //! ```
 //!
-//! ⇒ **o `snap_to_ground` mínimo útil está entre 0,08 e 0,10 m** para esta
-//! cápsula, e o default de `0,25` tem **2,5× de margem**. O acoplamento
-//! `snap = step = cling` segue barato: a metade *subir* pede 1:1 o degrau que o
-//! artista quer, e a *descer* pede um piso pequeno que o mesmo número cobre com
-//! folga. Gate: `the_ground_snap_is_load_bearing_again`.
+//! ⚠️ **Esta tabela media a CHEGADA, não a descida** (Bug #13, re-medido
+//! 2026-11-13): o player nascia 1 m acima da rampa, caía e repousava a
+//! **4,6 cm** (perpendicular) acima do contacto — o repouso cinemático não
+//! reproduzível do item 5 da §7. O salto era o `cling` a não alcançar ESSE vão
+//! no primeiro tique da caminhada (< 0,10 falha, ≥ 0,10 alcança). Desde que o
+//! nascimento assenta (as consultas vêem o chão no tique 1), ele repousa em
+//! contacto e a 25° o tique da descida abre ~5 mm: nenhum `cling` salta.
+//!
+//! A §7.4 re-medida com o arranque em contacto (6 m/s, salto em metros):
+//!
+//! ```text
+//!   rampa \ cling  0.02   0.04   0.06   0.08   0.10 .. 0.50
+//!   25°            0      0      0      0      0
+//!   30°            0      0      0      0      0 (0.0014 de 0.15 em diante)
+//!   35°            0.760  0.004  0.004  0      0
+//!   40°            0.732  0      0      0      0
+//!   44°            0.803  0      0      0      0
+//! ```
+//!
+//! ⇒ **o knob morde onde o tique da descida abre mais que ele** (≥ 35° a
+//! 6 m/s); o mínimo útil desta cápsula está entre 0,02 e 0,04 m e o default
+//! `0,25` cobre a rampa caminhável inteira. O acoplamento `snap = step = cling`
+//! segue barato. Gate: `the_ground_snap_is_load_bearing_again` (a 35°).
 //!
 //! ⚠️ **A tabela de BEIRADA não mudou, e é correto:** sair de um penhasco é
 //! CAIR — o `floor_snap_length` do Godot existe para descer escadas, não para
@@ -340,7 +358,7 @@ fn measure_what_each_half_of_the_number_buys() {
 #[test]
 #[ignore = "sonda"]
 fn measure_whether_a_bigger_cling_cures_the_descent_hop() {
-    println!("\n=== O SALTO DA DESCIDA CONTRA O `cling` (rampa 25 graus, 6 m/s) ===\n");
+    println!("\n=== O SALTO DA DESCIDA CONTRA O `cling` (rampa {DESCENT_DEG} graus, 6 m/s) ===\n");
     println!("{:>10}  {:>14}  {:>14}", "cling", "salto (m)", "andou (m)");
     for cling in [
         0.02_f32, 0.04, 0.06, 0.08, 0.10, 0.12, 0.15, 0.25, 0.50, 1.00, 2.00,
@@ -369,8 +387,11 @@ fn measure_whether_a_bigger_cling_cures_the_descent_hop() {
 ///   salto   0.639  0.417  0.417  0.417  0.010  0.010  0.010  0.010 .. 0.010
 /// ```
 ///
-/// ⇒ **o mínimo útil está entre 0,08 e 0,10 m** para esta cápsula, e o default
-/// (`RideConfig::STARTING_POINT`, 0,25) tem **2,5× de margem**.
+/// ⚠️ **Re-medida no Bug #13:** essa tabela era a 25° e media o vão de 4,6 cm
+/// em que a QUEDA do nascimento deixava o corpo, não a descida. Com o
+/// nascimento assente o arranque é em contacto nos dois braços, e a rampa é a
+/// de 35°, onde o tique da descida abre mais que 0,02 (salto 0,760) e menos
+/// que o default 0,25 (0) — a tabela no topo deste ficheiro.
 #[test]
 fn the_ground_snap_is_load_bearing_again() {
     let (small, _) = ramp_hop(0.02);
@@ -381,9 +402,16 @@ fn the_ground_snap_is_load_bearing_again() {
     );
     assert!(
         small > 10.0 * default.max(1.0e-4),
-        "e o knob tem de MORDER: com `cling` 0,02 o salto era 0,639 contra \
+        "e o knob tem de MORDER: a {DESCENT_DEG}° com `cling` 0,02 o salto era 0,760 contra \
          {default:.4} — se os dois ficaram iguais, o `snap_to_ground` voltou a \
          ser inerte e a §7.4 tem de ser reescrita outra vez"
+    );
+    // E a chegada já não entra: nascido assente, a 25° o tique abre ~5 mm e nem o 0,02 salta (com a
+    // queda do nascimento a repousar 4,6 cm acima do contacto, saltava 0,456).
+    let (gentle, _, _) = ramp_run(25.0, 0.02);
+    assert!(
+        gentle < 0.05,
+        "a 25° com `cling` 0,02 o arranque em contacto segue a rampa: saltou {gentle:.4} m"
     );
 }
 
@@ -464,9 +492,12 @@ fn measure_what_the_floors_min_does_to_a_climb() {
     );
 }
 
-/// A descida caminhada de 25°, com o `cling` escolhido: `(salto, andou)`.
+/// A rampa da descida: a mais suave em que o tique abre mais que `cling` 0,02 a 6 m/s.
+const DESCENT_DEG: f32 = 35.0;
+
+/// A descida caminhada de [`DESCENT_DEG`], com o `cling` escolhido: `(salto, andou)`.
 fn ramp_hop(cling: f32) -> (f32, f32) {
-    let (hop, ran, _) = ramp_run(25.0, cling);
+    let (hop, ran, _) = ramp_run(DESCENT_DEG, cling);
     (hop, ran)
 }
 

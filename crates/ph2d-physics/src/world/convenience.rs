@@ -35,6 +35,7 @@ impl PhysicsWorld {
             self.colliders
                 .insert_with_parent(collider, body_handle, &mut self.bodies);
         self.stamp_layer(collider_handle, 0);
+        self.mark_query_index();
         (body_handle, collider_handle)
     }
 
@@ -57,6 +58,7 @@ impl PhysicsWorld {
             self.colliders
                 .insert_with_parent(collider, body_handle, &mut self.bodies);
         self.stamp_layer(collider_handle, 0);
+        self.mark_query_index();
         (body_handle, collider_handle)
     }
 

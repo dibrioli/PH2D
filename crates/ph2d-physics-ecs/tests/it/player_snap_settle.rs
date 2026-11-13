@@ -125,9 +125,12 @@ fn the_first_jump_on_the_ground_rises_the_jump_height() {
 /// (`KinematicState::stood`: ar → de pé). Medido: no mesmo tique; antes, ~75 tiques a descer
 /// `g·dt²` por tique dentro da faixa da perna.
 ///
-/// ⚠️ **Aberto (Bug #13):** nascido a 0,9 (fora da perna Snap 0,75) assenta no tique 16, ao entrar
-/// na faixa — no tique do nascimento as consultas do mundo ainda não veem o chão (a broad phase só
-/// se constrói no primeiro passo), e o encaixe do nascimento não acha onde pousar.
+/// E **nascido a 0,9** (fora da perna Snap 0,75, dentro da perna AUTORADA `float_height + cling`)
+/// assenta em ≤ 2 tiques: o encaixe do nascimento pergunta ao mundo no tique 1, antes do primeiro
+/// passo, e o índice das consultas já tem o chão (`PhysicsWorld::refresh_query_index`).
+///
+/// ⚠️ **Mutação:** sem o refresh na porta dos controladores → assenta no tique 16 (a broad phase só
+/// se construía no primeiro passo e o cast do encaixe não achava nada).
 #[test]
 fn a_snap_player_settles_where_it_lands() {
     let (ys, ground) = run(true, 3.0, 1.0, None, 240);
@@ -137,4 +140,7 @@ fn a_snap_player_settles_where_it_lands() {
         n <= first,
         "largado de 3 m: a lei diz Ground no tique {first}, assentou no {n}"
     );
+    let (ys, _) = run(true, FLOAT, 1.0, None, 240);
+    let n = settle_tick(&ys);
+    assert!(n <= SNAP_SETTLE, "nascido a {FLOAT}: assentou no tique {n}");
 }

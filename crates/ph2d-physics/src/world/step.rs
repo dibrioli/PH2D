@@ -172,5 +172,6 @@ impl PhysicsWorld {
         // acima para a capacidade ficar.
         self.player_accels.clear();
         self.step_count += 1;
+        self.query_index_stale = false;
     }
 }

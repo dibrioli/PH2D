@@ -101,6 +101,7 @@ impl PhysicsWorld {
         // (`translation()` também deixou de devolver referência: é por valor.)
         let next = rb.translation() + Vector::new(delta[0], delta[1]);
         rb.set_translation(next, true);
+        self.mark_query_index();
     }
 
     /// A velocidade ANGULAR de um corpo (rad/s). `None` se o handle morreu.

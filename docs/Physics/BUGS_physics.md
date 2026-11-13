@@ -1332,3 +1332,73 @@ reprovam (`[]`); publicar por cima da sonda (sem a guarda `lit_now`) → a varre
 uma»); sem a guarda da vista anterior → a varredura reprova; restaurado, verde. O censo
 `no_std_transcendental_reaches_the_deterministic_hash` apanhou um `f32::cos` na primeira versão (agora
 `libm::cosf`). **Gate Snap (12/11):** `under_snap_every_ceiling_in_reach_is_bonked_once` (H 1,0/1,2/1,8/2,6 × quina 0,12 e 0, teto a cabeça + 0,02, + 0,05 e + 0,10..topo livre: um `Bonked` e uma borda do bit; nada a livre + 0,10; marquise sob Snap não bate) — desligar o corte em `player_kinmove` reprova 26 casos. `Bonked.speed` é UM contrato: a subida PRETENDIDA do tique do choque nos dois caminhos (a ponte recarimba o da sonda em `arm_ceiling_fact`); gate `the_bonk_speed_is_the_intended_rise_on_both_paths` (sem o recarimbo, Snap publica 3,286 contra 3,123). Nenhum consumidor de produção lê `speed` (o sinal `player.bonked` só leva o nome).
+
+### Bug #13 — o player Snap não assenta onde a lei o vê de pé, e o nascido fora da perna cai 16 tiques — ✅ FECHADO (13/11)
+
+**Sintoma:** sob Snap (cinemático), H = 1,0 premido no tique 20 subia 0,357 m; nascido a 0,9 (fora da
+perna Snap 0,75, dentro da autorada `float_height + cling`) só assentava no tique 16.
+
+**Mecanismo (três camadas, medidas):** (1) na faixa entre a perna da lei (`footing`) e o toque do
+controlador o corpo caía em queda livre com a lei a vê-lo de pé — o pulo somava `v0` a uma velocidade
+que ainda descia; (2) `world_steps` = 16 sob Snap fazia o `launch_speed` modelar outro integrador
+(ápice 0,956 a H = 1,0); (3) **o índice das consultas (BVH do broad phase do rapier) só é actualizado
+dentro do `step`**: no tique 1 o encaixe do nascimento pergunta pelo chão ANTES do primeiro passo e o
+cast não acha nada (a broad phase está vazia) — o corpo caía até entrar na faixa da perna no tique 16.
+
+**Cura:** `world_steps` = 1 sob Snap; `KinematicState::stood` (a lei de pé no tique anterior) separa o
+POUSO da elevação do degrau; `kin_in` e o encaixe (`bridge/player_seat.rs`, o `apply_floor_snap` do
+Godot) só no tique do pouso/nascimento; `seat::rest` cancela a velocidade contra o chão que o encaixe
+achou e a lei não via. Para (3): `world/query_index.rs` — flag `query_index_stale` (marcada por inserir,
+pose, reshape, teleporte; limpa no `step`; viaja no checkpoint) e `PhysicsWorld::refresh_query_index`
+(pose de cada collider = corpo · pose no corpo, e `BroadPhaseBvh::set_aabb`, em ordem de arena; um
+`bool` quando nada mudou). Chamado SÓ à cabeça de `drive_controllers` e só se há controladores — a cena
+sem controlador fica byte-idêntica (mexer no BVH antes do passo muda a ordem dos pares). É a forma do
+Box2D (a forma entra na árvore ao ser criada; `b2Body_SetTransform` move a folha).
+
+**O vermelho que enganava — `the_ground_snap_is_load_bearing_again`:** com o refresh o salto da descida
+da rampa de 25° caiu a 0 em QUALQUER `cling` (0,02: 0,4558 → 0; 0,04: 0,0380 → 0). Medido tique a tique
+(lado a lado, mesmo binário, refresh ligado × desligado por variável): não há estado que persista — o
+`born`/`seat` age só no tique 1, `stood` = verdadeiro do tique 2 em diante, `rest` só no tique 1, e a
+velocidade horizontal à entrada da rampa é a mesma (1,359 / 2,626 m/s nos tiques 181–182). A diferença é
+o REPOUSO: com refresh o tique 1 encaixa 0,191 m e o corpo repousa EM CONTACTO (centro a 0,4819 m da
+superfície, perpendicular = 0,2 + 0,3·cos 25° + pele); sem refresh ele caía e parava a **0,5275**, 4,6 cm
+acima do contacto (o repouso cinemático não reproduzível de 1,0–4,5 cm do item 5 da §7), com
+`got.grounded` = falso no primeiro tique da caminhada. O «salto» era o `cling` a não alcançar esse vão
+— a velha tabela (< 0,10 salta, ≥ 0,10 cola) é exactamente o vão. A 25° a partir do contacto o tique da
+descida abre ~5 mm e nenhum `cling` salta; o knob morde onde o tique abre mais que ele:
+
+```text
+  rampa \ cling  0.02   0.04   0.06   0.08   0.10 .. 0.50     (arranque em contacto, 6 m/s)
+  25°            0      0      0      0      0
+  35°            0.760  0.004  0.004  0      0
+  40°            0.732  0      0      0      0
+  44°            0.803  0      0      0      0
+  (queda, sem refresh, 25°: 0.456  0.038  0  0  0)
+```
+
+O gate passou a medir a 35° (`DESCENT_DEG`: 0,02 salta 0,760, 0,25 cola) e acrescenta o braço da
+chegada: a 25° com `cling` 0,02, nascido assente, salto < 0,05. As hipóteses (i) `born` mais de um
+tique, (ii) `stood` não escrito, (iv) velocidade de entrada diferente CAÍRAM; (iii) o `snap_to_ground`
+do rapier vê o chão desde o contacto — é a geometria do repouso, não um regime preso.
+
+**Gates:** `cast::tests::a_collider_inserted_before_any_step_is_seen_after_the_refresh` (raio, varredura
+e teleporte antes do 1.º passo); `player_snap_settle` (3; nascido a 0,9 assenta em ≤ 2 tiques);
+`measure_snap_and_step::the_ground_snap_is_load_bearing_again` (35° + braço dos 25°).
+
+**Mutações (13/11, 8 ficheiros de teste da ponte, 41 testes):**
+
+| mutação | resultado |
+|---|---|
+| M1 `world_steps` do mundo sob Snap | ✗ `the_first_jump_on_the_ground_rises_the_jump_height` (H = 1: 0,9559) |
+| M2 `kin_in` desligado | ⚠️ **sobrevive** — com o refresh, o encaixe do tique do pouso e o `rest` já tiram a queda; aberto: provar se `kin_in` ainda é preciso ou retirá-lo |
+| M3 encaixe da banda desligado | ✗ `the_kinematic_landing_does_not_slide_along_the_ramp_normal`, `a_snap_player_settles_where_it_lands` |
+| M4 encaixe do nascimento desligado | ✗ `the_ground_snap_is_load_bearing_again`, `a_player_born_in_reach_of_its_leg_settles`, `a_snap_player_settles_where_it_lands` |
+| M5 `stood` ignorado | ✗ `the_step_it_climbs_is_the_number_the_artist_authored` |
+| M6 refresh das consultas desligado | ✗ `the_ground_snap_is_load_bearing_again`, `a_snap_player_settles_where_it_lands` |
+| M7 `rest` desligado | ✗ `the_ground_snap_is_load_bearing_again`, `the_first_jump_on_the_ground_rises_the_jump_height` (H = 1: 0,9657) |
+
+**Cenas (13/11, por nome):** `ph2d-physics-smoke-scenes` (`kin_`, `swim`, `blast`, `zone_force`) 23/24 —
+⚠️ `physics_smoke_kin_water::…::the_scene_delivers_the_numbers_its_message_prints` reprova (Dynamic Player
+afunda 1,1712 contra 1,0855 prometido) **já em `eb729a2253`, sem este diff** (e com o refresh desligado):
+o player DINÂMICO, fora do Snap — aberto, por bissectar entre `62c9ff8e9c` e `eb729a2253`.
+`ph2d-host-game-scenes` 80/80 · `ph2d-physics-scene` 16/16 · `ph2d-app-game` 1/1.

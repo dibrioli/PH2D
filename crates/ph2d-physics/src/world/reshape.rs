@@ -91,6 +91,7 @@ impl PhysicsWorld {
             return false;
         }
         let mass = c.mass();
+        self.query_index_stale = true;
         c.set_shape(collider_build::shape_builder(&self.outlines, shape).shape);
         if rest.shape_pose == [0.0; 3] {
             c.set_translation_wrt_parent(Vector::new(local[0], local[1]));

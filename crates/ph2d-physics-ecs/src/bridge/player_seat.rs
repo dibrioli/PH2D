@@ -100,6 +100,25 @@ pub(super) fn seat(
         })
 }
 
+/// O encaixe achou chão que a LEI não via (`seated` = encaixou e `!stood`: o nascido fora da faixa
+/// da perna): a velocidade contra ele acaba ali (o `velocity.slide(floor_normal)` do
+/// `move_and_slide`), só a componente que desce em `up`. Sem isto o nascido a 0,9 pousava com a
+/// queda do tique 1 guardada, e o pulo premido no tique 2 subia 0,966 a H = 1. Onde a lei já via o
+/// chão a velocidade dela já o descontou (`kin_in`).
+pub(super) fn rest(kin: KinematicState, seated: bool, up: [f32; 2]) -> KinematicState {
+    let along = kin.velocity[0] * up[0] + kin.velocity[1] * up[1];
+    if !seated || along >= 0.0 {
+        return kin;
+    }
+    KinematicState {
+        velocity: [
+            kin.velocity[0] - up[0] * along,
+            kin.velocity[1] - up[1] * along,
+        ],
+        ..kin
+    }
+}
+
 /// Os passos de Euler por tique de quem integra o pulo: o mundo VIVO no dinâmico; UM sob Snap, porque
 /// ali quem integra é o `kinematic_advance` (`v += g·dt; x += v·dt`, uma vez por tique) — com os 16 do
 /// mundo o `launch_speed` modelava outro integrador e o ápice saía 0,956 m a H = 1,0.

@@ -131,7 +131,7 @@ impl PhysicsBridge {
             // — sem isto o personagem acelera contra uma parede para sempre e
             // sai disparado quando ela acaba (ver `kinematic_settle`).
             if let Some(st) = self.player_state.get_mut(&m.entity) {
-                st.kin = kinematic_settle(
+                let settled = kinematic_settle(
                     m.advanced,
                     m.wanted,
                     got.translation,
@@ -141,6 +141,8 @@ impl PhysicsBridge {
                     got.grounded || seated.is_some(),
                     dt,
                 );
+                st.kin =
+                    super::seat::rest(settled, seated.is_some() && !m.advanced.stood, m.params.up);
             }
         }
         rises

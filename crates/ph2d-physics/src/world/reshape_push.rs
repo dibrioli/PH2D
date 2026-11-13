@@ -153,6 +153,7 @@ impl PhysicsWorld {
         if s != Vector::ZERO {
             let t = b.translation() + s;
             b.set_translation(t, true);
+            self.mark_query_index();
         }
         s
     }

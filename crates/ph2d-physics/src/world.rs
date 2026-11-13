@@ -46,6 +46,7 @@ pub mod parts;
 pub mod player;
 pub mod pulley;
 pub mod queries;
+mod query_index;
 /// Trocar a forma de um corpo em jogo (o agachar com corpo baixo).
 pub mod reshape;
 mod reshape_push;
@@ -94,6 +95,9 @@ pub struct PhysicsWorld {
     integration_parameters: IntegrationParameters,
     island_manager: IslandManager,
     broad_phase: BroadPhaseBvh,
+    /// O BVH está atrás da geometria (inserção/teleporte fora do passo): `world::query_index`.
+    query_index_stale: bool,
+    query_index_scratch: Vec<(ColliderHandle, Pose, rapier2d::geometry::Aabb)>,
     narrow_phase: NarrowPhase,
     gravity: Vector,
     /// Step counter — exposes a deterministic "tick number" so tests
@@ -341,6 +345,8 @@ impl PhysicsWorld {
             integration_parameters,
             island_manager: IslandManager::new(),
             broad_phase: BroadPhaseBvh::new(),
+            query_index_stale: false,
+            query_index_scratch: Vec::new(),
             narrow_phase: NarrowPhase::new(),
             gravity: Vector::new(0.0, Self::DEFAULT_GRAVITY_Y),
             step_count: 0,
@@ -481,6 +487,7 @@ impl PhysicsWorld {
             b.set_position(Pose::new(Vector::new(x, y), rotation), wake);
             b.set_linvel(Vector::ZERO, wake);
             b.set_angvel(0.0, wake);
+            self.mark_query_index();
         }
     }
 

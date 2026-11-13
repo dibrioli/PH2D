@@ -41,17 +41,41 @@ impl PhysicsBridge {
         // ⭐ O canal dos toques de mover é deste TIQUE: os três movers abaixo enchem-no, e a vida
         // lê-o depois do passo (plano 28 §8.1).
         self.toques_do_mover.clear();
+        // As consultas dos controladores vêem o mundo de AGORA (Bug #13): um corpo nascido ou
+        // teleportado antes do passo entra no índice aqui, não no passo — sem isto o player Snap
+        // nascido fora da perna não achava o chão no tique 1.
+        self.refresh_queries_for_controllers(sim);
         // ⭐⭐⭐ Os AGENTES de navegação (plano 30, W3) PRIMEIRO: eles escrevem a intenção do mover de
         // vista de cima, que corre logo abaixo no MESMO tique.
         self.drive_nav_agents(sim);
-        // Os PLAYERS (W2): o sensor pergunta ao BVH que o step ANTERIOR deixou e a mola escreve o
-        // motor deste tique.
+        // Os PLAYERS (W2): o sensor pergunta ao índice que o refresh acima pôs no mundo de agora e a
+        // mola escreve o motor deste tique.
         self.drive_players(sim);
         // E os movers de VISTA DE CIMA (TOP-20 #13), no MESMO tique: os dois leem a mesma entrada
         // e os dois escrevem a pose antes do `step`.
         self.drive_topdown(sim);
         // E os PROJÉCTEIS (TOP-20 #14), pela mesma razão.
         self.drive_projectiles(sim);
+    }
+
+    /// Põe o índice das consultas no mundo de agora quando ele está atrás E há quem pergunte; numa
+    /// cena sem controlador o mundo fica byte-idêntico (mexer no BVH antes do passo muda a ordem
+    /// dos pares).
+    fn refresh_queries_for_controllers(&mut self, sim: &SimWorld) {
+        use crate::components::{NavAgent, PlatformPlayer, ProjectileMotion, TopDownPlayer};
+        if !self.world.query_index_stale() {
+            return;
+        }
+        let w = sim.world();
+        let asks = self.bodies.keys().any(|&e| {
+            w.get::<PlatformPlayer>(e).is_some()
+                || w.get::<TopDownPlayer>(e).is_some()
+                || w.get::<ProjectileMotion>(e).is_some()
+                || w.get::<NavAgent>(e).is_some()
+        });
+        if asks {
+            self.world.refresh_query_index();
+        }
     }
 
     /// ⭐⭐⭐ **O que responde AO passo** (plano 28 §8.2) — a porta irmã desta, chamada pelos DOIS

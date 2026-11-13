@@ -18,10 +18,12 @@
 //!
 //! O que sobra é uma pergunta **diferente** e mais estreita, medida no gate
 //! [`tests::the_bvh_answers_for_the_world_the_last_step_left`]: o BVH descreve o
-//! mundo que o **último `step`** deixou. Um corpo recém-spawnado, antes de
-//! qualquer passo, **não está nele**. Isso não é bug — é o contrato —, e o
-//! consumidor (a ponte do player) casta **dentro** do laço de ticks, depois de
-//! pelo menos um `step`, onde a pergunta é sempre sobre um mundo já indexado.
+//! mundo que o **último `step`** deixou. Um corpo recém-spawnado (ou teleportado),
+//! antes de qualquer passo, **não está nele** — e a ponte pergunta ANTES do passo
+//! no tique 1 (o encaixe do nascimento do player Snap, Bug #13). Quem consulta fora
+//! do passo chama [`PhysicsWorld::refresh_query_index`] (`world::query_index`; um
+//! `bool` quando nada mudou): gate
+//! [`tests::a_collider_inserted_before_any_step_is_seen_after_the_refresh`].
 //!
 //! # As duas metades do filtro, e por que nenhuma é opcional
 //!
@@ -462,5 +464,55 @@ mod tests {
             "a face da parede esta' em x = 1.5: {}",
             after.distance
         );
+    }
+
+    /// **E o refresh põe as consultas no mundo de agora** (Bug #13) — o raio, a varredura e o
+    /// teleporte, antes de qualquer passo. O gate de cima continua a ser o contrato do rapier (sem
+    /// refresh, nada); este é o da porta que o estende.
+    #[test]
+    fn a_collider_inserted_before_any_step_is_seen_after_the_refresh() {
+        let mut w = PhysicsWorld::new();
+        let (wall, _) = w.add_static_cuboid(2.0, 0.0, 0.5, 10.0);
+        let (ball, _) = w.add_dynamic_circle(0.0, 0.0, 0.2, 1.0);
+        assert!(w.query_index_stale(), "inserir marca o indice");
+        assert!(
+            w.cast_ray([0.0, 0.0], [1.0, 0.0], 10.0, Some(ball), 0)
+                .is_none()
+        );
+        w.refresh_query_index();
+        assert!(!w.query_index_stale());
+        let ray = w
+            .cast_ray([0.0, 0.0], [1.0, 0.0], 10.0, Some(ball), 0)
+            .expect("o raio ve a parede antes do primeiro passo");
+        assert!(
+            (ray.distance - 1.5).abs() < 1.0e-3,
+            "raio: {}",
+            ray.distance
+        );
+        let swept = w
+            .sweep_body(ball, [1.0, 0.0], 10.0, 0)
+            .expect("a varredura ve a parede antes do primeiro passo");
+        assert!(
+            (swept.distance - 1.3).abs() < 1.0e-3,
+            "varredura: {}",
+            swept.distance
+        );
+
+        // O teleporte antes do passo: o índice segue a parede para x = 4 (face em 3,5).
+        w.set_body_pose(wall, 4.0, 0.0, 0.0, true);
+        assert!(w.query_index_stale(), "teleportar marca o indice");
+        w.refresh_query_index();
+        let moved = w
+            .cast_ray([0.0, 0.0], [1.0, 0.0], 10.0, Some(ball), 0)
+            .expect("a parede teleportada");
+        assert!(
+            (moved.distance - 3.5).abs() < 1.0e-3,
+            "teleporte: {}",
+            moved.distance
+        );
+
+        // Um passo deixa o índice em dia, e o refresh seguinte é um `bool`.
+        w.step();
+        assert!(!w.query_index_stale(), "o passo limpa a marca");
     }
 }

@@ -127,6 +127,19 @@ impl FootingKind {
     }
 }
 
+/// **A normal diz alguma coisa?** — falso para a nula (raio nascido dentro da matéria) e para
+/// `NaN`/infinito. A porta única: a perna da ponte e o [`footing_verdict`] perguntam aqui.
+///
+/// ⚠️ **O chão NÃO a lê como «sem informação»** (medido, Bug #11): a normal nula do pé do meio
+/// é o corpo afundado numa prancha que atravessa, e a mola tem de o empurrar para fora — com
+/// `Airborne` ali, `the_platform_is_solid_again_once_he_is_through` e
+/// `a_wide_gap_ladder_retires_the_drop_as_it_should` reprovam.
+#[must_use]
+pub fn normal_is_known(n: Vec2) -> bool {
+    let n2 = n[0] * n[0] + n[1] * n[1];
+    n2.is_finite() && n2 >= 1.0e-6
+}
+
 /// A classificação, feita **UMA vez** — [`footing`] e [`Footing::steep`] são
 /// duas VISTAS dela, nunca dois testes.
 ///
@@ -146,10 +159,10 @@ pub fn footing_verdict<'a>(
     if !within_reach(&cfg.ride, Some(s)) {
         return Footing::Airborne;
     }
-    // Normal degenerada (raio nascido dentro da geometria): trate como plano —
-    // ver o aviso em `GroundSample::normal`.
-    let n2 = s.normal[0] * s.normal[0] + s.normal[1] * s.normal[1];
-    if n2 < 1.0e-6 {
+    // Normal degenerada (raio nascido dentro da geometria): trate como plano — a mola empurra o
+    // corpo para fora (ver `GroundSample::normal`). ⚠️ Só o pé do MEIO a pode trazer: a perna da
+    // ponte recusa a dos pés de fora, que é parede e não chão (Bug #11).
+    if !normal_is_known(s.normal) {
         return Footing::Ground(s);
     }
     let cos = s.normal[0] * up[0] + s.normal[1] * up[1];

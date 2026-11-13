@@ -19,8 +19,13 @@
 
 use crate::platform_wall_rig as rig_fixture;
 
+use ph2d_core::Vec2;
+use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::PlayerInput;
-use rig_fixture::{GAP_CENTER, Rig, START_Y, into_wall, pose, rig, rig_gapped};
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PlatformPlayer, RigidBody};
+use rig_fixture::{
+    FLOAT_HEIGHT, GAP_CENTER, Rig, START_Y, WALL_FACE, into_wall, pose, rig, rig_gapped,
+};
 
 /// Corre `ticks` tiques com a entrada dada, a partir de `from`.
 fn run(r: &mut Rig, input: PlayerInput, ticks: u64, from: u64) -> u64 {
@@ -212,7 +217,7 @@ fn without_the_capability_the_same_press_does_nothing() {
 /// reaparecer, e um gate escrito ali passaria com o sensor cego.
 ///
 /// **Medido:** com um raio só, `0.000 m`; com o flanco, `2.295 m` — contra
-/// `2.162 m` na parede sólida.
+/// `2.162 m` na parede sólida (fixtura da lei velha, `v0` 6,264; a 2,0 da lei nova a sólida sobe 2,06 m).
 #[test]
 fn the_wall_jump_survives_a_gap_the_waist_falls_into() {
     const GAP: f32 = 0.8;
@@ -229,14 +234,14 @@ fn the_wall_jump_survives_a_gap_the_waist_falls_into() {
     );
 }
 
-/// O arranque deste gate foi medido com a lei velha (`v0 = √(2·g·2)` = 6,264 m/s); a lei do ápice
-/// real (GEF 04) dá esse MESMO `v0` a 2,1056 m (`launch_speed_custa_pouco`). Com 2,0 o arranque cai
-/// a 6,097 m/s e o controle muda de trajectória: chega à parede no ápice e sobe 12 m (BUG aberto).
-const OLD_LAW_WALL_JUMP_HEIGHT: f32 = 2.1056;
-
 /// Desce até a fresta e aperta pulo; devolve quanto subiu a partir dali.
 fn wall_jump_rise(gap: f32) -> f32 {
-    let mut r = rig_gapped(3.0, OLD_LAW_WALL_JUMP_HEIGHT, gap);
+    wall_jump_flight(2.0, gap).0
+}
+
+/// O voo de um pulo de parede de `height` m dado na fresta: `(subida, maior velocidade vertical)`.
+fn wall_jump_flight(height: f32, gap: f32) -> (f32, f32) {
+    let mut r = rig_gapped(3.0, height, gap);
     r.bridge.set_player_input(r.player, into_wall());
     let mut t = 0u64;
     while t < 400 && pose(&r.sim).1 > GAP_CENTER {
@@ -247,13 +252,99 @@ fn wall_jump_rise(gap: f32) -> f32 {
     let mut input = into_wall();
     input.jump = true;
     r.bridge.set_player_input(r.player, input);
-    let mut peak = from;
+    let (rise, vy) = flight(&mut r, t);
+    (rise - from, vy)
+}
+
+/// 90 tiques de pulo segurado contra a parede: `(pico, maior velocidade vertical)` — a
+/// velocidade é o deslocamento do tique sobre `dt`.
+fn flight(r: &mut Rig, mut t: u64) -> (f32, f32) {
+    let mut input = into_wall();
+    input.jump = true;
+    r.bridge.set_player_input(r.player, input);
+    let mut y = pose(&r.sim).1;
+    let (mut peak, mut vy) = (y, f32::MIN);
     for _ in 0..90 {
         t += 1;
         r.bridge.dispatch(&mut r.sim, true, t);
-        peak = peak.max(pose(&r.sim).1);
+        let now = pose(&r.sim).1;
+        vy = vy.max((now - y) / DT);
+        peak = peak.max(now);
+        y = now;
     }
-    peak - from
+    (peak, vy)
+}
+
+const DT: f32 = 1.0 / 60.0;
+
+/// Um pulo do CHÃO de `height` m, a `start_x` da parede, a correr contra ela: o mesmo par.
+fn ground_jump_flight(height: f32, start_x: f32) -> (f32, f32) {
+    let mut r = ground_rig(height, start_x);
+    let t = run(&mut r, PlayerInput::default(), 60, 0);
+    let from = pose(&r.sim).1;
+    let (peak, vy) = flight(&mut r, t);
+    (peak - from, vy)
+}
+
+/// A parede com um chão até à face dela (topo em y = 0) e o player pousado em `start_x`.
+fn ground_rig(height: f32, start_x: f32) -> Rig {
+    let mut r = rig(3.0, height);
+    r.player_cfg(|p| p.jump_height = height);
+    r.sim.world_mut().spawn((
+        Name::new("Ledge floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 5.0,
+                half_y: 0.5,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(WALL_FACE - 5.0, -0.5)),
+    ));
+    let mut tr = r
+        .sim
+        .world_mut()
+        .get_mut::<Transform>(r.player)
+        .expect("o player tem Transform");
+    tr.translation = Vec2::new(start_x, FLOAT_HEIGHT + 0.05);
+    r
+}
+
+/// **O GATE DA VARREDURA (Bug #11): nenhum pulo, do chão ou da parede, sai mais rápido que o
+/// próprio arranque nem sobe acima do próprio ápice** — Jump Height 1,5–2,5 m em passos de
+/// 0,05, e o pulo do chão a dois afastamentos da parede.
+///
+/// ⚠️ Varredura, e não um ponto: o defeito vivia numa JANELA (o tique em que o corpo chega à
+/// parede a 6 m/s, penetra 2 cm e o pé de fora da perna nasce dentro dela), e o gate de um ponto
+/// só ficou verde a 0,1 m dela. Medido antes da cura: a 2,00 m a parede sólida subia ~11,9 m a
+/// 27 m/s; depois, 2,06 m.
+#[test]
+fn no_jump_leaves_faster_than_its_launch_or_above_its_apex() {
+    let g = -ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y;
+    let cfg = PlatformPlayer::default().config();
+    let mut bad = Vec::new();
+    for k in 0..=20 {
+        let h = 1.5 + 0.05 * k as f32;
+        let v0 = ph2d_platformer::launch_speed(&cfg.jump, g, h, false, DT);
+        let cap_v = v0 + g * DT + 0.05;
+        let cap_rise = h + 0.25;
+        let cases = [
+            ("parede", wall_jump_flight(h, 0.0)),
+            ("chao a 1,0 m", ground_jump_flight(h, WALL_FACE - 0.2 - 1.0)),
+            ("chao a 1,6 m", ground_jump_flight(h, WALL_FACE - 0.2 - 1.6)),
+        ];
+        for (from, (rise, vy)) in cases {
+            if vy > cap_v || rise > cap_rise || rise < h * 0.6 {
+                bad.push(format!(
+                    "h={h:.2} {from}: subiu {rise:.3} m (teto {cap_rise:.2}), vy max {vy:.2} m/s (teto {cap_v:.2})"
+                ));
+            }
+        }
+    }
+    assert!(bad.is_empty(), "pulos fora da lei:\n{}", bad.join("\n"));
 }
 
 /// **O GATE DO AGARRAR-SE (W23): com o botão apertado ele PARA na parede.**

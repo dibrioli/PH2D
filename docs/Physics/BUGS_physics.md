@@ -1221,12 +1221,47 @@ num tique); CONTROLOS: um tique por quadro, e a fita esquecida no recomeço.
 
 ---
 
-## Bug #11 — O wall jump com altura ~1,9–2,0 atira o controle ao topo da parede
+## Bug #11 — O wall jump com altura ~1,9–2,0 atira o controle ao topo da parede — ✅ FECHADO (12/11)
 
-**Marcado para a linha GEF02** (ponte). Achado em 12/11 por `f3a92736ab` (a lei do pulo passou a pôr o ápice real = Jump Height) e **NÃO curado**.
+Achado em 12/11 por `f3a92736ab` (a lei do pulo passou a pôr o ápice real = Jump Height); curado na linha GEF.
 
-**Sintoma:** em `platform_wall` (`crates/ph2d-physics-ecs/tests/it/platform_wall.rs`), `the_wall_jump_survives_a_gap_the_waist_falls_into` / `wall_jump_rise(0.0)`: com Jump Height 2,0 o arranque cai a 6,097 m/s (era 6,264 com a lei velha em 2,0) e o controle «parede sólida» chega à parede perto do ápice e é atirado a ~23 m/s até o topo (y≈12,9 m, subida ≈ 12 m), em vez de ~2,16 m.
+**Sintoma:** `platform_wall`, `wall_jump_rise(0.0)` com Jump Height 2,0: o pulo de parede sai da fresta
+(y=0,988, t=86), afasta-se, volta à parede a 6 m/s perto do ápice (t=132, y=3,048) e no tique seguinte sobe a
+**27,02 m/s** até o topo da parede (y≈13,1 → pousa em 12,9; subida ≈ 12 m), em vez de ~2,06 m. A fixtura
+contornava com `OLD_LAW_WALL_JUMP_HEIGHT = 2.1056`.
 
-**Contorno atual:** as fixturas usam `OLD_LAW_WALL_JUMP_HEIGHT = 2.1056` (o mesmo `v0` de 6,264 m/s); com isso o gate passa (parede sólida 2,162 m). Mexer na constante reproduz o defeito.
+**Mecanismo (medido tique a tique):** não é o wall jump, nem buffer, nem coyote, nem o rapier.
+1. Em t=132 o corpo chega à parede a 6 m/s e penetra **2 cm** (x=0,570; face 0,75; raio 0,2).
+2. O pé de FORA da perna (leque `ride.spread` 0,9 × meia-largura 0,2 = 0,18 m) nasce em x=0,750 — DENTRO
+   da parede. O raio é sólido (`cast_ray_for_body`, `ph2d-physics/src/world/cast.rs`), logo devolve
+   `distance = 0` e normal nula.
+3. `cast_leg` (`ph2d-physics-ecs/src/bridge/player_leg.rs`) aceitava-o: a lei do degrau só corre quando o pé
+   do MEIO achou chão, e aqui ele não acha nada (o chão está 23 m abaixo).
+4. `footing_verdict` (`ph2d-platformer/src/slope.rs`) lê a normal nula como chão plano (é a lei de propósito,
+   para o pé do meio afundado numa prancha) → `Landed` a 0 m → a mola fecha os 0,9 m de `float_height` num
+   tique: vy = 27,02 m/s (t=133), depois `Bonked` e voo balístico até o topo.
 
-**Por fazer:** reproduzir com Jump Height 1,9–2,0 e achar quem aplica o impulso (suspeita: o wall jump lido no ápice, quando a velocidade vertical é ~0). A causa NÃO está medida.
+**Porquê «dependia de v0»:** o chão fantasma acende em TODAS as alturas (a 2,1056 também: `Landed` em t=133,
+raio = 0,0). O que muda é a velocidade com que ele chega: a 2,1056 chega ainda a SUBIR (vy 0,13), e o pulo
+mantém a mola calada; a 2,0 chega no ápice (0,04), e a mola actua. **Janela medida** (varredura de 0,05 com o
+defeito reposto): parede sólida reprova de **1,50 a 2,05 m** (subida 11,9–12,1 m, vy 27,02), passa a 2,10+.
+Os pulos do chão contra a parede (a 1,0 e a 1,6 m dela) nunca entram na janela.
+
+**Cura (na causa, sem afrouxar nada):** em `cast_leg`, um pé de FORA nascido dentro da matéria
+(`distance <= 0` ou normal nula/não finita, porta única `ph2d_platformer::slope::normal_is_known`) não entra
+na redução (o overlay continua a vê-lo). O pé do MEIO mantém a lei: afundado numa prancha, a mola tira-o.
+⛔ **Recusado, MEDIDO:** ler a normal nula como «sem informação» (`Airborne`) no `footing_verdict`, ou
+recusá-la também no pé do meio — os dois reprovam `platform_drop::the_platform_is_solid_again_once_he_is_through`
+e `platform_drop_ladder::a_wide_gap_ladder_retires_the_drop_as_it_should` (o corpo a atravessar a prancha
+deixa de ser empurrado para fora).
+
+**O gate que estava verde:** `the_wall_jump_survives_a_gap_the_waist_falls_into` mede UM ponto (Jump Height
+2,0 da lei velha = `v0` 6,264). Com a lei nova esse ponto mudou de trajectória e caiu dentro da janela; a
+fixtura passou para 2,1056 — 0,05 m acima da borda — e voltou a ficar verde sobre o defeito. Um gate de
+um ponto não vê uma janela.
+
+**Gate novo:** `platform_wall::no_jump_leaves_faster_than_its_launch_or_above_its_apex` — Jump Height
+1,50–2,50 (passo 0,05), pulo da parede e do chão (a 1,0 e 1,6 m dela): vy ≤ `launch_speed` + um tique de g
++ 0,05, subida ≤ altura + 0,25 e ≥ 0,6 × altura. A fixtura voltou a 2,0 e `OLD_LAW_WALL_JUMP_HEIGHT` saiu.
+**Mutação:** tirar a recusa do `cast_leg` → a varredura reprova (h=1,50…2,05, 27,02 m/s) e
+`the_wall_jump_survives_…` também; restaurado, verde.

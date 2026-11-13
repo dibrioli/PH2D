@@ -33,6 +33,7 @@
 //! [`ph2d_platformer::RideConfig::spread`]).
 
 use ph2d_physics::CastHit;
+use ph2d_platformer::slope::normal_is_known;
 use ph2d_platformer::{MAX_WALL_SAMPLES, PlayerConfig};
 
 use super::probes;
@@ -75,6 +76,12 @@ pub(super) fn cast_leg(
         // recusa: ver o pé da frente pousado no caixote e a perna a ignorá-lo É
         // o diagnóstico, e escondê-lo faria o desenho contar meia história.
         *slot = Some(h.distance);
+        // ⚠️ **Um pé de FORA nascido dentro da matéria não diz onde há chão** (Bug #11): é o
+        // corpo a penetrar uma parede, não um degrau à cintura — aceito, virava chão a 0 m e a
+        // mola atirava o corpo a 27 m/s. O do MEIO fica: afundado numa prancha, a mola o tira.
+        if i > 0 && (h.distance <= 0.0 || !normal_is_known(h.normal)) {
+            continue;
+        }
         if i == 0 {
             centre = Some(h.distance);
         } else if let Some(c) = centre {

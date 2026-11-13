@@ -22,7 +22,7 @@
 - Contadores (DELTA da onda): `PROJECT_SCHEMA` 0 · ADR **+1** (0204; a linha inteira cria 0201–0204 — reconte contra o `main` do
   dia, o próximo livre no disco é 0205) · cenas de smoke 0 · tripla 0 · gates novos **35** (§9) · Cargo.lock sem pacote externo novo.
   O `collision-surface.sh` da linha inteira mostra `PROJECT_SCHEMA` 239 (base 237): vem das ondas anteriores, não desta.
-- ⛔ **Tecto de LOC (`workspace_src_files_under_loc_cap`, 700) — VERMELHO na árvore da linha:**
+- ✅ **Tecto de LOC (`workspace_src_files_under_loc_cap`, 700) — CURADO por corte em `b41453c3c5`** (undo_planes 764→666 + `undo_planes_bytes`/`undo_planes_neutra`; watercolor_backdrop 737→673 + `watercolor_backdrop/molhar`; watercolor_vidro_journal_tests 781→478 + `watercolor_vidro_journal_doc_tests`; 3190 testes antes e depois). Era VERMELHO na árvore da linha:
 
   | ficheiro | início da onda | HEAD | `main` |
   |---|---|---|---|
@@ -170,8 +170,7 @@ Wet Liner Ctrl+Z 48,9 → 49,4 · omissão wet Ctrl+Z 37,1 → 34,9 · **Finger 
 
 ## 6. ABERTO, por ordem (números da matriz final)
 
-1. ⛔ **Tecto de LOC (§0):** `undo_planes.rs` 764, `watercolor_vidro_journal_tests.rs` 781, `watercolor_backdrop.rs` 737 > 700. Cortar por
-   responsabilidade antes da integração; a suíte do integrador reprova sem isto.
+1. ✅ ~~**Tecto de LOC (§0)**~~ FEITO em `b41453c3c5` (corte por responsabilidade, só movimento).
 2. **WB duplicar/apagar/grupo na camada nova: 72–90 ms** (89,7 · 72,4 · 78,4; omissão water 80,5 · 71,0 · 76,1). Pista CPU,
    `FULL-composite`: `alcance_da_tinta_de` → `None` pela guarda `papel_atravessa_vidro`. Falta a prova «a figura só muda em tinta ∪ vidro»
    com o vidro de cada camada na janela.

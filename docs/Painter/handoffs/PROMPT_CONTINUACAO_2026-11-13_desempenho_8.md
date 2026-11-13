@@ -37,12 +37,11 @@ libera `unsafe` num módulo isolado para AVX2 (política).
 | gestos de camada: base digital/WB/Wet ~11–23 ms; nova digital 13–18 | FEITO; abertos a nova WB/impasto/Wet |
 | alarmes de pincel 77 = 77; os 7 vermelhos idênticos à base | sem regressão; aprovar é do dono |
 | 35 gates novos verdes por nome (31 + 3 + 1), na HEAD depois do clippy | FEITO |
-| ⛔ tecto de LOC 700: `undo_planes.rs` 764 · `watercolor_vidro_journal_tests.rs` 781 · `watercolor_backdrop.rs` 737 | ABERTO (o 1.º a fazer) |
+| tecto de LOC 700: `undo_planes.rs` 764 · `watercolor_vidro_journal_tests.rs` 781 · `watercolor_backdrop.rs` 737 | FEITO (`b41453c3c5`, por corte) |
 
 ## O que fazer, por ordem (até ao fim, sem parar)
 
-1. **Tecto de LOC** (B18.9): cortar os 3 ficheiros por responsabilidade (testes para um irmão `*_tests.rs` mais pequeno, módulo do
-   `vidro_map`/`Nova` para irmão), nunca subir `FILE_OVERAGE_OK`; `cargo check` + os gates por nome dos ficheiros movidos.
+1. ~~**Tecto de LOC** (B18.9)~~ — FEITO em `b41453c3c5` (por corte, só movimento, 3190 testes antes e depois).
 2. **WB duplicar/apagar/grupo na camada NOVA: 72–90 ms** (B18.6; vidro + papel de cor): a prova «a figura só muda em tinta ∪ vidro»
    com o vidro de cada camada na janela; gate ao bit contra a recomposição inteira, controlo e mutação.
 3. **Impasto na camada nova: 37–46 ms** (duplicar 46,2 · apagar 37,4 · grupo 41,1 · pen-up 40,4): medir antes, achar o mecanismo.

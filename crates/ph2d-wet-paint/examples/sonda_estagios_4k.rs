@@ -173,15 +173,42 @@ fn main() {
         "  estágio 3 por partes (mín): advect {ta:.1} · sedimenta {ts:.1} (a={}) · arredonda {tr:.1} ms",
         p.sedimenta
     );
+    // O advect por partes, por rota (mín de `rondas` × 3, intercalado).
+    let mut partes = vec![[f64::MAX; 3]; rotas.len()];
+    for ronda in 0..rondas.max(3) * 3 {
+        for k in 0..rotas.len() {
+            let j = (k + ronda) % rotas.len();
+            rota(&rotas[j]);
+            let mut g = g0.clone();
+            let t = ph2d_wet_paint::solver::advect_jacobi_partes(&mut g, &p, gx, gy);
+            (0..3).for_each(|i| partes[j][i] = partes[j][i].min(t[i]));
+        }
+    }
+    rota("a");
+    for (j, r) in rotas.iter().enumerate() {
+        let [a, b, c] = partes[j];
+        println!("  advect rota {r} (mín): momentum {a:.2} · núcleo {b:.2} · commit {c:.2} ms");
+    }
     for (j, r) in rotas.iter().enumerate() {
         let mut v = ms[j].clone();
         v.sort_by(f64::total_cmp);
         let (mn, md) = (v[0], v[v.len() / 2]);
+        // O relógio da sim é a MÉDIA (o passo lento não se recupera); por ronda, a melhor ronda.
+        let por_ronda: Vec<f64> = ms[j]
+            .chunks(passos)
+            .map(|c| c.iter().sum::<f64>() / c.len() as f64)
+            .collect();
+        let media = por_ronda.iter().copied().fold(f64::MAX, f64::min);
+        println!(
+            "  rota {r}: média (melhor ronda) {media:.1} ms · sim-s/s pela média {:.2} · p90 {:.1}",
+            (25.0 / media).min(1.0),
+            v[v.len() * 9 / 10]
+        );
         let est: Vec<String> = (0..7)
             .map(|s| {
                 let mut x: Vec<f64> = st[j].iter().map(|p| p[s]).collect();
                 x.sort_by(f64::total_cmp);
-                format!("{:.1}/{:.1}", x[0], x[x.len() / 2])
+                format!("{:.1}/{:.1}/{:.1}", x[0], x[x.len() / 2], x[x.len() - 1])
             })
             .collect();
         println!(

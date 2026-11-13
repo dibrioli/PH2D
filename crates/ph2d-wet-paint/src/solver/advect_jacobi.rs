@@ -603,6 +603,7 @@ mod momentum;
 pub(super) use momentum::{momentum_row, momentum_rows};
 #[path = "advect_commit.rs"]
 mod commit;
+pub use commit::advect_jacobi_partes;
 use commit::{commit_rows, walk_rows2_reduce};
 
 #[path = "advect_fundida.rs"]

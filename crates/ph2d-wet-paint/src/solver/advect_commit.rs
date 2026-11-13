@@ -76,6 +76,34 @@ pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
     });
 }
 
+/// Sonda (fora do produto): o [`advect_jacobi`] em ms por parte `[momentum, núcleo, commit]`, a mesma rota.
+#[doc(hidden)]
+pub fn advect_jacobi_partes(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> [f64; 3] {
+    use std::time::Instant;
+    let ms = |t: Instant| t.elapsed().as_secs_f64() * 1e3;
+    let mode = Rows::Parallel;
+    g.scratch.ensure(g.cells);
+    let fundir = fundida::usa_fundida(mode, (g.by1 - g.by0 + 1).max(0) as usize * g.s);
+    let t = Instant::now();
+    if !(fundir && fundida::momento_no_bloco(g)) {
+        momentum_rows(g, p, gx, gy, mode);
+    }
+    let a = ms(t);
+    let t = Instant::now();
+    if fundir {
+        let linhas = BLOCO_LINHAS.load(std::sync::atomic::Ordering::Relaxed);
+        fundida::fused_rows(g, p, mode, (gx, gy), linhas);
+    } else {
+        prepare_rows(g, p, mode);
+        outflow_rows(g, p, mode);
+        transport_rows(g, p, mode);
+    }
+    let b = ms(t);
+    let t = Instant::now();
+    commit_rows(g, mode);
+    [a, b, ms(t)]
+}
+
 /// A rota de cópia do [`commit_rows`]: três cópias contíguas de plano por linha da faixa.
 fn commit_copia(g: &mut Grid, mode: Rows) {
     let s = g.s;

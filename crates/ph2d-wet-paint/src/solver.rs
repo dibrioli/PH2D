@@ -639,7 +639,9 @@ pub use active_region::{SAIA_COLUNAS, rebuild_active_region, rebuild_active_regi
 pub use advect::advect;
 #[doc(hidden)]
 pub use advect_jacobi::{ADVECT_FASES, BLOCO_LINHAS, MEIO_PARADO, MOMENTO_FORA, SAIDA_BLOCO};
-pub use advect_jacobi::{advect_jacobi, advect_jacobi_rows, destination_reach};
+pub use advect_jacobi::{
+    advect_jacobi, advect_jacobi_partes, advect_jacobi_rows, destination_reach,
+};
 pub use flow_jacobi::{build_flow_field_jacobi, build_flow_field_jacobi_rows};
 pub use gota::ALTURA_DA_GOTA;
 pub(crate) use gota::Gota;

@@ -17,6 +17,8 @@ pub mod anchors;
 /// Como uma ponte NASCE e RENASCE — ver o cabecalho dele.
 mod birth;
 pub mod bodies;
+/// O teto medido DEPOIS do passo (Bug #12b) — irmão do `player`, pelo tecto de LOC dele.
+mod ceiling_fact;
 pub mod contacts;
 /// ⭐⭐⭐ **A PORTA ÚNICA dos controladores** — os dois laços que andam o relógio chamam-na, e um
 /// controlador novo não pode ser ensinado a meio par. Ver o cabeçalho dela (report do dono sobre o
@@ -625,4 +627,8 @@ pub struct PhysicsBridge {
     /// `contact_events`, e pela mesma razão: um evento é uma borda, e um
     /// dispatch pode dever vários tiques.
     player_events: Vec<(Entity, ph2d_platformer::PlayerEvent)>,
+
+    /// O que cada player levou ao passo deste tique — armado antes do `step`, medido depois
+    /// (`bridge::ceiling_fact`, Bug #12b). Vazio fora desse intervalo.
+    ceiling_watch: Vec<ceiling_fact::CeilingWatch>,
 }

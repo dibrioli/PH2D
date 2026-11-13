@@ -24,6 +24,7 @@ impl PhysicsBridge {
             player_probes: Vec::new(),
             player_views: BTreeMap::new(),
             player_events: Vec::new(),
+            ceiling_watch: Vec::new(),
             player_probe_anchors: Vec::new(),
             bodies: BTreeMap::new(),
             last_stepped: 0,

@@ -296,8 +296,9 @@ fn measure_the_bonk_across_ceiling_heights() {
 
 /// **TODO teto ao alcance é batido UMA vez, em TODA altura de pulo** (Bug #12).
 ///
-/// Jump Height 1,0–2,6 (passo 0,05) × fundo do teto da cabeça + 0,10 até o topo
-/// livre (passo 0,05), com a quina armada e desarmada: exactamente UMA batida
+/// Jump Height 1,0–2,6 (passo 0,05) × fundo do teto a cabeça + 0,02, + 0,05 e
+/// de cabeça + 0,10 até o topo livre (passo 0,05), com a quina armada e
+/// desarmada: exactamente UMA batida
 /// (o bit acende uma vez E um `Bonked`), nenhuma com o teto fora do alcance
 /// (topo livre + 0,05 e + 0,10), a subida nunca acima do `v0` da lei, e a
 /// velocidade publicada nunca CRESCE quando o teto sobe.
@@ -306,10 +307,9 @@ fn measure_the_bonk_across_ceiling_heights() {
 /// tetos baixos — os primeiros ~0,3 m da subida, onde a perna ainda vê o chão —
 /// não eram medidos, e ali a porta do teto lia o sensor cru como *no chão*.
 ///
-/// ⚠️ **ABERTO (Bug #12b, `BUGS_physics.md`): a cabeça + 0,05 reprova nas 33
-/// alturas.** É outro mecanismo: o teto está dentro do PRÓPRIO tique da
-/// decolagem (o sensor corre antes da lei lançar, com `rel_up` < 0, e no tique
-/// seguinte o solver já matou a subida), por isso a grelha começa em + 0,10.
+/// ⚠️ **E os tetos DENTRO do tique da decolagem** (+ 0,02 e + 0,05, Bug #12b): a
+/// sonda corre antes de a lei lançar e não pergunta; quem os vê é o teto medido
+/// DEPOIS do passo, pelos contactos (`bridge::ceiling_fact`).
 #[test]
 fn every_ceiling_in_reach_is_bonked_once_at_every_jump_height() {
     let g = -ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y;
@@ -321,8 +321,13 @@ fn every_ceiling_in_reach_is_bonked_once_at_every_jump_height() {
         for reach in [0.12_f32, 0.0] {
             let free = go(h, reach, None);
             let mut last = f32::INFINITY;
-            let mut b = free.head + 0.10;
-            while b < free.top {
+            let mut offsets = vec![0.02_f32, 0.05];
+            offsets.extend(
+                (0..)
+                    .map(|k| 0.10 + 0.05 * k as f32)
+                    .take_while(|o| free.head + o < free.top),
+            );
+            for b in offsets.into_iter().map(|o| free.head + o) {
                 let r = go(h, reach, Some(b));
                 if r.bonks.len() != 1 || r.lit != 1 {
                     bad.push(format!(
@@ -342,7 +347,6 @@ fn every_ceiling_in_reach_is_bonked_once_at_every_jump_height() {
                     ));
                 }
                 last = r.bonks.first().copied().unwrap_or(last);
-                b += 0.05;
             }
             for over in [0.05_f32, 0.10] {
                 let r = go(h, reach, Some(free.top + over));
@@ -362,6 +366,59 @@ fn every_ceiling_in_reach_is_bonked_once_at_every_jump_height() {
         }
     }
     assert!(bad.is_empty(), "{} falhas:\n{}", bad.len(), bad.join("\n"));
+}
+
+/// **O teto DENTRO do tique da decolagem é batido** (Bug #12b) — cabeça + 0,05.
+///
+/// A sonda de antes do passo não pergunta (`rel_up` < 0 antes do lançamento) e o
+/// solver encosta a cabeça no teto no mesmo tique. O facto medido depois do passo
+/// publica UMA batida, no tique do pulo ou no seguinte, com a subida que o pulo
+/// pretendia (o `v0` da lei, não o resto que sobrou).
+#[test]
+fn a_ceiling_inside_the_takeoff_tick_is_bonked_with_the_launch_speed() {
+    let g = -ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y;
+    let v0 = ph2d_platformer::launch_speed(&jumper(0.12).config().jump, g, H, false, 1.0 / 60.0);
+    for reach in [0.12_f32, 0.0] {
+        let head = go(H, reach, None).head;
+        let mut sim = SimWorld::new();
+        floor(&mut sim, 0.0);
+        ceiling(&mut sim, head + 0.05);
+        let who = subject_tuned(&mut sim, true, FLOAT, Some(jumper(reach)));
+        let mut bridge = PhysicsBridge::new();
+        let (mut jumped, mut bonked) = (None, Vec::new());
+        for t in 1..=90u64 {
+            bridge.set_player_input(
+                who,
+                PlayerInput {
+                    jump: t >= 30,
+                    ..PlayerInput::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, t);
+            for (_, ev) in bridge.player_events() {
+                match ev {
+                    ph2d_platformer::PlayerEvent::Jumped { .. } => jumped = jumped.or(Some(t)),
+                    ph2d_platformer::PlayerEvent::Bonked { speed } => bonked.push((t, *speed)),
+                    _ => {}
+                }
+            }
+        }
+        let jt = jumped.expect("o controle: o pulo tem de sair");
+        assert_eq!(
+            bonked.len(),
+            1,
+            "q={reach}: uma batida, um evento: {bonked:?}"
+        );
+        let (bt, speed) = bonked[0];
+        assert!(
+            bt == jt || bt == jt + 1,
+            "q={reach}: a batida no tique do pulo ({jt}) ou no seguinte, nao em {bt}"
+        );
+        assert!(
+            (speed - v0).abs() < 0.25 * v0,
+            "q={reach}: a velocidade publicada e' a subida pretendida ({v0:.3}), nao {speed:.3}"
+        );
+    }
 }
 
 /// **E a batida chega ao BARRAMENTO com nome** — a quarta condição da política

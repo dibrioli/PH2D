@@ -1300,11 +1300,35 @@ nada). Verde também sobre `62c9ff8e9c` (tique dividido na faixa).
 **Mutação:** repor `stand.is_some()` na ponte e `footing.is_some()` na lei → a varredura reprova com 266
 falhas (tetos 1,50–1,70); restaurado, verde.
 
-### Bug #12b — teto DENTRO do tique da decolagem (cabeça + ≤ ~0,05) — ⏳ ABERTO
+### Bug #12b — teto DENTRO do tique da decolagem (cabeça + ≤ ~0,05) — ✅ FECHADO (12/11)
 
-Fundo a cabeça + 0,05 (1,45) reprova nas 33 alturas, com e sem a cura. Outro mecanismo, medido tique a
-tique (h=1,2): no tique do pulo a ponte sonda ANTES de a lei lançar (`rel_up` = −0,082, logo não sonda); o
-solver leva a cabeça a 1,4554 (contacto) no mesmo tique; no seguinte `rel_up` já é −0,031 — a subida
-morreu sem ninguém perguntar. Curar pede sondar com a velocidade DEPOIS do lançamento (ou o fato do teto
-passar a ser um pós-passo à Godot `is_on_ceiling`) — mudança de desenho, não feita. A varredura começa em
-cabeça + 0,10 por isso, e o doc-comment dela o diz.
+**Sintoma:** fundo do teto a cabeça + 0,05 (1,45): o pulo bate e não acende `ceiling` nem publica
+`Bonked`, nas 33 alturas, com a quina armada ou não.
+
+**Mecanismo (medido tique a tique, h=1,2):** no tique do pulo a ponte sonda o teto ANTES de a lei lançar
+(`rel_up` = −0,082, logo `ceiling_fact_wanted` = falso); o solver leva a cabeça a 1,4554 (contacto) no
+MESMO tique; no seguinte `rel_up` já é −0,031 — a subida morreu sem ninguém perguntar. O facto só era
+medido antes do passo, com a velocidade do tique anterior.
+
+**Cura (o `is_on_ceiling` do Godot / os contactos do `CharacterBody`):** `bridge/ceiling_fact.rs`. O
+`apply_player_results` arma, depois dos motores, a subida PRETENDIDA de cada player (a velocidade do
+corpo com o lançamento aplicado), o bit da sonda deste tique e o da vista anterior. Depois do `step`
+(`depois_do_passo`, os dois laços) `measure_player_ceilings` procura em `tick_contacts` (união dos
+sub-passos) um par do corpo com `impact > 0` e normal (para o corpo) `n·up ≤ −cos(walk.max_slope_deg)`;
+com subida pretendida > 0 é batida: acende o bit na vista e publica `Bonked { speed: subida pretendida }`.
+**Sem duplicar:** nada se a sonda deste tique já acendeu; sem evento se a vista anterior estava acesa
+(contacto contínuo); o `events_between` do tique seguinte vê `before.ceiling` aceso e não repete. Sob
+Snap (cinemático, sem contacto no solver) o facto é o do movimento: subida pedida, cortada, contra uma
+normal de teto (`player_kinmove`). A sonda de antes do passo fica: é ela que decide a ajuda de quina.
+
+**Gates:** `player_ceiling::every_ceiling_in_reach_is_bonked_once_at_every_jump_height` passa a começar
+em cabeça + 0,02 e + 0,05 (depois + 0,10 em passos de 0,05) — exactamente uma batida e uma borda do bit
+em toda a grelha; `a_ceiling_inside_the_takeoff_tick_is_bonked_with_the_launch_speed` (teto a + 0,05,
+quina 0,12 e 0: um `Bonked`, no tique do `Jumped` ou no seguinte, a ±25 % do `launch_speed`).
+`standing_under_an_overhang_is_not_a_ceiling` e os gates do Bug #12 continuam verdes.
+
+**Mutação:** desligar a medição pós-passo (`if true || !hit`) → a varredura e o teste do arranque
+reprovam (`[]`); publicar por cima da sonda (sem a guarda `lit_now`) → a varredura reprova («exactamente
+uma»); sem a guarda da vista anterior → a varredura reprova; restaurado, verde. O censo
+`no_std_transcendental_reaches_the_deterministic_hash` apanhou um `f32::cos` na primeira versão (agora
+`libm::cosf`). Sob Snap o caminho do movimento não tem gate dedicado (a fixtura é dinâmica).

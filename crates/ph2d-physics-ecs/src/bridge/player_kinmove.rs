@@ -50,7 +50,9 @@ impl PhysicsBridge {
     /// contra o chão, e o `move_shape` lê o BVH que o `step` ANTERIOR deixou (o
     /// mesmo contrato do sensor, ver o topo de [`super::player`]) — nada aqui
     /// depende dos impulsos deste tique.
-    pub(super) fn apply_kin_moves(&mut self, moves: Vec<KinMove>, dt: f32) {
+    /// Devolve os que bateram com a cabeça (`bridge::ceiling_fact`): `(player, subida pedida m/s)`.
+    pub(super) fn apply_kin_moves(&mut self, moves: Vec<KinMove>, dt: f32) -> Vec<(Entity, f32)> {
+        let mut bonks = Vec::new();
         // ⚠️ **UM buffer para o laço inteiro**, limpo pela porta que o preenche
         // (ver `move_character`): uma lista por personagem seria uma alocação
         // por player por tique, para carregar no máximo um punhado de contatos.
@@ -64,6 +66,15 @@ impl PhysicsBridge {
             // pára rente ao obstáculo, logo o solver nunca verá este par.
             self.toques_do_mover
                 .extend(hits.iter().filter_map(|h| h.body.map(|b| (m.entity, b))));
+            // ⭐ O TETO do movimento (Bug #12b): subida pedida, cortada, contra uma normal de teto.
+            if m.wanted[1] > 0.0
+                && got.translation[1] < m.wanted[1] - 1e-5
+                && hits.iter().any(|h| {
+                    super::super::ceiling_fact::is_ceiling_line(h.normal, m.params.max_slope_deg)
+                })
+            {
+                bonks.push((m.entity, m.wanted[1] / dt));
+            }
             // ── O EMPURRÃO (W-KinPush) ───────────────────────────────────────
             //
             // ⚠️ **Um corpo cinemático tem massa INFINITA para o solver**, então
@@ -124,5 +135,6 @@ impl PhysicsBridge {
                 );
             }
         }
+        bonks
     }
 }

@@ -63,6 +63,9 @@ impl PhysicsBridge {
     /// ⚠️ **O `tick` entra na assinatura** desde a W2b: os pedidos de vida da tabela gravam-se na
     /// fita por tique, e o replay tem de saber QUAL tique está a refazer.
     pub(super) fn depois_do_passo(&mut self, sim: &SimWorld, publicar: bool, tick: u64) {
+        // O TETO dos players lido dos contactos que o passo deixou (Bug #12b) — nos dois laços,
+        // como a vista: ela é a memória da borda do tique seguinte.
+        self.measure_player_ceilings(sim);
         self.drive_health(sim, publicar, tick);
         // ⭐ E as ORDENS de navegação (plano 30, W6): valem a partir do próximo tique, gravadas neste.
         self.aplica_ordens_de_navegacao(publicar, tick);

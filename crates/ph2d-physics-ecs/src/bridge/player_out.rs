@@ -72,6 +72,7 @@ impl PhysicsBridge {
     pub(super) fn discard_player_history(&mut self) {
         self.player_views.clear();
         self.player_events.clear();
+        self.ceiling_watch.clear();
     }
 
     /// O que o tique acabou de publicar: a vista de cada player que correu, e as

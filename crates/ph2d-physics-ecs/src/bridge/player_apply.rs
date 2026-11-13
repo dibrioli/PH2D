@@ -122,7 +122,10 @@ impl PhysicsBridge {
         // ── O MOVIMENTO CINEMÁTICO (W-KinMove) ───────────────────────────────
         // O laço COLHEU; quem APLICA é o irmão `player_kinmove` — ver
         // `Self::apply_kin_moves` para a ordem e o porquê dela.
-        self.apply_kin_moves(moves, dt);
+        let kin_bonks = self.apply_kin_moves(moves, dt);
+        // O teto medido DEPOIS do passo (Bug #12b) arma-se aqui: os motores já agiram e a tabela
+        // de vistas ainda é a do tique anterior.
+        self.arm_ceiling_fact(&views, &kin_bonks);
         // ── E A SAÍDA (`bridge::player_out`) ─────────────────────────────────
         // ⚠️ **POR ÚLTIMO, e a ordem é a lei:** a tabela de vistas é a memória
         // contra a qual o laço acabou de diferenciar, então reescrevê-la antes

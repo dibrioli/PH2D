@@ -120,3 +120,12 @@ Defeito de ferramenta: `scripts/cargo-test-narrow.sh` imprime «0 passaram» qua
 - Mutações: «salta sempre» (chão) → vermelho; «sem a identidade das imagens» e «sem a pilha» (fundo em cache) → vermelhos.
 - Binário de smoke `target/smoke/ph2d-host-desktop`; 2.ª compilação: `Finished \`smoke\` profile [optimized] target(s) in 0.25s`, zero `Compiling`.
 - A suíte completa é do integrador (`scripts/integrar-rodada.sh`).
+
+## 10. Matriz do app (item 3, corrida no fim da janela)
+
+Correu com load 2,7 → 6–8 ([DEPOIS_N6.md](../missao_4k/medicoes/DEPOIS_N6.md)); a n.º 4 correu com load 9–90, logo a
+comparação é indicativa. Watercolor Basic: toque 34,9 → 27,1 ms · traço p95 38,2 → 15,1 · soltar 57,4 → 22,9 · Ctrl+Z
+36,6 → 15,9 · «+» camada 145,5 → 14,0 · trocar 92,7 → 70,8. Wet Liner: toque 124,2 → 30,0 · Ctrl+Z 100,0 → 48,9.
+Filbert: toque 70,1 → 43,6. Continuam vermelhos: CPU parado 52–68 % (B23.2: o laço já dorme no Painter, falta o resto
+da shell), trocar/duplicar/apagar camada 33–80 ms, Ctrl+Z do Wet 37–54 ms, «+» do Wet Liner/Express Oil ~110 ms. `NOVA=1`
+não corrido.

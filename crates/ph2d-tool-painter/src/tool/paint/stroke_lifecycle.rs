@@ -88,9 +88,9 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint)
             && let Some(id) = self.layers.active()
         {
-            // A marca muda a lei da camada INTEIRA: a luz fora do traço tem de se refazer.
+            // A marca muda a lei da camada onde ela tem tinta (B18.4: a camada nova, nada; não a tela inteira).
             if self.tintas_molhadas.insert(id) {
-                self.invalidate_composite();
+                self.a_marca_molhada_virou(id);
             }
         }
         self.paint.drag_preview = None;

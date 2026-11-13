@@ -114,8 +114,8 @@ impl PainterTool {
 
     /// Onde virar a marca do Wet da camada `id` muda a luz: os píxeis com alfa dela (`papel_a_vista`). Nada onde
     /// a luz não a lê — o filtro do `tinta` de `relief_fields_for` (máscara, escondida, não raster, tamanho
-    /// errado); a sprite crua que é o papel fica dentro (a janela maior é só repaint a mais).
-    fn alcance_da_marca_molhada(
+    /// errado, sem substrato, a sprite crua que é o papel: [`Self::a_marca_molhada_e_lida`]). Também o pen-down (B18.4).
+    pub(crate) fn alcance_da_marca_molhada(
         &self,
         id: crate::layers::LayerId,
     ) -> crate::undo_delta::confine::PlaneReach {
@@ -124,7 +124,7 @@ impl PainterTool {
             matches!(l.kind, crate::layers::LayerKind::Raster(_))
                 && self.layers.effectively_visible(id)
                 && !self.layers.is_mask(id)
-        });
+        }) && self.a_marca_molhada_e_lida(id);
         let px: Option<&[u8]> = if self.layers.active() == Some(id) {
             Some(self.canvas_rgba.as_slice())
         } else {

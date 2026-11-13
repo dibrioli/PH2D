@@ -38,7 +38,6 @@ fn pior_do_toque(t: &mut PainterTool, y: f32) -> u64 {
 }
 
 #[test]
-#[ignore = "B18.4 vermelho até a cura: o 1.º toque da sessão Wet reivindica a tela (307 200 de 307 200)"]
 fn o_primeiro_toque_da_camada_nova_reivindica_o_traco_e_nao_a_tela() {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; (W * H * 4) as usize], W, H);
@@ -72,5 +71,40 @@ fn o_primeiro_toque_da_camada_nova_reivindica_o_traco_e_nao_a_tela() {
     assert!(
         base <= caixa,
         "o 1.º toque da sessão reivindicou {base} de {tela} texels"
+    );
+}
+
+/// O documento do dono: o «Textured Paper» do New Image (Relief 0,5).
+pub(super) fn no_papel_do_dono() -> PainterTool {
+    let mut t = PainterTool::default();
+    t.agenda_papel_texturizado(7);
+    t.bind_document(7, vec![255u8; (W * H * 4) as usize], W, H);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_brush_size_px(20.0);
+    t
+}
+
+#[test]
+fn no_papel_do_dono_o_primeiro_toque_da_camada_nova_reivindica_o_traco() {
+    let mut t = no_papel_do_dono();
+    for _ in 0..3 {
+        let _ = reivindicada(&mut t);
+    }
+    let tela = u64::from(W) * u64::from(H);
+    let base = pior_do_toque(&mut t, 100.0);
+    let nova = t.add_raster_layer("nova").expect("a camada nova");
+    t.select_layer(nova);
+    for _ in 0..3 {
+        let _ = reivindicada(&mut t);
+    }
+    let primeiro_da_nova = pior_do_toque(&mut t, 260.0);
+    let segundo_da_nova = pior_do_toque(&mut t, 320.0);
+    eprintln!(
+        "papel do dono (texels; tela {tela}): base 1.º {base} · nova 1.º {primeiro_da_nova} 2.º {segundo_da_nova}"
+    );
+    let caixa = 8 * tela / 100;
+    assert!(
+        primeiro_da_nova <= caixa && segundo_da_nova <= caixa,
+        "o 1.º toque da camada nova reivindicou {primeiro_da_nova} de {tela} texels"
     );
 }

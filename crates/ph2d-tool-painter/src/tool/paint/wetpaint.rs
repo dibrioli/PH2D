@@ -293,13 +293,15 @@ pub(crate) mod adormecida; // a tinta viva parada fora do Wet (dono 06/11)
 mod adormecida_regua_tests;
 #[cfg(test)]
 mod adormecida_tests;
-#[cfg(test)]
-mod camada_nova_toque_tests;
 mod borracha_morta; // a Borracha na tinta morta imita a da viva (dono 06/11)
 #[cfg(test)]
 mod borracha_morta_tests;
 #[cfg(test)]
 mod borracha_pressao_tests;
+#[cfg(test)]
+mod camada_nova_paridade_tests;
+#[cfg(test)]
+mod camada_nova_toque_tests;
 #[cfg(test)]
 mod dentro_do_wet_tests;
 mod dormente; // a tinta adormecida comprimida em RAM (dono 06/11)

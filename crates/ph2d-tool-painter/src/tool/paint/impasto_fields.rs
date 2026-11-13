@@ -10,6 +10,8 @@ use ph2d_painter_effects::adjustments::AdjustWindow;
 std::thread_local! {
     /// O tamanho da última janela dobrada através dos ajustes, neste fio (o gate dos planos da placa a lê).
     pub(super) static DOBRA_JANELA: std::cell::Cell<Option<(u32, u32)>> = const { std::cell::Cell::new(None) };
+    /// O ORÁCULO de B18.4: `true` = o caminho antigo, a marca do Wet que vira derruba a composição inteira.
+    pub(crate) static MARCA_DERRUBA_TUDO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// A janela da dobra filtrada para acender `region` (`None` = a tela): a região + 1 px (a diferença central) + a
@@ -137,18 +139,12 @@ impl PainterTool {
         // §BUG-papel: a tinta de cada camada raster visível, para o dente se esconder sob ela. Sem o papel do
         // documento (`papel` `None`, a sprite crua É a camada de baixo) a camada de BAIXO é o papel: não o tapa.
         let tinta = if substrate.is_some() {
-            let base = self.papel.is_none().then(|| {
-                self.layers.z_order_bottom_up().into_iter().find(|&id| {
-                    self.layers
-                        .get(id)
-                        .is_some_and(|l| matches!(l.kind, crate::layers::LayerKind::Raster(_)))
-                })
-            });
+            let base = self.a_camada_que_e_o_papel();
             self.layers
                 .z_order_bottom_up()
                 .into_iter()
                 .filter(|&id| self.layers.effectively_visible(id) && !self.layers.is_mask(id))
-                .filter(|&id| base.flatten() != Some(id))
+                .filter(|&id| base != Some(id))
                 .filter_map(|id| {
                     let l = self.layers.get(id)?;
                     if !matches!(l.kind, crate::layers::LayerKind::Raster(_)) {
@@ -245,6 +241,39 @@ impl PainterTool {
                 ))
             })
             .collect()
+    }
+
+    /// Sem o papel do documento (`papel` `None`), a raster de BAIXO é o papel: a tinta dela não o tapa.
+    pub(crate) fn a_camada_que_e_o_papel(&self) -> Option<crate::layers::LayerId> {
+        self.papel.is_none().then_some(())?;
+        self.layers.z_order_bottom_up().into_iter().find(|&id| {
+            self.layers
+                .get(id)
+                .is_some_and(|l| matches!(l.kind, crate::layers::LayerKind::Raster(_)))
+        })
+    }
+
+    /// **A marca do Wet da camada `id` muda a figura?** Ela só a lê o dente do papel (`ReliefFields::tinta`): sem
+    /// substrato, ou na camada que é o papel, nada muda.
+    pub(crate) fn a_marca_molhada_e_lida(&self, id: crate::layers::LayerId) -> bool {
+        self.substrate().is_some() && self.a_camada_que_e_o_papel() != Some(id)
+    }
+
+    /// A marca do Wet da camada `id` acabou de virar: refaz-se só a janela da tinta dela (a do undo).
+    pub(crate) fn a_marca_molhada_virou(&mut self, id: crate::layers::LayerId) {
+        use crate::undo_delta::confine::PlaneReach;
+        #[cfg(test)]
+        if MARCA_DERRUBA_TUDO.with(std::cell::Cell::get) {
+            return self.invalidate_composite();
+        }
+        match self.alcance_da_marca_molhada(id) {
+            PlaneReach::Untouched => {}
+            PlaneReach::Window(j) => match j.to_region(self.source_size.0) {
+                Some(r) => self.mark_dirty(r),
+                None => self.invalidate_composite(),
+            },
+            PlaneReach::Whole => self.invalidate_composite(),
+        }
     }
 }
 

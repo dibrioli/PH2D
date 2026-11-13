@@ -147,6 +147,8 @@ pub mod slot_tabs_overflow;
 pub mod surface_input;
 pub mod transport_bar;
 pub mod variant_axes;
+/// A faixa única: os botões da janela, o arrasto e as bordas.
+pub mod window_buttons;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou
 // seis defeitos.

@@ -40,6 +40,9 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if id == ids::MENUBAR_TEACH {
         return true;
     }
+    if crate::screens::hero::window_buttons::on_click(&mut hero.store, id) {
+        return true;
+    }
     if id == ids::MENUBAR_HELP_COMMANDS || id == ids::MENUBAR_FIND {
         hero.store.close_context_menu();
         crate::screens::hero::global_palette::open(hero);

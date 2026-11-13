@@ -88,6 +88,7 @@ pub(crate) fn build_initial_state(
 ) -> (Arc<Window>, WinitHost, AppGfx) {
     let attrs = Window::default_attributes()
         .with_title(tr("shell.init.ph2d_editor"))
+        .with_decorations(!crate::faixa_unica::ligada())
         .with_inner_size(LogicalSize::new(1024, 768));
     let window = Arc::new(
         event_loop

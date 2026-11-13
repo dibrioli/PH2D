@@ -15,7 +15,7 @@ use ph2d_tokens::ColorToken;
 pub fn place_name(label: &str) -> String {
     let label = label.strip_prefix("\u{2014} ").unwrap_or(label);
     label
-        .trim_end_matches(|c: char| c == '\u{203a}' || c == '\u{2026}' || c == '.' || c == ' ')
+        .trim_end_matches(['\u{203a}', '\u{2026}', '.', ' '])
         .to_owned()
 }
 

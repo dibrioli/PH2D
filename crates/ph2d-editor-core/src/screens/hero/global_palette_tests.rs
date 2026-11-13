@@ -1,7 +1,6 @@
 //! Gates da paleta de comandos global — ver o doc-header de [`super`].
 
 use super::*;
-use crate::interaction::WidgetEvent;
 use crate::screens::hero::HeroScreen;
 use ph2d_a11y::NodeId;
 

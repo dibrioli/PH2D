@@ -200,6 +200,9 @@ pub fn populate(store: &mut WidgetStore) {
         ids::MENUBAR_FIND,
         ids::MENUBAR_TEACH,
         ids::MENUBAR_TEACH_CLOSE,
+        ids::MENUBAR_WIN_MINIMIZE,
+        ids::MENUBAR_WIN_MAXIMIZE,
+        ids::MENUBAR_WIN_CLOSE,
     ] {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
@@ -433,10 +436,11 @@ pub fn paint_menu_bar(
     // ⛔ PRIMEIRO o fundo: o `HitIndex` caminha de trás para a frente, e ele engole o clique que
     // não é de ninguém (senão a barra opaca deixava-o passar para o desenho).
     hit_index.register(ids::MENUBAR_BACKDROP, bar);
-    let f = super::menu_faixa::faixa(bar, text_system);
+    let f = super::menu_faixa::faixa(bar, text_system, store.window_frame());
     super::menu_faixa::paint(&f, scene, text_system, theme, hit_index, store, motion);
     super::transport_bar::paint(&f.jogo, run, scene, text_system, theme, hit_index, store);
     super::menu_teach::paint(&f, scene, text_system, theme, hit_index, store);
+    super::window_buttons::paint(&f.janela, scene, theme, hit_index, store);
     super::document_tabs::paint(
         bar,
         f.docs.0,

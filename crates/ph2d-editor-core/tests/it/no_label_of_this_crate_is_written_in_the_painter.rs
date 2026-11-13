@@ -63,6 +63,36 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// `ph2d_label_census::gate::excecoes_mortas`.
 const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
     (
+        "screens/hero/menu_memory.rs",
+        "# PH2D menu memory\\n",
+        "o FORMATO do `~/.ph2d/menu-memory.txt` (chave=valor, como o `prefs.txt`): a chave gravada no ficheiro de \
+         memoria do utilizador, nunca pintada",
+    ),
+    (
+        "screens/hero/menu_memory.rs",
+        "recent={:x}",
+        "o FORMATO do `~/.ph2d/menu-memory.txt` (chave=valor, como o `prefs.txt`): a chave gravada no ficheiro de \
+         memoria do utilizador, nunca pintada",
+    ),
+    (
+        "screens/hero/menu_memory.rs",
+        "pick={:x} {n}",
+        "o FORMATO do `~/.ph2d/menu-memory.txt` (chave=valor, como o `prefs.txt`): a chave gravada no ficheiro de \
+         memoria do utilizador, nunca pintada",
+    ),
+    (
+        "screens/hero/menu_memory.rs",
+        "learned={:x}",
+        "o FORMATO do `~/.ph2d/menu-memory.txt` (chave=valor, como o `prefs.txt`): a chave gravada no ficheiro de \
+         memoria do utilizador, nunca pintada",
+    ),
+    (
+        "screens/hero/menu_memory.rs",
+        "project={p}",
+        "o FORMATO do `~/.ph2d/menu-memory.txt` (chave=valor, como o `prefs.txt`): a chave gravada no ficheiro de \
+         memoria do utilizador, nunca pintada",
+    ),
+    (
         "widget/tooltip.rs",
         "Ag",
         "a AMOSTRA de `passo_da_linha`: mede a altura de uma linha (ascendente + descendente) e nunca \

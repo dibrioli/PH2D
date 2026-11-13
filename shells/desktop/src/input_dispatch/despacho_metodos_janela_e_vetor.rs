@@ -240,42 +240,43 @@ impl crate::App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .map(|h| -> Result<CursorIcon, ph2d_cursor_art::Tingida> {
-                Ok(
-                    if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela() {
-                        CursorIcon::Crosshair
-                    } else if self.sobre_a_pega_de_um_campo(h) {
+                Ok(if let Some(icon) = self.faixa_unica_cursor(h) {
+                    icon // A borda da janela sem a barra do sistema: antes de tudo o resto.
+                } else if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela()
+                {
+                    CursorIcon::Crosshair
+                } else if self.sobre_a_pega_de_um_campo(h) {
+                    CursorIcon::EwResize
+                } else if self.over_motion_split_divider(h) {
+                    if h.view.center_split.is_vertical() {
                         CursorIcon::EwResize
-                    } else if self.over_motion_split_divider(h) {
-                        if h.view.center_split.is_vertical() {
-                            CursorIcon::EwResize
-                        } else {
-                            CursorIcon::NsResize
-                        }
-                    } else if let Some(icon) = self.timeline_resize_cursor(h) {
-                        icon?
-                    } else if let Some(icon) = self.dock_seam_cursor(x, y) {
-                        icon // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
-                    } else if let Some(f) = self.forma_figura() {
-                        return Err((f, None));
-                    } else if let Some(icon) =
-                        self.forma_cursor().or_else(|| self.camera_frame_cursor())
-                    {
-                        icon
-                    } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
-                        icon
-                    } else if let Some(c) = bv::cursor(h, x, y) {
-                        use bv::BoardCursor as B;
-                        match c {
-                            B::ResizeNs => CursorIcon::NsResize,
-                            B::ResizeEw => CursorIcon::EwResize,
-                            B::ResizeNesw => CursorIcon::NeswResize,
-                            B::ResizeNwse => CursorIcon::NwseResize,
-                            B::Rotate => CursorIcon::Grab,
-                        }
                     } else {
-                        icone_de(bv::pointer_look(h, x, y))
-                    },
-                )
+                        CursorIcon::NsResize
+                    }
+                } else if let Some(icon) = self.timeline_resize_cursor(h) {
+                    icon?
+                } else if let Some(icon) = self.dock_seam_cursor(x, y) {
+                    icon // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
+                } else if let Some(f) = self.forma_figura() {
+                    return Err((f, None));
+                } else if let Some(icon) =
+                    self.forma_cursor().or_else(|| self.camera_frame_cursor())
+                {
+                    icon
+                } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
+                    icon
+                } else if let Some(c) = bv::cursor(h, x, y) {
+                    use bv::BoardCursor as B;
+                    match c {
+                        B::ResizeNs => CursorIcon::NsResize,
+                        B::ResizeEw => CursorIcon::EwResize,
+                        B::ResizeNesw => CursorIcon::NeswResize,
+                        B::ResizeNwse => CursorIcon::NwseResize,
+                        B::Rotate => CursorIcon::Grab,
+                    }
+                } else {
+                    icone_de(bv::pointer_look(h, x, y))
+                })
             })
             .unwrap_or(Ok(CursorIcon::Default));
         // A figura desenhada (pontos do Outline, alças tingidas) ou o do sistema; a caneta leva o mais próximo.

@@ -96,6 +96,12 @@ const NOT_THIS_QUESTION: &[(&str, &str)] = &[
         "MENU FLUTUANTE, nao formulario: o «+ Track» e' uma caixa de altura `ROW_H_PX * n` com as \
          linhas encostadas; o passo e' a altura da linha, e um vao mudaria o menu",
     ),
+    (
+        // A busca da faixa em LISTA (line/BarraDeMenus, onda 2).
+        "crates/ph2d-editor-core/src/widget/command_palette/lista.rs",
+        "LISTA DE MENU, nao formulario: os resultados de «Find anything» sao linhas de menu \
+         encostadas (`ROW_H_PX`), com o mesmo passo das cascatas da barra que eles nomeiam",
+    ),
 ];
 
 fn repo_root() -> PathBuf {

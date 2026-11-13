@@ -166,6 +166,7 @@ mod fx_raster_smoke;
 pub(crate) use ph2d_app_vec::fx_silhouette;
 /// ⭐⭐⭐ A cena da CUTSCENE (TOP-20 #19) — ver o cabeçalho.
 mod counter_watch_smoke;
+mod faixa_unica;
 mod fx_smoke;
 mod fx_turbulence_smoke;
 mod fx_undo_smoke;
@@ -938,6 +939,7 @@ impl ApplicationHandler for App {
             WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_preso(event),
             WindowEvent::RedrawRequested => {
                 self.render_frame();
+                self.faixa_unica_tick(event_loop);
                 self.palco_janela(event_loop);
                 self.exit_after_frames_tick(event_loop);
             }

@@ -414,6 +414,9 @@ pub enum IconId {
     WetBlow,
     WetDry,
     WetWater,
+    WindowMaximize,
+    WindowMinimize,
+    WindowRestore,
     Zen,
 }
 

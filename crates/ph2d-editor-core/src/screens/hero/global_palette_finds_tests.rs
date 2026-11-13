@@ -8,10 +8,10 @@ fn hero() -> HeroScreen {
     HeroScreen::new(NodeId(1))
 }
 
-fn item<'m>(
-    m: &'m crate::widget::command_palette::PaletteModel,
+fn item(
+    m: &crate::widget::command_palette::PaletteModel,
     id: NodeId,
-) -> Option<(&'m str, &'m PaletteItem)> {
+) -> Option<(&str, &PaletteItem)> {
     m.groups.iter().find_map(|g| {
         g.subs
             .iter()
@@ -46,7 +46,7 @@ fn a_acao_do_input_map_vem_com_as_teclas_e_abre_a_aba() {
 #[test]
 fn escolher_um_objeto_seleciona_o() {
     let mut h = hero();
-    let row = NodeId(0x0B1E_C7);
+    let row = NodeId(0x000B_1EC7);
     h.store.set_scene_objects(vec![(row, "Player".into())]);
     let m = build_global_model(&h);
     let (group, it) = item(&m, row).expect("o objeto não está na busca");
@@ -131,7 +131,7 @@ fn na_busca_vazia_os_menus_vem_primeiro() {
 fn o_clique_num_resultado_novo_escolhe_como_o_enter() {
     let mut h = hero();
     let jump = h.input_map.id("jump").expect("o mapa de fábrica tem jump");
-    let row = NodeId(0x0B1E_C7);
+    let row = NodeId(0x000B_1EC7);
     h.store.set_scene_objects(vec![(row, "Player".into())]);
     let field = NodeId(0x52);
     h.store.begin_card_directory_frame();

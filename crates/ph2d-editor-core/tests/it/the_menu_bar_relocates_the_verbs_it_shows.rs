@@ -287,7 +287,7 @@ fn the_painted_bar_registers_every_title_where_it_drew_it() {
         "precondição: sem chrome legado a barra de menus é o inquilino da faixa"
     );
     let layout = h.last_layout.expect("o quadro publicou o layout");
-    let f = ph2d_editor_core::screens::hero::menu_faixa::faixa(layout.top_bar, &mut text);
+    let f = ph2d_editor_core::screens::hero::menu_faixa::faixa(layout.top_bar, &mut text, None);
     let alvos = [(ids::MENUBAR_W, f.menu), (ids::MENUBAR_FIND, f.find)]
         .into_iter()
         .chain(f.jogo.iter().map(|(id, _, r)| (*id, *r)));

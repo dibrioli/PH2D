@@ -6,7 +6,7 @@ use crate::screens::hero::menu_bar::MENU_BAR_H;
 fn faixa_de(largura: f32) -> (Rect, Faixa) {
     let bar = Rect::new(0.0, 0.0, largura, MENU_BAR_H);
     let mut ts = TextSystem::without_system_fonts();
-    (bar, faixa(bar, &mut ts))
+    (bar, faixa(bar, &mut ts, None))
 }
 
 /// «Menu» · abas · campo · jogo, nesta ordem, sem sobreposição e dentro da barra; o campo no

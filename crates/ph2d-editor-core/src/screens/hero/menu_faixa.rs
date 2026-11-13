@@ -41,17 +41,20 @@ pub struct Faixa {
     pub jogo: Vec<(NodeId, IconId, Rect)>,
     /// O vão das abas de documento (de, até).
     pub docs: (f32, f32),
+    /// Os botões da janela, encostados à direita (vazio com a barra do sistema).
+    pub janela: Vec<(NodeId, IconId, Rect)>,
 }
 
 /// ⭐ **A PORTA.** «Menu» encostado à esquerda, o jogo à direita; o campo centra-se na barra e
 /// nunca toma mais de metade do vão livre (a outra metade é das abas).
 #[must_use]
-pub fn faixa(bar: Rect, text_system: &mut TextSystem) -> Faixa {
+pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Faixa {
     let font = TypeToken::Sm.px();
     let rotulo = text_system.prefix_width(tr("chrome.menu_bar.menu"), font);
     let menu_w = Spacing::Sm.px() + icon_glyph_side(bar.h) + rect_for_label(rotulo);
     let menu = Rect::new(bar.x + Spacing::Sm.px(), bar.y, menu_w, bar.h);
-    let fim = bar.x + bar.w;
+    let janela = super::window_buttons::rects(bar, frame);
+    let fim = super::window_buttons::start_x(bar, &janela);
     let play_w = super::transport_bar::play_width(text_system, bar.h);
     let jogo = super::transport_bar::rects(bar, menu.x + menu.w, fim, play_w);
     let gap = super::document_tabs::gap_px();
@@ -71,11 +74,12 @@ pub fn faixa(bar: Rect, text_system: &mut TextSystem) -> Faixa {
         lupa,
         jogo,
         docs: (de, find.x - gap),
+        janela,
     }
 }
 
 /// A caixa de um controlo dentro da faixa: recuada do topo e do fundo como a pílula do jogo.
-fn caixa(r: Rect) -> Rect {
+pub(super) fn caixa(r: Rect) -> Rect {
     let d = m::FIELD_BORDER;
     Rect::new(r.x, r.y + d, r.w, (r.h - d * 2.0).max(0.0))
 }

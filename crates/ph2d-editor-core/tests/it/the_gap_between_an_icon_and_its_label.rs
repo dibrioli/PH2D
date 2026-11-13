@@ -49,6 +49,11 @@ const PAINTS_AN_ICON_AND_ITS_LABEL: &[&str] = &[
 /// `(caminho, porquê o vão ali NÃO é «um ícone e a legenda dele»)`.
 const NOT_THIS_QUESTION: &[(&str, &str)] = &[
     (
+        "crates/ph2d-editor-core/src/screens/hero/transport_bar.rs",
+        "ICONE SEM LEGENDA: a seta do palco ao lado do Play e' so' o glifo e o respiro do botao \
+         (`largura_da_seta`); o nome do Play mede-se por `rect_for_label`, que ja' leva o vao",
+    ),
+    (
         "crates/ph2d-panel-painter-layers/src/paint.rs",
         "ICONE -> ICONE: a fileira de botoes do cabecalho. O vao entre duas PECAS de um controlo \
          e' a lei do grupo (wave 20), nao a legenda de um icone",

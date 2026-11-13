@@ -22,6 +22,12 @@ impl App {
             self.last_pointer.1,
             Self::timestamp_ns(),
         );
+        if kind == PointerKind::Down
+            && button == MouseButton::Left
+            && self.faixa_unica_down(x, y, false)
+        {
+            return;
+        }
         let evt = ph2d_pen::ponteiro::do_rato(x, y, kind, mapped_button, t);
         self.pointer_button(evt, button);
         self.sync_cursor_preso();

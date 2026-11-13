@@ -66,6 +66,12 @@ pub struct FaixaState {
     reveal: Option<(Vec<NodeId>, NodeId)>,
     /// O que pisca sem pintor próprio (a linha da Hierarquia, o campo do cartão): o anel genérico.
     ring: Option<NodeId>,
+    /// A janela é do app (faixa única): `Some(maximizada)`; `None` = barra do sistema.
+    window_frame: Option<bool>,
+    /// O pedido dos botões da janela, à espera da shell.
+    window_request: Option<super::window_frame::WindowRequest>,
+    /// O último Down no fundo da faixa (o duplo clique que maximiza).
+    window_press: super::window_frame::WindowPress,
 }
 
 impl WidgetStore {
@@ -207,5 +213,31 @@ impl WidgetStore {
     /// O caminho por abrir.
     pub fn menu_reveal_mut(&mut self) -> &mut Option<(Vec<NodeId>, NodeId)> {
         &mut self.faixa.reveal
+    }
+
+    /// A shell, a cada quadro: a janela é do app (`Some(maximizada)`) ou do sistema (`None`).
+    pub fn set_window_frame(&mut self, frame: Option<bool>) {
+        self.faixa.window_frame = frame;
+    }
+
+    /// Ver [`Self::set_window_frame`].
+    #[must_use]
+    pub fn window_frame(&self) -> Option<bool> {
+        self.faixa.window_frame
+    }
+
+    /// Um botão da janela foi clicado.
+    pub fn request_window(&mut self, r: super::window_frame::WindowRequest) {
+        self.faixa.window_request = Some(r);
+    }
+
+    /// Lê e limpa o pedido (a shell, depois de cada evento).
+    pub fn take_window_request(&mut self) -> Option<super::window_frame::WindowRequest> {
+        self.faixa.window_request.take()
+    }
+
+    /// A memória do Down da faixa ([`super::window_frame::press`]).
+    pub fn window_press_mut(&mut self) -> &mut super::window_frame::WindowPress {
+        &mut self.faixa.window_press
     }
 }

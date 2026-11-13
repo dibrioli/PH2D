@@ -425,9 +425,11 @@ impl WidgetStore {
         kind: crate::interaction::ContextMenuKind,
     ) -> impl Iterator<Item = (ph2d_a11y::NodeId, &str)> {
         // ⭐ E as do *Open Recent* (os projetos lembrados), que também são linhas com texto.
-        let recent = (kind == crate::interaction::ContextMenuKind::MenuBarFileRecent)
-            .then_some(self.recent_rows())
-            .unwrap_or_default();
+        let recent = if kind == crate::interaction::ContextMenuKind::MenuBarFileRecent {
+            self.recent_rows()
+        } else {
+            Default::default()
+        };
         self.area_menus
             .doc_rows
             .iter()

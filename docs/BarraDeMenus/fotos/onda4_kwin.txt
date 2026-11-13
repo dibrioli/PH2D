@@ -1,0 +1,16 @@
+# kwin_faixa_unica.sh — 2026-11-12T22:07:05-03:00 — kwin 6.8.2
+1 abre:            288 116 1024 768 noBorder=false minimized=false
+foto onda4_1_abre_sem_a_barra_do_sistema.png 1600x1000
+2 arrasta +150+100: 438 216 1024 768 (dx=150 dy=100)
+3 canto +120+80:    438 216 1144 784 (dw=120 dh=16)
+4 duplo clique:     0 0 1600 1000 (tela 1600 x 1000)
+foto onda4_4_maximizada.png 1600x1000
+5 duplo clique:     438 216 1144 784
+foto onda4_5_rato_sobre_o_fechar.png 1600x1000
+6 botão □:          0 0 1600 1000
+6 botão □ de novo:  438 216 1144 784
+7 botão −:          minimized=true
+foto onda4_8_fechar_pergunta.png 1600x1000
+8 botão ×:          pediu para fechar
+8 botão ×:          o app CONTINUA aberto (a pergunta de gravar?)
+8b × do sistema:     o app também continua aberto (a mesma pergunta)

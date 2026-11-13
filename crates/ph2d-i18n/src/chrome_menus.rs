@@ -57,7 +57,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.palette.commands" => "Commands",
         "chrome.palette.tools" => "Tools",
         "chrome.palette.panels" => "Panels",
-        "chrome.palette.menus" => "Menus",
         "chrome.palette.document" => "This tab",
         // Os prefixos da paleta (CodeEditor I14): `@` símbolos, `:` linha.
         "chrome.palette.symbols" => "Symbols",
@@ -101,6 +100,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu_bar.find" => "Find anything",
         "chrome.menu_bar.find_key" => "Ctrl+K",
         "chrome.menu_bar.find_tip" => "Find anything \u{00b7} Ctrl+K",
+        "chrome.menu_bar.win_minimize" => "Minimize",
+        "chrome.menu_bar.win_maximize" => "Maximize \u{00b7} or double-click the bar",
+        "chrome.menu_bar.win_close" => "Close",
         "chrome.menu_bar.play_where" => "Choose where the game plays",
         "chrome.menu.create_note" => "Create note",
         "chrome.menu.no_outline" => "No outline",

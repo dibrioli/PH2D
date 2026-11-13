@@ -36,6 +36,7 @@ mod notes_ops;
 pub use notes_ops::NoteDrag;
 mod faixa_ops;
 mod menu_chain_ops;
+pub mod window_frame;
 pub use faixa_ops::{CardDirectory, CardFieldSeen, FaixaState, RecentRow, TeachChip};
 mod number_scrub;
 mod panel_ops;

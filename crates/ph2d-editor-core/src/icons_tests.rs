@@ -514,5 +514,8 @@ const ALL_ICONS: &[IconId] = &[
     IconId::WetBlow,
     IconId::WetDry,
     IconId::WetWater,
+    IconId::WindowMaximize,
+    IconId::WindowMinimize,
+    IconId::WindowRestore,
     IconId::Zen,
 ];

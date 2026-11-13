@@ -121,7 +121,7 @@ fn every_menu_title_and_every_tab_answers_at_its_own_centre() {
     let mut targets: Vec<(String, Rect)> = Vec::new();
     // ⭐ Versão C (dono 12/11): a faixa é o botão «Menu», o campo de busca e a fila do jogo —
     // medem-se pela porta da geometria que a barra pinta (`menu_faixa::faixa`).
-    let f = ph2d_editor_core::screens::hero::menu_faixa::faixa(l.top_bar, &mut text);
+    let f = ph2d_editor_core::screens::hero::menu_faixa::faixa(l.top_bar, &mut text, None);
     targets.push(("o botão «Menu»".to_owned(), f.menu));
     targets.push(("o campo de busca".to_owned(), f.find));
     assert_eq!(f.jogo.len(), 5, "a fila do jogo não coube na barra");

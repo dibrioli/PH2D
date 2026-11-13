@@ -150,6 +150,14 @@ pub const MENUBAR_FIND: NodeId = hash_node_id("menubar_find");
 /// A seta ao lado do Play: escolhe onde o jogo se mostra.
 pub const MENUBAR_PLAY_MENU: NodeId = hash_node_id("menubar_play_menu");
 
+// ── A faixa única (onda 4): os botões da janela, desenhados pelo app ───────────────────────────
+/// Minimizar a janela.
+pub const MENUBAR_WIN_MINIMIZE: NodeId = hash_node_id("menubar_win_minimize");
+/// Maximizar ou restaurar a janela (o duplo clique no fundo da faixa faz o mesmo).
+pub const MENUBAR_WIN_MAXIMIZE: NodeId = hash_node_id("menubar_win_maximize");
+/// Fechar a janela (o mesmo caminho do fechar do sistema).
+pub const MENUBAR_WIN_CLOSE: NodeId = hash_node_id("menubar_win_close");
+
 // ── A busca que responde (onda 3) ─────────────────────────────────────────────────────────────
 /// O chip da faixa que ensina o atalho («Ctrl+E is Export Sheet…»).
 pub const MENUBAR_TEACH: NodeId = hash_node_id("menubar_teach");

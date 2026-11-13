@@ -92,6 +92,11 @@ Ressalva: a corrida dos gates da `ph2d-tool-painter` compilou enquanto as curas 
 `cfg`, aliases e `is_multiple_of`, sem mudar o que o código faz. Depois delas, o censo voltou a correr por nome e
 `cargo build --profile smoke --tests -p` das 3 crates compila (25 s).
 
+**Re-corrida depois das curas (13/11, HEAD `6d13348bb0`):** os 31 da `ph2d-tool-painter` (lib), por nome, numa corrida:
+`bash scripts/cargo-test-narrow.sh ph2d-tool-painter --lib -- <os 31>` → **31 passaram · 0 ignorados** (correr 5,9 s). A
+ressalva acima fica fechada. ⚠️ Num zsh, `$N` sem aspas NÃO se parte em palavras: os 31 nomes chegam ao libtest como UM
+filtro e o veredito é «0 testes» (exit 4 do script). Use `${=N}` ou um array.
+
 ## `scripts/agent-loop-profile.sh`
 
 ```

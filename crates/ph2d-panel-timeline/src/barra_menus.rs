@@ -11,11 +11,9 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent};
 use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
-use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg, Widget};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal, camada_das_listas};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::card_field::{self, Glyph};
 use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
@@ -60,7 +58,7 @@ fn toggle_que_pede(agora: Fim, quer: Fim) -> Option<(NodeId, bool)> {
 
 /// O que a caixa da Length lê, se não é o do store: sem duração autorada, ∞; o store fica com o
 /// finito, que é o que se edita.
-fn valor_lido_da_dur(snap: &TimelineViewSnapshot) -> Option<f64> {
+pub(crate) fn valor_lido_da_dur(snap: &TimelineViewSnapshot) -> Option<f64> {
     (!snap.view_length_explicit).then_some(f64::INFINITY)
 }
 
@@ -168,22 +166,12 @@ fn corpo_das_opcoes(
             on: fim == Fim::PingPong,
         },
     ];
-    let y = c.full(
+    // A Length mora na barra, entre as abas e o Time (dono 13/11).
+    let mut y = c.full(
         Some(tr("panel.timeline.card.when_ends")),
         Widget::Choice(&segs),
         y,
     );
-    let nome = tr("panel.timeline.card.length_long");
-    let campo = Widget::Field {
-        id: ids::TIMELINE_LENGTH_NUM,
-        glyph: Glyph::Text(letra_da_grandeza(nome)),
-    };
-    let mut y = match valor_lido_da_dur(snap) {
-        Some(lido) => card_field::com_valores(&[(ids::TIMELINE_LENGTH_NUM, lido)], || {
-            c.full(Some(nome), campo, y)
-        }),
-        None => c.full(Some(nome), campo, y),
-    };
     let valor = |id| crate::transport::cartoes::valor_da_caixa(snap, view, id);
     for (id, chave) in [
         (ids::TIMELINE_RECORD, "panel.timeline.card.record"),

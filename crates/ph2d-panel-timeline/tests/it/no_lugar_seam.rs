@@ -102,14 +102,18 @@ fn fecha() {
 #[test]
 fn o_clique_na_instancia_abre_e_as_lanes_de_dentro_empurram_as_de_baixo() {
     let (mut m, mut c) = mesa(true);
-    let fx_antes = m.rect(ids::TIMELINE_LANE_ROW[1]).expect("a lane FX").y;
+    // Medido a partir da lane Base: a barra pode ganhar uma fileira quando a migalha do container
+    // aparece num painel estreito (dono 13/11: a Length na fileira do título), e isso não é das lanes.
+    let lane =
+        |m: &Mesa<TimelinePanel>, i: usize| m.rect(ids::TIMELINE_LANE_ROW[i]).expect("a lane").y;
+    let fx_antes = lane(&m, 1) - lane(&m, 0);
     abre(&mut m, &mut c);
     assert_eq!(
         caminho().1,
         Some(c.a),
         "a escolhida que toca um container abre"
     );
-    let fx = m.rect(ids::TIMELINE_LANE_ROW[1]).expect("a lane FX").y;
+    let fx = lane(&m, 1) - lane(&m, 0);
     let h = ph2d_tokens::TIMELINE_FAIXA_H_PX;
     assert!(
         (fx - fx_antes - 2.0 * h).abs() < 0.5,

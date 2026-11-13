@@ -68,6 +68,10 @@ fn is_toggle(id: NodeId) -> bool {
 fn clique_dos_cartoes(id: NodeId, host: &mut dyn PanelHostInternal) -> bool {
     match id {
         _ if id == crate::ids::TIMELINE_ANIMATING_DONE => crate::animando::done(),
+        _ if id == crate::ids::TIMELINE_STOP => {
+            crate::state::push_intent(TimelineIntent::Pause);
+            crate::state::push_intent(TimelineIntent::Scrub(0.0));
+        }
         _ if id == crate::ids::TIMELINE_STRETCH_CLEAR => crate::ruler_trecho::larga(),
         _ if id == crate::ids::TIMELINE_CARD_DOCK => crate::cartao_solto::encaixa(host.store_mut()),
         _ => return false,

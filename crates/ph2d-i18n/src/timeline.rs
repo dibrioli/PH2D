@@ -66,7 +66,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.not_placed" => "not placed",
         "panel.timeline.card.containers" => "Containers",
         "panel.timeline.card.fps" => "{fps} fps · project",
-        "panel.timeline.card.autokey" => "Auto Key",
         "panel.timeline.card.record" => "Record while playing",
         "panel.timeline.card.add_marker" => "Marker",
         // onda 1 — trecho (doc 17, item 2): o chip que toca só o pedaço entre dois marcadores.
@@ -103,6 +102,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.tip.clip_menu" => "Clip options",
         "panel.timeline.tip.starts_with" => "The game starts by playing this clip",
         "panel.timeline.tip.go_start" => "Go to start",
+        "panel.timeline.tip.stop" => "Stop and go back to the start",
+        "panel.timeline.tip.autokey" => "Auto Key: record a key whenever you change something",
+        "panel.timeline.tip.length" => "Clip length, in seconds",
         "panel.timeline.tip.prev_frame" => "Previous frame",
         "panel.timeline.tip.play" => "Play or pause",
         "panel.timeline.tip.next_frame" => "Next frame",

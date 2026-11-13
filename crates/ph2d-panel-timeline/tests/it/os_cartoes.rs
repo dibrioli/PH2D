@@ -93,7 +93,7 @@ const NUMEROS: [NodeId; 3] = [
 ];
 
 /// O que fica À VISTA na barra (doc 15, onda 1): título, clipes e tocar. O resto mora nas janelinhas.
-const NA_BARRA: [NodeId; 19] = [
+const NA_BARRA: [NodeId; 21] = [
     ids::TIMELINE_TAB_KEYS,
     ids::TIMELINE_TAB_CONTAINERS,
     ids::TIMELINE_TAB_ARRANGE,
@@ -113,6 +113,8 @@ const NA_BARRA: [NodeId; 19] = [
     ids::TIMELINE_FRAME_NUM,
     ids::TIMELINE_AUTOKEY,
     ids::TIMELINE_CURVES_ON_CANVAS,
+    ids::TIMELINE_STOP,
+    ids::TIMELINE_LENGTH_NUM,
 ];
 
 /// Os que se mudaram para «Timeline options» (a engrenagem). Record while playing: dono 12/11.
@@ -143,7 +145,7 @@ fn onde_mora(mesa: &mut Mesa<TimelinePanel>, id: NodeId) -> NodeId {
         (Some(ids::TIMELINE_OPTIONS), ids::TIMELINE_END_LOOP)
     } else if id == ids::TIMELINE_PINGPONG {
         (Some(ids::TIMELINE_OPTIONS), ids::TIMELINE_END_PINGPONG)
-    } else if NAS_OPCOES.contains(&id) || id == ids::TIMELINE_LENGTH_NUM {
+    } else if NAS_OPCOES.contains(&id) {
         (Some(ids::TIMELINE_OPTIONS), id)
     } else if NO_MENU.contains(&id) {
         (Some(ids::TIMELINE_CLIP_MENU), id)
@@ -493,10 +495,10 @@ fn sem_cartoes_e_o_painel_de_antes() {
     let _ = PointerKind::Move;
 }
 
-/// ⭐⭐ **Duas fileiras** (doc 15, onda 1b, dono 09/11 depois do smoke da onda 1): na do título, abas ·
-/// tocar · Time · Frame · fps … dono · engrenagem; na 2.ª, Auto Key · Record · Marker ANTES do 1.º chip,
-/// depois os chips e o «+». *Mutações: `f.quebra()` antes do tocar ⇒ o Play desce; os chips antes do
-/// gravar ⇒ o Auto Key passa à direita do chip.*
+/// ⭐⭐ **Duas fileiras** (doc 15, onda 1b, dono 09/11; dono 13/11): na do título, abas | Length |
+/// Time · Frame · fps … dono · engrenagem; na 2.ª, Marker ANTES do 1.º chip, depois os chips e o «+».
+/// O tocar e o gravar flutuam acima do painel (`controles_flutuantes.rs`). *Mutações: `f.quebra()`
+/// antes do tempo ⇒ o Time desce; os chips antes do Marker ⇒ o Marker passa à direita do chip.*
 #[test]
 fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     let m0 = mesa(true);
@@ -508,9 +510,7 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     };
     let titulo = y(ids::TIMELINE_TAB_KEYS);
     for id in [
-        ids::TIMELINE_GO_START,
-        ids::TIMELINE_PLAY,
-        ids::TIMELINE_GO_END,
+        ids::TIMELINE_LENGTH_NUM,
         ids::TIMELINE_TIME_NUM,
         ids::TIMELINE_FRAME_NUM,
         ids::TIMELINE_ANIM_DD,
@@ -521,11 +521,10 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
             "{id:?} fora da fileira do título"
         );
     }
-    // A ordem da 1.ª: abas, tocar, Time, Frame e, encostados à direita, o dono e a engrenagem.
+    // A ordem da 1.ª: abas, Length, Time, Frame e, encostados à direita, o dono e a engrenagem.
     let ordem = [
         ids::TIMELINE_TAB_ARRANGE,
-        ids::TIMELINE_GO_START,
-        ids::TIMELINE_GO_END,
+        ids::TIMELINE_LENGTH_NUM,
         ids::TIMELINE_TIME_NUM,
         ids::TIMELINE_FRAME_NUM,
         ids::TIMELINE_ANIM_DD,
@@ -539,13 +538,12 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
             par[1]
         );
     }
-    let segunda = y(ids::TIMELINE_AUTOKEY);
+    let segunda = y(ids::TIMELINE_ADD_MARKER);
     assert!(
         segunda > titulo + m::FIELD_H * 0.5,
-        "o gravar sobe ao título"
+        "o Marker sobe ao título"
     );
     for id in [
-        ids::TIMELINE_ADD_MARKER,
         ids::TIMELINE_CLIP_OPT[0],
         ids::TIMELINE_CLIP_OPT[1],
         ids::TIMELINE_ADD_CLIP,
@@ -553,11 +551,7 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     ] {
         assert!((y(id) - segunda).abs() < 0.5, "{id:?} fora da 2.ª fileira");
     }
-    let ordem = [
-        ids::TIMELINE_AUTOKEY,
-        ids::TIMELINE_ADD_MARKER,
-        ids::TIMELINE_CLIP_OPT[0],
-    ];
+    let ordem = [ids::TIMELINE_ADD_MARKER, ids::TIMELINE_CLIP_OPT[0]];
     for par in ordem.windows(2) {
         assert!(
             r(par[0]).x + r(par[0]).w <= r(par[1]).x + 0.5,
@@ -566,15 +560,21 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
             par[1]
         );
     }
-    // Os separadores (onda 1c): um fio com a folga do fluxo dos DOIS lados, entre Arrange e o |◁ e
-    // entre Marker e «Clips». Sem eles a folga é UM vão (o rótulo «Clips» medido à parte).
+    // Os separadores (onda 1c; dono 13/11): um fio com a folga do fluxo dos DOIS lados, de cada lado
+    // da Length e entre Marker e «Clips». Sem eles a folga é UM vão (o rótulo «Clips» medido à parte).
     let sep = ph2d_editor_core::panel::cards::banda::SEPARADOR_W + m::FIELD_GAP * 2.0;
     let abas = r(ids::TIMELINE_TAB_ARRANGE);
-    let folga = r(ids::TIMELINE_GO_START).x - (abas.x + abas.w);
+    let dur = r(ids::TIMELINE_LENGTH_NUM);
+    let folga = dur.x - (abas.x + abas.w);
     // O alvo da aba (onda 2i) cresceu meio vão para cada lado dentro da antiga caixa das abas.
     assert!(
         folga >= sep + m::SEG_PAD * 0.5 - 0.5,
-        "sem separador entre Arrange e o |◁: folga {folga}"
+        "sem separador entre Arrange e a Length: folga {folga}"
+    );
+    let folga = r(ids::TIMELINE_TIME_NUM).x - (dur.x + dur.w);
+    assert!(
+        (folga - sep).abs() < 0.5,
+        "sem separador entre a Length e o Time: folga {folga}"
     );
     let marker = r(ids::TIMELINE_ADD_MARKER);
     let clips_w = ph2d_text::TextSystem::without_system_fonts()
@@ -593,11 +593,11 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
         add.y
     );
     // O que saiu da barra não está à vista enquanto a janelinha dele está fechada.
-    for id in NAS_OPCOES.iter().chain(NO_MENU.iter()).chain([
-        &ids::TIMELINE_LOOP,
-        &ids::TIMELINE_PINGPONG,
-        &ids::TIMELINE_LENGTH_NUM,
-    ]) {
+    for id in NAS_OPCOES
+        .iter()
+        .chain(NO_MENU.iter())
+        .chain([&ids::TIMELINE_LOOP, &ids::TIMELINE_PINGPONG])
+    {
         assert!(m0.rect(*id).is_none(), "{id:?} ainda pintado na barra");
     }
     // O ⋯ mora no chip ESCOLHIDO (o clipe 0 do documento).
@@ -738,8 +738,9 @@ fn com_muitos_clipes_os_chips_ficam_numa_fileira_e_o_resto_vai_para_a_lista() {
 
 /// ⭐ Doc 15 onda 2i (dono 09/11): as abas passaram a pílula sem caixa e Auto Key · Record · Marker a
 /// discretos — SÓ a cara. Os alvos não encolheram: cada um é pelo menos o medido antes da mudança
-/// (abas 36,8 / 69,9 / 55,2 × 24; Auto Key 108 × 28; Marker 75 × 28), e o clique na aba ainda troca a
-/// aba. Record while playing foi para a engrenagem (dono 12/11).
+/// (abas 36,8 / 69,9 / 55,2 × 24; Marker 75 × 28), e o clique na aba ainda troca a aba. Record while
+/// playing foi para a engrenagem (dono 12/11); o Auto Key virou o ● dos controlos flutuantes (dono
+/// 13/11), uma célula de ícone (28 × 28) como as do tocar.
 #[test]
 fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
     let mut mesa = mesa(true);
@@ -747,7 +748,7 @@ fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
         (ids::TIMELINE_TAB_KEYS, 36.8, 24.0),
         (ids::TIMELINE_TAB_CONTAINERS, 69.9, 24.0),
         (ids::TIMELINE_TAB_ARRANGE, 55.2, 24.0),
-        (ids::TIMELINE_AUTOKEY, 108.0, 28.0),
+        (ids::TIMELINE_AUTOKEY, 28.0, 28.0),
         (ids::TIMELINE_ADD_MARKER, 75.0, 28.0),
     ] {
         let r = mesa.rect(id).expect("o controlo está pintado");

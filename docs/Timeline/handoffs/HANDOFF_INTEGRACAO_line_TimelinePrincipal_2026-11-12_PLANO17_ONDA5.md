@@ -99,6 +99,18 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
   `ph2d-host-desktop`: the_motion_path 13, autokey 67, timeline 86, undo 94. Arquitetura: the_shell_only_shrinks 2, file_loc_cap 2, hr15 1. Tudo ✓.
 - **Smoke ao dono (Done):** `PH2D_ANIMACAO_SMOKE=7`, Done ⇒ continua em «pular», o arco curvo continua no canvas, as faixas dizem «Herói»/«Espada».
 
+## Acréscimo 2 — dono 13/11: controlos flutuantes e a duração na barra
+
+- **Os controlos de tocar FLUTUAM acima do painel**, canto superior esquerdo, colados por fora da moldura (`transport_flutuante.rs`, submódulo de `transport_cartoes`): ⏮ ‹ ■ ▶ › ⏭ ●. O ▶ verde (`Success`), o ● vermelho cheio (`Danger`) = **Auto Key** (mesmo id `TIMELINE_AUTOKEY`, o mesmo `Toggle` à shell; a caixa da 2.ª fileira saiu e a chave i18n `panel.timeline.card.autokey` com ela), o ■ = **Stop** novo (`TIMELINE_STOP`, `clique_dos_cartoes`: `Pause` + `Scrub(0)`, sem tocar a shell).
+  O rect é `painel.y − FIELD_GAP − FIELD_H` (preso à janela), a partir do `rect` real do painel (`paint_bar` ganha `(corpo, painel)`; o `ctx.slot` é a posição de NASCIMENTO de um flutuante).
+  O HUD de diagnóstico cede-lhe: `bottom_hud::publica_fila_flutuante(r)` (novo, `ph2d-editor-core`, consumido a cada quadro como a coluna do módulo).
+- `CardCtx::icones_em_fila_tingidos` (novo, `ph2d-editor-core`): a fila de ícones com tinta por célula; `icones_em_fila_com_traco` delega.
+- **A Length (duração do clipe) sai da engrenagem para a 1.ª fileira**, entre as abas e o Time, com um separador de cada lado (`grupo_do_tempo`, glifo `CardLen`; o ∞ sem duração autorada continua por `barra_menus::valor_lido_da_dur`, agora `pub(crate)`).
+- Testes: `tests/it/controles_flutuantes.rs` (3: flutua acima e por ordem, o ● liga o Auto Key, o ■ pára e volta ao início; mutações do Stop e do `rect` sangraram).
+  Ajustados ao desenho novo: `os_cartoes` (duas fileiras, separadores da Length, alvo do Auto Key = célula 28 × 28), `os_chips_da_barra` (a 2.ª fileira mede-se pelo Marker), `o_cartao_estreito` (a fila flutuante é a única coisa pintada fora do cartão, de propósito), `no_lugar_seam` (a FX mede-se da lane Base: num painel de 860 px a migalha do container aberto faz a barra ganhar uma fileira).
+- Por nome ✓: panel-timeline os_cartoes 35, seam 131, controles_flutuantes 3, os_chips_da_barra 7, o_cartao_estreito 3, tab 50, transport 25, barra 21, clip 38, duration_chip 15, animando 4 · editor-core bottom_hud 6, the_hud 3, dropdown 36, censo 15, hr15 1, file_loc_cap 2, the_shell_only_shrinks 2 · host-desktop timeline 86, autokey 67, the_motion_path 13 · fmt ✓ · clippy `-D warnings` (editor-core, panel-timeline, i18n) ✓. Shell intocada.
+- [Foto](../fotos/17_ajustes_13_11_controles_flutuantes.png).
+
 ## Aberto (visto, NÃO feito)
 
 1. **Limite conhecido:** com o pai ANIMADO durante o clip, o duplo-clique na curva projeta pelo pai na 1.ª chave (desenho e âncoras são exatos por instante). Foto de cena com pai rodado não tirada.

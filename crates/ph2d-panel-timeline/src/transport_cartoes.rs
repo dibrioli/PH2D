@@ -1,6 +1,7 @@
 //! ⭐ **A barra do transporte em cartões, no molde do Rive** (`docs/Timeline/15_plano_redesenho_molde_rive.md`,
-//! onda 1b): duas fileiras — título (abas · migalha · tocar · Time · Frame · fps · dono · opções) e
-//! gravar + clipes (Auto Key · Marker · um chip por clipe). Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
+//! onda 1b): duas fileiras — título (abas · migalha | Length | Time · Frame · fps · dono · opções) e
+//! clipes (Animating·Done · Marker · um chip por clipe); o tocar e o gravar FLUTUAM acima do painel
+//! ([`flutuante`], dono 13/11). Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
 //! «⋯» do clipe e na engrenagem (`crate::barra_menus`). `PH2D_CARDS=0` pinta a barra de [`super::paint_bar`].
 
 use super::*;
@@ -12,7 +13,10 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 /// A largura do chip do dono.
 const ANIM_W: f32 = 168.0; // LITERAL-PX-OK: «Animation: Scene» + seta, medido na foto; nomes longos cortam
 
-const DICAS: [(ph2d_a11y::NodeId, &str); 21] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 24] = [
+    (ids::TIMELINE_STOP, "panel.timeline.tip.stop"),
+    (TIMELINE_AUTOKEY, "panel.timeline.tip.autokey"),
+    (ids::TIMELINE_LENGTH_NUM, "panel.timeline.tip.length"),
     (TIMELINE_TIME_NUM, "panel.timeline.tip.time"),
     (TIMELINE_FRAME_NUM, "panel.timeline.tip.frame"),
     (TIMELINE_GO_START, "panel.timeline.tip.go_start"),
@@ -398,29 +402,37 @@ fn campo(c: &mut CardCtx<'_>, item: Item, id: ph2d_a11y::NodeId, at: (f32, f32))
     c.campo_compacto(id, rotulo_do_campo(item), Glyph::Icon(icone), at);
 }
 
-/// 1.ª fileira, depois das abas: tocar · Time · Frame · fps.
-fn grupo_de_tocar(
+/// 1.ª fileira, depois das abas: | Length | Time · Frame · fps (dono 13/11: a duração do clipe entre as
+/// abas e o Time, com um separador de cada lado; o tocar flutua acima do painel).
+fn grupo_do_tempo(
     ctx: &mut PaintCtx,
     theme: Theme,
     f: &mut Fluxo,
-    (snap, view): (&TimelineViewSnapshot, BarView),
+    snap: &TimelineViewSnapshot,
     body: Rect,
 ) {
     let ink = CardInk::of_list(theme);
-    // O separador das abas (onda 1c) só entra se o tocar vem logo a seguir na MESMA fileira.
-    if f.resta() >= banda::SEPARADOR_W + m::FIELD_GAP + banda::icones_w(TRANSPORT_BTNS) {
-        let (x, y) = f.poe(banda::SEPARADOR_W);
-        cartao(ctx, ink, body).separador_em(x, y);
-    }
+    let w = banda::SEPARADOR_W
+        + m::FIELD_GAP
+        + banda::CAMPO_COMPACTO_W
+        + m::FIELD_GAP
+        + banda::SEPARADOR_W;
+    f.guarda_para(w);
     let mut c = cartao(ctx, ink, body);
-    let at = f.poe(banda::icones_w(TRANSPORT_BTNS));
-    // Os glifos do transporte num traço mais grosso (dono 12/11): leem-se de longe.
-    c.icones_em_fila_com_traco(
-        &fileira_do_transporte(snap, view),
-        at.0,
-        at.1,
-        StrokeToken::Thick,
-    );
+    let (x, y) = f.poe(banda::SEPARADOR_W);
+    c.separador_em(x, y);
+    let at = f.poe(banda::CAMPO_COMPACTO_W);
+    let nome = ph2d_i18n::tr("panel.timeline.card.length_long");
+    let glifo = Glyph::Icon(IconId::CardLen);
+    match crate::barra_menus::valor_lido_da_dur(snap) {
+        Some(lido) => ph2d_editor_core::widget::card_field::com_valores(
+            &[(ids::TIMELINE_LENGTH_NUM, lido)],
+            || c.campo_compacto(ids::TIMELINE_LENGTH_NUM, nome, glifo, at),
+        ),
+        None => c.campo_compacto(ids::TIMELINE_LENGTH_NUM, nome, glifo, at),
+    }
+    let (x, y) = f.poe(banda::SEPARADOR_W);
+    c.separador_em(x, y);
     // Time e Frame são um grupo: não se partem entre fileiras.
     let (wt, wf) = (banda::CAMPO_COMPACTO_W, banda::CAMPO_COMPACTO_W);
     let (x, y) = f.poe(wt + m::FIELD_GAP + wf);
@@ -436,25 +448,7 @@ fn grupo_de_tocar(
     c.rotulo_com_sinal(Sinal::Icone(IconId::Fps, ColorToken::CardLabel), &fps, x, y);
 }
 
-/// A caixa de gravar da barra: Auto Key (o ponto acende-se vermelho quando liga). «Record while playing»
-/// mora na engrenagem (dono 12/11). A cor mora no sinal, nunca no quadradinho.
-fn caixa_de_gravar(snap: &TimelineViewSnapshot) -> Emoldurada<'static> {
-    // Apagado desligado; o vermelho só quando LIGA (doc 15 onda 2i: as abas mandam na barra).
-    let ponto = if snap.auto_key {
-        ColorToken::Danger
-    } else {
-        ColorToken::TextDisabled
-    };
-    Emoldurada {
-        id: TIMELINE_AUTOKEY,
-        nome: ph2d_i18n::tr("panel.timeline.card.autokey"),
-        on: snap.auto_key,
-        antes: None,
-        fim: Some(Sinal::Ponto(ponto)),
-    }
-}
-
-/// 2.ª fileira, no início: [Animating · Done] · Auto Key · Marker (os clipes vêm a seguir).
+/// 2.ª fileira, no início: [Animating · Done] · Marker (os clipes vêm a seguir).
 fn grupo_de_gravar(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -472,9 +466,6 @@ fn grupo_de_gravar(
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
     let tons = tons_da_barra(theme);
-    let caixa = caixa_de_gravar(snap);
-    let (x, y) = f.poe(c.emoldurada_w(&caixa));
-    c.emoldurada_discreta_em(&caixa, x, y, tons);
     let nome = ph2d_i18n::tr("panel.timeline.card.add_marker");
     let w = c.botao_com_icone_w(nome);
     let (x, y) = f.poe(w);
@@ -520,14 +511,15 @@ pub(crate) fn paint_bar(
     ctx: &mut PaintCtx,
     theme: Theme,
     strip: Rect,
-    body: Rect,
+    (body, painel): (Rect, Rect),
     snap: &TimelineViewSnapshot,
     view: BarView,
 ) -> Barra {
     prepara(ctx.host.store_mut(), snap, view);
+    flutuante::pinta(ctx, theme, painel, (snap, view));
     let mut f = Fluxo::novo(strip, body);
     abas_e_migalha(ctx, theme, &mut f, (snap, view), body);
-    grupo_de_tocar(ctx, theme, &mut f, (snap, view), body);
+    grupo_do_tempo(ctx, theme, &mut f, snap, body);
     let (anim, opcoes) = dono_e_opcoes(ctx, theme, &mut f, (snap, view), body);
     f.quebra();
     grupo_de_gravar(ctx, theme, &mut f, snap, body);
@@ -540,6 +532,9 @@ pub(crate) fn paint_bar(
         menu_do_clip: clips.menu,
     }
 }
+
+#[path = "transport_flutuante.rs"]
+pub(crate) mod flutuante;
 
 #[cfg(test)]
 mod tests {

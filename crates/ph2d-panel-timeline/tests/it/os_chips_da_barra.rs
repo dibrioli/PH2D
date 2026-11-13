@@ -133,7 +133,7 @@ fn os_alvos_dos_chips_nao_encolheram() {
     ferramenta::force_cards_on_this_thread(None);
 }
 
-/// ⭐⭐ Dois grupos na MESMA fileira (a do Auto Key): os clipes e o «+» antes, os containers depois, com o
+/// ⭐⭐ Dois grupos na MESMA fileira (a do Marker; o Auto Key flutua acima do painel desde 13/11): os clipes e o «+» antes, os containers depois, com o
 /// rótulo «Containers» no vão. A Keys não tem o 2.º grupo. *Mutação: pintar os containers antes do «+» ⇒
 /// vermelho na ordem.*
 #[test]
@@ -144,7 +144,7 @@ fn os_dois_grupos_moram_na_fileira_do_gravar() {
     for tab in ABAS {
         let m0 = mesa(tab);
         let r = |id| pintado(&m0, id);
-        let fileira = r(ids::TIMELINE_AUTOKEY).y;
+        let fileira = r(ids::TIMELINE_ADD_MARKER).y;
         let ordem = [
             ids::TIMELINE_CLIP_OPT[0],
             ids::TIMELINE_CLIP_OPT[1],
@@ -375,7 +375,7 @@ fn o_segundo_grupo_nao_come_a_folha() {
             // Onde a folha começa: o «+» das faixas, logo abaixo da barra.
             let topo = |snap| {
                 let m0 = mesa_em(true, tab, janela, snap);
-                let fundo = m0.rect(ids::TIMELINE_AUTOKEY).map(|r| r.y);
+                let fundo = m0.rect(ids::TIMELINE_ADD_MARKER).map(|r| r.y);
                 (m0.rect(ids::TIMELINE_ADD_TRACK).map(|r| r.y), fundo)
             };
             let (antes, depois) = (topo(sem), topo(documento()));

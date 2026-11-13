@@ -25,3 +25,6 @@ pub const TIMELINE_CLIPS_AS_LIST: NodeId = hash_node_id("timeline.clips_as_list"
 
 /// O «Done» da pílula «Animating …» (doc 17 item 9, B7): devolve a cena e pára a prévia do clipe.
 pub const TIMELINE_ANIMATING_DONE: NodeId = hash_node_id("timeline.animating_done");
+
+/// O Stop dos controlos flutuantes (dono 13/11): pára e volta ao início.
+pub const TIMELINE_STOP: NodeId = hash_node_id("timeline.stop");

@@ -20,6 +20,7 @@ mod chip_para_faixa;
 mod clipes_em_lista;
 mod close_button_seam;
 mod containers_tab_seam;
+mod controles_flutuantes;
 mod curves_on_canvas_seam;
 mod duration_chip_gesture;
 mod every_word_this_panel_shows_comes_from_the_string_table;

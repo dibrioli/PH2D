@@ -171,7 +171,7 @@ fn paint_barra(
             (mol.cab.w - mol.vizinha_do_fecho.w).max(0.0),
             mol.cab.h,
         );
-        let b = transport::cartoes::paint_bar(ctx, theme, cab, mol.corpo, snapshot, barra);
+        let b = transport::cartoes::paint_bar(ctx, theme, cab, (mol.corpo, rect), snapshot, barra);
         return (
             b.depois,
             b.clip,

@@ -99,13 +99,30 @@ fn prova_que_nada_sai(mesa: &mut Mesa<TimelinePanel>) -> (Rect, Rect) {
     assert!(caixas.len() > 50, "a régua leu a cena: {}", caixas.len());
     // A sombra do cartão (o único primitivo que ENVOLVE o cartão inteiro) é dele, por fora de propósito.
     let sombra = |r: &Rect| dentro(c, *r, 0.0);
-    let fora: Vec<_> = caixas
-        .iter()
-        .filter(|r| !sombra(r) && !dentro(**r, c, TOLERANCIA))
-        .collect();
-    assert!(fora.is_empty(), "pintado fora do cartão {c:?}: {fora:?}");
+    // E os controlos de tocar FLUTUAM acima do cartão de propósito (dono 13/11): a fila do ⏮ ao ●,
+    // com o fundo que os lê sobre o canvas, colada por cima da moldura.
     let regs = mesa.host.registos_da_ultima_pintura();
     let rect = |id| regs.iter().find(|(w, _)| *w == id).map(|(_, r)| *r);
+    let (ini, rec) = (
+        rect(ids::TIMELINE_GO_START).expect("o ⏮ flutua"),
+        rect(ids::TIMELINE_AUTOKEY).expect("o ● flutua"),
+    );
+    assert!(
+        ini.y + ini.h <= c.y,
+        "os controlos não flutuam acima do cartão"
+    );
+    let pad = ph2d_editor_core::panel::cards::banda::metrics::SEG_PAD;
+    let fila = Rect::new(
+        ini.x - pad,
+        ini.y - pad,
+        rec.x + rec.w - ini.x + pad * 2.0,
+        ini.h + pad * 2.0,
+    );
+    let fora: Vec<_> = caixas
+        .iter()
+        .filter(|r| !sombra(r) && !dentro(**r, c, TOLERANCIA) && !dentro(**r, fila, 0.5))
+        .collect();
+    assert!(fora.is_empty(), "pintado fora do cartão {c:?}: {fora:?}");
     let fita = rect(ids::TIMELINE_LANES).expect("a fita registou-se");
     let seta = rect(ids::TIMELINE_DUR_HANDLE).expect("a ⟷ registou-se");
     assert!(

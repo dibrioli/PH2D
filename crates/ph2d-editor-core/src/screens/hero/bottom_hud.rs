@@ -87,11 +87,20 @@ pub fn paint_bottom_hud(
     let rect = rect_of(&bar, layout, store, text_system);
     paint_status_bar(&bar, rect, scene, text_system, theme);
     COLUNA_DO_MODULO.set(None);
+    FILA_FLUTUANTE.set(None);
 }
 
 thread_local! {
     /// A coluna ① do módulo neste quadro (em cartões): o HUD cede-lhe como cede a uma lista (M7).
     static COLUNA_DO_MODULO: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+    /// A fila que um painel faz flutuar FORA do seu rect (os controlos de tocar da Timeline, dono
+    /// 13/11): o HUD cede-lhe como a um painel. Consumida pelo HUD; o painel publica-a a cada quadro.
+    static FILA_FLUTUANTE: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+}
+
+/// Um painel pinta uma fila fora do seu rect, na faixa do HUD: o HUD desvia-se dela.
+pub fn publica_fila_flutuante(r: Rect) {
+    FILA_FLUTUANTE.set(Some(r));
 }
 
 /// A coluna do módulo pintada neste quadro, antes do HUD; o HUD consome-a.
@@ -149,7 +158,10 @@ const MARGEM_DO_HUD: f32 = 20.0; // LITERAL-PX-OK: HUD viewport margin (chrome-s
 /// O vão horizontal que o HUD tem: a janela menos os painéis que flutuam na faixa dele. Quem está na
 /// metade esquerda aperta pela esquerda; quem está na direita, pela direita.
 fn vao_do_hud(layout: &HeroLayout, store: &crate::interaction::WidgetStore) -> (f32, f32) {
-    let coluna = COLUNA_DO_MODULO.get();
+    let coluna = COLUNA_DO_MODULO
+        .get()
+        .into_iter()
+        .chain(FILA_FLUTUANTE.get());
     let faixa = layout.bottom_hud;
     let meio = layout.viewport.x + layout.viewport.w * 0.5;
     let mut vao = (

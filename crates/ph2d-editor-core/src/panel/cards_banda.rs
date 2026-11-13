@@ -528,6 +528,18 @@ impl CardCtx<'_> {
         y: f32,
         traco: StrokeToken,
     ) {
+        self.icones_em_fila_tingidos(celulas, &[], (x, y), traco);
+    }
+
+    /// [`Self::icones_em_fila_com_traco`] com a tinta de cada glifo em `cores[i]` quando `Some` (o
+    /// gravar vermelho e o tocar verde da Timeline, dono 13/11); sem tinta, a de sempre.
+    pub fn icones_em_fila_tingidos(
+        &mut self,
+        celulas: &[Icone],
+        cores: &[Option<ColorToken>],
+        (x, y): (f32, f32),
+        traco: StrokeToken,
+    ) {
         let caixa = Rect::new(x, y, icones_w(celulas.len()), m::FIELD_H);
         fill_rounded_rect(
             self.scene,
@@ -556,7 +568,10 @@ impl CardCtx<'_> {
                 };
                 fill_rounded_rect(self.scene, fundo, m::SEG_RADIUS, self.ink.color(cor));
             }
-            let tinta = if c.id.is_none() {
+            let propria = cores.get(i).copied().flatten().filter(|_| c.id.is_some());
+            let tinta = if let Some(cor) = propria {
+                cor
+            } else if c.id.is_none() {
                 ColorToken::Text3
             } else if c.on || hover {
                 ColorToken::Text1

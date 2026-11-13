@@ -796,12 +796,12 @@ fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
     ferramenta::force_cards_on_this_thread(None);
 }
 
-/// ⭐⭐ **O fim do clipe mora na barra** (dono 13/11): `‹ Stop [Loop ▾] Ping-Pong ›` à direita da fileira
-/// dos clipes; a setinha pede o mesmo que o ícone do lado dela; o nome abre a lista, que fecha pelo
-/// clique de fora; a engrenagem já não o tem. *Mutações: `‹` andar para a direita ⇒ vermelho; tirar a
-/// reserva da fileira ⇒ o widget desce.*
+/// ⭐⭐ **O fim do clipe mora na barra** (dono 13/11): `Stop [Loop ▾] Ping-Pong` à direita da fileira dos
+/// clipes, sem setinhas; cada ícone do lado pede a sua opção; o nome abre a lista, que fecha pelo clique
+/// de fora; a engrenagem já não o tem. *Mutações: trocar os lados ⇒ vermelho; tirar a reserva da
+/// fileira ⇒ o widget desce.*
 #[test]
-fn o_fim_do_clipe_mora_na_barra_e_as_setinhas_pedem_o_do_lado() {
+fn o_fim_do_clipe_mora_na_barra_e_cada_lado_pede_a_sua_opcao() {
     let snap = TimelineViewSnapshot {
         loop_range: Some((0.0, 4.0)),
         ..documento()
@@ -811,21 +811,21 @@ fn o_fim_do_clipe_mora_na_barra_e_as_setinhas_pedem_o_do_lado() {
         let a = m.clica(id);
         format!("{a:?} | {:?}", drain_intents())
     };
-    assert_eq!(pede(ids::TIMELINE_END_PREV), pede(ids::TIMELINE_END_STOP));
-    assert_eq!(
-        pede(ids::TIMELINE_END_NEXT),
+    assert_ne!(
+        pede(ids::TIMELINE_END_STOP),
         pede(ids::TIMELINE_END_PINGPONG)
     );
-    assert_ne!(pede(ids::TIMELINE_END_PREV), pede(ids::TIMELINE_END_NEXT));
+    assert!(
+        !pede(ids::TIMELINE_END_STOP).starts_with("[]"),
+        "o Stop do lado não pediu nada"
+    );
 
     let mut m = mesa_em(true, JANELA, snap.clone());
     let marker = m.rect(ids::TIMELINE_ADD_MARKER).expect("Marker");
     let ordem = [
-        ids::TIMELINE_END_PREV,
         ids::TIMELINE_END_STOP,
         ids::TIMELINE_END_DD,
         ids::TIMELINE_END_PINGPONG,
-        ids::TIMELINE_END_NEXT,
     ];
     let rects: Vec<_> = ordem
         .iter()

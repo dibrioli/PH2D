@@ -1,6 +1,6 @@
-//! ⭐ **O fim do clipe na barra** (dono 13/11): `‹ [vizinha] [● escolhida ▾] [vizinha] ›` encostado à
-//! direita da 2.ª fileira. O nome abre a lista; as setinhas andam em roda; o ícone de uma vizinha
-//! escolhe-a direto. Ao trocar, ícones e nome deslizam de lugar (seco com movimento reduzido).
+//! ⭐ **O fim do clipe na barra** (dono 13/11): `[vizinha] [● escolhida ▾] [vizinha]` encostado à
+//! direita da 2.ª fileira, a escolhida na cor do chip escolhido. O nome abre a lista; o ícone de uma
+//! vizinha escolhe-a direto (as setinhas `‹ ›` saíram: supérfluas, dono 13/11). Ao trocar, ícones e nome deslizam de lugar (seco com movimento reduzido).
 //! Os eventos são os das caixas de antes (`TIMELINE_LOOP` / `TIMELINE_PINGPONG`).
 
 use std::cell::Cell;
@@ -80,10 +80,8 @@ impl Fim {
 }
 
 /// As dicas do widget, para a tabela da barra.
-pub(crate) const DICAS: [(NodeId, &str); 6] = [
+pub(crate) const DICAS: [(NodeId, &str); 4] = [
     (ids::TIMELINE_END_DD, "panel.timeline.tip.end_dd"),
-    (ids::TIMELINE_END_PREV, "panel.timeline.tip.end_prev"),
-    (ids::TIMELINE_END_NEXT, "panel.timeline.tip.end_next"),
     (ids::TIMELINE_END_STOP, "panel.timeline.tip.end_stop"),
     (ids::TIMELINE_END_LOOP, "panel.timeline.tip.end_loop"),
     (
@@ -127,12 +125,8 @@ pub(crate) fn apply_event(
         state.add_track_open = false;
         return Some(EventOutcome::Consumed);
     }
+    let quer = Fim::de_id(id)?;
     let agora = fim_de(&state::current_snapshot());
-    let quer = match id {
-        _ if id == ids::TIMELINE_END_PREV => agora.vizinha(-1),
-        _ if id == ids::TIMELINE_END_NEXT => agora.vizinha(1),
-        _ => Fim::de_id(id)?,
-    };
     state.fim_aberto = false;
     if let Some((caixa, on)) = toggle_que_pede(agora, quer) {
         if let Some(InteractiveState::Toggle { on: no_store, .. }) = host.store_mut().get_mut(caixa)
@@ -223,10 +217,11 @@ fn centro_w(ctx: &mut PaintCtx) -> f32 {
 
 /// A largura do widget inteiro.
 pub(crate) fn largura(ctx: &mut PaintCtx) -> f32 {
-    m::FIELD_H * 4.0 + centro_w(ctx)
+    m::FIELD_H * 2.0 + centro_w(ctx)
 }
 
-/// Pinta o widget em `(x, y)` e devolve o rect do centro (a âncora da lista).
+/// Pinta o widget em `(x, y)` e devolve o rect do centro (a âncora da lista). O centro leva a tinta do
+/// chip escolhido da barra (dono 13/11: «a opção selecionada fica mais destacada, com cor»).
 pub(crate) fn pinta(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -234,6 +229,7 @@ pub(crate) fn pinta(
     (snap, aberto): (&TimelineViewSnapshot, bool),
 ) -> Rect {
     let ink = CardInk::of_list(theme);
+    let tons = crate::transport::cartoes::tons_da_barra(theme);
     let h = m::FIELD_H;
     let cw = centro_w(ctx);
     let nw = nome_w(ctx);
@@ -242,17 +238,11 @@ pub(crate) fn pinta(
     let reduzido = ctx.host.store().reduced_motion();
     let troca = troca_de(fim, agora);
     let t = andamento(troca, agora, reduzido);
-    let caixa = Rect::new(x, y, h * 4.0 + cw, h);
-    let centro = Rect::new(x + h * 2.0, y, cw, h);
-    let celulas = [
-        (ids::TIMELINE_END_PREV, Rect::new(x, y, h, h)),
-        (fim.vizinha(-1).id(), Rect::new(x + h, y, h, h)),
-        (ids::TIMELINE_END_DD, centro),
+    let caixa = Rect::new(x, y, h * 2.0 + cw, h);
+    let centro = Rect::new(x + h, y, cw, h);
+    let lados = [
+        (fim.vizinha(-1).id(), Rect::new(x, y, h, h)),
         (fim.vizinha(1).id(), Rect::new(centro.x + cw, y, h, h)),
-        (
-            ids::TIMELINE_END_NEXT,
-            Rect::new(centro.x + cw + h, y, h, h),
-        ),
     ];
     let (store, hit) = ctx.host.store_and_hit_index_mut();
     let scene = &mut *ctx.scene;
@@ -270,51 +260,41 @@ pub(crate) fn pinta(
             r.h - m::SEG_PAD * 2.0,
         )
     };
-    for (id, r) in celulas {
+    for (id, r) in lados {
         hit.register(id, r);
-        if id != ids::TIMELINE_END_DD {
-            dicas::icone(id);
+        dicas::icone(id);
+        if store.hover_live(id) > 0.0 {
+            let cor = ink.color(ColorToken::CardFieldHover);
+            fill_rounded_rect(scene, por_dentro(r), m::SEG_RADIUS, cor);
         }
-        let aceso = store.hover_live(id) > 0.0 || (id == ids::TIMELINE_END_DD && aberto);
-        let cor = if id == ids::TIMELINE_END_DD {
-            Some(if aceso {
-                ColorToken::CardFieldHover
-            } else {
-                ColorToken::KanbanCardRaised
-            })
-        } else {
-            aceso.then_some(ColorToken::CardFieldHover)
-        };
-        if let Some(cor) = cor {
-            fill_rounded_rect(scene, por_dentro(r), m::SEG_RADIUS, ink.color(cor));
-        }
+    }
+    hit.register(ids::TIMELINE_END_DD, centro);
+    let aceso = aberto || store.hover_live(ids::TIMELINE_END_DD) > 0.0;
+    let fundo = if aceso {
+        tons.sob_o_rato
+    } else {
+        tons.ativa_fundo
+    };
+    fill_rounded_rect(scene, por_dentro(centro), m::SEG_RADIUS, fundo);
+    if aceso {
+        // Sob o rato ou aberta, a cor continua: o contorno do escolhido por cima do degrau acima.
+        let fio = StrokeToken::Thin.px();
+        ph2d_editor_core::paint::stroke_rounded_rect(
+            scene,
+            por_dentro(centro),
+            m::SEG_RADIUS,
+            fio,
+            tons.ativa_fundo,
+        );
     }
     let g = m::ICON_GLYPH;
     let traco = StrokeToken::Default.px();
-    for (id, icone, r) in [
-        (ids::TIMELINE_END_PREV, IconId::ChevronLeft, celulas[0].1),
-        (ids::TIMELINE_END_NEXT, IconId::ChevronRight, celulas[4].1),
-    ] {
-        let tinta = if store.hover_live(id) > 0.0 {
-            ColorToken::Text1
-        } else {
-            ColorToken::Text2
-        };
-        let b = Rect::new(r.x + (h - g) * 0.5, r.y + (h - g) * 0.5, g, g);
-        paint_icon(scene, icone, b, ink.color(tinta), traco);
-    }
     let seta = Rect::new(centro.x + cw - m::FIELD_PAD_R - g, y + (h - g) * 0.5, g, g);
-    paint_icon(
-        scene,
-        IconId::ChevronDown,
-        seta,
-        ink.color(ColorToken::Text2),
-        traco,
-    );
+    paint_icon(scene, IconId::ChevronDown, seta, tons.ativa_texto, traco);
     // A x do glifo em cada fenda; para lá de ±1 continua meia célula (sai pela borda do recorte).
     let gx = |s: f32| {
         let (e, c, d) = (
-            x + h + (h - g) * 0.5,
+            x + (h - g) * 0.5,
             centro.x + m::FIELD_PAD_R,
             centro.x + cw + (h - g) * 0.5,
         );
@@ -328,24 +308,20 @@ pub(crate) fn pinta(
             d + (s - 1.0) * h
         }
     };
-    scene.push_clip(&rect_to_vello(Rect::new(x + h, y, h * 2.0 + cw, h)));
+    scene.push_clip(&rect_to_vello(caixa));
     for op in RODA {
         let (s, alfa) = fenda(op, (troca.de, troca.para), t);
         let perto = (1.0 - s.abs()).clamp(0.0, 1.0);
         let tinta = if perto >= 0.5 {
-            ColorToken::Text1
+            tons.ativa_texto
+        } else if store.hover_live(op.id()) > 0.0 {
+            ink.color(ColorToken::Text1)
         } else {
-            ColorToken::Text2
+            ink.color(ColorToken::Text2)
         };
         let gl = gx(s);
         let b = Rect::new(gl, y + (h - g) * 0.5, g, g);
-        paint_icon(
-            scene,
-            op.icone(),
-            b,
-            ink.color(tinta).multiply_alpha(alfa),
-            traco,
-        );
+        paint_icon(scene, op.icone(), b, tinta.multiply_alpha(alfa), traco);
         // O nome só se vê dentro do centro, antes da seta, e cruza com o que entra (meia fenda).
         let nome_alfa = (1.0 - 2.0 * s.abs()).clamp(0.0, 1.0);
         if nome_alfa > 0.0 {
@@ -358,8 +334,7 @@ pub(crate) fn pinta(
                 y + ph2d_editor_core::paint::folga_do_texto(h, m::VALUE_PX),
                 m::VALUE_PX,
                 nw,
-                ink.color(ColorToken::Text1)
-                    .multiply_alpha(alfa * nome_alfa),
+                tons.ativa_texto.multiply_alpha(alfa * nome_alfa),
             );
             scene.pop_layer();
         }

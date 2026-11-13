@@ -100,8 +100,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.tip.frame" => "Frame number. Drag the icon to scrub",
         "panel.timeline.tip.clip_menu" => "Clip options",
         "panel.timeline.tip.end_dd" => "What the clip does when it ends. Click to choose",
-        "panel.timeline.tip.end_prev" => "Previous choice for when the clip ends",
-        "panel.timeline.tip.end_next" => "Next choice for when the clip ends",
         "panel.timeline.tip.end_stop" => "When the clip ends, stop on the last frame",
         "panel.timeline.tip.end_loop" => "When the clip ends, start again from the beginning",
         "panel.timeline.tip.end_pingpong" => {

@@ -476,3 +476,191 @@ fn vai_e_volta(t: &mut PainterTool, k: usize, drena: bool) {
         t.on_tick(1000.0 / 60.0);
     }
 }
+
+/// Todo o documento que o oráculo compara: cada vidro e cada tela (a activa e as guardadas).
+fn documento(t: &PainterTool) -> (Vec<(crate::layers::LayerId, Vec<Vidro>)>, Vec<Vec<u8>>) {
+    let vidros = t.vidros.iter().map(|(k, v)| (*k, v.to_vec())).collect();
+    let mut telas = vec![t.canvas_rgba.to_vec()];
+    telas.extend(t.images.values().map(|i| i.rgba8.to_vec()));
+    (vidros, telas)
+}
+
+/// `j` (a chave) e `o` (o oráculo) fazem o mesmo gesto e ficam ao bit.
+fn par(
+    f: &mut dyn FnMut(&mut PainterTool),
+    j: &mut PainterTool,
+    o: &mut PainterTool,
+    quando: &str,
+) {
+    crate::undo::window::set_vidro_pelo_journal(true);
+    f(j);
+    crate::undo::window::set_vidro_pelo_journal(false);
+    f(o);
+    crate::undo::window::set_vidro_pelo_journal(true);
+    assert!(
+        documento(j) == documento(o),
+        "{quando}: o documento difere do oráculo"
+    );
+}
+
+fn desfaz_e_refaz_tudo(
+    j: &mut PainterTool,
+    o: &mut PainterTool,
+    n: usize,
+    depois: &(Vec<(crate::layers::LayerId, Vec<Vidro>)>, Vec<Vec<u8>>),
+) {
+    for k in 0..n {
+        par(
+            &mut |t| assert!(t.undo_last(), "desfazer {k}"),
+            j,
+            o,
+            &format!("desfeito {k}"),
+        );
+    }
+    for k in 0..n {
+        par(
+            &mut |t| assert!(t.redo_last(), "refazer {k}"),
+            j,
+            o,
+            &format!("refeito {k}"),
+        );
+    }
+    assert!(
+        documento(j) == *depois,
+        "refeito tudo, o documento não é o de antes de desfazer"
+    );
+}
+
+/// **ADR-0204 passo 5: o composite Wet sobre a aguada volta ao bit no desfazer.** Aguadas em papel de cor, Wet
+/// Paint por cima na mesma camada (o `molhada` escreve o vidro pelo `abre_o_vidro`), drenando cada quadro; depois
+/// de cada traço, de desfazer tudo e de refazer tudo, o documento é o do oráculo ao bit.
+#[test]
+fn o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer() {
+    let mut j = tool_wb(true);
+    let mut o = tool_wb(false);
+    par(
+        &mut |t| t.papel = Some([200, 170, 120]),
+        &mut j,
+        &mut o,
+        "papel",
+    );
+    for k in 0..3 {
+        par(
+            &mut |t| traco_k(t, k),
+            &mut j,
+            &mut o,
+            &format!("aguada {k}"),
+        );
+    }
+    let aguada = plano(&j);
+    par(
+        &mut |t| {
+            t.set_paint_media(PaintMedia::WetPaint);
+            t.set_brush_color_srgb8([200, 40, 30]);
+        },
+        &mut j,
+        &mut o,
+        "Wet",
+    );
+    for k in 0..3 {
+        par(
+            &mut |t| vai_e_volta(t, k, true),
+            &mut j,
+            &mut o,
+            &format!("Wet {k}"),
+        );
+    }
+    assert!(plano(&j) != aguada, "controlo: o Wet não escreveu o vidro");
+    let depois = documento(&j);
+    desfaz_e_refaz_tudo(&mut j, &mut o, 6, &depois);
+}
+
+/// **ADR-0204 passo 6: a camada nova e o vidro elidido dão o bit.** Dois traços WB na base, «+», dois na nova,
+/// um na base; desfaz tudo até antes do «+» e refaz tudo: o documento ao bit do oráculo. Grava (sem asserir,
+/// item 3) as cópias de plano que o 1.º traço na base depois do «+» paga.
+#[test]
+fn a_camada_nova_e_o_vidro_elidido_dao_o_bit() {
+    use super::watercolor_vidro::COPIAS_DO_VIDRO;
+    let mut j = tool_wb(true);
+    let mut o = tool_wb(false);
+    par(
+        &mut |t| t.papel = Some([200, 170, 120]),
+        &mut j,
+        &mut o,
+        "papel",
+    );
+    let base = j.layers.active().unwrap();
+    assert_eq!(o.layers.active(), Some(base));
+    for k in 0..2 {
+        par(&mut |t| traco_k(t, k), &mut j, &mut o, &format!("base {k}"));
+    }
+    par(
+        &mut |t| {
+            t.add_raster_layer("nova").expect("+");
+        },
+        &mut j,
+        &mut o,
+        "+",
+    );
+    for k in 2..4 {
+        par(&mut |t| traco_k(t, k), &mut j, &mut o, &format!("nova {k}"));
+    }
+    par(
+        &mut |t| t.select_layer(base),
+        &mut j,
+        &mut o,
+        "volta à base",
+    );
+    COPIAS_DO_VIDRO.set(0);
+    crate::undo::window::set_vidro_pelo_journal(true);
+    traco_k(&mut j, 4);
+    let copias = COPIAS_DO_VIDRO.get();
+    crate::undo::window::set_vidro_pelo_journal(false);
+    traco_k(&mut o, 4);
+    crate::undo::window::set_vidro_pelo_journal(true);
+    assert!(
+        documento(&j) == documento(&o),
+        "base depois do +: o documento difere do oráculo"
+    );
+    println!("cópias do plano do vidro no 1.º traço na base depois do «+»: {copias}");
+    assert_eq!(j.vidros.len(), 2, "controlo: as duas camadas têm vidro");
+    let depois = documento(&j);
+    // Desfaz tudo (traço, troca, dois traços, «+», dois traços), nos dois ao mesmo passo.
+    let mut n = 0;
+    loop {
+        crate::undo::window::set_vidro_pelo_journal(true);
+        let a = j.undo_last();
+        crate::undo::window::set_vidro_pelo_journal(false);
+        let b = o.undo_last();
+        crate::undo::window::set_vidro_pelo_journal(true);
+        assert_eq!(a, b, "desfazer {n}: um lado parou antes");
+        if !a {
+            break;
+        }
+        assert!(
+            documento(&j) == documento(&o),
+            "desfeito {n}: o documento difere do oráculo"
+        );
+        n += 1;
+    }
+    assert!(
+        n >= 6,
+        "controlo: só {n} passos desfeitos (o «+» ficou de fora)"
+    );
+    assert!(
+        j.vidros.len() < 2,
+        "controlo: desfeito tudo, a camada nova ainda tem vidro"
+    );
+    for k in 0..n {
+        par(
+            &mut |t| assert!(t.redo_last(), "refazer {k}"),
+            &mut j,
+            &mut o,
+            &format!("refeito {k}"),
+        );
+    }
+    assert!(
+        documento(&j) == depois,
+        "refeito tudo, o documento não é o de antes de desfazer"
+    );
+}

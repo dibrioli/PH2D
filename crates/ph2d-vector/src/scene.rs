@@ -224,6 +224,28 @@ impl VectorScene {
             .collect()
     }
 
+    /// Só para gates: as larguras dos traços que a cena EMITE e todos os pontos codificados
+    /// (`path_data`, pares `f32`, no espaço do `transform` de cada chamada).
+    #[must_use]
+    #[doc(hidden)]
+    pub fn probe_strokes(&self) -> (Vec<f32>, Vec<[f32; 2]>) {
+        let e = self.inner.encoding();
+        let larguras = e
+            .styles
+            .iter()
+            .filter(|s| s.flags_and_miter_limit & vello_encoding::Style::FLAGS_STYLE_BIT != 0)
+            .map(|s| s.line_width)
+            .collect();
+        let f = |u: u32| f32::from_bits(u);
+        let pontos = e
+            .path_data
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|p| [f(p[0]), f(p[1])]);
+        (larguras, pontos.collect())
+    }
+
     /// ⚠️ **Só para sondas e gates: quantas palavras do buffer FIXO `bin_data` do Vello esta cena
     /// gasta** — o `layout.bin_data_start` que o `render` subtrai de `1 << 18`
     /// (`vello_encoding::BufferSizes::new`).

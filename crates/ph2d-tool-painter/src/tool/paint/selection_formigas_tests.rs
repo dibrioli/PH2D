@@ -37,6 +37,12 @@ fn o_overlay_guardado_e_o_de_sempre_e_parado_nao_se_refaz() {
         let _ = bytes(&t, 7);
     }
     assert_eq!(construcoes() - n0, 3, "o mesmo passo parado não se refaz");
+    assert_eq!(bytes(&t, 6), t.selection_overlay_rgba(6).expect("cru").0);
+    assert_eq!(
+        construcoes() - n0,
+        3,
+        "a hachura anda a meio passo: 6 e 7 são a mesma"
+    );
 
     // Cada coisa de que o desenho depende refaz, e dá o byte do caminho cru.
     t.set_selection_overlay_opacity(0.25);

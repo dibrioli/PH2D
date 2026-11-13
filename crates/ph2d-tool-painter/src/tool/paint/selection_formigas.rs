@@ -1,6 +1,6 @@
 //! B20.11: o overlay da Seleção GUARDADO entre quadros. Refaz-se só quando muda o PASSO das formigas
-//! (relógio de parede, [`PASSO_DAS_FORMIGAS_MS`]) ou aquilo de que o desenho depende (a máscara, os
-//! contornos do Offset, a opacidade); nos outros quadros a cena leva o mesmo [`StableImage`], cujo id
+//! (relógio de parede, [`PASSO_DAS_FORMIGAS_MS`]; a hachura anda a meio passo) ou aquilo de que a
+//! hachura depende (a máscara, a opacidade); nos outros quadros a cena leva o mesmo [`StableImage`], cujo id
 //! o Vello já tem (zero subida). Análise: `docs/Painter/missao_4k/BACKLOG.md`.
 
 use super::PainterTool;
@@ -18,7 +18,6 @@ struct Chave {
     tamanho: (u32, u32),
     opacidade: u32,
     mascara: Weak<Vec<u8>>,
-    niveis: Vec<Weak<Vec<u8>>>,
 }
 
 impl PartialEq for Chave {
@@ -27,8 +26,6 @@ impl PartialEq for Chave {
             && self.tamanho == o.tamanho
             && self.opacidade == o.opacidade
             && self.mascara.ptr_eq(&o.mascara)
-            && self.niveis.len() == o.niveis.len()
-            && self.niveis.iter().zip(&o.niveis).all(|(a, b)| a.ptr_eq(b))
     }
 }
 
@@ -47,17 +44,12 @@ pub fn construcoes_do_overlay_da_selecao() -> u64 {
 
 impl PainterTool {
     fn chave_do_overlay(&self, passo: u32) -> Chave {
-        let niveis = self
-            .selection_offset_contour_levels()
-            .iter()
-            .filter_map(|&l| self.selection_offset_level_mask(l).map(Arc::downgrade))
-            .collect();
+        // A imagem só leva a hachura, que anda a `passo / 2`; as formigas e o ciano são traço de ecrã.
         Chave {
-            passo,
+            passo: passo / 2,
             tamanho: self.source_size,
             opacidade: self.paint.selection_overlay_opacity.to_bits(),
             mascara: Arc::downgrade(&self.paint.selection_mask),
-            niveis,
         }
     }
 

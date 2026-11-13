@@ -5,7 +5,8 @@
 //! file-LOC cap. Pure draw — mutates no tool/model state.
 //!
 //! B20.11: the ants step on the WALL CLOCK ([`passo_das_formigas`]) and the tool keeps the built image per
-//! step, so an idle frame re-draws the same `StableImage` (no rebuild, no upload). View-only chrome.
+//! step, so an idle frame re-draws the same `StableImage` (no rebuild, no upload). The image is only the
+//! hatch; the ants and the Offset lines are 1-screen-px strokes of the cached contour. View-only chrome.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
@@ -87,7 +88,14 @@ pub(crate) fn draw_selection_overlay_no_passo(
         window_size,
     );
     vector_scene.draw_stable_image_transformed(&imagem, affine, ph2d_vector::ImageQuality::Low);
+    if let Some(c) = painter.selection_contornos() {
+        ph2d_tool_painter::desenha_formigas(vector_scene, &c, affine, passo);
+    }
 }
+
+#[cfg(test)]
+#[path = "painter_bridge_selection_overlay_tests.rs"]
+mod tests;
 
 /// The Selection tool's crosshair (over the canvas, not a panel), in place of the brush ring. Drawn with
 /// the other cursor-following chrome, so it hides once the pointer leaves the window (AU-AU13-7).

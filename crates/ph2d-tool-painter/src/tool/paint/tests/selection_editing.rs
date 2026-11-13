@@ -424,7 +424,7 @@ fn selection_feather_softens_the_border_not_the_interior() {
     );
 }
 
-/// Wave 4: the on-canvas overlay marks the boundary with opaque marching ants, hatches the deselected
+/// Wave 4 (+ B20.11): the boundary contour carries the marching ants, the image hatches the deselected
 /// area semi-transparently, leaves the interior clear, and is absent with no selection.
 #[test]
 fn selection_overlay_ants_hatch_and_clear_interior() {
@@ -438,10 +438,15 @@ fn selection_overlay_ants_hatch_and_clear_interior() {
     let a = |x: usize, y: usize| rgba[4 * (y * 32 + x) + 3];
     // Deep interior (selected, non-edge) is fully transparent.
     assert_eq!(a(4, 16), 0, "interior stays clear");
-    // Marching ants: opaque texels along the vertical border (x = 15 is the inside edge).
+    // B20.11: the marching ants are screen strokes on the texel edge x = 16, never texels of the image.
     assert!(
-        (0..32).any(|y| a(15, y) == 255),
-        "opaque marching ants on the boundary"
+        rgba.as_chunks::<4>().0.iter().all(|p| p[3] < 255),
+        "no opaque ant texel in the image"
+    );
+    assert_eq!(
+        t.selection_contornos().expect("contour").mascara,
+        vec![vec![[0.0, 0.0], [16.0, 0.0], [16.0, 32.0], [0.0, 32.0]]],
+        "the ants run on the boundary"
     );
     // Hatch: some semi-transparent coverage in the deselected area (right of the border).
     assert!(

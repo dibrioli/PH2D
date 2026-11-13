@@ -302,7 +302,9 @@ mod plane_fork;
 pub(super) mod relief_state;
 #[cfg(test)]
 mod selection_arrasto_tests; // B16.7: o arrasto da selecao nao recompoe por Move
+pub mod selection_contorno; // B20.11: o contorno 128 em polilinhas, para as formigas no ecra
 pub mod selection_formigas; // B20.11: o overlay guardado por passo e identidade da mascara
+pub mod selection_formigas_ecra; // B20.11: as formigas em traco de ecra, 1 px a qualquer zoom
 #[cfg(test)]
 mod selection_gizmo_mods_tests; // Shift/Ctrl no gizmo de selecao
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].

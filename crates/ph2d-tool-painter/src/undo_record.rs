@@ -101,12 +101,25 @@ impl UndoController {
         &self,
         live: Option<&std::sync::Arc<Vec<u8>>>,
     ) -> Option<ModelSnapshot> {
+        self.base_for_top_com(live, false)
+    }
+
+    /// [`Self::base_for_top`]; `sem_vidro` = quem chama não lê o vidro da base (a absorção que o COMPÕE com o
+    /// journal, ADR-0204): o vidro elidido sai da base em vez de a recusar.
+    pub(super) fn base_for_top_com(
+        &self,
+        live: Option<&std::sync::Arc<Vec<u8>>>,
+        sem_vidro: bool,
+    ) -> Option<ModelSnapshot> {
         let cursor = self.cursor.as_deref()?;
         let mut base = match (&cursor.canvas_elided, live) {
             (None, _) => cursor.clone(),
             (Some(_), Some(l)) => self.with_canvas_held(cursor, l)?,
             (Some(w), None) => self.with_canvas_held(cursor, &w.upgrade()?)?,
         };
+        if sem_vidro {
+            base.relief_elided.vidros.clear();
+        }
         if base.relief_elided.is_empty() {
             return Some(base); // nada elidido: o cursor já É a base
         }

@@ -130,9 +130,17 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
         // Uma janela só serve se foi medida NESTE plano e com ESTE stride — senão a caixa `U` não
         // descreveria o mesmo retângulo que o re-split varreria.
         let serve = |w: &PlaneWindow| w.plane_len == len && w.stride == stride;
+        // O topo guardado como janela ou como caixas (B17.5): `(caixa envolvente, caixas, lado before delas)`.
+        let um;
         let topo = match self {
             Self::Unchanged => None,
-            Self::Patch { win, before, .. } if serve(win) => Some((*win, before)),
+            Self::Patch { win, before, .. } if serve(win) => {
+                um = [*win];
+                Some((*win, &um[..], before))
+            }
+            Self::Tiles {
+                win, rects, before, ..
+            } if serve(win) && rects.iter().all(serve) => Some((*win, &rects[..], before)),
             Self::Patch { .. } | Self::Tiles { .. } | Self::Whole { .. } | Self::Nova { .. } => {
                 return None;
             }
@@ -144,7 +152,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
                 return None;
             }
         };
-        let u = match (topo.map(|(w, _)| w), pinga) {
+        let u = match (topo.map(|(w, _, _)| w), pinga) {
             // Os dois lados são o cursor: o re-split veria o mesmo conteúdo e guardaria nada.
             (None, None) => return Some(Self::Unchanged),
             (Some(w), None) | (None, Some(w)) => w,
@@ -162,11 +170,18 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             antes.extend_from_slice(&cursor[s..s + u.cols]);
             depois.extend_from_slice(&after[s..s + u.cols]);
         }
-        if let Some((w, patch)) = topo {
-            for r in 0..w.rows {
-                let d = (w.row - u.row + r) * u.cols + (w.col - u.col);
-                let p = r * w.cols;
-                antes[d..d + w.cols].copy_from_slice(&patch[p..p + w.cols]);
+        if let Some((_, caixas, patch)) = topo {
+            let mut at = 0;
+            for w in caixas {
+                for r in 0..w.rows {
+                    let d = (w.row - u.row + r) * u.cols + (w.col - u.col);
+                    let p = at + r * w.cols;
+                    antes[d..d + w.cols].copy_from_slice(&patch[p..p + w.cols]);
+                }
+                at += w.elems();
+            }
+            if at != patch.len() {
+                return None;
             }
         }
         // A régua EXACTA do caminho caro, sobre o recorte (o stride do recorte é a largura dele).

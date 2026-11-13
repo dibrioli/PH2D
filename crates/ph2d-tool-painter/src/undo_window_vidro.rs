@@ -131,6 +131,21 @@ impl WriteState {
         j.layer.is_none() && !j.mixed && !j.incomplete && !j.absent
     }
 
+    /// **O vidro do topo COMPOSTO com o journal** — a absorção barata do escorrido (ADR-0204): `topo` = o mapa do
+    /// vidro da entrada do topo, `vivo` = o mapa de agora. Devolve o mapa `antes0 → vivo` e se o escorrido mudou
+    /// algum byte do vidro. `None` = o journal não o descreve, ou a forma não compõe (quem chama segura o plano).
+    pub(crate) fn vidro_composto(
+        &self,
+        topo: &crate::undo_delta::StoredMap<Vidro>,
+        vivo: &crate::compositor::vidro::Vidros,
+    ) -> Option<(crate::undo_delta::StoredMap<Vidro>, bool)> {
+        let j = self.vidro.borrow();
+        if j.mixed || j.incomplete || j.absent {
+            return None;
+        }
+        topo.composto_com_o_journal(vivo, j.layer?, &j.tiles)
+    }
+
     /// **O vidro do último reset, SEGURADO** — a absorção do escorrido (ADR-0204): `testemunhas` = o cursor
     /// elidido, `vivo` = o mapa de agora. A camada do journal volta pelos tiles (`rewind_into`); as outras
     /// têm de ser o MESMO plano que a testemunha aponta. `None` = o journal não o descreve (quem chama recusa).

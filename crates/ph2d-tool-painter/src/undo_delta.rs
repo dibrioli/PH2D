@@ -653,6 +653,9 @@ pub(crate) mod tiles;
 #[path = "undo_delta_copiado.rs"]
 mod copiado;
 
+#[path = "undo_delta_composto.rs"]
+pub(crate) mod composto; // o topo seguido do journal do vidro (a absorção do escorrido, ADR-0204)
+
 #[cfg(test)]
 #[path = "undo_delta_tests.rs"]
 mod tests;

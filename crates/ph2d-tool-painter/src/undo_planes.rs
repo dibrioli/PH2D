@@ -662,4 +662,13 @@ impl PlaneDeltas {
     pub(crate) fn canvas_mut(&mut self) -> &mut StoredPlane<u8> {
         &mut self.canvas_rgba
     }
+
+    /// O mapa do vidro — a absorção barata do escorrido o compõe com o journal (ADR-0204).
+    pub(crate) fn vidros(&self) -> &StoredMap<crate::compositor::vidro::Vidro> {
+        &self.vidros
+    }
+
+    pub(crate) fn vidros_mut(&mut self) -> &mut StoredMap<crate::compositor::vidro::Vidro> {
+        &mut self.vidros
+    }
 }

@@ -110,7 +110,7 @@ impl PlaneWindow {
     /// tile por elemento — ver [`TileJournal::read_row_into`](crate::undo::journal::TileJournal), que é
     /// quem sabe onde os tiles moram. A ORDEM de percurso é a mesma do [`Self::extract`], e ela é
     /// load-bearing: o `Patch` guarda os dois lados e eles se correspondem índice a índice.
-    fn extract_journal<T: Copy + Default + Send + Sync>(
+    pub(super) fn extract_journal<T: Copy + Default + Send + Sync>(
         &self,
         j: &crate::undo::journal::TileJournal<T>,
         live: &[T],

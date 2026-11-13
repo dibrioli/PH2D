@@ -28,6 +28,37 @@ thread_local! {
 
     /// **Quantas vezes o detector perguntou ao canvas só dentro da janela DECLARADA.**
     pub(crate) static DETECTED_WITHIN: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+
+    /// Quantas absorções correram com o vidro do reset SEGURADO (ADR-0204, o caminho caro).
+    pub(crate) static VIDRO_SEGURADO: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+
+    /// Quantas absorções correram com o vidro COMPOSTO com o journal (o caminho do produto).
+    pub(crate) static VIDRO_COMPOSTO: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+
+    /// A rota do vidro do escorrido — o gate compara a composta com a segurada; a sonda mede as três.
+    pub(crate) static ROTA_DO_VIDRO: std::cell::Cell<RotaDoVidro> =
+        const { std::cell::Cell::new(RotaDoVidro::Composta) };
+}
+
+/// Por onde a absorção leva o vidro que o escorrido escreveu depois do commit (ADR-0204).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum RotaDoVidro {
+    /// O produto: o delta do topo composto com o journal, nas caixas dos dois.
+    Composta,
+    /// O oráculo da composta: o cursor segura o vidro do reset (três varreduras do plano inteiro).
+    #[cfg(test)]
+    Segurada,
+    /// Só a sonda: o vidro elidido não testemunha (o custo e a resposta ERRADA de antes de `69158c3890`).
+    #[cfg(test)]
+    Antes,
+}
+
+/// O vidro na absorção: `Elidido` não testemunha; `Segurado` vem no cursor; `Composto` vem do journal.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Vidro {
+    Elidido,
+    Segurado,
+    Composto,
 }
 
 impl UndoController {
@@ -64,32 +95,68 @@ impl UndoController {
     ///
     /// O cursor elide o vidro (não segura os bytes), então ele não testemunha no detector. Mas o escorrido
     /// do Wet ESCREVE o vidro depois do commit, e essa escrita é do topo como a da tela. Só quando o journal
-    /// do vidro capturou algo desde o reset (o caso comum não paga nada) o cursor é trocado, durante a
-    /// absorção, por um que SEGURA o vidro do reset (`journal.get(i).unwrap_or(vivo[i])`): o detector, a base
-    /// e a re-partição passam a ser as do oráculo. Sem disparo, o cursor elidido volta.
+    /// do vidro capturou algo desde o reset (o caso comum não paga nada) o delta do vidro do topo é COMPOSTO
+    /// com o journal nas caixas dos dois ([`StoredMap::composto_com_o_journal`](crate::undo_delta::StoredMap)):
+    /// `antes0 → R` seguido de `R → vivo`. Onde a forma não compõe, o caminho que SEGURA o vidro do reset
+    /// (`journal.get(i).unwrap_or(vivo[i])`) — o detector, a base e a re-partição do oráculo, com três varreduras
+    /// do plano inteiro (medido +34 ms no pen-down a 4096², `watercolor_vidro_custo_sonda`).
     pub(crate) fn absorb_foreign_writes(&mut self, before: &ModelSnapshot) {
-        let Some(held) = self.cursor_com_o_vidro_do_reset(before) else {
-            self.absorb_foreign_writes_inner(before, false);
+        crate::sonda_partes::parte("antes_da_absorcao");
+        if !self.o_escorrido_escreveu_o_vidro(before) {
+            self.absorb_foreign_writes_inner(before, Vidro::Elidido);
+            crate::sonda_partes::parte("absorcao");
+            return;
+        }
+        #[cfg(test)]
+        let rota = ROTA_DO_VIDRO.with(std::cell::Cell::get);
+        #[cfg(not(test))]
+        let rota = RotaDoVidro::Composta;
+        if rota == RotaDoVidro::Composta
+            && self
+                .absorb_foreign_writes_inner(before, Vidro::Composto)
+                .is_some()
+        {
+            #[cfg(test)]
+            VIDRO_COMPOSTO.with(|c| c.set(c.get() + 1));
+            crate::sonda_partes::parte("absorcao");
+            return;
+        }
+        #[cfg(test)]
+        if rota == RotaDoVidro::Antes {
+            self.absorb_foreign_writes_inner(before, Vidro::Elidido);
+            return;
+        }
+        let held = self.cursor_com_o_vidro_do_reset(before);
+        crate::sonda_partes::parte("vidro_do_reset");
+        let Some(held) = held else {
+            self.absorb_foreign_writes_inner(before, Vidro::Elidido);
+            crate::sonda_partes::parte("absorcao");
             return;
         };
+        #[cfg(test)]
+        VIDRO_SEGURADO.with(|c| c.set(c.get() + 1));
         let elidido = self.cursor.replace(Box::new(held));
-        if !self.absorb_foreign_writes_inner(before, true) {
+        if self.absorb_foreign_writes_inner(before, Vidro::Segurado) != Some(true) {
             self.cursor = elidido;
         }
+        crate::sonda_partes::parte("absorcao");
     }
 
-    /// O cursor com o vidro do último reset segurado — `None` (sem custo) quando o journal do vidro está
-    /// calado, a chave desligada, o cursor o segura, ou o `before` também o elide (o commit: a absorção do
-    /// escorrido já correu no pen-down).
+    /// O escorrido pode ter escrito o vidro depois do commit — `false` (sem custo) quando o journal do vidro
+    /// está calado, a chave desligada, o cursor o segura, ou o `before` também o elide (o commit: a absorção
+    /// do escorrido já correu no pen-down).
+    fn o_escorrido_escreveu_o_vidro(&self, before: &ModelSnapshot) -> bool {
+        self.cursor.as_deref().is_some_and(|cursor| {
+            crate::undo::window::vidro_pelo_journal()
+                && !cursor.relief_elided.vidros.is_empty()
+                && before.relief_elided.vidros.is_empty()
+                && !self.write_state.vidro_untouched()
+        })
+    }
+
+    /// O cursor com o vidro do último reset segurado (o caminho caro, onde a composição não serve).
     fn cursor_com_o_vidro_do_reset(&self, before: &ModelSnapshot) -> Option<ModelSnapshot> {
         let cursor = self.cursor.as_deref()?;
-        if !crate::undo::window::vidro_pelo_journal()
-            || cursor.relief_elided.vidros.is_empty()
-            || !before.relief_elided.vidros.is_empty()
-            || self.write_state.vidro_untouched()
-        {
-            return None;
-        }
         let vidros = self
             .write_state
             .vidro_no_reset(&cursor.relief_elided.vidros, &before.vidros)?;
@@ -99,15 +166,22 @@ impl UndoController {
         Some(c)
     }
 
-    /// `true` = re-partiu o topo (e o cursor andou).
-    fn absorb_foreign_writes_inner(
-        &mut self,
-        before: &ModelSnapshot,
-        vidro_segurado: bool,
-    ) -> bool {
+    /// `Some(true)` = re-partiu o topo (e o cursor andou). `None` só no `Vidro::Composto`, e antes de tocar em
+    /// nada: a forma não compõe, quem chama corre o caminho que segura o vidro.
+    fn absorb_foreign_writes_inner(&mut self, before: &ModelSnapshot, modo: Vidro) -> Option<bool> {
         let Some(cursor) = self.cursor.as_deref() else {
-            return false; // história vazia: não há topo a corrigir
+            return Some(false); // história vazia: não há topo a corrigir
         };
+        // O vidro do topo seguido do journal (ADR-0204): o mapa `antes0 → vivo`, e se o escorrido o mudou.
+        let vidro_novo = match (modo, self.undo.last()) {
+            (Vidro::Composto, Some(top)) => Some(
+                self.write_state
+                    .vidro_composto(top.planes.vidros(), &before.vidros)?,
+            ),
+            (Vidro::Composto, None) => return Some(false),
+            _ => None,
+        };
+        let pingou_no_vidro = vidro_novo.as_ref().is_some_and(|(_, p)| *p);
         // `split` esvazia o que recebe, então ele come CÓPIAS — e uma cópia de `ModelSnapshot` é um
         // punhado de refcounts.
         let (mut a, mut b) = (cursor.clone(), before.clone());
@@ -130,7 +204,7 @@ impl UndoController {
                 self.canvas_held(cursor, &live),
                 self.canvas_held(before, &live),
             ) else {
-                return false; // a testemunha morreu: não há o que comparar honestamente
+                return Some(false); // a testemunha morreu: não há o que comparar honestamente
             };
             a.canvas_rgba = ca;
             b.canvas_rgba = cb;
@@ -153,7 +227,7 @@ impl UndoController {
             m.covers.clear();
             m.mats.clear();
             // O vidro descrito pelo journal (ADR-0204) também não testemunha aqui, pela mesma razão.
-            if crate::undo::window::vidro_pelo_journal() && !vidro_segurado {
+            if crate::undo::window::vidro_pelo_journal() && modo != Vidro::Segurado {
                 m.vidros.clear();
             }
             m.relief_elided = crate::undo::elide::ElidedRelief::default();
@@ -188,28 +262,31 @@ impl UndoController {
         // por eles sem ler um byte, e o plano do canvas que vale é o de cima.
         let mut detected = crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None);
         *detected.canvas_mut() = canvas;
-        if detected.heap_bytes() == 0 {
-            return false; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
+        crate::sonda_partes::parte("abs_detector");
+        if detected.heap_bytes() == 0 && !pingou_no_vidro {
+            return Some(false); // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }
         // ⚠️ **A base do RELEVO vem da porta única** ([`Self::base_for_top`]): o cursor elide os planos
         // (degrau 4) e materializar contra ele devolveria `None`, matando a absorção em silêncio. Ela
         // recusa quando alguém escreveu relevo desde o commit, e aí a absorção sai calada — que é a
         // mesma resposta que ela já dava quando o cursor não descrevia o topo.
-        let Some(base) = self.base_for_top(Some(&live)) else {
-            return false;
+        // O vidro composto não lê o da base (a materialização corre sem ele, abaixo).
+        let Some(base) = self.base_for_top_com(Some(&live), modo == Vidro::Composto) else {
+            return Some(false);
         };
         let Some(cursor) = self.cursor.as_deref() else {
-            return false;
+            return Some(false);
         };
         let (Some(cursor), Some(before_h)) = (
             self.with_canvas_held(cursor, &live),
             self.with_canvas_held(before, &live),
         ) else {
-            return false;
+            return Some(false);
         };
+        crate::sonda_partes::parte("abs_base_e_telas");
         let cursor = &cursor;
         let Some(mut top) = self.undo.pop() else {
-            return false;
+            return Some(false);
         };
         let (kind, old_bytes, transacao) = (top.kind, top.heap_bytes(), top.transacao);
         // ⭐ **O CANVAS vai pelo caminho barato quando ele dá a MESMA resposta** (medido 2026-09-24:
@@ -220,31 +297,54 @@ impl UndoController {
         // escorrido só escreve canvas, e um segundo caminho para dezanove planos seria a segunda
         // lista que nasce incompleta.
         let stride = crate::undo_delta::Strides::of(top.before.canvas_size.0).rgba;
-        let cheap = top.planes.canvas().absorbed(
-            &cursor.canvas_rgba,
-            &before_h.canvas_rgba,
-            detected.canvas(),
-            stride,
-        );
-        #[cfg(test)]
-        let cheap = cheap.filter(|_| !ONLY_THE_FULL_PATH.with(std::cell::Cell::get));
+        // Com o vidro composto e a tela que o escorrido NÃO tocou (`R == vivo` na tela), o delta da tela é o do
+        // topo tal qual (`antes0 → R`): nem a cópia da tela nem o re-split dela (medido 3,5 + 7,6 ms a 4096²).
+        let cheap = if modo == Vidro::Composto
+            && matches!(detected.canvas(), crate::undo_delta::StoredPlane::Unchanged)
+        {
+            Some(top.planes.canvas().clone())
+        } else {
+            let c = top.planes.canvas().absorbed(
+                &cursor.canvas_rgba,
+                &before_h.canvas_rgba,
+                detected.canvas(),
+                stride,
+            );
+            #[cfg(test)]
+            let c = c.filter(|_| !ONLY_THE_FULL_PATH.with(std::cell::Cell::get));
+            c
+        };
         // Com o canvas já calculado, o topo materializa-se SEM ele (é essa a cópia que se poupa) —
         // e depois é devolvido intacto se a materialização recusar.
         let taken = cheap
             .is_some()
             .then(|| std::mem::take(top.planes.canvas_mut()));
+        // O vidro composto já é a resposta: o topo materializa-se sem ele (sem a cópia do plano inteiro).
+        let vidro_tirado = vidro_novo
+            .is_some()
+            .then(|| std::mem::take(top.planes.vidros_mut()));
         let Some(mut first_before) = top.materialize(cursor, &base, true) else {
             // O cursor não descreve mais o delta do topo. Não há como esticá-lo honestamente, e mentir
             // aqui seria pior que a divergência: sai calado, exatamente como o `undo` faz.
             if let Some(canvas) = taken {
                 *top.planes.canvas_mut() = canvas;
             }
+            if let Some(v) = vidro_tirado {
+                *top.planes.vidros_mut() = v;
+            }
             self.undo.push(top);
-            return false;
+            // O composto devolve a pergunta intacta ao caminho que segura o vidro.
+            return (modo != Vidro::Composto).then_some(false);
         };
+        crate::sonda_partes::parte("abs_materializa");
         if cheap.is_some() {
             // O mesmo `Arc` dos dois lados: o `split` vê-os idênticos e não varre o canvas.
             first_before.canvas_rgba = Arc::clone(&before_h.canvas_rgba);
+        }
+        if vidro_novo.is_some() {
+            // Idem para o vidro: o `split` dá `Unchanged`, e o mapa composto entra no lugar.
+            first_before.vidros = before_h.vidros.clone();
+            first_before.relief_elided.vidros.clear();
         }
         #[cfg(test)]
         ABSORB_FIRED.with(|c| c.set(c.get() + 1));
@@ -254,6 +354,7 @@ impl UndoController {
         }
         self.bytes -= old_bytes;
         let mut entry = UndoEntry::split(*first_before, before_h, kind, None, None);
+        crate::sonda_partes::parte("abs_split");
         entry.transacao = transacao;
         // A água absorvida não é do artista — salvo a da sessão dele (W12): a tinta que ela espalhou
         // depois do registo é deste passo.
@@ -261,10 +362,13 @@ impl UndoController {
         if let Some(canvas) = cheap {
             *entry.planes.canvas_mut() = canvas;
         }
+        if let Some((v, _)) = vidro_novo {
+            *entry.planes.vidros_mut() = v;
+        }
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         // O cursor anda junto: o topo agora termina no estado que este passo encontrou.
         self.set_cursor(before.clone());
-        true
+        Some(true)
     }
 }

@@ -314,3 +314,96 @@ fn o_tecto_do_desfazer_conta_o_journal_do_vidro() {
         "pelo journal a pilha retém ≥ os passos do oráculo: {com} < {sem}"
     );
 }
+
+/// **A absorção do escorrido com o vidro COMPOSTO dá o documento da que o SEGURA** (ADR-0204): o Wet sobre a
+/// aguada, a água a correr entre os traços (o escorrido escreve o vidro depois do commit), e cada traço, cada
+/// desfazer e cada refazer ao bit da rota segurada — as duas com o journal ligado, no mesmo processo. O
+/// controlo: a composta disparou em `j` e a segurada em `o` (sem isso as duas seriam a mesma rota).
+#[test]
+fn o_vidro_composto_da_o_documento_do_vidro_segurado() {
+    use crate::undo::absorb::{ROTA_DO_VIDRO, RotaDoVidro, VIDRO_COMPOSTO, VIDRO_SEGURADO};
+    let rota = |r: RotaDoVidro| ROTA_DO_VIDRO.with(|c| c.set(r));
+    let mut j = tool_wb(true);
+    let mut o = tool_wb(true);
+    let mut ambos =
+        |f: &mut dyn FnMut(&mut PainterTool), j: &mut PainterTool, o: &mut PainterTool, q: &str| {
+            rota(RotaDoVidro::Composta);
+            f(j);
+            rota(RotaDoVidro::Segurada);
+            f(o);
+            rota(RotaDoVidro::Composta);
+            assert!(
+                documento(j) == documento(o),
+                "{q}: o composto difere do segurado"
+            );
+        };
+    ambos(
+        &mut |t| t.papel = Some([200, 170, 120]),
+        &mut j,
+        &mut o,
+        "papel",
+    );
+    for k in 0..3 {
+        ambos(
+            &mut |t| traco_k(t, k),
+            &mut j,
+            &mut o,
+            &format!("aguada {k}"),
+        );
+    }
+    ambos(
+        &mut |t| {
+            t.set_paint_media(PaintMedia::WetPaint);
+            t.set_wet_relogio_fixo(true);
+            t.set_brush_color_srgb8([200, 40, 30]);
+        },
+        &mut j,
+        &mut o,
+        "Wet",
+    );
+    let (c0, s0) = (VIDRO_COMPOSTO.get(), VIDRO_SEGURADO.get());
+    for k in 0..4 {
+        ambos(
+            &mut |t| {
+                vai_e_volta(t, k, true);
+                for _ in 0..20 {
+                    ph2d_editor_core::Tool::on_tick(t, 1000.0 / 60.0);
+                    let _ = t.take_preview_arc();
+                }
+            },
+            &mut j,
+            &mut o,
+            &format!("Wet {k}"),
+        );
+    }
+    let depois = documento(&j);
+    let n = 7;
+    for k in 0..n {
+        ambos(
+            &mut |t| assert!(t.undo_last(), "desfazer {k}"),
+            &mut j,
+            &mut o,
+            &format!("desfeito {k}"),
+        );
+    }
+    for k in 0..n {
+        ambos(
+            &mut |t| assert!(t.redo_last(), "refazer {k}"),
+            &mut j,
+            &mut o,
+            &format!("refeito {k}"),
+        );
+    }
+    assert!(
+        documento(&j) == depois,
+        "refeito tudo, o documento não é o de antes de desfazer"
+    );
+    assert!(
+        VIDRO_COMPOSTO.get() > c0,
+        "controlo: a composta nunca disparou"
+    );
+    assert!(
+        VIDRO_SEGURADO.get() > s0,
+        "controlo: a segurada nunca disparou"
+    );
+}

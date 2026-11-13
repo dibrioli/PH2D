@@ -62,7 +62,14 @@ pub(super) fn pinta(
     let ink = CardInk::of_list(theme);
     let r = Rect::new(a.x + FOLGA, a.y + FOLGA, banda::icones_w(N), m::FIELD_H);
     let (icones, cores) = celulas(snap, view);
-    cartao(ctx, ink, r).icones_em_fila_tingidos(&icones, &cores, (r.x, r.y), StrokeToken::Thick);
+    // As quinas de baixo da caixa pontudas (dono 13/11); as de cima, as do campo.
+    let f = m::FIELD_RADIUS;
+    cartao(ctx, ink, r).icones_em_fila_tingidos(
+        &icones,
+        &cores,
+        (r.x, r.y),
+        (StrokeToken::Thick, (f, f, 0.0, 0.0)),
+    );
     // O gravar é uma bola CHEIA (o glifo do ponto é pequeno demais para ler-se como «gravar»).
     let d = m::ICON_GLYPH * 0.6;
     let cx = r.x + m::FIELD_H * 0.5;

@@ -1,6 +1,15 @@
 # Projectile Motion
 
-**Estado: `a revisar`** (13/11). A ficha vai ao dono ANTES da obra.
+**Estado: `fechado`** (13/11) — versão B escolhida pelo dono; smoke do dono OK 13/11. Handoff: [CONTINUACAO 06 Projectile](../handoffs/HANDOFF_CONTINUACAO_2026-11-13_06_PROJECTILE.md). O texto abaixo é a ficha de ANTES da obra (o «Como está» é o estado de partida).
+
+## Como ficou (13/11, commits `5142bb156b` e `96c68552ba`)
+
+- **Cartão B** (`ph2d-panel-inspector/src/sections/projectile.rs`): avisos; Speed, Gravity, Range, «Faces path»; checkbox Bounce → Max Bounces + Bounciness; checkbox Homing → Target (texto + conta-gotas dentro da caixa) + aviso «No object…» + Pull; dobra «Speed change» fechada (resumo None · Speeds up · Slows down · Capped).
+- **Os checkboxes gravam os números:** Bounce liga = `max_bounces` 3 (`BOUNCES_AO_LIGAR`), desliga = 0; Homing liga = `homing_accel` 30 m/s² (`PULL_AO_LIGAR`), desliga = 0. O motor não mudou.
+- **Conta-gotas:** `AlvoArmado` (`ph2d-app-components/src/projectile_inspector.rs`) é recurso de sessão, sem passo de undo; o clique no palco (`escolher_alvo`) pega o objeto nomeado do topo (nunca a bala) e empurra `HomingTarget` pelo bus (um passo de undo); Esc desarma.
+- **Target** agora sincroniza o nome (`sync_fabrica.rs`, `escreve_texto`) — antes ficava sempre vazio.
+- **Cena** `PH2D_GAME_SMOKE=25` (`ph2d-physics-scene/src/cena_projectile.rs`); fotos em `componentes/fotos_06/`.
+- **No Play** a bala que acabou some (RunOnCopy, `ph2d-ecs/src/lifetime.rs:204`; Stop restaura): regra da casa (moedas), não defeito.
 
 Estudos lidos:
 - crítica `critica_ph2d.html#projectile`, §1–§7, com o «Vale rever?» das miniaturas.

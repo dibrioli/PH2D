@@ -1,11 +1,10 @@
 //! ⭐ **A barra do transporte em cartões, no molde do Rive** (`docs/Timeline/15_plano_redesenho_molde_rive.md`,
 //! onda 1b): duas fileiras — título (abas · migalha · tocar · Time · Frame · fps · dono · opções) e
-//! gravar + clipes (Auto Key · Record · Marker · um chip por clipe). Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
+//! gravar + clipes (Auto Key · Marker · um chip por clipe). Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
 //! «⋯» do clipe e na engrenagem (`crate::barra_menus`). `PH2D_CARDS=0` pinta a barra de [`super::paint_bar`].
 
 use super::*;
 use ph2d_editor_core::panel::cards::banda::{self, Emoldurada, Icone, Sinal, metrics as m};
-use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
@@ -13,7 +12,9 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 /// A largura do chip do dono.
 const ANIM_W: f32 = 168.0; // LITERAL-PX-OK: «Animation: Scene» + seta, medido na foto; nomes longos cortam
 
-const DICAS: [(ph2d_a11y::NodeId, &str); 19] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 21] = [
+    (TIMELINE_TIME_NUM, "panel.timeline.tip.time"),
+    (TIMELINE_FRAME_NUM, "panel.timeline.tip.frame"),
     (TIMELINE_GO_START, "panel.timeline.tip.go_start"),
     (TIMELINE_PREV_FRAME, "panel.timeline.tip.prev_frame"),
     (TIMELINE_PLAY, "panel.timeline.tip.play"),
@@ -53,6 +54,9 @@ pub(crate) fn valor_da_caixa(
     view: BarView,
     id: ph2d_a11y::NodeId,
 ) -> bool {
+    if id == ids::TIMELINE_CLIPS_AS_LIST {
+        return view.clips_as_list;
+    }
     caixas(snap, view).iter().any(|(_, i, on)| *i == id && *on)
 }
 
@@ -130,6 +134,7 @@ fn prepara(store: &mut WidgetStore, snap: &TimelineViewSnapshot, view: BarView) 
         espelha(id, on);
     }
     espelha(ids::TIMELINE_CURVES_ON_CANVAS, view.curves_on_canvas);
+    espelha(ids::TIMELINE_CLIPS_AS_LIST, view.clips_as_list);
     for (id, chave) in DICAS {
         if store.tooltip_for(id).is_none() {
             store.set_tooltip(id, ph2d_i18n::tr(chave));
@@ -382,10 +387,15 @@ fn dono_e_opcoes(
     (chip, Rect::new(gx, y, banda::icones_w(1), m::FIELD_H))
 }
 
+/// Time e Frame (dono 12/11): só a caixa, 20 % mais estreita, com o ícone do que mede (cronómetro ·
+/// quadro de filme) no lugar da letra; o nome mora na dica.
 fn campo(c: &mut CardCtx<'_>, item: Item, id: ph2d_a11y::NodeId, at: (f32, f32)) {
-    let nome = rotulo_do_campo(item);
-    let col = c.coluna_de_rotulos(&[nome]);
-    c.campo_em_fila(id, nome, Glyph::Text(letra_da_grandeza(nome)), col, at);
+    let icone = if item == Item::TimeChip {
+        IconId::Timer
+    } else {
+        IconId::FilmFrame
+    };
+    c.campo_compacto(id, rotulo_do_campo(item), Glyph::Icon(icone), at);
 }
 
 /// 1.ª fileira, depois das abas: tocar · Time · Frame · fps.
@@ -404,10 +414,15 @@ fn grupo_de_tocar(
     }
     let mut c = cartao(ctx, ink, body);
     let at = f.poe(banda::icones_w(TRANSPORT_BTNS));
-    c.icones_em_fila(&fileira_do_transporte(snap, view), at.0, at.1);
+    // Os glifos do transporte num traço mais grosso (dono 12/11): leem-se de longe.
+    c.icones_em_fila_com_traco(
+        &fileira_do_transporte(snap, view),
+        at.0,
+        at.1,
+        StrokeToken::Thick,
+    );
     // Time e Frame são um grupo: não se partem entre fileiras.
-    let wt = CardCtx::campo_em_fila_w(c.coluna_de_rotulos(&[rotulo_do_campo(Item::TimeChip)]));
-    let wf = CardCtx::campo_em_fila_w(c.coluna_de_rotulos(&[rotulo_do_campo(Item::FrameChip)]));
+    let (wt, wf) = (banda::CAMPO_COMPACTO_W, banda::CAMPO_COMPACTO_W);
     let (x, y) = f.poe(wt + m::FIELD_GAP + wf);
     campo(&mut c, Item::TimeChip, TIMELINE_TIME_NUM, (x, y));
     campo(
@@ -421,37 +436,25 @@ fn grupo_de_tocar(
     c.rotulo_com_sinal(Sinal::Icone(IconId::Fps, ColorToken::CardLabel), &fps, x, y);
 }
 
-/// As duas caixas de gravar: Auto Key (o ponto acende-se vermelho quando liga) e Record while playing
-/// (o anel vermelho de gravação). A cor mora no sinal, nunca no quadradinho.
-fn caixas_de_gravar(snap: &TimelineViewSnapshot) -> [Emoldurada<'static>; 2] {
-    // Apagados desligados; o vermelho só quando LIGA (doc 15 onda 2i: as abas mandam na barra).
-    let acende = |on: bool| {
-        if on {
-            ColorToken::Danger
-        } else {
-            ColorToken::TextDisabled
-        }
+/// A caixa de gravar da barra: Auto Key (o ponto acende-se vermelho quando liga). «Record while playing»
+/// mora na engrenagem (dono 12/11). A cor mora no sinal, nunca no quadradinho.
+fn caixa_de_gravar(snap: &TimelineViewSnapshot) -> Emoldurada<'static> {
+    // Apagado desligado; o vermelho só quando LIGA (doc 15 onda 2i: as abas mandam na barra).
+    let ponto = if snap.auto_key {
+        ColorToken::Danger
+    } else {
+        ColorToken::TextDisabled
     };
-    let ponto = acende(snap.auto_key);
-    [
-        Emoldurada {
-            id: TIMELINE_AUTOKEY,
-            nome: ph2d_i18n::tr("panel.timeline.card.autokey"),
-            on: snap.auto_key,
-            antes: None,
-            fim: Some(Sinal::Ponto(ponto)),
-        },
-        Emoldurada {
-            id: TIMELINE_RECORD,
-            nome: ph2d_i18n::tr("panel.timeline.card.record"),
-            on: snap.performing,
-            antes: Some(Sinal::Icone(IconId::Circle, acende(snap.performing))),
-            fim: None,
-        },
-    ]
+    Emoldurada {
+        id: TIMELINE_AUTOKEY,
+        nome: ph2d_i18n::tr("panel.timeline.card.autokey"),
+        on: snap.auto_key,
+        antes: None,
+        fim: Some(Sinal::Ponto(ponto)),
+    }
 }
 
-/// 2.ª fileira, no início: [Animating · Done] · Auto Key · Record while playing · Marker (os clipes vêm a seguir).
+/// 2.ª fileira, no início: [Animating · Done] · Auto Key · Marker (os clipes vêm a seguir).
 fn grupo_de_gravar(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -469,10 +472,9 @@ fn grupo_de_gravar(
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
     let tons = tons_da_barra(theme);
-    for caixa in caixas_de_gravar(snap) {
-        let (x, y) = f.poe(c.emoldurada_w(&caixa));
-        c.emoldurada_discreta_em(&caixa, x, y, tons);
-    }
+    let caixa = caixa_de_gravar(snap);
+    let (x, y) = f.poe(c.emoldurada_w(&caixa));
+    c.emoldurada_discreta_em(&caixa, x, y, tons);
     let nome = ph2d_i18n::tr("panel.timeline.card.add_marker");
     let w = c.botao_com_icone_w(nome);
     let (x, y) = f.poe(w);
@@ -503,6 +505,7 @@ pub(crate) fn tons_da_barra(theme: Theme) -> banda::TonsDaBarra {
         inativa_texto: t(T::TextoPropriedade),
         sob_o_rato: t(T::NomesCabecalho),
         discreta_texto: t(T::TextoValor),
+        borda_da_caixa: t(T::TextoPropriedade),
     }
 }
 
@@ -554,5 +557,24 @@ mod tests {
             ..TimelineViewSnapshot::default()
         };
         assert!(texto_do_fps(&snap).starts_with("29.97 fps"));
+    }
+
+    /// ⭐ Dono 12/11: a caixa de marcar vazia da barra tem de se ver contra o fundo dela. O contorno
+    /// mede ≥ 4,5:1 contra o recheio (`CardField`) em todo tema; o de antes (`CardLabel`) media 3,06
+    /// no Forge. *Mutação: `borda_da_caixa` = `CardLabel` ⇒ vermelho.*
+    #[test]
+    fn a_caixa_vazia_da_barra_tem_contraste_com_o_fundo() {
+        use ph2d_tokens::TimelineTinta as T;
+        let rgb = |c: ph2d_vector::Color| {
+            let [r, g, b, _] = c.to_rgba8().to_u8_array();
+            ph2d_tokens::Color::from_hex(u32::from_be_bytes([0, r, g, b]))
+        };
+        for theme in Theme::ALL {
+            let borda = rgb(tons_da_barra(theme).borda_da_caixa);
+            assert_eq!(borda, T::TextoPropriedade.resolve(theme), "{theme:?}");
+            let fundo = ColorToken::CardField.resolve(theme);
+            let r = borda.contrast_ratio(&fundo);
+            assert!(r >= 4.5, "{theme:?}: contorno {r:.2}:1 contra o recheio");
+        }
     }
 }

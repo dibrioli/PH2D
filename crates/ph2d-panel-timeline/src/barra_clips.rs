@@ -225,6 +225,12 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
         return None;
     }
     let b = Rect::new(r.x + r.w - menu_w, r.y, menu_w, r.h);
+    pinta_reticencias(ctx, ink, b);
+    Some(b)
+}
+
+/// O «⋯» do clipe ativo em `b` (o menu do clipe pende dele).
+fn pinta_reticencias(ctx: &mut PaintCtx, ink: CardInk, b: Rect) {
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_CLIP_MENU, b);
@@ -242,7 +248,51 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
         }),
         StrokeToken::Default.px(),
     );
-    Some(b)
+}
+
+/// ⭐ «Show clips as a list» (dono 12/11, na engrenagem): a fileira vira UMA lista suspensa — a de
+/// sempre (`TIMELINE_CLIP_DD`, com rolagem), com o nome do escolhido —, o «⋯» dele e o «+». Os ids e o
+/// clique são os dos chips.
+fn como_lista(
+    ctx: &mut PaintCtx,
+    ink: CardInk,
+    f: &mut Fluxo,
+    body: Rect,
+    opcao: Option<&DropdownOption<usize>>,
+) -> Clips {
+    let texto = opcao.map_or("", |o| o.label.as_str());
+    let w = texto_w(ctx, texto) + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
+    let menu = opcao.is_some_and(|o| tem_menu(true, o));
+    let fim = if menu { m::FIELD_H + m::FIELD_GAP } else { 0.0 };
+    f.guarda_para(w + m::FIELD_GAP + fim + banda::icones_w(1));
+    let (x, y) = f.poe(w);
+    let r = Rect::new(x, y, w, m::FIELD_H);
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    let open = matches!(
+        store.get(ids::TIMELINE_CLIP_DD),
+        Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: true, .. })
+    );
+    CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w).lista_em(
+        ids::TIMELINE_CLIP_DD,
+        texto,
+        open,
+        r,
+    );
+    let menu = menu.then(|| {
+        let (x, y) = f.poe(m::FIELD_H);
+        let b = Rect::new(x, y, m::FIELD_H, m::FIELD_H);
+        pinta_reticencias(ctx, ink, b);
+        b
+    });
+    pinta_o_mais(ctx, ink, f, body);
+    Clips {
+        chip: Some(ClipChip {
+            id: ids::TIMELINE_CLIP_DD,
+            rect: r,
+            open,
+        }),
+        menu,
+    }
 }
 
 /// Pinta o rótulo da fileira (ou o cabeçalho de um dono, na lista agrupada da Cena).
@@ -474,8 +524,10 @@ pub(crate) fn paint(
         .first()
         .map_or(0.0, |p| p.w + m::FIELD_GAP + medida.mais + medida.reserva);
     let minimo = medida.clipes.min(um.max(medida.mais));
-    f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + medida.clipes);
-    f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + minimo);
+    if !view.clips_as_list {
+        f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + medida.clipes);
+        f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + minimo);
+    }
     // O separador do Marker (onda 1c): nunca no início de uma fileira.
     if !f.no_inicio() {
         let (x, y) = f.poe(banda::SEPARADOR_W);
@@ -484,6 +536,9 @@ pub(crate) fn paint(
             .separador_em(x, y);
     }
     rotulo(ctx, ink, f, nome);
+    if view.clips_as_list {
+        return como_lista(ctx, ink, f, body, opcoes.get(escolhida));
+    }
     let corte = corta(&pecas, &medida, f.resta());
     for (k, p) in pecas.iter().enumerate() {
         if Some(k) == medida.primeiro {

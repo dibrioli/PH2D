@@ -191,6 +191,7 @@ pub enum IconId {
     Eyedropper,
     File,
     Film,
+    FilmFrame,
     FilterBevel,
     FilterBlur,
     FilterColorAdjust,

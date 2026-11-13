@@ -186,10 +186,15 @@ fn corpo_das_opcoes(
     };
     let valor = |id| crate::transport::cartoes::valor_da_caixa(snap, view, id);
     for (id, chave) in [
+        (ids::TIMELINE_RECORD, "panel.timeline.card.record"),
         (ids::TIMELINE_SNAP, "panel.timeline.card.snap"),
         (ids::TIMELINE_PHYSICS, "panel.timeline.card.physics"),
         (ids::TIMELINE_MOTION_PATH, "panel.timeline.card.motion_path"),
         (ids::TIMELINE_SPEED, "panel.timeline.card.speed"),
+        (
+            ids::TIMELINE_CLIPS_AS_LIST,
+            "panel.timeline.card.clips_as_list",
+        ),
         (ids::TIMELINE_ONION, "panel.timeline.card.onion"),
         (ids::TIMELINE_ONION_MODE, "panel.timeline.card.onion_keys"),
     ] {
@@ -359,6 +364,7 @@ pub(crate) fn paint(
             let dentro = largura_de_dentro(
                 ctx,
                 &[
+                    "panel.timeline.card.record",
                     "panel.timeline.card.snap",
                     "panel.timeline.card.physics",
                     "panel.timeline.card.motion_path",

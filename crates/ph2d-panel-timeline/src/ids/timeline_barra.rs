@@ -20,5 +20,8 @@ pub const TIMELINE_END_PINGPONG: NodeId = hash_node_id("timeline.end_pingpong");
 /// canvas mostra as alças que entortam o caminho do objeto.
 pub const TIMELINE_CURVES_ON_CANVAS: NodeId = hash_node_id("timeline.curves_on_canvas");
 
+/// «Show clips as a list» (dono 12/11), em «Timeline options»: os chips dos clipes viram UMA lista suspensa.
+pub const TIMELINE_CLIPS_AS_LIST: NodeId = hash_node_id("timeline.clips_as_list");
+
 /// O «Done» da pílula «Animating …» (doc 17 item 9, B7): devolve a cena e pára a prévia do clipe.
 pub const TIMELINE_ANIMATING_DONE: NodeId = hash_node_id("timeline.animating_done");

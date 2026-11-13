@@ -43,6 +43,8 @@ pub struct TonsDaBarra {
     pub sob_o_rato: ph2d_vector::Color,
     /// O texto e o ícone das peças discretas (Auto Key, Record, Marker), um degrau abaixo das abas.
     pub discreta_texto: ph2d_vector::Color,
+    /// O contorno da caixa de marcar VAZIA das peças discretas (dono 12/11: «mais contraste com o fundo»).
+    pub borda_da_caixa: ph2d_vector::Color,
 }
 
 impl CardCtx<'_> {
@@ -118,14 +120,16 @@ impl CardCtx<'_> {
         if hover {
             fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, t.sob_o_rato);
         }
-        let valor = if c.on {
-            crate::widget::CheckboxValue::Checked
-        } else {
-            crate::widget::CheckboxValue::Unchecked
-        };
         let mut cx = x + m::FIELD_PAD_R;
         let caixa = crate::widget::card_check_rect(cx, y, m::FIELD_H);
-        crate::widget::paint_card_check_value(self.scene, self.ink, caixa, valor, hover);
+        crate::widget::paint_card_check_com_borda(
+            self.scene,
+            self.ink,
+            caixa,
+            c.on,
+            hover,
+            t.borda_da_caixa,
+        );
         cx += m::CHECK_BOX + m::CHECK_GAP;
         let meio = y + m::FIELD_H * 0.5;
         if let Some(s) = c.antes {

@@ -230,6 +230,9 @@ pub fn icones_w(n: usize) -> f32 {
 
 /// A largura da caixa de um campo em fileira: pega + valor.
 const CAMPO_W: f32 = m::ICON_CELL + m::FIELD_VALUE_MIN_W;
+/// A caixa de [`CardCtx::campo_compacto`]: 20 % mais estreita que [`CAMPO_W`] (dono 12/11, Time e Frame
+/// da Timeline). 65,6 px: cabem «352.73» e «8466» no valor.
+pub const CAMPO_COMPACTO_W: f32 = CAMPO_W * 0.8; // LITERAL-PX-OK: a fração pedida pelo dono
 
 /// O glifo de um sinal de fileira (o anel do Record, a onda do fps, o «+» de um botão).
 const SINAL: f32 = m::KEY_MARK_BOX;
@@ -418,6 +421,23 @@ impl CardCtx<'_> {
         col + m::FIELD_GAP + CAMPO_W
     }
 
+    /// Só a caixa do campo, [`CAMPO_COMPACTO_W`] de largura, sem o rótulo ao lado: o `glyph` (um ícone)
+    /// diz o que é, e o nome fica no rótulo acessível e na dica.
+    pub fn campo_compacto(&mut self, id: NodeId, nome: &str, glyph: Glyph<'_>, (x, y): (f32, f32)) {
+        dicas::rotulo(id, nome);
+        let r = Rect::new(x, y, CAMPO_COMPACTO_W, m::FIELD_H);
+        paint_field(
+            self.scene,
+            self.text_system,
+            self.ink,
+            self.store,
+            self.hit_index,
+            r,
+            id,
+            glyph,
+        );
+    }
+
     /// O rótulo ao lado, na coluna `col`, e a caixa do campo Figma (`mark_card_field` antes).
     pub fn campo_em_fila(
         &mut self,
@@ -496,6 +516,18 @@ impl CardCtx<'_> {
 
     /// Ícones colados numa caixa: verbos, cada um o seu; o `Icone::on` é o estado aceso.
     pub fn icones_em_fila(&mut self, celulas: &[Icone], x: f32, y: f32) {
+        self.icones_em_fila_com_traco(celulas, x, y, StrokeToken::Default);
+    }
+
+    /// [`Self::icones_em_fila`] com o traço dos glifos em `traco` (o transporte da Timeline pede o
+    /// `Thick`, dono 12/11).
+    pub fn icones_em_fila_com_traco(
+        &mut self,
+        celulas: &[Icone],
+        x: f32,
+        y: f32,
+        traco: StrokeToken,
+    ) {
         let caixa = Rect::new(x, y, icones_w(celulas.len()), m::FIELD_H);
         fill_rounded_rect(
             self.scene,
@@ -537,7 +569,7 @@ impl CardCtx<'_> {
                 c.icon,
                 Rect::new(b.x + (b.w - g) * 0.5, b.y + (b.h - g) * 0.5, g, g),
                 self.ink.color(tinta),
-                StrokeToken::Default.px(),
+                traco.px(),
             );
         }
     }

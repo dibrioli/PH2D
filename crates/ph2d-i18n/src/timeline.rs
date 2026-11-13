@@ -85,6 +85,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.physics" => "Run physics during Play",
         "panel.timeline.card.motion_path" => "A position key is a point on the path",
         "panel.timeline.card.speed" => "Show speed in the curves",
+        "panel.timeline.card.clips_as_list" => "Show clips as a list",
         "panel.timeline.card.onion" => "Ghosts",
         "panel.timeline.card.onion_keys" => "Only at keys",
         "panel.timeline.card.onion_settings" => "Ghost settings…",
@@ -97,6 +98,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.legend_linear" => "Linear",
         "panel.timeline.card.legend_hold" => "Hold",
         "panel.timeline.tip.options" => "Timeline options",
+        "panel.timeline.tip.time" => "Time, in seconds. Drag the icon to scrub",
+        "panel.timeline.tip.frame" => "Frame number. Drag the icon to scrub",
         "panel.timeline.tip.clip_menu" => "Clip options",
         "panel.timeline.tip.starts_with" => "The game starts by playing this clip",
         "panel.timeline.tip.go_start" => "Go to start",
@@ -178,8 +181,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escrevia no fonte).
         "panel.timeline.buffer.swap" => "Swap",
         "panel.timeline.buffer.store" => "Store",
-        // Dono 10/11 — a caixa «Edit curves on canvas» da aba Keys (no lugar da vista Curves).
-        "panel.timeline.curves_on_canvas" => "Edit curves on canvas",
+        // Dono 10/11 — a caixa da aba Keys (no lugar da vista Curves); nome curto «Edit Path» (dono 12/11).
+        "panel.timeline.curves_on_canvas" => "Edit Path",
         // A pílula da sessão de animar (doc 17 item 9): «Animating jump» + «Done».
         "panel.timeline.animating" => "Animating {clip}",
         "panel.timeline.animating.done" => "Done",

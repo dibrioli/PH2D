@@ -181,6 +181,9 @@ pub struct TimelinePanelState {
     /// Session state — never saved, never undoable; published to the shell only on the Keys tab
     /// ([`curves_on_canvas`]).
     pub curves_on_canvas: bool,
+    /// «Show clips as a list» (dono 12/11, Timeline options): the clip chips become one dropdown.
+    /// Session view state — never saved, never undoable.
+    pub clips_as_list: bool,
     /// Which half of the document is on screen: the clip's keys, or the clip
     /// stack ([`crate::tab::Tab`]). Panel-local VIEW state — never undoable,
     /// never saved, and never the meaning of an edit.
@@ -342,6 +345,7 @@ impl Default for TimelinePanelState {
             grupos_abertos: Vec::new(),
             speed_view: false,
             curves_on_canvas: false,
+            clips_as_list: false,
             tab: crate::tab::Tab::default(),
             source_container: None,
             source_clip: None,

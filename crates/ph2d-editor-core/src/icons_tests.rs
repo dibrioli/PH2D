@@ -299,6 +299,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::Eyedropper,
     IconId::File,
     IconId::Film,
+    IconId::FilmFrame,
     IconId::FilterBevel,
     IconId::FilterBlur,
     IconId::FilterColorAdjust,

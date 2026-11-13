@@ -93,7 +93,7 @@ const NUMEROS: [NodeId; 3] = [
 ];
 
 /// O que fica À VISTA na barra (doc 15, onda 1): título, clipes e tocar. O resto mora nas janelinhas.
-const NA_BARRA: [NodeId; 20] = [
+const NA_BARRA: [NodeId; 19] = [
     ids::TIMELINE_TAB_KEYS,
     ids::TIMELINE_TAB_CONTAINERS,
     ids::TIMELINE_TAB_ARRANGE,
@@ -112,12 +112,12 @@ const NA_BARRA: [NodeId; 20] = [
     ids::TIMELINE_TIME_NUM,
     ids::TIMELINE_FRAME_NUM,
     ids::TIMELINE_AUTOKEY,
-    ids::TIMELINE_RECORD,
     ids::TIMELINE_CURVES_ON_CANVAS,
 ];
 
-/// Os que se mudaram para «Timeline options» (a engrenagem).
-const NAS_OPCOES: [NodeId; 7] = [
+/// Os que se mudaram para «Timeline options» (a engrenagem). Record while playing: dono 12/11.
+const NAS_OPCOES: [NodeId; 8] = [
+    ids::TIMELINE_RECORD,
     ids::TIMELINE_SNAP,
     ids::TIMELINE_PHYSICS,
     ids::TIMELINE_MOTION_PATH,
@@ -321,7 +321,6 @@ fn os_numeros_e_as_caixas_tem_a_altura_do_cartao() {
         ids::TIMELINE_TIME_NUM,
         ids::TIMELINE_FRAME_NUM,
         ids::TIMELINE_AUTOKEY,
-        ids::TIMELINE_RECORD,
         ids::TIMELINE_CLIP_OPT[0],
         ids::TIMELINE_ANIM_DD,
     ] {
@@ -330,6 +329,15 @@ fn os_numeros_e_as_caixas_tem_a_altura_do_cartao() {
     }
     let r = m0.rect(ids::TIMELINE_TIME_NUM).expect("Time");
     assert_eq!(handle_rect(r).w, m::ICON_CELL);
+    // Dono 12/11: Time e Frame 20 % mais estreitas (82 → 65,6 px), sem o rótulo ao lado: o Frame
+    // encosta ao Time só pelo vão.
+    let f = m0.rect(ids::TIMELINE_FRAME_NUM).expect("Frame");
+    let estreita = (m::ICON_CELL + m::FIELD_VALUE_MIN_W) * 0.8;
+    assert!((r.w - estreita).abs() < 0.01 && (f.w - estreita).abs() < 0.01);
+    assert!(
+        (f.x - (r.x + r.w + m::FIELD_GAP)).abs() < 0.5,
+        "um rótulo entre Time e Frame"
+    );
 }
 
 /// ⭐ O chip do dono abre pelo clique real; um clipe escolhe-se clicando o CHIP dele, pelo mesmo id e o
@@ -537,7 +545,6 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
         "o gravar sobe ao título"
     );
     for id in [
-        ids::TIMELINE_RECORD,
         ids::TIMELINE_ADD_MARKER,
         ids::TIMELINE_CLIP_OPT[0],
         ids::TIMELINE_CLIP_OPT[1],
@@ -548,7 +555,6 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     }
     let ordem = [
         ids::TIMELINE_AUTOKEY,
-        ids::TIMELINE_RECORD,
         ids::TIMELINE_ADD_MARKER,
         ids::TIMELINE_CLIP_OPT[0],
     ];
@@ -732,8 +738,8 @@ fn com_muitos_clipes_os_chips_ficam_numa_fileira_e_o_resto_vai_para_a_lista() {
 
 /// ⭐ Doc 15 onda 2i (dono 09/11): as abas passaram a pílula sem caixa e Auto Key · Record · Marker a
 /// discretos — SÓ a cara. Os alvos não encolheram: cada um é pelo menos o medido antes da mudança
-/// (abas 36,8 / 69,9 / 55,2 × 24; Auto Key 108 × 28; Record 176 × 28; Marker 75 × 28), e o clique na
-/// aba ainda troca a aba.
+/// (abas 36,8 / 69,9 / 55,2 × 24; Auto Key 108 × 28; Marker 75 × 28), e o clique na aba ainda troca a
+/// aba. Record while playing foi para a engrenagem (dono 12/11).
 #[test]
 fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
     let mut mesa = mesa(true);
@@ -742,7 +748,6 @@ fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
         (ids::TIMELINE_TAB_CONTAINERS, 69.9, 24.0),
         (ids::TIMELINE_TAB_ARRANGE, 55.2, 24.0),
         (ids::TIMELINE_AUTOKEY, 108.0, 28.0),
-        (ids::TIMELINE_RECORD, 176.0, 28.0),
         (ids::TIMELINE_ADD_MARKER, 75.0, 28.0),
     ] {
         let r = mesa.rect(id).expect("o controlo está pintado");

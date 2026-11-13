@@ -46,6 +46,20 @@ pub fn paint_card_check_value(
 
 /// Cheia de acento com o ✓, ou vazia com o contorno do rótulo (acesa no hover).
 pub fn paint_card_check(scene: &mut VectorScene, ink: CardInk, caixa: Rect, on: bool, hover: bool) {
+    let borda = ink.color(ColorToken::CardLabel);
+    paint_card_check_com_borda(scene, ink, caixa, on, hover, borda);
+}
+
+/// [`paint_card_check`] com o contorno da caixa VAZIA em `borda`: uma barra mais escura que o cartão
+/// (a da Timeline) pede um contorno mais claro para a caixa não sumir no fundo.
+pub fn paint_card_check_com_borda(
+    scene: &mut VectorScene,
+    ink: CardInk,
+    caixa: Rect,
+    on: bool,
+    hover: bool,
+    borda: ph2d_vector::Color,
+) {
     if on {
         let fundo = ink.color(ColorToken::KanbanBlueBold);
         fill_rounded_rect(scene, caixa, m::SEG_RADIUS, fundo);
@@ -64,7 +78,6 @@ pub fn paint_card_check(scene: &mut VectorScene, ink: CardInk, caixa: Rect, on: 
             ColorToken::CardField
         };
         fill_rounded_rect(scene, caixa, m::SEG_RADIUS, ink.color(fundo));
-        let borda = ink.color(ColorToken::CardLabel);
         // FRAME-RAW-OK: o quadradinho da caixa de marcar É o contorno (T64): sem ele a caixa desapareceria
         stroke_rounded_rect(scene, caixa, m::SEG_RADIUS, m::FIELD_BORDER, borda);
     }

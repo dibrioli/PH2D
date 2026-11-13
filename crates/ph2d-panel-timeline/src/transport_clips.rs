@@ -434,6 +434,7 @@ mod tests {
             tab,
             speed_view: false,
             curves_on_canvas: false,
+            clips_as_list: false,
             source_container: c,
             source_clip: None,
         };

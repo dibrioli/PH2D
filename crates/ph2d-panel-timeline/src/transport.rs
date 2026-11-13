@@ -149,6 +149,8 @@ pub(crate) struct BarView {
     pub speed_view: bool,
     /// «Edit curves on canvas» is ticked (`TimelinePanelState::curves_on_canvas`).
     pub curves_on_canvas: bool,
+    /// «Show clips as a list» is ticked (`TimelinePanelState::clips_as_list`).
+    pub clips_as_list: bool,
     /// The container half of the source selection (`TimelinePanelState::source_container`).
     ///
     /// **What the lane's `+` would place**, never where the view is looking: those are two

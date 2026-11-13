@@ -199,6 +199,10 @@ pub(crate) fn apply_event(
             state.curves_on_canvas = !state.curves_on_canvas;
             EventOutcome::Consumed
         }
+        WidgetEvent::Toggled(id) if id == ids::TIMELINE_CLIPS_AS_LIST => {
+            state.clips_as_list = !state.clips_as_list;
+            EventOutcome::Consumed
+        }
         WidgetEvent::Toggled(id) if id == ids::TIMELINE_SPEED => {
             state.speed_view = !state.speed_view;
             let handle = state.handle_drag.take().is_some();

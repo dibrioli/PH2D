@@ -48,3 +48,19 @@ Faixa: `dc` 0…+1,0 em todos os 14 itens (antes ±0,5 a 30 px, mas com caixas d
 - Pause/Stop seguem à vista em repouso (a maquete C só os mostra a jogar) — decisão de produto, não tomada.
 - `PH2D_CARDS=0` fora das fotos desta onda.
 - Clippy/fmt das crates tocadas e mutação dos dois portões novos: no fecho da linha.
+
+## Smoke do dono (13/11) — APROVADO («ótimo! Muito bom!»), com um bug e um pedido
+- **Bug, curado em `b1b8a10c92`:** menu aberto não fechava ao clicar no FUNDO ou na BORDA da faixa (antigo, da onda 4,
+  faixa única): `window_buttons::press` tomava o clique como Move/Resize da janela antes do despacho do editor. Cura:
+  `WidgetStore::closes_on_outside_press()` (`interaction/state/panel_ops.rs`) — com menu, busca, Fill, cor ou lista
+  aberta, a porta da janela devolve `None`. Portão `clicar_fora_fecha_o_que_a_faixa_abriu` (`menu_cascade_tests.rs`;
+  5 vermelhos sem a cura). Foto `fotos/onda7_bug_menu_fecha.png`. Avisos de compilação da onda 7: `94bd8e6318`.
+
+## PRÓXIMO — onda 8: os menus como a maquete
+Dono, com a maquete ao lado (`~/Documentos/GameEngineSamples/critica_ph2d.html#menubar`, CSS `.c15dd` `.c15it` `.c15sep`
+`.c15kd`): *«nossos menus sem ícones e sem divisórias ainda não estão tão bonitos»*. Falta: (1) ícone de 16 à esquerda de
+cada item (coluna de 16 px + vão 7, como `.c15it{grid-template-columns:16px …}`), nítido (`paint_icon_nitido`); (2)
+divisórias entre grupos na RAIZ e em cada submenu (File: New·Open·Open Recent·Scenes | Save·Save As | Import·Export);
+(3) atalho em coluna alinhada à direita, apagado; (4) o item que abriu o submenu aceso no acento (`.c15it.on`), o
+caminho visível. Medir antes (menus do VS Code e do Godot pelo `oraculos_onda7.sh` + régua), fotos lado a lado com a
+maquete e ampliadas ANTES do smoke; contraste ≥ 4,5 (texto) / ≥ 3 (ícone, divisória) nos 12 temas.

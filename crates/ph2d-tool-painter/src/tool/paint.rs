@@ -107,6 +107,8 @@ mod watercolor_fios;
 mod watercolor_flow;
 #[cfg(test)]
 mod watercolor_fundo_cache_tests;
+#[cfg(test)]
+mod watercolor_fundo_aquecido_tests;
 /// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).
 mod watercolor_lut;
 mod watercolor_mistura; // o Pigment mistura tinta com tinta: nunca com o papel, e molhado sobre molhado

@@ -1,0 +1,631 @@
+3.97 4.42 4.27 2/1873 2418846
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+   Compiling ph2d-tool-painter v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-tool-painter)
+    Finished `smoke` profile [optimized] target(s) in 14.26s
+     Running unittests src/lib.rs (target/smoke/deps/ph2d_tool_painter-1ce851a5572e3826)
+
+running 1 test
+ROTA	Wet Wash	encolhe_no_silencio=true
+  ev0 ponteiro 10.9 tique 0.0 saída 0.0 · 117.5 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 19.8 tique 0.0 saída 0.4 · 157.5 MB novos
+  ev0 ponteiro 6.7 tique 0.0 saída 0.0 · 63.5 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 10.2 tique 0.0 saída 0.3 · 56.3 MB novos
+TRACO	Wet Wash	base 1.º máx 20.1 · 2.º máx 10.5
+    «+» mais.antes 0.02 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.00 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 4.49 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.04 ms · 0.0 MB do fio
+    «+» mais.flush 0.05 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.04 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 1.67 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.03 ms · 0.0 MB do fio
+    «+» preview 2.08 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=true 8.6 ms · 53.1 MB novos
+  ev0 ponteiro 3.1 tique 0.0 saída 0.0 · 24.6 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 13.8 tique 0.0 saída 0.3 · 90.1 MB novos
+  ev0 ponteiro 7.4 tique 0.0 saída 0.0 · 63.3 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 7.5 tique 0.0 saída 0.4 · 31.2 MB novos
+  fio da compressão: início 304.9 · fim 777.7 ms depois do «+»; os traços na nova de 975.7 a 1132.0
+TRACO	Wet Wash	journal=true	1.º [3.1 0.0 14.2 2.2 2.3] máx 14.2 mediana 2.1	2.º [7.4 0.0 7.9 2.2 2.6] máx 7.9 mediana 2.1
+ROTA	Wet Wash	encolhe_no_silencio=false
+  ev0 ponteiro 3.0 tique 0.0 saída 0.0 · 27.8 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 9.9 tique 0.0 saída 0.3 · 17.0 MB novos
+  ev0 ponteiro 7.1 tique 0.0 saída 0.0 · 60.1 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 11.8 tique 0.0 saída 0.4 · 49.3 MB novos
+TRACO	Wet Wash	base 1.º máx 10.3 · 2.º máx 12.1
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.00 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.49 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.02 ms · 0.0 MB do fio
+    «+» flush.guarda 0.04 ms · 0.0 MB do fio
+    «+» mais.flush 0.05 ms · 0.0 MB do fio
+    «+» mais.tela_zero 1.55 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.22 ms · 0.0 MB do fio
+    «+» mais.troca 0.05 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 18.83 ms · 0.0 MB do fio
+    «+» mais.fim 0.01 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.15 ms · 0.0 MB do fio
+    «+» preview 18.04 ms · 0.0 MB do fio
+    «+» tique 0.02 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=false 40.7 ms · 481.8 MB novos
+  ev0 ponteiro 3.1 tique 0.0 saída 0.0 · 24.8 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 8.5 tique 0.0 saída 0.4 · 47.8 MB novos
+  ev0 ponteiro 7.3 tique 0.0 saída 0.0 · 63.4 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 7.8 tique 0.0 saída 0.4 · 32.8 MB novos
+  fio da compressão: início 3.2 · fim 462.9 ms depois do «+»; os traços na nova de 1007.4 a 1158.2
+TRACO	Wet Wash	journal=false	1.º [3.1 0.0 8.8 2.1 2.3] máx 8.8 mediana 2.1	2.º [7.3 0.0 8.2 2.1 2.5] máx 8.2 mediana 2.1
+ROTA	Wet Wash	encolhe_no_silencio=false
+  ev0 ponteiro 3.2 tique 0.0 saída 0.0 · 25.4 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 10.8 tique 0.0 saída 0.3 · 39.0 MB novos
+  ev0 ponteiro 7.6 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.8 tique 0.0 saída 0.3 · 8.9 MB novos
+TRACO	Wet Wash	base 1.º máx 11.1 · 2.º máx 7.6
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.01 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.01 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.62 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.03 ms · 0.0 MB do fio
+    «+» mais.flush 0.05 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.47 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.03 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 1.70 ms · 0.0 MB do fio
+    «+» mais.fim 0.01 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.03 ms · 0.0 MB do fio
+    «+» preview 1.80 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=false 5.9 ms · 4.7 MB novos
+  ev0 ponteiro 3.1 tique 0.0 saída 0.0 · 24.5 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 8.3 tique 0.0 saída 0.3 · 43.3 MB novos
+  ev0 ponteiro 7.6 tique 0.0 saída 0.0 · 33.3 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.1 tique 0.0 saída 0.3 · 8.6 MB novos
+  fio da compressão: início 7.5 · fim 463.8 ms depois do «+»; os traços na nova de 974.3 a 1116.4
+TRACO	Wet Wash	journal=false	1.º [3.1 0.0 8.6 2.1 2.2] máx 8.6 mediana 2.0	2.º [7.6 0.0 5.5 2.0 2.2] máx 7.6 mediana 2.0
+ROTA	Wet Wash	encolhe_no_silencio=true
+  ev0 ponteiro 3.6 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 9.0 tique 0.0 saída 0.3 · 7.7 MB novos
+  ev0 ponteiro 7.9 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.3 tique 0.0 saída 0.3 · 4.7 MB novos
+TRACO	Wet Wash	base 1.º máx 9.3 · 2.º máx 7.9
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.01 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.00 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.65 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.03 ms · 0.0 MB do fio
+    «+» mais.flush 0.03 ms · 0.0 MB do fio
+    «+» mais.tela_zero 1.59 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.04 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 1.73 ms · 0.0 MB do fio
+    «+» mais.fim 0.01 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.03 ms · 0.0 MB do fio
+    «+» preview 2.31 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=true 7.6 ms · 6.7 MB novos
+  ev0 ponteiro 3.4 tique 0.0 saída 0.0 · 17.1 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 11.5 tique 0.0 saída 0.3 · 71.4 MB novos
+  ev0 ponteiro 7.8 tique 0.0 saída 0.0 · 33.3 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 4.8 tique 0.0 saída 0.3 · 5.7 MB novos
+  fio da compressão: início 301.7 · fim 749.8 ms depois do «+»; os traços na nova de 974.2 a 1117.8
+TRACO	Wet Wash	journal=true	1.º [3.4 0.0 11.9 2.3 2.2] máx 11.9 mediana 1.9	2.º [7.8 0.0 5.1 1.9 2.1] máx 7.8 mediana 2.0
+ROTA	Wet Wash	encolhe_no_silencio=true
+  ev0 ponteiro 3.1 tique 0.0 saída 0.0 · 25.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 10.2 tique 0.0 saída 0.3 · 11.7 MB novos
+  ev0 ponteiro 7.5 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.6 tique 0.0 saída 0.3 · 7.0 MB novos
+TRACO	Wet Wash	base 1.º máx 10.5 · 2.º máx 7.5
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.01 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.02 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.01 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.01 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.63 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.03 ms · 0.0 MB do fio
+    «+» mais.flush 0.04 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.04 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 1.85 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.03 ms · 0.0 MB do fio
+    «+» preview 2.33 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=true 6.1 ms · 15.1 MB novos
+  ev0 ponteiro 3.0 tique 0.0 saída 0.0 · 24.7 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 11.9 tique 0.0 saída 0.4 · 80.8 MB novos
+  ev0 ponteiro 7.2 tique 0.0 saída 0.0 · 63.3 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.5 tique 0.0 saída 0.4 · 10.8 MB novos
+  fio da compressão: início 301.9 · fim 753.4 ms depois do «+»; os traços na nova de 973.6 a 1125.2
+TRACO	Wet Wash	journal=true	1.º [3.0 0.0 12.3 2.3 2.3] máx 12.3 mediana 2.1	2.º [7.2 0.0 5.9 2.2 2.3] máx 7.2 mediana 2.1
+ROTA	Wet Wash	encolhe_no_silencio=false
+  ev0 ponteiro 3.6 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 9.3 tique 0.0 saída 0.3 · 7.7 MB novos
+  ev0 ponteiro 7.9 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.4 tique 0.0 saída 0.3 · 4.7 MB novos
+TRACO	Wet Wash	base 1.º máx 9.6 · 2.º máx 7.9
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.00 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.00 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.69 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.03 ms · 0.0 MB do fio
+    «+» mais.flush 0.04 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.04 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 14.75 ms · 0.0 MB do fio
+    «+» mais.fim 0.01 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.15 ms · 0.0 MB do fio
+    «+» preview 20.01 ms · 0.0 MB do fio
+    «+» tique 0.02 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=false 37.0 ms · 235.1 MB novos
+  ev0 ponteiro 3.0 tique 0.0 saída 0.0 · 24.8 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 12.6 tique 0.0 saída 0.4 · 80.8 MB novos
+  ev0 ponteiro 7.2 tique 0.0 saída 0.0 · 63.4 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.0 tique 0.0 saída 0.3 · 10.8 MB novos
+  fio da compressão: início 1.8 · fim 445.9 ms depois do «+»; os traços na nova de 1007.8 a 1160.7
+TRACO	Wet Wash	journal=false	1.º [3.0 0.0 13.0 2.6 2.5] máx 13.0 mediana 2.1	2.º [7.2 0.0 5.3 2.1 2.3] máx 7.2 mediana 2.1
+ROTA	Wet Wash	encolhe_no_silencio=false
+  ev0 ponteiro 3.5 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 9.5 tique 0.0 saída 0.6 · 7.7 MB novos
+  ev0 ponteiro 7.9 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.3 tique 0.0 saída 0.3 · 4.7 MB novos
+TRACO	Wet Wash	base 1.º máx 10.2 · 2.º máx 7.9
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.01 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.59 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.03 ms · 0.0 MB do fio
+    «+» mais.flush 0.05 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.06 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 15.38 ms · 0.0 MB do fio
+    «+» mais.fim 0.02 ms · 0.0 MB do fio
+    «+» select_layer 0.02 ms · 0.0 MB do fio
+    «+» tique 0.20 ms · 0.0 MB do fio
+    «+» preview 19.42 ms · 0.0 MB do fio
+    «+» tique 0.02 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=false 37.0 ms · 253.3 MB novos
+  ev0 ponteiro 3.0 tique 0.0 saída 0.0 · 24.6 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 12.6 tique 0.0 saída 0.4 · 80.8 MB novos
+  ev0 ponteiro 7.2 tique 0.0 saída 0.0 · 63.3 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.1 tique 0.0 saída 0.4 · 10.8 MB novos
+  fio da compressão: início 1.7 · fim 451.7 ms depois do «+»; os traços na nova de 1004.7 a 1156.9
+TRACO	Wet Wash	journal=false	1.º [3.0 0.0 13.0 2.3 2.3] máx 13.0 mediana 2.1	2.º [7.2 0.0 5.5 2.1 2.3] máx 7.2 mediana 2.1
+ROTA	Wet Wash	encolhe_no_silencio=true
+  ev0 ponteiro 3.6 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 9.0 tique 0.0 saída 0.3 · 7.7 MB novos
+  ev0 ponteiro 7.9 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.3 tique 0.0 saída 0.3 · 4.7 MB novos
+TRACO	Wet Wash	base 1.º máx 9.3 · 2.º máx 7.9
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» flush.pode 0.00 ms · 0.0 MB do fio
+    «+» flush.pousa_adiados 0.00 ms · 0.0 MB do fio
+    «+» flush.ultima_imagem 0.00 ms · 0.0 MB do fio
+    «+» flush.bring_home 1.60 ms · 0.0 MB do fio
+    «+» flush.worker_none 0.01 ms · 0.0 MB do fio
+    «+» flush.guarda 0.03 ms · 0.0 MB do fio
+    «+» mais.flush 0.05 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.02 ms · 0.0 MB do fio
+    «+» mais.troca 0.00 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 1.66 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.01 ms · 0.0 MB do fio
+    «+» tique 0.03 ms · 0.0 MB do fio
+    «+» preview 1.94 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=true 5.5 ms · 11.7 MB novos
+  ev0 ponteiro 2.9 tique 0.0 saída 0.0 · 25.9 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 12.9 tique 0.0 saída 0.4 · 80.8 MB novos
+  ev0 ponteiro 7.3 tique 0.0 saída 0.0 · 63.4 MB novos
+  ev1 ponteiro 0.0 tique 0.0 saída 0.0 · 0.0 MB novos
+  ev2 ponteiro 5.2 tique 0.0 saída 0.3 · 10.8 MB novos
+  fio da compressão: início 301.8 · fim 748.7 ms depois do «+»; os traços na nova de 972.7 a 1128.3
+TRACO	Wet Wash	journal=true	1.º [3.0 0.0 13.2 2.1 2.3] máx 13.2 mediana 2.2	2.º [7.4 0.0 5.5 2.1 2.3] máx 7.4 mediana 2.1
+preparo usado (motores, papéis): (16, 16)
+test tool::paint::wetpaint::sonda_primeiro_traco::sonda_primeiro_traco ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3177 filtered out; finished in 18.52s
+
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.14s
+     Running unittests src/lib.rs (target/smoke/deps/ph2d_tool_painter-1ce851a5572e3826)
+
+running 1 test
+ROTA	Watercolor Basic	encolhe_no_silencio=true
+  ev0 ponteiro 32.3 tique 4.5 saída 0.3 · 238.8 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.3 · 0.1 MB novos
+  ev2 ponteiro 0.3 tique 3.5 saída 0.3 · 0.1 MB novos
+  ev0 ponteiro 16.5 tique 3.2 saída 0.3 · 77.2 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.1 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 37.1 · 2.º máx 20.0
+    «+» mais.antes 0.02 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.01 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.03 ms · 0.0 MB do fio
+    «+» mais.troca 0.00 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.07 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=true 0.2 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 37.8 tique 4.3 saída 1.3 · 102.0 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.6 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 8.5 tique 2.9 saída 0.4 · 37.8 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.0 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [43.4 3.9 4.4 4.5 4.6] máx 43.4 mediana 4.4	2.º [11.8 3.2 3.9 4.2 3.9] máx 11.8 mediana 4.0
+ROTA	Watercolor Basic	encolhe_no_silencio=false
+  ev0 ponteiro 21.0 tique 4.4 saída 0.3 · 35.3 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.5 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 16.9 tique 3.1 saída 0.3 · 66.5 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.4 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 25.7 · 2.º máx 20.2
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.01 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.02 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.07 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=false 0.2 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 35.9 tique 4.0 saída 1.2 · 70.2 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.6 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 12.2 tique 3.0 saída 0.4 · 36.7 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.0 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [41.2 3.8 4.3 4.3 4.5] máx 41.2 mediana 4.3	2.º [15.6 3.2 3.9 4.1 4.0] máx 15.6 mediana 4.0
+ROTA	Watercolor Basic	encolhe_no_silencio=false
+  ev0 ponteiro 15.5 tique 4.2 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.5 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 12.7 tique 3.1 saída 0.3 · 30.3 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.1 · 2.º máx 16.0
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.02 ms · 0.0 MB do fio
+    «+» mais.troca 0.00 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.07 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=false 0.2 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 32.8 tique 3.9 saída 1.1 · 36.0 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.5 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 12.0 tique 3.1 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 2.9 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [37.8 3.8 4.3 4.2 4.3] máx 37.8 mediana 4.3	2.º [15.5 3.2 3.9 4.1 4.0] máx 15.5 mediana 4.1
+ROTA	Watercolor Basic	encolhe_no_silencio=true
+  ev0 ponteiro 15.9 tique 4.4 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.7 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 9.2 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.6 · 2.º máx 12.4
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.03 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.08 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=true 0.3 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 33.4 tique 4.3 saída 1.3 · 36.0 MB novos
+  ev1 ponteiro 0.0 tique 3.5 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.7 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 12.1 tique 3.2 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [38.9 3.9 4.5 4.5 4.5] máx 38.9 mediana 4.5	2.º [15.7 3.4 4.0 4.1 4.2] máx 15.7 mediana 4.1
+ROTA	Watercolor Basic	encolhe_no_silencio=true
+  ev0 ponteiro 15.9 tique 4.5 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.6 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.7 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 8.3 tique 2.6 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.7 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 2.6 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.8 · 2.º máx 11.1
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.03 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.03 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.08 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=true 0.2 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 29.9 tique 4.0 saída 1.2 · 36.1 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.5 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 12.3 tique 3.0 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.7 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [35.1 3.8 4.3 4.3 4.4] máx 35.1 mediana 4.4	2.º [15.6 3.1 4.0 4.1 3.9] máx 15.6 mediana 4.1
+ROTA	Watercolor Basic	encolhe_no_silencio=false
+  ev0 ponteiro 15.3 tique 4.4 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.5 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.7 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 9.1 tique 2.9 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.0 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.0 · 2.º máx 12.3
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.02 ms · 0.0 MB do fio
+    «+» mais.troca 0.01 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.08 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=false 0.2 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 34.2 tique 4.0 saída 1.2 · 36.0 MB novos
+  ev1 ponteiro 0.0 tique 3.2 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.6 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 12.5 tique 3.1 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.0 saída 0.6 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [39.4 3.7 4.3 4.3 4.4] máx 39.4 mediana 4.3	2.º [16.0 3.4 4.2 4.1 3.9] máx 16.0 mediana 4.1
+ROTA	Watercolor Basic	encolhe_no_silencio=false
+  ev0 ponteiro 15.7 tique 4.2 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.4 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 9.3 tique 3.1 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.5 tique 3.2 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.2 · 2.º máx 12.7
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.02 ms · 0.0 MB do fio
+    «+» mais.troca 0.00 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.07 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.00 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+  «+» rota=false 0.2 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 33.6 tique 4.0 saída 1.2 · 36.1 MB novos
+  ev1 ponteiro 0.0 tique 3.4 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 4.0 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 11.9 tique 3.1 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.9 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=false	1.º [38.8 3.8 4.7 4.4 4.5] máx 38.8 mediana 4.4	2.º [15.4 3.3 4.0 4.1 4.1] máx 15.4 mediana 4.1
+ROTA	Watercolor Basic	encolhe_no_silencio=true
+  ev0 ponteiro 15.3 tique 4.3 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.7 saída 0.3 · 0.0 MB novos
+  ev0 ponteiro 9.3 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev1 ponteiro 0.0 tique 3.0 saída 0.3 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.1 saída 0.3 · 0.0 MB novos
+TRACO	Watercolor Basic	base 1.º máx 20.0 · 2.º máx 12.6
+    «+» mais.antes 0.01 ms · 0.0 MB do fio
+    «+» mais.snapshot_model 0.01 ms · 0.0 MB do fio
+    «+» flush.antes 0.00 ms · 0.0 MB do fio
+    «+» flush.guard 0.00 ms · 0.0 MB do fio
+    «+» mais.flush 0.00 ms · 0.0 MB do fio
+    «+» mais.tela_zero 0.02 ms · 0.0 MB do fio
+    «+» mais.replace_canvas 0.01 ms · 0.0 MB do fio
+    «+» mais.commit 0.03 ms · 0.0 MB do fio
+    «+» mais.troca 0.00 ms · 0.0 MB do fio
+    «+» mais.adormeceu_muda 0.00 ms · 0.0 MB do fio
+    «+» mais.fim 0.00 ms · 0.0 MB do fio
+    «+» select_layer 0.00 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.00 ms · 0.0 MB do fio
+    «+» tique 0.09 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+    «+» tique 0.01 ms · 0.0 MB do fio
+    «+» preview 0.01 ms · 0.0 MB do fio
+  «+» rota=true 0.3 ms · 0.0 MB novos
+  fio da compressão: nenhum (a sessão retém < 64 MB)
+  ev0 ponteiro 29.4 tique 3.9 saída 1.1 · 36.0 MB novos
+  ev1 ponteiro 0.0 tique 3.3 saída 0.5 · 0.0 MB novos
+  ev2 ponteiro 0.3 tique 3.6 saída 0.5 · 0.0 MB novos
+  ev0 ponteiro 12.5 tique 3.3 saída 0.4 · 35.4 MB novos
+  ev1 ponteiro 0.0 tique 2.8 saída 0.4 · 0.0 MB novos
+  ev2 ponteiro 0.6 tique 3.0 saída 0.4 · 0.0 MB novos
+TRACO	Watercolor Basic	journal=true	1.º [34.4 3.8 4.3 4.3 4.4] máx 34.4 mediana 4.3	2.º [16.2 3.1 3.9 4.0 3.9] máx 16.2 mediana 4.1
+preparo usado (motores, papéis): (0, 0)
+test tool::paint::wetpaint::sonda_primeiro_traco::sonda_primeiro_traco ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3177 filtered out; finished in 21.03s
+
+2.57 3.98 4.13 3/1896 2420326

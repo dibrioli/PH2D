@@ -179,7 +179,7 @@ impl PainterTool {
     /// identidade da alocação: com o `Weak` vivo nenhuma escrita segura muda o plano no lugar — o `make_mut` copia ou
     /// MOVE), o papel e o tamanho. Medido a 4K: 10–14 ms por pen-down de aguada (e o chão preto do vidro, que se
     /// guarda pelo mesmo `Arc`, mais 8 ms). Com uma máscara activa a fonte troca a âncora: compõe sempre.
-    fn fundo_de_baixo(&mut self) -> Arc<Vec<u8>> {
+    pub(super) fn fundo_de_baixo(&mut self) -> Arc<Vec<u8>> {
         let mascara = self
             .layers
             .active()

@@ -78,13 +78,18 @@ impl PainterTool {
         if sozinho {
             // B16.3: o meio (aguada ou não) decide-se aqui e vale até ao pen-up do grupo.
             self.paint.aguada_do_traco = Some(self.paint.brush.watercolor);
+            crate::sonda_partes::parte("down.antes");
             self.begin_undo_step();
+            crate::sonda_partes::parte("down.begin_undo_step");
             if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
                 if self.paint.wetpaint.session.is_none() {
                     self.wet_acorda(); // o traço não espera o quadro: a tinta acorda sob o pincel
                 }
+                crate::sonda_partes::parte("down.wet_acorda");
                 self.wetpaint_guard(); // o que outra ferramenta escreveu desde o último quadro é um passo à parte
+                crate::sonda_partes::parte("down.wetpaint_guard");
                 self.wet_guarda_o_passo(); // o undo deste passo devolve a tinta viva de agora
+                crate::sonda_partes::parte("down.wet_guarda_o_passo");
             }
         }
         // ⚠️ **ELIDINDO o relevo** (degrau 4, doc 28 §5.72): este `before` DESCREVE os três planos em
@@ -93,6 +98,7 @@ impl PainterTool {
         if sozinho {
             let before = self.snapshot_model_eliding_relief();
             self.paint.stroke_undo = Some(before);
+            crate::sonda_partes::parte("down.snapshot");
         }
         // DEPOIS do `before`: desfazer o 1.º traço Wet de uma camada devolve-a à lei da outra tinta.
         if matches!(self.paint.paint_mode, PaintMode::WetPaint)
@@ -102,6 +108,7 @@ impl PainterTool {
             if self.tintas_molhadas.insert(id) {
                 self.a_marca_molhada_virou(id);
             }
+            crate::sonda_partes::parte("down.marca_molhada");
         }
         self.paint.drag_preview = None;
         self.paint.plano_do_traco = None; // o plano do traço (L8/L5) nasce no 1.º lote deste traço
@@ -138,8 +145,10 @@ impl PainterTool {
         // como uma sobrevivência num relatório de mutação e não são*: a do pen-up tem gate próprio
         // (`um_traco_novo_nao_recompoe_da_tela_do_anterior`, a metade da memória).
         // O que o gesto anterior deixou por compor entra na tela ANTES de ela virar o `pre` deste.
+        crate::sonda_partes::parte("down.limpezas");
         self.compoe_o_pendente();
         self.paint.pilha.fecha();
+        crate::sonda_partes::parte("down.compoe_o_pendente");
         // ⚠️ Um fluxo de RNG por camada, semeado do fluxo do pincel. Sem a semente eles nasceriam
         // TODOS iguais e as camadas teriam a mesma realização de Grain/Randomize umas das outras.
         self.paint.rng_camada = std::array::from_fn(|i| {
@@ -193,7 +202,9 @@ impl PainterTool {
         // instead of over-painting in place. In a CONTINUING session this refrozen base (which now
         // includes the union baked so far) feeds only the mixer pickup + rewet; the composite keeps
         // reading the SESSION base below.
+        crate::sonda_partes::parte("down.zera_sessao");
         self.freeze_watercolor_ground(wet_session);
+        crate::sonda_partes::parte("down.freeze_ground");
         if !wet_session {
             // Fresh session: composite base = this pen-down's frozen canvas; the guard Arc is set
             // at the bake. A stale wet map from a broken session keeps drying on its own.
@@ -218,6 +229,7 @@ impl PainterTool {
                 self.assa_as_pocas_secas();
             }
         }
+        crate::sonda_partes::parte("down.estilos");
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.
         self.paint.last_smear_pos = None;
@@ -260,17 +272,22 @@ impl PainterTool {
             },
             ev.tilt,
         ); // a 2.ª ponta (L6)
+        crate::sonda_partes::parte("down.stroke_begin");
         self.stamp_stroke_dabs(&dabs);
+        crate::sonda_partes::parte("down.stamp");
         self.paint.dabs = dabs;
         // ⚠️ O traço volta ANTES do composite: o `park_stroke` fecha o evento (fios e a mancha do
         // Solid na aguada), e o composite é o LEITOR dele — invertidos, o quadro sai sem a mancha
         // (o «pisca» do smoke de 2026-10-04, `a_mancha_nao_some_no_quadro_em_que_o_tique_carimba`).
         self.park_stroke(stroke);
+        crate::sonda_partes::parte("down.park");
         // Watercolor render-path: reconstruct the wash optically over the frozen base (live; grows with
         // the stroke). Replaces the per-dab deposit that `stamp_dabs` skipped in watercolor mode.
         if self.watercolor_render_active() {
             self.apply_watercolor(false);
+            crate::sonda_partes::parte("down.apply_watercolor");
             self.pour_canvas_wet(); // #2: moisture is laid LIVE (the damp shows during the stroke, not at pen-up)
+            crate::sonda_partes::parte("down.pour_canvas_wet");
         }
     }
 

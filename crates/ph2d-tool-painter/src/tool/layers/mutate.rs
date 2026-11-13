@@ -263,6 +263,8 @@ impl PainterTool {
         } else {
             self.invalidate_composite();
         }
+        self.aquece_o_fundo_do_toque();
+        crate::sonda_partes::parte("mais.aquece_o_fundo");
         Some(id)
     }
 
@@ -413,6 +415,7 @@ impl PainterTool {
         } else {
             self.invalidate_composite();
         }
+        self.aquece_o_fundo_do_toque();
     }
 
     /// Collapse the multi-selection to a single layer (selection bookkeeping

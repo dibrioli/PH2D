@@ -214,3 +214,52 @@ rayon, e varre centenas de MB. Na rota antiga as faltas de página do processo n
 
 Não foi investigado. Não há um gate da pista GPU que fixe a versão da camada nova no «+», e por isso, como na nota,
 fica documentado e não mexido.
+
+## Continuação 4 (13/11): o 1.º pen-down do Watercolor Basic por dentro (o fundo aquece na troca, curado)
+
+Medição própria: um teste temporário (não comitado) que chama a sonda. Watercolor Basic 4K, `PH2D_SONDA_PARTES_DOWN`
+(marcas `down.*` em `stroke_lifecycle.rs`, no-op fora de teste), `PH2D_SONDA_AQUECE=ab` × 2 blocos rodados no MESMO
+processo, perfil `smoke`, load 3–5. Para o coordenador: `N7_ITEM3e_sonda.sh` (6 blocos, WB e Wet Wash como vizinho).
+
+**A decomposição (antes da cura):**
+
+| parte do pen-down | base, 1.º traço | camada nova, 1.º traço |
+|---|---|---|
+| `freeze_ground` (o fundo de baixo) | 2,2–6,9 ms | 10,8–12,4 ms (0 MB: composição, não alocação) |
+| `apply_watercolor` | 5,1–12,6 | 10,5–19,6 (o chão preto do vidro) |
+| `stamp` | 7,3–13,5 | 5,9–8,9 |
+| `zera_sessao` (limpezas antes do `freeze`) | < 0,3 | 0,7–6,0 (às vezes 33 MB) |
+| `begin_undo_step`, `snapshot`, `compoe_o_pendente` | < 0,3 cada | < 0,3 cada |
+
+Os ~10 ms a mais da nova eram o `fundo_de_baixo` a falhar a cache, porque a pilha mudou no «+», e a compor 4K inteiro
+(já em paralelo, em faixas). Somava-se o chão preto do vidro, chaveado pelo `Arc` desse fundo e recomposto no 1.º quadro.
+`fork_par_raw`/`make_mut` e `abre_o_passo` NÃO aparecem neste pen-down (< 0,3 ms cada): o «aberto» do ADR-0204 não é
+o custo do WB.
+
+- **Cura** (`watercolor_vidro.rs::aquece_o_fundo_do_toque`, chave em execução `FUNDO_AQUECIDO_NA_TROCA`, por fio,
+  ligada): no fim do «+» (`add_raster_layer_com`) e do `set_active_layer`, com a aguada armada (`brush.watercolor`,
+  Paint, sem borracha) e nenhum traço aberto, compõe o fundo de baixo pela própria cache dele e o chão preto chaveado
+  pelo mesmo `Arc`. O pen-down acerta as duas caches. É ao bit por construção: as mesmas funções com as mesmas chaves;
+  o que mudar entre a troca e o toque só as invalida.
+
+| chave | «+» | 1.º pen-down na nova (`ponteiro`) | máx por evento | `freeze_ground` | `apply_watercolor` |
+|---|---|---|---|---|---|
+| desligada | 0,2 ms | 32,7 · 33,6 ms | 37,8 · 38,8 | 10,8 · 11,0 | 10,5 · 14,9 |
+| ligada | 16,5 · 22,5 ms | 12,0 · 17,6 ms | 17,4 · 23,2 | 0 · 1,7 | 5,0 · 5,0 |
+
+O custo MUDA de sítio para o clique do «+» ou da linha (16–22 ms, num clique, não num traço). A nova fica igual à base
+(15,5–16,8 ms). O 2.º traço não muda, porque já acertava a cache.
+
+- **Gate** `o_fundo_do_toque_aquece_na_troca_e_e_o_mesmo_bit` (`watercolor_fundo_aquecido_tests.rs`): «+», clique na
+  base (o chão puro) e clique de volta na nova. Com a chave, o 1.º toque usa o `Arc` aquecido e o chão preto dele. O
+  controlo (sem a chave) compõe o seu. O fundo, a tela e o quadro dos dois caminhos são iguais ao bit.
+- **Mutações:** (M1) sem aquecer no «+» → vermelho · (M2) sem guardar o chão preto → vermelho · (M3) sem aquecer no
+  clique → vermelho.
+- Vizinhos verdes por nome: `fundo` 3, `vidro` 32 (5 ignorados), `troca` 32 (5 ignorados).
+- **Aberto:**
+  - O `stamp` do 1.º traço (6–13 ms, 0–51 MB) é o próximo gordo, também na base.
+  - O `zera_sessao` às vezes toca 33 MB. A origem, entre `compoe_o_pendente` e `freeze_ground`, não foi isolada.
+  - Trocar de pincel para a aguada SEM trocar de camada não aquece: o 1.º toque compõe como antes (2–7 ms numa camada
+    só, o `flat_fill`).
+  - O «+» de 16–22 ms poderia ir a um fio de fundo, mas segurar lá os `Arc` das imagens faria o `make_mut` copiar. Não
+    foi feito.

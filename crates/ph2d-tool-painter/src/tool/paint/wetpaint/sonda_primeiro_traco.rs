@@ -24,6 +24,11 @@ fn traco(t: &mut PainterTool, y: f32) -> Vec<f64> {
     let mut ms = Vec::new();
     let mut ev = |t: &mut PainterTool, x: f32, phase| {
         let f0 = faltas();
+        // `PH2D_SONDA_PARTES_DOWN`: o pen-down por dentro (`down.*` em `stroke_lifecycle.rs`).
+        let partes = phase == PointerPhase::Down && std::env::var("PH2D_SONDA_PARTES_DOWN").is_ok();
+        if partes {
+            crate::sonda_partes::liga();
+        }
         let t0 = Instant::now();
         t.on_canvas_pointer(CanvasPointer {
             pos: [x, y],
@@ -31,6 +36,15 @@ fn traco(t: &mut PainterTool, y: f32) -> Vec<f64> {
             tilt: [0.0, 0.0],
             phase,
         });
+        if partes {
+            crate::sonda_partes::parte("down.fim");
+            let v: Vec<String> = crate::sonda_partes::tira()
+                .into_iter()
+                .filter(|(_, ms, _)| *ms >= 0.3)
+                .map(|(n, ms, mb)| format!("{n} {ms:.1} ({mb:.0} MB)"))
+                .collect();
+            println!("  DOWN y={y} {}", v.join(" · "));
+        }
         let p = t0.elapsed().as_secs_f64() * 1e3;
         t.on_tick(1000.0 / 60.0);
         let q = t0.elapsed().as_secs_f64() * 1e3;
@@ -104,7 +118,11 @@ fn sonda_primeiro_traco() {
     let eixo_tela = std::env::var("PH2D_SONDA_TELA_ZERO").is_ok();
     // `PH2D_SONDA_ENCOLHE` (mesmos valores): o eixo é a chave `ENCOLHE_NO_SILENCIO` (o fio da compressão no «+»).
     let eixo_encolhe = std::env::var("PH2D_SONDA_ENCOLHE").is_ok();
-    let eixo = if eixo_encolhe {
+    // `PH2D_SONDA_AQUECE` (mesmos valores): o eixo é a chave `FUNDO_AQUECIDO_NA_TROCA` (o 1.º pen-down da aguada).
+    let eixo_aquece = std::env::var("PH2D_SONDA_AQUECE").is_ok();
+    let eixo = if eixo_aquece {
+        "PH2D_SONDA_AQUECE"
+    } else if eixo_encolhe {
         "PH2D_SONDA_ENCOLHE"
     } else if eixo_tela {
         "PH2D_SONDA_TELA_ZERO"
@@ -133,7 +151,10 @@ fn sonda_primeiro_traco() {
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
         .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
     for (n, rota) in corridas {
-        if eixo_encolhe {
+        if eixo_aquece {
+            super::super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(rota);
+            println!("ROTA\t{n}\tfundo_aquecido={rota}");
+        } else if eixo_encolhe {
             super::adormecida::ENCOLHE_NO_SILENCIO.set(rota);
             println!("ROTA\t{n}\tencolhe_no_silencio={rota}");
         } else if eixo_tela {
@@ -281,4 +302,5 @@ fn sonda_primeiro_traco() {
     crate::undo_delta::confine::JANELA_DA_TINTA_POR_PALAVRAS.with(|c| c.set(true));
     crate::tool::layers::TELA_NOVA_PELO_MMAP.set(true);
     super::adormecida::ENCOLHE_NO_SILENCIO.set(true);
+    super::super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(true);
 }

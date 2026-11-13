@@ -165,7 +165,49 @@ pub(super) struct VidroDoQuadro {
     pub chao_preto: Option<Arc<Vec<u8>>>,
 }
 
+thread_local! {
+    /// `false` = o caminho de antes do n.º 7 item 3e: o fundo de baixo e o chão preto compõem-se no 1.º pen-down da
+    /// camada que passou a activa (10–12 ms a 4K) em vez de na troca. Só a sonda e o gate o desligam.
+    #[doc(hidden)]
+    pub static FUNDO_AQUECIDO_NA_TROCA: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
 impl PainterTool {
+    /// **O fundo do próximo toque compõe-se na TROCA de camada** (n.º 7 item 3e): com a aguada armada e nenhum traço
+    /// aberto, o fundo de baixo ([`Self::fundo_de_baixo`], na cache dele) e o chão preto do vidro (chaveado pelo `Arc`
+    /// desse fundo) ficam prontos, e o pen-down acerta as duas caches. As mesmas funções com as mesmas chaves: o
+    /// mesmo bit; o que muda entre a troca e o toque só as invalida, e o toque compõe como antes.
+    pub(in crate::tool) fn aquece_o_fundo_do_toque(&mut self) {
+        if !FUNDO_AQUECIDO_NA_TROCA.get()
+            || self.paint.stroke.is_some()
+            || !self.paint.brush.watercolor
+            || !matches!(self.paint.paint_mode, PaintMode::Paint)
+            || self.paint.eraser
+            || self.source_size.0 == 0
+            || self.source_size.1 == 0
+        {
+            return;
+        }
+        let Some(camada) = self.layers.active().filter(|&id| !self.layers.is_mask(id)) else {
+            return;
+        };
+        let fundo = self.fundo_de_baixo();
+        let fresca = matches!(&self.vidro_congelado.chao_preto,
+            Some((w, _)) if Weak::ptr_eq(w, &Arc::downgrade(&fundo)));
+        if !fresca {
+            let abaixo = self.layers.z_order_bottom_up().first() != Some(&camada);
+            let c = abaixo.then(|| Arc::new(self.build_wet_backdrop_sobre([0, 0, 0])));
+            self.vidro_congelado.chao_preto = Some((Arc::downgrade(&fundo), c));
+        }
+    }
+
+    /// O chão preto congelado é o de `fundo` (o portão do aquecimento).
+    #[cfg(test)]
+    pub(super) fn chao_preto_e_de(&self, fundo: &Arc<Vec<u8>>) -> bool {
+        matches!(&self.vidro_congelado.chao_preto,
+            Some((w, _)) if Weak::ptr_eq(w, &Arc::downgrade(fundo)))
+    }
+
     /// O vidro deste quadro, ou `None` (a pintar uma máscara, ou sem tela).
     pub(super) fn vidro_do_quadro(
         &mut self,

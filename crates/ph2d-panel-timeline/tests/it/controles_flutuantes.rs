@@ -50,9 +50,11 @@ fn os_controlos_flutuam_acima_do_painel() {
         ids::TIMELINE_GO_END,
     ]
     .map(|id| m0.rect(id).unwrap_or_else(|| panic!("{id:?} não pintado")));
+    // O topo do painel é a fileira do título (as abas laterais sobem até ao topo da aba, dono 13/11).
+    let titulo = m0.rect(ids::TIMELINE_TIME_NUM).expect("o Time");
     for (i, r) in fila.iter().enumerate() {
         assert!(
-            r.y + r.h <= abas.y,
+            r.y + r.h <= titulo.y,
             "o {i}.º controlo não está acima do painel"
         );
         if i > 0 {

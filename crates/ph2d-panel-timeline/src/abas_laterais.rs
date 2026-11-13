@@ -62,6 +62,39 @@ pub(crate) struct Aba {
     pub(crate) ativa: bool,
     /// A distância (em abas) à ativa: as mais longe pintam-se primeiro, por trás.
     pub(crate) fundo: usize,
+    /// Como acaba em cima e em baixo.
+    pub(crate) pontas: (Ponta, Ponta),
+}
+
+/// Como uma aba acaba de um lado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Ponta {
+    /// A ponta da pilha: reta, com a quina de fora redonda.
+    Reta,
+    /// À frente da vizinha: inclinada, a base passa a fatia por [`PONTA`].
+    Inclinada,
+    /// Por trás da vizinha: reta e comprida por baixo dela (sem vão em «V» do lado de fora).
+    PorBaixo,
+}
+
+impl Ponta {
+    /// Quanto o desenho passa da fatia deste lado.
+    fn passa(self) -> f32 {
+        match self {
+            Ponta::Reta => 0.0,
+            Ponta::Inclinada => PONTA,
+            Ponta::PorBaixo => PONTA * 2.0,
+        }
+    }
+}
+
+/// O lado de uma aba virado para a vizinha `outra` (se há): inclinado se a vizinha está por trás.
+fn ponta(eu: usize, outra: Option<usize>) -> Ponta {
+    match outra {
+        None => Ponta::Reta,
+        Some(o) if o > eu => Ponta::Inclinada,
+        Some(_) => Ponta::PorBaixo,
+    }
 }
 
 /// O começo de `nome` que cabe em `w` (por carácter, sem reticências: a aba da frente cobre o resto).
@@ -83,11 +116,12 @@ fn comeco(nome: &str, w: f32, largura: &mut dyn FnMut(&str) -> f32) -> String {
 /// A folga do nome em cada ponta da aba: a ponta inclinada e o recuo de um segmento.
 const FOLGA: f32 = PONTA + m::SEG_INSET;
 
-/// ⭐ **A pilha**: as abas na ordem de [`crate::transport_tabs::items`] dividem a lateral inteira da
-/// lista (entre as quinas dela), a ativa com [`PESO_ATIVA`] e nunca menos que o nome inteiro. Pura (a
-/// largura do texto entra por fora), para o gate medir sem pintar.
+/// ⭐ **A pilha**: as abas na ordem de [`crate::transport_tabs::items`] dividem a lateral inteira, de
+/// `topo` (o topo da aba dos comandos, dono 13/11) até à quina de baixo da lista; a ativa com
+/// [`PESO_ATIVA`] e nunca menos que o nome inteiro. Pura (a largura do texto entra por fora), para o
+/// gate medir sem pintar.
 pub(crate) fn pilha(
-    lista: Rect,
+    (lista, topo): (Rect, f32),
     snap: &TimelineViewSnapshot,
     tab: Tab,
     largura: &mut dyn FnMut(&str) -> f32,
@@ -96,29 +130,40 @@ pub(crate) fn pilha(
     let escolhida = crate::transport_tabs::selected(tab, snap);
     let n = celulas.len();
     let x = lista.x - ESPESSURA;
-    let topo = lista.y + m::LIST_RADIUS;
-    let altura = (lista.h - m::LIST_RADIUS * 2.0).max(0.0);
+    let altura = (lista.y + lista.h - m::LIST_RADIUS - topo).max(0.0);
     let pesos = PESO_ATIVA + n.saturating_sub(1) as f32;
     let nome_da_ativa = celulas
         .get(escolhida)
         .map_or(0.0, |(_, t)| largura(t) + FOLGA * 2.0);
     let ativa_h = (altura * PESO_ATIVA / pesos).max(nome_da_ativa.min(altura));
     let inativa_h = (altura - ativa_h).max(0.0) / n.saturating_sub(1).max(1) as f32;
+    let fundo = |i: usize| i.abs_diff(escolhida);
     let mut y = topo;
     let mut out = Vec::with_capacity(n);
     for (i, (id, nome)) in celulas.into_iter().enumerate() {
         let ativa = i == escolhida;
         let h = if ativa { ativa_h } else { inativa_h };
-        // A ativa entra um pouco na moldura (a junta não se vê); a base passa a fatia pelas pontas.
+        let pontas = (
+            ponta(fundo(i), i.checked_sub(1).map(fundo)),
+            ponta(fundo(i), (i + 1 < n).then(|| fundo(i + 1))),
+        );
+        let (c, b) = (pontas.0.passa(), pontas.1.passa());
+        // A ativa entra um pouco na moldura (a junta não se vê).
         let dentro = if ativa { m::SEG_INSET } else { 0.0 };
         out.push(Aba {
             id,
-            nome: comeco(&nome, h - FOLGA * 2.0, largura),
+            // A ativa mostra SEMPRE o nome inteiro (dono 13/11); a fatia dela nunca é menor que ele.
+            nome: if ativa {
+                nome.clone()
+            } else {
+                comeco(&nome, h - FOLGA * 2.0, largura)
+            },
             inteiro: nome,
             alvo: Rect::new(x, y, ESPESSURA, h),
-            desenho: Rect::new(x, y - PONTA, ESPESSURA + dentro, h + PONTA * 2.0),
+            desenho: Rect::new(x, y - c, ESPESSURA + dentro, h + c + b),
             ativa,
-            fundo: i.abs_diff(escolhida),
+            fundo: fundo(i),
+            pontas,
         });
         y += h;
     }
@@ -137,12 +182,12 @@ fn quina(out: &mut Vec<(f32, f32)>, a: (f32, f32), c: (f32, f32), b: (f32, f32))
     }
 }
 
-/// O contorno de uma aba: a base (o lado da moldura) reta e mais comprida, o lado de fora mais
-/// curto, as pontas inclinadas e as quinas de fora redondas.
-pub(crate) fn contorno(d: Rect) -> Vec<(f32, f32)> {
+/// O contorno de uma aba: a base (o lado da moldura) reta; cada ponta conforme [`Ponta`] — reta com a
+/// quina de fora redonda, inclinada (a base mais comprida que o lado de fora) ou reta por baixo da
+/// vizinha.
+pub(crate) fn contorno(d: Rect, (pc, pb): (Ponta, Ponta)) -> Vec<(f32, f32)> {
     let (fora, base) = (d.x, d.x + d.w);
     let (cima, baixo) = (d.y, d.y + d.h);
-    let (fc, fb) = (cima + PONTA * 2.0, baixo - PONTA * 2.0);
     // Ao longo de cada ponta inclinada, a fracção que a quina come.
     let r = (RAIO / d.w.max(1.0)).min(0.5);
     let perto = |de: (f32, f32), canto: (f32, f32)| {
@@ -151,12 +196,42 @@ pub(crate) fn contorno(d: Rect) -> Vec<(f32, f32)> {
             de.1 + (canto.1 - de.1) * (1.0 - r),
         )
     };
-    let (c1, c2) = ((fora, fc), (fora, fb));
-    let a1 = perto((base, cima), c1);
-    let mut p = vec![(base, cima), a1];
-    quina(&mut p, a1, c1, (fora, fc + RAIO));
-    p.push((fora, fb - RAIO));
-    quina(&mut p, (fora, fb - RAIO), c2, perto((base, baixo), c2));
+    let mut p = vec![(base, cima)];
+    match pc {
+        Ponta::Reta => {
+            p.push((fora + RAIO, cima));
+            quina(
+                &mut p,
+                (fora + RAIO, cima),
+                (fora, cima),
+                (fora, cima + RAIO),
+            );
+        }
+        Ponta::Inclinada => {
+            let c = (fora, cima + PONTA * 2.0);
+            let a = perto((base, cima), c);
+            p.push(a);
+            quina(&mut p, a, c, (fora, c.1 + RAIO));
+        }
+        Ponta::PorBaixo => p.push((fora, cima)),
+    }
+    match pb {
+        Ponta::Reta => {
+            p.push((fora, baixo - RAIO));
+            quina(
+                &mut p,
+                (fora, baixo - RAIO),
+                (fora, baixo),
+                (fora + RAIO, baixo),
+            );
+        }
+        Ponta::Inclinada => {
+            let c = (fora, baixo - PONTA * 2.0);
+            p.push((fora, c.1 - RAIO));
+            quina(&mut p, (fora, c.1 - RAIO), c, perto((base, baixo), c));
+        }
+        Ponta::PorBaixo => p.push((fora, baixo)),
+    }
     p.push((base, baixo));
     p
 }
@@ -168,8 +243,11 @@ fn pilha_pintada(
     tab: Tab,
 ) -> Vec<Aba> {
     let lista = banda::geometria(painel).lista;
+    let topo = crate::transport::cartoes::flutuante::aba(painel, ctx.viewport).y;
     let ts = &mut *ctx.text_system;
-    pilha(lista, snap, tab, &mut |t| ts.prefix_width(t, TEXTO_PX))
+    pilha((lista, topo), snap, tab, &mut |t| {
+        ts.prefix_width(t, TEXTO_PX)
+    })
 }
 
 fn pinta_uma(ctx: &mut PaintCtx, theme: Theme, a: &Aba) {
@@ -187,7 +265,7 @@ fn pinta_uma(ctx: &mut PaintCtx, theme: Theme, a: &Aba) {
     };
     ph2d_editor_core::paint_shapes::fill_polygon(
         ctx.scene,
-        &contorno(a.desenho),
+        &contorno(a.desenho, a.pontas),
         paint::resolve(fundo, theme),
     );
     // O nome ao centro da fatia; se não cabe, o começo a partir de baixo (onde se começa a ler).
@@ -202,7 +280,8 @@ fn pinta_uma(ctx: &mut PaintCtx, theme: Theme, a: &Aba) {
         tx.round(),
         pe.round(),
         TEXTO_PX,
-        w.ceil() + 1.0,
+        // Largura de folga: o pintor engrossa a letra e uma largura justa QUEBRAVA a linha («Arrang»).
+        a.desenho.h.max(w * 2.0),
         texto,
     );
 }

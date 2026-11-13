@@ -4,6 +4,7 @@
 
 use ph2d_editor_core::interaction::TIMELINE_EDGE_R;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::ferramenta;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerKind;
@@ -120,9 +121,17 @@ fn prova_que_nada_sai(mesa: &mut Mesa<TimelinePanel>) -> (Rect, Rect) {
         fim.x + fim.w - rec.x + folga * 2.0,
         c.y + ph2d_editor_core::panel::cards::banda::metrics::LIST_MARGIN + raio + folga - topo,
     );
+    // E as abas laterais (dono 13/11) sobem pela calha até ao topo da aba dos controlos.
+    let calha = m::LIST_MARGIN + m::FIELD_H + m::SEG_INSET;
+    let coluna = Rect::new(c.x, topo, calha, c.y + c.h - topo);
     let fora: Vec<_> = caixas
         .iter()
-        .filter(|r| !sombra(r) && !dentro(**r, c, TOLERANCIA) && !dentro(**r, fila, 0.5))
+        .filter(|r| {
+            !sombra(r)
+                && !dentro(**r, c, TOLERANCIA)
+                && !dentro(**r, fila, 0.5)
+                && !dentro(**r, coluna, 0.5)
+        })
         .collect();
     assert!(fora.is_empty(), "pintado fora do cartão {c:?}: {fora:?}");
     let fita = rect(ids::TIMELINE_LANES).expect("a fita registou-se");

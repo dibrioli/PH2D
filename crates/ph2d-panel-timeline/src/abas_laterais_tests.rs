@@ -17,6 +17,9 @@ fn snap(crumbs: &[&str]) -> TimelineViewSnapshot {
     }
 }
 
+/// O topo da aba dos comandos, acima da lista (dono 13/11: as abas sobem até ele).
+const TOPO: f32 = 20.0;
+
 const LISTA: Rect = Rect {
     x: 100.0,
     y: 50.0,
@@ -30,7 +33,7 @@ const LISTA: Rect = Rect {
 #[test]
 fn a_ativa_inteira_e_as_inativas_mostram_o_comeco() {
     for (tab, escolhida) in [(Tab::Keys, 0), (Tab::Containers, 1), (Tab::Arrange, 2)] {
-        let abas = pilha(LISTA, &snap(&[]), tab, &mut largura);
+        let abas = pilha((LISTA, TOPO), &snap(&[]), tab, &mut largura);
         assert_eq!(abas.len(), 3);
         for (i, a) in abas.iter().enumerate() {
             assert!(
@@ -63,7 +66,7 @@ fn a_ativa_inteira_e_as_inativas_mostram_o_comeco() {
         );
     }
     // «Containers» inativa não cabe inteira: o começo, sem reticências.
-    let abas = pilha(LISTA, &snap(&[]), Tab::Keys, &mut largura);
+    let abas = pilha((LISTA, TOPO), &snap(&[]), Tab::Keys, &mut largura);
     assert!(abas[1].nome.len() < "Containers".len(), "{}", abas[1].nome);
 }
 
@@ -71,7 +74,7 @@ fn a_ativa_inteira_e_as_inativas_mostram_o_comeco() {
 /// moldura. *Mutação: a inativa de baixo estendida para baixo ⇒ vermelho.*
 #[test]
 fn as_inativas_escondem_um_pedaco_debaixo_da_vizinha() {
-    let abas = pilha(LISTA, &snap(&[]), Tab::Containers, &mut largura);
+    let abas = pilha((LISTA, TOPO), &snap(&[]), Tab::Containers, &mut largura);
     let (cima, ativa, baixo) = (&abas[0], &abas[1], &abas[2]);
     assert!(cima.desenho.y + cima.desenho.h > ativa.alvo.y);
     assert!(baixo.desenho.y < ativa.alvo.y + ativa.alvo.h);
@@ -81,7 +84,12 @@ fn as_inativas_escondem_um_pedaco_debaixo_da_vizinha() {
 /// Dentro de um container o nível dele é mais uma aba, entre Containers e Arrange, e é a escolhida.
 #[test]
 fn o_container_aberto_e_mais_uma_aba() {
-    let abas = pilha(LISTA, &snap(&["Walk"]), Tab::Containers, &mut largura);
+    let abas = pilha(
+        (LISTA, TOPO),
+        &snap(&["Walk"]),
+        Tab::Containers,
+        &mut largura,
+    );
     assert_eq!(abas.len(), 4);
     assert!(abas[2].ativa && abas[2].inteiro == "Walk");
 }
@@ -94,10 +102,13 @@ fn as_abas_ocupam_a_lateral_inteira_e_crescem_com_ela() {
     let mut alturas = Vec::new();
     for h in [300.0, 600.0] {
         let lista = Rect { h, ..LISTA };
-        let abas = pilha(lista, &snap(&[]), Tab::Containers, &mut largura);
+        let abas = pilha((lista, TOPO), &snap(&[]), Tab::Containers, &mut largura);
         let topo = abas[0].alvo.y;
         let fim = abas.last().map_or(0.0, |a| a.alvo.y + a.alvo.h);
-        assert!((topo - (lista.y + m::LIST_RADIUS)).abs() < 0.01);
+        assert!(
+            (topo - TOPO).abs() < 0.01,
+            "começa no topo da aba dos comandos"
+        );
         assert!(
             (fim - (lista.y + lista.h - m::LIST_RADIUS)).abs() < 0.01,
             "{fim}"
@@ -114,7 +125,10 @@ fn as_abas_ocupam_a_lateral_inteira_e_crescem_com_ela() {
 /// O contorno é uma aba: a base (lado da moldura) mais comprida que o lado de fora.
 #[test]
 fn o_contorno_tem_a_base_mais_comprida_que_o_lado_de_fora() {
-    let p = contorno(Rect::new(0.0, 0.0, 28.0, 100.0));
+    let p = contorno(
+        Rect::new(0.0, 0.0, 28.0, 100.0),
+        (Ponta::Inclinada, Ponta::Inclinada),
+    );
     let extensao = |x: f32| {
         let ys: Vec<f32> = p
             .iter()
@@ -124,4 +138,27 @@ fn o_contorno_tem_a_base_mais_comprida_que_o_lado_de_fora() {
         ys.iter().copied().fold(f32::MIN, f32::max) - ys.iter().copied().fold(f32::MAX, f32::min)
     };
     assert!(extensao(28.0) > extensao(0.0) + 1.0);
+}
+
+/// ⭐ Dono 13/11 (3.ª volta): sem vão em «V» entre abas — de cada par de vizinhas, a de trás passa
+/// RETA por baixo da da frente; as pontas da pilha são retas; e a ativa mostra o nome inteiro.
+/// *Mutação: `ponta` sempre `Inclinada` ⇒ vermelho.*
+#[test]
+fn a_de_tras_passa_por_baixo_e_a_ativa_mostra_o_nome_inteiro() {
+    let abas = pilha((LISTA, TOPO), &snap(&[]), Tab::Arrange, &mut largura);
+    assert_eq!(abas[0].pontas.0, Ponta::Reta, "o topo da pilha é reto");
+    assert_eq!(abas[2].pontas.1, Ponta::Reta, "o pé da pilha é reto");
+    // Keys (mais longe) por baixo de Containers; Containers por baixo de Arrange (a ativa).
+    assert_eq!(abas[0].pontas.1, Ponta::PorBaixo);
+    assert_eq!(abas[1].pontas.0, Ponta::Inclinada);
+    assert_eq!(abas[1].pontas.1, Ponta::PorBaixo);
+    assert_eq!(abas[2].pontas.0, Ponta::Inclinada);
+    assert_eq!(abas[2].nome, "Arrange");
+    // Uma lista baixa: a fatia da ativa cresce até ao nome, que nunca corta.
+    let baixa = Rect { h: 80.0, ..LISTA };
+    for tab in [Tab::Keys, Tab::Containers, Tab::Arrange] {
+        let abas = pilha((baixa, TOPO), &snap(&[]), tab, &mut largura);
+        let a = abas.iter().find(|a| a.ativa).expect("ativa");
+        assert_eq!(a.nome, a.inteiro);
+    }
 }

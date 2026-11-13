@@ -36,7 +36,7 @@ fn celulas(snap: &TimelineViewSnapshot, view: BarView) -> ([Icone; N], [Option<C
 }
 
 /// A aba: em cima da lista do painel, encostada à esquerda dela (dentro da janela).
-pub(super) fn aba(painel: Rect, viewport: Rect) -> Rect {
+pub(crate) fn aba(painel: Rect, viewport: Rect) -> Rect {
     let lista = banda::geometria(painel).lista;
     // Sem folga em baixo: o fundo da caixa dos botões assenta na linha do topo da lista (dono 13/11).
     let (w, h) = (banda::icones_w(N) + FOLGA * 2.0, m::FIELD_H + FOLGA);
@@ -57,7 +57,8 @@ pub(super) fn pinta(
     ph2d_editor_core::paint::fill_rounded_rect_radii(
         ctx.scene,
         Rect::new(a.x, a.y, a.w, a.h + raio),
-        (raio, raio, 0.0, 0.0),
+        // A quina de cima-esquerda reta: as abas laterais sobem até ao topo desta, encostadas a ela.
+        (0.0, raio, 0.0, 0.0),
         ph2d_editor_core::paint::resolve(ColorToken::KanbanList, theme),
     );
     let ink = CardInk::of_list(theme);

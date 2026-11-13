@@ -1,6 +1,6 @@
 # Projectile Motion
 
-**Estado: `fechado`** (13/11) — versão B escolhida pelo dono; smoke do dono OK 13/11. Handoff: [CONTINUACAO 06 Projectile](../handoffs/HANDOFF_CONTINUACAO_2026-11-13_06_PROJECTILE.md). O texto abaixo é a ficha de ANTES da obra (o «Como está» é o estado de partida).
+**Estado: `fechado`** (13/11) — versão B escolhida pelo dono; smoke do dono OK 13/11. Handoffs: [06 Projectile](../handoffs/HANDOFF_CONTINUACAO_2026-11-13_06_PROJECTILE.md) · [corrigir tudo](../handoffs/HANDOFF_CONTINUACAO_2026-11-13b_CORRIGIR_TUDO.md). O texto abaixo é a ficha de ANTES da obra (o «Como está» é o estado de partida).
 
 ## Como ficou (13/11, commits `5142bb156b` e `96c68552ba`)
 
@@ -9,6 +9,11 @@
 - **Conta-gotas:** `AlvoArmado` (`ph2d-app-components/src/projectile_inspector.rs`) é recurso de sessão, sem passo de undo; o clique no palco (`escolher_alvo`) pega o objeto nomeado do topo (nunca a bala) e empurra `HomingTarget` pelo bus (um passo de undo); Esc desarma.
 - **Target** agora sincroniza o nome (`sync_fabrica.rs`, `escreve_texto`) — antes ficava sempre vazio.
 - **Cena** `PH2D_GAME_SMOKE=25` (`ph2d-physics-scene/src/cena_projectile.rs`); fotos em `componentes/fotos_06/`.
+- **Onda «corrigir tudo» (13/11, [handoff](../handoffs/HANDOFF_CONTINUACAO_2026-11-13b_CORRIGIR_TUDO.md))**:
+  - **Homing só vira:** o Pull roda a velocidade mantendo a rapidez (`advance()`); a bala não acelera mais.
+  - **Target aceita arrastar** da Hierarquia (além de digitar e conta-gotas): `ObjectRef{field: Homing}`, a mesma edição do conta-gotas, só com Homing ligado.
+  - **Cena 25:** fundo «Background», «Floor» e «Back Wall» sólidos (Arc pousa, Bouncy ricocheteia na parede); Missile sem Max Speed (resumo None), acaba a 0,55 m do Target.
+  - As caixas Bounce/Homing agora são moldura à Godot (fotos em `fotos_checkbox/`).
 - **No Play** a bala que acabou some (RunOnCopy, `ph2d-ecs/src/lifetime.rs:204`; Stop restaura): regra da casa (moedas), não defeito.
 
 Estudos lidos:

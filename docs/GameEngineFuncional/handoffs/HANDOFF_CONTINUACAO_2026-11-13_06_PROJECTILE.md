@@ -31,12 +31,14 @@ Commits: `5142bb156b` (cartão B) e `96c68552ba` (cena `PH2D_GAME_SMOKE=25`, Tar
 
 Nota: no Play a bala que acabou some (RunOnCopy, `crates/ph2d-ecs/src/lifetime.rs:204` `removable_in_run`; Stop restaura). Regra da casa (moedas), não defeito.
 
-## ABERTO — próxima onda, nesta ordem (dono: «corrigir tudo», 13/11)
+## ~~ABERTO~~ FEITO (13/11, onda b) — [HANDOFF_CONTINUACAO_2026-11-13b_CORRIGIR_TUDO.md](HANDOFF_CONTINUACAO_2026-11-13b_CORRIGIR_TUDO.md)
 
-1. **Checkbox do APP INTEIRO dentro de uma MOLDURA, como o Godot; o losango de keyframe segue o padrão dos campos (acima do canto superior direito).** Central: `ph2d_editor_core::widget::paint_card_check` / `card_check_rect` (T64) e `property_row::paint_check_row`; varrer por CONSUMIDOR; fotos antes/depois de vários cartões. Memória: `project-memory/project_checkbox_in_a_frame_like_godot_2026_11_13.md`.
-2. **Homing mantém a velocidade constante** (como o ProjectileMovement do Unreal). Hoje `homing_accel` só puxa: a velocidade cresce, a curva abre e a bala erra sem Max Speed. Lei em `crates/ph2d-projectile/src/lib.rs` `advance()`. Depois a cena 25 tira o Max Speed do Missile (resumo volta a «None»). O dono aceitou.
-3. **Arrastar um objeto da Hierarquia para o campo Target** (regra do dono 02/11: arrastar, digitar ou conta-gotas). Conferir se o Target da câmera já aceita o arrasto e fazer os dois.
-4. **Cena 25:** a bala Arc cai para fora da cena no Play (o Floor é só imagem).
-5. **Comentário velho:** `crates/ph2d-physics-ecs/src/bridge/projectile.rs` (~48-50) e `components/health.rs:248` dizem que a bala de documento «pára e fica»; no Play (RunOnCopy) ela é removida e o Stop restaura.
+Os 5 itens abaixo estão FEITOS (texto original mantido); o que sobra (smoke, Ray Sensor) está no handoff novo.
+
+1. **FEITO** — Checkbox do APP INTEIRO dentro de uma MOLDURA, como o Godot; o losango de keyframe segue o padrão dos campos (acima do canto superior direito).** Central: `ph2d_editor_core::widget::paint_card_check` / `card_check_rect` (T64) e `property_row::paint_check_row`; varrer por CONSUMIDOR; fotos antes/depois de vários cartões. Memória: `project-memory/project_checkbox_in_a_frame_like_godot_2026_11_13.md`.
+2. **FEITO** — **Homing mantém a velocidade constante** (como o ProjectileMovement do Unreal). Hoje `homing_accel` só puxa: a velocidade cresce, a curva abre e a bala erra sem Max Speed. Lei em `crates/ph2d-projectile/src/lib.rs` `advance()`. Depois a cena 25 tira o Max Speed do Missile (resumo volta a «None»). O dono aceitou.
+3. **FEITO** — **Arrastar um objeto da Hierarquia para o campo Target** (regra do dono 02/11: arrastar, digitar ou conta-gotas). Conferir se o Target da câmera já aceita o arrasto e fazer os dois.
+4. **FEITO** — **Cena 25:** a bala Arc cai para fora da cena no Play (o Floor é só imagem).
+5. **FEITO** — **Comentário velho:** `crates/ph2d-physics-ecs/src/bridge/projectile.rs` (~48-50) e `components/health.rs:248` dizem que a bala de documento «pára e fica»; no Play (RunOnCopy) ela é removida e o Stop restaura.
 
 Depois destes: **Ray Sensor** (fila 23, «Corpo e movimento»).

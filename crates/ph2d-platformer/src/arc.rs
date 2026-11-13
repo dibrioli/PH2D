@@ -81,6 +81,14 @@ pub struct ArcWorld {
     pub solver_iterations: u32,
 }
 
+impl ArcWorld {
+    /// Os passos de integração por tique: sub-passos × iterações ([`crate::JumpConfig::world_steps`]).
+    #[must_use]
+    pub fn world_steps(&self) -> u32 {
+        self.substeps.max(1) * self.solver_iterations.max(1)
+    }
+}
+
 /// O «cima» de um mundo: contra a gravidade.
 #[must_use]
 pub fn up_of_gravity(gravity: Vec2) -> Vec2 {
@@ -126,6 +134,14 @@ struct Sim {
 }
 
 fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
+    // A lei do pulo modela os passos deste mundo, não os de fábrica: o desenho e o jogo pulam igual.
+    let cfg = &PlayerConfig {
+        jump: crate::JumpConfig {
+            world_steps: w.world_steps(),
+            ..cfg.jump
+        },
+        ..*cfg
+    };
     let up = up_of_gravity(w.gravity);
     let side = [up[1] * w.facing, -up[0] * w.facing];
     let ground = rest_ground(cfg, up);

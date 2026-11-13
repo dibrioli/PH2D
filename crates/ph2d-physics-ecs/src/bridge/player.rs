@@ -172,6 +172,7 @@ impl PhysicsBridge {
             }
 
             let mut cfg = cfg.config();
+            cfg.jump.world_steps = crate::world_steps(&self.vivo); // os passos do mundo VIVO
             // ⚠️ **Sob Snap a PERNA é o próprio corpo** — ver
             // `PhysicsWorld::body_foot_distance`. O `float_height` autorado
             // descreve onde a cápsula flutuante paira, e sob Snap ela não paira:

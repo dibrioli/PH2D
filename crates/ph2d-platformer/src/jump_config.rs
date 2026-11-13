@@ -88,9 +88,11 @@ pub fn takeoff_rise(lift: PlatformLift, rel_up: f32, ground_up: f32) -> f32 {
 /// do próprio pulo (botão preso, sem corte): `takeoff_gravity` acima de
 /// `max(peak_speed, takeoff_speed)`, `1` até `peak_speed`, `peak_gravity` no topo (ficha GEF 04,
 /// «altura que mente»). Duas partes: a inversa FECHADA de `h = Σ (v_alto² − v_baixo²)/(2·g·k)`
-/// (cada faixa é aceleração constante) e três correcções de secante sobre o tique discreto
+/// (cada faixa é aceleração constante) e correcções `v·√(h/a)` sobre o tique discreto
 /// ([`discrete_apex`]: a fase lê a velocidade do INÍCIO do tique, e a gravidade integra-se em
-/// [`JumpConfig::world_steps`] passos de Euler), porque a contínua erra 2,5 cm a 2 m. Custo medido
+/// [`JumpConfig::world_steps`] passos de Euler) até [`LAUNCH_TOL`], porque a contínua erra 2,5 cm
+/// a 2 m. A correcção oscila com razão até ~0,3 (a fase muda de faixa entre tiques): três passos
+/// fixos deixavam 1,6 mm num mundo 1×1 (`os_passos_do_projeto_sao_os_da_lei`, 12/11). Custo medido
 /// em `launch_speed_custa_pouco`. `neutral` (o fluido tem o corpo e a
 /// modelagem cala) devolve `√(2·g·h)`.
 #[must_use]
@@ -103,15 +105,23 @@ pub fn launch_speed(cfg: &JumpConfig, g: f32, height: f32, neutral: bool, dt: f3
     if !(dt > 0.0 && dt.is_finite()) {
         return v;
     }
-    for _ in 0..3 {
+    for _ in 0..LAUNCH_MAX_STEPS {
         let a = discrete_apex(cfg, g, v, dt);
-        if a.is_nan() || a <= 0.0 {
+        if a.is_nan() || a <= 0.0 || (a - h).abs() <= LAUNCH_TOL {
             break;
         }
         v *= (h / a).sqrt();
     }
     v
 }
+
+/// O ápice de [`launch_speed`] contra a altura pedida: um centésimo de milímetro, abaixo do ruído
+/// de `f32` de um voo de ~100 tiques a 2,5 m é ~1e-6 m.
+pub const LAUNCH_TOL: f32 = 1.0e-5;
+
+/// O tecto de correcções de [`launch_speed`]: à razão ~0,3 medida, 10 levam o erro da contínua
+/// (2,5 cm) abaixo de [`LAUNCH_TOL`]; a decolagem paga-as uma vez.
+const LAUNCH_MAX_STEPS: usize = 10;
 
 fn phase_scale(cfg: &JumpConfig, v: f32) -> f32 {
     if v > cfg.peak_speed {

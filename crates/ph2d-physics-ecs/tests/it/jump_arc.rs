@@ -66,9 +66,29 @@ enum Como {
     Curto,
 }
 
+/// Os sub-passos × iterações do solver do projeto; `None` = os de fábrica.
+type Mundo = Option<(u32, u32)>;
+
+/// A cena dos gates, no mundo `mundo`.
+fn cena(mundo: Mundo) -> (SimWorld, PhysicsBridge, Entity) {
+    let (sim, mut bridge, player) = scene(0.0, -20.0);
+    if let Some((substeps, solver_iterations)) = mundo {
+        bridge.set_settings(ph2d_physics_ecs::PhysicsSettings {
+            substeps,
+            solver_iterations,
+            ..bridge.settings()
+        });
+        assert_eq!(
+            ph2d_physics_ecs::world_steps(&bridge.settings()),
+            substeps * solver_iterations
+        );
+    }
+    (sim, bridge, player)
+}
+
 /// O desenho (lei + corte no chão, lidos na pose assentada) e o pulo do player REAL.
-fn caso(feel: Option<Feel>, como: Como, h: f32) -> (Medido, Medido) {
-    let (mut sim, mut bridge, player) = scene(0.0, -20.0);
+fn caso(feel: Option<Feel>, como: Como, h: f32, mundo: Mundo) -> (Medido, Medido) {
+    let (mut sim, mut bridge, player) = cena(mundo);
     {
         let mut e = sim.world_mut().entity_mut(player);
         let mut p = e.get_mut::<PlatformPlayer>().unwrap();
@@ -165,32 +185,35 @@ fn o_arco_do_desenho_e_o_do_jogo() {
                 ("parado", Como::Parado),
                 ("curto", Como::Curto),
             ] {
-                let (a, j) = caso(feel, como, h);
-                eprintln!("{feel:?} h={h} {nome}: desenho {a:?}\n  jogo    {j:?}");
-                // Lado do ápice: um tique de corrida (6 m/s · 1/60), porque num topo achatado dois
-                // tiques empatam. O pulo inteiro (não o curto) sobe a Jump Height, ao meio pixel.
-                let cheio = !matches!(como, Como::Curto);
-                let apice = (a.apex_up - j.apex_up).abs() < MEIO_PX
-                    && (!cheio || ((a.apex_up - h).abs() <= LEI && (j.apex_up - h).abs() <= LEI))
-                    && (a.apex_side - j.apex_side).abs() < 0.11;
-                // O pouso em TODAS as alturas: o MESMO tique em que a perna agarra (medido 12/11:
-                // 48/48 iguais, alcance a ≤ 1 cm). ±1 escondia o sinal da velocidade no ápice (a
-                // perna lida pela média do tique pousa um tique tarde o pulo curto de 0,5 m).
-                let pouso = a.air_ticks == j.air_ticks && (a.reach - j.reach).abs() < 0.11;
-                let ok = apice && pouso;
-                if !ok {
-                    falhas.push(format!("{feel:?} h={h} {nome}: desenho {a:?} jogo {j:?}"));
-                }
+                falhas.extend(confere(feel, como, h, None, nome));
             }
         }
     }
     assert!(falhas.is_empty(), "o desenho mente em: {falhas:?}");
 }
 
+/// O critério de «o desenho é o jogo» de um caso; `Some` com a falha.
+fn confere(feel: Option<Feel>, como: Como, h: f32, mundo: Mundo, nome: &str) -> Option<String> {
+    let (a, j) = caso(feel, como, h, mundo);
+    eprintln!("{mundo:?} {feel:?} h={h} {nome}: desenho {a:?}\n  jogo    {j:?}");
+    // Lado do ápice: um tique de corrida (6 m/s · 1/60), porque num topo achatado dois
+    // tiques empatam. O pulo inteiro (não o curto) sobe a Jump Height, ao meio pixel.
+    let cheio = !matches!(como, Como::Curto);
+    let apice = (a.apex_up - j.apex_up).abs() < MEIO_PX
+        && (!cheio || ((a.apex_up - h).abs() <= LEI && (j.apex_up - h).abs() <= LEI))
+        && (a.apex_side - j.apex_side).abs() < 0.11;
+    // O pouso em TODAS as alturas: o MESMO tique em que a perna agarra (medido 12/11:
+    // 48/48 iguais, alcance a ≤ 1 cm). ±1 escondia o sinal da velocidade no ápice (a
+    // perna lida pela média do tique pousa um tique tarde o pulo curto de 0,5 m).
+    let pouso = a.air_ticks == j.air_ticks && (a.reach - j.reach).abs() < 0.11;
+    (!(apice && pouso))
+        .then(|| format!("{mundo:?} {feel:?} h={h} {nome}: desenho {a:?} jogo {j:?}"))
+}
+
 /// O player REAL na ponte: segura o pulo, e no ápice do do chão solta um tique e volta a premir
 /// (o pulo do ar). Devolve a subida de cada um, medida do próprio arranque.
-fn subidas_do_jogo(feel: Option<Feel>, h: f32, air_h: f32) -> (f32, f32, f32, f32) {
-    let (mut sim, mut bridge, player) = scene(0.0, -20.0);
+fn subidas_do_jogo(feel: Option<Feel>, h: f32, air_h: f32, mundo: Mundo) -> (f32, f32, f32, f32) {
+    let (mut sim, mut bridge, player) = cena(mundo);
     let (h, ah) = {
         let mut e = sim.world_mut().entity_mut(player);
         let mut p = e.get_mut::<PlatformPlayer>().unwrap();
@@ -275,7 +298,7 @@ fn o_pulo_do_jogo_sobe_a_jump_height() {
         Some(Feel::Heavy),
     ] {
         for h in ALTURAS {
-            let (sobe, h, sobe_ar, ah) = subidas_do_jogo(feel, h, 0.75 * h);
+            let (sobe, h, sobe_ar, ah) = subidas_do_jogo(feel, h, 0.75 * h, None);
             eprintln!("{feel:?}: chão {sobe:.4} (Jump Height {h}) · ar {sobe_ar:.4} (Air {ah})");
             if (sobe - h).abs() > LEI || (sobe_ar - ah).abs() > LEI {
                 falhas.push(format!("{feel:?}: chão {sobe:.4}/{h} ar {sobe_ar:.4}/{ah}"));
@@ -300,6 +323,31 @@ fn os_passos_do_mundo_de_fabrica_sao_os_da_lei() {
         ph2d_platformer::JumpConfig::DEFAULT_WORLD_STEPS,
         "a cena dos gates corre no mundo de fábrica"
     );
+}
+
+/// ⭐ GEF 04: num projeto com sub-passos e iterações FORA da fábrica a lei do pulo modela os passos
+/// DO PROJETO (a ponte e a curva os passam): o pulo do chão e o do ar sobem a Jump Height a 1 mm,
+/// e o desenho continua a ser o jogo.
+#[test]
+fn os_passos_do_projeto_sao_os_da_lei() {
+    let mut falhas = Vec::new();
+    for mundo in [Some((2, 8)), Some((8, 2)), Some((1, 1))] {
+        for feel in [None, Some(Feel::Floaty)] {
+            for h in [1.0, 2.5] {
+                let (sobe, h, sobe_ar, ah) = subidas_do_jogo(feel, h, 0.75 * h, mundo);
+                eprintln!("{mundo:?} {feel:?}: chão {sobe:.5}/{h} · ar {sobe_ar:.5}/{ah}");
+                if (sobe - h).abs() > LEI || (sobe_ar - ah).abs() > LEI {
+                    falhas.push(format!(
+                        "{mundo:?} {feel:?}: chão {sobe:.5}/{h} ar {sobe_ar:.5}/{ah}"
+                    ));
+                }
+                for (nome, como) in [("correndo", Como::Correndo), ("parado", Como::Parado)] {
+                    falhas.extend(confere(feel, como, h, mundo, nome));
+                }
+            }
+        }
+    }
+    assert!(falhas.is_empty(), "os passos do projeto mentem: {falhas:?}");
 }
 
 // ── GEF 04: a curva pousa no TERRENO ─────────────────────────────────────────────────────────────
@@ -765,5 +813,58 @@ fn a_perna_agarra_a_borda_que_o_pe_nao_alcanca() {
         pts[i + 2][1] > 0.9,
         "o jogo não ficou na borda: {:?}",
         &pts[i..i + 3]
+    );
+}
+
+/// (f) **A curva recusa o degrau que a perna recusa** (a [`ph2d_platformer::StepLimit`] é UMA, a
+/// do jogo): `max_slope` a 3°, e no tique do pouso o pé da frente sobre um degrau de 2 cm (≈ 6°
+/// sobre ele), o do meio no chão. A curva pousa no chão, não no degrau. Gémeo da perna:
+/// `player_foot_fan::the_leg_refuses_an_outer_foot_on_a_step_steeper_than_the_limit`.
+#[test]
+fn a_curva_recusa_o_degrau_que_a_perna_recusa() {
+    let rise = 0.02_f32;
+    let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+    sim.world_mut()
+        .get_mut::<PlatformPlayer>(player)
+        .unwrap()
+        .max_slope_deg = 3.0;
+    assenta(&mut sim, &mut bridge, player, true);
+    let (x0, y0) = pose(&sim);
+    let settings = bridge.settings();
+    let w = ph2d_physics_ecs::arc_world(&settings, 1.0);
+    let (arcs, fh, off) = {
+        let p = sim.world().get::<PlatformPlayer>(player).unwrap();
+        (
+            p.jump_arcs(w),
+            p.float_height,
+            0.2 * p.foot_spread.clamp(0.0, 1.0),
+        )
+    };
+    let chao = [x0, y0 - fh];
+    let corta = |sim: &SimWorld| {
+        let mut a = arcs.clone();
+        ph2d_physics_ecs::arc_terrain::cut_on_terrain(
+            sim.world(),
+            &settings,
+            player,
+            chao,
+            [0.0, 1.0],
+            &mut a,
+        );
+        a.full.touch.expect("a curva não pousou")
+    };
+    let plano = corta(&sim);
+    // A perna lê-se na pose ANTES do pouso (`contact` é o chão sob o pé do meio nela). Um tique de
+    // corrida antes (6 m/s · 1/60 = 0,1 m) o pé da frente ainda não está sobre o degrau, então ele
+    // não entra no alcance antes do pé do meio.
+    let borda = x0 + plano.contact[0] + off - 0.03;
+    caixa(&mut sim, borda, borda + 3.0, chao[1] + rise, 0.5);
+    let degrau = corta(&sim);
+    eprintln!("plano {plano:?} · degrau {degrau:?}");
+    assert_eq!(degrau.kind, TouchKind::Land, "{degrau:?}");
+    assert!(
+        off > 0.05 && (degrau.at[1] - plano.at[1]).abs() < 0.005 && degrau.contact[1] < 0.005,
+        "a curva pousou no degrau de {rise} m que a perna recusa (pé de fora a {off:.3} m): \
+         {degrau:?} contra {plano:?}"
     );
 }

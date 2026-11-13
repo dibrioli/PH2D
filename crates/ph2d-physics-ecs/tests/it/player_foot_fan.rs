@@ -374,3 +374,82 @@ fn the_leg_rides_the_highest_walkable_ground_any_foot_reaches() {
          y = {y:.3}, um pe no degrau de {step_top:.2} m e outro no chao baixo)"
     );
 }
+
+/// **A outra metade da lei, com fixture:** um degrau MAIS íngreme que o limite sob o pé de fora
+/// não é chão. A 0,6 m a cápsula não cabe ao lado dele (ver acima); com o `max_slope` a 3° um
+/// degrau de 2 cm já o é (2 cm sobre o pé de fora ≈ 6°), e cabe debaixo da cápsula. A régua é a
+/// [`ph2d_platformer::StepLimit`] — a mesma que a curva do pulo lê (`jump_arc`,
+/// `a_curva_recusa_o_degrau_que_a_perna_recusa`).
+#[test]
+fn the_leg_refuses_an_outer_foot_on_a_step_steeper_than_the_limit() {
+    let rise = 0.02_f32;
+    let off = HALF_W * PlatformPlayer::default().foot_spread.clamp(0.0, 1.0);
+    let rest = |with_step: bool| {
+        let mut sim = SimWorld::new();
+        let mut slab = |name: &str, x0: f32, x1: f32, top: f32| {
+            sim.world_mut().spawn((
+                Name::new(name),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: (x1 - x0) * 0.5,
+                        half_y: 0.5,
+                    },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new((x0 + x1) * 0.5, top - 0.5)),
+            ));
+        };
+        slab("Low", -10.0, 10.0, 0.0);
+        if with_step {
+            // Só o pé da DIREITA sobre o degrau; o do meio no chão baixo.
+            slab("Step", off - 0.03, 10.0, rise);
+        }
+        let player = sim
+            .world_mut()
+            .spawn((
+                Name::new("Player"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Capsule {
+                        half_height: 0.3,
+                        radius: HALF_W,
+                    },
+                    ..Collider::default()
+                },
+                LockRotation,
+                PlatformPlayer {
+                    float_height: FLOAT,
+                    max_slope_deg: 3.0,
+                    ..PlatformPlayer::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, FLOAT)),
+            ))
+            .id();
+        let mut bridge = PhysicsBridge::new();
+        for i in 1..=180u64 {
+            bridge.set_player_input(player, PlayerInput::default());
+            bridge.dispatch(&mut sim, true, i);
+        }
+        let t = sim.world().get::<Transform>(player).expect("transform");
+        t.translation
+    };
+    let flat = rest(false);
+    let step = rest(true);
+    assert!(
+        off > 0.05 && (step.x).abs() < 0.01,
+        "a fixture saiu do sítio: pé de fora a {off} m, corpo em x = {}",
+        step.x
+    );
+    assert!(
+        (step.y - flat.y).abs() < 0.005,
+        "o degrau de {rise} m (mais íngreme que 3° sobre o pé a {off:.3} m) virou chão: \
+         {:.4} contra {:.4} no chão plano",
+        step.y,
+        flat.y
+    );
+}

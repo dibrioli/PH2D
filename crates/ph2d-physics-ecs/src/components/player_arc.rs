@@ -23,7 +23,7 @@ pub fn arc_world(s: &PhysicsSettings, facing: f32) -> ArcWorld {
 /// sub-passos × iterações do solver.
 #[must_use]
 pub fn world_steps(s: &PhysicsSettings) -> u32 {
-    s.substeps.max(1) * s.solver_iterations.max(1)
+    arc_world(s, 1.0).world_steps()
 }
 
 impl PlatformPlayer {

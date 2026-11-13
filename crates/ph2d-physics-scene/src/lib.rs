@@ -16,6 +16,8 @@
 pub mod cena_topdown;
 pub mod ficha;
 pub mod fotos_dos_cartoes;
+#[cfg(test)]
+mod superficie_do_player_tests;
 
 use bevy_ecs::world::World;
 use ph2d_core::Vec2;

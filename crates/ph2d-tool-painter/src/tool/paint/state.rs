@@ -545,7 +545,8 @@ pub(crate) struct PaintState {
     /// EDGE-1 wet session guard: the exact `canvas_rgba` Arc OUR last session bake produced. Any
     /// foreign mutation (undo, layer switch, fill, resize, other tools) swaps the canvas Arc, so a
     /// failed `Arc::ptr_eq` at pen-down ends the session — no per-site invalidation hooks needed.
-    pub(super) wet_session_canvas: Option<Arc<Vec<u8>>>,
+    /// ⚠️ A camada vai junto: duplicar partilha o `Arc` (B18.1), e a CÓPIA não herda a sessão.
+    pub(super) wet_session_canvas: Option<GuardaDaSessao>,
     /// B16.3 (BUGS #13): o interruptor da aguada no pen-down do grupo de traços; enquanto o grupo
     /// está aberto, [`PainterTool::watercolor_render_active`] lê ESTE, não o pincel. `None` = sem traço.
     pub(super) aguada_do_traco: Option<bool>,
@@ -684,4 +685,11 @@ pub(crate) struct PaintState {
     /// **Wet Paint** session (fluid engine + frozen base) — display-state, not document-state; the
     /// canvas-identity guard, the undo stance and the composite live in [`wetpaint`] (ADR-0134).
     pub(super) wetpaint: wetpaint::WetPaintState,
+}
+
+/// A guarda da sessão molhada: a tela que o último bake deu E a camada dona dela.
+#[derive(Clone)]
+pub(crate) struct GuardaDaSessao {
+    pub(crate) tela: Arc<Vec<u8>>,
+    pub(crate) camada: Option<crate::layers::LayerId>,
 }

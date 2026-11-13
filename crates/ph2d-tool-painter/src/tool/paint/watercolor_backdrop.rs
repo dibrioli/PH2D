@@ -443,11 +443,17 @@ impl PainterTool {
                 .wet_session_base
                 .as_ref()
                 .is_some_and(|b| b.len() == n * 4)
-            && self
-                .paint
-                .wet_session_canvas
-                .as_ref()
-                .is_some_and(|c| Arc::ptr_eq(c, &self.canvas_rgba))
+            && self.paint.wet_session_canvas.as_ref().is_some_and(|g| {
+                Arc::ptr_eq(&g.tela, &self.canvas_rgba) && g.camada == self.layers.active()
+            })
+    }
+
+    /// Arma a guarda da sessão sobre a tela de agora e a camada activa.
+    pub(crate) fn arma_a_guarda_da_sessao(&mut self) {
+        self.paint.wet_session_canvas = Some(super::state::GuardaDaSessao {
+            tela: Arc::clone(&self.canvas_rgba),
+            camada: self.layers.active(),
+        });
     }
 
     /// EDGE-1: pour the stroke's coverage-so-far into the persistent canvas MOISTURE map (max-blend
@@ -642,7 +648,7 @@ impl PainterTool {
         // `apply_watercolor`'s `Arc::make_mut` forked `canvas_rgba`, so the old guard Arc no longer matches.
         self.paint.watercolor_base = None;
         self.paint.wet_backdrop = None;
-        self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
+        self.arma_a_guarda_da_sessao();
         self.paint.wet_editable_tex = Some(self.wet_editable_sig());
     }
 
@@ -673,7 +679,7 @@ impl PainterTool {
         self.paint.watercolor_base = Some(Arc::clone(&self.canvas_rgba));
         self.paint.wet_backdrop = Some(self.fundo_de_baixo());
         self.paint.wet_session_base = Some(Arc::clone(&self.canvas_rgba));
-        self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
+        self.arma_a_guarda_da_sessao();
         self.paint.stroke_coverage = vec![0u8; n];
         self.paint.stroke_color = vec![0u8; n * 4];
         self.paint.stroke_density = Vec::new();

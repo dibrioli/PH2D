@@ -1153,7 +1153,7 @@ fn watercolor_wet_session_survives_charge_slider_change() {
         t.paint
             .wet_session_canvas
             .as_ref()
-            .is_some_and(|c| Arc::ptr_eq(c, &t.canvas_rgba)),
+            .is_some_and(|g| Arc::ptr_eq(&g.tela, &t.canvas_rgba)),
     );
 }
 

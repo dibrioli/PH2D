@@ -134,9 +134,8 @@ fn o_ctrl_z_no_meio_da_sessao_molhada_da_o_vidro_da_base_ao_bit() {
     );
 }
 
-/// Um traço Wet Paint na mesma camada entre duas aguadas da mesma sessão (trocar de meio não a seca). ⚠️ Duplicar
-/// a camada a meio da sessão fica de fora: a cópia partilha o `Arc` da tela e a sessão continua nela com a base da
-/// original (anterior ao D3; nota N7 item 2, passo 6).
+/// Um traço Wet Paint na mesma camada entre duas aguadas da mesma sessão (trocar de meio não a seca), e depois
+/// duplicar a camada a meio da sessão: a cópia começa sessão própria (a guarda leva a camada dona).
 #[test]
 fn trocar_de_meio_a_meio_da_sessao_da_o_vidro_da_base_ao_bit() {
     let mut c = Cena::nova();
@@ -148,6 +147,113 @@ fn trocar_de_meio_a_meio_da_sessao_da_o_vidro_da_base_ao_bit() {
     c.t.set_paint_media(PaintMedia::Watercolor);
     c.traco(90.0, true, "aguada depois do Wet");
     c.traco(96.0, true, "e a seguinte");
+    let a = c.t.layers.active().unwrap();
+    let copia = c.t.duplicate_layer(a).expect("duplicar");
+    assert!(
+        !c.t.wet_session_continues(),
+        "a cópia herdou a sessão da original"
+    );
+    let k = c.traco(102.0, true, "aguada na cópia");
+    assert_eq!(
+        k,
+        Some(c.pares.len() - 1),
+        "a cópia não começou sessão própria"
+    );
+    assert_eq!(c.t.layers.active(), Some(copia));
+    GUARDA_O_INICIO_DA_SESSAO.set(false);
+    assert!(
+        c.janelas_conferidas > 20,
+        "controlo: {} janelas",
+        c.janelas_conferidas
+    );
+}
+
+fn plano_de(
+    t: &PainterTool,
+    id: crate::layers::LayerId,
+) -> (Vec<u8>, Option<Vec<crate::compositor::vidro::Vidro>>) {
+    let tela = if t.layers.active() == Some(id) {
+        t.canvas_rgba.to_vec()
+    } else {
+        t.images
+            .get(&id)
+            .map(|i| i.rgba8.to_vec())
+            .unwrap_or_default()
+    };
+    (tela, t.vidros.get(&id).map(|v| v.as_ref().clone()))
+}
+
+/// Duplicar a camada com a sessão molhada aberta: a cópia é um objecto novo (sem a sessão da original); pintar
+/// numa não muda a tela nem o vidro da outra; trocar para a outra camada e voltar sem pintar CONTINUA a sessão
+/// da camada (o mesmo que a troca de camada já fazia), e o `vbase` de cada traço é o vidro da base dele, ao bit.
+#[test]
+fn duplicar_a_camada_com_vidro_e_pintar_uma_nao_muda_a_outra() {
+    let mut c = Cena::nova();
+    c.traco(60.0, true, "1.º na original");
+    assert_eq!(
+        c.traco(66.0, true, "2.º na original"),
+        Some(0),
+        "controlo: sem sessão"
+    );
+    let a = c.t.layers.active().unwrap();
+    let copia = c.t.duplicate_layer(a).expect("duplicar");
+    assert_eq!(
+        plano_de(&c.t, copia),
+        plano_de(&c.t, a),
+        "controlo: a cópia não é igual"
+    );
+    assert!(
+        !c.t.wet_session_continues(),
+        "a cópia herdou a sessão da original"
+    );
+    let original = plano_de(&c.t, a);
+    let k = c.traco(80.0, true, "1.º na cópia");
+    assert_eq!(
+        k,
+        Some(c.pares.len() - 1),
+        "a cópia não começou sessão própria"
+    );
+    c.traco(86.0, true, "2.º na cópia");
+    assert_eq!(
+        plano_de(&c.t, a),
+        original,
+        "pintar a cópia mudou a original"
+    );
+    assert_ne!(
+        plano_de(&c.t, copia),
+        original,
+        "controlo: o traço na cópia não pintou"
+    );
+    // Trocar para a original e voltar sem pintar: a sessão é da cópia e continua.
+    c.t.select_layer(a);
+    assert!(
+        !c.t.wet_session_continues(),
+        "a original herdou a sessão da cópia"
+    );
+    c.t.select_layer(copia);
+    assert!(
+        c.t.wet_session_continues(),
+        "controlo: voltar à camada sem pintar secou a sessão dela"
+    );
+    let s = c.traco(92.0, true, "3.º na cópia, depois de ir e voltar");
+    assert_ne!(
+        s,
+        Some(c.pares.len() - 1),
+        "a sessão da cópia não atravessou a troca"
+    );
+    let da_copia = plano_de(&c.t, copia);
+    c.t.select_layer(a);
+    let k = c.traco(100.0, true, "na original depois da cópia");
+    assert_eq!(
+        k,
+        Some(c.pares.len() - 1),
+        "a original não começou sessão própria"
+    );
+    assert_eq!(
+        plano_de(&c.t, copia),
+        da_copia,
+        "pintar a original mudou a cópia"
+    );
     GUARDA_O_INICIO_DA_SESSAO.set(false);
     assert!(
         c.janelas_conferidas > 20,

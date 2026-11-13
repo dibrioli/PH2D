@@ -537,7 +537,7 @@ impl PainterTool {
             // session guard — the exact canvas Arc our bake produced. A stroke landing while the
             // paper is still wet AND the guard still matches continues this wash (union re-bake).
             self.pour_canvas_wet();
-            self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
+            self.arma_a_guarda_da_sessao();
             // Arm the live-editable wash over the committed footprint (already full-axis on a tiled axis).
             if let (Some(base), Some(region)) = (editable_base, region) {
                 self.paint.wet_editable_base = Some(base);

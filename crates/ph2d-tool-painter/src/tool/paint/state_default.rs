@@ -309,6 +309,7 @@ impl Default for PaintState {
             watercolor_base: None,
             wet_backdrop: None,
             fundo_em_cache: None,
+            aquecimento: Default::default(),
             // WHITE ground: a plain canvas is white paper unless the artist picks otherwise (the
             // cream of the reference demo baked a beige cast into strokes over white).
             paper_color: [1.0, 1.0, 1.0],

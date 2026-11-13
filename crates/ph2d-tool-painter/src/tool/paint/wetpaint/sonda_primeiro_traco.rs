@@ -120,7 +120,11 @@ fn sonda_primeiro_traco() {
     let eixo_encolhe = std::env::var("PH2D_SONDA_ENCOLHE").is_ok();
     // `PH2D_SONDA_AQUECE` (mesmos valores): o eixo é a chave `FUNDO_AQUECIDO_NA_TROCA` (o 1.º pen-down da aguada).
     let eixo_aquece = std::env::var("PH2D_SONDA_AQUECE").is_ok();
-    let eixo = if eixo_aquece {
+    // `PH2D_SONDA_EM_FUNDO` (mesmos valores): o eixo é a chave `FUNDO_AQUECIDO_EM_FUNDO` (o aquecimento num fio, 3f).
+    let eixo_em_fundo = std::env::var("PH2D_SONDA_EM_FUNDO").is_ok();
+    let eixo = if eixo_em_fundo {
+        "PH2D_SONDA_EM_FUNDO"
+    } else if eixo_aquece {
         "PH2D_SONDA_AQUECE"
     } else if eixo_encolhe {
         "PH2D_SONDA_ENCOLHE"
@@ -151,7 +155,10 @@ fn sonda_primeiro_traco() {
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
         .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
     for (n, rota) in corridas {
-        if eixo_aquece {
+        if eixo_em_fundo {
+            super::super::watercolor_aquece::FUNDO_AQUECIDO_EM_FUNDO.set(rota);
+            println!("ROTA\t{n}\tfundo_em_fundo={rota}");
+        } else if eixo_aquece {
             super::super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(rota);
             println!("ROTA\t{n}\tfundo_aquecido={rota}");
         } else if eixo_encolhe {
@@ -303,4 +310,5 @@ fn sonda_primeiro_traco() {
     crate::tool::layers::TELA_NOVA_PELO_MMAP.set(true);
     super::adormecida::ENCOLHE_NO_SILENCIO.set(true);
     super::super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(true);
+    super::super::watercolor_aquece::FUNDO_AQUECIDO_EM_FUNDO.set(true);
 }

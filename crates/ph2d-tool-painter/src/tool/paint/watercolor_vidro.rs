@@ -191,6 +191,9 @@ impl PainterTool {
         let Some(camada) = self.layers.active().filter(|&id| !self.layers.is_mask(id)) else {
             return;
         };
+        if self.aquece_em_fundo(camada) {
+            return;
+        }
         let fundo = self.fundo_de_baixo();
         let fresca = matches!(&self.vidro_congelado.chao_preto,
             Some((w, _)) if Weak::ptr_eq(w, &Arc::downgrade(&fundo)));
@@ -198,6 +201,27 @@ impl PainterTool {
             let abaixo = self.layers.z_order_bottom_up().first() != Some(&camada);
             let c = abaixo.then(|| Arc::new(self.build_wet_backdrop_sobre([0, 0, 0])));
             self.vidro_congelado.chao_preto = Some((Arc::downgrade(&fundo), c));
+        }
+    }
+
+    /// Guarda `chao` como o chão preto de `fundo` (o aquecimento em fundo, colhido no pen-down).
+    pub(super) fn guarda_o_chao_preto(&mut self, fundo: &Arc<Vec<u8>>, chao: Option<Arc<Vec<u8>>>) {
+        self.vidro_congelado.chao_preto = Some((Arc::downgrade(fundo), chao));
+    }
+
+    /// O chão preto congelado é o de `fundo`.
+    pub(super) fn chao_preto_fresco(&self, fundo: &Arc<Vec<u8>>) -> bool {
+        matches!(&self.vidro_congelado.chao_preto,
+            Some((w, _)) if Weak::ptr_eq(w, &Arc::downgrade(fundo)))
+    }
+
+    /// Os bytes do chão preto congelado (`[2]` = o preto puro, `[3]` = nenhum), para o gate.
+    #[cfg(test)]
+    pub(super) fn chao_preto_congelado(&self) -> Vec<u8> {
+        match &self.vidro_congelado.chao_preto {
+            Some((_, Some(c))) => c.to_vec(),
+            Some((_, None)) => vec![2],
+            None => vec![3],
         }
     }
 

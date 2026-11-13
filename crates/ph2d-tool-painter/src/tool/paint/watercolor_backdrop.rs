@@ -68,7 +68,7 @@ pub(crate) struct ChaveDoFundo {
 }
 
 impl ChaveDoFundo {
-    fn casa(&self, o: &Self) -> bool {
+    pub(super) fn casa(&self, o: &Self) -> bool {
         self.papel == o.papel
             && self.tamanho == o.tamanho
             && self.imagens.len() == o.imagens.len()
@@ -187,16 +187,8 @@ impl PainterTool {
         if mascara || !FUNDO_EM_CACHE.get() {
             return Arc::new(self.build_wet_backdrop());
         }
-        let chave = ChaveDoFundo {
-            pilha: self.layers.clone(),
-            imagens: self
-                .images
-                .iter()
-                .map(|(&id, img)| (id, Arc::downgrade(&img.rgba8), img.width, img.height))
-                .collect(),
-            papel: self.cor_do_chao(),
-            tamanho: self.source_size,
-        };
+        let chave = self.chave_do_fundo();
+        self.colhe_o_aquecimento(&chave);
         if let Some((c, fundo)) = &self.paint.fundo_em_cache
             && c.casa(&chave)
         {
@@ -205,6 +197,20 @@ impl PainterTool {
         let fundo = Arc::new(self.build_wet_backdrop());
         self.paint.fundo_em_cache = Some((chave, Arc::clone(&fundo)));
         fundo
+    }
+
+    /// Tudo o que o fundo de baixo lê agora, pela identidade (a chave da cache e do aquecimento em fundo).
+    pub(super) fn chave_do_fundo(&self) -> ChaveDoFundo {
+        ChaveDoFundo {
+            pilha: self.layers.clone(),
+            imagens: self
+                .images
+                .iter()
+                .map(|(&id, img)| (id, Arc::downgrade(&img.rgba8), img.width, img.height))
+                .collect(),
+            papel: self.cor_do_chao(),
+            tamanho: self.source_size,
+        }
     }
 
     /// O mesmo chão sobre um papel `paper` qualquer — o vidro pede-o sobre o PRETO

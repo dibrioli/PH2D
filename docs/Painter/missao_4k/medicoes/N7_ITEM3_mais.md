@@ -263,3 +263,46 @@ O custo MUDA de sítio para o clique do «+» ou da linha (16–22 ms, num cliqu
     só, o `flat_fill`).
   - O «+» de 16–22 ms poderia ir a um fio de fundo, mas segurar lá os `Arc` das imagens faria o `make_mut` copiar. Não
     foi feito.
+
+## Continuação 5 (13/11): o aquecimento do 3e sai do clique (o fundo compõe-se num fio)
+
+O 3e tirou ~20 ms do 1.º toque, mas pô-los no clique do «+» e da linha (0,2 → 16–22 ms). Uma cura que só muda o
+trabalho de gesto não acabou.
+
+- **Cura** (`watercolor_aquece.rs`, chave em execução `FUNDO_AQUECIDO_EM_FUNDO`, por fio, ligada; `false` = a rota do
+  clique do 3e, o oráculo). O clique tira um instantâneo do que o fundo de baixo lê: a pilha, os `Arc` das camadas
+  NÃO activas (a activa vive em `canvas_rgba`, então o traço nela não copia o plano por causa do fio) e o papel, com
+  a `ChaveDoFundo` do n.º 6. Um fio compõe o fundo e o chão preto com `composite_below` num **pool rayon próprio**, do
+  tamanho do global. Nunca rouba o pool a um traço ou preview. Só lança com nenhum traço aberto e sai cancelável entre
+  as duas fases (`AtomicBool`, sem `unsafe`, o molde de `adormecida/silencio.rs`). Larga o instantâneo antes de
+  devolver.
+- **O pen-down colhe** (`fundo_de_baixo` → `colhe_o_aquecimento`). Chave igual: espera o fio se ainda corre e guarda
+  fundo e chão preto nas caches de sempre. Chave diferente (a pilha mudou entre o clique e o toque): cancela e compõe
+  como hoje. Outro clique descarta o anterior e lança o seu. Se a cache já serve, não lança.
+
+Medição: um teste temporário (não comitado), 4K, WB, perfil `smoke`, load 4–5, 8 blocos rodados no MESMO processo. A
+pilha cresce 1 camada por amostra (2 → 33), por isso o síncrono sobe com ela.
+
+| rota | «+» | 1.º pen-down 300 ms depois | 1.º pen-down colado ao clique (0 ms, caso-limite) |
+|---|---|---|---|
+| clique (3e) | 40 → 171 ms | 9,8–11,7 ms | 10,7–16,0 ms (+ o «+» de 47–154) |
+| fio (3f) | **0,06–0,18 ms** | 9,7–19,5 ms | 45 → 204 ms (espera o fio ≈ o «+» síncrono + o toque) |
+
+O clique fica ≤ 1 ms. Com a pausa humana o toque é o mesmo. Colado ao clique, o toque espera o resto da composição,
+≈ o que o síncrono pagava no clique (não há ganho nem perda de monta, com o ruído do load). Para o coordenador:
+`N7_ITEM3f_sonda.sh` (eixo novo da sonda `PH2D_SONDA_EM_FUNDO=ab`, 6 blocos, WB e Wet Wash).
+
+- **Gate** `o_fundo_do_toque_compoe_se_num_fio_e_e_o_mesmo_bit` (`watercolor_fundo_em_fundo_tests.rs`). Três casos:
+  acabado, a meio (o fio atrasa 150 ms e o pen-down espera) e descartado (a base muda entre o «+» e o toque). Cada um
+  contra a rota do clique: fundo do toque, tela, chão preto congelado e quadro iguais ao bit, e contas colhidos ×
+  descartados × «o fio corria». O controlo (a rota do clique) não lança fio. O gate do 3e fixa a rota do clique.
+- **Mutações:** (M1) papel do fundo errado no fio → vermelho · (M2) colher sem conferir a chave → vermelho · (M3) não
+  lançar → vermelho · (M4) chão preto `[0,0,1]` → vermelho, mas só depois de a foto do chão preto entrar no gate: os
+  píxeis desta fixture não o leem.
+- Vizinhos verdes por nome: `fundo` 4, `vidro` 32 (5 ignorados), `troca` 32 (5), `adormec` 32 (2), `mais_sem_diff` 3.
+- **Aberto:**
+  - Trocar de pincel para a aguada sem trocar de camada ainda não aquece. O mecanismo serve, falta chamá-lo na
+    troca de pincel. Não houve tempo.
+  - O «+» síncrono cresce com o número de camadas (40 → 171 ms de 2 a 33 camadas a 4K): `composite_below` sobre a
+    pilha inteira. O fio esconde-o do clique, mas não do toque colado.
+  - Um fio descartado corre até ao fim da fase em curso (≤ 1 composição) no seu pool, ao lado do traço que começou.

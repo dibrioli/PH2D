@@ -98,6 +98,7 @@ mod watercolor_accum;
 mod watercolor_accum_cor; // o splat da COR da lavagem, irmão do da cobertura
 /// Watercolor real GROUND (backdrop under the active layer + document paper colour) + water soak.
 mod watercolor_backdrop;
+pub(crate) mod watercolor_aquece; // o fundo do toque compõe-se num fio, fora do clique (n.º 7 item 3f)
 /// Watercolor SECAGEM: o decaimento por-quadro do mapa de umidade; irmão do backdrop (LOC + assunto).
 mod watercolor_dry;
 pub(crate) mod watercolor_field;
@@ -109,6 +110,8 @@ mod watercolor_flow;
 mod watercolor_fundo_cache_tests;
 #[cfg(test)]
 mod watercolor_fundo_aquecido_tests;
+#[cfg(test)]
+mod watercolor_fundo_em_fundo_tests;
 /// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).
 mod watercolor_lut;
 mod watercolor_mistura; // o Pigment mistura tinta com tinta: nunca com o papel, e molhado sobre molhado

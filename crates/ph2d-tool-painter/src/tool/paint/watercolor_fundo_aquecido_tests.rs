@@ -66,6 +66,8 @@ fn o_toque_usou(
 /// `(tela, fundo, quadro)` de cada passo, e se cada 1.º toque usou o aquecido.
 fn corre(chave: bool) -> (Vec<Vec<u8>>, Vec<bool>) {
     FUNDO_AQUECIDO_NA_TROCA.set(chave);
+    // A rota do clique (o oráculo do item 3f): o fio em fundo tem o seu gate (`watercolor_fundo_em_fundo_tests`).
+    super::watercolor_aquece::FUNDO_AQUECIDO_EM_FUNDO.set(false);
     let mut t = PainterTool::default();
     let base: Vec<u8> = (0..W * H * 4)
         .map(|i| (i.wrapping_mul(2_654_435_761) >> 9) as u8 | 0x40)
@@ -105,6 +107,7 @@ fn corre(chave: bool) -> (Vec<Vec<u8>>, Vec<bool>) {
     usou.push(o_toque_usou(&mut t, a, 55.0, &mut fotos));
     foto(&mut t, &mut fotos);
     FUNDO_AQUECIDO_NA_TROCA.set(true);
+    super::watercolor_aquece::FUNDO_AQUECIDO_EM_FUNDO.set(true);
     (fotos, usou)
 }
 

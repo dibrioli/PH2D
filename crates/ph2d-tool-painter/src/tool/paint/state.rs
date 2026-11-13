@@ -393,6 +393,8 @@ pub(crate) struct PaintState {
     /// O último fundo de baixo composto, com a chave de tudo o que o compôs (n.º 6): o traço seguinte sobre a mesma
     /// pilha não o recompõe ([`super::watercolor_backdrop::ChaveDoFundo`]).
     pub(super) fundo_em_cache: Option<(super::watercolor_backdrop::ChaveDoFundo, Arc<Vec<u8>>)>,
+    /// O fundo de baixo a compor num fio desde a última troca de camada (n.º 7 item 3f); o pen-down colhe-o.
+    pub(super) aquecimento: super::watercolor_aquece::AquecimentoPendente,
     /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
     /// the backdrop is fully transparent. Default WHITE (a plain canvas); panel swatch
     /// `PAINTER_WATERCOLOR_PAPER_COLOR_THUMB` edits it via the shared picker (Rebelle: canvas colour

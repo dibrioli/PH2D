@@ -49,7 +49,10 @@ impl StageMap {
             lo = [-1.0, 0.0];
             hi = [1.0, 1.0];
         }
-        let (bw, bh) = ((hi[0] - lo[0]).max(f32::EPSILON), (hi[1] - lo[1]).max(f32::EPSILON));
+        let (bw, bh) = (
+            (hi[0] - lo[0]).max(f32::EPSILON),
+            (hi[1] - lo[1]).max(f32::EPSILON),
+        );
         let (aw, ah) = ((r.w - pad * 2.0).max(1.0), (r.h - pad * 2.0).max(1.0));
         let scale = (aw / bw).min(ah / bh).min(max_scale);
         let cx = r.x + r.w * 0.5 - (lo[0] + hi[0]) * 0.5 * scale;
@@ -170,8 +173,14 @@ mod tests {
         let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0, f32::MAX);
         for (i, role) in car().roles.iter().enumerate() {
             let s = m.shape_rect(role, 0);
-            assert!(s.x >= r.x && s.x + s.w <= r.x + r.w + 0.01, "papel {i} sai na horizontal");
-            assert!(s.y >= r.y && s.y + s.h <= r.y + r.h + 0.01, "papel {i} sai na vertical");
+            assert!(
+                s.x >= r.x && s.x + s.w <= r.x + r.w + 0.01,
+                "papel {i} sai na horizontal"
+            );
+            assert!(
+                s.y >= r.y && s.y + s.h <= r.y + r.h + 0.01,
+                "papel {i} sai na vertical"
+            );
         }
         let p = m.px([0.7, 0.3]);
         let back = m.metres(p.0, p.1);

@@ -49,15 +49,33 @@ const ONE_CHAIN: Tune = Tune {
     ..Tune::NONE
 };
 const BRIDGE_JOINTS: &[JointRule] = &[
-    rule("Left end", 0, 1, JointKind::Pin, Anchor::At(Spot::b(-1.04, 0.0)))
-        .link(Link::ToFirst)
-        .tuned(ONE_CHAIN),
-    rule("Plank", 1, 1, JointKind::Pin, Anchor::At(Spot::a(1.04, 0.0)))
-        .link(Link::Chain)
-        .tuned(ONE_CHAIN),
-    rule("Right end", 2, 1, JointKind::Pin, Anchor::At(Spot::b(1.04, 0.0)))
-        .link(Link::ToLast)
-        .tuned(ONE_CHAIN),
+    rule(
+        "Left end",
+        0,
+        1,
+        JointKind::Pin,
+        Anchor::At(Spot::b(-1.04, 0.0)),
+    )
+    .link(Link::ToFirst)
+    .tuned(ONE_CHAIN),
+    rule(
+        "Plank",
+        1,
+        1,
+        JointKind::Pin,
+        Anchor::At(Spot::a(1.04, 0.0)),
+    )
+    .link(Link::Chain)
+    .tuned(ONE_CHAIN),
+    rule(
+        "Right end",
+        2,
+        1,
+        JointKind::Pin,
+        Anchor::At(Spot::b(1.04, 0.0)),
+    )
+    .link(Link::ToLast)
+    .tuned(ONE_CHAIN),
 ];
 pub(super) const BRIDGE: Template =
     template(8, JointKind::Rope, "Bridge", BRIDGE_ROLES, BRIDGE_JOINTS);

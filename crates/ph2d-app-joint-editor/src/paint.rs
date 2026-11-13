@@ -28,10 +28,16 @@ impl Layout {
     #[must_use]
     pub fn of(area: Rect, panel_want: f32) -> Self {
         let g = m::CARD_GAP;
-        let list = Rect::new(area.x + g, area.y + g, w::LIST_W, (area.h - g * 2.0).max(0.0));
+        let list = Rect::new(
+            area.x + g,
+            area.y + g,
+            w::LIST_W,
+            (area.h - g * 2.0).max(0.0),
+        );
         let x = list.x + list.w + g;
         let rw = (area.x + area.w - g - x).max(0.0);
-        let top_h = m::CARD_PAD_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::CARD_PAD_BOTTOM;
+        let top_h =
+            m::CARD_PAD_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::CARD_PAD_BOTTOM;
         let top = Rect::new(x, list.y, rw, top_h);
         // O painel cresce com as linhas do tipo, até metade da aba; o palco fica com o resto.
         let panel_h = panel_want.min((area.h * 0.5).max(0.0));
@@ -89,7 +95,10 @@ fn inner(r: Rect) -> Rect {
 
 fn paint_list(ui: &mut Ui<'_>, r: Rect) {
     let i = inner(r);
-    ui.label(tr("joint_editor.assemblies"), Rect::new(i.x, i.y, i.w, m::LABEL_PX + m::LABEL_BOTTOM));
+    ui.label(
+        tr("joint_editor.assemblies"),
+        Rect::new(i.x, i.y, i.w, m::LABEL_PX + m::LABEL_BOTTOM),
+    );
     let mut y = i.y + m::LABEL_PX + m::LABEL_BOTTOM * 2.0;
     let buttons_y = i.y + i.h - m::FIELD_H;
     let rows: Vec<(u64, String, usize)> = ui
@@ -108,7 +117,12 @@ fn paint_list(ui: &mut Ui<'_>, r: Rect) {
         .collect();
     if draft {
         let k = lines.len();
-        lines.push((None, tr("joint_editor.new_assembly").to_owned(), "0".to_owned(), k));
+        lines.push((
+            None,
+            tr("joint_editor.new_assembly").to_owned(),
+            "0".to_owned(),
+            k,
+        ));
     }
     for (sid, name, count, k) in lines {
         if y + m::FIELD_H > buttons_y {
@@ -123,7 +137,12 @@ fn paint_list(ui: &mut Ui<'_>, r: Rect) {
         if sel {
             fill_rounded_rect(ui.scene, row, m::FIELD_RADIUS, ui.c(ColorToken::Selection));
         } else if ui.doc.hover.as_ref() == Some(&h) {
-            fill_rounded_rect(ui.scene, row, m::FIELD_RADIUS, ui.c(ColorToken::CardFieldHover));
+            fill_rounded_rect(
+                ui.scene,
+                row,
+                m::FIELD_RADIUS,
+                ui.c(ColorToken::CardFieldHover),
+            );
         }
         let dot = m::CHECK_BOX * 0.5;
         ph2d_editor_core::paint::fill_circle(
@@ -136,26 +155,55 @@ fn paint_list(ui: &mut Ui<'_>, r: Rect) {
         let tx = row.x + m::FIELD_PAD_R + dot + m::CHECK_GAP;
         let cw = ui.ts.prefix_width(&count, m::VALUE_PX) + m::FIELD_PAD_R;
         let c = ui.c(ColorToken::Text1);
-        w::text(ui.ts, ui.scene, &name, Rect::new(tx, row.y, (row.x + row.w - cw - tx).max(0.0), row.h), m::VALUE_PX, c);
+        w::text(
+            ui.ts,
+            ui.scene,
+            &name,
+            Rect::new(tx, row.y, (row.x + row.w - cw - tx).max(0.0), row.h),
+            m::VALUE_PX,
+            c,
+        );
         let c2 = ui.c(ColorToken::Text2);
-        w::text(ui.ts, ui.scene, &count, Rect::new(row.x + row.w - cw, row.y, cw, row.h), m::VALUE_PX, c2);
+        w::text(
+            ui.ts,
+            ui.scene,
+            &count,
+            Rect::new(row.x + row.w - cw, row.y, cw, row.h),
+            m::VALUE_PX,
+            c2,
+        );
         ui.hit(row, h, &name);
         y += m::FIELD_H + m::FIELD_ROW_GAP;
     }
     let half = (i.w - m::FIELD_GAP) * 0.5;
-    ui.button(Rect::new(i.x, buttons_y, half, m::FIELD_H), tr("joint_editor.new"), Hit::New, false);
+    ui.button(
+        Rect::new(i.x, buttons_y, half, m::FIELD_H),
+        tr("joint_editor.new"),
+        Hit::New,
+        false,
+    );
     let rm = Rect::new(i.x + half + m::FIELD_GAP, buttons_y, half, m::FIELD_H);
     if ui.doc.assembly().is_some() {
         ui.button(rm, tr("joint_editor.remove"), Hit::Remove, false);
     } else {
         fill_rounded_rect(ui.scene, rm, m::FIELD_RADIUS, ui.c(ColorToken::CardField));
         let c = ui.c(ColorToken::TextDisabled);
-        w::text_centred(ui.ts, ui.scene, tr("joint_editor.remove"), rm, m::VALUE_PX, c);
+        w::text_centred(
+            ui.ts,
+            ui.scene,
+            tr("joint_editor.remove"),
+            rm,
+            m::VALUE_PX,
+            c,
+        );
     }
 }
 
 fn dropdown(ui: &mut Ui<'_>, r: Rect, label: &str, value: &str, h: Hit, tip: &str) {
-    ui.label(label, Rect::new(r.x, r.y, r.w, m::LABEL_PX + m::LABEL_BOTTOM));
+    ui.label(
+        label,
+        Rect::new(r.x, r.y, r.w, m::LABEL_PX + m::LABEL_BOTTOM),
+    );
     let b = Rect::new(r.x, r.y + m::LABEL_PX + m::LABEL_BOTTOM, r.w, m::FIELD_H);
     let bg = if ui.doc.hover.as_ref() == Some(&h) {
         ColorToken::CardFieldHover
@@ -164,11 +212,27 @@ fn dropdown(ui: &mut Ui<'_>, r: Rect, label: &str, value: &str, h: Hit, tip: &st
     };
     fill_rounded_rect(ui.scene, b, m::FIELD_RADIUS, ui.c(bg));
     let c = ui.c(ColorToken::Text1);
-    let t = Rect::new(b.x + m::FIELD_PAD_R, b.y, b.w - m::FIELD_PAD_R * 2.0 - m::CARD_CHEVRON, b.h);
+    let t = Rect::new(
+        b.x + m::FIELD_PAD_R,
+        b.y,
+        b.w - m::FIELD_PAD_R * 2.0 - m::CARD_CHEVRON,
+        b.h,
+    );
     w::text(ui.ts, ui.scene, value, t, m::VALUE_PX, c);
-    let chev = Rect::new(b.x + b.w - m::FIELD_PAD_R - m::CARD_CHEVRON, b.y + (b.h - m::CARD_CHEVRON) * 0.5, m::CARD_CHEVRON, m::CARD_CHEVRON);
+    let chev = Rect::new(
+        b.x + b.w - m::FIELD_PAD_R - m::CARD_CHEVRON,
+        b.y + (b.h - m::CARD_CHEVRON) * 0.5,
+        m::CARD_CHEVRON,
+        m::CARD_CHEVRON,
+    );
     let ic = ui.c(ColorToken::Text2);
-    ph2d_editor_core::paint::paint_icon(ui.scene, ph2d_editor_core::icons::IconId::ChevronDown, chev, ic, m::KEY_MARK_STROKE);
+    ph2d_editor_core::paint::paint_icon(
+        ui.scene,
+        ph2d_editor_core::icons::IconId::ChevronDown,
+        chev,
+        ic,
+        m::KEY_MARK_STROKE,
+    );
     let a11y = format!("{label}: {value}. {tip}");
     ui.hit(b, h, &a11y);
 }
@@ -178,8 +242,22 @@ fn paint_top(ui: &mut Ui<'_>, r: Rect) {
     let half = (i.w - m::FIELD_GAP) * 0.5;
     let t = ui.doc.template();
     let kind = tr(kind_key(t.kind)).to_owned();
-    dropdown(ui, Rect::new(i.x, i.y, half, i.h), tr("joint_editor.joint"), &kind, Hit::OpenMenu(Menu::Kind), tr("joint_editor.joint_tip"));
-    dropdown(ui, Rect::new(i.x + half + m::FIELD_GAP, i.y, half, i.h), tr("joint_editor.template"), t.name, Hit::OpenMenu(Menu::Template), tr("joint_editor.template_tip"));
+    dropdown(
+        ui,
+        Rect::new(i.x, i.y, half, i.h),
+        tr("joint_editor.joint"),
+        &kind,
+        Hit::OpenMenu(Menu::Kind),
+        tr("joint_editor.joint_tip"),
+    );
+    dropdown(
+        ui,
+        Rect::new(i.x + half + m::FIELD_GAP, i.y, half, i.h),
+        tr("joint_editor.template"),
+        t.name,
+        Hit::OpenMenu(Menu::Template),
+        tr("joint_editor.template_tip"),
+    );
 }
 
 /// A miniatura de um gabarito: as formas-guia tracejadas, sem rótulos (desenho, não campo).
@@ -207,18 +285,33 @@ fn paint_menu(ui: &mut Ui<'_>, top: Rect, menu: Menu) {
         Menu::Template => i.x + half + m::FIELD_GAP,
     };
     let y0 = i.y + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::SEG_PAD;
-    let rows: Vec<(Hit, String, String, Option<&'static ph2d_joint_templates::Template>)> = match menu {
+    let rows: Vec<(
+        Hit,
+        String,
+        String,
+        Option<&'static ph2d_joint_templates::Template>,
+    )> = match menu {
         Menu::Kind => kinds()
             .into_iter()
             .map(|k| {
                 let n = ph2d_joint_templates::of_kind(k).count();
-                (Hit::Kind(k), tr(kind_key(k)).to_owned(), tr_with("joint_editor.templates_n", &[("n", &n)]), None)
+                (
+                    Hit::Kind(k),
+                    tr(kind_key(k)).to_owned(),
+                    tr_with("joint_editor.templates_n", &[("n", &n)]),
+                    None,
+                )
             })
             .collect(),
         Menu::Template => ph2d_joint_templates::of_kind(ui.doc.template().kind)
             .map(|t| {
                 let roles: Vec<&str> = t.roles.iter().map(|r| r.name).collect();
-                (Hit::Template(t.id.0), t.name.to_owned(), roles.join(" · "), Some(t))
+                (
+                    Hit::Template(t.id.0),
+                    t.name.to_owned(),
+                    roles.join(" · "),
+                    Some(t),
+                )
             })
             .collect(),
     };
@@ -231,13 +324,23 @@ fn paint_menu(ui: &mut Ui<'_>, top: Rect, menu: Menu) {
     let r = Rect::new(x, y0, half, h);
     let shade = ui.c(ColorToken::KanbanListShadow);
     ph2d_editor_core::paint_flight::shadow(ui.scene, r, m::CARD_RADIUS, shade, m::LIST_SHADOW_FAR);
-    fill_rounded_rect(ui.scene, r, m::CARD_RADIUS, ui.c(ColorToken::KanbanCardRaised));
+    fill_rounded_rect(
+        ui.scene,
+        r,
+        m::CARD_RADIUS,
+        ui.c(ColorToken::KanbanCardRaised),
+    );
     let cur = ui.doc.template();
     // O véu: um clique fora fecha a lista sem fazer mais nada.
     ui.hit(ui.doc.area, Hit::OpenMenu(menu), "");
     for (k, (hit, name, sub, t)) in rows.into_iter().enumerate() {
         #[allow(clippy::cast_precision_loss)]
-        let row = Rect::new(r.x + m::SEG_PAD, r.y + m::SEG_PAD + row_h * k as f32, r.w - m::SEG_PAD * 2.0, row_h);
+        let row = Rect::new(
+            r.x + m::SEG_PAD,
+            r.y + m::SEG_PAD + row_h * k as f32,
+            r.w - m::SEG_PAD * 2.0,
+            row_h,
+        );
         let on = match hit {
             Hit::Kind(kk) => kk == cur.kind,
             Hit::Template(id) => id == cur.id.0,
@@ -246,20 +349,44 @@ fn paint_menu(ui: &mut Ui<'_>, top: Rect, menu: Menu) {
         if on {
             fill_rounded_rect(ui.scene, row, m::FIELD_RADIUS, ui.c(ColorToken::Selection));
         } else if ui.doc.hover.as_ref() == Some(&hit) {
-            fill_rounded_rect(ui.scene, row, m::FIELD_RADIUS, ui.c(ColorToken::CardFieldHover));
+            fill_rounded_rect(
+                ui.scene,
+                row,
+                m::FIELD_RADIUS,
+                ui.c(ColorToken::CardFieldHover),
+            );
         }
         let mut tx = row.x + m::FIELD_PAD_R;
         if let Some(t) = t {
-            let th = Rect::new(tx, row.y + (row.h - w::THUMB.1) * 0.5, w::THUMB.0, w::THUMB.1);
+            let th = Rect::new(
+                tx,
+                row.y + (row.h - w::THUMB.1) * 0.5,
+                w::THUMB.0,
+                w::THUMB.1,
+            );
             thumbnail(ui, t, th);
             tx += w::THUMB.0 + m::FIELD_GAP;
         }
         let tw = (row.x + row.w - m::FIELD_PAD_R - tx).max(0.0);
         let half_h = row.h * 0.5;
         let c = ui.c(ColorToken::Text1);
-        w::text(ui.ts, ui.scene, &name, Rect::new(tx, row.y + m::SEG_PAD, tw, half_h), m::VALUE_PX, c);
+        w::text(
+            ui.ts,
+            ui.scene,
+            &name,
+            Rect::new(tx, row.y + m::SEG_PAD, tw, half_h),
+            m::VALUE_PX,
+            c,
+        );
         let c2 = ui.c(ColorToken::Text2);
-        w::text(ui.ts, ui.scene, &sub, Rect::new(tx, row.y + half_h - m::SEG_PAD, tw, half_h), w::SMALL_PX, c2);
+        w::text(
+            ui.ts,
+            ui.scene,
+            &sub,
+            Rect::new(tx, row.y + half_h - m::SEG_PAD, tw, half_h),
+            w::SMALL_PX,
+            c2,
+        );
         let a11y = format!("{name}: {sub}");
         ui.hit(row, hit, &a11y);
     }

@@ -11,22 +11,36 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.joint" => "Joint",
         "joint_editor.joint_tip" => "The kind of joint. Each kind has its own templates.",
         "joint_editor.template" => "Template",
-        "joint_editor.template_tip" => "A ready-made machine for this joint. Drop your objects into it.",
+        "joint_editor.template_tip" => {
+            "A ready-made machine for this joint. Drop your objects into it."
+        }
         "joint_editor.templates_n" => "{n} templates",
         "joint_editor.scope.both_wheels" => "Both wheels",
         "joint_editor.scope.all" => "All {n}",
         "joint_editor.scene" => "The scene",
         "joint_editor.use_scene" => "Pin to the scene",
-        "joint_editor.hint" => "Drag objects from the Hierarchy into the dashed shapes. Each one becomes that part.",
-        "joint_editor.hint_assembled" => "Drag the round handles to change travel, limits and wheelbase. Click a part to select it. Drop more objects into empty shapes.",
+        "joint_editor.hint" => {
+            "Drag objects from the Hierarchy into the dashed shapes. Each one becomes that part."
+        }
+        "joint_editor.hint_assembled" => {
+            "Drag the round handles to change travel, limits and wheelbase. Click a part to select it. Drop more objects into empty shapes."
+        }
         "joint_editor.drop.over_a_shape" => "Let go over one of the dashed shapes.",
         "joint_editor.drop.new_assembly" => "a new {template}",
-        "joint_editor.drop.one" => "Let go: {name} becomes the {role} of {assembly}. Its joint is made when the part it holds on to is in too.",
-        "joint_editor.drop.many" => "Let go: these {n} objects become the {role} parts of {assembly}, in this order.",
+        "joint_editor.drop.one" => {
+            "Let go: {name} becomes the {role} of {assembly}. Its joint is made when the part it holds on to is in too."
+        }
+        "joint_editor.drop.many" => {
+            "Let go: these {n} objects become the {role} parts of {assembly}, in this order."
+        }
         "joint_editor.drop.no_body" => "{name} has no physics body. Give it a Physics Body first.",
         "joint_editor.drop.already" => "{name} is already the {role} here.",
-        "joint_editor.drop.taken" => "The {role} is already {name}. Remove the assembly to start again.",
-        "joint_editor.placed" => "{role} of {assembly}: {n} part(s) in, {joints} joint(s) made. The objects stay where they are.",
+        "joint_editor.drop.taken" => {
+            "The {role} is already {name}. Remove the assembly to start again."
+        }
+        "joint_editor.placed" => {
+            "{role} of {assembly}: {n} part(s) in, {joints} joint(s) made. The objects stay where they are."
+        }
         "joint_editor.shape_a11y" => "{role}: {name}",
         "joint_editor.handle.min" => "Drag to set the lowest point",
         "joint_editor.handle.max" => "Drag to set the highest point",
@@ -44,8 +58,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.drive.none" => "None",
         "joint_editor.no_motor" => "This wheel has no motor. Pick it in Drive to make it turn.",
         "joint_editor.draft_title" => "New {template}",
-        "joint_editor.empty_panel" => "Drop a part into the template to make its joint. The settings show up here.",
-        "joint_editor.parts_of" => "{n} of {of} parts",
+        "joint_editor.empty_panel" => {
+            "Drop a part into the template to make its joint. The settings show up here."
+        }
+        "joint_editor.parts_of" => "{n} of {of} parts \u{b7} {joints} joints",
         "joint_editor.open_inspector" => "Open in Inspector",
         "joint_editor.no_joint_yet" => "No joint yet. Drop the part it holds on to as well.",
         "panel.inspector.joint.open_in_joint_editor" => "Open in Joint Editor",

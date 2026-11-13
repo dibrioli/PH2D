@@ -75,7 +75,14 @@ impl DocumentSurface for JointEditorTab {
         }]
     }
 
-    fn paint(&mut self, _id: u64, area: Rect, scene: &mut VectorScene, text: &mut TextSystem, theme: &Theme) {
+    fn paint(
+        &mut self,
+        _id: u64,
+        area: Rect,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: &Theme,
+    ) {
         crate::paint::paint(&mut self.doc, above(area, self.over), scene, text, *theme);
     }
 
@@ -125,8 +132,20 @@ impl DocumentSurface for JointEditorTab {
     }
 
     fn a11y(&self, _id: u64) -> Vec<(NodeId, ph2d_a11y::Node)> {
-        let b = |r: Rect| (f64::from(r.x), f64::from(r.y), f64::from(r.w), f64::from(r.h));
-        let hits: Vec<&(Rect, Hit, String)> = self.doc.hits.iter().filter(|(_, _, l)| !l.is_empty()).collect();
+        let b = |r: Rect| {
+            (
+                f64::from(r.x),
+                f64::from(r.y),
+                f64::from(r.w),
+                f64::from(r.h),
+            )
+        };
+        let hits: Vec<&(Rect, Hit, String)> = self
+            .doc
+            .hits
+            .iter()
+            .filter(|(_, _, l)| !l.is_empty())
+            .collect();
         let (x, y, w, h) = b(self.doc.area);
         let root = ph2d_a11y::NodeBuilder::new(ph2d_a11y::Role::Document)
             .label(tr("joint_editor.title"))

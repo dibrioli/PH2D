@@ -167,6 +167,9 @@ pub fn read(sim: &mut SimWorld) -> Snapshot {
 pub fn body_named(sim: &mut SimWorld, name: &str) -> Option<Entity> {
     let w = sim.world_mut();
     let mut q = w.query::<(Entity, &Name)>();
-    let e = q.iter(w).find(|(_, n)| n.as_str() == name).map(|(e, _)| e)?;
+    let e = q
+        .iter(w)
+        .find(|(_, n)| n.as_str() == name)
+        .map(|(e, _)| e)?;
     w.get::<ph2d_physics_ecs::RigidBody>(e).map(|_| e)
 }

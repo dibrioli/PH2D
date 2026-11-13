@@ -114,7 +114,12 @@ impl Ui<'_> {
 
     /// Uma escolha segmentada a toda a largura de `r`.
     pub fn segmented(&mut self, r: Rect, opts: &[(String, Hit, bool)]) {
-        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, self.c(ColorToken::CardField));
+        fill_rounded_rect(
+            self.scene,
+            r,
+            m::FIELD_RADIUS,
+            self.c(ColorToken::CardField),
+        );
         let n = opts.len().max(1);
         #[allow(clippy::cast_precision_loss)]
         let w = (r.w - m::SEG_PAD * 2.0) / n as f32;
@@ -129,9 +134,18 @@ impl Ui<'_> {
             if *on {
                 fill_rounded_rect(self.scene, s, m::SEG_RADIUS, self.c(ColorToken::Accent));
             } else if self.hot(h) {
-                fill_rounded_rect(self.scene, s, m::SEG_RADIUS, self.c(ColorToken::CardFieldHover));
+                fill_rounded_rect(
+                    self.scene,
+                    s,
+                    m::SEG_RADIUS,
+                    self.c(ColorToken::CardFieldHover),
+                );
             }
-            let fg = self.c(if *on { ColorToken::AccentFg } else { ColorToken::Text1 });
+            let fg = self.c(if *on {
+                ColorToken::AccentFg
+            } else {
+                ColorToken::Text1
+            });
             text_centred(self.ts, self.scene, label, s, m::SEG_TEXT_PX, fg);
             self.hit(s, h.clone(), label);
         }
@@ -158,13 +172,20 @@ impl Ui<'_> {
                 self.c(ColorToken::FocusRing),
             );
         }
-        let shown = typing.clone().unwrap_or_else(|| value.map_or_else(String::new, format));
+        let shown = typing
+            .clone()
+            .unwrap_or_else(|| value.map_or_else(String::new, format));
         let inner = Rect::new(b.x + m::FIELD_PAD_R, b.y, b.w - m::FIELD_PAD_R * 2.0, b.h);
         let c = self.c(ColorToken::Text1);
         text(self.ts, self.scene, &shown, inner, m::VALUE_PX, c);
         if typing.is_some() {
             let x = inner.x + self.ts.prefix_width(&shown, m::VALUE_PX).min(inner.w);
-            let caret = Rect::new(x, b.y + m::SEG_PAD * 2.0, m::FIELD_BORDER, b.h - m::SEG_PAD * 4.0);
+            let caret = Rect::new(
+                x,
+                b.y + m::SEG_PAD * 2.0,
+                m::FIELD_BORDER,
+                b.h - m::SEG_PAD * 4.0,
+            );
             fill_rounded_rect(self.scene, caret, 0.0, c);
         }
         self.hit(b, Hit::Field(f), label);
@@ -190,9 +211,20 @@ impl Ui<'_> {
                 ColorToken::CardField
             };
             fill_rounded_rect(self.scene, b, m::SEG_RADIUS, self.c(bg));
-            stroke_rounded_rect(self.scene, b, m::SEG_RADIUS, m::FIELD_BORDER, self.c(ColorToken::Border));
+            stroke_rounded_rect(
+                self.scene,
+                b,
+                m::SEG_RADIUS,
+                m::FIELD_BORDER,
+                self.c(ColorToken::Border),
+            );
         }
-        let t = Rect::new(b.x + side + m::CHECK_GAP, r.y, r.w - side - m::CHECK_GAP, r.h);
+        let t = Rect::new(
+            b.x + side + m::CHECK_GAP,
+            r.y,
+            r.w - side - m::CHECK_GAP,
+            r.h,
+        );
         let c = self.c(ColorToken::Text1);
         text(self.ts, self.scene, label, t, m::VALUE_PX, c);
         self.hit(r, h, label);
@@ -204,7 +236,11 @@ impl Ui<'_> {
 pub fn format(v: f32) -> String {
     let s = format!("{v:.3}");
     let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" { "0".to_owned() } else { s.to_owned() }
+    if s == "-0" {
+        "0".to_owned()
+    } else {
+        s.to_owned()
+    }
 }
 
 #[cfg(test)]

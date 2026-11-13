@@ -13,7 +13,10 @@ use crate::widgets::{self as w, Ui};
 
 /// O rótulo com a unidade: «Travel down (m)».
 fn unit(label: &str, unit_key: &str) -> String {
-    tr_with("joint_editor.with_unit", &[("label", &label), ("unit", &tr(unit_key))])
+    tr_with(
+        "joint_editor.with_unit",
+        &[("label", &label), ("unit", &tr(unit_key))],
+    )
 }
 
 fn limit_unit(k: JointKind) -> &'static str {
@@ -42,7 +45,11 @@ enum Row {
 }
 
 /// As linhas do tipo `k`, lidas da 1.ª junta do alcance.
-fn rows_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointInfo, wheelbase: bool) -> Vec<Row> {
+fn rows_of(
+    k: JointKind,
+    info: &ph2d_editor_core::screens::hero::InspectorJointInfo,
+    wheelbase: bool,
+) -> Vec<Row> {
     let f = |key: &str| tr(key).to_owned();
     let lim = limit_unit(k);
     let spd = speed_unit(k);
@@ -50,35 +57,61 @@ fn rows_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointI
     match k {
         JointKind::Wheel => {
             out.push(Row::Two(
-                (Field::Stiffness, f("panel.inspector.joint.suspension_stiffness")),
-                (Field::Damping, f("panel.inspector.joint.suspension_damping")),
+                (
+                    Field::Stiffness,
+                    f("panel.inspector.joint.suspension_stiffness"),
+                ),
+                (
+                    Field::Damping,
+                    f("panel.inspector.joint.suspension_damping"),
+                ),
             ));
             out.push(Row::Two(
-                (Field::LimitMin, unit(tr("panel.inspector.joint.travel_down"), lim)),
-                (Field::LimitMax, unit(tr("panel.inspector.joint.travel_up"), lim)),
+                (
+                    Field::LimitMin,
+                    unit(tr("panel.inspector.joint.travel_down"), lim),
+                ),
+                (
+                    Field::LimitMax,
+                    unit(tr("panel.inspector.joint.travel_up"), lim),
+                ),
             ));
             out.push(Row::Drive);
             if info.motor_enabled {
                 out.push(Row::Two(
-                    (Field::MotorSpeed, unit(tr("panel.inspector.joint.spin_speed"), spd)),
+                    (
+                        Field::MotorSpeed,
+                        unit(tr("panel.inspector.joint.spin_speed"), spd),
+                    ),
                     (Field::MotorForce, f("component.field.joint.9")),
                 ));
             } else {
                 out.push(Row::Note(f("joint_editor.no_motor")));
             }
             if wheelbase {
-                out.push(Row::One(Field::Wheelbase, unit(tr("joint_editor.wheelbase"), "joint_editor.unit.m")));
+                out.push(Row::One(
+                    Field::Wheelbase,
+                    unit(tr("joint_editor.wheelbase"), "joint_editor.unit.m"),
+                ));
             }
         }
         JointKind::Pin | JointKind::Slider => {
-            out.push(Row::Flag(Flag::Limits, f("component.field.joint.4"), info.limits_enabled));
+            out.push(Row::Flag(
+                Flag::Limits,
+                f("component.field.joint.4"),
+                info.limits_enabled,
+            ));
             if info.limits_enabled {
                 out.push(Row::Two(
                     (Field::LimitMin, unit(tr("component.field.joint.5"), lim)),
                     (Field::LimitMax, unit(tr("component.field.joint.6"), lim)),
                 ));
             }
-            out.push(Row::Flag(Flag::Motor, f("component.field.joint.7"), info.motor_enabled));
+            out.push(Row::Flag(
+                Flag::Motor,
+                f("component.field.joint.7"),
+                info.motor_enabled,
+            ));
             if info.motor_enabled {
                 out.push(Row::Two(
                     (Field::MotorSpeed, unit(tr("component.field.joint.8"), spd)),
@@ -91,19 +124,35 @@ fn rows_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointI
                 (Field::Stiffness, f("component.field.joint.11")),
                 (Field::Damping, f("component.field.joint.12")),
             ));
-            out.push(Row::One(Field::RestLength, unit(tr("component.field.joint.10"), "joint_editor.unit.m")));
+            out.push(Row::One(
+                Field::RestLength,
+                unit(tr("component.field.joint.10"), "joint_editor.unit.m"),
+            ));
         }
         JointKind::Rope | JointKind::Rod | JointKind::Pulley => {
-            out.push(Row::One(Field::MaxLength, unit(tr("component.field.joint.13"), "joint_editor.unit.m")));
+            out.push(Row::One(
+                Field::MaxLength,
+                unit(tr("component.field.joint.13"), "joint_editor.unit.m"),
+            ));
         }
         JointKind::Weld | JointKind::Custom => {}
     }
     if k.can_break() {
-        out.push(Row::Flag(Flag::Breakable, f("component.field.joint.19"), info.break_enabled));
+        out.push(Row::Flag(
+            Flag::Breakable,
+            f("component.field.joint.19"),
+            info.break_enabled,
+        ));
         if info.break_enabled {
             out.push(Row::Two(
-                (Field::BreakForce, unit(tr("component.field.joint.20"), "joint_editor.unit.n")),
-                (Field::BreakTorque, unit(tr("component.field.joint.21"), "joint_editor.unit.nm")),
+                (
+                    Field::BreakForce,
+                    unit(tr("component.field.joint.20"), "joint_editor.unit.n"),
+                ),
+                (
+                    Field::BreakTorque,
+                    unit(tr("component.field.joint.21"), "joint_editor.unit.nm"),
+                ),
             ));
         }
     }
@@ -146,26 +195,63 @@ pub fn paint(ui: &mut Ui<'_>, r: Rect) {
         let c = ui.c(ColorToken::Text1);
         let t = ui.doc.template();
         let head = tr_with("joint_editor.draft_title", &[("template", &t.name)]);
-        w::text(ui.ts, ui.scene, &head, Rect::new(i.x, i.y, i.w, m::FIELD_H), m::CARD_TITLE_PX, c);
+        w::text(
+            ui.ts,
+            ui.scene,
+            &head,
+            Rect::new(i.x, i.y, i.w, m::FIELD_H),
+            m::CARD_TITLE_PX,
+            c,
+        );
         let c2 = ui.c(ColorToken::Text2);
-        w::text(ui.ts, ui.scene, tr("joint_editor.empty_panel"), Rect::new(i.x, i.y + m::FIELD_H, i.w, m::FIELD_H), m::VALUE_PX, c2);
+        w::text(
+            ui.ts,
+            ui.scene,
+            tr("joint_editor.empty_panel"),
+            Rect::new(i.x, i.y + m::FIELD_H, i.w, m::FIELD_H),
+            m::VALUE_PX,
+            c2,
+        );
         return;
     };
     // A faixa: o nome, quantas peças, e o botão do cartão inteiro.
     let head = Rect::new(i.x, i.y, i.w, m::FIELD_H);
     let bw = m::FIELD_VALUE_MIN_W * 2.4;
     let c = ui.c(ColorToken::Text1);
-    w::text(ui.ts, ui.scene, &a.name, Rect::new(head.x, head.y, head.w * 0.4, head.h), m::CARD_TITLE_PX, c);
+    w::text(
+        ui.ts,
+        ui.scene,
+        &a.name,
+        Rect::new(head.x, head.y, head.w * 0.4, head.h),
+        m::CARD_TITLE_PX,
+        c,
+    );
     let parts = tr_with(
         "joint_editor.parts_of",
-        &[("n", &a.filled_roles()), ("of", &a.template.roles.len())],
+        &[
+            ("n", &a.filled_roles()),
+            ("of", &a.template.roles.len()),
+            ("joints", &a.joints.len()),
+        ],
     );
     let c2 = ui.c(ColorToken::Text2);
     let nx = head.x + ui.ts.prefix_width(&a.name, m::CARD_TITLE_PX) + m::CARD_GAP;
-    w::text(ui.ts, ui.scene, &parts, Rect::new(nx, head.y, (head.x + head.w - bw - nx).max(0.0), head.h), m::VALUE_PX, c2);
+    w::text(
+        ui.ts,
+        ui.scene,
+        &parts,
+        Rect::new(nx, head.y, (head.x + head.w - bw - nx).max(0.0), head.h),
+        m::VALUE_PX,
+        c2,
+    );
     let targets = ui.doc.targets().len();
     if targets > 0 {
-        ui.button(Rect::new(head.x + head.w - bw, head.y, bw, head.h), tr("joint_editor.open_inspector"), Hit::Inspect, false);
+        ui.button(
+            Rect::new(head.x + head.w - bw, head.y, bw, head.h),
+            tr("joint_editor.open_inspector"),
+            Hit::Inspect,
+            false,
+        );
     }
     let mut y = head.y + head.h + m::FIELD_ROW_GAP;
     let opts = scope_options(a.template);
@@ -181,7 +267,14 @@ pub fn paint(ui: &mut Ui<'_>, r: Rect) {
     }
     let Some(info) = ui.doc.targets().first().and_then(|j| j.info.clone()) else {
         let c2 = ui.c(ColorToken::Text2);
-        w::text(ui.ts, ui.scene, tr("joint_editor.no_joint_yet"), Rect::new(i.x, y, i.w, m::FIELD_H), m::VALUE_PX, c2);
+        w::text(
+            ui.ts,
+            ui.scene,
+            tr("joint_editor.no_joint_yet"),
+            Rect::new(i.x, y, i.w, m::FIELD_H),
+            m::VALUE_PX,
+            c2,
+        );
         return;
     };
     let kind = ph2d_app_physics::joint::kind_of(info.kind_tag);
@@ -222,7 +315,14 @@ pub fn paint(ui: &mut Ui<'_>, r: Rect) {
             }
             Row::Note(s) => {
                 let c2 = ui.c(ColorToken::Text2);
-                w::text(ui.ts, ui.scene, &s, Rect::new(i.x, y, i.w, h), m::VALUE_PX, c2);
+                w::text(
+                    ui.ts,
+                    ui.scene,
+                    &s,
+                    Rect::new(i.x, y, i.w, h),
+                    m::VALUE_PX,
+                    c2,
+                );
             }
         }
         y += h + m::FIELD_ROW_GAP;

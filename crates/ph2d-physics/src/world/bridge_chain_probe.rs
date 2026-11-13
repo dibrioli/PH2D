@@ -6,8 +6,8 @@
 //! 0,5 × 0,1 m com 2 cm de folga, postes fixos, caixa 0,5 m de 10 kg caindo de 2 m acima.
 //! Tabela e leitura: `docs/JointEditor/02_gabaritos_medidos.md` §«A ponte sob carga».
 
-use super::*;
 use super::joint_desc::{JointDesc, JointKind};
+use super::*;
 use rapier2d::dynamics::{RevoluteJointBuilder, RigidBodyBuilder, RopeJointBuilder};
 use rapier2d::geometry::ColliderBuilder;
 
@@ -48,7 +48,11 @@ fn run(way: Way, plank_density: f32, substeps: u32) -> Out {
     w.substeps = substeps;
     w.set_dt(PhysicsWorld::DEFAULT_DT);
     let fixed = |w: &mut PhysicsWorld, x: f32, y: f32, hx: f32, hy: f32| {
-        let h = w.insert_body(RigidBodyBuilder::fixed().translation(Vector::new(x, y)).build());
+        let h = w.insert_body(
+            RigidBodyBuilder::fixed()
+                .translation(Vector::new(x, y))
+                .build(),
+        );
         w.colliders
             .insert_with_parent(ColliderBuilder::cuboid(hx, hy).build(), h, &mut w.bodies);
         h
@@ -59,7 +63,11 @@ fn run(way: Way, plank_density: f32, substeps: u32) -> Out {
     let planks: Vec<RigidBodyHandle> = (0..N)
         .map(|i| {
             let x = X0 + PITCH * i as f32;
-            let h = w.insert_body(RigidBodyBuilder::dynamic().translation(Vector::new(x, Y)).build());
+            let h = w.insert_body(
+                RigidBodyBuilder::dynamic()
+                    .translation(Vector::new(x, Y))
+                    .build(),
+            );
             w.colliders.insert_with_parent(
                 ColliderBuilder::cuboid(HALF[0], HALF[1])
                     .density(plank_density)
@@ -70,7 +78,11 @@ fn run(way: Way, plank_density: f32, substeps: u32) -> Out {
             h
         })
         .collect();
-    let load = w.insert_body(RigidBodyBuilder::dynamic().translation(Vector::new(0.0, 3.0)).build());
+    let load = w.insert_body(
+        RigidBodyBuilder::dynamic()
+            .translation(Vector::new(0.0, 3.0))
+            .build(),
+    );
     w.colliders.insert_with_parent(
         ColliderBuilder::cuboid(0.25, 0.25).density(40.0).build(),
         load,
@@ -84,7 +96,12 @@ fn run(way: Way, plank_density: f32, substeps: u32) -> Out {
     for i in 0..N - 1 {
         links.push((planks[i], planks[i + 1], [HALF[0], 0.0], [-HALF[0], 0.0]));
     }
-    links.push((planks[N - 1], right, [HALF[0], 0.0], [-post_tip[0], post_tip[1]]));
+    links.push((
+        planks[N - 1],
+        right,
+        [HALF[0], 0.0],
+        [-post_tip[0], post_tip[1]],
+    ));
     let gap = 0.02_f32;
     // O pino no meio da folga: cada ponta desloca 1 cm para fora, no eixo x.
     let mid = |p: [f32; 2], s: f32| [p[0] + s * gap / 2.0, p[1]];
@@ -153,8 +170,12 @@ fn run(way: Way, plank_density: f32, substeps: u32) -> Out {
         let y = w.bodies[planks[N / 2]].translation().y;
         low = low.min(y);
         for &(a, b, la, lb) in &links {
-            let pa = w.bodies[a].position().transform_point(Vector::new(la[0], la[1]));
-            let pb = w.bodies[b].position().transform_point(Vector::new(lb[0], lb[1]));
+            let pa = w.bodies[a]
+                .position()
+                .transform_point(Vector::new(la[0], la[1]));
+            let pb = w.bodies[b]
+                .position()
+                .transform_point(Vector::new(lb[0], lb[1]));
             worst_gap = worst_gap.max((pa - pb).length());
         }
     }
@@ -171,7 +192,9 @@ fn run(way: Way, plank_density: f32, substeps: u32) -> Out {
 #[test]
 #[ignore = "sonda"]
 fn sonda_da_ponte() {
-    println!("way        planks  sub | plank5 end  lowest  crate y  crate x  crate v  worst gap (m)");
+    println!(
+        "way        planks  sub | plank5 end  lowest  crate y  crate x  crate v  worst gap (m)"
+    );
     for sub in [4_u32, 8] {
         for d in [0.1_f32, 1.0, 10.0] {
             for way in [Way::Rope, Way::Pin, Way::TwoTrees, Way::Product] {

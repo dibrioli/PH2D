@@ -20,9 +20,7 @@
 
 use super::PhysicsWorld;
 use super::joint_desc::{JointDesc, JointKind};
-use rapier2d::dynamics::{
-    GenericJoint, ImpulseJointHandle, MultibodyJointHandle, RigidBodyHandle,
-};
+use rapier2d::dynamics::{GenericJoint, ImpulseJointHandle, MultibodyJointHandle, RigidBodyHandle};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 type Key = (u32, u32);
@@ -155,8 +153,12 @@ impl PhysicsWorld {
         let mut seen: BTreeSet<Key> = roots.clone();
         let mut queue: VecDeque<RigidBodyHandle> = roots.iter().map(|k| handles[k]).collect();
         let mut used: BTreeSet<Key> = BTreeSet::new();
-        let mut grown: Vec<(ImpulseJointHandle, MultibodyJointHandle, RigidBodyHandle, RigidBodyHandle)> =
-            Vec::new();
+        let mut grown: Vec<(
+            ImpulseJointHandle,
+            MultibodyJointHandle,
+            RigidBodyHandle,
+            RigidBodyHandle,
+        )> = Vec::new();
         while let Some(p) = queue.pop_front() {
             for &(k, ih, a, b) in &edges {
                 if used.contains(&k) || (a != p && b != p) {
@@ -194,7 +196,12 @@ impl PhysicsWorld {
     /// As coordenadas novas dizem «ângulo zero»; põe-nas de acordo com as poses reais dos corpos.
     fn seed_chains(
         &mut self,
-        grown: &[(ImpulseJointHandle, MultibodyJointHandle, RigidBodyHandle, RigidBodyHandle)],
+        grown: &[(
+            ImpulseJointHandle,
+            MultibodyJointHandle,
+            RigidBodyHandle,
+            RigidBodyHandle,
+        )],
     ) {
         let mut per_body: BTreeMap<Key, (MultibodyJointHandle, f32)> = BTreeMap::new();
         for &(_, mh, p, o) in grown {

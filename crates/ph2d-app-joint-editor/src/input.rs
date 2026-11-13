@@ -15,7 +15,8 @@ impl JointEditorDoc {
             return false;
         }
         let hit = self.hit_at(x, y).cloned();
-        if !matches!(hit, Some(Hit::Field(f)) if self.typing.as_ref().is_some_and(|(t, _)| *t == f)) {
+        if !matches!(hit, Some(Hit::Field(f)) if self.typing.as_ref().is_some_and(|(t, _)| *t == f))
+        {
             self.finish_typing();
         }
         match hit {
@@ -95,7 +96,8 @@ impl JointEditorDoc {
                 }
             }
             Hit::World(role) => {
-                let (assembly, template) = (self.assembly().map_or(0, |a| a.sid), self.template().id.0);
+                let (assembly, template) =
+                    (self.assembly().map_or(0, |a| a.sid), self.template().id.0);
                 self.pending.push(Edit::PlaceWorld {
                     assembly,
                     template,
@@ -136,7 +138,10 @@ impl JointEditorDoc {
             } else if key == Key::Backspace {
                 buf.pop();
             } else if let Some(t) = text {
-                buf.extend(t.chars().filter(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '-')));
+                buf.extend(
+                    t.chars()
+                        .filter(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '-')),
+                );
             }
             return true;
         }
@@ -164,7 +169,10 @@ impl JointEditorDoc {
         let role = self.role_under(x, y);
         let (ok, line) = match role {
             Some(r) => self.verdict(r, names),
-            None => (false, ph2d_i18n::tr("joint_editor.drop.over_a_shape").to_owned()),
+            None => (
+                false,
+                ph2d_i18n::tr("joint_editor.drop.over_a_shape").to_owned(),
+            ),
         };
         self.dropping = Some(Dropping {
             role,
@@ -178,7 +186,8 @@ impl JointEditorDoc {
     /// Largou-se. `true` = a aba recebeu (o pedido sai no quadro).
     pub fn drop_at(&mut self, x: f32, y: f32, names: &[String]) -> bool {
         self.dropping = None;
-        self.role_under(x, y).is_some_and(|r| self.drop_into(r, names))
+        self.role_under(x, y)
+            .is_some_and(|r| self.drop_into(r, names))
     }
 
     /// O que o campo mostra enquanto se escreve nele: o valor de antes, até à primeira tecla.

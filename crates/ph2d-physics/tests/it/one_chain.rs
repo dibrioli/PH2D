@@ -7,7 +7,13 @@ use ph2d_physics::{BodyDesc, JointDesc, JointKind, PhysicsWorld, RigidBodyType, 
 
 type Handle = ph2d_physics::RigidBodyHandle;
 
-fn body(w: &mut PhysicsWorld, kind: RigidBodyType, at: [f32; 3], half: [f32; 2], density: f32) -> Handle {
+fn body(
+    w: &mut PhysicsWorld,
+    kind: RigidBodyType,
+    at: [f32; 3],
+    half: [f32; 2],
+    density: f32,
+) -> Handle {
     w.spawn_body(BodyDesc {
         body_type: kind,
         x: at[0],
@@ -52,16 +58,46 @@ struct Bridge {
 /// A ponte, com cada folga presa por `link(meio da folga em A, em B)`.
 fn bridge(one_chain: bool, kind: JointKind) -> Bridge {
     let mut w = PhysicsWorld::new();
-    body(&mut w, RigidBodyType::Fixed, [0.0, -0.5, 0.0], [6.0, 0.5], 1.0);
-    let left = body(&mut w, RigidBodyType::Fixed, [-2.24, 0.6, 0.0], [0.15, 0.5], 1.0);
-    let right = body(&mut w, RigidBodyType::Fixed, [2.24, 0.6, 0.0], [0.15, 0.5], 1.0);
+    body(
+        &mut w,
+        RigidBodyType::Fixed,
+        [0.0, -0.5, 0.0],
+        [6.0, 0.5],
+        1.0,
+    );
+    let left = body(
+        &mut w,
+        RigidBodyType::Fixed,
+        [-2.24, 0.6, 0.0],
+        [0.15, 0.5],
+        1.0,
+    );
+    let right = body(
+        &mut w,
+        RigidBodyType::Fixed,
+        [2.24, 0.6, 0.0],
+        [0.15, 0.5],
+        1.0,
+    );
     let planks: Vec<Handle> = (0..8)
         .map(|i| {
             let x = -1.82 + 0.52 * i as f32;
-            body(&mut w, RigidBodyType::Dynamic, [x, 1.0, 0.0], [0.25, 0.05], 1.0)
+            body(
+                &mut w,
+                RigidBodyType::Dynamic,
+                [x, 1.0, 0.0],
+                [0.25, 0.05],
+                1.0,
+            )
         })
         .collect();
-    let load = body(&mut w, RigidBodyType::Dynamic, [0.0, 3.0, 0.0], [0.25, 0.25], 40.0);
+    let load = body(
+        &mut w,
+        RigidBodyType::Dynamic,
+        [0.0, 3.0, 0.0],
+        [0.25, 0.25],
+        40.0,
+    );
     let mut pairs = vec![(left, planks[0], [0.16, 0.4], [-0.26, 0.0])];
     for i in 0..7 {
         pairs.push((planks[i], planks[i + 1], [0.26, 0.0], [-0.26, 0.0]));
@@ -110,12 +146,31 @@ fn a_light_bridge_as_one_chain_holds_a_heavy_load() {
     let mut chain = bridge(true, JointKind::Pin);
     let low = run(&mut chain, 600);
     let crate_y = y(&chain.world, chain.load);
-    assert!(crate_y > 1.25, "the crate rests on the bridge, not through it: {crate_y:+.3}");
-    assert!(low > 0.6, "the middle plank never nears the ground: {low:+.3}");
-    assert!(chain.joints.iter().all(|&j| chain.world.joint_is_enabled(j) == Some(true)));
+    assert!(
+        crate_y > 1.25,
+        "the crate rests on the bridge, not through it: {crate_y:+.3}"
+    );
+    assert!(
+        low > 0.6,
+        "the middle plank never nears the ground: {low:+.3}"
+    );
+    assert!(
+        chain
+            .joints
+            .iter()
+            .all(|&j| chain.world.joint_is_enabled(j) == Some(true))
+    );
     // Duas árvores, uma por poste, que se encontram por UM Pin de impulso.
-    let reduced = chain.joints.iter().filter(|&&j| chain.world.joint_is_in_one_chain(j)).count();
-    assert_eq!(reduced, chain.joints.len() - 1, "every joint but the one that closes the loop");
+    let reduced = chain
+        .joints
+        .iter()
+        .filter(|&&j| chain.world.joint_is_in_one_chain(j))
+        .count();
+    assert_eq!(
+        reduced,
+        chain.joints.len() - 1,
+        "every joint but the one that closes the loop"
+    );
 
     let mut control = bridge(false, JointKind::Pin);
     run(&mut control, 600);
@@ -142,7 +197,11 @@ fn a_chain_rewinds_bit_exact() {
 
     let mut b = bridge(true, JointKind::Pin);
     run(&mut b, 180);
-    assert_eq!(b.world.deterministic_hash(), straight, "and the same as a fresh run");
+    assert_eq!(
+        b.world.deterministic_hash(),
+        straight,
+        "and the same as a fresh run"
+    );
 }
 
 /// Apagar uma junta do meio refaz as árvores: as duas metades ficam penduradas nos postes.
@@ -152,8 +211,16 @@ fn removing_a_joint_regrows_the_chain() {
     run(&mut b, 10);
     b.world.remove_joint(b.joints[4]);
     run(&mut b, 300);
-    let reduced = b.joints.iter().filter(|&&j| b.world.joint_is_in_one_chain(j)).count();
-    assert_eq!(reduced, b.joints.len() - 1, "both halves are trees now, nothing closes a loop");
+    let reduced = b
+        .joints
+        .iter()
+        .filter(|&&j| b.world.joint_is_in_one_chain(j))
+        .count();
+    assert_eq!(
+        reduced,
+        b.joints.len() - 1,
+        "both halves are trees now, nothing closes a loop"
+    );
     let low = y(&b.world, b.planks[3]);
     assert!(low < 0.6, "the cut half hangs from its post: {low:+.3}");
 }
@@ -162,8 +229,20 @@ fn removing_a_joint_regrows_the_chain() {
 #[test]
 fn only_an_unbreakable_plain_pin_joins_a_chain() {
     let mut w = PhysicsWorld::new();
-    let hook = body(&mut w, RigidBodyType::Fixed, [0.0, 2.0, 0.0], [0.1, 0.1], 1.0);
-    let bob = body(&mut w, RigidBodyType::Dynamic, [0.0, 1.0, 0.0], [0.1, 0.1], 1.0);
+    let hook = body(
+        &mut w,
+        RigidBodyType::Fixed,
+        [0.0, 2.0, 0.0],
+        [0.1, 0.1],
+        1.0,
+    );
+    let bob = body(
+        &mut w,
+        RigidBodyType::Dynamic,
+        [0.0, 1.0, 0.0],
+        [0.1, 0.1],
+        1.0,
+    );
     let pin = |extra: fn(&mut JointDesc)| {
         let mut d = JointDesc {
             kind: JointKind::Pin,
@@ -176,13 +255,18 @@ fn only_an_unbreakable_plain_pin_joins_a_chain() {
         d
     };
     let plain = w.spawn_joint(hook, bob, pin(|_| {})).expect("plain");
-    let weak = w.spawn_joint(hook, bob, pin(|d| d.break_force = 10.0)).expect("weak");
+    let weak = w
+        .spawn_joint(hook, bob, pin(|d| d.break_force = 10.0))
+        .expect("weak");
     let rope = w
         .spawn_joint(hook, bob, pin(|d| d.kind = JointKind::Rope))
         .expect("rope");
     w.step();
     assert!(w.joint_is_in_one_chain(plain));
-    assert!(!w.joint_is_in_one_chain(weak), "a break reads the impulse the twin does not have");
+    assert!(
+        !w.joint_is_in_one_chain(weak),
+        "a break reads the impulse the twin does not have"
+    );
     assert!(!w.joint_is_in_one_chain(rope));
 
     // Reafinar para quebrável tira-o da corrente no passo seguinte.
@@ -197,15 +281,33 @@ fn only_an_unbreakable_plain_pin_joins_a_chain() {
 fn a_chain_born_crooked_keeps_its_pose() {
     let mut w = PhysicsWorld::new();
     w.set_gravity(0.0, 0.0);
-    let hook = body(&mut w, RigidBodyType::Fixed, [0.0, 3.0, 0.0], [0.05, 0.05], 1.0);
+    let hook = body(
+        &mut w,
+        RigidBodyType::Fixed,
+        [0.0, 3.0, 0.0],
+        [0.05, 0.05],
+        1.0,
+    );
     let (s, c) = (0.5_f32.sin(), 0.5_f32.cos());
     // Elo 1 girado 0,5 rad, pendurado no gancho pela ponta de cima; elo 2 girado −0,4 rad.
     let p1 = [0.5 * s, 3.0 - 0.5 * c];
-    let l1 = body(&mut w, RigidBodyType::Dynamic, [p1[0], p1[1], 0.5], [0.05, 0.5], 1.0);
+    let l1 = body(
+        &mut w,
+        RigidBodyType::Dynamic,
+        [p1[0], p1[1], 0.5],
+        [0.05, 0.5],
+        1.0,
+    );
     let tip = [p1[0] + 0.5 * s, p1[1] - 0.5 * c];
     let (s2, c2) = ((-0.4_f32).sin(), (-0.4_f32).cos());
     let p2 = [tip[0] - 0.5 * s2 * -1.0, tip[1] - 0.5 * c2];
-    let l2 = body(&mut w, RigidBodyType::Dynamic, [p2[0], p2[1], -0.4], [0.05, 0.5], 1.0);
+    let l2 = body(
+        &mut w,
+        RigidBodyType::Dynamic,
+        [p2[0], p2[1], -0.4],
+        [0.05, 0.5],
+        1.0,
+    );
     let pin = |la: [f32; 2], lb: [f32; 2]| JointDesc {
         kind: JointKind::Pin,
         anchor_a: la,
@@ -213,8 +315,12 @@ fn a_chain_born_crooked_keeps_its_pose() {
         one_chain: true,
         ..JointDesc::default()
     };
-    let j1 = w.spawn_joint(hook, l1, pin([0.0, 0.0], [0.0, 0.5])).expect("j1");
-    let j2 = w.spawn_joint(l1, l2, pin([0.0, -0.5], [0.0, 0.5])).expect("j2");
+    let j1 = w
+        .spawn_joint(hook, l1, pin([0.0, 0.0], [0.0, 0.5]))
+        .expect("j1");
+    let j2 = w
+        .spawn_joint(l1, l2, pin([0.0, -0.5], [0.0, 0.5]))
+        .expect("j2");
     let before = [w.body_pose(l1).expect("l1"), w.body_pose(l2).expect("l2")];
     w.step();
     assert!(w.joint_is_in_one_chain(j1) && w.joint_is_in_one_chain(j2));
@@ -222,6 +328,9 @@ fn a_chain_born_crooked_keeps_its_pose() {
         let a = w.body_pose(h).expect("pose");
         let moved = (a.translation - b.translation).length();
         let turned = (a.rotation.angle() - b.rotation.angle()).abs();
-        assert!(moved < 1e-3 && turned < 1e-3, "no snap: moved {moved:.4} m, turned {turned:.4} rad");
+        assert!(
+            moved < 1e-3 && turned < 1e-3,
+            "no snap: moved {moved:.4} m, turned {turned:.4} rad"
+        );
     }
 }

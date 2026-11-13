@@ -84,11 +84,7 @@ impl Mesa {
         let (x, y) = self.shape(role);
         let names = vec![name.to_owned()];
         let ok = surface_input::drop_hover(&mut self.hero, Some(Self::at(x, y, &names)));
-        let line = self
-            .tab()
-            .doc
-            .dropping_line()
-            .unwrap_or_default();
+        let line = self.tab().doc.dropping_line().unwrap_or_default();
         if ok {
             assert!(surface_input::drop(&mut self.hero, Self::at(x, y, &names)));
         }
@@ -98,7 +94,11 @@ impl Mesa {
     }
 
     fn click(&mut self, h: &Hit) {
-        let r = self.tab().doc.hits_for(h).unwrap_or_else(|| panic!("{h:?} não pintado"));
+        let r = self
+            .tab()
+            .doc
+            .hits_for(h)
+            .unwrap_or_else(|| panic!("{h:?} não pintado"));
         let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
         for kind in [PointerKind::Down, PointerKind::Up] {
             let ts = &mut self.ts;
@@ -126,7 +126,10 @@ impl Mesa {
     fn sid(&mut self, name: &str) -> u64 {
         let w = self.sim.world_mut();
         let mut q = w.query::<(&Name, &StableId)>();
-        q.iter(w).find(|(n, _)| n.as_str() == name).map(|(_, s)| s.0).expect(name)
+        q.iter(w)
+            .find(|(n, _)| n.as_str() == name)
+            .map(|(_, s)| s.0)
+            .expect(name)
     }
 }
 
@@ -141,17 +144,36 @@ fn arrastar_as_pecas_para_os_papeis_monta_o_carro() {
     assert!(m.tab().is_open(), "o pedido do Inspector abre a aba");
     let (ok, line) = m.drop("Kart Body", 0);
     assert!(ok, "{line}");
-    assert!(line.contains("Kart Body") && line.contains("Body"), "a promessa: {line}");
+    assert!(
+        line.contains("Kart Body") && line.contains("Body"),
+        "a promessa: {line}"
+    );
     assert!(m.joints().is_empty(), "o corpo sozinho não é junta nenhuma");
-    assert!(m.tab().doc.assembly().is_some(), "a aba abre a montagem que nasceu");
+    assert!(
+        m.tab().doc.assembly().is_some(),
+        "a aba abre a montagem que nasceu"
+    );
     m.drop("Kart Front Wheel", 2);
     m.drop("Kart Rear Wheel", 1);
     let j = m.joints();
     assert_eq!(j.len(), 2, "duas rodas, duas juntas");
-    let (body, rear, front) = (m.sid("Kart Body"), m.sid("Kart Rear Wheel"), m.sid("Kart Front Wheel"));
-    assert_eq!((j[0].role, j[0].kind, j[0].body_a, j[0].body_b), (0, JointKind::Wheel, body, rear));
-    assert_eq!((j[1].role, j[1].kind, j[1].body_a, j[1].body_b), (1, JointKind::Wheel, body, front));
-    assert!(j[0].motor_enabled && !j[1].motor_enabled, "o motor é o de fábrica: a roda de trás puxa");
+    let (body, rear, front) = (
+        m.sid("Kart Body"),
+        m.sid("Kart Rear Wheel"),
+        m.sid("Kart Front Wheel"),
+    );
+    assert_eq!(
+        (j[0].role, j[0].kind, j[0].body_a, j[0].body_b),
+        (0, JointKind::Wheel, body, rear)
+    );
+    assert_eq!(
+        (j[1].role, j[1].kind, j[1].body_a, j[1].body_b),
+        (1, JointKind::Wheel, body, front)
+    );
+    assert!(
+        j[0].motor_enabled && !j[1].motor_enabled,
+        "o motor é o de fábrica: a roda de trás puxa"
+    );
 }
 
 /// ⛔ A queda RECUSA o que não pode — e diz porquê antes de soltar: a roda que já está no carro não
@@ -178,19 +200,32 @@ fn o_painel_edita_as_duas_rodas_ou_uma_e_abre_o_inspector() {
     m.drop("Kart Front Wheel", 2);
     // «Front wheel» (a 3.ª opção): desliga o «Same as» e o número vale só para ela.
     m.click(&Hit::Scope(2));
-    m.tab_mut().doc.commit(ph2d_app_joint_editor::doc::Field::Stiffness, 77.0);
+    m.tab_mut()
+        .doc
+        .commit(ph2d_app_joint_editor::doc::Field::Stiffness, 77.0);
     m.frame();
     let j = m.joints();
-    assert!((j[1].stiffness - 77.0).abs() < 1e-3 && (j[0].stiffness - 77.0).abs() > 1e-3, "só a da frente");
+    assert!(
+        (j[1].stiffness - 77.0).abs() < 1e-3 && (j[0].stiffness - 77.0).abs() > 1e-3,
+        "só a da frente"
+    );
     m.click(&Hit::Scope(0));
-    m.tab_mut().doc.commit(ph2d_app_joint_editor::doc::Field::Stiffness, 55.0);
+    m.tab_mut()
+        .doc
+        .commit(ph2d_app_joint_editor::doc::Field::Stiffness, 55.0);
     m.frame();
     let j = m.joints();
-    assert!(j.iter().all(|j| (j.stiffness - 55.0).abs() < 1e-3), "as duas");
+    assert!(
+        j.iter().all(|j| (j.stiffness - 55.0).abs() < 1e-3),
+        "as duas"
+    );
     m.click(&Hit::Inspect);
     let sel = m.hero.gizmo.selection.expect("uma seleção");
     let e = ph2d_ecs::Entity::from_bits(sel);
-    assert!(m.sim.world().get::<PhysicsJoint>(e).is_some(), "a junta fica selecionada no Inspector");
+    assert!(
+        m.sim.world().get::<PhysicsJoint>(e).is_some(),
+        "a junta fica selecionada no Inspector"
+    );
 }
 
 impl Mesa {

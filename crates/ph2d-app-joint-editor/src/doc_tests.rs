@@ -42,7 +42,12 @@ fn doc_with(row: AssemblyRow) -> JointEditorDoc {
     let mut d = JointEditorDoc::default();
     d.set_snapshot(Snapshot {
         assemblies: vec![row],
-        bodies: vec!["Back".into(), "Car Body".into(), "Crate".into(), "Front".into()],
+        bodies: vec![
+            "Back".into(),
+            "Car Body".into(),
+            "Crate".into(),
+            "Front".into(),
+        ],
     });
     d.open_on(9);
     d
@@ -68,7 +73,11 @@ fn o_alcance_segue_o_same_as_da_montagem() {
     let mut d = doc_with(car_row(u32::MAX));
     d.scope.insert(9, 2);
     let t: Vec<u64> = d.targets().iter().map(|j| j.bits).collect();
-    assert_eq!(t, [50, 51], "ligado: as duas rodas, seja qual for a escolha");
+    assert_eq!(
+        t,
+        [50, 51],
+        "ligado: as duas rodas, seja qual for a escolha"
+    );
     let mut d = doc_with(car_row(0));
     d.scope.insert(9, 2);
     let t: Vec<u64> = d.targets().iter().map(|j| j.bits).collect();
@@ -80,10 +89,22 @@ fn o_alcance_segue_o_same_as_da_montagem() {
 fn escolher_uma_roda_desliga_o_same_as() {
     let mut d = doc_with(car_row(u32::MAX));
     d.set_scope(1);
-    assert_eq!(d.take_pending(), [Edit::Linked { joint: 50, on: false }]);
+    assert_eq!(
+        d.take_pending(),
+        [Edit::Linked {
+            joint: 50,
+            on: false
+        }]
+    );
     let mut d = doc_with(car_row(0));
     d.set_scope(0);
-    assert_eq!(d.take_pending(), [Edit::Linked { joint: 50, on: true }]);
+    assert_eq!(
+        d.take_pending(),
+        [Edit::Linked {
+            joint: 50,
+            on: true
+        }]
+    );
 }
 
 /// ⭐ **A queda diz o que vai acontecer**, e recusa o que não pode: um objeto sem corpo, um papel já
@@ -91,9 +112,15 @@ fn escolher_uma_roda_desliga_o_same_as() {
 #[test]
 fn a_queda_diz_antes_o_que_faz_e_recusa_o_que_nao_pode() {
     let d = doc_with(car_row(u32::MAX));
-    assert!(!d.verdict(2, &["Crate".into()]).0, "o papel da frente já tem a Front");
+    assert!(
+        !d.verdict(2, &["Crate".into()]).0,
+        "o papel da frente já tem a Front"
+    );
     assert!(!d.verdict(0, &["Ghost".into()]).0, "sem corpo");
-    assert!(!d.verdict(1, &["Front".into()]).0, "a Front já é a roda da frente");
+    assert!(
+        !d.verdict(1, &["Front".into()]).0,
+        "a Front já é a roda da frente"
+    );
     let mut fresh = JointEditorDoc::default();
     fresh.set_snapshot(Snapshot {
         assemblies: vec![],
@@ -102,7 +129,10 @@ fn a_queda_diz_antes_o_que_faz_e_recusa_o_que_nao_pode() {
     fresh.choose_template(1);
     let (ok, line) = fresh.verdict(2, &["Crate".into()]);
     assert!(ok, "{line}");
-    assert!(line.contains("Crate") && line.contains("Front wheel"), "{line}");
+    assert!(
+        line.contains("Crate") && line.contains("Front wheel"),
+        "{line}"
+    );
     assert!(fresh.drop_into(2, &["Crate".into()]));
     assert_eq!(
         fresh.take_pending(),
@@ -124,8 +154,14 @@ fn o_drive_da_frente_troca_o_motor_de_roda() {
     assert_eq!(d.drive(), Some(Drive::Rule(0)));
     d.set_drive(Drive::Rule(1));
     let p = d.take_pending();
-    assert!(p.contains(&Edit::Joints { joints: vec![50], edit: JointFieldEdit::MotorEnabled(false) }));
-    assert!(p.contains(&Edit::Joints { joints: vec![51], edit: JointFieldEdit::MotorEnabled(true) }));
+    assert!(p.contains(&Edit::Joints {
+        joints: vec![50],
+        edit: JointFieldEdit::MotorEnabled(false)
+    }));
+    assert!(p.contains(&Edit::Joints {
+        joints: vec![51],
+        edit: JointFieldEdit::MotorEnabled(true)
+    }));
     assert!(p.iter().any(|e| matches!(e, Edit::Joints { joints, edit: JointFieldEdit::MotorSpeed(_) } if joints == &[51])));
 }
 

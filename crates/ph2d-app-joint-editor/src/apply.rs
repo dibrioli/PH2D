@@ -52,13 +52,20 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             };
             let mut made = 0_usize;
             for p in &parts {
-                if let Ok(j) = ph2d_app_physics::joint_assembly::place_part(sim, asm, role, Some(*p)) {
+                if let Ok(j) =
+                    ph2d_app_physics::joint_assembly::place_part(sim, asm, role, Some(*p))
+                {
                     made += j.len();
                 } else {
                     break;
                 }
             }
-            if new && sim.world().get::<ph2d_physics_ecs::JointAssembly>(asm).is_some_and(|a| a.parts.is_empty()) {
+            if new
+                && sim
+                    .world()
+                    .get::<ph2d_physics_ecs::JointAssembly>(asm)
+                    .is_some_and(|a| a.parts.is_empty())
+            {
                 // A peça foi recusada: nada de montagem vazia na Hierarchy.
                 ph2d_app_physics::joint_assembly::dissolve(sim, asm);
                 return out;
@@ -155,7 +162,9 @@ fn set_wheelbase(sim: &mut SimWorld, asm: Entity, metres: f32) {
         return;
     };
     let ent = |id: u64| ph2d_ecs::entity_with_stable_id(sim.world(), StableId(id));
-    let (Some(body), Some(rw), Some(fw)) = (ent(front.1.body_a), ent(rear.1.body_b), ent(front.1.body_b)) else {
+    let (Some(body), Some(rw), Some(fw)) =
+        (ent(front.1.body_a), ent(rear.1.body_b), ent(front.1.body_b))
+    else {
         return;
     };
     if sim.world().get::<ChildOf>(fw).is_some() {
@@ -165,7 +174,10 @@ fn set_wheelbase(sim: &mut SimWorld, asm: Entity, metres: f32) {
     let (Some(b), Some(r), Some(f)) = (tf(body), tf(rw), tf(fw)) else {
         return;
     };
-    let now = libm::hypotf(f.translation.x - r.translation.x, f.translation.y - r.translation.y);
+    let now = libm::hypotf(
+        f.translation.x - r.translation.x,
+        f.translation.y - r.translation.y,
+    );
     let delta = metres.max(0.0) - now;
     if delta.abs() <= f32::EPSILON {
         return;
@@ -212,9 +224,27 @@ mod tests {
     }
 
     fn car_parts(sim: &mut SimWorld) {
-        body(sim, "Kart", [0.0, 0.55], ColliderShape::Cuboid { half_x: 1.2, half_y: 0.25 });
-        body(sim, "Back", [-0.7, 0.3], ColliderShape::Ball { radius: 0.3 });
-        body(sim, "Front", [0.7, 0.3], ColliderShape::Ball { radius: 0.3 });
+        body(
+            sim,
+            "Kart",
+            [0.0, 0.55],
+            ColliderShape::Cuboid {
+                half_x: 1.2,
+                half_y: 0.25,
+            },
+        );
+        body(
+            sim,
+            "Back",
+            [-0.7, 0.3],
+            ColliderShape::Ball { radius: 0.3 },
+        );
+        body(
+            sim,
+            "Front",
+            [0.7, 0.3],
+            ColliderShape::Ball { radius: 0.3 },
+        );
     }
 
     fn place(sim: &mut SimWorld, assembly: u64, role: u16, name: &str) -> Outcome {
@@ -271,10 +301,19 @@ mod tests {
             let e = body_named(sim, n).expect("peça");
             sim.world().get::<Transform>(e).expect("t").translation.x
         };
-        assert!((x(&mut sim, "Front") - 1.3).abs() < 1e-4, "a roda da frente foi para 1,3");
+        assert!(
+            (x(&mut sim, "Front") - 1.3).abs() < 1e-4,
+            "a roda da frente foi para 1,3"
+        );
         assert!((x(&mut sim, "Back") + 0.7).abs() < 1e-4, "a de trás ficou");
         let joints = ph2d_app_physics::joint_assembly::joints_of(sim.world_mut(), asm);
-        let front = joints.iter().find(|(_, j)| j.role == 1).expect("a da frente");
-        assert!((front.1.local_a[0] - 1.3).abs() < 1e-3, "a âncora no corpo andou");
+        let front = joints
+            .iter()
+            .find(|(_, j)| j.role == 1)
+            .expect("a da frente");
+        assert!(
+            (front.1.local_a[0] - 1.3).abs() < 1e-3,
+            "a âncora no corpo andou"
+        );
     }
 }

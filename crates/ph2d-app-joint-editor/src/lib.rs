@@ -8,6 +8,7 @@
 
 mod apply;
 pub mod doc;
+mod doc_values;
 mod input;
 pub mod model;
 pub mod paint;
@@ -31,7 +32,8 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
 };
 
 pub fn install(hero: &mut HeroScreen) {
-    hero.documents.install_surface(Box::new(JointEditorTab::default()));
+    hero.documents
+        .install_surface(Box::new(JointEditorTab::default()));
 }
 
 /// A aba é a que está à frente?

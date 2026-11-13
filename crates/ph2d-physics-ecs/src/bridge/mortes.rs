@@ -11,9 +11,10 @@
 //! | quem bateu e é `OnHit::Vanish` | `drive_health` (plano 28) | `Spent` |
 //!
 //! ⚠️⚠️ **O filtro é a lei que protege o trabalho do artista, e ele mora AQUI** — só sai quem
-//! [`ph2d_ecs::is_transient`] (nasceu numa corrida). Um inimigo ou uma bala postos à mão são
-//! documento: um inimigo de documento que morre **fica** (deixa de levar golpes, grita o sinal), e
-//! uma bala de documento que bateu pára.
+//! [`ph2d_ecs::removable_in_run`]: quem nasceu numa corrida, sempre; um objecto do artista, só no
+//! Play (corrida sobre cópia — o Stop devolve-o). Fora dele um inimigo ou uma bala postos à mão
+//! são documento: o inimigo que morre **fica** (deixa de levar golpes, grita o sinal), e a bala
+//! que bateu pára.
 //!
 //! ⭐ **Nasceu de um CORTE da shell:** o bloco do projéctil vivia no `fase_fabrica_e_morte`, a fase
 //! estava a `~186` linhas contra o tecto de `200`, e a catraca `the_shell_only_shrinks` proíbe a

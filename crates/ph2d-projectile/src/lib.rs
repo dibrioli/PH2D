@@ -31,8 +31,8 @@
 //! # ⚠️ A ORDEM dentro do tique é load-bearing
 //!
 //! ```text
-//! nascer ──► acelerações ACUMULAM ──► integrar UMA vez ──► tecto de rapidez
-//!            (homing + avanço + gravidade)
+//! nascer ──► acelerações ACUMULAM ──► integrar UMA vez ──► homing VIRA ──► tecto de rapidez
+//!            (avanço + gravidade)                          (rapidez igual)
 //! ```
 //!
 //! ⭐ **Uma soma e um integrador**, que é a lei que os Motion Nodes desta casa já escrevem (*as
@@ -73,7 +73,8 @@ pub struct ProjectileLaw {
     pub range: f32,
     /// A flecha aponta para onde voa.
     pub face_velocity: bool,
-    /// Aceleração de perseguição, m/s². `0` = não persegue (e aí o alvo é ignorado).
+    /// Quanto a perseguição vira, m/s² (só a direcção: a rapidez fica). `0` = não persegue (e aí o
+    /// alvo é ignorado).
     pub homing_accel: f32,
 }
 
@@ -158,17 +159,6 @@ pub fn advance(
     // ── As acelerações ACUMULAM ─────────────────────────────────────────────
     let mut a = [0.0_f32, 0.0];
 
-    // A perseguição: ⚠️ ela olha para onde o alvo ESTÁ, não para onde ele vai. Antecipar é outra
-    // lei (a mira do `CameraFollow` do #7 já a tem) e um projéctil que a fizesse deixaria de ser
-    // desviável — que é metade da graça de um míssil.
-    if law.homing_accel > 0.0
-        && let Some(alvo) = homing_target
-        && let Some(d) = normalize([alvo[0] - position[0], alvo[1] - position[1]])
-    {
-        a[0] += d[0] * law.homing_accel;
-        a[1] += d[1] * law.homing_accel;
-    }
-
     // O avanço, ao longo da direcção de VOO. ⚠️ Sem velocidade não há direcção de voo, logo não há
     // onde acelerar — e inventar uma (o `facing`, por exemplo) faria uma bala parada arrancar
     // sozinha para um lado que ninguém pediu.
@@ -184,6 +174,24 @@ pub fn advance(
 
     // ── UM integrador ───────────────────────────────────────────────────────
     let mut v = [state.velocity[0] + a[0] * dt, state.velocity[1] + a[1] * dt];
+
+    // ── A perseguição só VIRA ───────────────────────────────────────────────
+    // Dono 13/11 (como o ProjectileMovement do Unreal): o Pull muda a direcção, nunca a rapidez —
+    // somado, ele acelerava a bala, a volta abria e ela passava ao lado. Olha para onde o alvo ESTÁ
+    // (antecipar tiraria a graça de desviar de um míssil). Bala parada continua parada.
+    if law.homing_accel > 0.0
+        && let Some(alvo) = homing_target
+        && let Some(d) = normalize([alvo[0] - position[0], alvo[1] - position[1]])
+    {
+        let rapidez = len(v);
+        let puxada = [
+            v[0] + d[0] * law.homing_accel * dt,
+            v[1] + d[1] * law.homing_accel * dt,
+        ];
+        if let Some(dir) = normalize(puxada) {
+            v = [dir[0] * rapidez, dir[1] * rapidez];
+        }
+    }
 
     // ── O tecto de rapidez ──────────────────────────────────────────────────
     if law.max_speed > 0.0 {

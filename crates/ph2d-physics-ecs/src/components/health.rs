@@ -244,8 +244,9 @@ pub enum OnHit {
     /// Fica (uma espada, um espinho, a lava).
     #[default]
     Stay,
-    /// Sai da cena no tique em que acerta (uma bala). ⚠️ Só sai quem **nasceu numa corrida**
-    /// (`ph2d_ecs::is_transient`) — uma bala posta à mão é documento, e pára.
+    /// Sai da cena no tique em que acerta (uma bala). ⚠️ A porta é `ph2d_ecs::removable_in_run`:
+    /// quem nasceu na corrida sai sempre; uma bala posta à mão sai no Play (corrida sobre cópia, o
+    /// Stop devolve-a) e, fora dele, é documento e pára.
     Vanish,
 }
 

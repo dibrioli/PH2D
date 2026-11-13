@@ -137,7 +137,7 @@ impl PhysicsBridge {
     /// **Quem BATEU e deve sair da cena** ([`OnHit::Vanish`]) neste dispatch.
     ///
     /// ⚠️ Quem lê isto **não pode apagar toda a gente** — uma bala posta à mão é documento. A porta
-    /// é a `ph2d_ecs::is_transient`, no dreno da shell.
+    /// é a `ph2d_ecs::removable_in_run` (no Play, corrida sobre cópia, ela sai e o Stop devolve-a).
     #[must_use]
     pub fn damage_spent(&self) -> &[Entity] {
         &self.damage_spent

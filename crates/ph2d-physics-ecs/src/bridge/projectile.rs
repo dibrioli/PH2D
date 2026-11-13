@@ -45,12 +45,12 @@ impl PhysicsBridge {
     ///
     /// ⚠️⚠️ **Quem lê isto NÃO pode apagar toda a gente.** Um projéctil que o artista pôs na cena
     /// à mão é **documento**: matá-lo por ter percorrido o alcance destruiria trabalho autorado.
-    /// A porta que separa os dois é a [`ph2d_ecs::is_transient`] — *o que nasce numa corrida não é
-    /// documento* —, e ela já tem dois leitores nesta casa. ⛔ Este é o terceiro, e não uma
-    /// segunda resposta à mesma pergunta.
+    /// A porta que separa os dois é a [`ph2d_ecs::removable_in_run`]: quem nasceu na corrida sai
+    /// sempre; um projéctil do artista só sai quando a corrida é sobre uma cópia (o Play,
+    /// [`ph2d_ecs::RunOnCopy`]) — e o Stop devolve-o. ⛔ Não escreva outra resposta à mesma pergunta.
     ///
-    /// ⭐ Um projéctil de documento cujo voo acabou **pára** e fica na cena; rebobinar devolve-lhe
-    /// a pose autorada, como a todo corpo cinemático.
+    /// ⭐ Fora de uma cópia, um projéctil de documento cujo voo acabou **pára** e fica na cena;
+    /// rebobinar devolve-lhe a pose autorada, como a todo corpo cinemático.
     #[must_use]
     pub fn projectile_done(&self) -> &[(Entity, ph2d_projectile::Ended)] {
         &self.projectile_done

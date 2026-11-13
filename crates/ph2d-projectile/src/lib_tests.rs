@@ -174,6 +174,61 @@ fn ele_persegue_o_alvo() {
     assert!(v[1] > 5.0, "ele nao curvou para o alvo: {v:?}");
 }
 
+/// ⭐⭐ **Persegue sem acelerar** (dono 13/11, como o ProjectileMovement do Unreal): a rapidez de
+/// nascimento fica, tique a tique, enquanto ele vira.
+#[test]
+fn a_perseguicao_vira_sem_mudar_a_rapidez() {
+    let law = ProjectileLaw {
+        homing_accel: 200.0,
+        ..lei()
+    };
+    let mut st = ProjectileState::default();
+    for _ in 0..240 {
+        let v = advance(&mut st, &law, 0.0, Some([10.0, 40.0]), [0.0, 0.0], DT);
+        assert!((len(v) - 12.0).abs() < 1.0e-3, "a rapidez mudou: {}", len(v));
+    }
+}
+
+/// ⭐⭐ **Com avanço, a rapidez é a do avanço sozinho**: o Pull não soma nem tira.
+#[test]
+fn a_perseguicao_nao_mexe_na_rapidez_do_avanco() {
+    let so_avanco = ProjectileLaw {
+        acceleration: 30.0,
+        ..lei()
+    };
+    let com_pull = ProjectileLaw {
+        homing_accel: 200.0,
+        ..so_avanco
+    };
+    let (mut a, mut b) = (ProjectileState::default(), ProjectileState::default());
+    for _ in 0..60 {
+        let va = advance(&mut a, &so_avanco, 0.0, None, [0.0, 0.0], DT);
+        let vb = advance(&mut b, &com_pull, 0.0, Some([0.0, 40.0]), [0.0, 0.0], DT);
+        assert!((len(va) - len(vb)).abs() < 1.0e-3, "{} × {}", len(va), len(vb));
+    }
+}
+
+/// ⭐⭐⭐ **O míssil da cena 25 acerta SEM Max Speed**: lançado para BAIXO, com o alvo no alto à
+/// direita, dá a volta e passa a menos de meio metro dele. Somado, o Pull acelerava e ele errava.
+#[test]
+fn o_missil_lancado_para_baixo_da_a_volta_e_acerta_sem_tecto() {
+    let law = ProjectileLaw {
+        initial_speed: 9.0,
+        homing_accel: 80.0,
+        ..lei()
+    };
+    let alvo = [8.5, -1.0];
+    let mut st = ProjectileState::default();
+    let mut p = [0.0_f32, 0.0];
+    let mut perto = f32::MAX;
+    for _ in 0..600 {
+        let v = advance(&mut st, &law, -core::f32::consts::FRAC_PI_2, Some(alvo), p, DT);
+        p = [p[0] + v[0] * DT, p[1] + v[1] * DT];
+        perto = perto.min(len([alvo[0] - p[0], alvo[1] - p[1]]));
+    }
+    assert!(perto < 0.5, "passou a {perto} m do alvo");
+}
+
 /// ⚠️ **`homing_accel = 0` ignora o alvo** — senão um campo de alvo esquecido no Inspector puxaria
 /// toda bala da cena.
 #[test]

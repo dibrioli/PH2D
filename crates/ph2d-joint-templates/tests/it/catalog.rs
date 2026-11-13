@@ -170,7 +170,10 @@ fn the_factory_joint_is_the_kind_default_plus_the_tune() {
     );
 
     let bridge = by_name(JointKind::Rope, "Bridge").expect("bridge");
-    assert_eq!(bridge.joints[1].joint(0.02).max_length, 0.02);
+    // A ponte é uma corrente de Pins resolvida de uma vez (a ponte sob carga, doc 02).
+    let plank = bridge.joints[1].joint(0.02);
+    assert!(plank.kind == JointKind::Pin && plank.one_chain);
+    assert_eq!(plank, PhysicsJoint { one_chain: true, ..PhysicsJoint::of_kind(JointKind::Pin) });
     let tramp = by_name(JointKind::Spring, "Trampoline").expect("trampoline");
     let spring = tramp.joints[0].joint(0.5);
     assert!((spring.rest_length - 0.2).abs() < 1e-6, "0.3 m of preload");

@@ -85,6 +85,7 @@ pub struct PhysicsCheckpoint {
     /// **As zonas** (GEF02 fecho): chaveadas pelo handle do COLLIDER, que este checkpoint restaura
     /// por inteiro — uma zona-peça tirada depois dele voltaria com o collider e sem o empurrão.
     effectors: Vec<super::effector::Zone>,
+    chains: super::chains::Chains,
 }
 
 impl PhysicsCheckpoint {
@@ -136,6 +137,7 @@ impl PhysicsWorld {
             pulley_broken_ropes: self.pulley_broken_ropes.clone(),
             pulley_broken_wheels: self.pulley_broken_wheels.clone(),
             effectors: self.effectors.clone(),
+            chains: self.chains.clone(),
         }
     }
 
@@ -160,6 +162,7 @@ impl PhysicsWorld {
         self.pulley_broken_ropes = cp.pulley_broken_ropes.clone();
         self.pulley_broken_wheels = cp.pulley_broken_wheels.clone();
         self.effectors.clone_from(&cp.effectors);
+        self.chains.clone_from(&cp.chains);
     }
 }
 

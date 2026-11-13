@@ -372,6 +372,7 @@ fn junta_campo_a_campo(
         custom,
         assembly,
         role,
+        one_chain,
     );
     out
 }

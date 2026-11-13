@@ -67,8 +67,9 @@ fn the_template_scene_shows_four_named_machines_that_work() {
     );
     let crate_y = y_of(&mut sim, "Crate").translation.y;
     assert!(
-        crate_y > 0.6,
-        "the crate fell through the bridge (y = {crate_y:.2})"
+        // Pousada a 1,30 m (tábua 1,05 + meia caixa); medido 1,288 com a ponte como uma corrente (W2).
+        crate_y > 1.2,
+        "the crate sank into the bridge (y = {crate_y:.2})"
     );
     let door = y_of(&mut sim, "Door").rotation.abs();
     assert!(

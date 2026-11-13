@@ -256,18 +256,22 @@ fn the_bridge_holds_itself_and_a_load() {
                 RigidBody {
                     kind: BodyKind::Dynamic,
                 },
-                Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: crate_half,
-                        half_y: crate_half,
-                    },
-                    // 0,25 m² × 40 = 10 kg.
-                    density: 40.0,
-                    ..Collider::default()
-                },
                 Transform::from_translation(Vec2::new(0.0, 1.5)),
             ))
             .id();
+        let w = sim.world_mut();
+        let shape = ph2d_physics_ecs::nasce_com_forma(
+            w,
+            load,
+            ColliderShape::Cuboid {
+                half_x: crate_half,
+                half_y: crate_half,
+            },
+        );
+        // 0,25 m² × 40 = 10 kg.
+        if let Some(mut c) = w.get_mut::<Collider>(shape) {
+            c.density = 40.0;
+        }
         let mut bridge = PhysicsBridge::new();
         run(&mut sim, &mut bridge, 0, TICKS_5S);
         let lowest = parts
@@ -276,9 +280,10 @@ fn the_bridge_holds_itself_and_a_load() {
             .filter_map(|(_, e)| *e)
             .map(|e| pose(&sim, e).translation.y)
             .fold(f32::INFINITY, f32::min);
-        // As pontas estão a 1,0 m; a flecha com a carga fica abaixo de meio metro.
+        // As pontas estão a 1,0 m. Resolvida como uma corrente (W2), a flecha com 10 kg em repouso fica
+        // em centímetros: medido 0,99 m na tábua do meio (doc 02 §«A ponte sob carga»).
         assert!(
-            lowest > 0.5,
+            lowest > 0.9,
             "the deck sagged to y = {lowest:.2} (world: {scenery_is_world})"
         );
         let crate_y = pose(&sim, load).translation.y;

@@ -408,7 +408,8 @@ impl super::PhysicsWorld {
     /// the world is rebuilt from the descriptors. Breaking never destroys anything.
     #[must_use]
     pub fn joint_is_enabled(&self, handle: ImpulseJointHandle) -> Option<bool> {
-        Some(self.impulse_joints.get(handle)?.data.is_enabled())
+        let on = self.impulse_joints.get(handle)?.data.is_enabled();
+        Some(on || self.joint_is_in_one_chain(handle))
     }
 
     /// The thresholds a joint is carrying, `(force, torque)` — `(∞, ∞)` for an

@@ -105,6 +105,7 @@ impl PhysicsJoint {
             // por isso viaja inteira: colar um Custom sobre outro é colar
             // exactamente essa descrição.
             custom,
+            one_chain,
             // IDENTIDADE: a que montagem a junta pertence não se cola (como os dois corpos).
             assembly: _,
             role: _,
@@ -140,6 +141,7 @@ impl PhysicsJoint {
             collide_connected,
             soft,
             custom,
+            one_chain,
         }
     }
 }
@@ -201,6 +203,7 @@ mod tests {
             soft: true,
             assembly: 9,
             role: 3,
+            one_chain: true,
         }
     }
 

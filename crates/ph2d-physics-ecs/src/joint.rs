@@ -263,6 +263,11 @@ pub struct PhysicsJoint {
     /// dá o nome do papel («Front wheel») e o grupo «iguais entre si». Só vale com
     /// [`Self::assembly`] `!= 0`.
     pub role: u16,
+    /// **Pin: resolve-se junto com os outros Pins marcados, como UMA corrente** a partir de cada
+    /// corpo fixo que alcançam (`ph2d_physics::world::chains`). A ponte de tábuas leves sob uma carga
+    /// pesada é o caso: em impulso ela cede, numa corrente ela segura (doc 02 do JointEditor).
+    /// Ignorado por outro tipo, por um Pin com motor ou quebrável. No FIM, `PROJECT_SCHEMA` 238.
+    pub one_chain: bool,
 }
 
 impl Default for PhysicsJoint {
@@ -315,6 +320,7 @@ impl Default for PhysicsJoint {
             custom: CustomAxes::default(),
             assembly: 0,
             role: 0,
+            one_chain: false,
         }
     }
 }

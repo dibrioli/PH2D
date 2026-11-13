@@ -39,6 +39,7 @@ mod joint_rod;
 mod joint_soft_weld;
 mod joint_wheel;
 mod joints;
+mod one_chain;
 mod kinematic_substeps;
 mod layer_override;
 mod lock_rotation;

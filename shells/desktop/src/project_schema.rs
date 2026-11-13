@@ -473,6 +473,6 @@
 ///
 /// O componente `ph2d::physics::JointAssembly { template, parts, linked }` entra no registo (`+1`): a montagem
 /// é um objeto («Car 1») que diz de que gabarito veio e que objeto ocupa cada papel (ADR-0201). `PhysicsJoint`
-/// ganha `assembly: u64` e `role: u16` no FIM. SEM leitura dos anteriores (§0.11). Gates: `ph2d-app-physics
+/// ganha `assembly: u64`, `role: u16` e `one_chain: bool` (o Pin resolvido como uma corrente, W2) no FIM. SEM leitura dos anteriores (§0.11). Gates: `ph2d-app-physics
 /// joint_assembly::`, `ph2d-joint-templates the_template_ids_are_pinned`. ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 240;

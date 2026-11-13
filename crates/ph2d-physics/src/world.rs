@@ -16,6 +16,10 @@ pub mod character;
 /// `godot_topdown_probe.gd`. Ver o cabeçalho dela.
 #[cfg(test)]
 mod character_slide_probe;
+/// ⚠️ **SONDA `#[ignore]`** da ponte sob carga (Joint Editor W2) — impulso × multibody.
+#[cfg(test)]
+mod bridge_chain_probe;
+pub mod chains;
 pub mod checkpoint;
 pub mod collider_build;
 pub mod contacts;
@@ -193,6 +197,8 @@ pub struct PhysicsWorld {
     ///
     /// **Vazio em toda cena sem tambor**, o que mantém esta wave byte-neutra.
     pulley_payout: std::collections::BTreeMap<u64, f32>,
+    /// The Pins marked [`JointDesc::one_chain`] and the reduced twin each one has now ([`chains`]).
+    chains: chains::Chains,
     /// **A maior tensão que cada corda segurou neste tique**, newtons (W2) — o
     /// readout, e o número que decide a ruptura.
     ///
@@ -362,6 +368,7 @@ impl PhysicsWorld {
             pulleys: Vec::new(),
             pulley_wheels: Vec::new(),
             pulley_payout: std::collections::BTreeMap::new(),
+            chains: chains::Chains::default(),
             pulley_tension: std::collections::BTreeMap::new(),
             pulley_axle: std::collections::BTreeMap::new(),
             pulley_broken_ropes: std::collections::BTreeSet::new(),
@@ -525,6 +532,7 @@ impl PhysicsWorld {
             &mut self.soft_bodies,
             true,
         );
+        self.chain_forget(None);
     }
 
     /// Spawn a body explicitly (advanced — used when you need a

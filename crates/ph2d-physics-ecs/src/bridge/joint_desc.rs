@@ -144,6 +144,7 @@ fn desc_do_cartao(
         // reconciled; what stops is the constraint.
         enabled: j.active,
         contacts_enabled: j.collide_connected,
+        one_chain: j.one_chain,
         // ⚠️ **O `can_be_soft` aqui é HIGIENE, e a mutação o provou** — eu havia
         // escrito que ele impedia um `soft` deixado por uma troca de tipo de
         // seguir em vigor, e isso é falso: `desc.soft` tem UM leitor no wrapper

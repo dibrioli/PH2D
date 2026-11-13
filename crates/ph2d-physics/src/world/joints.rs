@@ -213,7 +213,9 @@ impl PhysicsWorld {
         self.bodies.get(a)?;
         self.bodies.get(b)?;
         let joint = build_joint(&desc, servo_stiffness, servo_damping, tracking);
-        Some(self.impulse_joints.insert(a, b, joint, true))
+        let handle = self.impulse_joints.insert(a, b, joint, true);
+        self.chain_note(handle, &desc);
+        Some(handle)
     }
 
     /// **Re-descrever um joint VIVO sem tocar as arenas** — a metade de
@@ -241,6 +243,7 @@ impl PhysicsWorld {
         match self.impulse_joints.get_mut(handle, true) {
             Some(live) => {
                 live.data = joint;
+                self.chain_note(handle, desc);
                 true
             }
             None => false,
@@ -580,6 +583,7 @@ impl PhysicsWorld {
     /// Remove a joint. No-op if the handle is already gone.
     pub fn remove_joint(&mut self, handle: ImpulseJointHandle) {
         self.impulse_joints.remove(handle, true);
+        self.chain_forget(Some(handle));
     }
 
     /// How many joints the world holds (tests, diagnostics).

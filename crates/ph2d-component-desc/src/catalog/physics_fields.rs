@@ -87,6 +87,8 @@ pub(super) const JOINT: &[FieldDesc] = &[
     f(24, "component.field.joint.24", K::Toggle).named_as("weld", "soft"),
     // A montagem a que a junta pertence (`0` = avulsa); o `role` (27) fica oculto em `hiding`.
     r(26, "component.field.joint.26").named("assembly"),
+    // Pin: resolvido como UMA corrente com os vizinhos marcados (a ponte sob carga).
+    f(28, "component.field.joint.28", K::Toggle).named("one_chain"),
 ];
 
 /// **`PlatformPlayer`** — as linhas da §14, na ordem da struct (`components/player.rs`).

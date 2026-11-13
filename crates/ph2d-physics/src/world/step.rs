@@ -16,6 +16,7 @@ impl PhysicsWorld {
     /// [`PhysicsWorld::dt`] — never accept an external dt at the
     /// wrapper boundary (HR-5).
     pub fn step(&mut self) {
+        self.refresh_chains();
         // W-ImpactForce: the impact peak is the hardest a pair pushes at any
         // single sub-step, and it is gone by the time this returns. Start the tick
         // with an empty ledger and `max` into it after each sub-step below. Cleared

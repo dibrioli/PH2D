@@ -68,7 +68,39 @@ Tábuas 0,1: nenhuma combinação segura (o melhor, `12/16`, volta a +0,885 mas 
 
 Leitura: o `Rope` (só um limite de distância) cede sob 200:1; o `Pin` entre tábuas segura o peso parado (2 cm) mas
 ainda afunda no impacto; 2000:1 nenhum ajuste de junta ou de solver segura — é o limite do solver iterativo, cuja
-cura é resolver a corrente inteira de uma vez (multibody, coordenadas reduzidas). A abrir na W2.
+cura é resolver a corrente inteira de uma vez (multibody, coordenadas reduzidas).
+
+### A cura (W2): a corrente resolvida a partir de cada poste
+
+Sonda `crates/ph2d-physics/src/world/bridge_chain_probe.rs` (`sonda_da_ponte`, rapier puro, mesma geometria,
+caixa 10 kg caindo de 3 m, **600 ticks**; caixa pousada = 1,30). «Tree» = uma árvore multibody de um poste ao
+outro, fechada por uma junta de impulso; «TwoTrees» = uma árvore por poste, encontrando-se no meio por UM Pin de
+impulso; «Product» = `spawn_joint` com Pins `one_chain` (`world/chains.rs`), que cresce em largura de TODO corpo fixo.
+
+| tábuas · sub-passos | Rope (hoje) caixa · mais baixo | Pin de impulso | TreePin | TwoTrees = **Product** |
+|---|---|---|---|---|
+| 0,1 · 4 | 0,306 · −0,034 | 0,808 · −0,007 | explode (NaN) | 1,207 · +0,267 (Product 1,210 · +0,526) |
+| **1 · 4 (o padrão)** | 0,944 · +0,013 | 1,017 · +0,312, caixa escorrega a x −0,63 | NaN | **1,283 · +0,740** |
+| 10 · 4 | 1,156 · +0,616 | 1,149 · +0,653 | 1,297 · +0,908 | 1,296 · +0,949 |
+| 1 · 8 | 1,041 · +0,071 | 1,093 · +0,535 | 1,294 · +0,854 | 1,297 · +0,900 |
+
+TreeRope (árvore + Rope de impulso no fecho): a ponte desaba (caixa 0,35) em todas as linhas. O Product reproduz o
+TwoTrees bit a bit em 5 das 6 linhas; a 2000:1 · 4 o encontro cai noutra emenda (o caso é caótico) e fica melhor.
+
+Na cena 123 (ponte real, `probe_plank_density_against_bridge_sag`, 300 ticks): tábuas 1 → caixa **1,288**, tábua do
+meio no fim 0,992, mais baixo 0,723 (era 0,750 · 0,046); tábuas 0,1 → mais baixo 0,465 (era −0,036).
+
+**Escolhido: o gabarito Bridge passa a Pins `one_chain` no meio de cada folga.** Gates: `ph2d-physics one_chain::`
+(segura 200:1 contra o controlo de Pins sem corrente, rebobina bit-exato, apagar uma junta refaz as árvores, só o Pin
+inquebrável e sem motor entra, a árvore nasce com as poses reais), `the_bridge_holds_itself_and_a_load` (tábua do
+meio > 0,9) e a cena (caixa > 1,2).
+
+⛔ Recusas MEDIDAS: árvore única de poste a poste (explode a 200:1 e 2000:1 com 4 sub-passos); fecho por Rope de
+impulso (desaba); mais sub-passos/iterações sem multibody (a tabela do solver acima); Rope dentro da árvore (o rapier
+não tem Rope em coordenadas reduzidas).
+
+Limites declarados: o gémeo reduzido não tem reação medida (o Inspector não lê carga de uma junta na corrente); refazer a
+árvore a meio do Play zera a velocidade dos elos; Pin com motor ou quebrável fica de impulso (não medido).
 
 ## O que esta tabela NÃO mede
 

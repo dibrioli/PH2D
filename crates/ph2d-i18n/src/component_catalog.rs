@@ -197,6 +197,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.joint.23" => "Collide",
         "component.field.joint.24" => "Weld",
         "component.field.joint.26" => "Assembly",
+        "component.field.joint.28" => "Solve as one chain",
         "component.field.joint_assembly.1" => "Parts",
         "component.field.nav_agent.1" => "Radius",
         "component.field.nav_agent.2" => "Arrive At",

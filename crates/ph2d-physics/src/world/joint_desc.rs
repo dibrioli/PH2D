@@ -294,6 +294,11 @@ pub struct JointDesc {
     /// too: two bodies pinned side by side that should still bump into each other
     /// (a door and its frame, a two-link limb that must not fold through itself).
     pub contacts_enabled: bool,
+    /// **Resolve this Pin as part of ONE chain** — reduced coordinates grown from every fixed body
+    /// it reaches ([`super::chains`]). Only an enabled, unbreakable [`JointKind::Pin`] takes it; any
+    /// other joint ignores it. Measured: a plank bridge at 200:1 load sags 36 cm as impulse Ropes and
+    /// 2 cm as one chain (`docs/JointEditor/02_gabaritos_medidos.md`).
+    pub one_chain: bool,
 }
 
 impl Default for JointDesc {
@@ -329,6 +334,7 @@ impl Default for JointDesc {
             // Jointed bodies do not collide — see the field, where the number
             // that decided it lives.
             contacts_enabled: false,
+            one_chain: false,
             // Todo eixo livre e o motor no linear X: um Custom recém-criado é o
             // joint mais SOLTO que existe, e o artista trava o que quiser. O
             // contrário (tudo travado) nasceria indistinguível de uma solda.

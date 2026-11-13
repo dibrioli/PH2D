@@ -41,34 +41,23 @@ const BRIDGE_ROLES: &[Role] = &[
     boxed("Plank", [0.25, 0.05], [-1.82, 1.0]).row(8, [0.52, 0.0]),
     boxed("Right post", [0.15, 0.5], [2.24, 0.6]).scenery(),
 ];
+// Pins no meio de cada folga (1 cm além da borda: 0,04 da meia-largura de 0,25 m), resolvidos como UMA
+// corrente a partir dos dois postes. Medido (doc 02 §«A ponte sob carga»): com a caixa de 10 kg, Ropes
+// afundam 36 cm e Pins de impulso deixam a caixa escorregar; a corrente afunda 2 cm e segura a 2000:1.
+const ONE_CHAIN: Tune = Tune {
+    one_chain: true,
+    ..Tune::NONE
+};
 const BRIDGE_JOINTS: &[JointRule] = &[
-    rule(
-        "Left end",
-        0,
-        1,
-        JointKind::Rope,
-        ends((1.0, 0.8), (-1.0, 0.0)),
-    )
-    .link(Link::ToFirst)
-    .tuned(AS_PLACED),
-    rule(
-        "Plank",
-        1,
-        1,
-        JointKind::Rope,
-        ends((1.0, 0.0), (-1.0, 0.0)),
-    )
-    .link(Link::Chain)
-    .tuned(AS_PLACED),
-    rule(
-        "Right end",
-        2,
-        1,
-        JointKind::Rope,
-        ends((-1.0, 0.8), (1.0, 0.0)),
-    )
-    .link(Link::ToLast)
-    .tuned(AS_PLACED),
+    rule("Left end", 0, 1, JointKind::Pin, Anchor::At(Spot::b(-1.04, 0.0)))
+        .link(Link::ToFirst)
+        .tuned(ONE_CHAIN),
+    rule("Plank", 1, 1, JointKind::Pin, Anchor::At(Spot::a(1.04, 0.0)))
+        .link(Link::Chain)
+        .tuned(ONE_CHAIN),
+    rule("Right end", 2, 1, JointKind::Pin, Anchor::At(Spot::b(1.04, 0.0)))
+        .link(Link::ToLast)
+        .tuned(ONE_CHAIN),
 ];
 pub(super) const BRIDGE: Template =
     template(8, JointKind::Rope, "Bridge", BRIDGE_ROLES, BRIDGE_JOINTS);

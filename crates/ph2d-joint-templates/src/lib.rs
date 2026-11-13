@@ -143,6 +143,8 @@ pub struct Tune {
     pub length: Option<Length>,
     /// Liga «Breakable» com `[força N, torque N·m]`.
     pub breaks: Option<[f32; 2]>,
+    /// Pin: resolvido com os vizinhos como UMA corrente (`PhysicsJoint::one_chain`).
+    pub one_chain: bool,
 }
 
 impl Tune {
@@ -152,6 +154,7 @@ impl Tune {
         spring: None,
         length: None,
         breaks: None,
+        one_chain: false,
     };
 }
 
@@ -211,6 +214,7 @@ impl JointRule {
             j.break_force = f;
             j.break_torque = tq;
         }
+        j.one_chain = t.one_chain;
         j.clamped()
     }
 }

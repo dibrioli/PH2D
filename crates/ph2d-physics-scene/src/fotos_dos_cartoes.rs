@@ -248,10 +248,11 @@ pub fn imagem_de(sim: &SimWorld, alvo: u64) -> u64 {
         .map_or(alvo, |c| c.parent().to_bits())
 }
 
-/// Do pé do player à borda direita da «Platform Low» (m). Sonda de 12/11 com os padrões: a 2,1 m o Standing
-/// pousa na alta (x 9,46), o Full desce ao chão (11,78) e o Short bate na parede da alta (6,8); a 0,5 m o
-/// Standing já passa por cima dela.
-pub const RECUO_DA_BORDA: f32 = 2.1;
+/// Do pé do player à borda direita da «Platform Low» (m). Pouso pela PERNA (12/11), contra o player real:
+/// a 1,5 m o Full desce ao chão (x 12,40), o Standing pousa na alta (9,88) e o Short bate na parede dela (6,8).
+/// O Full passa a agarrar a borda da alta (x 10) com recuo ≥ 1,75 (a 2,1 pousava lá); o Standing só a larga
+/// com recuo ≤ 1,0 — 1,5 fica no meio das duas viragens.
+pub const RECUO_DA_BORDA: f32 = 1.5;
 
 /// A borda direita e o topo da «Platform Low», pelo desenho do bloco (o azulejo tem o tamanho dele).
 fn borda_da_baixa(sim: &mut SimWorld) -> Option<[f32; 2]> {

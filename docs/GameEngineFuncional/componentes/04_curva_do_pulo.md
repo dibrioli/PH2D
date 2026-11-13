@@ -173,8 +173,9 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
   diz 2,00 e a alça fica a 2,00.
 - **Fotos** (`PH2D_GAME_SMOKE=4`): [`curva_terreno.png`](fotos_04/curva_terreno.png) ·
   [`curva_terreno_zoom.png`](fotos_04/curva_terreno_zoom.png) com `PH2D_GAME_SMOKE_FOTO=fisica_player_pulo_terreno`
-  (o Player sobre a «Platform Low», 2,1 m antes da borda: o Full desce ao chão da direita, o Standing pousa na
-  «Platform High», o Short pára na parede dela) · [`curva_e_cartao.png`](fotos_04/curva_e_cartao.png) refeita
+  (o Player sobre a «Platform Low», 1,5 m antes da borda — a 2,1 m a perna do Full agarrava a borda da alta, no
+  jogo e na curva: o Full desce ao chão da direita, o Standing pousa na «Platform High», o Short pára na parede
+  dela; gate `a_foto_do_terreno_e_o_que_o_player_real_faz` confere os três contra o player real) · [`curva_e_cartao.png`](fotos_04/curva_e_cartao.png) refeita
   com `fisica_player_pulo` (1930×1040: o Inspector rola até ao Platform Player — `cena_topdown::cartao_a_vista`,
   gate `a_foto_do_pulo_traz_o_cartao_platform_player_a_vista`; antes a Jump só cabia a 1972 px de altura. ⚠️ O nome
   leva o prefixo `fisica_`: `player_pulo` não é foto nenhuma e a cena abre sem a caixa marcada). Gate da pose: `a_foto_do_terreno_desce_ao_chao_e_pousa_na_plataforma_alta`

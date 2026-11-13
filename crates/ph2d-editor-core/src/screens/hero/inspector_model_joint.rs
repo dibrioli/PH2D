@@ -142,6 +142,17 @@ pub struct InspectorJointInfo {
     /// isso ANTES — a mesma lei do `Bake 5.0s to Timeline` e do
     /// `Add Wheel (N on this rope)`.
     pub paste_targets: usize,
+    /// **O título do cartão pelo PAPEL** — «Front wheel · Car 1» numa junta de montagem (Joint Editor
+    /// W2); vazio numa junta avulsa, e o cartão diz «Joint».
+    pub title: String,
+    /// **Pin: resolvido com os vizinhos como UMA corrente** (`PhysicsJoint::one_chain`). A caixa só
+    /// aparece onde o motor a lê: Pin sem motor e não quebrável.
+    pub one_chain: bool,
+    /// **«Same as …»** — os papéis das OUTRAS juntas do grupo da montagem («Rear wheel»). Vazio = a junta
+    /// não tem par, e a caixa não aparece.
+    pub same_as: String,
+    /// O grupo está ligado: editar esta junta edita as outras do grupo.
+    pub linked: bool,
 }
 
 /// A single editable §12 joint field, dispatched as
@@ -235,6 +246,10 @@ pub enum JointFieldEdit {
     AnchorToWorld(bool),
     /// Delete the joint object.
     Remove,
+    /// Pin: «Solve as one chain».
+    OneChain(bool),
+    /// «Same as …»: liga/desliga o grupo da montagem (escreve `JointAssembly::linked`).
+    Linked(bool),
 }
 
 /// §13 Pulley Wheel snapshot (W-Pulley W1) — a **roldana** selecionada.

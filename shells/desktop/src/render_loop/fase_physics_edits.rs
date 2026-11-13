@@ -37,6 +37,8 @@ impl crate::App {
         // creates a joint. Deletion is NOT here: a joint is an object, so
         // "Delete Joint" despawns it through the same path any other object
         // takes, and gets the same undo step for free.
+        // «Same as …» (Joint Editor W2): a afinação de uma junta de grupo ligado vale para as irmãs.
+        let joint_edits = ph2d_app_physics::joint_assembly_card::with_linked(sim, &joint_edits);
         for &(bits, edit) in &joint_edits {
             // `PickBodyA/B` never reach here — they arm a canvas pick in the
             // action loop above (shell state, not a component edit). `Remove`
@@ -44,6 +46,9 @@ impl crate::App {
             if matches!(edit, ph2d_editor_core::JointFieldEdit::Remove) {
                 let e = ph2d_ecs::Entity::from_bits(bits);
                 let _ = sim.world_mut().despawn(e);
+            } else if let ph2d_editor_core::JointFieldEdit::Linked(on) = edit {
+                let e = ph2d_ecs::Entity::from_bits(bits);
+                let _ = ph2d_app_physics::joint_assembly_card::set_linked(sim.world_mut(), e, on);
             } else if let ph2d_editor_core::JointFieldEdit::AnchorToWorld(on) = edit {
                 let e = ph2d_ecs::Entity::from_bits(bits);
                 let took = ph2d_app_physics::joint::anchor_to_world(sim.world_mut(), e, on);

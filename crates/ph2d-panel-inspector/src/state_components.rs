@@ -506,6 +506,20 @@ pub fn projectile_target_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
     let info = current_inspector_projectile().filter(|i| i.homing_accel > 0.0)?;
     (id == crate::ids::INSP_PJ_HOMING_TARGET).then_some(info.entity_bits)
 }
+/// A linha Body A / Body B do cartão da junta sob o ponteiro: `(junta, slot_b)` recebe a queda de um
+/// objecto. ⚠️ Num pino de MUNDO a linha B não tem conta-gotas, e por isso também não recebe (o
+/// mesmo que o painel oferece).
+#[must_use]
+pub fn joint_body_slot_pick(id: ph2d_a11y::NodeId) -> Option<(u64, bool)> {
+    let info = crate::state::current_inspector_joint()?;
+    if id == crate::ids::INSP_JOINT_PICK_A {
+        Some((info.entity_bits, false))
+    } else if id == crate::ids::INSP_JOINT_PICK_B && !info.world_anchored {
+        Some((info.entity_bits, true))
+    } else {
+        None
+    }
+}
 
 pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
     CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())

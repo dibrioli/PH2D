@@ -61,6 +61,8 @@ pub enum DropTarget {
     /// ⭐ GEF 20 C2 / GEF 06 — um campo que guarda um OBJECTO pelo nome (o Target do Follow da câmera, o
     /// Target do Homing da bala) no objecto `entity_bits`.
     ObjectRef { entity_bits: u64, field: RefField },
+    /// ⭐ A linha Body A (`slot_b: false`) ou Body B do cartão da junta `entity_bits`.
+    JointBody { entity_bits: u64, slot_b: bool },
     /// ⭐ GEF 21 E2 — o campo Sound do Audio Source 2D de `entity_bits`.
     InspectorSound { entity_bits: u64 },
     /// ⭐⭐ **Sobre uma aba de SCRIPT** (item 8 do CodeEditor, `docs/CodeEditor/07_arrastar_para_o_codigo.md`).
@@ -125,6 +127,13 @@ pub enum DropAction {
     SetObjectRef {
         entity_bits: u64,
         field: RefField,
+        stable_id: u64,
+    },
+    /// ⭐ Aquele lado da junta `entity_bits` passa a ser o objecto `stable_id` — a lei do conta-gotas
+    /// (`ph2d_app_physics::joint_drop::drop_body`: só um corpo que não é a junta; recusa ao escrever).
+    SetJointBody {
+        entity_bits: u64,
+        slot_b: bool,
         stable_id: u64,
     },
     /// ⭐ GEF 21 E2 — a fonte `entity_bits` passa a tocar o som do projeto `asset` (pelo NOME, como o campo).
@@ -206,6 +215,12 @@ pub fn field_target(id: NodeId) -> Option<DropTarget> {
             insp::projectile_target_slot_pick(id).map(|entity_bits| DropTarget::ObjectRef {
                 entity_bits,
                 field: RefField::Homing,
+            })
+        })
+        .or_else(|| {
+            insp::joint_body_slot_pick(id).map(|(entity_bits, slot_b)| DropTarget::JointBody {
+                entity_bits,
+                slot_b,
             })
         })
         .or_else(|| {
@@ -292,6 +307,17 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
                 stable_id,
             }
         }
+        (
+            DragPayload::Object { stable_id },
+            DropTarget::JointBody {
+                entity_bits,
+                slot_b,
+            },
+        ) => DropAction::SetJointBody {
+            entity_bits,
+            slot_b,
+            stable_id,
+        },
         (DragPayload::Object { .. }, _) => DropAction::Refuse,
         // ⭐ Uma linha do Inspector (8b) só sabe ir para o texto; em qualquer outro sítio, desiste
         // calada — como o Godot, onde soltar uma propriedade fora do script não faz nada.
@@ -328,7 +354,12 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ⛔ Um prefab não tem elemento no quadro.
         (_, DropTarget::BoardCanvas { .. }) => DropAction::Refuse,
         // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
-        (_, DropTarget::ScriptObject { .. } | DropTarget::ObjectRef { .. }) => DropAction::Refuse,
+        (
+            _,
+            DropTarget::ScriptObject { .. }
+            | DropTarget::ObjectRef { .. }
+            | DropTarget::JointBody { .. },
+        ) => DropAction::Refuse,
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
         // fora do texto, nada.
         (_, DropTarget::Code { on_text: true }) => DropAction::WriteCode,

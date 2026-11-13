@@ -245,6 +245,24 @@ impl crate::App {
             | DropAction::SetScriptObject { .. }
             | DropAction::SetObjectRef { .. }
             | DropAction::SetSound { .. } => {}
+            // A lei do conta-gotas (só um corpo que não é a junta); a escolha armada daquele lado termina.
+            DropAction::SetJointBody {
+                entity_bits,
+                slot_b,
+                stable_id,
+            } => {
+                if let Some(gfx) = self.gfx.as_mut()
+                    && ph2d_app_physics::joint_drop::drop_body(
+                        &mut gfx.sim,
+                        entity_bits,
+                        slot_b,
+                        stable_id,
+                    )
+                    && self.joint_body_pick == Some((entity_bits, slot_b))
+                {
+                    self.joint_body_pick = None;
+                }
+            }
             DropAction::Refuse => {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.
                 if let Some(gfx) = self.gfx.as_mut() {

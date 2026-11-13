@@ -83,6 +83,10 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         // que chega ao estado por atalho inverte de sentido quando o default se
         // move e segue verde testando o oposto.
         paste_targets: 0,
+        title: String::new(),
+        one_chain: false,
+        same_as: String::new(),
+        linked: false,
         // W-JointCustom: a fixture-base põe o eixo X em `Limited` para que o par
         // Min/Max esteja NA TELA (ele só é pintado nesse modo), e os outros dois
         // em Free/Locked — os três estados representados de uma vez, que é o que

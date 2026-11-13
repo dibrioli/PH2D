@@ -76,6 +76,13 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                     .map(|i| JointFieldEdit::MotorMode(i as u8))
             }
         }
+        // As caixas (Joint Editor W2): o valor novo é o contrário do que o retrato deste quadro mostra.
+        WidgetEvent::Toggled(id) if id == crate::ids::INSP_JOINT_LINKED => {
+            Some(JointFieldEdit::Linked(!info.linked))
+        }
+        WidgetEvent::Toggled(id) if id == crate::ids::INSP_JOINT_ONE_CHAIN => {
+            Some(JointFieldEdit::OneChain(!info.one_chain))
+        }
         WidgetEvent::ValueChanged(id) => {
             let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
             match id {

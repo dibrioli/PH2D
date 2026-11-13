@@ -356,6 +356,10 @@ pub use state_components::{
     audio_sound_slot_pick, camera_target_slot_pick, projectile_target_slot_pick,
     script_object_slot_pick, script_prop_name,
 };
+pub use state_components::{
+    audio_sound_slot_pick, camera_target_slot_pick, joint_body_slot_pick, script_object_slot_pick,
+    script_prop_name,
+};
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,

@@ -89,12 +89,7 @@ impl crate::App {
         let target = debaixo
             .into_iter()
             .find(|&bits| {
-                bits != joint
-                    && gfx
-                        .sim
-                        .world()
-                        .get::<ph2d_physics_ecs::RigidBody>(ph2d_ecs::Entity::from_bits(bits))
-                        .is_some()
+                ph2d_app_physics::joint_drop::is_bindable_body(gfx.sim.world(), joint, bits)
             })
             .map(ph2d_ecs::Entity::from_bits);
         match target {

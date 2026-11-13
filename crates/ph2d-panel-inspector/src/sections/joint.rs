@@ -25,6 +25,9 @@ use custom::{paint_axis_rows, paint_motor_axis_row};
 
 #[path = "joint_kind_rows.rs"]
 mod kind_rows;
+
+#[path = "joint_assembly_rows.rs"]
+mod assembly_rows;
 use kind_rows::paint_kind_params;
 
 use super::rows::seg_row;
@@ -302,7 +305,7 @@ pub(crate) fn paint_joint_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_JOINT_SECTION,
-        tr("component.physics_joint.name"),
+        assembly_rows::title(info),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
@@ -342,6 +345,7 @@ pub(crate) fn paint_joint_section(
         &SWITCH_LABELS.map(TextKey::tr),
         u8::from(info.active),
     );
+    yy = assembly_rows::paint_linked_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
 
     // The PAIR cluster: who the two ends are, the gesture that exchanges them,
     // and the one fact that is about the pair rather than about the constraint.
@@ -379,6 +383,7 @@ pub(crate) fn paint_joint_section(
     // cap de 200 LOC desta fn quanto porque *"o que este tipo tem a afinar"* é um
     // assunto só, e ele cresce a cada tipo novo.
     yy = paint_kind_params(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    yy = assembly_rows::paint_one_chain_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
 
     // The motor comes LAST and is asked of every driven kind, rather than living
     // inside the Pin's branch as it did until W-J6: a rail and a winch are driven

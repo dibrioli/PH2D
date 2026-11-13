@@ -135,7 +135,12 @@ pub fn build_joint_info(
     // 1,57.
     let axis = |i: usize| joint.custom.axes[i];
     let axis_ui = |i: usize, v: f32| if i == 2 { v.to_degrees() } else { v };
+    let card = crate::joint_assembly_card::card_context(world, &joint);
     Some(InspectorJointInfo {
+        title: card.title,
+        same_as: card.same_as,
+        linked: card.linked,
+        one_chain: joint.one_chain,
         entity_bits,
         axis_mode_tag: [axis(0).mode.tag(), axis(1).mode.tag(), axis(2).mode.tag()],
         axis_min_ui: [
@@ -462,6 +467,7 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         JointFieldEdit::Soft(on) => next.soft = on,
         JointFieldEdit::Active(on) => next.active = on,
         JointFieldEdit::CollideConnected(on) => next.collide_connected = on,
+        JointFieldEdit::OneChain(on) => next.one_chain = on,
         // **The pair, exchanged.** The whole operation lives on the component
         // (`PhysicsJoint::swapped`) because it is arithmetic about the joint and
         // nothing else: the anchors travel with their bodies and every signed
@@ -492,6 +498,8 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // Paste escreve por `paste_joint_properties`, que é o funil deste
         // arquivo com outra entrada, não uma segunda resposta.
         JointFieldEdit::CopyProperties | JointFieldEdit::PasteProperties => return None,
+        // Escreve a MONTAGEM, não a junta (`joint_assembly_card::set_linked`).
+        JointFieldEdit::Linked(_) => return None,
     }
     // Through the SAME clamp the bridge uses on the way to the solver (`sanitize`), so the
     // Inspector — and a script — cannot author a state the loader would have to repair.

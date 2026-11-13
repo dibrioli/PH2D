@@ -42,7 +42,7 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         y,
-        TextKey::new("component.field.joint.7"),
+        super::assembly_rows::motor_label(info.kind_tag),
         ids::INSP_JOINT_MOTOR_GROUP,
         &ids::INSP_JOINT_MOTOR,
         &SWITCH_LABELS.map(TextKey::tr),
@@ -72,13 +72,13 @@ pub(super) fn paint_motor_rows(
     //   o dono reprovou em 2026-09-15.
     let (label, id, unidade) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
         (
-            TextKey::new("component.field.joint.18"),
+            TextKey::new("component.field.joint.18").into(),
             ids::INSP_JOINT_MOTOR_TARGET,
             place_unit,
         )
     } else {
         (
-            TextKey::new("component.field.joint.8"),
+            super::assembly_rows::speed_label(info.kind_tag),
             ids::INSP_JOINT_MOTOR_SPEED,
             rate_unit,
         )

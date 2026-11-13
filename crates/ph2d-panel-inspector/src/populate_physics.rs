@@ -53,6 +53,16 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_MOTOR_AXIS);
     // W-SoftWeld — mesma razão da linha acima.
     register_button_ids(store, &ids::INSP_JOINT_SOFT);
+    // Joint Editor W2: as duas caixas da montagem e do Pin. Sem o registo, mortas sob o mouse.
+    for id in [ids::INSP_JOINT_LINKED, ids::INSP_JOINT_ONE_CHAIN] {
+        store.register(
+            id,
+            ph2d_editor_core::interaction::InteractiveState::Checkbox {
+                state: ph2d_editor_core::widget::CheckboxState::Normal,
+                value: ph2d_editor_core::widget::CheckboxValue::Unchecked,
+            },
+        );
+    }
     register_button_ids(
         store,
         &[

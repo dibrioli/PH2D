@@ -64,11 +64,11 @@ pub(super) fn paint_kind_params(
             let unit = limit_unit(info.kind_tag);
             for (label, id) in [
                 (
-                    TextKey::new("component.field.joint.5"),
+                    super::assembly_rows::limit_min_label(info.kind_tag),
                     ids::INSP_JOINT_LIMIT_MIN,
                 ),
                 (
-                    TextKey::new("component.field.joint.6"),
+                    super::assembly_rows::limit_max_label(info.kind_tag),
                     ids::INSP_JOINT_LIMIT_MAX,
                 ),
             ] {
@@ -131,11 +131,11 @@ pub(super) fn paint_kind_params(
     if kind_has_spring(info.kind_tag, info.soft) {
         for (label, id) in [
             (
-                TextKey::new("component.field.joint.11"),
+                super::assembly_rows::stiffness_label(info.kind_tag),
                 ids::INSP_JOINT_STIFFNESS,
             ),
             (
-                TextKey::new("component.field.joint.12"),
+                super::assembly_rows::damping_label(info.kind_tag),
                 ids::INSP_JOINT_DAMPING,
             ),
         ] {

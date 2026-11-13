@@ -156,8 +156,10 @@ pub fn aplicar_canais(
 pub mod joint;
 pub mod joint_anchor_drag;
 pub mod joint_assembly;
+pub mod joint_assembly_card;
 pub mod joint_create;
 pub mod joint_draw;
+pub mod joint_drop;
 pub mod joint_rig;
 pub mod joint_rig_drag;
 pub mod joint_wheel;

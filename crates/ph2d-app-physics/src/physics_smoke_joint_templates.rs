@@ -122,7 +122,19 @@ pub fn physics_smoke_joint_templates(ctx: &mut crate::SceneCtx<'_>) {
     build(ctx.world);
     ctx.want.camera_center = Some(CAMERA_CENTRE);
     ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
-    ctx.want.panels.push("physics");
+    // As fotos do cartão (W2): com `PH2D_PHYSICS_SMOKE_SELECT` abre com esse objeto selecionado e o
+    // Inspector à frente (o painel Physics cobri-lo-ia na mesma doca).
+    let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") else {
+        ctx.want.panels.push("physics");
+        return;
+    };
+    {
+        let mut q = ctx.world.query::<(ph2d_ecs::Entity, &Name)>();
+        ctx.want.select = q
+            .iter(ctx.world)
+            .find(|(_, n)| n.0 == nome.trim())
+            .map(|(e, _)| e.to_bits());
+    }
 }
 
 /// A cena sobre um `World` cru — a mesma que o gate mede.

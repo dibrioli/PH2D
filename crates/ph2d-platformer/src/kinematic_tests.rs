@@ -78,6 +78,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
     let takeoff = KinematicState {
         velocity: [0.0, 5.0],
         grounded: true,
+        ..KinematicState::default()
     };
     let (up_st, _) = kinematic_advance(
         takeoff,
@@ -176,6 +177,7 @@ fn a_blocked_body_stops_and_does_not_bounce() {
     let st = KinematicState {
         velocity: [4.0, 0.0],
         grounded: true,
+        ..KinematicState::default()
     };
     let wanted = [4.0 * DT, 0.0];
     let settled = kinematic_settle(st, wanted, [0.0, 0.0], true, DT);
@@ -239,6 +241,7 @@ fn sliding_along_a_slope_is_not_absorbed() {
     let st = KinematicState {
         velocity: [0.0, -1.0],
         grounded: false,
+        ..KinematicState::default()
     };
     let wanted = [0.0, -DT];
     // A rampa desviou metade da queda para o lado.
@@ -395,6 +398,7 @@ fn dry_air_is_the_world_before_this_wave_to_the_bit() {
     let start = KinematicState {
         velocity: [3.0, -2.0],
         grounded: false,
+        ..KinematicState::default()
     };
     let motor = Motor {
         accel: [1.0, 0.5],
@@ -462,6 +466,7 @@ fn the_medium_resists_with_the_solvers_own_law() {
     let fast = KinematicState {
         velocity: [4.0, -6.0],
         grounded: false,
+        ..KinematicState::default()
     };
     // Sem gravidade, para isolar o amortecimento do resto do passo.
     let g0 = [0.0, 0.0];
@@ -517,6 +522,7 @@ fn a_current_accelerates_by_exactly_what_it_was_told() {
     let start = KinematicState {
         velocity: [0.0, 0.0],
         grounded: false,
+        ..KinematicState::default()
     };
     let (dry, _) = kinematic_advance(start, Motor::default(), None, G, UP, DT, Fluid::DRY);
     let (wet, _) = kinematic_advance(
@@ -554,6 +560,7 @@ fn buoyancy_does_not_weigh_the_zones_push() {
     let start = KinematicState {
         velocity: [0.0, 0.0],
         grounded: false,
+        ..KinematicState::default()
     };
     let mut seen = Vec::new();
     for lift in [0.0f32, 1.0, 4.0] {
@@ -589,6 +596,7 @@ fn the_medium_resists_what_the_current_just_gave() {
     let start = KinematicState {
         velocity: [0.0, 0.0],
         grounded: false,
+        ..KinematicState::default()
     };
     let (next, _) = kinematic_advance(
         start,

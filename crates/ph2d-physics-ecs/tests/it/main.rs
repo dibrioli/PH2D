@@ -189,6 +189,7 @@ mod player_out;
 mod player_probe_view;
 mod player_pure;
 mod player_push;
+mod player_snap_settle;
 mod player_swims;
 mod player_terminal;
 mod player_water;

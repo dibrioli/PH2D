@@ -118,7 +118,8 @@ fn go_as(kinematic: bool, jump_height: f32, corner_reach: f32, ceiling_bottom: O
     let mut start = scene::y_of(&sim, "Subject");
     let (mut prev, mut top, mut vmax) = (start, start, 0.0_f32);
     // Sob Snap o corpo assenta noutra altura que a do spawn: a cabeça mede-se assente.
-    let rest_tick = if kinematic { 59 } else { 0 };
+    // Nascido a 0,9 cai até à faixa da perna (tique 15) e encaixa no 16 (Bug #13).
+    let rest_tick = if kinematic { 16 } else { 0 };
     let (mut bonks, mut lit, mut was_lit) = (Vec::new(), 0, false);
     let (mut bonk_ticks, mut vy) = (Vec::new(), Vec::new());
     for t in 1..=150u64 {
@@ -127,10 +128,9 @@ fn go_as(kinematic: bool, jump_height: f32, corner_reach: f32, ceiling_bottom: O
         bridge.set_player_input(
             who,
             PlayerInput {
-                // Sob Snap o corpo assenta devagar (medido: apertar no tique 20 subia 0,36 m a H = 1,0;
-                // no 60, 0,96): o aperto vem depois de assentar.
+                // Sob Snap o aperto vem no tique a seguir ao encaixe (Bug #13: antes, 60..=120).
                 jump: if kinematic {
-                    (60..=120).contains(&t)
+                    (17..=77).contains(&t)
                 } else {
                     t <= 60
                 },

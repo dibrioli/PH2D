@@ -159,6 +159,12 @@ pub struct KinematicState {
     /// mapa da ponte — pelo mesmo motivo que a velocidade: é o ring de tiques
     /// âncora que guarda este tipo.
     pub grounded: bool,
+    /// **A lei viu-me DE PÉ no tique anterior?** (`JumpState::on_ground`, Bug #13.)
+    ///
+    /// Escrito por quem corre a lei, nunca por este integrador. É o que separa um POUSO (ar → chão)
+    /// de uma elevação que o controlador acabou de fazer (o lábio de um degrau): só o pouso encaixa.
+    /// Não se infere do coyote — com `coyote = 0` a janela não existe e o pouso ficaria mudo.
+    pub stood: bool,
 }
 
 /// **O deslocamento que este tique PEDE** — e o estado que ele deixa.
@@ -463,6 +469,7 @@ pub fn kinematic_settle(
     KinematicState {
         velocity: v,
         grounded,
+        ..state
     }
 }
 

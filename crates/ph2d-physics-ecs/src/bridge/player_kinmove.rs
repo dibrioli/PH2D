@@ -40,6 +40,8 @@ pub(super) struct KinMove {
     /// depois seria uma segunda consulta ao mundo ECS a meio do tique, e as
     /// duas divergiriam no frame em que o artista arrasta o slider.
     pub(super) react: ReactionConfig,
+    /// O encaixe ao chão pedido (Bug #13, `player_seat`): quanto pode descer depois do pedido.
+    pub(super) seat: Option<f32>,
 }
 
 impl PhysicsBridge {
@@ -111,14 +113,17 @@ impl PhysicsBridge {
                 self.world
                     .apply_player_push(body, m.handle, [transfer[0] / dt, transfer[1] / dt]);
             }
+            // O encaixe vem DEPOIS do pedido e fora do empurrão e do `settle`: é pose, não velocidade.
+            let seated = super::seat::seat(&self.world, &m, got.translation, &mut hits);
+            let [sx, sy] = seated.unwrap_or_default();
             if let Some(pose) = self.world.body_pose(m.handle) {
                 // ⚠️ **`set_next_kinematic_pose`, nunca uma escrita direta:** é
                 // ela que faz o solver tratar o corpo como MOVENDO-SE, e é isso
                 // que o faz empurrar o que toca em vez de o atravessar.
                 self.world.set_next_kinematic_pose(
                     m.handle,
-                    pose.translation.x + got.translation[0],
-                    pose.translation.y + got.translation[1],
+                    pose.translation.x + got.translation[0] + sx,
+                    pose.translation.y + got.translation[1] + sy,
                     pose.rotation.angle(),
                 );
             }
@@ -133,7 +138,7 @@ impl PhysicsBridge {
                     // ⚠️ **A pergunta do INTEGRADOR** (ver `KinematicState::grounded`)
                     // — quem responde é quem TOCOU no mundo. A resposta da LEI
                     // sobre chão continua a `footing`, nos dois modos (K4).
-                    got.grounded,
+                    got.grounded || seated.is_some(),
                     dt,
                 );
             }

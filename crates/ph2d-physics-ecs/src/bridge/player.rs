@@ -172,12 +172,11 @@ impl PhysicsBridge {
             }
 
             let mut cfg = cfg.config();
-            cfg.jump.world_steps = crate::world_steps(&self.vivo); // os passos do mundo VIVO
-            // ⚠️ **Sob Snap a PERNA é o próprio corpo** — ver
-            // `PhysicsWorld::body_foot_distance`. O `float_height` autorado
-            // descreve onde a cápsula flutuante paira, e sob Snap ela não paira:
-            // ela pousa. Deixar a régua da perna aqui faz a lei dizer *"estou no
-            // chão"* com o personagem a 0,4 m no ar.
+            let authored_leg = cfg.ride.float_height + cfg.ride.cling_distance; // a perna AUTORADA (Bug #13)
+            // Os passos de quem integra: o mundo VIVO, ou UM sob Snap (Bug #13, `seat`).
+            cfg.jump.world_steps = seat::world_steps(owner.writes_own_pose(), &self.vivo);
+            // ⚠️ **Sob Snap a PERNA é o próprio corpo** (`body_foot_distance`): sob Snap a cápsula
+            // não paira, pousa; a régua autorada diria *"no chão"* a 0,4 m no ar.
             if owner.writes_own_pose()
                 && let Some(foot) = self.world.body_foot_distance(b.handle, UP)
             {
@@ -550,23 +549,22 @@ impl PhysicsBridge {
                 // (ver o topo de `ph2d_platformer::kinematic`). O `motor.accel`
                 // já traz o cancelamento embutido quando ele existe — somá-lo
                 // outra vez o pagaria duas vezes.
-                let (next_kin, wanted) = kinematic_advance(
-                    was.kin, motor,
-                    // ⚠️ **A plataforma entra por AQUI** (K7): a amostra já
-                    // viaja desde a W3, e resolvê-la fora da lei seria uma
-                    // segunda resposta para *"quanto o chão me leva?"*.
-                    //
-                    // ⚠️ E o que atravessa é a AMOSTRA, não a `ground_velocity`
-                    // dela: quem decide quanto o chão ainda deve é o
-                    // `ground_carry`, porque a caminhada já paga a tangente.
-                    stand, gravity, UP, dt,
-                    // ⚠️ **A ÁGUA entra por aqui, e é a MESMA leitura que a lei do
-                    // pulo já recebeu** (o `buoyed` acima sai deste `fluid`): uma
-                    // segunda consulta daria duas respostas para *"em que meio
-                    // estou?"*, e elas divergiriam no tique em que o personagem
-                    // cruza a superfície — precisamente onde ninguém confere.
+                let born = (!self.player_state.contains_key(&entity)).then_some(authored_leg);
+                let lands = seat::lands(born.is_some(), was.kin, stand); // Bug #13: nascer ou pousar
+                let (mut next_kin, wanted) = kinematic_advance(
+                    seat::kin_in(was.kin, vel, lands), // Bug #13: a velocidade da lei
+                    motor,
+                    // ⚠️ **A plataforma entra por AQUI** (K7) e o que atravessa é a AMOSTRA: quem
+                    // decide quanto o chão ainda deve é o `ground_carry` (a caminhada paga a tangente).
+                    stand,
+                    gravity,
+                    UP,
+                    dt,
+                    // ⚠️ **A ÁGUA entra por aqui, a MESMA leitura que a lei do pulo recebeu** (o
+                    // `buoyed` sai deste `fluid`): uma 2.ª consulta divergiria ao cruzar a superfície.
                     fluid,
                 );
+                next_kin.stood = grounded; // Bug #13: o pouso é a transição ar → de pé
                 moves.push(KinMove {
                     entity,
                     handle: b.handle,
@@ -588,6 +586,8 @@ impl PhysicsBridge {
                     wanted,
                     advanced: next_kin,
                     react: cfg.react,
+                    // Bug #13: o encaixe ao chão (`seat`), ao nascer e na faixa da perna.
+                    seat: seat::reach(born, lands, stand, &cfg.ride, wanted),
                 });
                 // ⚠️ **O estado guardado leva a velocidade ANTES do assentamento**
                 // — a lista de moves a corrige depois de o mundo responder. É a
@@ -681,14 +681,14 @@ mod drops;
 #[path = "player_push.rs"]
 mod push;
 
-/// **O MOVIMENTO CINEMÁTICO** — irmão por RESPONSABILIDADE: aqui o laço COLHE
-/// (o cast toma `&self`), lá a ponte APLICA (a pose toma `&mut self`).
+/// **O MOVIMENTO CINEMÁTICO** — aqui o laço COLHE (`&self`), lá a ponte APLICA (`&mut self`).
 #[path = "player_kinmove.rs"]
 mod kinmove;
+#[path = "player_seat.rs"]
+mod seat;
 use kinmove::KinMove;
 
-/// **O QUE A PONTE ESCREVE** — a outra metade do mesmo corte: aqui o laço COLHE,
-/// lá ela APLICA. Ver o doc do módulo para a lei da ordem.
+/// **O QUE A PONTE ESCREVE** — a outra metade do corte; a lei da ordem no doc do módulo.
 #[path = "player_apply.rs"]
 mod apply;
 use push::Push;

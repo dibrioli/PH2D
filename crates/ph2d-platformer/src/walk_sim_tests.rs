@@ -64,6 +64,7 @@ pub(super) fn drive_for(
     let mut state = KinematicState {
         velocity: [v0, 0.0],
         grounded: true,
+        ..KinematicState::default()
     };
     let mut travelled = 0.0_f32;
     let mut ticks_to_still = None;

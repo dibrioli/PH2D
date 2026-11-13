@@ -54,8 +54,11 @@ libera `unsafe` num módulo isolado para AVX2 (política).
 9. **A espera do pen-down pelo motor** (item 5, 3,8 + 2 ms): documentada em `N7_ITEM3_mais.md`; medir com `sonda_partes::parte` antes de
    qualquer cura; adiar o pen-down inteiro é arriscado.
 10. **`fork_par_raw`** (B18.10, aberto do ADR-0204): confirmar o `strong` da tela no pen-down Wet; fork por tile só se medir.
-11. **Os 7 vermelhos antigos e os 77 alarmes**, a chave `PH2D_ASSENTA_PALPITE` e o `unsafe`/AVX2: decisões do dono (pergunte em
-    palavras simples, com as pranchas). Só ele regrava (`PH2D_PINCEIS_APROVA=1`).
+11. **Os 7 vermelhos antigos e os 77 alarmes**: decisões do dono. Só ele regrava (`PH2D_PINCEIS_APROVA=1`).
+    ✅ **Dono 13/11 (n.º 8), decidido:** «Ambas SIM, mas como opções a mais e não a substituição do que já existe. OU seja: 2
+    checkbox numa seção nova: performance (card novo no painel).» ⇒ cartão novo «Performance» no painel do Painter com 2
+    checkboxes, DESLIGADOS por omissão: (a) o palpite da `assenta`; (b) AVX2 num módulo `unsafe` ISOLADO do motor Wet (ao bit
+    contra o escalar, cai no escalar sem AVX2). Feito logo depois do item 2.
 12. Por item: medir antes (A×B no mesmo binário, mínimo; tempo real = MÉDIA), curar AO BIT, gate por nome com mutação e controlo, medir
     depois, comitar com a tabela. **Fecho:** fmt (só os ficheiros da linha) / clippy `PH2D_SUITE=fecho`, alarmes de pincel por nome,
     a matriz do app normal e `NOVA=1` (o coordenador), handoff NOVO + link no CLAUDE.md §5.1, `rm -rf target/*/incremental`, binário

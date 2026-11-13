@@ -744,6 +744,7 @@ ou pelo padrão-ouro. Cada um vai ao smoke final com prancha quando muda a apar�
 | Dono 13/11 «1- tente» (B13.12) | sim a 6 traços: produto ao bit 0,77 → ~0,91; `PH2D_ASSENTA_PALPITE=1` (0,97) DESLIGADA até o olho do dono | o pincel muda (3 larguras, 15 miniaturas): só o dono aprova |
 | Dono 13/11 «2- pode» (B18.4) | desfazer do vidro em tiles: ADR-0204, implementado | o alvo era o COW do vidro por traço; a tela inteira no fork fica aberta (B18.10) |
 | Dono 13/11 «3- sim» (B18.7) | o «+» sem diff: 66,4 MB por «+» a 4K; sobre camada rala perde até ≈ 1,5 traço do histórico | o split de 14 ms e a cópia da tela no 1.º traço saem |
+| Dono 13/11 (n.º 8) «Ambas SIM, mas como opções a mais» (B13.12) | palpite da `assenta` E AVX2 (`unsafe` só num módulo isolado do motor Wet): 2 checkboxes num cartão NOVO «Performance» no painel do Painter, ambos DESLIGADOS por omissão | o de fábrica não muda; o AVX2 tem de dar o escalar ao bit e cair nele sem AVX2 |
 | §4 «nenhum Wet usa a placa» (B08.4) | conferir e registar; não curar | sem a RTX (decisão 2) a placa do Wet não entra |
 
 ## Fora / recusado

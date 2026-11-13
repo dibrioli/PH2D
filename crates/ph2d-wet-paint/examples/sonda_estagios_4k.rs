@@ -51,7 +51,7 @@ fn hash(g: &Grid) -> u64 {
 }
 
 /// A rota da variante: `a` = o produto · `fNN` = `BLOCO_LINHAS` · `sNN` = `SAIDA_BLOCO` · `x` = fases ·
-/// `m` = o momento no bloco · `cN` = `COMMIT_ROTA` N (1 = cópia, o de antes da cura 3; 2 = troca).
+/// `m` = o momento no bloco · `k` = a saia serial · `cN` = `COMMIT_ROTA` N (1 = cópia, o de antes da cura 3; 2 = troca).
 fn rota(r: &str) {
     use ph2d_wet_paint::solver::{ADVECT_FASES, MOMENTO_FORA};
     use ph2d_wet_paint::solver::{BLOCO_LINHAS, SAIDA_BLOCO};
@@ -61,12 +61,14 @@ fn rota(r: &str) {
     ADVECT_FASES.store(0, Relaxed);
     MOMENTO_FORA.store(1, Relaxed);
     ph2d_wet_paint::flow::COMMIT_ROTA.store(0, Relaxed);
+    ph2d_wet_paint::solver::SAIA_COLUNAS.store(1, Relaxed);
     let n = r.get(1..).and_then(|v| v.parse().ok());
     match (r.as_bytes().first(), n) {
         (Some(b'f'), Some(n)) => BLOCO_LINHAS.store(n, Relaxed),
         (Some(b's'), Some(n)) => SAIDA_BLOCO.store(n, Relaxed),
         (Some(b'x'), _) => ADVECT_FASES.store(1, Relaxed),
         (Some(b'm'), _) => MOMENTO_FORA.store(0, Relaxed),
+        (Some(b'k'), _) => ph2d_wet_paint::solver::SAIA_COLUNAS.store(0, Relaxed),
         (Some(b'c'), Some(n)) => {
             ph2d_wet_paint::flow::COMMIT_ROTA.store(u8::try_from(n).unwrap_or(0), Relaxed)
         }

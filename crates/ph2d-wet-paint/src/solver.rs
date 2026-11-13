@@ -635,7 +635,7 @@ pub use ladeira_do_oleo::{
 };
 mod project;
 mod sedimenta;
-pub use active_region::{rebuild_active_region, rebuild_active_region_rows};
+pub use active_region::{SAIA_COLUNAS, rebuild_active_region, rebuild_active_region_rows};
 pub use advect::advect;
 #[doc(hidden)]
 pub use advect_jacobi::{ADVECT_FASES, BLOCO_LINHAS, MEIO_PARADO, MOMENTO_FORA, SAIDA_BLOCO};

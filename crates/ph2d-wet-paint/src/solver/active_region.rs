@@ -40,6 +40,11 @@ pub fn rebuild_active_region(g: &mut Grid) {
 ///   *"scanned top-to-down so earlier 2s shape later sums"* — cross-row, com
 ///   ordem load-bearing. Fica **serial**, e é isso que a mantém correta.
 pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
+    let colunas = SAIA_COLUNAS.load(std::sync::atomic::Ordering::Relaxed) > 0;
+    reconstroi(g, mode, colunas);
+}
+
+fn reconstroi(g: &mut Grid, mode: Rows, colunas: bool) {
     let s = g.s;
     let w = g.w as i32;
     let h = g.h as i32;
@@ -274,11 +279,123 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
     let kx1 = (fx1 + 2).min(w);
     let ky0 = (fy0 - 2).max(1);
     let ky1 = (fy1 + 2).min(h);
-    let mut nx0 = w + 1;
-    let mut nx1 = 0;
-    let mut ny0 = h + 1;
-    let mut ny1 = 0;
-    let mut any_fire = false;
+    let (mut nx0, mut nx1, mut ny0, mut ny1, any_fire) =
+        saia(g, (kx0, kx1, ky0, ky1), mode, colunas);
+    if !any_fire {
+        // defensive: keep the pass-1 extent
+        nx0 = fx0;
+        nx1 = fx1;
+        ny0 = fy0;
+        ny1 = fy1;
+    }
+    g.bx0 = (nx0 - 5).max(1);
+    g.bx1 = (nx1 + 5).min(w);
+    g.by0 = (ny0 - 5).max(1);
+    g.by1 = (ny1 + 5).min(h);
+    g.has_fluid = true;
+    // Publica a faixa por-linha com o MESMO pad ±5 que a bbox acabou de levar
+    // — é o análogo por-linha do casco, e é ele que mantém `active ⊆ faixa`.
+    g.publish_spans_from_live();
+    g.publish_tiles_from_live();
+}
+
+/// `> 0` (o produto) corre a saia por TIRAS DE COLUNAS em paralelo; `0` = a varredura serial de antes.
+/// Ao bit: o trio vertical da célula `(x, y)` lê e escreve só a coluna `x`, então a ordem que a saia exige
+/// (de cima para baixo) é por coluna, e cada tira a cumpre (B13.12 cura 4; gate
+/// `a_saia_por_colunas_e_a_serial_ao_bit`).
+#[doc(hidden)]
+pub static SAIA_COLUNAS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+
+/// Colunas por tira da saia paralela.
+const TIRA_DA_SAIA: usize = 256;
+
+type Caixa = (i32, i32, i32, i32, bool);
+
+/// A saia (passe 2) na janela `k = (kx0, kx1, ky0, ky1)`; devolve a caixa dos disparos e se houve algum.
+fn saia(g: &mut Grid, k: (i32, i32, i32, i32), mode: Rows, colunas: bool) -> Caixa {
+    let (w, h) = (g.w as i32, g.h as i32);
+    let ident: Caixa = (w + 1, 0, h + 1, 0, false);
+    let (kx0, kx1, ky0, ky1) = k;
+    if !colunas || kx0 > kx1 || ky0 > ky1 {
+        return saia_serial(g, k, ident);
+    }
+    let s = g.s;
+    let spans_on = g.spans_enabled;
+    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
+    let Grid {
+        active,
+        row_lo,
+        row_hi,
+        row_tiles,
+        ..
+    } = g;
+    let (row_lo, row_hi, row_tiles): (&[i32], &[i32], &[u64]) = (row_lo, row_hi, row_tiles);
+    // Linhas `ky0 − 1 ..= ky1 + 1` (o trio), colunas `kx0..=kx1`, partidas em tiras.
+    let (c0, c1) = (kx0 as usize, kx1 as usize);
+    let ntiras = (c1 - c0 + 1).div_ceil(TIRA_DA_SAIA);
+    let mut tiras: Vec<Vec<&mut [u8]>> = (0..ntiras).map(|_| Vec::new()).collect();
+    let band = (ky0 - 1) as usize * s..(ky1 + 2) as usize * s;
+    for row in active[band].chunks_mut(s) {
+        for (t, peca) in row[c0..=c1].chunks_mut(TIRA_DA_SAIA).enumerate() {
+            tiras[t].push(peca);
+        }
+    }
+    let job = |(t, mut l): (usize, Vec<&mut [u8]>)| {
+        let (a, b) = (
+            (c0 + t * TIRA_DA_SAIA) as i32,
+            (c0 + (t + 1) * TIRA_DA_SAIA - 1).min(c1) as i32,
+        );
+        let mut acc = ident;
+        for y in ky0..=ky1 {
+            let (wl, wh) = crate::grid::span_window_of(row_lo, row_hi, spans_on, s, y);
+            let (rx0, rx1) = (wl.max(kx0), wh.min(kx1));
+            if rx0 > rx1 || rx1 < a || rx0 > b {
+                continue;
+            }
+            let r = (y - ky0 + 1) as usize;
+            let (cima, resto) = l.split_at_mut(r);
+            let (meio, baixo) = resto.split_at_mut(1);
+            let (up, mid, dn) = (&mut *cima[r - 1], &mut *meio[0], &mut *baixo[0]);
+            for (ra, rb) in span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), rx0, rx1) {
+                for x in ra.max(a)..=rb.min(b) {
+                    let j = (x - a) as usize;
+                    if up[j] as u32 + mid[j] as u32 + dn[j] as u32 == 1 {
+                        up[j] = 2;
+                        mid[j] = 2;
+                        if dn[j] == 0 {
+                            dn[j] = 2;
+                        }
+                        acc = (acc.0.min(x), acc.1.max(x), acc.2.min(y), acc.3.max(y), true);
+                    }
+                }
+            }
+        }
+        acc
+    };
+    let red = |p: Caixa, q: Caixa| {
+        (
+            p.0.min(q.0),
+            p.1.max(q.1),
+            p.2.min(q.2),
+            p.3.max(q.3),
+            p.4 || q.4,
+        )
+    };
+    let itens: Vec<(usize, Vec<&mut [u8]>)> = tiras.into_iter().enumerate().collect();
+    match mode {
+        Rows::Serial => itens.into_iter().map(job).fold(ident, red),
+        _ => {
+            use rayon::prelude::*;
+            itens.into_par_iter().map(job).reduce(|| ident, red)
+        }
+    }
+}
+
+/// A saia serial (o oráculo e a rota `SAIA_COLUNAS = 0`).
+fn saia_serial(g: &mut Grid, k: (i32, i32, i32, i32), ident: Caixa) -> Caixa {
+    let s = g.s;
+    let (kx0, kx1, ky0, ky1) = k;
+    let (mut nx0, mut nx1, mut ny0, mut ny1, mut any_fire) = ident;
     let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
     for y in ky0..=ky1 {
         // O trio VERTICAL só pode somar 1 onde alguma das três células é
@@ -319,20 +436,9 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
             }
         }
     }
-    if !any_fire {
-        // defensive: keep the pass-1 extent
-        nx0 = fx0;
-        nx1 = fx1;
-        ny0 = fy0;
-        ny1 = fy1;
-    }
-    g.bx0 = (nx0 - 5).max(1);
-    g.bx1 = (nx1 + 5).min(w);
-    g.by0 = (ny0 - 5).max(1);
-    g.by1 = (ny1 + 5).min(h);
-    g.has_fluid = true;
-    // Publica a faixa por-linha com o MESMO pad ±5 que a bbox acabou de levar
-    // — é o análogo por-linha do casco, e é ele que mantém `active ⊆ faixa`.
-    g.publish_spans_from_live();
-    g.publish_tiles_from_live();
+    (nx0, nx1, ny0, ny1, any_fire)
 }
+
+#[cfg(test)]
+#[path = "active_region_saia_tests.rs"]
+mod saia_tests;

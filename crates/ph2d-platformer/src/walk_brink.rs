@@ -76,6 +76,37 @@ impl WalkConfig {
     pub fn max_slope_cos(&self) -> f32 {
         libm::cosf(self.max_slope_deg.clamp(0.0, 90.0) * core::f32::consts::PI / 180.0)
     }
+
+    /// **O degrau caminhável da perna** — a régua única do jogo (`ph2d_physics_ecs` `cast_leg`) e
+    /// da curva do pulo (`arc_terrain`). Por `max_slope_cos()` e uma raiz, nunca pela tangente do
+    /// `std` (o determinismo do `physics_ecs_c9`); 90° ⇒ tudo é caminhável ⇒ infinito.
+    #[must_use]
+    pub fn step_limit(&self) -> StepLimit {
+        let c = self.max_slope_cos();
+        StepLimit(if c <= 0.0 {
+            f32::INFINITY
+        } else {
+            (1.0 - c * c).max(0.0).sqrt() / c
+        })
+    }
+}
+
+/// Quanto um pé de fora pode estar ACIMA do pé do meio, por metro de afastamento (a tangente do
+/// `max_slope`) — ver [`WalkConfig::step_limit`].
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct StepLimit(pub f32);
+
+impl StepLimit {
+    /// A folga que faz de uma rampa exatamente no `max_slope` uma rampa, e não um degrau: um
+    /// milímetro, a ordem do `normalized_allowed_linear_error` com que o solver assenta.
+    pub const STEP_EPS: f32 = 1.0e-3;
+
+    /// Um pé a `dx` do meio com o chão `rise` metros acima do do meio é um degrau que a perna
+    /// RECUSA? Só o degrau para cima conta: chão mais longe nunca ganha a redução.
+    #[must_use]
+    pub fn refuses(self, rise: f32, dx: f32) -> bool {
+        rise > dx * self.0 + Self::STEP_EPS
+    }
 }
 
 /// **Vale a pena perguntar ao mundo onde a beirada está?** (`W-Brink`)

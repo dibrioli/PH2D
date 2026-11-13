@@ -37,29 +37,6 @@ use ph2d_platformer::{MAX_WALL_SAMPLES, PlayerConfig};
 
 use super::probes;
 
-/// A folga que faz de uma rampa exatamente no `max_slope` uma rampa, e não um
-/// degrau: um milímetro, a mesma ordem do `normalized_allowed_linear_error` com
-/// que o solver assenta.
-const STEP_EPS: f32 = 1.0e-3;
-
-/// **Quanto um pé de fora pode estar ACIMA do pé do meio, por metro de
-/// afastamento** — a tangente do limite de rampa.
-///
-/// ⚠️ **Por `max_slope_cos()` e uma raiz, nunca por uma tangente do `std`:** este
-/// número entra no `physics_ecs_c9`, e a lei do módulo é que 1 ulp entre dois
-/// sistemas operacionais é um bug. A porta do cosseno já passa por `libm`; o
-/// resto é `sqrt`, que o IEEE-754 especifica exatamente.
-///
-/// `max_slope` de 90° dá cosseno 0 ⇒ tudo é caminhável ⇒ limite infinito, que é
-/// o que aquele número significa.
-fn step_limit(cfg: &PlayerConfig) -> f32 {
-    let c = cfg.walk.max_slope_cos();
-    if c <= 0.0 {
-        return f32::INFINITY;
-    }
-    (1.0 - c * c).max(0.0).sqrt() / c
-}
-
 /// **O que a perna achou** — o hit que a lei consome e a resposta de CADA pé.
 pub(super) struct LegRead {
     /// O vencedor da redução: o chão mais alto e caminhável.
@@ -85,7 +62,7 @@ pub(super) fn cast_leg(
     let (legs, n) = probes::ground_rays(world, body, cfg, origin);
     let mut per_foot = [None; MAX_WALL_SAMPLES];
     let mut hit: Option<CastHit> = None;
-    let step = step_limit(cfg);
+    let step = cfg.walk.step_limit();
     // A referência é o pé do MEIO, o índice 0 do `wall_offsets` — e é por isso
     // que ele é castado primeiro.
     let mut centre: Option<f32> = None;
@@ -104,7 +81,7 @@ pub(super) fn cast_leg(
             // Só o degrau para CIMA importa: um pé sobre um buraco acha chão
             // mais LONGE, e mais longe nunca ganha a redução.
             let dx = (leg.origin[0] - origin[0]).abs();
-            if c - h.distance > dx * step + STEP_EPS {
+            if step.refuses(c - h.distance, dx) {
                 continue;
             }
         }

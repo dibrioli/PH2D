@@ -12,7 +12,7 @@ use ph2d_ecs::{Entity, World};
 use ph2d_physics::world::layer_override::{Side, pair_collides};
 use ph2d_physics::{LayerMatrix, PlacedShape, RayHit, Terrain};
 use ph2d_platformer::arc::{ArcTouch, JumpArc, JumpArcs, TouchKind};
-use ph2d_platformer::{MAX_WALL_SAMPLES, PlayerConfig, odd_samples, wall_offsets};
+use ph2d_platformer::{MAX_WALL_SAMPLES, PlayerConfig, StepLimit, odd_samples, wall_offsets};
 
 use crate::seam::ColliderPose;
 use crate::{
@@ -106,9 +106,6 @@ pub fn touch_kind(normal: [f32; 2], up: [f32; 2], max_slope_cos: f32) -> TouchKi
     }
 }
 
-/// A folga do degrau caminhável — a `STEP_EPS` da perna do jogo (`bridge/player_leg.rs`).
-const STEP_EPS: f32 = 1.0e-3;
-
 /// **A perna do jogo**, a régua do pouso (`bridge/player_leg.rs::cast_leg`): o leque de raios do
 /// centro do corpo, para baixo, com o alcance `float_height + cling_distance` — o corpo pousa no
 /// tique em que ela agarra chão caminhável a descer, não quando o pé cruza a linha (abaixo de
@@ -119,19 +116,15 @@ struct Leg {
     offsets: [f32; MAX_WALL_SAMPLES],
     n: usize,
     reach: f32,
-    /// A subida máxima de um pé de fora, por metro (a tangente do `max_slope`).
-    step: f32,
+    /// O degrau caminhável — a MESMA régua da perna do jogo.
+    step: StepLimit,
     slope_cos: f32,
 }
 
 impl Leg {
     fn new(cfg: &PlayerConfig, body: Option<&PlacedShape>) -> Self {
         let c = cfg.walk.max_slope_cos();
-        let step = if c <= 0.0 {
-            f32::INFINITY
-        } else {
-            (1.0 - c * c).max(0.0).sqrt() / c
-        };
+        let step = cfg.walk.step_limit();
         let (centre, half_width) = body.map_or(([0.0, cfg.ride.float_height], 0.0), |b| {
             let (lo, hi) = b.aabb();
             (b.centre, (hi[0] - lo[0]) * 0.5)
@@ -168,7 +161,7 @@ impl Leg {
             if i == 0 {
                 mid = Some(h.distance);
             } else if let Some(c) = mid
-                && c - h.distance > off.abs() * self.step + STEP_EPS
+                && self.step.refuses(c - h.distance, off.abs())
             {
                 continue;
             }

@@ -102,7 +102,7 @@ pub use ride::{
 pub use sense::{Brink, Buoyed, GroundSample, PlayerInput};
 pub use slope::{Footing, FootingKind, footing, footing_verdict, is_grounded, no_uphill};
 pub use swim::{SwimConfig, SwimState, swim_motor, swim_rise, swim_step, vertical_drive};
-pub use walk::{WalkConfig, brink_probe_wanted, facing_step, walk};
+pub use walk::{StepLimit, WalkConfig, brink_probe_wanted, facing_step, walk};
 pub use wall::{
     GrabState, MAX_WALL_SAMPLES, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe,
     WallSample, cling, grab_step, odd_samples, wall_launch, wall_offsets, wall_probe_wanted,

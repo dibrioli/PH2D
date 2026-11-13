@@ -628,4 +628,4 @@ mod brink_tests;
 /// *quanto empurrar*, lá *até onde é seguro andar*.
 #[path = "walk_brink.rs"]
 mod brink;
-pub use brink::brink_probe_wanted;
+pub use brink::{StepLimit, brink_probe_wanted};

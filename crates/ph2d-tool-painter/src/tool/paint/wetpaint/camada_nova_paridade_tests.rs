@@ -5,6 +5,7 @@
 use super::agua_sobre_oleo_tests::ponteiro;
 use super::camada_nova_toque_tests::no_papel_do_dono;
 use crate::tool::PainterTool;
+use crate::tool::layers::TROCA_RECOMPOE_SEMPRE;
 use crate::tool::paint::impasto_fields::MARCA_DERRUBA_TUDO;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
@@ -74,6 +75,12 @@ impl Placa {
     }
 }
 
+/// O caminho antigo: a marca que vira derruba a composição (B18.4) e o «+»/a troca recompõem sempre (B18.3).
+fn antigo(ligado: bool) {
+    MARCA_DERRUBA_TUDO.with(|c| c.set(ligado));
+    TROCA_RECOMPOE_SEMPRE.with(|c| c.set(ligado));
+}
+
 /// Os três gémeos: a cura pela pista da placa, a cura pela pista CPU, e o oráculo (caminho antigo) pela CPU.
 struct Gemeos {
     placa: (PainterTool, Placa),
@@ -90,13 +97,13 @@ impl Gemeos {
             f(t);
             t.on_tick(1000.0 / 60.0);
         };
-        MARCA_DERRUBA_TUDO.with(|c| c.set(self.controlo));
+        antigo(self.controlo);
         tique(&mut self.placa.0);
         self.placa.1.quadro(&mut self.placa.0, caso);
         tique(&mut self.cpu);
-        MARCA_DERRUBA_TUDO.with(|c| c.set(true));
+        antigo(true);
         tique(&mut self.oraculo);
-        MARCA_DERRUBA_TUDO.with(|c| c.set(false));
+        antigo(false);
     }
 
     fn confere(&mut self, caso: &str) {
@@ -139,6 +146,10 @@ impl Gemeos {
 }
 
 fn corre(novo: fn() -> PainterTool, controlo: bool) {
+    corre_com(novo, controlo, false);
+}
+
+fn corre_com(novo: fn() -> PainterTool, controlo: bool, com_undo: bool) {
     let fixo = || {
         let mut t = novo();
         t.set_wet_relogio_fixo(true); // a mesma tinta nos três gémeos
@@ -170,7 +181,21 @@ fn corre(novo: fn() -> PainterTool, controlo: bool) {
         t.select_layer(nova);
     });
     g.traco("nova de volta", 420.0);
-    // O undo/redo fica de fora: o CONTROLO (os três no caminho antigo) já diverge nele com o relógio fixo.
+    if !com_undo {
+        return;
+    }
+    for k in 0..4 {
+        g.em("undo", &|t| {
+            t.undo_last();
+        });
+        g.confere(&format!("undo {k}"));
+    }
+    for k in 0..4 {
+        g.em("redo", &|t| {
+            t.redo_last();
+        });
+        g.confere(&format!("redo {k}"));
+    }
 }
 
 fn sprite_crua() -> PainterTool {
@@ -196,4 +221,16 @@ fn controlo_os_gemeos_pelo_caminho_antigo_dao_o_mesmo_bit() {
 #[test]
 fn a_marca_molhada_confinada_da_o_bit_do_caminho_antigo_na_sprite_crua() {
     corre(sprite_crua, false);
+}
+
+/// O undo/redo depois do «+» e dos traços: com o pool rayon de 1 fio o controlo e as duas curas dão o bit
+/// (3 corridas × 3); com o pool cheio o CONTROLO (os três no caminho antigo) diverge numa volta que muda de
+/// corrida para corrida (undo 3, redo 1, redo 2) — o Wet sob undo não é determinístico na largura do pool.
+#[test]
+#[ignore = "B18.4: o undo/redo do Wet diverge com o pool rayon cheio, até no controlo (RAYON_NUM_THREADS=1: verde)"]
+fn o_undo_e_o_redo_dao_o_bit_do_caminho_antigo() {
+    corre_com(sprite_crua, true, true);
+    corre_com(no_papel_do_dono, true, true);
+    corre_com(sprite_crua, false, true);
+    corre_com(no_papel_do_dono, false, true);
 }

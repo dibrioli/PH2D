@@ -98,6 +98,23 @@ impl PainterTool {
             && !self.papel_atravessa_vidro()
     }
 
+    /// **A camada nova TRANSPARENTE deixa a figura igual?** (B18.4, o «+») — α = 0 não compõe nada nem cobre o
+    /// dente do papel (`ReliefFields::tinta` lê o α), então, ao contrário da troca, o relevo aceso e a tinta viva
+    /// (cada uma marca o próprio sujo) ficam dentro; só um traço aberto e o que lê a activa ficam de fora. O sujo
+    /// pendente (cache vazio, pista GPU velha) fica como estava: nada se acrescenta, nada se perde.
+    pub(crate) fn a_nova_transparente_mantem_a_figura(&self) -> bool {
+        #[cfg(test)]
+        if TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
+            return false;
+        }
+        !self.traco_ou_tinta_viva()
+            && !self.is_editing_shape()
+            && !self.has_parked_shapes()
+            && !self.mask_scratch_active()
+            && self.mask_view_grayscale.is_none()
+            && !self.papel_atravessa_vidro()
+    }
+
     /// A troca da activa com a figura provada igual ([`Self::a_troca_mantem_a_figura`]): o painel publica e
     /// os cortes dos ajustes caem como no [`Self::invalidate_composite`], mas o `composited`, o sujo e a
     /// pista GPU ficam — o quadro seguinte não recompõe a pilha (37 ms a 4K com 3 camadas).

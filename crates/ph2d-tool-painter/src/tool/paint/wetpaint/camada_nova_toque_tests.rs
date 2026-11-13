@@ -74,6 +74,32 @@ fn o_primeiro_toque_da_camada_nova_reivindica_o_traco_e_nao_a_tela() {
     );
 }
 
+/// O «+» no papel do dono (relevo aceso, sem tinta viva): os quadros seguintes não reivindicam nada à pista GPU
+/// (a camada transparente não muda a figura nem o dente). O controlo é o caminho antigo (`TROCA_RECOMPOE_SEMPRE`):
+/// a tela inteira. Com a tinta Wet viva o «+» ainda recompõe tudo (a paridade dá a tela ≠ oráculo: B18.4 aberto).
+#[test]
+fn no_papel_do_dono_o_mais_transparente_nao_reivindica_nada() {
+    let mede = |antigo: bool| {
+        let mut t = no_papel_do_dono();
+        for _ in 0..3 {
+            let _ = reivindicada(&mut t);
+        }
+        crate::tool::layers::TROCA_RECOMPOE_SEMPRE.with(|c| c.set(antigo));
+        let nova = t.add_raster_layer("nova").expect("a camada nova");
+        t.select_layer(nova);
+        crate::tool::layers::TROCA_RECOMPOE_SEMPRE.with(|c| c.set(false));
+        (0..3).map(|_| reivindicada(&mut t)).max().unwrap_or(0)
+    };
+    let (antes, depois) = (mede(true), mede(false));
+    let tela = u64::from(W) * u64::from(H);
+    eprintln!("o «+» (texels; tela {tela}): caminho antigo {antes} · cura {depois}");
+    assert_eq!(antes, tela, "controlo: o caminho antigo reivindica a tela");
+    assert_eq!(
+        depois, 0,
+        "o «+» transparente reivindicou {depois} de {tela} texels"
+    );
+}
+
 /// O documento do dono: o «Textured Paper» do New Image (Relief 0,5).
 pub(super) fn no_papel_do_dono() -> PainterTool {
     let mut t = PainterTool::default();

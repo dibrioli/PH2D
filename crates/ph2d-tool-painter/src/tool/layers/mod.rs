@@ -18,6 +18,8 @@ mod adjustments;
 mod aplica_mascara_tests;
 mod cache;
 #[cfg(test)]
+pub(crate) use cache::TROCA_RECOMPOE_SEMPRE;
+#[cfg(test)]
 mod copias_de_plano_tests;
 mod estrutura;
 mod model;

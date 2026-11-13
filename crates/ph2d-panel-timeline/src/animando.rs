@@ -7,15 +7,12 @@
 use std::cell::Cell;
 
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, label_column_width, paint_icon, paint_text_elided, resolve,
-    stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 
 use crate::ids::TIMELINE_ANIMATING_DONE;
 
@@ -112,38 +109,6 @@ pub(crate) fn rotulo(snap: &TimelineViewSnapshot) -> Option<String> {
         .position(|&i| i == snap.active_clip)?;
     let clip = snap.clips.get(linha)?;
     Some(ph2d_i18n::tr("panel.timeline.animating").replace("{clip}", clip))
-}
-
-fn medidas() -> (f32, f32, f32) {
-    (TypeToken::Sm.px(), Spacing::Sm.px(), Spacing::Xs.px())
-}
-
-/// A largura da pílula «● Animating jump» (o Done mora no chip do clipe, [`botao_done`]).
-pub(crate) fn pilula_w(ctx: &mut PaintCtx, texto: &str) -> f32 {
-    let (font, pad, gap) = medidas();
-    let tw = label_column_width(ctx.text_system, font, [texto]);
-    // Um vão a mais: a medida da coluna arredonda abaixo da do pintor e a reticência comia o nome.
-    pad + gap * 2.0 + gap + tw.ceil() + gap + pad
-}
-
-/// Pinta a pílula «● Animating jump» em `r` (o raio dos campos do cartão, B7): só o aviso.
-pub(crate) fn pilula(ctx: &mut PaintCtx, theme: Theme, r: Rect, texto: &str) {
-    let (font, pad, gap) = medidas();
-    let azul = resolve(ColorToken::Accent, theme);
-    let raio = m::FIELD_RADIUS;
-    fill_rounded_rect(ctx.scene, r, raio, resolve(ColorToken::AccentSoft, theme));
-    let ponto = gap * 2.0;
-    let cy = r.y + r.h * 0.5;
-    let bolinha = Rect::new(r.x + pad, cy - ponto * 0.5, ponto, ponto);
-    fill_rounded_rect(ctx.scene, bolinha, ponto * 0.5, azul);
-    let tx = bolinha.x + ponto + gap;
-    let tw =
-        label_column_width(ctx.text_system, font, [texto]).min((r.x + r.w - pad - tx).max(0.0));
-    let ty = r.y + folga_do_texto(r.h, font);
-    let claro = resolve(ColorToken::Text1, theme);
-    paint_text_elided(ctx.text_system, ctx.scene, texto, tx, ty, font, tw, claro);
-    // FRAME-RAW-OK: o contorno azul É a marca de «animando» (a pílula acesa), não moldura de repouso.
-    stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Thin.px(), azul);
 }
 
 /// O Done redondo dentro da ponta direita do chip `chip`, com a folga de um segmento.

@@ -72,6 +72,14 @@ pub(super) fn pinta(
         (r.x, r.y),
         (StrokeToken::Thick, (f, f, 0.0, 0.0)),
     );
+    // ⭐ Dono 13/11: ligados, o ● (Auto Key) e o ▶ (a tocar) pulsam com brilho, em ciclo.
+    let pulso = ctx.host.store().on_pulse();
+    if snap.auto_key {
+        brilho(ctx, ink.color(ColorToken::Danger), celula(r, 0), pulso);
+    }
+    if snap.playing {
+        brilho(ctx, ink.color(ColorToken::Success), celula(r, 3), pulso);
+    }
     // O gravar é uma bola CHEIA (o glifo do ponto é pequeno demais para ler-se como «gravar»).
     let d = m::ICON_GLYPH * 0.6;
     let cx = r.x + m::FIELD_H * 0.5;
@@ -82,4 +90,17 @@ pub(super) fn pinta(
         d * 0.5,
         ink.color(ColorToken::Danger),
     );
+}
+
+/// A célula `i` da fila (cada ícone ocupa um campo quadrado).
+fn celula(r: Rect, i: usize) -> Rect {
+    Rect::new(r.x + m::FIELD_H * i as f32, r.y, m::FIELD_H, m::FIELD_H)
+}
+
+/// O halo de «ligado» sobre a célula `c`: um disco na cor do botão que cresce e acende com o pulso.
+fn brilho(ctx: &mut PaintCtx, cor: ph2d_vector::Color, c: Rect, pulso: f32) {
+    let alfa = ph2d_tokens::chrome::TIMELINE_LIGADO_BRILHO_ALPHA * pulso;
+    let d = m::ICON_GLYPH + (c.w - m::ICON_GLYPH) * pulso;
+    let disco = Rect::new(c.x + (c.w - d) * 0.5, c.y + (c.h - d) * 0.5, d, d);
+    ph2d_editor_core::paint::fill_rounded_rect(ctx.scene, disco, d * 0.5, cor.multiply_alpha(alfa));
 }

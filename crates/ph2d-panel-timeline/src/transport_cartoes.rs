@@ -6,7 +6,7 @@
 
 use super::*;
 use ph2d_editor_core::panel::cards::CardCtx;
-use ph2d_editor_core::panel::cards::banda::{self, Emoldurada, Icone, Sinal, metrics as m};
+use ph2d_editor_core::panel::cards::banda::{self, Icone, Sinal, metrics as m};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
 
@@ -311,16 +311,17 @@ fn dono_e_opcoes(
 ) -> (ClipChip, Rect) {
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
-    // «Edit curves on canvas» (dono 10/11): só na aba Keys, antes do dono — no lugar do antigo «Keys | Curves».
-    let caixa = Emoldurada {
-        id: ids::TIMELINE_CURVES_ON_CANVAS,
-        nome: ph2d_i18n::tr("panel.timeline.curves_on_canvas"),
-        on: view.curves_on_canvas,
-        antes: None,
-        fim: None,
-    };
+    // «Edit Path» (dono 10/11): só na aba Keys, antes do dono. Dono 13/11: um botão que acende, só o
+    // nome, sem a caixa de marcar (mais compacto).
+    let caixa = (
+        ids::TIMELINE_CURVES_ON_CANVAS,
+        ph2d_i18n::tr("panel.timeline.curves_on_canvas"),
+        view.curves_on_canvas,
+    );
     let mut vw = if view.tab == crate::tab::Tab::Keys {
-        c.emoldurada_w(&caixa) + m::FIELD_GAP
+        c.text_system.prefix_width(caixa.1, m::VALUE_PX).ceil()
+            + m::FIELD_PAD_R * 2.0
+            + m::FIELD_GAP
     } else {
         0.0
     };
@@ -328,12 +329,22 @@ fn dono_e_opcoes(
     // Numa fileira que não leva a caixa e o dono juntos, a caixa fica na fileira dela.
     if vw > 0.0 && vw + dono_w > f.body.w {
         let (cx, cy) = f.a_direita(vw - m::FIELD_GAP);
-        c.emoldurada_discreta_em(&caixa, cx, cy, tons_da_barra(theme));
+        crate::alternador::pinta(
+            &mut c,
+            caixa,
+            Rect::new(cx, cy, vw - m::FIELD_GAP, m::FIELD_H),
+            theme,
+        );
         vw = 0.0;
     }
     let (x0, y) = f.a_direita(vw + dono_w);
     if vw > 0.0 {
-        c.emoldurada_discreta_em(&caixa, x0, y, tons_da_barra(theme));
+        crate::alternador::pinta(
+            &mut c,
+            caixa,
+            Rect::new(x0, y, vw - m::FIELD_GAP, m::FIELD_H),
+            theme,
+        );
     }
     let x = x0 + vw;
     let rect = Rect::new(x, y, ANIM_W, m::FIELD_H);
@@ -433,13 +444,7 @@ fn grupo_de_gravar(
     snap: &TimelineViewSnapshot,
     body: Rect,
 ) {
-    // «● Animating jump [Done]» abre a 2.ª fileira (doc 17 item 9, B7): na do título empurrava o
-    // Animation para baixo.
-    if let Some(texto) = crate::animando::rotulo(snap) {
-        let w = crate::animando::pilula_w(ctx, &texto);
-        let (x, y) = f.poe(w);
-        crate::animando::pilula(ctx, theme, Rect::new(x, y, w, m::FIELD_H), &texto);
-    }
+    // A pílula «● Animating jump» saiu (dono 13/11): o ✓ verde no chip do clipe já diz que se anima.
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
     let tons = tons_da_barra(theme);

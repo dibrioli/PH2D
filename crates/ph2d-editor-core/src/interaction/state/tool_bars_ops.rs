@@ -113,6 +113,25 @@ impl WidgetStore {
         self.tool_bars.clock_ns = now_ns;
     }
 
+    /// Espelha o «movimento reduzido» do artista (o `hero` chama-o em todo quadro).
+    pub fn note_reduced_motion(&mut self, on: bool) {
+        self.tool_bars.reduced_motion = on;
+    }
+
+    /// ⭐ **Um pulso cíclico de «ligado»** (`0..=1`), no ritmo do token `Slow` × 2 (1,25 Hz ÷ 2, abaixo
+    /// do tecto de 3 por segundo da WCAG 2.3.1): sobe e desce suave. Com movimento reduzido, `1` fixo.
+    #[must_use]
+    pub fn on_pulse(&self) -> f32 {
+        if self.tool_bars.reduced_motion {
+            return 1.0;
+        }
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let period = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 2.0 * 1e6) as u128;
+        #[allow(clippy::cast_precision_loss)]
+        let phase = (self.tool_bars.clock_ns % period.max(1)) as f32 / period.max(1) as f32;
+        0.5 - 0.5 * (phase * std::f32::consts::TAU).cos()
+    }
+
     /// O último relógio anotado (ns) — o que uma cena de smoke dá aos contactos sintéticos, para
     /// que o reconhecedor do toque meça o tempo com o MESMO relógio que a shell.
     #[must_use]
@@ -202,6 +221,28 @@ impl WidgetStore {
 mod tests {
     use super::*;
     use ph2d_a11y::NodeId;
+
+    /// ⭐ Dono 13/11: o pulso de «ligado» sobe e desce em ciclo (apagado no início do período, aceso
+    /// a meio) e, com movimento reduzido, fica aceso fixo. *Mutação: ignorar o reduzido ⇒ vermelho.*
+    #[test]
+    fn the_on_pulse_cycles_and_holds_still_with_reduced_motion() {
+        let ms = 1_000_000u128;
+        let mut s = WidgetStore::default();
+        s.note_clock(8_000 * ms);
+        assert!(s.on_pulse() < 0.01, "o início do período é apagado");
+        s.note_clock(8_400 * ms);
+        assert!(s.on_pulse() > 0.99, "a meio do período (400 ms) é aceso");
+        s.note_clock(8_800 * ms);
+        assert!(s.on_pulse() < 0.01, "o período fecha apagado");
+        s.note_reduced_motion(true);
+        for t in [8_000u128, 8_200, 8_400, 8_600] {
+            s.note_clock(t * ms);
+            assert!(
+                (s.on_pulse() - 1.0).abs() < f32::EPSILON,
+                "o reduzido pulsou"
+            );
+        }
+    }
 
     /// ⭐ **O piscar acende JÁ, pisca TRÊS vezes e apaga**; com movimento reduzido é um anel fixo
     /// pelo mesmo tempo. Os números são os do token `Slow` (400 ms) e do tecto da WCAG 2.3.1.

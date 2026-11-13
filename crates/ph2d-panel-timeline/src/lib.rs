@@ -18,6 +18,7 @@
 
 mod abas_laterais;
 mod alca_estado;
+mod alternador;
 mod animando;
 pub use animando::{animating, parked, resume, sessao, take_done, take_ended};
 mod breadcrumb;

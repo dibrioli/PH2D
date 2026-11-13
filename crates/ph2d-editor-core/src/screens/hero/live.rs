@@ -82,6 +82,7 @@ fn tick_hover(hero: &mut HeroScreen, dt: f64) {
         pending.push((id, live));
     }
     hero.motion.advance(dt);
+    hero.store.note_reduced_motion(hero.motion.reduced_motion());
     for (id, seeded) in pending {
         let live = hero.motion.get(id).unwrap_or(seeded);
         hero.store.set_hover_live(id, live);

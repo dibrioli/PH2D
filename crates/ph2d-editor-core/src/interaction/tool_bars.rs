@@ -149,6 +149,9 @@ pub struct ToolBarsSlot {
     pub(crate) pointer: Option<[f32; 2]>,
     /// O relógio do chrome (ns), posto pelo `dispatch_tick` em todo quadro.
     pub(crate) clock_ns: u128,
+    /// O «movimento reduzido» do artista, espelhado do `hero.motion` em todo quadro: um painel
+    /// (que não vê o `hero`) lê-o para trocar um pulso por luz fixa.
+    pub(crate) reduced_motion: bool,
     /// F4: o comando que a paleta mandou PISCAR onde mora, o pulldown que o continha NO MOMENTO da
     /// escolha (um interruptor troca de id ao ser executado), e quando.
     pub(crate) flash: Option<(NodeId, Option<NodeId>, u128)>,

@@ -150,6 +150,20 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
   editor-core it 20 (file_loc_cap, hr15, the_shell_only_shrinks, panel_loc_cap, censo). fmt ✓ · clippy `-D warnings` (panel-timeline, tokens) ✓. `barra_clips.rs` = 600 linhas (no tecto).
 - `PH2D_CARDS=0` intocado. Shell intocada. Fotos da 2.ª volta: [Keys · Containers · Arrange](../fotos/19_abas_laterais_v2_keys_containers_arrange.png) · [zoom](../fotos/19_abas_laterais_v2_zoom.png). 1.ª volta (recusada): [Keys + Done verde](../fotos/19_abas_laterais_keys_e_done_verde.png) · [Containers](../fotos/19_abas_laterais_containers.png) · [Arrange](../fotos/19_abas_laterais_arrange.png). Done em lista: [foto](../fotos/19_done_verde_clips_em_lista.png).
 
+## Acréscimo 4 — dono 13/11: smoke das abas OK; pulso de «ligado», sem «Animating», Edit Path botão
+
+- **Smoke do dono das abas laterais: OK** (13/11).
+- **Pulso de «ligado»** (verbatim: «para auto rec e play, animação cíclica de "ligado" — piscando com brilho, quando ativados»).
+  Com o Auto Key ligado, o ●, e a tocar, o ▶ levam um halo na cor do botão que cresce e acende em ciclo (`transport_flutuante::brilho`, `TIMELINE_LIGADO_BRILHO_ALPHA = 0,45`, token novo).
+  O relógio: `WidgetStore::on_pulse()` (novo, `ph2d-editor-core`, `tool_bars_ops.rs`), período 2 × `Duration::Slow` = 800 ms, abaixo do tecto da WCAG 2.3.1, a partir do `clock_ns` que o `dispatch_tick` já anota.
+  Com movimento reduzido fica aceso fixo: `WidgetStore::note_reduced_motion` (novo), espelhado por `hero/live.rs` depois do `motion.advance`; campo `ToolBars::reduced_motion`.
+  Teste `the_on_pulse_cycles_and_holds_still_with_reduced_motion`. [Foto: três instantes do ▶](../fotos/20_pulso_do_play_tres_instantes.png).
+- **A pílula «● Animating …» saiu** (dono: «não é mais necessário, já temos o check ao lado do nome do clip»). Saíram `animando::pilula`, `pilula_w` e `medidas`; o `rotulo` continua a decidir se o ✓ aparece.
+- **Edit Path é um botão que acende, só com o nome** (dono: «mais compacto tirando o checkbox e colocando como toggle button só com o nome»). `src/alternador.rs` (novo; saiu de `transport_cartoes`, que estava no tecto de 600). Ligado leva `ativa_fundo` + `ativa_texto` (o chip escolhido); o mesmo id e o mesmo clique (o store espelha a caixa em `prepara`).
+  ⚠️ Desvio consciente da regra da casa «liga/desliga = checkbox» (dono 10/11): pedido EXPLÍCITO do dono para este botão. [Foto](../fotos/20_edit_path_botao_e_sem_animating.png).
+- Por nome ✓: panel-timeline it 73, lib abas_laterais 8, animando 4, a_caixa_vazia_da_barra 1 · editor-core it 20 (file_loc_cap, hr15, the_shell_only_shrinks, panel_loc_cap, censo), lib flash/on_pulse/bottom_hud 9 · fmt ✓ · clippy `-D warnings` (panel-timeline, editor-core, tokens) ✓.
+- **PEDIDO ABERTO para a próxima janela:** o widget do fim do clip ([continuação](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-13_FIM_DO_CLIP.md)).
+
 ## Aberto (visto, NÃO feito)
 
 1. **Limite conhecido:** com o pai ANIMADO durante o clip, o duplo-clique na curva projeta pelo pai na 1.ª chave (desenho e âncoras são exatos por instante). Foto de cena com pai rodado não tirada.

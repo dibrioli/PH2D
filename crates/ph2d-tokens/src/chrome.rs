@@ -181,6 +181,9 @@ pub const TIMELINE_ALCA_GUIA_ALPHA: f32 = 0.8; // LITERAL-PX-OK: opacidade da gu
 pub const TIMELINE_ALEM_VEU_ALPHA: f32 = 0.65; // LITERAL-PX-OK: opacidade do véu além do fim
 /// ⭐ **As abas laterais de trás têm cor diferente entre si** (dono 13/11): sobre o corpo de campo,
 /// cada degrau de distância à aba ativa lava a aba com o cinza dos valores a esta opacidade.
+/// ⭐ **O brilho de «ligado»** do ● (Auto Key) e do ▶ (a tocar) (dono 13/11): o halo na cor do botão,
+/// no topo do pulso, a esta opacidade.
+pub const TIMELINE_LIGADO_BRILHO_ALPHA: f32 = 0.45; // LITERAL-PX-OK: opacidade do halo no topo do pulso
 pub const TIMELINE_ABA_RECUO_ALPHA: f32 = 0.22; // LITERAL-PX-OK: opacidade de um degrau de recuo da aba lateral
 /// As listras de «além do fim».
 pub const TIMELINE_ALEM_LISTRA_ALPHA: f32 = 0.42; // LITERAL-PX-OK: opacidade das listras além do fim

@@ -58,7 +58,7 @@ Colado da saída (merge-base `4f46a3573c`, 8 commits, 70 arquivos):
 
 - Tecto da shell: reconte pelo integrador (§4).
 - Herdados da curva do pulo ([handoff](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)): ~~a curva termina nos pés e não segue o terreno~~ e ~~Jump Height 2,00 × ápice 2,04~~ — FECHADOS na rodada de 12/11 (adendo abaixo).
-- Defeito do wall jump (GEF02, adendo §A.3) · `layer_override` por forma não lido pelo corte da curva (§A.2).
+- Defeito do wall jump (GEF02, adendo §A.3) · ~~`layer_override` por forma não lido pelo corte da curva (§A.2)~~ — FECHADO (adendo «Últimos abertos»).
 - Seguinte na fila: Projectile Motion ([plano](../23_refundacao_plano.md)).
 
 ## Adendo — Rodada dos abertos (12/11) · `git log --oneline 3ee0bd34f4..HEAD`
@@ -88,7 +88,7 @@ Mecanismo no código e nas mensagens dos commits; aqui só o que o integrador pr
 ### A.4 ABERTO (depois da rodada)
 
 - **Wall jump (GEF02 / [BUGS_physics.md Bug #11](../../Physics/BUGS_physics.md)):** com wall jump height ~1,9–2,0 o controle «parede sólida» de `platform_wall` é atirado ~23 m/s ao topo da parede (y≈12,9). É da ponte, não da lei do pulo; as fixturas seguram `OLD_LAW_WALL_JUMP_HEIGHT`.
-- `layer_override` por forma NÃO é lido pelo corte da curva (`arc_terrain.rs` usa a camada da forma principal).
+- ~~`layer_override` por forma NÃO é lido pelo corte da curva~~ — FECHADO em `15429fc87f`.
 - Tecto da shell: reconte pelo integrador (§4).
 
 ## Adendo — Smoke do dono 12/11 — números e sombra
@@ -104,5 +104,23 @@ Commits `adcd392fc7..HEAD` (5, só a curva do pulo, GEF 04):
 ### ABERTO para o INTEGRADOR / GEF02
 
 - **Ponte (proibida a esta linha):** em `bridge/player.rs`, depois de `let mut cfg = cfg.config();`, pôr `cfg.jump.world_steps = crate::world_steps(&self.settings());` — e o mesmo em `components/player_arc.rs` (`jump_arcs`). Sem isso, um projeto com sub-passos/iterações fora da fábrica volta a errar a Jump Height (desenho e jogo seguem iguais entre si, ambos com 16).
-- Menor: abaixo de ~1 m a perna do jogo apanha o corpo antes da linha de pouso (pouso desenhado 2 tiques depois; 49×47 a 0,5 m).
-- Foto com nome sem prefixo `fisica_` falha calado.
+- ~~Menor: abaixo de ~1 m a perna do jogo apanha o corpo antes da linha de pouso~~ — FECHADO em `15429fc87f`.
+- ~~Foto com nome sem prefixo `fisica_` falha calado~~ — FECHADO em `3b1060f92d`.
+
+## Adendo — Últimos abertos (12/11, smoke do dono OK nos números e na sombra)
+
+Commits `e20eaea286..HEAD` (3):
+
+- `15429fc87f` — o pouso da curva usa o critério da PERNA do jogo: alcance `float_height + cling_distance`, leitura na pose do fim do tique anterior, velocidade do fim do tique ≤ 0. Prova: 48/48 casos (4 feels × 4 alturas × correndo/parado/curto) pousam no MESMO tique e a ≤ 1 cm. `ph2d_physics::Terrain` (`cast_ray`, `sweep_body`) substitui `sweep_path`; o corte filtra por `layer_override::pair_collides` (a regra dos contactos): o player pela forma principal, cada forma da cena com a sua `CollisionOverride`. Custo medido (profile smoke): 68,5 µs/chamada (era 54,3). **Para o INTEGRADOR:** `arc_terrain.rs` repete a conta do degrau caminhável e o `STEP_EPS` de `bridge/player_leg.rs` (cópia, porque a ponte é proibida a esta linha) — unificar. Limitação: o modo em que a lei move o corpo sem mola não está modelado.
+- `3b1060f92d` — `PH2D_GAME_SMOKE_FOTO` e `PH2D_GAME_SMOKE_DRIVE` com nome desconhecido recusam alto (stderr com sugestão, exit 2, antes da janela). Uma fonte da verdade: cada leitor expõe NOMES, a união está em `crates/ph2d-game-smoke-fotos/src/nomes.rs`, a recusa em `ph2d-app-game` `smoke.rs`, uma linha em `shells/desktop/src/main.rs`; censo em `shells/game-scenes/tests/it/jogo_nomes_do_smoke.rs`. `ph2d-game-smoke-fotos` está a 1075 de 1077 no tecto. Docs antigos com nomes sem prefixo `fisica_` agora recusam alto.
+- `536b62470b` — a foto do terreno com recuo 1,5 m (o Full agarrava a borda da Platform High a 2,1 m — verdade do jogo, medida); gate novo `a_foto_do_terreno_e_o_que_o_player_real_faz`.
+
+### Fechados por estes commits
+
+Pouso em pulo baixo (perna do jogo) · `layer_override` por forma no corte da curva · nome de foto calado.
+
+### ABERTO (o que resta)
+
+- **Ponte:** `world_steps` do projeto para a lei (linha pronta no adendo «Smoke do dono 12/11») e unificar a conta do degrau (`arc_terrain.rs` × `bridge/player_leg.rs`).
+- **Bug #11 do wall jump** (GEF02, [BUGS_physics.md](../../Physics/BUGS_physics.md)).
+- **Tecto da shell:** reconte pelo integrador (§4).

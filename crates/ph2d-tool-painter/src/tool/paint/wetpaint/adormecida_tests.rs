@@ -37,7 +37,7 @@ pub(super) fn borracha_viva() -> Vec<u8> {
     apaga(&mut t)
 }
 
-fn volta_e_apaga(t: &mut PainterTool) -> Vec<u8> {
+pub(super) fn volta_e_apaga(t: &mut PainterTool) -> Vec<u8> {
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_paint_tool_mode("eraser");
     apaga(t)

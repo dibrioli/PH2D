@@ -159,3 +159,58 @@ As variantes eram intercaladas no MESMO processo, 8 blocos, perfil `smoke`, e o 
   da pista GPU.
 - Vizinhos verdes por nome: `adormec` 29, `confin` 28, `janela` 17, `mais_sem_diff` 3. A sonda tem o eixo novo
   `PH2D_SONDA_TELA_ZERO=ab`; `PH2D_SONDA_JANELA` passa a ser a chave por palavras.
+
+## Continuação 3 (13/11): o fio de fundo do «+» é a compressão da adormecida (PROVADO e curado)
+
+Medição própria: um teste temporário (não comitado) que chama a sonda. Wet Wash 4K, `PH2D_SONDA_ENCOLHE=ab` × 4
+blocos rodados no MESMO processo, perfil `smoke`. A sonda imprime agora a hora de início e de fim do fio da compressão
+relativa ao «+» (`ULTIMO_FIO`, só `cfg(test)`). Para o coordenador: `N7_ITEM3d_sonda.sh` (Wet Wash e Watercolor Basic).
+
+| chave `ENCOLHE_NO_SILENCIO` | início do fio | «+» total (ms) | `adormeceu_muda` | 1.º `preview` |
+|---|---|---|---|---|
+| desligada (antes) | 1,7–12,5 ms após o «+» | 5,6 · 33,6 · 38,1 · 39,0 | 1,6–14,9 | 1,7–29,7 |
+| ligada | 301,9–305,3 ms | 6,0 · 6,0 · 8,9 · 9,8 | 1,58–1,69 | 1,97–5,9 |
+
+O fio comprime ~460 ms (na rota antiga, de 2 a 470 ms após o «+»). `encolhe` usa `into_par_iter`, que rouba o pool
+rayon, e varre centenas de MB. Na rota antiga as faltas de página do processo no «+» são de 241–484 MB, na nova de
+11–53 MB. Isto confirma a hipótese da Continuação 2: as faltas eram do fio, e o «+» do fio principal é de ~6 ms.
+
+- **Cura** (`wetpaint/adormecida/silencio.rs`): o fio nasce igual, mas só comprime depois de `SILENCIO_MS = 300` sem
+  evento de caneta, contados a partir do adormecer. `marca_gesto()` é chamado em `on_canvas_pointer`, em todo evento
+  que não é hover. A RAM fica com tecto: `ESPERA_MAX_MS = 3000`, ou seja, sob traço contínuo a sessão comprime na
+  mesma no máximo 3 s depois. A conta do tecto das adormecidas (`bytes / 7`) não mudou, e o porquê dos 64 MB fica
+  igual. Acordar cancela a espera: o canal acorda o fio, e quem baixa `espera` primeiro decide. O `pronta()` trata a
+  tinta por começar como pronta, para o acordar não esperar 300 ms. O resultado é ao bit, porque a compressão é a
+  mesma ou não acontece. Chave em execução `ENCOLHE_NO_SILENCIO` (por fio, ligada).
+- **Gates** (`adormecida/silencio_tests.rs`):
+  - `a_compressao_espera_o_silencio_e_acontece`: começa ≥ 290 ms depois, a sessão fica comprimida (é o controlo de que
+    a compressão continua a acontecer), e a Borracha depois de acordar dá o bit de quem nunca saiu.
+  - `sem_a_chave_a_compressao_comeca_logo`: controlo da rota antiga.
+  - `acordar_na_espera_cancela_a_compressao`: no relógio da parede acorda logo, o fio nunca comprime, e dá o mesmo bit.
+- **Mutações:**
+  - (M1) sem espera → vermelho.
+  - (M3) `pronta` sem «por começar» → vermelho.
+  - (M2) o `acorda` sem `cancela()` → verde, uma mutação EQUIVALENTE nesta cena. O `acorda` consome a tinta, o
+    `Sender` cai, e o fio sai por `Disconnected`. O `cancela()` explícito só decide quando uma cópia do estado (a macro)
+    segura outro `Sender`.
+- Vizinhos verdes por nome: `silencio` 3 e `adormec` 32 (2 ignorados).
+- ⚠️ **Aberto:** um traço que comece entre 300 ms e ~760 ms depois do «+» ainda encontra o fio. O silêncio mede-se
+  desde o último evento de caneta, então o fio só começa com a caneta parada 300 ms. Mas se começou e a caneta desce
+  depois, ele corre até ao fim, ~460 ms. A prioridade baixa ou um pool próprio não foram feitos: `nice` por fio pede
+  `libc`/`unsafe`, que o crate proíbe.
+
+### O 1.º traço na camada nova (a mesma corrida, ev0..2 e o máximo por evento)
+
+- **Wet Wash 4K:** 1.º traço na nova, máximo por evento 9,8–13,0 ms (ev2, o 1.º `Move` com tinta), contra a base
+  9,4–21,7 ms. Os «100–160 ms» da nota são o GESTO inteiro: 32 eventos × ~2–3 ms + ev0/ev2. Os dois traços na nova
+  levam ~150 ms de relógio (977 → 1128 ms). Não é um engasgo e não tem parte gorda nova. Nas duas rotas é igual.
+- **Watercolor Basic 4K:** o fio não nasce (a sessão retém < 64 MB). O 1.º traço na nova tem o ev0 (pen-down) a
+  40,9–47,2 ms, contra 25–36 ms na base. O 2.º traço na nova fica a 11,6 ms. A parte gorda é o `ponteiro` do pen-down
+  (33–41 ms, 100–240 MB novos), não os tiques (3–5 ms). Na nova é ~10 ms pior que na base. Não foi decomposto por
+  dentro neste subagente (sem prazo). Próximo: `sonda_partes::parte` dentro do pen-down do Watercolor (o vidro, o
+  `abre_o_passo`, a sessão).
+
+### O `mark_dirty` da camada nova no «+» (item 3 da tarefa)
+
+Não foi investigado. Não há um gate da pista GPU que fixe a versão da camada nova no «+», e por isso, como na nota,
+fica documentado e não mexido.

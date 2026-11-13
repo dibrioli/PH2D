@@ -102,7 +102,11 @@ fn sonda_primeiro_traco() {
     let eixo_janela = std::env::var("PH2D_SONDA_JANELA").is_ok();
     // `PH2D_SONDA_TELA_ZERO` (mesmos valores): o eixo é a chave `TELA_NOVA_PELO_MMAP` (a tela do «+»).
     let eixo_tela = std::env::var("PH2D_SONDA_TELA_ZERO").is_ok();
-    let eixo = if eixo_tela {
+    // `PH2D_SONDA_ENCOLHE` (mesmos valores): o eixo é a chave `ENCOLHE_NO_SILENCIO` (o fio da compressão no «+»).
+    let eixo_encolhe = std::env::var("PH2D_SONDA_ENCOLHE").is_ok();
+    let eixo = if eixo_encolhe {
+        "PH2D_SONDA_ENCOLHE"
+    } else if eixo_tela {
         "PH2D_SONDA_TELA_ZERO"
     } else if eixo_janela {
         "PH2D_SONDA_JANELA"
@@ -129,7 +133,10 @@ fn sonda_primeiro_traco() {
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
         .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
     for (n, rota) in corridas {
-        if eixo_tela {
+        if eixo_encolhe {
+            super::adormecida::ENCOLHE_NO_SILENCIO.set(rota);
+            println!("ROTA\t{n}\tencolhe_no_silencio={rota}");
+        } else if eixo_tela {
             crate::tool::layers::TELA_NOVA_PELO_MMAP.set(rota);
             println!("ROTA\t{n}\ttela_pelo_mmap={rota}");
         } else if eixo_janela {
@@ -179,6 +186,7 @@ fn sonda_primeiro_traco() {
                 um.iter().copied().fold(0.0, f64::max),
                 dois.iter().copied().fold(0.0, f64::max)
             );
+            let _ = super::adormecida::ULTIMO_FIO.take();
             let (f0, t0) = (faltas(), Instant::now());
             crate::sonda_partes::liga();
             let nova = t.add_raster_layer("nova").expect("a camada nova");
@@ -203,6 +211,12 @@ fn sonda_primeiro_traco() {
                 t0.elapsed().as_secs_f64() * 1e3,
                 (faltas() - f0) as f64 * 4096.0 / 1e6
             );
+            let fio = super::adormecida::ULTIMO_FIO.take();
+            let ms =
+                |i: Option<Instant>| i.map_or(-1.0, |i| i.duration_since(t0).as_secs_f64() * 1e3);
+            if fio.is_none() {
+                println!("  fio da compressão: nenhum (a sessão retém < 64 MB)");
+            }
             // O artista leva mais de um quadro do «+» ao toque: o preparo corre nesse tempo.
             if std::env::var("PH2D_SONDA_PREPARO").is_ok() {
                 for _ in 0..60 {
@@ -211,7 +225,18 @@ fn sonda_primeiro_traco() {
                     let _ = t.take_preview_arc();
                 }
             }
+            let t1 = Instant::now();
             (um, dois) = (traco(&mut t, 800.0), traco(&mut t, 1100.0));
+            if let Some(h) = &fio {
+                let (a, b) = *h.lock().expect("as horas");
+                println!(
+                    "  fio da compressão: início {:.1} · fim {:.1} ms depois do «+»; os traços na nova de {:.1} a {:.1}",
+                    ms(a),
+                    ms(b),
+                    t1.duration_since(t0).as_secs_f64() * 1e3,
+                    t0.elapsed().as_secs_f64() * 1e3
+                );
+            }
         }
         // Para o perfil: só pen-downs, com o motor na mão.
         let toques: usize = std::env::var("PH2D_SONDA_TOQUES")
@@ -255,4 +280,5 @@ fn sonda_primeiro_traco() {
     crate::undo_planes::MAIS_SEM_DIFF.set(true);
     crate::undo_delta::confine::JANELA_DA_TINTA_POR_PALAVRAS.with(|c| c.set(true));
     crate::tool::layers::TELA_NOVA_PELO_MMAP.set(true);
+    super::adormecida::ENCOLHE_NO_SILENCIO.set(true);
 }

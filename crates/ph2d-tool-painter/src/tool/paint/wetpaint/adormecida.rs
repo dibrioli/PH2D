@@ -12,6 +12,12 @@ use crate::layers::LayerId as RtLayerId;
 #[cfg(test)]
 mod documento_tests;
 mod enterro;
+mod silencio;
+#[cfg(test)]
+mod silencio_tests;
+pub(crate) use silencio::marca_gesto;
+#[cfg(test)]
+pub(crate) use silencio::{ENCOLHE_NO_SILENCIO, ULTIMO_FIO};
 #[cfg(test)]
 mod troca_tests;
 pub(crate) use enterro::Congelada;
@@ -38,6 +44,8 @@ pub(crate) struct TintaAdormecida {
     /// O que ela retém agora: desce quando o fio da compressão acaba.
     pub(super) bytes: Arc<std::sync::atomic::AtomicUsize>,
     aquecendo: Arc<std::sync::atomic::AtomicBool>,
+    /// A compressão à espera do silêncio ([`silencio`]); acordar cancela-a.
+    espera: Option<silencio::Espera>,
 }
 
 /// Quanto se conta para uma tinta ainda a comprimir: medido 7,3× a 1080p e 10× a 4096×2560 (Dabber cheio).
@@ -54,9 +62,9 @@ impl TintaAdormecida {
         self.bytes.store(n, std::sync::atomic::Ordering::Relaxed);
     }
 
-    fn encolhe_num_fio(&self) {
+    fn encolhe_num_fio(&mut self) {
         let (sess, bytes) = (Arc::downgrade(&self.sess), Arc::downgrade(&self.bytes));
-        std::thread::spawn(move || {
+        self.espera = silencio::lanca(move || {
             let Some(s) = sess.upgrade() else {
                 return;
             };
@@ -69,7 +77,9 @@ impl TintaAdormecida {
 
     /// Acordar agora não espera ninguém: nenhum fio nela, nada por descomprimir.
     fn pronta(&self) -> bool {
-        Arc::weak_count(&self.sess) == 0 && self.sess.try_lock().is_ok_and(|s| s.dormente.is_none())
+        let por_comecar = self.espera.as_ref().is_some_and(silencio::Espera::pendente);
+        (por_comecar || Arc::weak_count(&self.sess) == 0)
+            && self.sess.try_lock().is_ok_and(|s| s.dormente.is_none())
     }
 
     /// Descomprime num fio à parte: a troca de modo não engasga, e o quadro acorda-a quando ficar pronta.
@@ -91,6 +101,9 @@ impl TintaAdormecida {
     fn acorda(self) -> WetSession {
         use std::sync::atomic::Ordering::Relaxed;
         let _ = self.bytes.load(Relaxed);
+        if let Some(e) = &self.espera {
+            e.cancela();
+        }
         let mut arc = self.sess;
         let mut sess = loop {
             // O fio solta o trinco e larga o `Arc` logo a seguir: esperar o trinco é esperar a compressão.
@@ -249,7 +262,7 @@ impl PainterTool {
         let camada = sess.camada;
         let lista = &mut self.paint.wetpaint.adormecidas;
         lista.retain(|a| a.camada != camada);
-        let tinta = TintaAdormecida {
+        let mut tinta = TintaAdormecida {
             sess: Arc::new(std::sync::Mutex::new(sess)),
             tela,
             camada,
@@ -261,6 +274,7 @@ impl PainterTool {
                 },
             )),
             aquecendo: Arc::default(),
+            espera: None,
         };
         crate::sonda_partes::parte("flush.guarda");
         if bytes >= COMPRIME_A_PARTIR_DE {

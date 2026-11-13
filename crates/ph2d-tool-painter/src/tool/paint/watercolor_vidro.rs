@@ -50,7 +50,7 @@ impl SessaoDoVidro {
         }
     }
 
-    #[cfg(test)]
+    /// Os bytes que a sessão retém (os tiles tomados), para o tecto e o instantâneo (D5).
     pub(super) fn bytes(&self) -> usize {
         self.tiles.heap_bytes()
     }
@@ -117,6 +117,15 @@ thread_local! {
 }
 
 impl VidroCongelado {
+    /// **O que as duas sessões do vidro retêm** (ADR-0204 D5): os tiles tomados desde a congelação.
+    pub(crate) fn bytes(&self) -> usize {
+        [&self.aguada, &self.molhada]
+            .into_iter()
+            .flatten()
+            .map(|c| c.2.bytes())
+            .sum()
+    }
+
     /// Larga a sessão de cada meio cuja camada não está em `vivas` (`None` = todas): o restauro troca o plano
     /// inteiro e o id de uma camada apagada reaproveita-se.
     pub(crate) fn larga_as_sessoes(

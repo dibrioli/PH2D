@@ -86,7 +86,8 @@ impl WriteState {
         j.absent = true;
     }
 
-    /// `true` se o journal do vidro pode responder pela camada `l`.
+    /// `true` se o journal do vidro pode responder pela camada `l` (só os portões perguntam).
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn vidro_speaks_for(&self, l: crate::layers::LayerId) -> bool {
         let j = self.vidro.borrow();
@@ -94,6 +95,8 @@ impl WriteState {
     }
 
     /// O antes do texel `i`, se o journal o capturou (`antes[i] = journal.get(i).unwrap_or(vivo[i])`, §5.28).
+    /// Rede de conferência: o mesmo `cfg` dos outros `*_before` (a produção lê por corrida).
+    #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn vidro_before(&self, i: usize) -> Option<Vidro> {
         self.vidro.borrow().tiles.get(i)
@@ -111,7 +114,12 @@ impl WriteState {
         let j = self.vidro.borrow();
         let mut out = Vec::with_capacity((x1 - x0) * (y1 - y0));
         for y in y0..y1 {
-            out.extend((x0..x1).map(|x| j.tiles.get(y * w + x).unwrap_or(vivo[y * w + x])));
+            // Sem tile tomado o journal pode nem estar armado (`stride == 0`): o antes é o vivo.
+            if j.tiles.is_empty() {
+                out.extend_from_slice(&vivo[y * w + x0..y * w + x1]);
+            } else {
+                j.tiles.read_row_into(y, x0, x1 - x0, vivo, &mut out);
+            }
         }
         out
     }

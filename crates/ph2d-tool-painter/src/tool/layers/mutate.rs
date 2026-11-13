@@ -152,6 +152,7 @@ impl PainterTool {
             if t.layers.root().last() == Some(&active) {
                 return None;
             }
+            let alcance = t.alcance_da_tinta_de(active);
             let g = t.layers.add_group("Group")?;
             if !t.layers.move_into_group(active, g) {
                 t.layers.remove(g); // couldn't nest (depth/cycle) — drop the empty group
@@ -161,7 +162,7 @@ impl PainterTool {
             t.selection.clear();
             t.selection.insert(g);
             t.selection.insert(active);
-            t.invalidate_composite();
+            t.a_estrutura_muda_so_em(alcance);
             Some(g)
         })
     }

@@ -4,6 +4,7 @@
 //! of the former `tool/layers.rs` god-file (pure move).
 
 use super::super::*;
+use crate::undo_delta::confine::PlaneReach;
 
 #[cfg(test)]
 thread_local! {
@@ -89,7 +90,7 @@ impl PainterTool {
     /// **A troca da activa deixa a figura composta igual?** (B18.3) — só a pergunta da pista CPU, e
     /// conservadora: `false` salvo provado. O composite é função dos bytes de cada camada e dos metadados
     /// da pilha, nunca da activa; o que lê a activa fica de fora: o filme da proteção, a vista cinza da
-    /// máscara, o relevo aceso, o vidro sob papel de cor, a tinta viva do Wet (adormecer escreve a última
+    /// máscara, o relevo aceso (salvo o que não lê a activa), a tinta viva do Wet (adormecer escreve a última
     /// imagem na tela), uma forma aberta (fecha-se na tela) e um traço aberto. Pergunta-se antes E depois.
     pub(crate) fn a_troca_mantem_a_figura(&self, alvo: RtLayerId) -> bool {
         let (w, h) = self.source_size;
@@ -115,7 +116,9 @@ impl PainterTool {
             && !self.mask_scratch_active()
             && self.mask_view_grayscale.is_none()
             && (!self.impasto_visible() || (!antes && self.o_relevo_nao_le_a_activa()))
-            && !self.papel_atravessa_vidro()
+            // N7: a composição pelo vidro lê os bytes e o vidro de cada camada, nunca a activa (o traço aberto, que
+            // o segue, já ficou de fora).
+            && (!antes || !self.papel_atravessa_vidro())
     }
 
     /// **A camada nova TRANSPARENTE deixa a figura igual?** (B18.4, o «+») — α = 0 não compõe nada nem cobre o
@@ -133,6 +136,56 @@ impl PainterTool {
             && !self.mask_scratch_active()
             && self.mask_view_grayscale.is_none()
             && !self.papel_atravessa_vidro()
+    }
+
+    /// **Onde a figura pode mudar quando a camada raster `id` sai, ganha uma cópia por cima ou entra num grupo**
+    /// (N7): só onde ela tem α > 0 — fora dela não compõe nada, em qualquer modo, opacidade, ordem ou grupo. Medida
+    /// ANTES do gesto. `None` = não provado (o caminho de antes recompõe tudo): o que espalha para fora do α ou
+    /// lê a vizinha (ajuste, recorte, relevo/material próprio, tinta viva) fica de fora.
+    pub(crate) fn alcance_da_tinta_de(&self, id: RtLayerId) -> Option<PlaneReach> {
+        use crate::layers::LayerKind;
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize) * 4;
+        if troca_recompoe_como_antes()
+            || !self.a_nova_transparente_mantem_a_figura()
+            || self.tinta_viva()
+            || !matches!(
+                self.layers.get(id)?.kind,
+                LayerKind::Raster(_) | LayerKind::Texture(_)
+            )
+            || self.heights.contains_key(&id)
+            || self.covers.contains_key(&id)
+            || self.mats.contains_key(&id)
+            || self.layers.all_ids().any(|l| {
+                self.layers
+                    .get(l)
+                    .is_some_and(|l| l.clipping || matches!(l.kind, LayerKind::Adjustment(_)))
+            })
+        {
+            return None;
+        }
+        let px: &[u8] = if self.layers.active() == Some(id) {
+            &self.canvas_rgba
+        } else {
+            &self.images.get(&id)?.rgba8
+        };
+        (px.len() == n).then(|| crate::undo_delta::confine::janela_da_tinta(px, w as usize))
+    }
+
+    /// O fim do gesto medido por [`Self::alcance_da_tinta_de`]: a figura recompõe-se só na janela da tinta.
+    pub(crate) fn a_estrutura_muda_so_em(&mut self, alcance: Option<PlaneReach>) {
+        let (w, _) = self.source_size;
+        match alcance {
+            Some(PlaneReach::Untouched) => self.troca_sem_mudar_a_figura(),
+            Some(PlaneReach::Window(j)) => match j.to_region(w) {
+                Some(r) => {
+                    self.troca_sem_mudar_a_figura();
+                    self.mark_dirty(r);
+                }
+                None => self.invalidate_composite(),
+            },
+            _ => self.invalidate_composite(),
+        }
     }
 
     /// A tinta viva da camada `id` adormeceu no «+» (B18.4): a figura muda só na janela da tinta dela (a ótica viva

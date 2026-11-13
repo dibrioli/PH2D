@@ -71,6 +71,7 @@ impl PainterTool {
             return false;
         }
         self.fecha_a_forma_aberta();
+        let alcance = self.alcance_da_tinta_de(id);
         let undo_before = self.snapshot_model();
         let activa = self.layers.active();
         self.layers.remove(id); // drops subtree + mask
@@ -87,7 +88,7 @@ impl PainterTool {
         if trocou {
             self.wet_acorda_da_camada();
         }
-        self.invalidate_composite();
+        self.a_estrutura_muda_so_em(alcance);
         true
     }
 
@@ -102,6 +103,7 @@ impl PainterTool {
             return None;
         }
         self.fecha_a_forma_aberta();
+        let alcance = self.alcance_da_tinta_de(id);
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let (w, h) = self.source_size;
@@ -139,7 +141,7 @@ impl PainterTool {
         self.commit_structural_edit(undo_before);
         self.wet_acorda_da_camada();
         self.reset_selection_to(new_id);
-        self.invalidate_composite();
+        self.a_estrutura_muda_so_em(alcance);
         Some(new_id)
     }
 

@@ -61,3 +61,23 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && cargo
   && bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh matriz 3840x2160 papel
 # A×B: a mesma linha com PH2D_TROCA_RECOMPOE=1 no ambiente = o caminho de antes
 ```
+
+## Onda 2 (13/11) — Watercolor na troca; apagar · duplicar · grupo na janela da tinta
+
+- **Watercolor Basic ~70 ms em todo gesto — mecanismo:** o *Textured Paper* põe `papel = cor do papel` (≠ branco), e com
+  Watercolor isso põe o documento na CPU (`papel_pede_a_cpu`); a 1.ª aguada cria vidro, então a troca caía em
+  `!papel_atravessa_vidro()` e recompunha 4K inteiro na CPU com vidro e relevo. O gate novo viu-o vermelho antes
+  da cura (figura certa, cache caído). A composição pelo vidro lê os bytes e o vidro de CADA camada, nunca a activa
+  (o traço aberto que o segue já está fora): a exclusão só vale com `PH2D_TROCA_RECOMPOE=1`.
+  Gate `a_troca_com_a_aguada_no_papel_de_cor_nao_recompoe_e_a_figura_fica` (cache fica, ao bit, undo/redo; controlo recompõe).
+- **Apagar / duplicar / grupo:** a figura muda só onde a camada tem α > 0 (fora dela não compõe nada, em qualquer modo,
+  opacidade, ordem ou grupo). `cache.rs::alcance_da_tinta_de` mede `janela_da_tinta` ANTES do gesto e
+  `a_estrutura_muda_so_em` mantém o cache e marca só essa janela. Não provado (recompõe tudo como antes): ajuste ou
+  recorte na pilha, relevo/cobertura/material da camada, tinta viva do Wet, vidro sob papel de cor (as guardas do «+»).
+  Gate `apagar_duplicar_e_agrupar_recompoem_so_a_janela_da_tinta` (3 gestos × normal · modos e opacidade · aguada · ajuste
+  × controlo; ao bit contra a recomposição inteira, undo/redo). Mutação M3 (sem o `mark_dirty` da janela) → vermelho.
+- Vizinhos verdes: `troca` 36 · `fundo` 6 · `duplicate` 2 · `camadas_integridade` 9 · `o_fundo_do_toque` 3 · `adormec` 32 · `mais_sem_diff` 3.
+- **Não medido a 4K nesta onda** (prazo do agente): o ganho esperado é a troca do Watercolor cair ao piso das outras e
+  apagar/duplicar/grupo pagarem só a caixa da tinta; confirmar na matriz.
+- **Aberto:** Wet a trocar (58–66 ms: a tinta viva força a recomposição inteira — confinar à janela da adormecida como
+  o «+»); apagar/duplicar/grupo com aguada no papel de cor (provar que tirar o último vidro não muda a figura fora da tinta).

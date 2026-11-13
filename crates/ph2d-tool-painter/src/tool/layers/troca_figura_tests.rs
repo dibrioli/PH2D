@@ -319,3 +319,129 @@ fn a_troca_na_pista_da_placa_nao_pede_drenagem_e_a_figura_fica() {
         }
     }
 }
+
+/// N7 — o Watercolor no *Textured Paper*: o papel de cor põe o documento na pista da CPU e a aguada deixa
+/// vidro; a composição pelo vidro é função dos bytes e do vidro de cada camada, nunca da activa. A troca não
+/// recompõe e a figura é, bit a bit, a da recomposição inteira (undo/redo ao byte); o controlo
+/// (`TROCA_RECOMPOE_SEMPRE`) recompõe e dá a mesma figura.
+#[test]
+fn a_troca_com_a_aguada_no_papel_de_cor_nao_recompoe_e_a_figura_fica() {
+    use crate::tool::paint::media::PaintMedia;
+    for antes in [false, true] {
+        let mut t = PainterTool::default();
+        t.agenda_papel_texturizado(7);
+        t.abre_a_sprite_nova(7, vec![255u8; N * 4], LADO, LADO);
+        let a = t.add_raster_layer("A").expect("A");
+        t.set_paint_tool_mode("brush");
+        traco(&mut t, 12.0);
+        let b = t.add_raster_layer("B").expect("B");
+        t.set_paint_media(PaintMedia::Watercolor);
+        crate::tool::paint::tests::aquarela_neutra(&mut t);
+        traco(&mut t, 24.0);
+        t.dry_session_now();
+        let c = t.add_raster_layer("C").expect("C");
+        traco(&mut t, 30.0);
+        assert!(
+            t.papel_pede_a_cpu() && t.papel_atravessa_vidro(),
+            "controlo: papel de cor com vidro"
+        );
+        let _ = na_tela(&mut t);
+        TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+        let mut ficou = Vec::new();
+        for alvo in [a, b, c, a, b] {
+            if t.layers.active() == Some(alvo) {
+                continue;
+            }
+            ficou.push(troca_e_confere(&mut t, alvo, "aguada no papel de cor"));
+        }
+        TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+        if antes {
+            assert!(ficou.iter().all(|&f| !f), "controlo: recompõe ({ficou:?})");
+        } else {
+            assert!(ficou.iter().all(|&f| f), "a troca recompôs ({ficou:?})");
+        }
+    }
+}
+
+/// N7 — apagar, duplicar e agrupar mudam a figura só onde a camada tem tinta: a recomposição fica confinada à
+/// janela dela (o cache fica fora), e a figura é, bit a bit, a da recomposição inteira — com modos e opacidade,
+/// o papel aceso e a aguada sobre o papel de cor; undo/redo também. O controlo (`TROCA_RECOMPOE_SEMPRE`)
+/// recompõe tudo e dá a mesma figura; o ajuste na pilha e o vidro (a aguada no papel de cor) não são provados e recompõem tudo.
+#[test]
+fn apagar_duplicar_e_agrupar_recompoem_so_a_janela_da_tinta() {
+    use crate::tool::paint::media::PaintMedia;
+    type Gesto = fn(&mut PainterTool, RtLayerId);
+    let gestos: [(&str, Gesto); 3] = [
+        ("apagar", |t, b| assert!(t.delete_layer(b))),
+        ("duplicar", |t, b| {
+            t.duplicate_layer(b).expect("a cópia");
+        }),
+        ("grupo", |t, b| {
+            t.select_layer(b);
+            t.group_active().expect("o grupo");
+        }),
+    ];
+    // (caso, papel de cor + aguada, modos, ajuste, o cache fica?)
+    let casos = [
+        ("normal", false, false, false, true),
+        ("modos e opacidade", false, true, false, true),
+        ("aguada no papel de cor", true, true, false, false),
+        ("ajuste", false, false, true, false),
+    ];
+    for (gesto, faz) in gestos {
+        for (caso, aguada, modos, ajuste, deve_ficar) in casos {
+            for antes in [false, true] {
+                let mut t = PainterTool::default();
+                if aguada {
+                    t.agenda_papel_texturizado(7);
+                    t.abre_a_sprite_nova(7, vec![255u8; N * 4], LADO, LADO);
+                } else {
+                    t.set_source(ruido(5), LADO, LADO);
+                }
+                let a = t.add_raster_layer("A").expect("A");
+                t.set_paint_tool_mode("brush");
+                traco(&mut t, 12.0);
+                let b = t.add_raster_layer("B").expect("B");
+                if aguada {
+                    t.set_paint_media(PaintMedia::Watercolor);
+                    crate::tool::paint::tests::aquarela_neutra(&mut t);
+                }
+                traco(&mut t, 20.0);
+                t.dry_session_now();
+                if modos {
+                    t.set_layer_blend_mode(b, BlendMode::Multiply);
+                    t.set_layer_opacity(b, 0.6);
+                    t.set_layer_blend_mode(a, BlendMode::Screen);
+                }
+                if ajuste {
+                    t.add_adjustment_layer(K::HueSaturationBrightness)
+                        .expect("o ajuste");
+                }
+                t.select_layer(a);
+                let _ = na_tela(&mut t);
+                let rotulo = format!("{gesto} · {caso} · antes={antes}");
+                TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+                faz(&mut t, b);
+                TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+                let ficou = t.composited_is_some();
+                assert_eq!(
+                    ficou,
+                    deve_ficar && !antes,
+                    "{rotulo}: o cache ficou (ou não)"
+                );
+                if ficou {
+                    let r = t.dirty_rect.expect("a janela da tinta");
+                    assert!(
+                        r.w < LADO || r.h < LADO,
+                        "{rotulo}: a janela é a tela inteira ({r:?})"
+                    );
+                }
+                confere_a_figura(&mut t, &rotulo);
+                assert!(t.undo_last(), "{rotulo}: desfaz");
+                confere_a_figura(&mut t, &format!("{rotulo} · undo"));
+                assert!(t.redo_last(), "{rotulo}: refaz");
+                confere_a_figura(&mut t, &format!("{rotulo} · redo"));
+            }
+        }
+    }
+}

@@ -3,11 +3,8 @@
 //! sobe do papel para a água (re-molhar) muda de camada NO MESMO PONTO: a coluna de tinta é a mesma e a cor
 //! que se vê também. As duas transferências verticais resolvem a cor nova pela INVERSA da lei do ecrã
 //! ([`cor`], a mesma porta do render); a mistura de pigmentos fica onde acontece de facto — na água, quando
-//! chega tinta (o pouso do dab) ou quando ela corre (a advecção).
-//!
-//! Medido antes (prompt 15b, `sonda_duas_etapas`, amarelo sobre azul seco, o miolo com o rato em baixo e
-//! depois de seco): fábrica Δ29 · «Pigment mixing» Δ81 · «Glaze layering» Δ28 · as duas Δ126 níveis.
-//! O port (`Lei::Porto`) guarda as junções de antes — a impressão digital não muda.
+//! chega tinta (o pouso do dab) ou quando ela corre (a advecção). Medido antes (prompt 15b): fábrica Δ29 ·
+//! «Pigment mixing» Δ81 · «Glaze layering» Δ28 · as duas Δ126. O `Lei::Porto` guarda as junções de antes.
 use crate::colorops::transfer::{srgb255_of_linear, srgb255_to_linear};
 use crate::colorops::{km_glaze_channel_linear, velatura};
 
@@ -16,7 +13,10 @@ mod ponto;
 use ponto::{Parada, d_de, prepara};
 #[path = "assenta/memo.rs"]
 mod memo;
-pub use memo::{MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA, assenta_memo, assenta_memo_f32, memo_esquece};
+pub use memo::{
+    MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA, MEMO_POTENCIA, assenta_memo, assenta_memo_f32,
+    memo_esquece,
+};
 
 /// A lei do ecrã para o filme molhado sobre o assentado, que as transferências verticais preservam.
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -222,7 +222,7 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
 #[inline]
 fn tapa(e: Ecra, a_f: f64) -> f64 {
     match e {
-        Ecra::Cobre { esconde, .. } => 1.0 - ph2d_det_math::DetMath::det_powf(1.0 - a_f, esconde),
+        Ecra::Cobre { esconde, .. } => 1.0 - memo::potencia(1.0 - a_f, esconde),
         _ => 0.0,
     }
 }

@@ -12,7 +12,7 @@
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Instant;
 
-use ph2d_wet_paint::assenta::{MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA};
+use ph2d_wet_paint::assenta::{MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA, MEMO_POTENCIA};
 use ph2d_wet_paint::grid::{restore_grid, snapshot_grid};
 use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::par::Rows;
@@ -46,6 +46,11 @@ fn main() {
         .nth(1)
         .and_then(|s| s.parse().ok())
         .unwrap_or(5);
+    // Passos da sim depois de pintar: a água corre e mistura as cores (o estado do Wet Wash no app).
+    let passos: usize = std::env::args()
+        .nth(2)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
     let mut e = Engine::new(W, H);
     e.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
     e.sim.glaze_filme = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
@@ -61,6 +66,9 @@ fn main() {
         e.color = CORES[k];
         faixa(&mut e, y);
         y += 12.0;
+    }
+    for _ in 0..passos {
+        e.step_simulation();
     }
     let p = e.sim.gather_params(&e.tuning);
     let (ev, rw, by) = (
@@ -79,21 +87,40 @@ fn main() {
             .unwrap_or_default()
             .trim()
     );
+    // `PH2D_SONDA_SO=<MEMO_ASSENTA>`: só essa rota, em laço (para o `perf`).
+    if let Some(m) = std::env::var("PH2D_SONDA_SO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+    {
+        MEMO_ASSENTA.store(m, Relaxed);
+        if let Some(v) = std::env::var("PH2D_SONDA_POT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+        {
+            MEMO_POTENCIA.store(v, Relaxed);
+        }
+        for _ in 0..rodadas {
+            restore_grid(g, &snap);
+            ph2d_wet_paint::drying::drying_pass_jacobi_rows(g, &p, ev, rw, by, Rows::Parallel);
+        }
+        return;
+    }
     MEMO_ASSENTA.store(2, Relaxed);
     restore_grid(g, &snap);
     ph2d_wet_paint::drying::drying_pass_jacobi_rows(g, &p, ev, rw, by, Rows::Parallel);
     let k = |i: usize| MEMO_CONTA[i].load(Relaxed);
     println!("memo: acertos {} · falhas {}", k(0), k(1));
-    // (nome, MEMO_ASSENTA, MEMO_BITS); 255 = a cópia.
-    let rotas: [(&str, u8, u8); 5] = [
-        ("memo", 1, 15),
-        ("memo16", 1, 16),
-        ("sem memo", 0, 15),
-        ("chão", 3, 15),
-        ("cópia", 255, 15),
+    // (nome, MEMO_ASSENTA, MEMO_BITS, MEMO_POTENCIA); 255 = a cópia.
+    let rotas: [(&str, u8, u8, u8); 6] = [
+        ("memo", 1, 15, 1),
+        ("memo pow", 1, 15, 0),
+        ("sem memo", 0, 15, 1),
+        ("sem m pow", 0, 15, 0),
+        ("chão", 3, 15, 1),
+        ("cópia", 255, 15, 1),
     ];
-    let mut melhor = [f64::MAX; 5];
-    let mut hash = [0u64; 5];
+    let mut melhor = [f64::MAX; 6];
+    let mut hash = [0u64; 6];
     for r in 0..rodadas {
         for k in 0..rotas.len() {
             let j = (k + r) % rotas.len();
@@ -104,6 +131,7 @@ fn main() {
             } else {
                 MEMO_ASSENTA.store(rotas[j].1, Relaxed);
                 MEMO_BITS.store(rotas[j].2, Relaxed);
+                MEMO_POTENCIA.store(rotas[j].3, Relaxed);
                 ph2d_wet_paint::drying::drying_pass_jacobi_rows(g, &p, ev, rw, by, Rows::Parallel);
             }
             melhor[j] = melhor[j].min(t.elapsed().as_secs_f64() * 1e3);
@@ -112,6 +140,7 @@ fn main() {
     }
     MEMO_ASSENTA.store(1, Relaxed);
     MEMO_BITS.store(15, Relaxed);
+    MEMO_POTENCIA.store(1, Relaxed);
     for (((nome, ..), ms), h) in rotas.iter().zip(melhor).zip(hash) {
         println!(
             "  {nome:>9}: mín {ms:7.2} ms · {:5.2} ns/célula · hash {h:016x}",

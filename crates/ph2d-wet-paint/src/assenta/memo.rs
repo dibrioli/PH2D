@@ -222,6 +222,43 @@ pub fn assenta_memo_f32(
     })
 }
 
+/// B13.12: `potencia` pela tabela do fio (`1`, o produto) ou o `pow` direto (`0`, o oráculo A×B).
+#[doc(hidden)]
+pub static MEMO_POTENCIA: AtomicU8 = AtomicU8::new(1);
+
+const POT_BITS: u32 = 12;
+
+thread_local! {
+    static POTENCIAS: RefCell<Vec<(u64, u64, f64)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// `x^e` (`libm::pow`, a do [`super::tapa`]) por uma tabela de endereço directo por fio com a chave = os bits de `x`
+/// e de `e`: as coberturas saem da tabela de `alpha_of_mass` e o `a_dm` de pares dela, e repetem-se — o mesmo
+/// argumento dá o mesmo resultado ao bit. A chave inválida é `x = NaN` com todos os bits (nenhum `1 − a` a dá).
+#[inline]
+pub(super) fn potencia(x: f64, e: f64) -> f64 {
+    use ph2d_det_math::DetMath as _;
+    if MEMO_POTENCIA.load(Relaxed) == 0 {
+        return x.det_powf(e);
+    }
+    let (kx, ke) = (x.to_bits(), e.to_bits());
+    let h = (kx ^ ke.rotate_left(29)).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    let i = (h >> (64 - POT_BITS)) as usize;
+    POTENCIAS.with(|t| {
+        let mut t = t.borrow_mut();
+        if t.is_empty() {
+            *t = vec![(u64::MAX, 0, 0.0); 1 << POT_BITS];
+        }
+        let en = t[i];
+        if en.0 == kx && en.1 == ke {
+            return en.2;
+        }
+        let v = x.det_powf(e);
+        t[i] = (kx, ke, v);
+        v
+    })
+}
+
 type Porta = fn(Ecra, [f64; 3], [f64; 3], f64, f64, f64, f64) -> [f64; 3];
 
 /// A tabela `qual` do fio (só a `0`, o assentar: o `levanta` memoizado foi medido sem ganho).
@@ -334,3 +371,35 @@ const MULT: [u64; 10] = [
     0xC2B2_AE3D_27D4_EB4F,
     0x1656_67B1_9E37_79F9,
 ];
+
+#[cfg(test)]
+mod potencia_tests {
+    use super::*;
+    use ph2d_det_math::DetMath as _;
+
+    /// B13.12: a tabela do `pow` dá o `libm::pow` ao bit — coberturas da tabela, pares `a_dm`, vários `esconde`
+    /// (colisões e reescritas incluídas: 3 001 × 2 voltas numa tabela de 4 096).
+    #[test]
+    fn a_potencia_pela_tabela_e_o_pow_ao_bit() {
+        let al: Vec<f64> = (0..=3000).map(crate::opacity::table_at).collect();
+        for e in [5.0, 1.0, 2.5, crate::colorops::TINTA_ESCONDE_EM_VELATURA] {
+            for volta in 0..2 {
+                for (k, &a) in al.iter().enumerate() {
+                    let b = al[(k * 7 + volta) % al.len()];
+                    let a_dm = if a < 1.0 {
+                        1.0 - (1.0 - b) / (1.0 - a)
+                    } else {
+                        0.0
+                    };
+                    for x in [1.0 - a, 1.0 - a_dm] {
+                        assert_eq!(
+                            potencia(x, e).to_bits(),
+                            x.det_powf(e).to_bits(),
+                            "x {x} e {e}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}

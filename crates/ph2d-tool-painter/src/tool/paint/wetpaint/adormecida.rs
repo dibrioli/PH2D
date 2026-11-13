@@ -214,12 +214,17 @@ impl PainterTool {
 
     /// Adormece a sessão viva: a última imagem na tela, o motor em casa e o worker acabado. `false` se não pode.
     pub(crate) fn wet_adormece(&mut self) -> bool {
+        crate::sonda_partes::parte("flush.antes");
         self.wetpaint_guard();
+        crate::sonda_partes::parte("flush.guard");
         if !self.wet_pode_adormecer() || self.wet_tela_alheia() {
             return false;
         }
+        crate::sonda_partes::parte("flush.pode");
         self.wetpaint_pousa_adiados();
+        crate::sonda_partes::parte("flush.pousa_adiados");
         self.wet_ultima_imagem();
+        crate::sonda_partes::parte("flush.ultima_imagem");
         let Some(sess) = self.paint.wetpaint.session.take() else {
             return false;
         };
@@ -230,7 +235,9 @@ impl PainterTool {
     /// A sessão pára, com a tela `tela` da camada dela.
     fn wet_guarda_adormecida(&mut self, mut sess: WetSession, tela: Arc<Vec<u8>>) {
         sess.bring_home();
+        crate::sonda_partes::parte("flush.bring_home");
         sess.worker = None;
+        crate::sonda_partes::parte("flush.worker_none");
         sess.seen_steps = 0;
         sess.otica = Default::default(); // o compositor acabou com o worker: nenhuma imagem está no ar
         sess.canvas = Weak::new();
@@ -255,6 +262,7 @@ impl PainterTool {
             )),
             aquecendo: Arc::default(),
         };
+        crate::sonda_partes::parte("flush.guarda");
         if bytes >= COMPRIME_A_PARTIR_DE {
             tinta.encolhe_num_fio();
         }

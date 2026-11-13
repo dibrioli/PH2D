@@ -98,7 +98,11 @@ fn sonda_primeiro_traco() {
         .unwrap_or(1);
     // `PH2D_SONDA_MAIS` (mesmos valores): o eixo A×B passa a ser a chave `MAIS_SEM_DIFF` do «+» (n.º 7 item 3).
     let eixo_mais = std::env::var("PH2D_SONDA_MAIS").is_ok();
-    let eixo = if eixo_mais {
+    // `PH2D_SONDA_JANELA` (mesmos valores): o eixo é a chave `JANELA_DA_TINTA_PARALELA` (o «adormeceu» do «+»).
+    let eixo_janela = std::env::var("PH2D_SONDA_JANELA").is_ok();
+    let eixo = if eixo_janela {
+        "PH2D_SONDA_JANELA"
+    } else if eixo_mais {
         "PH2D_SONDA_MAIS"
     } else {
         "PH2D_SONDA_VIDRO"
@@ -121,7 +125,10 @@ fn sonda_primeiro_traco() {
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
         .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
     for (n, rota) in corridas {
-        if eixo_mais {
+        if eixo_janela {
+            crate::undo_delta::confine::JANELA_DA_TINTA_PARALELA.with(|c| c.set(rota));
+            println!("ROTA\t{n}\tjanela_paralela={rota}");
+        } else if eixo_mais {
             crate::undo_planes::MAIS_SEM_DIFF.set(rota);
             println!("ROTA\t{n}\tmais_sem_diff={rota}");
         } else {
@@ -166,11 +173,23 @@ fn sonda_primeiro_traco() {
                 dois.iter().copied().fold(0.0, f64::max)
             );
             let (f0, t0) = (faltas(), Instant::now());
+            crate::sonda_partes::liga();
             let nova = t.add_raster_layer("nova").expect("a camada nova");
+            crate::sonda_partes::parte("mais.fim");
             t.select_layer(nova);
+            crate::sonda_partes::parte("select_layer");
             for _ in 0..3 {
                 t.on_tick(1000.0 / 60.0);
+                crate::sonda_partes::parte("tique");
                 let _ = t.take_preview_arc();
+                crate::sonda_partes::parte("preview");
+            }
+            if std::env::var("PH2D_SONDA_PARTES").is_ok() {
+                for (nome, ms, mb) in crate::sonda_partes::tira() {
+                    println!("    «+» {nome} {ms:.2} ms · {mb:.1} MB do fio");
+                }
+            } else {
+                let _ = crate::sonda_partes::tira();
             }
             println!(
                 "  «+» rota={rota} {:.1} ms · {:.1} MB novos",
@@ -227,4 +246,5 @@ fn sonda_primeiro_traco() {
     forca_no_teste(None);
     crate::undo::window::set_vidro_pelo_journal(true);
     crate::undo_planes::MAIS_SEM_DIFF.set(true);
+    crate::undo_delta::confine::JANELA_DA_TINTA_PARALELA.with(|c| c.set(true));
 }

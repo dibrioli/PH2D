@@ -235,23 +235,31 @@ impl PainterTool {
         self.fecha_a_forma_aberta();
         let mantem = rgba.is_none() && self.a_nova_transparente_mantem_a_figura();
         let adormece = self.layers.active().filter(|_| mantem && self.tinta_viva());
+        crate::sonda_partes::parte("mais.antes");
         let undo_before = self.snapshot_model();
+        crate::sonda_partes::parte("mais.snapshot_model");
         self.flush_active_to_images();
+        crate::sonda_partes::parte("mais.flush");
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
         let nasce_neutra = rgba.is_none();
         let rgba = rgba.unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+        crate::sonda_partes::parte("mais.tela_zero");
         self.replace_canvas(Arc::new(rgba));
+        crate::sonda_partes::parte("mais.replace_canvas");
         self.undo.tela_nova_neutra = nasce_neutra;
         self.commit_structural_edit(undo_before);
+        crate::sonda_partes::parte("mais.commit");
         self.reset_selection_to(id);
         if mantem {
             self.troca_sem_mudar_a_figura(); // B18.4: o «+» transparente não recompõe nem dobra o relevo
             let v = self.layer_pixel_versions.get(&id).copied().unwrap_or(0);
             self.camada_nova_limpa = Some((id.0, v));
+            crate::sonda_partes::parte("mais.troca");
             if let Some(id) = adormece {
                 self.a_tinta_que_adormeceu_muda(id);
             }
+            crate::sonda_partes::parte("mais.adormeceu_muda");
         } else {
             self.invalidate_composite();
         }

@@ -32,6 +32,8 @@ pub mod params;
 /// Copiar um plano canvas-shaped, em paralelo — o primitivo que a porta de fork e o motor de delta
 /// compartilham.
 mod plane_copy;
+/// As partes de um gesto para a sonda (só em teste).
+pub(crate) mod sonda_partes;
 pub mod tool;
 pub mod undo;
 /// Como um passo do histórico é GUARDADO — a janela em vez do documento (U1 do plano 26).

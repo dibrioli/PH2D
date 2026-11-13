@@ -67,3 +67,62 @@ embora seja o mesmo `Arc` da imagem viva (conservador, como o `Whole`).
    (sem «+»). O controlo dele espera `v=WHOLE` no 1.º traço do Watercolor; com o `Aparece` do ADR-0204 (item 2) o
    vidro que aparece guarda só a janela (`v=win`). Ou seja, o controlo ficou velho com o item 2: a cura é atualizar o
    controlo para `v=win`. Fica para o item 2 / coordenador.
+
+## Continuação (13/11): o controlo do Ctrl+Z confinado, o «+» do Wet, o pen-down
+
+### 1. `o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio`: era só a expectativa (`b8be38f548`, `e024c322ba`)
+
+A lei do teste (o Ctrl+Z do 1.º traço é confinado nos 4 meios) é a que o ADR-0204 passou a cumprir. O que estava
+velho era o controlo do Watercolor, que pedia `v=WHOLE`. Agora pede `v=<janela>` com a chave `VIDRO_PELO_JOURNAL`
+ligada. No mesmo processo, com a chave desligada (a rota antiga), continua a pedir `v=WHOLE`, e esse controlo ficou
+dentro do teste. Verdes por nome: `confin` 27 e `undo` 182 (29 ignorados), sem outros vermelhos novos.
+
+### 2. O «+» do Wet Wash a 4K (sonda r1 do coordenador: 36–44 ms, 214–838 MB novos)
+
+**As faltas da sonda r1 são do PROCESSO inteiro.** `faltas()` lê `/proc/self/stat`, que conta também o fio do motor
+Wet e o fio que `wet_guarda_adormecida` lança (`encolhe_num_fio`, a compressão da sessão adormecida quando ela
+retém ≥ 64 MB). As centenas de MB variam de 214 a 838 de uma corrida para a outra, e isso cabe num fio em
+segundo plano, não num custo fixo do fio principal. Isto é uma hipótese, NÃO uma medição: confirma-se com a sonda
+abaixo.
+
+- **Instrumentação nova** `crate::sonda_partes` (só em `cfg(test)`; fora dele `parte()` não faz nada): ms e MB
+  **do fio principal** (`/proc/thread-self/stat`) por parte do «+». As partes são `mais.snapshot_model`,
+  `mais.flush` (com `flush.guard`, `flush.pousa_adiados`, `flush.ultima_imagem`, `flush.bring_home`,
+  `flush.worker_none`, `flush.guarda`), `mais.tela_zero`, `mais.replace_canvas`, `mais.commit`, `mais.troca`,
+  `mais.adormeceu_muda`, `select_layer`, e `tique`/`preview` × 3. A diferença entre o total da linha `«+»` e a
+  soma das partes é o que os outros fios tocaram.
+- **Cura do `a_tinta_que_adormeceu_muda` (7,5 ms no handoff):** ele é a varredura em série do alfa da camada
+  inteira (`janela_da_tinta`, 33 MB). Passou a correr em faixas de 64 linhas em paralelo (rayon) com redução da
+  caixa. Dá a mesma janela por construção. A chave em execução é `JANELA_DA_TINTA_PARALELA`
+  (`undo_delta_confine.rs`, por fio, ligada por omissão). Desligada, volta a busca em série.
+  - Gate `a_janela_da_tinta_paralela_e_a_da_serie`: tinta na 1.ª e na última linha, a cavalo da fronteira de
+    faixa (63/64), um texel só, colunas extremas, plano vazio, RGB sem alfa. Controlo = a série. Mutações: (M1)
+    a linha sem o deslocamento da faixa → vermelho; (M2) a coluna final sem `+ 1` → vermelho.
+  - Vizinhos verdes por nome: `adormec` 29, `confin` 28, `troca` 31, `mais_sem_diff` 3, `janela` 17. `cargo check
+    --profile smoke --tests` compila. Curado também o aviso `mut` em `mais_sem_diff_tests.rs:256`.
+- **`flush_active_to_images` (6,5 ms): NÃO curado, falta a medição.** O flush propriamente dito é um `Arc::clone`.
+  O custo está no `wet_adormece`: `wetpaint_pousa_adiados` + `wet_ultima_imagem` (`bring_home` + composite da
+  janela por mostrar) + `bring_home`. As duas curas pedidas («só a caixa suja», «saltar se nada mudou») já existem
+  aí: `wet_ultima_imagem` sai cedo sem imagem pendente e, sem véu, compõe só o sujo por mostrar
+  (`o_sujo_por_mostrar_volta_ao_motor`). O que sobra é a espera pelo motor, a mesma família do item 5. Decide-se
+  com as partes `flush.*`.
+- **A sonda, para o coordenador (o guarda recusa `--ignored` neste subagente):**
+  `bash scripts/fila-pesada.sh pôr 'bash docs/Painter/missao_4k/medicoes/N7_ITEM3_sonda_wet_partes.sh'`. Wet Wash
+  4K, `PH2D_SONDA_JANELA=ab` × 4 blocos rodados e as partes. Para ler: (a) `mais.adormeceu_muda` com
+  `janela_paralela=true` × `false`; (b) a soma das partes × o total (quanto é de outro fio); (c) qual `flush.*` leva
+  os 6,5 ms. A `N7_ITEM3_sonda.sh` não mudou e imprime as partes também (já leva `PH2D_SONDA_PARTES=1`).
+
+### 3. Item 5: a espera do pen-down pelo motor (3,8 ms + `abre_o_passo` 2 ms): NÃO implementado
+
+- **Onde espera:** `WetSession::bring_home` (`wetpaint/offthread.rs:224`) faz `want.store(true)` e depois
+  `back.recv()`, bloqueando até o worker acabar o estágio em curso (≤ um estágio). Com o motor em casa
+  (`EngineSlot::Here`) já sai na 1.ª linha: «não esperar com o motor ocioso» **já é a lei**. Os 3,8 ms são o
+  estágio que o worker estava a correr quando a caneta desceu.
+- **Sobrepor `abre_o_passo` com a espera:** exige que nada do que o passo de undo fotografa (a tela, o journal,
+  o `before` da sessão molhada do `undo_vivo`) esteja a ser escrito pelo worker durante a abertura. A tela só se
+  escreve no fio principal (o composite), mas o `before` do passo Wet lê o estado da sessão que o worker tem na
+  mão. Abrir antes do `recv` fotografaria um estado a meio do estágio. Não há prova de que seja ao bit, e o
+  handoff já o julgou arriscado (§1: «A espera só some adiando o pen-down inteiro»).
+- **Falta medir:** a decomposição 3,8 + 2 é do handoff, não foi re-medida (sem sonda neste subagente). Quem
+  retomar: ponha `crate::sonda_partes::parte` em volta do `bring_home` e do `abre_o_passo` no pen-down Wet e use
+  a mesma sonda com `PH2D_SONDA_TOQUES`.

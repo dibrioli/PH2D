@@ -253,7 +253,7 @@ fn o_tecto_conta_o_mais_pelo_tamanho_real() {
         MAIS_SEM_DIFF.set(chave);
         let mut t = ferramenta(Meio::Wb);
         let mut pesos = vec![mais(&mut t)];
-        let mut passo = |t: &mut PainterTool, f: &mut dyn FnMut(&mut PainterTool)| {
+        let passo = |t: &mut PainterTool, f: &mut dyn FnMut(&mut PainterTool)| {
             let b = t.undo.retained_bytes();
             f(t);
             t.undo.retained_bytes() - b

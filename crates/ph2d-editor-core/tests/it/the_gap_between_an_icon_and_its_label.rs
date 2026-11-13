@@ -54,6 +54,11 @@ const NOT_THIS_QUESTION: &[(&str, &str)] = &[
          (`largura_da_seta`); o nome do Play mede-se por `rect_for_label`, que ja' leva o vao",
     ),
     (
+        "crates/ph2d-editor-core/src/widget/tool_rail/fila_fina.rs",
+        "ICONE SEM LEGENDA: a fila fina da maquete C (onda 6) nao tem legenda; `lado_do_glifo` e' \
+         o glifo e o respiro do chip dele, metade de cada lado — o nome mora na dica",
+    ),
+    (
         "crates/ph2d-panel-painter-layers/src/paint.rs",
         "ICONE -> ICONE: a fileira de botoes do cabecalho. O vao entre duas PECAS de um controlo \
          e' a lei do grupo (wave 20), nao a legenda de um icone",

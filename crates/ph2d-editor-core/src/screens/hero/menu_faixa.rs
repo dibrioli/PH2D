@@ -17,11 +17,37 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_i18n::tr;
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 use super::context_menu_overlay::MENU_W;
+
+/// A marca «PH2D» (dono 12/11, no lugar do W da maquete): o nome a negrito numa pílula.
+fn marca_w(text_system: &mut TextSystem) -> f32 {
+    let w = ph2d_text::com_peso_exato(|| {
+        text_system.prefix_width_weighted(
+            tr("chrome.menu_bar.brand"),
+            TypeToken::Xs.px(),
+            FontWeight::BOLD,
+        )
+    });
+    w + Spacing::Sm.px() * 2.0
+}
+
+fn marca_h() -> f32 {
+    TypeToken::Xs.px() + Spacing::Xs.px() * 2.0
+}
+
+/// O botão «Menu»: a marca, o nome e a seta que diz «abre».
+fn menu_w(text_system: &mut TextSystem) -> f32 {
+    let rotulo = text_system.prefix_width(tr("chrome.menu_bar.menu"), TypeToken::Sm.px());
+    Spacing::Xs.px() * 2.0
+        + marca_w(text_system)
+        + rect_for_label(rotulo)
+        + INLINE_ICON_PX
+        + Spacing::Xs.px()
+}
 
 /// O campo nunca passa de dois menus de largura; abaixo de um, vira a lupa.
 fn campo_max_w() -> f32 {
@@ -49,10 +75,7 @@ pub struct Faixa {
 /// nunca toma mais de metade do vão livre (a outra metade é das abas).
 #[must_use]
 pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Faixa {
-    let font = TypeToken::Sm.px();
-    let rotulo = text_system.prefix_width(tr("chrome.menu_bar.menu"), font);
-    let menu_w = Spacing::Sm.px() + icon_glyph_side(bar.h) + rect_for_label(rotulo);
-    let menu = Rect::new(bar.x + Spacing::Sm.px(), bar.y, menu_w, bar.h);
+    let menu = Rect::new(bar.x + Spacing::Xs.px(), bar.y, menu_w(text_system), bar.h);
     let janela = super::window_buttons::rects(bar, frame);
     let fim = super::window_buttons::start_x(bar, &janela);
     let play_w = super::transport_bar::play_width(text_system, bar.h);
@@ -78,10 +101,12 @@ pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Fa
     }
 }
 
-/// A caixa de um controlo dentro da faixa: recuada do topo e do fundo como a pílula do jogo.
+/// A caixa de um controlo dentro da faixa: uma linha de menu de alto, centrada (maquete C: os
+/// controlos de 22 px na faixa de 30), nunca a tocar o topo nem o fundo.
 pub(super) fn caixa(r: Rect) -> Rect {
     let d = m::FIELD_BORDER;
-    Rect::new(r.x, r.y + d, r.w, (r.h - d * 2.0).max(0.0))
+    let h = (r.h - d * 2.0).min(ph2d_tokens::ROW_H_PX).max(0.0);
+    Rect::new(r.x, r.y + (r.h - h) * 0.5, r.w, h)
 }
 
 /// ⭐ **A caixa do nome de um botão «glifo + nome»** (o «Menu», o Play), do fim do glifo (`de`) à
@@ -117,11 +142,11 @@ pub fn paint(
     motion: &crate::motion::UiMotion,
 ) {
     let barra = Barra::de(theme);
-    let cor = |t: ColorToken| barra.map_or_else(|| resolve(t, theme), |b| b.tinta().color(t));
     let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
     let font = TypeToken::Sm.px();
 
     // ── «Menu» ── aceso enquanto a cascata dele está aberta: diz de onde os menus saíram.
+    let tons = super::faixa_tons::tons(theme);
     let aberto = store.menu_chain().first().map(|r| r.kind) == Some(ContextMenuKind::MenuBarRoot);
     let hover = pairado(store, ids::MENUBAR_W);
     let tinta = match barra {
@@ -135,7 +160,6 @@ pub fn paint(
                 };
                 fill_rounded_rect(scene, f.menu, raio, resolve(fundo, theme));
             }
-            // O título lê o relógio da UI (Expressivo/Discreto); aberto fica fora do eixo.
             let estado = store
                 .button_state(ids::MENUBAR_W)
                 .unwrap_or(ButtonState::Normal);
@@ -148,13 +172,52 @@ pub fn paint(
             crate::widget::chip_axis_color(t, ColorToken::Text2, ColorToken::Text1, fg, theme)
         }
     };
-    let lado = icon_glyph_side(f.menu.h);
-    let gx = f.menu.x + Spacing::Sm.px();
-    let glifo = Rect::new(gx, f.menu.y + (f.menu.h - lado) * 0.5, lado, lado);
-    paint_icon(scene, IconId::Menu, glifo, tinta, StrokeToken::Default.px());
+    // A marca «PH2D».
+    let (mw, mh) = (marca_w(text_system), marca_h());
+    let marca = Rect::new(
+        f.menu.x + Spacing::Xs.px(),
+        f.menu.y + (f.menu.h - mh) * 0.5,
+        mw,
+        mh,
+    );
+    fill_rounded_rect(scene, marca, mh * 0.5, tons.marca);
+    let xs = TypeToken::Xs.px();
+    let marca_nome = tr("chrome.menu_bar.brand");
+    let nome_w = ph2d_text::com_peso_exato(|| {
+        text_system.prefix_width_weighted(marca_nome, xs, FontWeight::BOLD)
+    });
+    crate::paint::paint_text_elided_in_weight(
+        text_system,
+        scene,
+        marca_nome,
+        [
+            marca.x + (marca.w - nome_w) * 0.5,
+            marca.y + (marca.h - xs) * 0.5,
+        ],
+        xs,
+        marca.w,
+        tons.marca_texto,
+        FontWeight::BOLD,
+    );
+    // O nome «Menu» e a seta.
     let rotulo = tr("chrome.menu_bar.menu");
-    let nome = caixa_do_nome(text_system, rotulo, f.menu, gx + lado);
-    paint_text_centered(text_system, scene, rotulo, nome, font, tinta);
+    let seta = INLINE_ICON_PX;
+    let fim_nome = f.menu.x + f.menu.w - seta - Spacing::Xs.px();
+    let caixa_nome = Rect::new(
+        marca.x + marca.w,
+        f.menu.y,
+        (fim_nome - marca.x - marca.w).max(0.0),
+        f.menu.h,
+    );
+    paint_text_centered(text_system, scene, rotulo, caixa_nome, font, tinta);
+    let glifo = Rect::new(fim_nome, f.menu.y + (f.menu.h - seta) * 0.5, seta, seta);
+    paint_icon(
+        scene,
+        IconId::ChevronDown,
+        glifo,
+        tinta,
+        StrokeToken::Default.px(),
+    );
     hit_index.register(ids::MENUBAR_W, f.menu);
 
     // ── «Find anything» ── um campo que é um botão: clicar abre a busca.
@@ -163,17 +226,18 @@ pub fn paint(
     }
     let hover = pairado(store, ids::MENUBAR_FIND);
     let cx = caixa(f.find);
-    match barra {
-        Some(b) => b.campo(scene, cx, false, hover),
-        None => {
-            fill_rounded_rect(scene, cx, raio, resolve(ColorToken::BgElev, theme));
-        }
-    }
-    let apagado = cor(if hover {
-        ColorToken::Text2
-    } else {
-        ColorToken::Text3
-    });
+    let fino = StrokeToken::Thin.px();
+    fill_rounded_rect(scene, cx, raio, tons.campo);
+    let meio = fino * 0.5;
+    let traco = Rect::new(cx.x + meio, cx.y + meio, cx.w - fino, cx.h - fino);
+    crate::paint::stroke_rounded_rect(
+        scene,
+        traco,
+        raio - meio,
+        fino,
+        if hover { tons.texto } else { tons.contorno },
+    );
+    let apagado = if hover { tons.texto } else { tons.apagado };
     let lupa = INLINE_ICON_PX;
     let pad = Spacing::Md.px();
     let lx = if f.lupa {
@@ -193,22 +257,30 @@ pub fn paint(
     if f.lupa {
         return;
     }
-    let ty = cx.y + (cx.h - font) * 0.5;
+    // A tecla numa plaquinha, encostada à direita.
     let tecla = tr("chrome.menu_bar.find_key");
-    let tw = text_system.prefix_width(tecla, font);
-    let tx = cx.x + cx.w - pad - tw;
+    let tw = text_system.prefix_width(tecla, xs);
+    let (ph, pw) = (xs + Spacing::Xxs.px() * 2.0, tw + Spacing::Sm.px() * 2.0);
+    let placa = Rect::new(
+        cx.x + cx.w - Spacing::Xs.px() - pw,
+        cx.y + (cx.h - ph) * 0.5,
+        pw,
+        ph,
+    );
+    fill_rounded_rect(scene, placa, Radius::Sm.px().min(ph * 0.5), tons.tecla);
     paint_text(
         text_system,
         scene,
         tecla,
-        tx,
-        ty,
-        font,
+        placa.x + Spacing::Sm.px(),
+        placa.y + (placa.h - xs) * 0.5,
+        xs,
         tw,
-        cor(ColorToken::Text3),
+        tons.tecla_texto,
     );
+    let ty = cx.y + (cx.h - font) * 0.5;
     let x = lx + lupa + ph2d_tokens::icon_label_gap_px();
-    let max_w = (tx - Spacing::Md.px() - x).max(0.0);
+    let max_w = (placa.x - Spacing::Md.px() - x).max(0.0);
     paint_text(
         text_system,
         scene,

@@ -74,6 +74,7 @@ pub mod board_video_bar;
 pub mod board_view;
 pub mod document_tabs;
 pub mod document_tabs_menu;
+pub mod faixa_tons;
 pub mod float_bar;
 mod foco;
 mod inspector_model;

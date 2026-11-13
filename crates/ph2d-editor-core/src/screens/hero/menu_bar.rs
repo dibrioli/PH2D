@@ -23,14 +23,12 @@ use crate::widget::ButtonState;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::TextKey;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ROW_H_PX, Theme};
+use ph2d_tokens::{MENU_BAR_H_PX, Theme};
 use ph2d_vector::VectorScene;
 
-/// A altura da barra — **uma linha de menu**, que é o que um título é.
-///
-/// ⚠️ Deriva do mesmo token que a linha de um menu aberto (`ROW_H_PX`), e não de um número
-/// escolhido: o título e as linhas que ele abre são a mesma família de alvo.
-pub const MENU_BAR_H: f32 = ROW_H_PX;
+/// A altura da faixa — a da maquete C (`.c15mb`, 30 px; dono 12/11: «a altura é melhor na
+/// maquete»). Os controlos dentro dela (campo, Play, abas) têm a altura de uma linha de menu.
+pub const MENU_BAR_H: f32 = MENU_BAR_H_PX;
 
 /// ⭐ **A TABELA** — título, id, e o menu que ele abre. A fonte única desta barra.
 pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [

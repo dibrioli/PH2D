@@ -33,7 +33,7 @@ pub fn rects(bar: Rect, frame: Option<bool>) -> Vec<(NodeId, IconId, Rect)> {
     let Some(maximized) = frame else {
         return Vec::new();
     };
-    let w = button_w(bar.h);
+    let w = button_w(super::transport_bar::controlo(bar.h));
     let max_icon = if maximized {
         IconId::WindowRestore
     } else {
@@ -94,7 +94,7 @@ pub fn paint(
                 theme,
             )
         };
-        let lado = icon_glyph_side(r.h);
+        let lado = icon_glyph_side(super::transport_bar::controlo(r.h));
         let glifo = Rect::new(
             r.x + (r.w - lado) * 0.5,
             r.y + (r.h - lado) * 0.5,

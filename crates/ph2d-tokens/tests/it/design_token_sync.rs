@@ -36,10 +36,10 @@ use std::path::PathBuf;
 use ph2d_tokens::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, Density, EDGE_PAD_PX, FontWeight, HERO_VIEWPORT_H_PX,
     HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, ICON_BTN_SIZE_PX,
-    INLINE_ICON_PX, INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX,
-    PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius, Spacing, StrokeToken,
-    TOOL_CHIP_PX, TOOL_ROW_GAP_PX, TOOL_ROW_GROUP_GAP_PX, TOOL_ROW_H_PX, TOOL_ROW_ICON_PX,
-    TOOL_ROW_PAD_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
+    INLINE_ICON_PX, INSPECTOR_W_PX, LetterSpacing, LineHeight, MENU_BAR_H_PX, PANEL_HEAD_PAD_PX,
+    PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius, Spacing,
+    StrokeToken, TOOL_CHIP_PX, TOOL_ROW_GAP_PX, TOOL_ROW_GROUP_GAP_PX, TOOL_ROW_H_PX,
+    TOOL_ROW_ICON_PX, TOOL_ROW_PAD_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
 };
 use serde_json::Value;
 
@@ -197,6 +197,7 @@ fn chrome_consts_match_tokens_json() {
         ("tool-row-pad", TOOL_ROW_PAD_PX),
         ("tool-row-gap", TOOL_ROW_GAP_PX),
         ("tool-row-group-gap", TOOL_ROW_GROUP_GAP_PX),
+        ("menu-bar-h", MENU_BAR_H_PX),
         ("divider-gap", DIVIDER_GAP_PX),
         ("pill-padding", PILL_PADDING_PX),
         ("checkbox-box", CHECKBOX_BOX_PX),

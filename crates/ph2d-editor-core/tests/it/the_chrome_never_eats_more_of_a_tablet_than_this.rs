@@ -91,7 +91,10 @@ const TABLETS: [(&str, f32, f32); 3] = [
 /// ⛔ **Um piso que desce por pedido do dono continua a ser uma catraca** — o que ele proíbe é
 /// descer em SILÊNCIO, por uma faixa que ninguém pediu. *A barra move-se com a assinatura de quem
 /// a moveu.*
-const FLOOR: [(&str, f32); 3] = [("iPad 12.9", 50.5), ("iPad 11", 49.3), ("iPad mini", 48.6)];
+/// ⭐ **Subiu em 13/11** (line/BarraDeMenus, onda 6, ordem do dono com a maquete C ao lado): a faixa
+/// de cima foi de 22 para 30 px, a fila de ferramentas de ~54 para 26 px (sem legendas); o saldo
+/// mediu `51,6 · 50,9 · 50,4 %` (era `50,5 · 49,3 · 48,6`), e o piso trava o ganho.
+const FLOOR: [(&str, f32); 3] = [("iPad 12.9", 51.5), ("iPad 11", 50.8), ("iPad mini", 50.3)];
 
 /// Quanto acima do piso é «ganhou-se área e a barra ficou obsoleta».
 const STALE_ABOVE: f32 = 2.0;
@@ -122,7 +125,10 @@ fn drawing_area_pct(w: f32, h: f32) -> f32 {
     // que ele comprava mede-se agora onde ela vive — ver
     // `the_painter_costs_no_screen_because_the_overflow_takes_it`. Um parâmetro que já não muda a
     // resposta faria este gate medir a mesma célula duas vezes.
-    bands.tool_bar_h = tool_bar::tool_bar_h(RailButtonSize::Small, 1);
+    // ⭐ A altura que o PRODUTO dá à fila (onda 6 da barra de menus: a fila fina de 26 px em
+    // cartões), perguntada à porta do layout — nunca a fórmula da fila alta.
+    bands.tool_bar_h =
+        tool_bar::tool_bar_h_da_loja(&HeroScreen::new(ph2d_editor_core::NodeId(1)).store);
     let l = HeroLayout::for_viewport_bands(vp, false, bands, CenterSplit::None, DockSides::BOTH);
     100.0 * l.draw_area.w * l.draw_area.h / (w * h)
 }
@@ -171,7 +177,7 @@ fn collapsing_both_columns_still_gives_the_tablet_back() {
         let bands = ChromeBands {
             rail_w: 0.0,
             top_bar_h: menu_bar::MENU_BAR_H,
-            tool_bar_h: tool_bar::tool_bar_h(RailButtonSize::Small, 1),
+            tool_bar_h: tool_bar::tool_bar_h_da_loja(&h.store),
             ..ChromeBands::DEFAULT
         };
         let closed = HeroLayout::for_viewport_bands(
@@ -222,7 +228,7 @@ fn the_painter_costs_no_screen_because_the_overflow_takes_it() {
         let bands = ChromeBands {
             rail_w: 0.0,
             top_bar_h: menu_bar::MENU_BAR_H,
-            tool_bar_h: tool_bar::tool_bar_h(RailButtonSize::Small, 1),
+            tool_bar_h: tool_bar::tool_bar_h_da_loja(&h.store),
             ..ChromeBands::DEFAULT
         };
         let area_w =
@@ -258,17 +264,28 @@ fn the_painter_costs_no_screen_because_the_overflow_takes_it() {
         for (estado, rail) in [("repouso", &idle), ("pincel", &paint)] {
             // A largura em que os chips correm é a do produto, a mesma de `bar_split` e do pintor.
             let faixa = Rect::new(0.0, 0.0, area_w, bands.tool_bar_h);
-            let lines = ph2d_editor_core::widget::horizontal_lines(
-                rail,
-                tool_bar::content_rect(faixa).w,
-                RailButtonSize::Small,
-            );
+            // A fila fina (cartões) cabe numa linha pela porta dela; a alta, pela de sempre.
+            let lines = if tool_bar::fila_fina(rail) {
+                if ph2d_editor_core::widget::fila_fina_cabe(rail, area_w) {
+                    1
+                } else {
+                    2
+                }
+            } else {
+                ph2d_editor_core::widget::horizontal_lines(
+                    rail,
+                    tool_bar::content_rect(faixa).w,
+                    RailButtonSize::Small,
+                )
+            };
             assert_eq!(
                 lines, 1,
                 "{name} {estado}: a fila precisa de {lines} linhas — ela voltou a crescer"
             );
         }
-        if w < 1300.0 {
+        // A fila FINA (cartões, onda 6) leva as 18 entradas numa linha: nada transborda e a
+        // igualdade é paga pela largura. O controlo do transbordo vale para a fila alta.
+        if w < 1300.0 && !tool_bar::fila_fina(&paint) {
             assert!(
                 !paint_over.is_empty(),
                 "{name}: com o pincel nada transbordou — ou a fila encolheu, ou a igualdade acima \

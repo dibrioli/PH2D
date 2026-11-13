@@ -74,6 +74,9 @@ pub const TOOL_ROW_PAD_PX: f32 = crate::generated::CHROME_TOOL_ROW_PAD;
 pub const TOOL_ROW_GAP_PX: f32 = crate::generated::CHROME_TOOL_ROW_GAP;
 /// O vão entre dois glifos do MESMO grupo. Per tokens.json `chrome.tool-row-group-gap`.
 pub const TOOL_ROW_GROUP_GAP_PX: f32 = crate::generated::CHROME_TOOL_ROW_GROUP_GAP;
+/// A faixa do topo (barra de menus, maquete C `.c15mb`, dono 12/11: «a altura é melhor na
+/// maquete»). Per tokens.json `chrome.menu-bar-h`.
+pub const MENU_BAR_H_PX: f32 = crate::generated::CHROME_MENU_BAR_H;
 
 /// LeftRail divider gap. Per tokens.json `chrome.divider-gap`.
 pub const DIVIDER_GAP_PX: f32 = crate::generated::CHROME_DIVIDER_GAP;

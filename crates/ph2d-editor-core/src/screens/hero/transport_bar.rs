@@ -42,7 +42,14 @@ fn nome_do_play() -> &'static str {
 #[must_use]
 pub fn play_width(text_system: &mut ph2d_text::TextSystem, bar_h: f32) -> f32 {
     let nome = text_system.prefix_width(nome_do_play(), TypeToken::Sm.px());
-    Spacing::Sm.px() + crate::paint::icon_glyph_side(bar_h) + crate::paint::rect_for_label(nome)
+    Spacing::Sm.px()
+        + crate::paint::icon_glyph_side(controlo(bar_h))
+        + crate::paint::rect_for_label(nome)
+}
+
+/// O lado de um controlo na faixa: uma linha de menu (maquete C), nunca mais alto que a faixa.
+pub(super) fn controlo(bar_h: f32) -> f32 {
+    ph2d_tokens::ROW_H_PX.min(bar_h)
 }
 
 /// A largura da seta do palco.
@@ -72,7 +79,7 @@ fn vao_do_separador() -> f32 {
 /// não couberem depois de `start_x`: um botão por cima de um menu rouba-lhe o clique.
 #[must_use]
 pub fn rects(bar: Rect, start_x: f32, end_x: f32, play_w: f32) -> Vec<(NodeId, IconId, Rect)> {
-    let lado = bar.h;
+    let lado = controlo(bar.h);
     let larguras = [play_w, largura_da_seta(), lado, lado];
     let jogo: f32 = larguras.iter().sum();
     let total = jogo + vao_do_separador() * 2.0 + lado;
@@ -95,7 +102,11 @@ fn com_controls(jogo: impl Iterator<Item = (NodeId, IconId, Rect)>) -> Vec<(Node
     let mut botoes: Vec<_> = jogo.collect();
     if let Some((.., u)) = botoes.last().copied() {
         let x = u.x + u.w + vao_do_separador() * 2.0;
-        botoes.push((CONTROLS.0, CONTROLS.1, Rect::new(x, u.y, u.h, u.h)));
+        botoes.push((
+            CONTROLS.0,
+            CONTROLS.1,
+            Rect::new(x, u.y, controlo(u.h), u.h),
+        ));
     }
     botoes
 }
@@ -319,8 +330,28 @@ pub fn paint(
             store.button_state(*id).unwrap_or(ButtonState::Normal),
             ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
         );
+        let play_cheio = *id == ids::TOPBAR_PLAY_BUTTON && r.w > r.h && barra.is_some();
         let cor = if *id == CONTROLS.0 {
             moldura_controls(scene, *r, theme, run, hover)
+        } else if play_cheio {
+            // ⭐ O Play é a pílula cheia da maquete C (onda 6): o tom de sucesso do tema, com o
+            // contraste dos `faixa_tons`; pairado, o filete do texto diz «carrega aqui».
+            let t = super::faixa_tons::tons(theme);
+            let caixa = super::menu_faixa::caixa(*r);
+            let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
+            fill_rounded_rect(scene, caixa, raio, t.play);
+            if hover || on {
+                let fino = StrokeToken::Thin.px();
+                let meio = fino * 0.5;
+                let traco = Rect::new(
+                    caixa.x + meio,
+                    caixa.y + meio,
+                    caixa.w - fino,
+                    caixa.h - fino,
+                );
+                crate::paint::stroke_rounded_rect(scene, traco, raio - meio, fino, t.play_texto);
+            }
+            t.play_texto
         } else if let Some(b) = barra {
             b.segmento(scene, *r, on, hover)
         } else {
@@ -346,7 +377,7 @@ pub fn paint(
         let lado = if *id == ids::MENUBAR_PLAY_MENU {
             ph2d_tokens::INLINE_ICON_PX
         } else {
-            crate::paint::icon_glyph_side(r.h)
+            crate::paint::icon_glyph_side(controlo(r.h))
         };
         let gx = if com_nome {
             r.x + Spacing::Sm.px()

@@ -100,6 +100,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu_bar.window" => "Window",
         "chrome.menu_bar.help" => "Help",
         "chrome.menu_bar.menu" => "Menu",
+        "chrome.menu_bar.brand" => "PH2D",
         "chrome.menu_bar.menu_tip" => "Menu \u{00b7} Alt",
         "chrome.menu_bar.find" => "Find anything",
         "chrome.menu_bar.find_key" => "Ctrl+K",

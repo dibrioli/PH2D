@@ -255,7 +255,7 @@ pub fn follow_surfaces(hero: &mut HeroScreen) {
     hero.documents.follow_surfaces();
     let rows = super::surface_input::commands(hero)
         .into_iter()
-        .filter_map(|c| Some((doc_menu_kind(c.menu)?, c.id, c.label)))
+        .filter_map(|c| Some((doc_menu_kind(c.menu)?, c.id, c.label, c.icon)))
         .collect();
     hero.store.set_doc_commands(rows);
     for (tab, _) in hero.documents.surfaces().tabs() {

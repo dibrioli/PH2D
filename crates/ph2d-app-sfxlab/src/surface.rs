@@ -131,6 +131,7 @@ impl DocumentSurface for SfxLabDocs {
             id: CMD_NEW_SOUND,
             label: tr("sfxlab.cmd.new").to_owned(),
             menu: DocMenu::New,
+            icon: ph2d_editor_core::icons::IconId::Audio,
         }];
         out.extend(
             self.nomes
@@ -140,6 +141,7 @@ impl DocumentSurface for SfxLabDocs {
                     id: cmd_abrir(n),
                     label: tr_with("sfxlab.cmd.open", &[("name", n)]),
                     menu: DocMenu::Audio,
+                    icon: ph2d_editor_core::icons::IconId::Volume2,
                 }),
         );
         out

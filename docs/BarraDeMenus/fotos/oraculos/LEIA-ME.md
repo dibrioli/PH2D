@@ -11,3 +11,12 @@ Corrida: `PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/BarraDeMenus/ferramentas
 | Blender 5.2.3 (GPL…) | 27 | 28 | 14–15 | 0,73–0,75 / 0,74 |
 | PH2D onda 6 | 30 (controlos 22/24/28) | 26 | 9–10 | 0,16–0,40 / 0,50 |
 | PH2D onda 7 | 36 (controlos 26, segmentos 22) | 32 (chip 24) | 16 | 0,50 / 0,50 |
+
+## Onda 8 — os MENUS abertos (13/11, `ferramentas/oraculos_onda8.sh`)
+
+| | linha | divisória (contraste) | rótulo | atalho | ícones |
+|---|---|---|---|---|---|
+| VS Code 1.145 (`vscode_menu.png`) | 24 px | 1 px, 1,7:1 | 10,3:1 | 5,7:1 | não (coluna de visto reservada) |
+| Godot 4.7 (`godot_menu.png`) | 23 px | 2 px, 1,2:1 | 10,7:1 | 3,2:1 | não no menu principal |
+| Maquete C (`.c15it`) | 23 px | 1 px, ~1,3:1 | — | — | 16 px, vão 7 |
+| **PH2D onda 8** | **24** (`chrome.menu-row-h`) | **≥ 1,5:1** | **≥ 4,5** | **≥ 4,5** | **16 px nítidos, ≥ 3:1** |

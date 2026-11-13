@@ -259,8 +259,13 @@ pub fn paint_hover_tooltip(
         return false;
     };
     // Com a busca aberta, ou sobre uma linha de menu (o id é o do botão gémeo), a dica não é de ninguém.
+    // E com um menu da barra aberto: a dica do botão que o abriu (a seta do Play) tapava as linhas
+    // dele (foto da onda 8, 13/11).
     if store.command_palette_open()
         || crate::screens::hero::menu_cascade::level_of_row(store, id).is_some()
+        || store
+            .context_menu()
+            .is_some_and(|m| crate::screens::hero::menu_barra_linha::veste(store, m.kind))
     {
         return false;
     }

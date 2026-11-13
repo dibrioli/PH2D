@@ -319,11 +319,13 @@ impl crate::doc_surface::DocumentSurface for Kanbans {
                 id: EXPORT_KANBAN,
                 label: "Export Kanban\u{2026}".into(),
                 menu: DocMenu::Export,
+                icon: crate::icons::IconId::Export,
             },
             DocCommand {
                 id: TAB_ONLY,
                 label: "Tab Only".into(),
                 menu: DocMenu::Tab,
+                icon: crate::icons::IconId::Script,
             },
         ]
     }

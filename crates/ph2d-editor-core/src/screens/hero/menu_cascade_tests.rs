@@ -246,7 +246,10 @@ fn a_diagonal_para_o_filho_nao_troca_de_submenu() {
     p.paira(ids::MENUBAR_FILE);
     let (fx, fy) = p.centro(ids::MENUBAR_FILE);
     let edit = p.hero.hit_index.rect_for(ids::MENUBAR_EDIT).expect("Edit");
-    let alvo = p.centro(ids::CTX_MENU_SAVE);
+    // A borda de entrada do Save (não o centro): com o menu de 240 (onda 8) a recta até ao centro
+    // entrava no filho pela linha Open Recent, que abre o dela — pairar no FILHO não é o que se mede.
+    let save = p.hero.hit_index.rect_for(ids::CTX_MENU_SAVE).expect("Save");
+    let alvo = (save.x + 2.0, p.centro(ids::CTX_MENU_SAVE).1);
     // Degraus de 1 px, x e y alternados na proporção da diagonal (Bresenham), até ao filho.
     let (dx, dy) = (alvo.0 - fx, alvo.1 - fy);
     let (mut x, mut y) = (fx, fy);

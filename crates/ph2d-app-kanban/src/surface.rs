@@ -159,31 +159,37 @@ impl DocumentSurface for KanbanDocs {
                 id: CMD_NEW,
                 label: tr("kanban.cmd.new").to_owned(),
                 menu: DocMenu::New,
+                icon: ph2d_editor_core::icons::IconId::LayoutGrid,
             },
             DocCommand {
                 id: CMD_FROM,
                 label: tr("kanban.w6.cmd.new_from").to_owned(),
                 menu: DocMenu::New,
+                icon: ph2d_editor_core::icons::IconId::Copy,
             },
             DocCommand {
                 id: CMD_HOME,
                 label: tr("kanban.cmd.home").to_owned(),
                 menu: DocMenu::Plan,
+                icon: ph2d_editor_core::icons::IconId::LayoutGrid,
             },
             DocCommand {
                 id: CMD_JOIN,
                 label: tr("kanban.share.join_caption").to_owned(),
                 menu: DocMenu::Plan,
+                icon: ph2d_editor_core::icons::IconId::Link,
             },
             DocCommand {
                 id: Self::CMD_IMPORT,
                 label: tr("kanban.import.cmd_import").to_owned(),
                 menu: DocMenu::Import,
+                icon: ph2d_editor_core::icons::IconId::Open,
             },
             DocCommand {
                 id: Self::CMD_EXPORT,
                 label: tr("kanban.import.cmd_export").to_owned(),
                 menu: DocMenu::Export,
+                icon: ph2d_editor_core::icons::IconId::Export,
             },
         ]
     }

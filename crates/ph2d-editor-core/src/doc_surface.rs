@@ -104,6 +104,8 @@ pub struct DocCommand {
     /// O rótulo já traduzido, com o atalho («Go to Line… · Cmd+G»).
     pub label: String,
     pub menu: DocMenu,
+    /// O glifo da linha nos menus da barra (a coluna de 16 à esquerda, onda 8 da barra de menus).
+    pub icon: crate::icons::IconId,
 }
 
 /// O tipo de um símbolo do documento (o grupo dele no `@` da paleta, I14).

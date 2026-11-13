@@ -224,6 +224,7 @@ pub fn commands(state: CommandState) -> Vec<DocCommand> {
             id,
             label: tr(shown(id, key, state)).to_owned(),
             menu: DocMenu::Tab,
+            icon: ph2d_editor_core::icons::IconId::Script,
         })
         .collect()
 }

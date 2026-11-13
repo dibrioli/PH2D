@@ -57,11 +57,12 @@ pub struct AreaMenus {
     list: Vec<AreaMenu>,
     /// Quantos da frente são do seletor de modo (0 ou 1).
     leading: usize,
-    /// As linhas que a aba de FAMÍLIA activa soma aos menus da barra: `(menu, id, rótulo)`.
+    /// As linhas que a aba de FAMÍLIA activa soma aos menus da barra: `(menu, id, rótulo, ícone)`.
     pub(crate) doc_rows: Vec<(
         crate::interaction::ContextMenuKind,
         ph2d_a11y::NodeId,
         String,
+        crate::icons::IconId,
     )>,
 }
 

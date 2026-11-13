@@ -404,9 +404,10 @@ impl WidgetStore {
             crate::interaction::ContextMenuKind,
             ph2d_a11y::NodeId,
             String,
+            crate::icons::IconId,
         )>,
     ) {
-        for &(_, id, _) in &rows {
+        for &(_, id, ..) in &rows {
             if self.button_state(id).is_none() {
                 self.register(
                     id,
@@ -434,8 +435,23 @@ impl WidgetStore {
             .doc_rows
             .iter()
             .filter(move |(k, ..)| *k == kind)
-            .map(|(_, id, l)| (*id, l.as_str()))
+            .map(|(_, id, l, _)| (*id, l.as_str()))
             .chain(recent.iter().map(|r| (r.id, r.label.as_str())))
+    }
+
+    /// O glifo de uma linha que a família soma (o dela) ou de um projeto lembrado (o do ficheiro).
+    #[must_use]
+    pub fn doc_menu_icon(&self, id: ph2d_a11y::NodeId) -> Option<crate::icons::IconId> {
+        self.area_menus
+            .doc_rows
+            .iter()
+            .find_map(|(_, row, _, icon)| (*row == id).then_some(*icon))
+            .or_else(|| {
+                self.recent_rows()
+                    .iter()
+                    .any(|r| r.id == id)
+                    .then_some(crate::icons::IconId::File)
+            })
     }
 
     /// O que um módulo acrescenta a `kind` neste quadro — vazio quando ninguém contribui.

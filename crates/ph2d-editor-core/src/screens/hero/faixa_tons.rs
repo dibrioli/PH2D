@@ -64,7 +64,7 @@ pub fn razao(fg: Color, bg: Color) -> f64 {
 }
 
 /// `c` puxada para `alvo` só o bastante para ter `min` contra `bg`.
-fn ate_ler(c: Color, alvo: Color, bg: Color, min: f64) -> Color {
+pub(super) fn ate_ler(c: Color, alvo: Color, bg: Color, min: f64) -> Color {
     const PASSOS: u8 = 32; // LITERAL-PX-OK: CONTAGEM de passos da mistura, não medida
     (0..=PASSOS)
         .map(|k| c.lerp_rect(alvo, f32::from(k) / f32::from(PASSOS)))
@@ -74,7 +74,7 @@ fn ate_ler(c: Color, alvo: Color, bg: Color, min: f64) -> Color {
 
 /// ⭐ **Uma pílula cheia** (a marca, o Play): o tom do tema e a tinta que mais lê nele; se o par não
 /// chega (≥ 3:1 contra o chão, texto ≥ 4,5:1), o fundo anda o mínimo para o texto ou para o chão.
-fn pilula(base: Color, chao: Color, texto: Color, tintas: &[Color]) -> (Color, Color) {
+pub(super) fn pilula(base: Color, chao: Color, texto: Color, tintas: &[Color]) -> (Color, Color) {
     const PASSOS: u8 = 32; // LITERAL-PX-OK: CONTAGEM de passos da mistura, não medida
     let serve = |f: Color| {
         tintas

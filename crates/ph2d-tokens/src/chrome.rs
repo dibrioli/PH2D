@@ -82,6 +82,12 @@ pub const MENU_BAR_H_PX: f32 = crate::generated::CHROME_MENU_BAR_H;
 /// A altura de um controlo dentro da faixa (campo, Play, «Menu», abas). Per tokens.json
 /// `chrome.menu-bar-ctl-h`. Medido 13/11 (onda 7): VS Code 24 em 35, Blender 21 em 27.
 pub const MENU_BAR_CTL_H_PX: f32 = crate::generated::CHROME_MENU_BAR_CTL_H;
+/// A largura de um menu da barra (a raiz, os cinco, os submenus e a seta do Play). Per tokens.json
+/// `chrome.menu-w`. Maquete C `.c15dd` 240; medido 13/11 (onda 8): VS Code 330, Godot 350 (rótulos maiores).
+pub const MENU_W_PX: f32 = crate::generated::CHROME_MENU_W;
+/// A altura de uma linha de menu da barra. Per tokens.json `chrome.menu-row-h`. Medido 13/11 (onda 8):
+/// VS Code 24, Godot 23, maquete C 23.
+pub const MENU_ROW_H_PX: f32 = crate::generated::CHROME_MENU_ROW_H;
 /// O lado do glifo nas barras do topo (faixa e fila fina), desenhado SEM respiro. Per tokens.json
 /// `chrome.bar-icon`. Medido 13/11: VS Code, Godot e Blender desenham 14–16 px.
 pub const BAR_ICON_PX: f32 = crate::generated::CHROME_BAR_ICON;

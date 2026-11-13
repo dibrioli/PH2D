@@ -9,6 +9,7 @@ use ph2d_editor_core::doc_surface::{
     Compose, DocCommand, DocMenu, DocTab, DocumentSurface, Key, KeyInput, KeyOutcome, PointerInput,
     PointerLook,
 };
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{FieldKey, LineField};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerKind};
@@ -602,16 +603,17 @@ impl DocumentSurface for PlannerDocs {
 
     fn family_commands(&self) -> Vec<DocCommand> {
         [
-            (CMD_CALENDAR, "planner.cmd.calendar"),
-            (CMD_PLANNER, "planner.cmd.planner"),
-            (CMD_MY_CARDS, "planner.cmd.my_cards"),
-            (CMD_INBOX, "planner.cmd.inbox"),
+            (CMD_CALENDAR, "planner.cmd.calendar", IconId::Calendar),
+            (CMD_PLANNER, "planner.cmd.planner", IconId::Presentation),
+            (CMD_MY_CARDS, "planner.cmd.my_cards", IconId::CardNote),
+            (CMD_INBOX, "planner.cmd.inbox", IconId::MessageSquare),
         ]
         .into_iter()
-        .map(|(id, key)| DocCommand {
+        .map(|(id, key, icon)| DocCommand {
             id,
             label: tr(key).to_owned(),
             menu: DocMenu::Plan,
+            icon,
         })
         .collect()
     }

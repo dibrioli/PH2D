@@ -40,7 +40,7 @@ pub(super) fn pad_y() -> f32 {
 /// ⚠️ **A lei mudou-se para o [`crate::widget::panel_chrome::clamp_menu_to_viewport`]** quando
 /// ganhou um consumidor numa crate de PAINEL (a lista do "+ Track" da timeline). Isto delega:
 /// duas cópias divergiriam, e o modo de falha seria *um* menu do app a sair da tela.
-fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rect) -> Rect {
+pub(super) fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rect) -> Rect {
     crate::widget::panel_chrome::clamp_menu_to_viewport(anchor_x, anchor_y, w, h, viewport)
 }
 
@@ -248,6 +248,21 @@ fn paint_nivel(
     // ⚠️ A altura SOMA as linhas uma a uma em vez de multiplicar pela contagem: um risco não é do
     // tamanho de um comando, e a conta antiga (`ROW_H * len`) deixaria a coluna a transbordar do
     // cartão exactamente pela altura dos riscos.
+    // ⭐ Os menus da barra (onda 8) têm a cara da maquete C: ícone, atalho em coluna, caminho aceso.
+    if super::menu_barra_linha::veste(store, req.kind) {
+        let nivel = super::menu_barra_nivel::Nivel { req, mae, contrib };
+        return super::menu_barra_nivel::pinta(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            (project, motion, luz),
+            viewport,
+            &rows,
+            nivel,
+        );
+    }
     let total_h = rows.iter().map(MenuRow::h).sum::<f32>() + pad_y() * 2.0;
     let rect = clamp_to_viewport(
         req.x,
@@ -422,7 +437,7 @@ fn paint_nivel(
 /// ⚠️ Cada ladrilho arredonda **só o canto de fora**: o conjunto lê-se como UMA amostra com a quina
 /// do menu, e a moldura por cima é a da amostra de cor (um tema escuro sobre um menu escuro sumiria
 /// sem ela — o mesmo argumento da moldura da amostra de cor, ao lado).
-fn paint_theme_swatch(scene: &mut VectorScene, sw: Rect, tema: Theme, do_menu: Theme) {
+pub(super) fn paint_theme_swatch(scene: &mut VectorScene, sw: Rect, tema: Theme, do_menu: Theme) {
     let raio = 3.0; // LITERAL-PX-OK: o raio da amostra de cor do menu, o mesmo da linha vizinha
     let (mw, mh) = (sw.w * 0.5, sw.h * 0.5);
     let cores = super::theme_menu::cores_do_tema(tema);

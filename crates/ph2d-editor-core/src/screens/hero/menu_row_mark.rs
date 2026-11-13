@@ -49,6 +49,15 @@ impl MenuRow<'_> {
             Self::Divider => 1.0 + ph2d_tokens::DIVIDER_GAP_PX * 2.0,
         }
     }
+
+    /// A altura num menu da BARRA (onda 8): a linha de `chrome.menu-row-h` (VS Code 24, Godot 23) e o
+    /// risco com `Xs` de cada lado (maquete `.c15sep{margin:4px …}`; o de 17 abria buracos no File).
+    pub(super) fn h_na_barra(&self) -> f32 {
+        match self {
+            Self::Item(..) => ph2d_tokens::MENU_ROW_H_PX,
+            Self::Divider => 1.0 + ph2d_tokens::Spacing::Xs.px() * 2.0,
+        }
+    }
 }
 
 /// Does `id` correspond to the currently-active choice for any of

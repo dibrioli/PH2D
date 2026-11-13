@@ -6,7 +6,7 @@
 //! `chrome/*`, por `Click(id)`: pairar re-toca o clique, não há segunda tabela `linha → menu`.
 
 use super::HeroScreen;
-use super::context_menu_overlay::{MENU_W, pad_y};
+use super::context_menu_overlay::pad_y;
 use crate::ids;
 use crate::interaction::dispatch::keymap as k;
 use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent, WidgetStore};
@@ -81,8 +81,9 @@ pub fn open_cascade(hero: &mut HeroScreen, row: NodeId, kind: ContextMenuKind) {
         Some(r) => {
             let folga = Spacing::Xs.px();
             let vp = hero.last_viewport;
-            let (direita, esquerda) = (r.x + r.w + folga, r.x - folga - MENU_W);
-            let cabe = direita + MENU_W <= vp.x + vp.w;
+            let w = super::menu_barra_linha::largura(&hero.store, kind);
+            let (direita, esquerda) = (r.x + r.w + folga, r.x - folga - w);
+            let cabe = direita + w <= vp.x + vp.w;
             let x = if cabe || esquerda < vp.x {
                 direita
             } else {

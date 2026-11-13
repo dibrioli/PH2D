@@ -89,10 +89,9 @@ pub fn takeoff_rise(lift: PlatformLift, rel_up: f32, ground_up: f32) -> f32 {
 /// `max(peak_speed, takeoff_speed)`, `1` até `peak_speed`, `peak_gravity` no topo (ficha GEF 04,
 /// «altura que mente»). Duas partes: a inversa FECHADA de `h = Σ (v_alto² − v_baixo²)/(2·g·k)`
 /// (cada faixa é aceleração constante) e correcções `v·√(h/a)` sobre o tique discreto
-/// ([`discrete_apex`]: a fase lê a velocidade do INÍCIO do tique, e a gravidade integra-se em
-/// [`JumpConfig::world_steps`] passos de Euler) até [`LAUNCH_TOL`], porque a contínua erra 2,5 cm
-/// a 2 m. A correcção oscila com razão até ~0,3 (a fase muda de faixa entre tiques): três passos
-/// fixos deixavam 1,6 mm num mundo 1×1 (`os_passos_do_projeto_sao_os_da_lei`, 12/11). Custo medido
+/// ([`discrete_apex`]: o tique divide-se no limiar de faixa, [`tick_gravity_scale`], e a gravidade
+/// integra-se em [`JumpConfig::world_steps`] passos de Euler) até [`LAUNCH_TOL`], porque a contínua
+/// erra 2,5 cm a 2 m. Três passos fixos deixavam 1,6 mm num mundo 1×1 (`os_passos_do_projeto_sao_os_da_lei`, 12/11). Custo medido
 /// em `launch_speed_custa_pouco`. `neutral` (o fluido tem o corpo e a
 /// modelagem cala) devolve `√(2·g·h)`.
 #[must_use]
@@ -123,16 +122,55 @@ pub const LAUNCH_TOL: f32 = 1.0e-5;
 /// (2,5 cm) abaixo de [`LAUNCH_TOL`]; a decolagem paga-as uma vez.
 const LAUNCH_MAX_STEPS: usize = 10;
 
-fn phase_scale(cfg: &JumpConfig, v: f32) -> f32 {
-    if v > cfg.peak_speed {
-        if v > cfg.takeoff_speed {
-            cfg.takeoff_gravity
+/// A faixa de gravidade em que `v` DESCE (escala, limiar de baixo): acima de `peak_speed` a subida
+/// (`cut_gravity` cortada, `takeoff_gravity` acima de `takeoff_speed`, `1` entre), a janela do ápice
+/// até `−peak_speed`, e a queda abaixo dela. Em `v` igual a um limiar vale a faixa de baixo.
+fn band_below(cfg: &JumpConfig, cut: bool, v: f32) -> (f32, f32) {
+    let (ps, ts) = (cfg.peak_speed, cfg.takeoff_speed);
+    if v > ps {
+        if cut {
+            (cfg.cut_gravity, ps)
+        } else if v > ts {
+            (cfg.takeoff_gravity, ts.max(ps))
         } else {
-            1.0
+            (1.0, ps)
         }
+    } else if v > -ps {
+        (cfg.peak_gravity, -ps)
     } else {
-        cfg.peak_gravity
+        (cfg.fall_gravity, f32::NEG_INFINITY)
     }
+}
+
+/// **A escala de gravidade MÉDIA de um tique** que parte de `v` (a velocidade ao longo do «cima»):
+/// o tique divide-se onde a velocidade cruza um limiar de faixa, e cada trecho é aceleração
+/// constante (analítica), então a velocidade no fim do tique é a da lei contínua por trechos.
+/// Ler só a faixa do início do tique quantizava o pico: o pulo cortado fazia SERRA com a Jump
+/// Height (1,15 → 0,591 m, 1,20 → 0,493 m; ficha GEF 04). Escala ≤ 0 não desce: o resto do tique
+/// fica na faixa. `g`/`dt` inválidos devolvem a faixa do início.
+#[must_use]
+pub fn tick_gravity_scale(cfg: &JumpConfig, cut: bool, v: f32, g: f32, dt: f32) -> f32 {
+    let (mut s, mut lo) = band_below(cfg, cut, v);
+    if !(g > 0.0 && g.is_finite() && dt > 0.0 && dt.is_finite()) {
+        return s;
+    }
+    let (mut v, mut left, mut sum) = (v, dt, 0.0_f32);
+    // Quatro faixas: no máximo três cruzamentos num tique.
+    for _ in 0..4 {
+        let t = if s > 0.0 && lo.is_finite() {
+            (v - lo) / (s * g)
+        } else {
+            f32::INFINITY
+        };
+        if t >= left {
+            break;
+        }
+        sum += s * t;
+        left -= t;
+        v = lo;
+        (s, lo) = band_below(cfg, cut, v);
+    }
+    (sum + s * left) / dt
 }
 
 fn continuous_launch_speed(cfg: &JumpConfig, g: f32, h: f32) -> f32 {
@@ -157,7 +195,7 @@ fn continuous_launch_speed(cfg: &JumpConfig, g: f32, h: f32) -> f32 {
 }
 
 /// O ápice do pulo no relógio do jogo: o tique do salto só com o mundo, depois a gravidade da
-/// fase (lida no início do tique, um impulso) mais a do mundo, em `world_steps` passos de Euler
+/// fase (a média do tique dividido no limiar, [`tick_gravity_scale`], um impulso) mais a do mundo, em `world_steps` passos de Euler
 /// semi-implícito (`v −= g·h; x += v·h`, o do rapier): o tique desce `g·dt²·(n+1)/(2n)`, não o
 /// `g·dt²/2` da contínua — 0,34 mm por tique a `n = 4`, 0,085 a `n = 16` (ficha GEF 04, 12/11).
 /// Máximo sobre os fins de tique, que é o que a pose mostra.
@@ -170,7 +208,7 @@ pub fn discrete_apex(cfg: &JumpConfig, g: f32, v0: f32, dt: f32) -> f32 {
         let extra = if tick == 0 {
             0.0
         } else {
-            (phase_scale(cfg, v) - 1.0) * g
+            (tick_gravity_scale(cfg, false, v, g, dt) - 1.0) * g
         };
         v -= extra * dt;
         p += v * dt - fall;

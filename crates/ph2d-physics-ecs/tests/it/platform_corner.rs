@@ -23,12 +23,8 @@ use scene_fixture::{FLOAT_HEIGHT, pose, scene};
 const HALF_W: f32 = 0.2;
 /// A face de baixo da beirada, acima do repouso do personagem.
 const UNDER: f32 = FLOAT_HEIGHT + 0.5 + 1.2;
-/// O pico de um pulo SEM obstáculo nenhum, medido nesta fixture.
-const FREE_PEAK: f32 = 0.833;
-/// A geometria (beirada, pico, tabela) foi medida com `v0 = √(2·g·2)` = 6,264 m/s; a lei do ápice
-/// real (GEF 04) dá esse MESMO `v0` a 2,1056 m (`launch_speed_custa_pouco`). Com 2,0 o arranque
-/// cai a 6,097 e o pulo cortado no tique 3 sobe 0,766: a cabeça mal roça a beirada.
-const OLD_LAW_JUMP_HEIGHT: f32 = 2.1056;
+/// A Jump Height dos gates de ponto (a de partida do produto).
+const JUMP_HEIGHT: f32 = 2.0;
 
 struct Rig {
     sim: SimWorld,
@@ -40,22 +36,29 @@ struct Rig {
 /// é o CONTROLE (a assistência desligada), e `air` deixa o gate escolher se o
 /// controle aéreo freia ou conserva o arco.
 fn rig(clip: f32, reach: f32, air: f32) -> Rig {
+    rig_at(Some(clip), reach, air, JUMP_HEIGHT)
+}
+
+/// [`rig`] à Jump Height `h`; `clip = None` é a cena SEM beirada (o pulo livre).
+fn rig_at(clip: Option<f32>, reach: f32, air: f32, h: f32) -> Rig {
     let (mut sim, bridge, player) = scene(0.0, 0.0);
     let half_x = 2.0;
-    sim.world_mut().spawn((
-        Name::new("Ledge"),
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        Collider {
-            shape: ColliderShape::Cuboid {
-                half_x,
-                half_y: 0.5,
+    if let Some(clip) = clip {
+        sim.world_mut().spawn((
+            Name::new("Ledge"),
+            RigidBody {
+                kind: BodyKind::Static,
             },
-            ..Collider::default()
-        },
-        Transform::from_translation(Vec2::new(HALF_W - clip + half_x, UNDER + 0.5)),
-    ));
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x,
+                    half_y: 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(HALF_W - clip + half_x, UNDER + 0.5)),
+        ));
+    }
     let mut q = sim
         .world_mut()
         .try_query::<(&Name, &mut PlatformPlayer)>()
@@ -64,7 +67,7 @@ fn rig(clip: f32, reach: f32, air: f32) -> Rig {
         if n.as_str() == "Player" {
             p.corner_reach = reach;
             p.air_acceleration = air;
-            p.jump_height = OLD_LAW_JUMP_HEIGHT;
+            p.jump_height = h;
         }
     }
     Rig {
@@ -107,6 +110,12 @@ fn low_block(sim: &mut SimWorld, face: f32, top: f32) {
 
 /// Pula e devolve `(pico, x no fim, x no tique 45)`.
 fn jump(r: &mut Rig) -> (f32, f32, f32) {
+    let (peak, x_end, mid, _) = jump_vy(r);
+    (peak, x_end, mid)
+}
+
+/// [`jump`] e a maior subida por tique (m/s): o botão solto no 3º tique, o pulo CORTADO.
+fn jump_vy(r: &mut Rig) -> (f32, f32, f32, f32) {
     let (x0, y0) = pose(&r.sim);
     let mut tick = 0_u64;
     tick += 1;
@@ -122,7 +131,7 @@ fn jump(r: &mut Rig) -> (f32, f32, f32) {
             grab: false,
         },
     );
-    let (mut peak, mut mid) = (y0, x0);
+    let (mut peak, mut mid, mut vy, mut prev) = (y0, x0, 0.0_f32, y0);
     for k in 0..90 {
         tick += 1;
         r.bridge.dispatch(&mut r.sim, true, tick);
@@ -131,54 +140,76 @@ fn jump(r: &mut Rig) -> (f32, f32, f32) {
         }
         let (x, y) = pose(&r.sim);
         peak = peak.max(y);
+        vy = vy.max((y - prev) * 60.0);
+        prev = y;
         if k == 45 {
             mid = x;
         }
     }
     let (x_end, _) = pose(&r.sim);
-    (peak - y0, x_end - x0, mid - x0)
+    (peak - y0, x_end - x0, mid - x0, vy)
 }
 
-/// **O gate da wave.** Um encosto raso deixa de roubar o pulo.
+/// **O gate da wave, em VARREDURA** (Jump Height 1,0–2,6, o pulo cortado no 3º tique): com a
+/// assistência o encosto raso (0,10 m) deixa de roubar o pulo (o pico livre ±0,02), um teto de
+/// verdade (0,40 m) pára a cabeça igual com e sem ela, ela não lança (subida ≤ a do livre + 0,05
+/// m/s) nem desloca mais que o escape (≤ 0,13 m, e pára de deslizar), e onde a cabeça alcança a
+/// beirada o CONTROLO sem ajuda perde altura — a metade que dá sentido ao gate.
 ///
-/// ## Medido (2026-08-04, `measure_corner`, `corner_reach = 0,12`)
-///
-/// | encosto | pico SEM | pico COM |
-/// |---|---|---|
-/// | 0,10 m | 0,727 | **0,833** |
-///
-/// ⚠️ **O CONTROLE é a metade que dá sentido ao gate:** sem ele, "o pico é 0,83"
-/// seria verdade também numa cena sem beirada nenhuma, e o teste passaria com a
-/// assistência inteira deletada e a beirada fora do caminho.
+/// Um ponto só (a 2,1056 m, a régua da serra do pulo cortado, GEF 04) deixava a assistência
+/// correcta numa altura e calada nas vizinhas. **Mutações que sangram:** `nudge` zerado; devolver
+/// o alcance quando a busca falha; o escape como `boost`.
 #[test]
-fn a_shallow_clip_no_longer_steals_the_jump() {
-    let (off, _, _) = jump(&mut rig(0.10, 0.0, 20.0));
+fn a_quina_ajuda_em_toda_a_faixa_de_alturas() {
+    let mut falhas = Vec::new();
+    let mut alcancou = 0;
+    for i in 0..=16 {
+        let h = 1.0 + i as f32 * 0.1;
+        let (free, _, _, vy_free) = jump_vy(&mut rig_at(None, 0.0, 20.0, h));
+        let (off, _, _) = jump(&mut rig_at(Some(0.10), 0.0, 20.0, h));
+        let (on, _, _, vy_on) = jump_vy(&mut rig_at(Some(0.10), 0.12, 20.0, h));
+        let (teto_off, _, _) = jump(&mut rig_at(Some(0.40), 0.0, 20.0, h));
+        let (teto_on, _, _) = jump(&mut rig_at(Some(0.40), 0.12, 20.0, h));
+        let (_, x_end, x_mid) = jump(&mut rig_at(Some(0.10), 0.12, 0.0, h));
+        eprintln!(
+            "h={h:.1}: livre {free:.3} · sem {off:.3} · com {on:.3} · teto {teto_off:.3}/{teto_on:.3} \
+             · vy {vy_free:.3}/{vy_on:.3} · desvio {x_end:.3} ({x_mid:.3})"
+        );
+        // A cabeça alcança a beirada (o teto de verdade tira ≥ 5 cm do pico livre): o controlo
+        // perde mais que a tolerância da ajuda, e ≥ 5 cm quando a beirada tira ≥ 10 (medido 12/11:
+        // a 1,6 m o teto tira 0,052 e o encosto 0,025; a 2,0 m, 0,175 e 0,148).
+        let gap = free - teto_off;
+        if gap >= 0.05 {
+            alcancou += 1;
+            let perde = if gap >= 0.1 { 0.05 } else { 0.02 };
+            if off > free - perde {
+                falhas.push(format!(
+                    "h={h:.1}: o controlo não perde altura ({off:.3} vs {free:.3})"
+                ));
+            }
+        }
+        if (on - free).abs() >= 0.02 {
+            falhas.push(format!("h={h:.1}: com ajuda {on:.3} ≠ livre {free:.3}"));
+        }
+        if (teto_on - teto_off).abs() >= 1.0e-3 {
+            falhas.push(format!(
+                "h={h:.1}: o teto deixa passar ({teto_on:.3} vs {teto_off:.3})"
+            ));
+        }
+        if vy_on > vy_free + 0.05 {
+            falhas.push(format!("h={h:.1}: lança ({vy_on:.3} > {vy_free:.3})"));
+        }
+        if x_end.abs() > 0.13 || (x_end - x_mid).abs() >= 0.02 {
+            falhas.push(format!(
+                "h={h:.1}: desvio {x_end:.3} (tique 45: {x_mid:.3})"
+            ));
+        }
+    }
     assert!(
-        off < FREE_PEAK - 0.05,
-        "controle: sem assistencia o encosto TEM de roubar altura (pico {off:.3})"
+        alcancou >= 8,
+        "premissa: a cabeça alcança a beirada em metade da faixa ({alcancou})"
     );
-
-    let (on, _, _) = jump(&mut rig(0.10, 0.12, 20.0));
-    assert!(
-        (on - FREE_PEAK).abs() < 0.02,
-        "com assistencia o pulo alcanca a altura LIVRE: {on:.3} vs {FREE_PEAK}"
-    );
-}
-
-/// ⚠️ **Um TETO de verdade continua um teto** — e é o que separa a assistência
-/// de um teletransporte.
-///
-/// **Mutação que deve sangrar:** devolver o alcance quando a busca falha.
-#[test]
-fn a_real_ceiling_stops_the_head_just_the_same() {
-    // A cabeça INTEIRA tapada: nenhum deslocamento dentro do alcance livra.
-    let (off, _, _) = jump(&mut rig(0.40, 0.0, 20.0));
-    let (on, _, _) = jump(&mut rig(0.40, 0.12, 20.0));
-    assert!(
-        (on - off).abs() < 1.0e-3,
-        "com a cabeca tapada os dois picos tem de ser o MESMO: {on:.3} vs {off:.3}"
-    );
-    assert!(on < FREE_PEAK - 0.1, "e bem abaixo do livre: {on:.3}");
+    assert!(falhas.is_empty(), "a quina falha em: {falhas:?}");
 }
 
 /// ⚠️ **A assistência não empurra ninguém para dentro do que está ao lado.**
@@ -205,39 +236,6 @@ fn the_assist_refuses_to_shove_the_body_into_what_is_beside_it() {
     assert!(
         drift.abs() < 0.03,
         "e o personagem nao pode ter sido empurrado contra o bloco: {drift:.3}"
-    );
-}
-
-/// ⚠️ **A correção é um DESLOCAMENTO, não um impulso** — o gate que pina a
-/// decisão de projeto do topo de `ph2d_platformer::corner`.
-///
-/// O oráculo precisa de `air_acceleration = 0` (o controle aéreo conserva o
-/// arco, ver [`ph2d_platformer::WalkConfig::air_acceleration`]): com ele
-/// ligado, um `boost` lateral seria FREADO pelo próprio controle aéreo e o gate
-/// não distinguiria as duas implementações. Desligado, uma velocidade lateral
-/// inventada sobrevive para sempre — e o personagem continua a deslizar muito
-/// depois de a beirada ter ficado para trás.
-///
-/// **Mutação que deve sangrar:** aplicar o escape como `boost` (`escape / dt`)
-/// em vez de `nudge_body`.
-#[test]
-fn the_correction_moves_the_body_and_does_not_launch_it() {
-    let (peak, x_end, x_mid) = jump(&mut rig(0.10, 0.12, 0.0));
-    assert!(
-        (peak - FREE_PEAK).abs() < 0.05,
-        "premissa: sem controle aereo o pulo ainda passa: {peak:.3}"
-    );
-    // O deslocamento total é da ordem do escape (poucos centímetros)...
-    assert!(
-        x_end.abs() < 0.25,
-        "o desvio total tem de ser da ordem do escape, nao de um lancamento: {x_end:.3}"
-    );
-    // ...e ele PARA de crescer depois que a assistência deixa de agir.
-    let after = (x_end - x_mid).abs();
-    assert!(
-        after < 0.02,
-        "depois de livrar a quina o personagem nao pode CONTINUAR a deslizar: \
-         {after:.3} m no ultimo terco do voo (total {x_end:.3})"
     );
 }
 

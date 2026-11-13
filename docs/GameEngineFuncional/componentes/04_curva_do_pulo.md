@@ -188,3 +188,4 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
   com traço forte, no choque o painel pinta o contorno-fantasma tracejado da forma principal na pose de paragem e um
   ponto no contacto — o Short já não «pára do nada»: o fantasma encosta na quina da «Platform High». O pulo do ar sai pela direita da vista (pousa além dos 13 m, atrás do
   Inspector) e a vista é larga (16 m: o smoke centra no Player selecionado).
+- **Pulo cortado sem serra (12/11):** a faixa de gravidade (subida · corte · ápice · queda) é a do TRECHO do tique — o tique divide-se onde a velocidade cruza o limiar (`tick_gravity_scale`, aceleração constante por trecho; `discrete_apex` e a curva usam o mesmo), então o pico do pulo cortado já não cai ~0,1 m quando a Jump Height sobe (cortado no 3º tique: 1,15 → 0,612 e 1,20 → 0,627, antes 0,591 → 0,493), e a quina voltou à Jump Height 2,0 com gate de varredura 1,0–2,6.

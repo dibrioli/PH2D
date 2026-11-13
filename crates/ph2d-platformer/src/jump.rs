@@ -563,23 +563,11 @@ pub fn jump_step(
         };
     }
 
-    let scale = if rel_up > cfg.peak_speed {
-        // SUBINDO.
-        if next.cut {
-            cfg.cut_gravity
-        } else if rel_up > cfg.takeoff_speed {
-            cfg.takeoff_gravity
-        } else {
-            1.0
-        }
-    } else if rel_up < -cfg.peak_speed {
-        cfg.fall_gravity
-    } else {
-        // O ÁPICE — e também o instante em que se anda para fora de uma borda,
-        // que é o mesmo `|v| ≈ 0`. Ganhar ali a mesma flutuação é o *coyote
-        // feel* do Celeste, e é de propósito.
-        cfg.peak_gravity
-    };
+    // A faixa (subida · corte · ápice · queda) é a do TRECHO do tique: o tique divide-se onde a
+    // velocidade cruza um limiar ([`tick_gravity_scale`]). A janela do ápice é também o instante
+    // em que se anda para fora de uma borda (`|v| ≈ 0`): o *coyote feel* do Celeste, de propósito.
+    let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
+    let scale = jump_config::tick_gravity_scale(cfg, next.cut, rel_up, g, dt);
 
     // ⚠️ `(escala − 1)·g`, então `1.0` é EXATAMENTE zero — a queda do mundo,
     // byte a byte.
@@ -631,3 +619,8 @@ mod tests;
 #[cfg(test)]
 #[path = "jump_air_tests.rs"]
 mod air_tests;
+
+/// Os gates da faixa dividida no tique (GEF 04, a serra do pulo cortado).
+#[cfg(test)]
+#[path = "jump_band_tests.rs"]
+mod band_tests;

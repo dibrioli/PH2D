@@ -202,10 +202,9 @@ fn cut(
         .collect();
     let n = world_pts.len();
     let grab = (1..n).find_map(|k| {
-        // A descer no fim do tique `k`: o passo seguinte desce (o jogo lê a velocidade do fim do
-        // tique, não a média dele — no ápice as duas discordam de sinal).
-        let (a, b) = if k + 1 < n { (k, k + 1) } else { (k - 1, k) };
-        let falling = dot(sub(world_pts[b], world_pts[a]), up) <= 0.0;
+        // A descer no fim do tique `k`: a velocidade que o jogo lê no início do tique seguinte
+        // (`rel_up ≤ 0`), não a diferença de posições — no ápice as duas discordam de sinal.
+        let falling = arc.rises.get(k).is_none_or(|&r| r <= 0.0);
         falling
             .then(|| leg.grab(terrain, world_pts[k], up))
             .flatten()
@@ -222,6 +221,8 @@ fn cut(
         let at = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
         arc.points.truncate(hit.segment + 1);
         arc.points.push(at);
+        arc.rises.truncate(hit.segment + 1);
+        arc.rises.push(0.0);
         arc.touch = Some(ArcTouch {
             at,
             contact: sub(hit.contact, chao),
@@ -234,6 +235,8 @@ fn cut(
         let at = [next[0] - up[0] * height, next[1] - up[1] * height];
         arc.points.truncate(k + 1);
         arc.points.push(at);
+        arc.rises.truncate(k + 1);
+        arc.rises.push(0.0);
         arc.touch = Some(ArcTouch {
             at,
             contact: sub(h.contact, chao),

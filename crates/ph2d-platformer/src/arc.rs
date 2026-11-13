@@ -27,6 +27,9 @@ pub const AIR_JUMPS_DRAWN: u32 = 8;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct JumpArc {
     pub points: Vec<Vec2>,
+    /// A velocidade ao longo do «cima» no fim do tique de cada ponto (paralela a `points`): o pouso
+    /// do jogo lê-a no início do tique seguinte, e a diferença de posições erra-lhe o sinal no ápice.
+    pub rises: Vec<f32>,
     pub apex: Vec2,
     pub apex_time: f32,
     /// Até voltar à linha do arranque.
@@ -127,6 +130,7 @@ enum Hold {
 
 struct Sim {
     points: Vec<Vec2>,
+    rises: Vec<f32>,
     /// Os índices em `points` onde cada pulo (o do chão e os do ar) começa.
     starts: Vec<usize>,
     apexes: Vec<(usize, f32)>,
@@ -151,6 +155,7 @@ fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
     let mut state = PlayerState::default();
     let mut sim = Sim {
         points: vec![p],
+        rises: vec![0.0],
         starts: vec![0],
         apexes: Vec::new(),
         dt: w.dt,
@@ -217,6 +222,7 @@ fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
             sim.starts.push(sim.points.len() - 1);
         }
         sim.points.push(p);
+        sim.rises.push(dot(v, up));
         let now_rising = dot(v, up);
         if rising > 0.0 && now_rising <= 0.0 {
             sim.apexes.push((sim.points.len() - 1, dot(p, up)));
@@ -236,7 +242,7 @@ fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
     sim
 }
 
-fn arc_of(points: &[Vec2], up: Vec2, dt: f32) -> JumpArc {
+fn arc_of(points: &[Vec2], rises: &[f32], up: Vec2, dt: f32) -> JumpArc {
     let (i, _) = points
         .iter()
         .enumerate()
@@ -253,6 +259,7 @@ fn arc_of(points: &[Vec2], up: Vec2, dt: f32) -> JumpArc {
         apex_time: i as f32 * dt,
         air_time: back as f32 * dt,
         points: points.to_vec(),
+        rises: rises.to_vec(),
         touch: None,
     }
 }
@@ -262,7 +269,7 @@ fn arc_of(points: &[Vec2], up: Vec2, dt: f32) -> JumpArc {
 pub fn full_arc(cfg: &PlayerConfig, w: ArcWorld) -> JumpArc {
     let up = up_of_gravity(w.gravity);
     let s = simulate(cfg, w, true, Hold::Full { air: 0 });
-    arc_of(&s.points, up, s.dt)
+    arc_of(&s.points, &s.rises, up, s.dt)
 }
 
 /// Todas as curvas do canvas.
@@ -280,14 +287,19 @@ pub fn jump_arcs(cfg: &PlayerConfig, w: ArcWorld) -> JumpArcs {
         let mut out = Vec::new();
         for (k, &start) in s.starts.iter().enumerate().skip(1) {
             let end = s.starts.get(k + 1).copied().unwrap_or(s.points.len() - 1);
-            out.push(arc_of(&s.points[start..=end], up, s.dt));
+            out.push(arc_of(
+                &s.points[start..=end],
+                &s.rises[start..=end],
+                up,
+                s.dt,
+            ));
         }
         out
     };
     JumpArcs {
         full,
-        short: arc_of(&short.points, up, short.dt),
-        standing: arc_of(&standing.points, up, standing.dt),
+        short: arc_of(&short.points, &short.rises, up, short.dt),
+        standing: arc_of(&standing.points, &standing.rises, up, standing.dt),
         air,
     }
 }

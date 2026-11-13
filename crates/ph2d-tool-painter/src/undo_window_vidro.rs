@@ -95,8 +95,8 @@ impl WriteState {
     }
 
     /// O antes do texel `i`, se o journal o capturou (`antes[i] = journal.get(i).unwrap_or(vivo[i])`, §5.28).
-    /// Rede de conferência: o mesmo `cfg` dos outros `*_before` (a produção lê por corrida).
-    #[cfg(any(test, debug_assertions))]
+    /// Só os testes o lêem (a produção lê por corrida).
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn vidro_before(&self, i: usize) -> Option<Vidro> {
         self.vidro.borrow().tiles.get(i)

@@ -50,7 +50,7 @@ fn o_transporte_em_lanes_da_o_escalar_ao_bit() {
             g.film[i] = r.massa();
             g.susp[i] = r.massa();
             g.susp_rgb[i] = [r.f() * 255.0, r.massa(), r.f() * 255.0];
-            g.active[i] = u8::from(r.u() % 5 != 0);
+            g.active[i] = u8::from(!r.u().is_multiple_of(5));
             g.scratch.uv[i] = [(r.f() - 0.5) * 9.0, (r.f() - 0.5) * 9.0];
             g.scratch.outflow[i] = match r.u() % 6 {
                 0 => 0.0,

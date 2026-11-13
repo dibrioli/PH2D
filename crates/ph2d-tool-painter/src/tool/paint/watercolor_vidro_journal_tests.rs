@@ -198,7 +198,7 @@ fn tool_wb(journal: bool) -> PainterTool {
 /// O traço `k` (sobrepostos e disjuntos, a cruzar fronteiras de tile).
 fn traco_k(t: &mut PainterTool, k: usize) {
     let y = 40.0 + 41.0 * (k % 8) as f32;
-    let (x0, x1) = if k % 2 == 0 {
+    let (x0, x1) = if k.is_multiple_of(2) {
         (30.0, 300.0)
     } else {
         (110.0, 480.0)
@@ -478,7 +478,10 @@ fn vai_e_volta(t: &mut PainterTool, k: usize, drena: bool) {
 }
 
 /// Todo o documento que o oráculo compara: cada vidro e cada tela (a activa e as guardadas).
-fn documento(t: &PainterTool) -> (Vec<(crate::layers::LayerId, Vec<Vidro>)>, Vec<Vec<u8>>) {
+/// Cada vidro (por camada) e cada tela.
+type Documento = (Vec<(crate::layers::LayerId, Vec<Vidro>)>, Vec<Vec<u8>>);
+
+fn documento(t: &PainterTool) -> Documento {
     let vidros = t.vidros.iter().map(|(k, v)| (*k, v.to_vec())).collect();
     let mut telas = vec![t.canvas_rgba.to_vec()];
     telas.extend(t.images.values().map(|i| i.rgba8.to_vec()));
@@ -503,12 +506,7 @@ fn par(
     );
 }
 
-fn desfaz_e_refaz_tudo(
-    j: &mut PainterTool,
-    o: &mut PainterTool,
-    n: usize,
-    depois: &(Vec<(crate::layers::LayerId, Vec<Vidro>)>, Vec<Vec<u8>>),
-) {
+fn desfaz_e_refaz_tudo(j: &mut PainterTool, o: &mut PainterTool, n: usize, depois: &Documento) {
     for k in 0..n {
         par(
             &mut |t| assert!(t.undo_last(), "desfazer {k}"),

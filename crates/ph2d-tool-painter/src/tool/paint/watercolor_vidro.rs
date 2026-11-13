@@ -468,6 +468,7 @@ fn cobertura_do_over(o: &[u8], px: &[u8], cor: [f32; 3]) -> f32 {
 /// **Abre o vidro da `camada` para o escrever**: o plano sai do mapa (volta com
 /// [`PainterTool::devolve_o_vidro`]) e o vidro da `base` congela-se com ela (ligado por `Weak`). Por
 /// campos e não por `&mut self`: o composite do Wet Paint chama-o com a sessão emprestada.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn abre_o_vidro(
     vidros: &mut crate::compositor::vidro::Vidros,
     congelado: &mut Option<BaseCongelada>,

@@ -1,9 +1,13 @@
 //! As partes de um gesto para a sonda (n.º 7 item 3): ms e memória nova DESTE fio (`/proc/thread-self/stat`) desde a
 //! marca anterior. Só em `cfg(test)` e só com [`liga`]; fora disso [`parte`] não faz nada.
 
+/// `(início, faltas de página no início, (nome, ms, MB) de cada parte)`.
+#[cfg(test)]
+type Partes = (std::time::Instant, u64, Vec<(&'static str, f64, f64)>);
+
 #[cfg(test)]
 thread_local! {
-    static PARTES: std::cell::RefCell<Option<(std::time::Instant, u64, Vec<(&'static str, f64, f64)>)>> =
+    static PARTES: std::cell::RefCell<Option<Partes>> =
         const { std::cell::RefCell::new(None) };
 }
 

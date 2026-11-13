@@ -51,7 +51,7 @@ fn ev(t: &mut PainterTool, pos: [f32; 2], phase: PointerPhase) {
 /// pen-down elide): com um dono a mais o 1.º fork copia a tela inteira.
 fn traco(t: &mut PainterTool, k: usize) -> usize {
     let y = 40.0 + 41.0 * (k % 8) as f32;
-    let (x0, x1) = if k % 2 == 0 {
+    let (x0, x1) = if k.is_multiple_of(2) {
         (30.0, 300.0)
     } else {
         (110.0, 480.0)

@@ -56,15 +56,16 @@ impl Espera {
 #[cfg(test)]
 thread_local! {
     /// A hora de início e de fim do último fio de compressão nascido neste fio (para a sonda e o gate).
-    pub(crate) static ULTIMO_FIO: std::cell::Cell<Option<Arc<std::sync::Mutex<(Option<Instant>, Option<Instant>)>>>> =
+    pub(crate) static ULTIMO_FIO: std::cell::Cell<Option<Horas>> =
         const { std::cell::Cell::new(None) };
 }
 
 #[cfg(test)]
 type Horas = Arc<std::sync::Mutex<(Option<Instant>, Option<Instant>)>>;
 #[cfg(not(test))]
-type Horas = ();
+struct Horas;
 
+#[cfg_attr(not(test), allow(clippy::missing_const_for_fn))]
 fn horas_novas() -> Horas {
     #[cfg(test)]
     {
@@ -72,6 +73,8 @@ fn horas_novas() -> Horas {
         ULTIMO_FIO.set(Some(Arc::clone(&h)));
         h
     }
+    #[cfg(not(test))]
+    Horas
 }
 
 #[cfg_attr(not(test), allow(clippy::missing_const_for_fn))]

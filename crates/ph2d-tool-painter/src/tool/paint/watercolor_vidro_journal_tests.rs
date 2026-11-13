@@ -342,3 +342,96 @@ fn o_segundo_traco_nao_copia_o_plano_do_vidro() {
         "com a chave nenhum traço do 2.º ao {N}.º copia o plano do vidro: {com:?}"
     );
 }
+
+/// **ADR-0204 D2: o traço Digital sobre a aguada continua o vidro lendo o journal** (o `before` já não segura
+/// o plano: `continua_o_vidro_do_traco` lê o antes pelo journal sobre o vivo). Três aguadas, depois Digital por
+/// cima (sobrepostos e a cruzar tiles); depois de cada traço, de desfazer tudo o Digital e de o refazer, o vidro
+/// e a tela são os do oráculo (a chave desligada) ao bit, no mesmo processo.
+#[test]
+fn o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal() {
+    use super::watercolor_vidro::COPIAS_DO_VIDRO;
+    let mut j = tool_wb(true);
+    let mut o = tool_wb(false);
+    let confere = |j: &PainterTool, o: &PainterTool, quando: &str| {
+        assert!(plano(j) == plano(o), "{quando}: o vidro difere do oráculo");
+        assert!(
+            j.canvas_rgba.as_slice() == o.canvas_rgba.as_slice(),
+            "{quando}: a tela difere do oráculo"
+        );
+    };
+    let em = |t: &mut PainterTool, journal: bool, f: &mut dyn FnMut(&mut PainterTool)| {
+        crate::undo::window::set_vidro_pelo_journal(journal);
+        f(t);
+    };
+    for k in 0..3 {
+        em(&mut j, true, &mut |t| traco_k(t, k));
+        em(&mut o, false, &mut |t| traco_k(t, k));
+    }
+    confere(&j, &o, "depois das aguadas");
+    let aguada = plano(&j);
+    for (t, journal) in [(&mut j, true), (&mut o, false)] {
+        em(t, journal, &mut |t| {
+            t.set_paint_media(PaintMedia::Digital);
+            t.set_brush_color_srgb8([200, 40, 30]);
+            // Fluxo baixo: o mesmo texel recebe vários toques no MESMO traço, e o antes que cada quadro lê
+            // (journal) já não é o vivo que o quadro anterior selou.
+            t.set_brush_flow(0.3);
+        });
+    }
+    const D: usize = 4;
+    let mut copias = Vec::new();
+    for k in 0..D {
+        COPIAS_DO_VIDRO.set(0);
+        em(&mut j, true, &mut |t| vai_e_volta(t, k));
+        copias.push(COPIAS_DO_VIDRO.get());
+        em(&mut o, false, &mut |t| vai_e_volta(t, k));
+        confere(&j, &o, &format!("depois do Digital {}", k + 1));
+    }
+    assert!(
+        plano(&j) != aguada,
+        "o Digital por cima mudou o vidro (senão o gate é verde por vácuo)"
+    );
+    println!("cópias do vidro por traço Digital, com a chave: {copias:?}");
+    for k in (0..D).rev() {
+        crate::undo::window::set_vidro_pelo_journal(true);
+        let a = j.undo_last();
+        crate::undo::window::set_vidro_pelo_journal(false);
+        let b = o.undo_last();
+        assert!(a && b, "desfazer o Digital {}", k + 1);
+        confere(&j, &o, &format!("desfeito o Digital {}", k + 1));
+    }
+    assert!(
+        plano(&j) == aguada,
+        "desfeito todo o Digital, o vidro é o das aguadas"
+    );
+    for k in 0..D {
+        crate::undo::window::set_vidro_pelo_journal(true);
+        let a = j.redo_last();
+        crate::undo::window::set_vidro_pelo_journal(false);
+        let b = o.redo_last();
+        assert!(a && b, "refazer o Digital {}", k + 1);
+        confere(&j, &o, &format!("refeito o Digital {}", k + 1));
+    }
+    crate::undo::window::set_vidro_pelo_journal(true);
+}
+
+/// Um traço que vai e volta sobre si mesmo (cada texel tocado em vários quadros do mesmo traço).
+fn vai_e_volta(t: &mut PainterTool, k: usize) {
+    let y = 60.0 + 70.0 * k as f32;
+    let xs = [40.0, 300.0, 60.0, 280.0, 90.0];
+    ev(t, [xs[0], y], PointerPhase::Down);
+    for par in xs.windows(2) {
+        for s in 1..=6 {
+            let f = s as f32 / 6.0;
+            ev(
+                t,
+                [par[0] + (par[1] - par[0]) * f, y + 8.0 * f],
+                PointerPhase::Move,
+            );
+        }
+    }
+    ev(t, [xs[4], y + 8.0], PointerPhase::Up);
+    for _ in 0..3 {
+        t.on_tick(1000.0 / 60.0);
+    }
+}

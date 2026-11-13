@@ -180,13 +180,18 @@ fn o_conta_gotas_escolhe_o_de_cima_que_nao_e_a_camera() {
 /// ⭐ **Um objecto largado no Target do Follow faz a câmera segui-lo; uma imagem é recusada** (C2).
 #[test]
 fn largar_um_objecto_no_alvo_da_camera() {
-    use ph2d_app_components::asset_drop::{DropAction, DropTarget, resolve};
+    use ph2d_app_components::asset_drop::{DropAction, DropTarget, RefField, resolve};
     use ph2d_editor_core::interaction::drag_payload::DragPayload;
-    let alvo = DropTarget::CameraTarget { entity_bits: 9 };
+    let field = RefField::CameraFollow;
+    let alvo = DropTarget::ObjectRef {
+        entity_bits: 9,
+        field,
+    };
     assert_eq!(
         resolve(DragPayload::Object { stable_id: 42 }, alvo),
-        DropAction::SetCameraTarget {
+        DropAction::SetObjectRef {
             entity_bits: 9,
+            field,
             stable_id: 42
         }
     );

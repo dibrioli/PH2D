@@ -1,14 +1,7 @@
 //! ⭐⭐⭐ **O QUE ACONTECE AO LARGAR** — a lei da queda (plano `docs/Components/07`, etapa B).
 //!
-//! ⛔⛔ **O plano supunha um «campo de textura do Inspector» e ele NÃO EXISTE.** Medido em
-//! 2026-08-30: a secção *Render Source* mostra o armazenamento e a fonte como **texto** — sem
-//! rectângulo de acerto, sem id, sem botão de escolher. O único *«escolhe uma imagem»* do app
-//! inteiro é o do padrão vetorial, e é um diálogo de ficheiro.
-//!
-//! ⇒ **a superfície de queda é o CANVAS**, e ela é melhor: o artista larga a imagem **em cima do
-//! objecto que ele vê**, e *«qual objecto recebe?»* passa a ser respondido pelo dedo em vez de por
-//! uma lista. É a mesma razão por que o duplo-clique recusa uma imagem — aquele gesto não tem onde
-//! apontar.
+//! A queda decide pelo TIPO DO ALVO: o canvas cria, um campo do Inspector (ranhura, objecto, som)
+//! troca o valor dele.
 //!
 //! # A lei, em três linhas
 //!
@@ -29,6 +22,7 @@
 //! gateável sem GPU — e é onde o defeito de *«o alvo adivinha»* moraria.
 
 use ph2d_editor_core::NodeId;
+use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict, DropFieldMark};
 use ph2d_i18n::tr;
 
@@ -37,22 +31,16 @@ use ph2d_i18n::tr;
 pub enum DropTarget {
     /// Sobre o canvas, no ponto de MUNDO `world`.
     ///
-    /// `over` é a entidade debaixo do cursor, se houver — já resolvida pela porta de pick do
-    /// shell. ⚠️ **Ela chega RESOLVIDA e não como um ponteiro a picar aqui**: um segundo pick, com
-    /// outras entradas, é exactamente a segunda resposta que este repo já pagou noutros sítios.
+    /// `over` é a entidade debaixo do cursor, já RESOLVIDA pela porta de pick do shell (nunca um
+    /// segundo pick aqui).
     Canvas {
         world: [f32; 2],
         over: Option<DropOver>,
     },
     /// ⭐⭐ **Sobre uma LINHA DE CATÁLOGO** da coluna do navegador (wave A3).
     ///
-    /// ⚠️ **Ela é um alvo PRÓPRIO, e não uma excepção dentro do `Chrome`** — é o que o comentário
-    /// do `Chrome` já prometia (*«quando um campo souber receber, ele entra aqui como alvo
-    /// próprio»*). E é a lei D7 do plano: *a queda decide pelo TIPO DO ALVO*.
-    ///
-    /// ⛔ **Sem bandas.** O reparentar da Hierarquia reparte a linha em 30/40/30 porque ali há três
-    /// respostas (irmão-acima · dentro · irmão-abaixo); aqui há **uma** — *põe isto nesta gaveta* —,
-    /// e inventar bandas seria a terceira cópia de uma lei que já está escrita em dois sítios.
+    /// Alvo próprio (a queda decide pelo TIPO DO ALVO), sem bandas: aqui há uma resposta só, *põe
+    /// isto nesta gaveta*.
     CatalogRow {
         /// `None` = a linha *Unassigned* (tirar de qualquer catálogo).
         catalog: Option<u128>,
@@ -70,8 +58,9 @@ pub enum DropTarget {
     /// ⭐ O campo de uma propriedade de OBJECTO no cartão Script (8c do CodeEditor): o objecto do
     /// cartão e a linha.
     ScriptObject { entity_bits: u64, row: u16 },
-    /// ⭐ GEF 20 C2 — o campo Target do Follow da câmera `entity_bits`.
-    CameraTarget { entity_bits: u64 },
+    /// ⭐ GEF 20 C2 / GEF 06 — um campo que guarda um OBJECTO pelo nome (o Target do Follow da câmera, o
+    /// Target do Homing da bala) no objecto `entity_bits`.
+    ObjectRef { entity_bits: u64, field: RefField },
     /// ⭐ GEF 21 E2 — o campo Sound do Audio Source 2D de `entity_bits`.
     InspectorSound { entity_bits: u64 },
     /// ⭐⭐ **Sobre uma aba de SCRIPT** (item 8 do CodeEditor, `docs/CodeEditor/07_arrastar_para_o_codigo.md`).
@@ -131,9 +120,13 @@ pub enum DropAction {
         row: u16,
         stable_id: u64,
     },
-    /// ⭐ GEF 20 C2 — a câmera `entity_bits` passa a seguir o objecto `stable_id` (pelo NOME, a referência do
-    /// `CameraFollow`).
-    SetCameraTarget { entity_bits: u64, stable_id: u64 },
+    /// ⭐ GEF 20 C2 / GEF 06 — o campo `field` de `entity_bits` passa a apontar o objecto `stable_id` (pelo NOME,
+    /// a referência durável).
+    SetObjectRef {
+        entity_bits: u64,
+        field: RefField,
+        stable_id: u64,
+    },
     /// ⭐ GEF 21 E2 — a fonte `entity_bits` passa a tocar o som do projeto `asset` (pelo NOME, como o campo).
     SetSound { entity_bits: u64, asset: [u8; 32] },
     /// ⭐ D17 — uma referência NOVA ao Kanban `kanban` no quadro aberto, com o meio no ponto de ecrã
@@ -146,6 +139,15 @@ pub enum DropAction {
     Refuse,
     /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
     Cancel,
+}
+
+/// Qual campo de objecto recebe a queda ([`DropTarget::ObjectRef`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RefField {
+    /// O Target do Follow da câmera.
+    CameraFollow,
+    /// O Target do Homing do Projectile Motion.
+    Homing,
 }
 
 impl DropAction {
@@ -179,7 +181,7 @@ impl DropAction {
 }
 
 /// ⭐ GEF 20b — o CAMPO do Inspector `id` como alvo de queda (ranhura de textura, objecto do Script,
-/// alvo da câmera); `None` = o widget não é um campo que recebe. A porta ÚNICA: a queda, o fantasma
+/// alvo da câmera e da bala); `None` = o widget não é um campo que recebe. A porta ÚNICA: a queda, o fantasma
 /// e as caixas marcadas perguntam aqui.
 #[must_use]
 pub fn field_target(id: NodeId) -> Option<DropTarget> {
@@ -195,13 +197,39 @@ pub fn field_target(id: NodeId) -> Option<DropTarget> {
                 .map(|(entity_bits, row)| DropTarget::ScriptObject { entity_bits, row })
         })
         .or_else(|| {
-            insp::camera_target_slot_pick(id)
-                .map(|entity_bits| DropTarget::CameraTarget { entity_bits })
+            insp::camera_target_slot_pick(id).map(|entity_bits| DropTarget::ObjectRef {
+                entity_bits,
+                field: RefField::CameraFollow,
+            })
+        })
+        .or_else(|| {
+            insp::projectile_target_slot_pick(id).map(|entity_bits| DropTarget::ObjectRef {
+                entity_bits,
+                field: RefField::Homing,
+            })
         })
         .or_else(|| {
             insp::audio_sound_slot_pick(id)
                 .map(|entity_bits| DropTarget::InspectorSound { entity_bits })
         })
+}
+
+/// A edição do Inspector que grava `nome` no campo de objecto `field` de `entity_bits` (o mesmo passo de desfazer
+/// que escrever o nome ou usar o conta-gotas).
+#[must_use]
+pub fn edicao_do_campo(entity_bits: u64, field: RefField, nome: String) -> EditorAction {
+    match field {
+        RefField::CameraFollow => EditorAction::InspectorCameraEdit {
+            entity_bits,
+            edit: ph2d_editor_core::CameraFieldEdit::Target(nome),
+        },
+        RefField::Homing => EditorAction::InspectorComponentEdit {
+            entity_bits,
+            edit: ph2d_editor_core::action_bus::ComponentEdit::Projectile(
+                ph2d_editor_core::projectile_edits::ProjectileFieldEdit::HomingTarget(nome),
+            ),
+        },
+    }
 }
 
 /// O que o arrasto MOSTRA para `target`: desistir é silencioso (ver [`DropTarget::Source`]).
@@ -237,14 +265,8 @@ pub fn field_marks(
 
 /// ⭐ **A LEI.** Pura e total.
 ///
-/// ⚠️ **Exaustiva no que importa:** os braços de `Canvas` e os da ranhura casam a carga **por
-/// variante**, então um `DragPayload` novo é **erro de compilação** aqui — que é a propriedade que
-/// interessa. Os dois `_` que existem são sobre o ALVO (`Source`, `Chrome`), onde a carga de facto
-/// não muda a resposta: desistir é desistir e recusar é recusar, venha o que vier.
-///
-/// ⛔ A 1.ª redacção deste doc dizia *«sem um `_` no match»* — e havia dois. *Uma afirmação sobre a
-/// forma do código envelhece no primeiro braço que alguém acrescenta; a que vale é sobre a
-/// PROPRIEDADE.*
+/// ⚠️ **Exaustiva no que importa:** os braços casam a carga **por variante**, então um `DragPayload`
+/// novo é erro de compilação aqui; os `_` são sobre o ALVO, onde a carga não muda a resposta.
 #[must_use]
 pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
     match (payload, target) {
@@ -263,9 +285,10 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
                 stable_id,
             }
         }
-        (DragPayload::Object { stable_id }, DropTarget::CameraTarget { entity_bits }) => {
-            DropAction::SetCameraTarget {
+        (DragPayload::Object { stable_id }, DropTarget::ObjectRef { entity_bits, field }) => {
+            DropAction::SetObjectRef {
                 entity_bits,
+                field,
                 stable_id,
             }
         }
@@ -305,9 +328,7 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ⛔ Um prefab não tem elemento no quadro.
         (_, DropTarget::BoardCanvas { .. }) => DropAction::Refuse,
         // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
-        (_, DropTarget::ScriptObject { .. } | DropTarget::CameraTarget { .. }) => {
-            DropAction::Refuse
-        }
+        (_, DropTarget::ScriptObject { .. } | DropTarget::ObjectRef { .. }) => DropAction::Refuse,
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
         // fora do texto, nada.
         (_, DropTarget::Code { on_text: true }) => DropAction::WriteCode,

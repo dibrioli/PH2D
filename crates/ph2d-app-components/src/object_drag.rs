@@ -248,21 +248,18 @@ pub fn write_code(
         }
         return true;
     }
-    // GEF 20 C2 — um objecto largado no Target do Follow: a câmera segue-o pelo nome (um passo de desfazer).
-    if let DropAction::SetCameraTarget {
+    // GEF 20 C2 / GEF 06 — um objecto largado num campo de objecto: o campo passa a nomeá-lo (um passo de desfazer).
+    if let DropAction::SetObjectRef {
         entity_bits,
+        field,
         stable_id,
     } = action
     {
         surface_input::drop_hover(hero, None);
         hero.solta_o_teclado();
         if let Some(name) = name_of_stable_id(libs.sim, stable_id) {
-            hero.bus.push(
-                ph2d_editor_core::action_bus::EditorAction::InspectorCameraEdit {
-                    entity_bits,
-                    edit: ph2d_editor_core::CameraFieldEdit::Target(name),
-                },
-            );
+            hero.bus
+                .push(crate::asset_drop::edicao_do_campo(entity_bits, field, name));
         }
         return true;
     }

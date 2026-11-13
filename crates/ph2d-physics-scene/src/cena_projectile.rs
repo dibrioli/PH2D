@@ -27,17 +27,22 @@ pub const RAPIDEZ: f32 = 9.0;
 /// O raio das balas (m).
 const RAIO: f32 = 0.15;
 
-const CHAO: ([f32; 2], [f32; 2]) = ([0.0, 0.0], [14.0, 9.0]);
+const FUNDO: ([f32; 2], [f32; 2]) = ([0.0, 0.0], [14.0, 9.0]);
+/// O chão de verdade (centro, meia-medida, m): a faixa sólida na base do fundo, onde o Arc pousa.
+pub const CHAO: ([f32; 2], [f32; 2]) = ([0.0, -4.35], [7.0, 0.15]);
 const PAREDE: ([f32; 2], [f32; 2]) = ([5.5, 0.0], [0.3, 4.2]);
-const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
+/// A parede de trás (m): o Bouncy volta da parede e ricocheteia nela em vez de sair da arena.
+pub const PAREDE_ESQ: ([f32; 2], [f32; 2]) = ([-6.85, 0.0], [0.15, 4.2]);
+const FUNDO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
+const CHAO_RGBA: [f32; 4] = [0.30, 0.32, 0.36, 1.0];
 const PAREDE_RGBA: [f32; 4] = [0.45, 0.42, 0.38, 1.0];
 const ALVO_RGBA: [f32; 4] = [0.60, 0.62, 0.66, 1.0];
 
 /// Uma bala: nome, onde nasce, cor e o que muda na lei.
 type Bala = (&'static str, [f32; 2], [f32; 4], fn(&mut ProjectileMotion));
 
-/// O Pull do míssil (m/s²): com a rapidez presa a [`RAPIDEZ`] (Speed change ▸ Max Speed) o Pull só VIRA, e o
-/// raio da volta é v²/a ≈ 1 m — dá a volta e acerta. Sem o tecto o Pull é um poço que acelera: ele passa ao lado.
+/// O Pull do míssil (m/s²): ele só VIRA (a rapidez fica [`RAPIDEZ`]), e o raio da volta é v²/a ≈ 1 m — dá a volta
+/// e acerta, sem Max Speed.
 pub const PUXAO: f32 = 80.0;
 
 /// As cinco balas, de cima para baixo.
@@ -45,7 +50,6 @@ pub const BALAS: [Bala; 5] = [
     (MISSIL, [-6.0, 3.6], [0.95, 0.30, 0.30, 1.0], |p| {
         p.homing_accel = PUXAO;
         p.homing_target = stable_name_id(ALVO);
-        p.max_speed = RAPIDEZ;
     }),
     ("Straight", [-6.0, 1.2], [0.95, 0.72, 0.25, 1.0], |_| {}),
     ("Bouncy", [-6.0, -0.4], [0.95, 0.45, 0.20, 1.0], |p| {
@@ -85,16 +89,22 @@ fn forma(sim: &mut SimWorld, e: Entity, shape: ColliderShape) {
 
 /// Monta a cena e devolve o míssil (o objecto que o Inspector abre).
 pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
-    let chao = (p.imagem)(sim);
-    let sprite = Sprite::atlas(WHITE_TILE_KEY, CHAO.1, CHAO_RGBA);
-    arruma(sim, chao, "Floor", CHAO.0, sprite);
-    sim.world_mut().entity_mut(chao).insert(ZIndexOverride(-1));
-    let (c, h) = PAREDE;
-    let parede = (p.estatico)(sim);
-    let sprite = Sprite::atlas(WHITE_TILE_KEY, [2.0 * h[0], 2.0 * h[1]], PAREDE_RGBA);
-    arruma(sim, parede, "Wall", c, sprite);
-    let (half_x, half_y) = (h[0], h[1]);
-    forma(sim, parede, ColliderShape::Cuboid { half_x, half_y });
+    let fundo = (p.imagem)(sim);
+    let sprite = Sprite::atlas(WHITE_TILE_KEY, FUNDO.1, FUNDO_RGBA);
+    arruma(sim, fundo, "Background", FUNDO.0, sprite);
+    sim.world_mut().entity_mut(fundo).insert(ZIndexOverride(-1));
+    let pecas = [
+        ("Floor", CHAO, CHAO_RGBA),
+        ("Wall", PAREDE, PAREDE_RGBA),
+        ("Back Wall", PAREDE_ESQ, PAREDE_RGBA),
+    ];
+    for (nome, (c, h), cor) in pecas {
+        let e = (p.estatico)(sim);
+        let sprite = Sprite::atlas(WHITE_TILE_KEY, [2.0 * h[0], 2.0 * h[1]], cor);
+        arruma(sim, e, nome, c, sprite);
+        let (half_x, half_y) = (h[0], h[1]);
+        forma(sim, e, ColliderShape::Cuboid { half_x, half_y });
+    }
     let alvo = (p.estatico)(sim);
     let sprite = Sprite::atlas(WHITE_TILE_KEY, [0.8, 0.8], ALVO_RGBA);
     arruma(sim, alvo, ALVO, ALVO_EM, sprite);
@@ -130,7 +140,7 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
     println!(
         "[game-smoke] =25 cinco balas e uma parede: o Missile (selecionado) sai para baixo, dá a volta e acerta o \
-         Target; Straight morre na parede, Bouncy ricocheteia, Arc cai em arco e Short Range para no meio. \
+         Target; Straight morre na parede, Bouncy ricocheteia, Arc cai em arco até o chão e Short Range para no meio. \
          Play (F5) dispara todas."
     );
     missil
@@ -196,8 +206,8 @@ mod tests {
         assert_eq!(s.inspector_section_reveal(), Some((p, 0xB1)));
     }
 
-    /// Uma bala por campo: cada uma muda UM número da lei de fábrica, e só o míssil persegue.
-    /// (O míssil leva também o tecto da rapidez: é o que faz do Pull uma volta e não um poço.)
+    /// Uma bala por campo: cada uma muda UM número da lei de fábrica, e só o míssil persegue — sem Max Speed
+    /// (o Pull só vira, dono 13/11).
     #[test]
     fn cada_bala_muda_um_so_campo() {
         let base = ProjectileMotion::default();
@@ -213,7 +223,7 @@ mod tests {
             let n = mudou.iter().filter(|m| **m).count();
             assert_eq!(n, usize::from(nome != "Straight"), "{nome}");
             assert_eq!(p.homing_accel > 0.0, nome == MISSIL, "{nome}");
-            assert_eq!(p.max_speed > 0.0, nome == MISSIL, "{nome}");
+            assert_eq!(p.max_speed, base.max_speed, "{nome}");
         }
     }
 }

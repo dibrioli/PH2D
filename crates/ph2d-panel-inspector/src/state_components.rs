@@ -500,6 +500,13 @@ pub fn camera_target_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
     (id == crate::ids::INSP_CAMERA_TARGET).then_some(info.entity_bits)
 }
 
+/// ⭐ GEF 06 — o campo Target do Homing sob o ponteiro: a bala do Inspector (que persegue) recebe a queda.
+#[must_use]
+pub fn projectile_target_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
+    let info = current_inspector_projectile().filter(|i| i.homing_accel > 0.0)?;
+    (id == crate::ids::INSP_PJ_HOMING_TARGET).then_some(info.entity_bits)
+}
+
 pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
     CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())
 }

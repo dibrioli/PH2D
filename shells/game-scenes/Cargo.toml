@@ -54,6 +54,8 @@ ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
 ph2d-host = { path = "../../crates/ph2d-host" }
 ph2d-i18n = { path = "../../crates/ph2d-i18n" }
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
+# O Target da bala recebe o objeto arrastado (`jogo_projectile`): o instantâneo do Inspector e os ids.
+ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
 ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }

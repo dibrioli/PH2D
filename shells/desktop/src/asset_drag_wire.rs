@@ -243,7 +243,7 @@ impl crate::App {
             | DropAction::WriteCode
             | DropAction::PlaceKanban { .. }
             | DropAction::SetScriptObject { .. }
-            | DropAction::SetCameraTarget { .. }
+            | DropAction::SetObjectRef { .. }
             | DropAction::SetSound { .. } => {}
             DropAction::Refuse => {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.

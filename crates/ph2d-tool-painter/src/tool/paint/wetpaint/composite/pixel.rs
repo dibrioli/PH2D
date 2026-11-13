@@ -35,7 +35,8 @@ pub(in crate::tool::paint::wetpaint) struct LacoDePixel<'a> {
     pub(in crate::tool::paint::wetpaint) modo: ph2d_painter_brush::BrushBlend,
     pub(in crate::tool::paint::wetpaint) vazio: bool,
     pub(in crate::tool::paint::wetpaint) exata: bool,
-    pub(in crate::tool::paint::wetpaint) vbase: Option<&'a crate::tool::paint::watercolor_vidro::JanelaDoVidro>,
+    pub(in crate::tool::paint::wetpaint) vbase:
+        Option<&'a crate::tool::paint::watercolor_vidro::JanelaDoVidro>,
 }
 
 /// Escreve `linhas` (as linhas `py0..py1` da tela, `w * 4` bytes cada), o vidro de cada linha e a cobertura da marca.

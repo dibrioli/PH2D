@@ -113,8 +113,26 @@ fn comeco(nome: &str, w: f32, largura: &mut dyn FnMut(&str) -> f32) -> String {
     nome[..fim].to_owned()
 }
 
-/// A folga do nome em cada ponta da aba: a ponta inclinada e o recuo de um segmento.
-const FOLGA: f32 = PONTA + m::SEG_INSET;
+/// A folga do nome do lado `p` da aba: o recuo de um segmento e, por trás da vizinha, metade da
+/// ponta dela (a ponta inclinada da frente cobre-a junto à base; ao meio da grossura, já não).
+fn margem(p: Ponta) -> f32 {
+    m::SEG_INSET
+        + if p == Ponta::PorBaixo {
+            PONTA * 0.5
+        } else {
+            0.0
+        }
+}
+
+/// O vão do nome numa aba de altura `h` com estas pontas.
+fn vao((c, b): (Ponta, Ponta), h: f32) -> f32 {
+    h - margem(c) - margem(b)
+}
+
+/// A 1.ª letra de `nome` (o mínimo que uma aba inativa mostra, dono 13/11).
+fn primeira(nome: &str) -> &str {
+    nome.char_indices().nth(1).map_or(nome, |(j, _)| &nome[..j])
+}
 
 /// ⭐ **A pilha**: as abas na ordem de [`crate::transport_tabs::items`] dividem a lateral inteira, de
 /// `topo` (o topo da aba dos comandos, dono 13/11) até à quina de baixo da lista; a ativa com
@@ -131,23 +149,39 @@ pub(crate) fn pilha(
     let n = celulas.len();
     let x = lista.x - ESPESSURA;
     let altura = (lista.y + lista.h - m::LIST_RADIUS - topo).max(0.0);
-    let pesos = PESO_ATIVA + n.saturating_sub(1) as f32;
-    let nome_da_ativa = celulas
-        .get(escolhida)
-        .map_or(0.0, |(_, t)| largura(t) + FOLGA * 2.0);
-    let ativa_h = (altura * PESO_ATIVA / pesos).max(nome_da_ativa.min(altura));
-    let inativa_h = (altura - ativa_h).max(0.0) / n.saturating_sub(1).max(1) as f32;
     let fundo = |i: usize| i.abs_diff(escolhida);
+    let pontas: Vec<(Ponta, Ponta)> = (0..n)
+        .map(|i| {
+            (
+                ponta(fundo(i), i.checked_sub(1).map(fundo)),
+                ponta(fundo(i), (i + 1 < n).then(|| fundo(i + 1))),
+            )
+        })
+        .collect();
+    // ⭐ Dono 13/11: com a Timeline no mínimo, cada inativa mostra PELO MENOS a 1.ª letra; a ativa, o
+    // nome inteiro. A reserva das inativas sai primeiro; a ativa fica com o resto que precisar.
+    let precisa = |i: usize, w: f32| w + margem(pontas[i].0) + margem(pontas[i].1);
+    let mut reserva = 0.0_f32;
+    let mut ativa_precisa = 0.0;
+    for (i, (_, t)) in celulas.iter().enumerate() {
+        if i == escolhida {
+            ativa_precisa = precisa(i, largura(t));
+        } else {
+            reserva = reserva.max(precisa(i, largura(primeira(t))));
+        }
+    }
+    let inativas = n.saturating_sub(1) as f32;
+    let pesos = PESO_ATIVA + inativas;
+    let ativa_h = (altura * PESO_ATIVA / pesos)
+        .max(ativa_precisa.min(altura - reserva * inativas))
+        .min(altura);
+    let inativa_h = (altura - ativa_h).max(0.0) / inativas.max(1.0);
     let mut y = topo;
     let mut out = Vec::with_capacity(n);
     for (i, (id, nome)) in celulas.into_iter().enumerate() {
         let ativa = i == escolhida;
         let h = if ativa { ativa_h } else { inativa_h };
-        let pontas = (
-            ponta(fundo(i), i.checked_sub(1).map(fundo)),
-            ponta(fundo(i), (i + 1 < n).then(|| fundo(i + 1))),
-        );
-        let (c, b) = (pontas.0.passa(), pontas.1.passa());
+        let (c, b) = (pontas[i].0.passa(), pontas[i].1.passa());
         // A ativa entra um pouco na moldura (a junta não se vê).
         let dentro = if ativa { m::SEG_INSET } else { 0.0 };
         out.push(Aba {
@@ -156,14 +190,14 @@ pub(crate) fn pilha(
             nome: if ativa {
                 nome.clone()
             } else {
-                comeco(&nome, h - FOLGA * 2.0, largura)
+                comeco(&nome, vao(pontas[i], h), largura)
             },
             inteiro: nome,
             alvo: Rect::new(x, y, ESPESSURA, h),
             desenho: Rect::new(x, y - c, ESPESSURA + dentro, h + c + b),
             ativa,
             fundo: fundo(i),
-            pontas,
+            pontas: pontas[i],
         });
         y += h;
     }
@@ -263,15 +297,19 @@ fn pinta_uma(ctx: &mut PaintCtx, theme: Theme, a: &Aba) {
     } else {
         (ColorToken::CardField, t(TimelineTinta::TextoValor))
     };
-    ph2d_editor_core::paint_shapes::fill_polygon(
-        ctx.scene,
-        &contorno(a.desenho, a.pontas),
-        paint::resolve(fundo, theme),
-    );
+    let forma = contorno(a.desenho, a.pontas);
+    ph2d_editor_core::paint_shapes::fill_polygon(ctx.scene, &forma, paint::resolve(fundo, theme));
+    // Cada degrau mais longe da ativa, mais lavada: as de trás distinguem-se entre si (dono 13/11).
+    let degraus = a.fundo.saturating_sub(1);
+    if !a.ativa && !hover && degraus > 0 {
+        let alfa = ph2d_tokens::chrome::TIMELINE_ABA_RECUO_ALPHA * degraus as f32;
+        let veu = t(TimelineTinta::TextoValor).multiply_alpha(alfa.min(1.0));
+        ph2d_editor_core::paint_shapes::fill_polygon(ctx.scene, &forma, veu);
+    }
     // O nome ao centro da fatia; se não cabe, o começo a partir de baixo (onde se começa a ler).
     let w = ctx.text_system.prefix_width(&a.nome, TEXTO_PX);
-    let vao = a.alvo.h - FOLGA * 2.0;
-    let pe = a.alvo.y + a.alvo.h - FOLGA - ((vao - w) * 0.5).max(0.0);
+    let livre = vao(a.pontas, a.alvo.h);
+    let pe = a.alvo.y + a.alvo.h - margem(a.pontas.1) - ((livre - w) * 0.5).max(0.0);
     let tx = a.alvo.x + paint::folga_do_texto(a.alvo.w, TEXTO_PX);
     paint::paint_text_rotated_ccw(
         ctx.text_system,

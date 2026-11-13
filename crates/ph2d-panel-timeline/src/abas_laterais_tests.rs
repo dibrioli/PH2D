@@ -65,8 +65,9 @@ fn a_ativa_inteira_e_as_inativas_mostram_o_comeco() {
             ]
         );
     }
-    // «Containers» inativa não cabe inteira: o começo, sem reticências.
-    let abas = pilha((LISTA, TOPO), &snap(&[]), Tab::Keys, &mut largura);
+    // Numa lista baixa «Containers» inativa não cabe inteira: o começo, sem reticências.
+    let baixa = Rect { h: 120.0, ..LISTA };
+    let abas = pilha((baixa, TOPO + 30.0), &snap(&[]), Tab::Keys, &mut largura);
     assert!(abas[1].nome.len() < "Containers".len(), "{}", abas[1].nome);
 }
 
@@ -161,4 +162,46 @@ fn a_de_tras_passa_por_baixo_e_a_ativa_mostra_o_nome_inteiro() {
         let a = abas.iter().find(|a| a.ativa).expect("ativa");
         assert_eq!(a.nome, a.inteiro);
     }
+}
+
+/// ⭐ Dono 13/11 (4.ª volta): com a Timeline na altura MÍNIMA, cada inativa mostra pelo menos a 1.ª
+/// letra e a ativa o nome inteiro. A coluna medida: a aba dos comandos (`FIELD_H` + folga) acima da
+/// lista de `MIN_H − 2·LIST_MARGIN`. A largura aqui é a do texto a 12 px (~6,5 px por letra).
+/// *Mutação: sem a reserva das inativas ⇒ «Containers» ativa come a coluna ⇒ vermelho.*
+#[test]
+fn no_minimo_cada_inativa_mostra_a_primeira_letra() {
+    use ph2d_editor_core::panel::cards::banda::metrics as m;
+    let mut larga = |t: &str| t.chars().count() as f32 * 6.5;
+    let lista = Rect {
+        h: 120.0 - m::LIST_MARGIN * 2.0,
+        ..LISTA
+    };
+    let topo = lista.y - m::FIELD_H - m::SEG_PAD * 2.0;
+    for tab in [Tab::Keys, Tab::Containers, Tab::Arrange] {
+        let abas = pilha((lista, topo), &snap(&[]), tab, &mut larga);
+        for a in &abas {
+            if a.ativa {
+                assert_eq!(a.nome, a.inteiro, "{tab:?}: a ativa corta");
+            } else {
+                assert!(!a.nome.is_empty(), "{tab:?}: {} sem a 1.ª letra", a.inteiro);
+            }
+        }
+    }
+}
+
+/// Quando nem a 1.ª letra de cada inativa e o nome inteiro da ativa cabem (coluna de 100 px, ou um
+/// container aberto no mínimo), as 1.as letras ganham e a ativa corta. *Mutação: sem a reserva das
+/// inativas ⇒ a «K» some ⇒ vermelho.*
+#[test]
+fn sem_lugar_para_tudo_a_primeira_letra_ganha() {
+    let mut larga = |t: &str| t.chars().count() as f32 * 6.5;
+    let lista = Rect { h: 100.0, ..LISTA };
+    let topo = lista.y + ph2d_editor_core::panel::cards::banda::metrics::LIST_RADIUS;
+    let abas = pilha(
+        (lista, topo - 12.0),
+        &snap(&[]),
+        Tab::Containers,
+        &mut larga,
+    );
+    assert!(abas.iter().all(|a| !a.nome.is_empty()), "{abas:?}");
 }

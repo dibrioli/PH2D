@@ -504,8 +504,11 @@ pub(crate) fn tons_da_barra(theme: Theme) -> banda::TonsDaBarra {
         ativa_texto: t(T::TextoCabecalho),
         inativa_texto: t(T::TextoPropriedade),
         sob_o_rato: t(T::NomesCabecalho),
-        discreta_texto: t(T::TextoValor),
-        borda_da_caixa: t(T::TextoPropriedade),
+        // Dono 12/11 (2.ª vez): Auto Key e Marker «sem contraste» — o texto sobe ao tom das abas
+        // não escolhidas (6,6:1 contra a barra; `TextoValor` media 3,7) e o contorno da caixa vazia ao
+        // dos títulos.
+        discreta_texto: t(T::TextoPropriedade),
+        borda_da_caixa: t(T::TextoCabecalho),
     }
 }
 
@@ -559,22 +562,24 @@ mod tests {
         assert!(texto_do_fps(&snap).starts_with("29.97 fps"));
     }
 
-    /// ⭐ Dono 12/11: a caixa de marcar vazia da barra tem de se ver contra o fundo dela. O contorno
-    /// mede ≥ 4,5:1 contra o recheio (`CardField`) em todo tema; o de antes (`CardLabel`) media 3,06
-    /// no Forge. *Mutação: `borda_da_caixa` = `CardLabel` ⇒ vermelho.*
+    /// ⭐ Dono 12/11: a caixa de marcar vazia e o texto do Auto Key / Marker têm de se ver contra o
+    /// fundo da barra (`KanbanList`) e o recheio da caixa (`CardField`): ≥ 4,5:1 em todo tema. Medido
+    /// na foto antes da cura: texto `TextoValor` 3,7:1. *Mutação: `discreta_texto` = `TextoValor` ⇒
+    /// vermelho.*
     #[test]
     fn a_caixa_vazia_da_barra_tem_contraste_com_o_fundo() {
-        use ph2d_tokens::TimelineTinta as T;
         let rgb = |c: ph2d_vector::Color| {
             let [r, g, b, _] = c.to_rgba8().to_u8_array();
             ph2d_tokens::Color::from_hex(u32::from_be_bytes([0, r, g, b]))
         };
         for theme in Theme::ALL {
-            let borda = rgb(tons_da_barra(theme).borda_da_caixa);
-            assert_eq!(borda, T::TextoPropriedade.resolve(theme), "{theme:?}");
-            let fundo = ColorToken::CardField.resolve(theme);
-            let r = borda.contrast_ratio(&fundo);
-            assert!(r >= 4.5, "{theme:?}: contorno {r:.2}:1 contra o recheio");
+            let t = tons_da_barra(theme);
+            for (nome, cor) in [("contorno", t.borda_da_caixa), ("texto", t.discreta_texto)] {
+                for fundo in [ColorToken::CardField, ColorToken::KanbanList] {
+                    let r = rgb(cor).contrast_ratio(&fundo.resolve(theme));
+                    assert!(r >= 4.5, "{theme:?}: {nome} {r:.2}:1 contra {fundo:?}");
+                }
+            }
         }
     }
 }

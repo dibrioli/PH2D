@@ -9,9 +9,7 @@
 use super::menu_tons::{TonsDoMenu, atalho_aceso};
 use crate::icons::IconId;
 use crate::interaction::{ContextMenuKind, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, folga_do_texto, paint_icon_nitido, paint_text_in_weight,
-};
+use crate::paint::{fill_rounded_rect, folga_do_texto, paint_icon_nitido, paint_text_in_weight};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::{FontWeight, TextSystem};
@@ -154,7 +152,16 @@ pub fn pinta(
     let fim_do_rotulo = match l.atalho {
         Some(k) => {
             let kw = ph2d_text::com_peso_exato(|| text_system.prefix_width_weighted(k, font, PESO));
-            paint_text_in_weight(text_system, scene, k, [fim - kw, y], font, kw + 1.0, atalho, PESO);
+            paint_text_in_weight(
+                text_system,
+                scene,
+                k,
+                [fim - kw, y],
+                font,
+                kw + 1.0,
+                atalho,
+                PESO,
+            );
             fim - kw - Spacing::Lg.px()
         }
         None => fim,
@@ -176,7 +183,12 @@ pub fn pinta(
     } else if l.ligada {
         let visto: Color = if acesa { t.aceso_texto } else { t.aceso };
         let lado = BAR_ICON_PX;
-        let caixa = Rect::new(chev.x + chev.w - lado, l.r.y + (l.r.h - lado) * 0.5, lado, lado);
+        let caixa = Rect::new(
+            chev.x + chev.w - lado,
+            l.r.y + (l.r.h - lado) * 0.5,
+            lado,
+            lado,
+        );
         paint_icon_nitido(scene, IconId::Check, caixa, visto, false);
     }
 }

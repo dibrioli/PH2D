@@ -102,11 +102,15 @@ impl Dispatch<ZwpTabletSeatV2, ()> for Worker {
     ) {
         match event {
             zwp_tablet_seat_v2::Event::ToolAdded { id } => {
+                #[cfg(feature = "winit")]
                 let seat = w
                     .assentos
                     .iter()
                     .find(|a| a.tablet_seat == *tablet_seat)
                     .map(|a| a.seat.clone());
+                // Sem o winit a ferramenta não precisa do assento (só o `move/resize` da janela o pede).
+                #[cfg(not(feature = "winit"))]
+                let _ = tablet_seat;
                 w.tools.insert(
                     id.id().protocol_id(),
                     Ferramenta {
@@ -115,6 +119,7 @@ impl Dispatch<ZwpTabletSeatV2, ()> for Worker {
                         forma: None,
                         entrou: None,
                         pousada: None,
+                        #[cfg(feature = "winit")]
                         seat,
                     },
                 );

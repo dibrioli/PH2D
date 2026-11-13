@@ -10,6 +10,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::Write as _;
 use std::os::fd::OwnedFd;
+#[cfg(feature = "winit")]
 use std::ptr::NonNull;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -40,6 +41,7 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_tool_v2::{self, ZwpTabletToolV2},
     zwp_tablet_v2::{self, ZwpTabletV2},
 };
+#[cfg(feature = "winit")]
 use wayland_protocols::xdg::shell::client::xdg_toplevel::{self, XdgToplevel};
 
 use crate::forma::forma_de;
@@ -93,11 +95,14 @@ pub struct PenReceiver {
     /// Escrever acorda o fio (cursor novo); fechar pára-o.
     ctl: Option<OwnedFd>,
     cursor: Arc<Mutex<CursorIcon>>,
+    #[cfg(feature = "winit")]
     arrasto: Arc<Mutex<Option<Pedido>>>,
     thread: Option<JoinHandle<()>>,
 }
 
-/// A caneta pede ao compositor que a janela a siga: mover, ou redimensionar por uma borda.
+/// A caneta pede ao compositor que a janela a siga: mover, ou redimensionar por uma borda. Só com o
+/// winit (quem tem o `xdg_toplevel`); sem ele (`ph2d-pixel-ponte`) nada disto existe.
+#[cfg(feature = "winit")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Arrasto {
     Mover,
@@ -105,11 +110,13 @@ pub(crate) enum Arrasto {
 }
 
 /// O `xdg_toplevel` do winit (vivo enquanto a janela vive, e ela vive mais que o receptor) e o pedido.
+#[cfg(feature = "winit")]
 struct Pedido {
     toplevel: NonNull<c_void>,
     arrasto: Arrasto,
 }
 // SAFETY: o ponteiro só se usa no fio da caneta, por pedidos (a libwayland é segura entre fios).
+#[cfg(feature = "winit")]
 unsafe impl Send for Pedido {}
 
 /// A `wl_display` do winit, levada ao fio: a libwayland é segura entre fios.
@@ -142,7 +149,9 @@ impl PenReceiver {
         let (tx, events) = mpsc::channel();
         let cursor = Arc::new(Mutex::new(CursorIcon::Default));
         let cursor_fio = Arc::clone(&cursor);
+        #[cfg(feature = "winit")]
         let arrasto = Arc::new(Mutex::new(None));
+        #[cfg(feature = "winit")]
         let arrasto_fio = Arc::clone(&arrasto);
         let log = abre_registo();
         let (ready_tx, ready_rx) = mpsc::sync_channel(1);
@@ -156,6 +165,7 @@ impl PenReceiver {
                     tx,
                     Box::new(wake),
                     cursor_fio,
+                    #[cfg(feature = "winit")]
                     arrasto_fio,
                     log,
                 ) {
@@ -173,6 +183,7 @@ impl PenReceiver {
                 events,
                 ctl: Some(ctl_w),
                 cursor,
+                #[cfg(feature = "winit")]
                 arrasto,
                 thread: Some(thread),
             })),
@@ -209,6 +220,7 @@ impl PenReceiver {
     }
 }
 
+#[cfg(feature = "winit")]
 impl PenReceiver {
     /// A janela segue a caneta pousada (o `down` da ferramenta é o serial que o KWin 6.8 aceita:
     /// `InputRedirection::implicitGrabPositionBySerial`). `toplevel` = o `xdg_toplevel` da MESMA janela
@@ -251,7 +263,8 @@ struct Ferramenta {
     entrou: Option<u32>,
     /// O `serial` do `down` na NOSSA superfície, enquanto a ponta está pousada (mover a janela).
     pousada: Option<u32>,
-    /// O assento da mesa que anunciou a ferramenta.
+    /// O assento da mesa que anunciou a ferramenta (o `move/resize` da janela pede-o).
+    #[cfg(feature = "winit")]
     seat: Option<WlSeat>,
 }
 
@@ -274,6 +287,7 @@ struct Worker {
     pad_parts: Vec<Box<dyn FnOnce()>>,
     sessao: Sessao,
     cursor: Arc<Mutex<CursorIcon>>,
+    #[cfg(feature = "winit")]
     arrasto: Arc<Mutex<Option<Pedido>>>,
     buf: Vec<PenEvent>,
     tx: Sender<PenEvent>,
@@ -288,7 +302,7 @@ impl Worker {
         tx: Sender<PenEvent>,
         wake: Box<dyn Fn() + Send>,
         cursor: Arc<Mutex<CursorIcon>>,
-        arrasto: Arc<Mutex<Option<Pedido>>>,
+        #[cfg(feature = "winit")] arrasto: Arc<Mutex<Option<Pedido>>>,
         log: Option<File>,
     ) -> Result<(Self, EventQueue<Self>), AttachError> {
         // SAFETY: a `wl_display` do winit vive mais que este fio (ver `PenReceiver`).
@@ -316,6 +330,7 @@ impl Worker {
             pad_parts: Vec::new(),
             sessao: Sessao::default(),
             cursor,
+            #[cfg(feature = "winit")]
             arrasto,
             buf: Vec::new(),
             tx,
@@ -429,6 +444,7 @@ impl Worker {
                     return;
                 }
                 self.aplica_cursor_a_todas(&queue.handle());
+                #[cfg(feature = "winit")]
                 self.cumpre_arrasto();
             }
         }
@@ -486,6 +502,7 @@ impl Worker {
     }
 
     /// O pedido da faixa: `xdg_toplevel.move/resize` com o `down` da ferramenta pousada.
+    #[cfg(feature = "winit")]
     fn cumpre_arrasto(&mut self) {
         let Some(p) = self
             .arrasto

@@ -107,7 +107,7 @@ pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Fa
 /// nem o fundo. TODO controlo da faixa tem esta altura (onda 7: eram quatro — 22, 24, 28 e 22).
 pub(super) fn caixa(r: Rect) -> Rect {
     let d = m::FIELD_BORDER;
-    let h = (r.h - d * 2.0).min(MENU_BAR_CTL_H_PX).max(0.0);
+    let h = (r.h - d * 2.0).clamp(0.0, MENU_BAR_CTL_H_PX);
     Rect::new(r.x, r.y + (r.h - h) * 0.5, r.w, h)
 }
 

@@ -302,7 +302,7 @@ fn a_fila_fina_nao_tem_legenda_e_nenhuma_face_e_cortada() {
     crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(true));
     let acusados = em_todo_estilo(|ts| {
         let mut fora = Vec::new();
-        let mut store = WidgetStore::default();
+        let store = WidgetStore::default();
         for painter in [false, true] {
             for image_tools in [false, true] {
                 let rail = bar_rail(&store, ts, painter, image_tools);

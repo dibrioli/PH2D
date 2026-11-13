@@ -75,10 +75,6 @@ pub mod board_view;
 pub mod document_tabs;
 pub mod document_tabs_menu;
 pub mod faixa_tons;
-pub mod menu_barra_linha;
-mod menu_barra_nivel;
-pub mod menu_icones;
-pub mod menu_tons;
 pub mod float_bar;
 mod foco;
 mod inspector_model;
@@ -110,8 +106,11 @@ pub mod layout_tabs;
 mod live;
 /// A TABELA de rows de cada menu — a porta única de *«que linhas este menu tem?»*.
 pub mod menu_bar;
+pub mod menu_barra_linha;
+mod menu_barra_nivel;
 pub mod menu_cascade;
 pub mod menu_faixa;
+pub mod menu_icones;
 /// A memória da faixa por utilizador (recentes, escolhas pelo menu, Open Recent).
 pub mod menu_memory;
 /// «Alt+Enter: show me where it lives».
@@ -123,6 +122,7 @@ mod menu_tables_section;
 mod menu_tables_settings;
 /// O chip que ensina o atalho na 3.ª escolha pelo menu.
 pub mod menu_teach;
+pub mod menu_tons;
 pub mod mode_drive;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;

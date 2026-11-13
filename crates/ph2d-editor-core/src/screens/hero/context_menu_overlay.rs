@@ -40,7 +40,13 @@ pub(super) fn pad_y() -> f32 {
 /// ⚠️ **A lei mudou-se para o [`crate::widget::panel_chrome::clamp_menu_to_viewport`]** quando
 /// ganhou um consumidor numa crate de PAINEL (a lista do "+ Track" da timeline). Isto delega:
 /// duas cópias divergiriam, e o modo de falha seria *um* menu do app a sair da tela.
-pub(super) fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rect) -> Rect {
+pub(super) fn clamp_to_viewport(
+    anchor_x: f32,
+    anchor_y: f32,
+    w: f32,
+    h: f32,
+    viewport: Rect,
+) -> Rect {
     crate::widget::panel_chrome::clamp_menu_to_viewport(anchor_x, anchor_y, w, h, viewport)
 }
 

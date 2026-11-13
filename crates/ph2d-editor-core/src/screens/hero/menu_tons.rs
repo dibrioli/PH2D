@@ -32,7 +32,12 @@ pub fn tons_do_menu(theme: Theme) -> TonsDoMenu {
     let s = Superficie::de(theme);
     // O fundo é o da superfície; num tema cujo texto não lê nele (Plumber Red/Green na UI de antes: 4,1
     // e 3,8 sobre o BgElev, e nenhum tom do tema passa de 4,1), o primeiro fundo do tema em que lê.
-    let tintas = [ColorToken::Text1, ColorToken::AccentFg, ColorToken::Bg0, ColorToken::Bg1];
+    let tintas = [
+        ColorToken::Text1,
+        ColorToken::AccentFg,
+        ColorToken::Bg0,
+        ColorToken::Bg1,
+    ];
     let extremo_em = |f: Color| {
         tintas
             .into_iter()
@@ -42,8 +47,13 @@ pub fn tons_do_menu(theme: Theme) -> TonsDoMenu {
     };
     let fundo = std::iter::once(s.fundo())
         .chain(
-            [ColorToken::Bg1, ColorToken::Bg0, ColorToken::Bg2, ColorToken::Bg3]
-                .map(|tk| pousa(s.cor(tk), s.fundo())),
+            [
+                ColorToken::Bg1,
+                ColorToken::Bg0,
+                ColorToken::Bg2,
+                ColorToken::Bg3,
+            ]
+            .map(|tk| pousa(s.cor(tk), s.fundo())),
         )
         .find(|f| razao(extremo_em(*f), *f) >= TEXTO_MIN)
         .unwrap_or_else(|| s.fundo());

@@ -371,18 +371,20 @@ fn a_linha_que_nao_cabe_inteira_nao_se_pinta() {
 /// (Mutação: devolver `0..q.len()` sempre ⇒ RED em «Height» e no fuzzy.)
 #[test]
 fn a_parte_que_casou_e_a_que_se_acende() {
-    assert_eq!(match_ranges("jump", "Jump Height"), [0..4]);
-    assert_eq!(match_ranges("JUMP", "Make the hero jump"), [14..18]);
-    assert_eq!(match_ranges("height", "Jump Height"), [5..11]);
+    // Um trecho só, como a lista que `match_ranges` devolve.
+    let so = |r: std::ops::Range<usize>| std::iter::once(r).collect::<Vec<_>>();
+    assert_eq!(match_ranges("jump", "Jump Height"), so(0..4));
+    assert_eq!(match_ranges("JUMP", "Make the hero jump"), so(14..18));
+    assert_eq!(match_ranges("height", "Jump Height"), so(5..11));
     assert_eq!(match_ranges("jh", "Jump Height"), [0..1, 5..6]);
     assert_eq!(
         match_ranges("ju", "Jump"),
-        [0..2],
+        so(0..2),
         "letras seguidas juntam-se"
     );
     assert_eq!(
         match_ranges("\u{e9}", "Caf\u{e9}"),
-        [3..5],
+        so(3..5),
         "bytes, não letras"
     );
     assert!(match_ranges("zz", "Jump").is_empty());

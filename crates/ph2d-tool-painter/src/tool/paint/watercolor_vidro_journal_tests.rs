@@ -343,11 +343,29 @@ fn o_segundo_traco_nao_copia_o_plano_do_vidro() {
 /// o plano: `continua_o_vidro_do_traco` lê o antes pelo journal sobre o vivo). Três aguadas, depois Digital por
 /// cima (sobrepostos e a cruzar tiles); depois de cada traço, de desfazer tudo o Digital e de o refazer, o vidro
 /// e a tela são os do oráculo (a chave desligada) ao bit, no mesmo processo.
+///
+/// Duas cenas: a aguada sobre o papel branco (alfa saturado) e a aguada numa camada TRANSPARENTE (alfa < 255)
+/// sobre papel de cor (o vidro segue o traço quadro a quadro), onde reler o vivo já selado no quadro anterior NÃO dá o selo (`alfas(o, v)` cai no ramo «o alfa desceu»): é
+/// esta que separa o journal do vivo.
 #[test]
 fn o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal() {
+    cena_digital_sobre_aguada(false);
+    cena_digital_sobre_aguada(true);
+}
+
+fn cena_digital_sobre_aguada(transparente: bool) {
     use super::watercolor_vidro::COPIAS_DO_VIDRO;
     let mut j = tool_wb(true);
     let mut o = tool_wb(false);
+    if transparente {
+        for (t, journal) in [(&mut j, true), (&mut o, false)] {
+            crate::undo::window::set_vidro_pelo_journal(journal);
+            t.add_raster_layer("aguada").expect("camada transparente");
+            // O papel de cor faz o vidro seguir o traço QUADRO a QUADRO (`segue_o_vidro_no_quadro`); sobre o
+            // branco só o pen-up o continua, uma vez, e o vivo ainda é o antes.
+            t.papel = Some([200, 170, 120]);
+        }
+    }
     let confere = |j: &PainterTool, o: &PainterTool, quando: &str| {
         assert!(plano(j) == plano(o), "{quando}: o vidro difere do oráculo");
         assert!(
@@ -364,6 +382,22 @@ fn o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal() {
         em(&mut o, false, &mut |t| traco_k(t, k));
     }
     confere(&j, &o, "depois das aguadas");
+    if transparente {
+        assert!(
+            j.papel_atravessa_vidro(),
+            "controlo: o papel de cor não atravessa o vidro"
+        );
+        let alfas: Vec<u8> = j
+            .canvas_rgba
+            .chunks(4)
+            .map(|p| p[3])
+            .filter(|&a| a > 0)
+            .collect();
+        assert!(
+            !alfas.is_empty() && alfas.iter().any(|&a| a < 255),
+            "controlo: a aguada na camada transparente não ficou com alfa < 255"
+        );
+    }
     let aguada = plano(&j);
     for (t, journal) in [(&mut j, true), (&mut o, false)] {
         em(t, journal, &mut |t| {
@@ -378,10 +412,14 @@ fn o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal() {
     let mut copias = Vec::new();
     for k in 0..D {
         COPIAS_DO_VIDRO.set(0);
-        em(&mut j, true, &mut |t| vai_e_volta(t, k));
+        em(&mut j, true, &mut |t| vai_e_volta(t, k, transparente));
         copias.push(COPIAS_DO_VIDRO.get());
-        em(&mut o, false, &mut |t| vai_e_volta(t, k));
-        confere(&j, &o, &format!("depois do Digital {}", k + 1));
+        em(&mut o, false, &mut |t| vai_e_volta(t, k, transparente));
+        confere(
+            &j,
+            &o,
+            &format!("{transparente}: depois do Digital {}", k + 1),
+        );
     }
     assert!(
         plano(&j) != aguada,
@@ -411,8 +449,15 @@ fn o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal() {
     crate::undo::window::set_vidro_pelo_journal(true);
 }
 
-/// Um traço que vai e volta sobre si mesmo (cada texel tocado em vários quadros do mesmo traço).
-fn vai_e_volta(t: &mut PainterTool, k: usize) {
+/// Um traço que vai e volta sobre si mesmo (cada texel tocado em vários quadros do mesmo traço); com `drena`,
+/// cada evento passa pelo dreno da pré-visualização, como o quadro do app (o vidro segue o traço nele).
+fn vai_e_volta(t: &mut PainterTool, k: usize, drena: bool) {
+    let ev = |t: &mut PainterTool, pos, phase| {
+        ev(t, pos, phase);
+        if drena {
+            let _ = t.take_preview_arc();
+        }
+    };
     let y = 60.0 + 70.0 * k as f32;
     let xs = [40.0, 300.0, 60.0, 280.0, 90.0];
     ev(t, [xs[0], y], PointerPhase::Down);

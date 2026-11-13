@@ -346,7 +346,12 @@ pub(super) fn click_belongs_to_the_open_menu(
         // A lista de cenas hospeda um TextInput (a busca): clicar nele não pode fechar o menu, ou
         // o utilizador não consegue escrever. As linhas fecham-no elas próprias, depois de agir.
         // O fundo do cartão da chave (título, folgas): clicar ali não fecha o cartão.
-        ContextMenuKind::TimelineSegment { .. } => id == crate::ids::CTX_MENU_TL_KEY_CARD,
+        // O CARTÃO da chave fica aberto enquanto se ajusta (dono 13/11): todo alvo dele é «dele».
+        kind @ ContextMenuKind::TimelineSegment { .. }
+            if crate::screens::hero::key_card::e_cartao(kind) =>
+        {
+            crate::screens::hero::key_card::e_alvo_do_cartao(id)
+        }
         ContextMenuKind::SceneList => {
             id == crate::ids::CTX_SCENE_SEARCH || crate::ids::CTX_SCENE_ROWS.contains(&id)
         }

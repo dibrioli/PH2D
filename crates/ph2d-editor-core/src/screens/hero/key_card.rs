@@ -1,72 +1,60 @@
-//! ⭐ **O CARTÃO da chave** — o menu do botão direito numa chave da timeline, na cara da maquete do
-//! dono (13/11): o título, três blocos grandes (Curve · Straight · Hold), a fileira do ease, a forma
-//! da curva e, embaixo, as linhas que a maquete não tem (Nearest · Custom · Rove).
+//! ⭐ **O CARTÃO da chave** — o menu do botão direito numa chave da timeline, no idioma dos cartões
+//! do Inspector (dono 13/11: «veja nossos próprios cartões»): título que ARRASTA o cartão, rótulos
+//! de secção, controlos segmentados (Interpolation · Ease), a forma da curva numa lista, o Rove numa
+//! caixa de marcar e **Done** — as escolhas não o fecham.
 //!
 //! Só PINTA e diz o que cada clique quer ([`acao`]); quem aplica é o `chrome::timeline_segment`, pela
 //! mesma `TimelineInterpPick` do menu em lista — a shell não muda. O estado (o que está aceso, o
-//! título) vem do painel da timeline por `WidgetStore::set_menu_marks`.
+//! título) vem do painel da timeline por `WidgetStore::set_menu_marks`; o arrasto vive em
+//! `interaction::dispatch::key_card_drag`.
 
 use crate::ids as c;
 use crate::interaction::{ContextMenuKind, HitIndex, TimelineInterpScope, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text};
+use crate::paint::{fill_rounded_rect, paint_text};
+use crate::widget::card_ink::CardInk;
 use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_i18n::{TextKey, tr};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, INLINE_ICON_PX, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-const TILE_W: f32 = 76.0; // LITERAL-PX-OK: bloco da maquete do dono (13/11)
-const TILE_H: f32 = 58.0; // LITERAL-PX-OK: bloco da maquete do dono (13/11)
-const TILE_ICON: f32 = 22.0; // LITERAL-PX-OK: o desenho da curva no bloco, maior que o ícone de linha
+/// A largura do cartão: cinco segmentos de Interpolation cabem sem cortar «Straight».
+const CARD_W: f32 = 352.0; // LITERAL-PX-OK: fotografado — a 300 «Straight», «Nearest» e «Custom» saíam com «…»
+/// A largura do botão Done.
+const DONE_W: f32 = 76.0; // LITERAL-PX-OK: o botão primário de um cartão, «Done» + folga
 
-/// Os três blocos: o id, o rótulo, o ícone.
-const BLOCOS: [(NodeId, &str, crate::icons::IconId); 3] = [
-    (
-        c::CTX_MENU_TL_CURVE,
-        "chrome.timeline_menu.curve",
-        crate::icons::IconId::CardInterpCubic,
-    ),
-    (
-        c::CTX_MENU_TL_LINEAR,
-        "chrome.timeline_menu.straight",
-        crate::icons::IconId::CardInterpLinear,
-    ),
-    (
-        c::CTX_MENU_TL_HOLD,
-        "chrome.timeline_menu.hold",
-        crate::icons::IconId::CardInterpHold,
-    ),
+/// Interpolation: o id e o rótulo de cada segmento. Curve acende com qualquer ease.
+const INTERP: [(NodeId, &str); 5] = [
+    (c::CTX_MENU_TL_CURVE, "chrome.timeline_menu.curve"),
+    (c::CTX_MENU_TL_LINEAR, "chrome.timeline_menu.straight"),
+    (c::CTX_MENU_TL_HOLD, "chrome.timeline_menu.hold"),
+    (c::CTX_MENU_TL_NEAREST, "chrome.timeline_menu.nearest"),
+    (c::CTX_MENU_TL_CUSTOM, "chrome.timeline_menu.custom"),
 ];
 
-/// A fileira do ease: o botão, a linha do modo que o acende, o modo que ele pede.
+/// Ease: o segmento, a linha do modo que o acende, o modo que ele pede, o rótulo.
 const EASES: [(NodeId, NodeId, u8, &str); 3] = [
     (
         c::CTX_MENU_TL_CURVE_IN,
         c::CTX_MENU_TL_EASE_IN,
         c::TL_EASE_MODE_IN,
-        "chrome.timeline_menu.chip_ease_in",
+        "chrome.timeline_menu.seg_in",
     ),
     (
         c::CTX_MENU_TL_CURVE_INOUT,
         c::CTX_MENU_TL_EASE_INOUT,
         c::TL_EASE_MODE_INOUT,
-        "chrome.timeline_menu.chip_ease_in_out",
+        "chrome.timeline_menu.seg_in_out",
     ),
     (
         c::CTX_MENU_TL_CURVE_OUT,
         c::CTX_MENU_TL_EASE_OUT,
         c::TL_EASE_MODE_OUT,
-        "chrome.timeline_menu.chip_ease_out",
+        "chrome.timeline_menu.seg_out",
     ),
-];
-
-/// As linhas de baixo, que a maquete não tem.
-const LINHAS: [(NodeId, &str); 3] = [
-    (c::CTX_MENU_TL_NEAREST, "chrome.timeline_menu.nearest"),
-    (c::CTX_MENU_TL_CUSTOM, "chrome.timeline_menu.custom_b_zier"),
-    (c::CTX_MENU_TL_ROVE, "chrome.timeline_menu.rove_across_time"),
 ];
 
 /// O escopo pinta-se como cartão (uma chave ou uma coluna do Summary; o fade continua em lista).
@@ -80,15 +68,27 @@ pub fn e_cartao(kind: ContextMenuKind) -> bool {
     )
 }
 
+/// `id` é um alvo do cartão (o fundo, o título, um segmento, a forma, o Rove, o Done): um aperto nele
+/// NÃO fecha o cartão.
+#[must_use]
+pub fn e_alvo_do_cartao(id: NodeId) -> bool {
+    id == c::CTX_MENU_TL_KEY_CARD
+        || id == c::CTX_MENU_TL_KEY_CARD_HEAD
+        || c::TIMELINE_KEY_CARD.iter().any(|r| r.0 == id)
+        || c::TIMELINE_SEGMENT_MENU.iter().any(|r| r.0 == id)
+}
+
 /// O que um clique no cartão pede.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Acao {
-    /// Nada (o fundo): o cartão fica aberto.
+    /// Nada (o fundo, o título): o cartão fica aberto.
     Nada,
-    /// A mesma escolha do menu em lista: `(item, mode)` da `TimelineInterpPick`.
+    /// A mesma escolha do menu em lista: `(item, mode)` da `TimelineInterpPick`. O cartão fica.
     Escolhe { item: NodeId, mode: u8 },
-    /// Abre a lista das formas, no modo dado.
+    /// Abre a lista das formas, no modo dado (escolher nela volta ao cartão).
     AbreFormas { mode: u8 },
+    /// **Done**: fecha o cartão.
+    Fecha,
 }
 
 /// A forma acesa (ou `Cubic`) e o modo aceso (ou In-Out): o que Curve e o ease mantêm.
@@ -105,135 +105,98 @@ fn forma_e_modo(store: &WidgetStore, kind: ContextMenuKind) -> (NodeId, u8) {
     (forma, modo)
 }
 
-/// O que o clique em `id` pede, se `id` é do cartão. `None` = não é do cartão (as linhas de baixo,
-/// Straight e Hold seguem pelo caminho do menu em lista).
+/// O que o clique em `id` pede, se `id` é do cartão. `None` = segue pelo caminho do menu em lista
+/// (Straight, Hold, Nearest, Custom, Rove — os ids de sempre).
 #[must_use]
 pub fn acao(id: NodeId, kind: ContextMenuKind, store: &WidgetStore) -> Option<Acao> {
     if !e_cartao(kind) {
         return None;
     }
     let (forma, modo) = forma_e_modo(store, kind);
-    if id == c::CTX_MENU_TL_KEY_CARD {
-        return Some(Acao::Nada);
-    }
-    if id == c::CTX_MENU_TL_CURVE {
-        return Some(Acao::Escolhe {
+    match id {
+        _ if id == c::CTX_MENU_TL_KEY_CARD || id == c::CTX_MENU_TL_KEY_CARD_HEAD => {
+            Some(Acao::Nada)
+        }
+        _ if id == c::CTX_MENU_TL_KEY_DONE => Some(Acao::Fecha),
+        _ if id == c::CTX_MENU_TL_CURVE => Some(Acao::Escolhe {
             item: forma,
             mode: modo,
-        });
+        }),
+        _ if id == c::CTX_MENU_TL_SHAPE => Some(Acao::AbreFormas { mode: modo }),
+        _ => EASES.iter().find(|e| e.0 == id).map(|e| Acao::Escolhe {
+            item: forma,
+            mode: e.2,
+        }),
     }
-    if id == c::CTX_MENU_TL_SHAPE {
-        return Some(Acao::AbreFormas { mode: modo });
-    }
-    EASES.iter().find(|e| e.0 == id).map(|e| Acao::Escolhe {
-        item: forma,
-        mode: e.2,
-    })
 }
 
 /// Os rectângulos do cartão ancorado em `(x, y)` — uma conta só para o desenho e o teste.
 pub(super) struct Geo {
     pub cartao: Rect,
-    pub titulo: Rect,
-    pub blocos: [Rect; 3],
-    pub eases: [Rect; 3],
-    pub forma_rotulo: Rect,
+    pub cabeca: Rect,
+    pub rotulo_interp: Rect,
+    pub interp: Rect,
+    pub rotulo_ease: Rect,
+    pub ease: Rect,
+    pub rotulo_forma: Rect,
     pub forma: Rect,
-    pub risco_y: f32,
-    pub linhas: [Rect; 3],
+    pub rove: Rect,
+    pub done: Rect,
 }
 
 pub(super) fn geo(x: f32, y: f32) -> Geo {
-    let pad = Spacing::Md.px();
-    let gap = Spacing::Sm.px();
-    let row = ROW_H_PX;
-    let w = pad * 2.0 + TILE_W * 3.0 + gap * 2.0;
-    let iw = w - pad * 2.0;
-    let x0 = x + pad;
-    let titulo = Rect::new(x0, y + pad * 0.5, iw, row);
-    let ty = titulo.y + row + gap * 0.5;
-    let blocos =
-        std::array::from_fn(|i| Rect::new(x0 + (TILE_W + gap) * i as f32, ty, TILE_W, TILE_H));
-    let ey = ty + TILE_H + gap;
-    let ew = (iw - gap * 2.0) / 3.0;
-    let eases = std::array::from_fn(|i| Rect::new(x0 + (ew + gap) * i as f32, ey, ew, row));
-    let fy = ey + row + gap;
-    let forma = Rect::new(x0 + ew + gap, fy, ew * 2.0 + gap, row);
-    let forma_rotulo = Rect::new(x0, fy, ew, row);
-    let risco_y = fy + row + gap;
-    let ly = risco_y + gap;
-    let lx = x + Spacing::Xs.px();
-    let lw = w - Spacing::Xs.px() * 2.0;
-    let linhas = std::array::from_fn(|i| Rect::new(lx, ly + row * i as f32, lw, row));
-    let h = ly + row * 3.0 + Spacing::Xs.px() - y;
+    let iw = CARD_W - m::CARD_PAD_X * 2.0;
+    let x0 = x + m::CARD_PAD_X;
+    let cabeca = Rect::new(x, y, CARD_W, m::CARD_PAD_TOP + m::CARD_HEAD_H);
+    // Um grupo = o rótulo (LABEL_PX) e o campo (FIELD_H), com as folgas dos cartões.
+    let grupo = |top: f32| {
+        let rot = Rect::new(x0, top + m::LABEL_TOP, iw, m::LABEL_PX);
+        let campo = Rect::new(x0, rot.y + rot.h + m::LABEL_BOTTOM, iw, m::FIELD_H);
+        (rot, campo)
+    };
+    let (rotulo_interp, interp) = grupo(cabeca.y + cabeca.h + m::CARD_HEAD_BOTTOM - m::LABEL_TOP);
+    let (rotulo_ease, ease) = grupo(interp.y + interp.h);
+    let (rotulo_forma, forma) = grupo(ease.y + ease.h);
+    let rove = Rect::new(x0, forma.y + forma.h + m::FIELD_ROW_GAP, iw, m::FIELD_H);
+    let done = Rect::new(
+        x0 + iw - DONE_W,
+        rove.y + rove.h + m::CARD_GAP,
+        DONE_W,
+        m::FIELD_H,
+    );
+    let h = done.y + done.h + m::CARD_PAD_BOTTOM - y;
     Geo {
-        cartao: Rect::new(x, y, w, h),
-        titulo,
-        blocos,
-        eases,
-        forma_rotulo,
+        cartao: Rect::new(x, y, CARD_W, h),
+        cabeca,
+        rotulo_interp,
+        interp,
+        rotulo_ease,
+        ease,
+        rotulo_forma,
         forma,
-        risco_y,
-        linhas,
+        rove,
+        done,
     }
 }
 
-/// O bloco/botão do cartão: o escolhido no azul calmo da maquete (`TimelineTinta::BlocoEscolhido`),
-/// os outros como todo botão de cartão. Devolve a tinta do texto.
-fn botao(
-    sup: Superficie,
-    theme: Theme,
-    scene: &mut VectorScene,
-    r: Rect,
-    on: bool,
-    hover: bool,
-) -> ph2d_vector::Color {
-    let tinta = sup.botao(scene, r, false, hover);
-    let cor = |t: ph2d_tokens::TimelineTinta| crate::paint::token_to_vello(t.resolve(theme));
-    if !on {
-        // Na maquete o texto do não escolhido é cinzento; sob o rato acende.
-        return if hover || sup.tinta().is_none() {
-            tinta
-        } else {
-            cor(ph2d_tokens::TimelineTinta::TextoPropriedade)
-        };
-    }
+/// A moldura de um cartão do Inspector (sombra, `CARD_RADIUS`, `KanbanCard`), a flutuar.
+fn moldura(scene: &mut VectorScene, r: Rect, ink: CardInk) {
+    crate::paint_flight::shadow(
+        scene,
+        r,
+        m::CARD_RADIUS,
+        ink.color(ColorToken::KanbanListShadow),
+        m::LIST_SHADOW_FAR,
+    );
     fill_rounded_rect(
         scene,
         r,
-        ph2d_card_stack::metrics::FIELD_RADIUS,
-        cor(ph2d_tokens::TimelineTinta::BlocoEscolhido),
-    );
-    cor(ph2d_tokens::TimelineTinta::TextoCabecalho)
-}
-
-/// Texto centrado em `r`.
-fn centrado(
-    ts: &mut TextSystem,
-    scene: &mut VectorScene,
-    s: &str,
-    r: Rect,
-    y: f32,
-    cor: ph2d_vector::Color,
-) {
-    // Peso NORMAL, o da maquete (o app pinta rótulos em MEDIUM).
-    let px = TypeToken::Sm.px();
-    let peso = ph2d_text::FontWeight::NORMAL;
-    let tw = ts.prefix_width_weighted(s, px, peso).min(r.w);
-    crate::paint::paint_text_in_weight(
-        ts,
-        scene,
-        s,
-        [r.x + (r.w - tw) * 0.5, y],
-        px,
-        r.w,
-        cor,
-        peso,
+        m::CARD_RADIUS,
+        ink.color(ColorToken::KanbanCard).with_alpha(1.0),
     );
 }
 
 /// Pinta o cartão aberto e regista os alvos.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -243,173 +206,150 @@ pub(super) fn paint(
     req: crate::interaction::ContextMenuRequest,
     viewport: Rect,
 ) {
-    let kind = req.kind;
     let g0 = geo(0.0, 0.0);
     let r = crate::widget::panel_chrome::clamp_menu_to_viewport(
         req.x,
-        super::context_menu_overlay::anchor_y(store, req, g0.cartao.h),
+        req.y,
         g0.cartao.w,
         g0.cartao.h,
         viewport,
     );
     let g = geo(r.x, r.y);
-    let sup = Superficie::de(theme);
-    sup.moldura(scene, g.cartao);
-    hit.register(c::CTX_MENU_TL_KEY_CARD, g.cartao);
-    let px = TypeToken::Sm.px();
-    let ty = |r: Rect| r.y + (r.h - px) * 0.5;
-    let marcado = |id| store.menu_row_is_marked(kind, id);
-    let hot = |id| store.hot_id() == Some(id);
+    let ink = Superficie::de(theme)
+        .tinta()
+        .unwrap_or_else(|| CardInk::of_list(theme));
+    crate::widget::card_ink::com(ink, || {
+        corpo(scene, ts, theme, hit, store, req.kind, &g, ink)
+    });
+}
 
-    // O título um degrau acima e mais forte, como na maquete.
-    let tpx = TypeToken::Base.px();
+#[allow(clippy::too_many_arguments)]
+fn corpo(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    hit: &mut HitIndex,
+    store: &WidgetStore,
+    kind: ContextMenuKind,
+    g: &Geo,
+    ink: CardInk,
+) {
+    moldura(scene, g.cartao, ink);
+    hit.register(c::CTX_MENU_TL_KEY_CARD, g.cartao);
+    hit.register(c::CTX_MENU_TL_KEY_CARD_HEAD, g.cabeca);
+    let marcado = |id| store.menu_row_is_marked(kind, id);
+    let quente = |id| store.hot_id() == Some(id);
+    let fg = ink.color(ColorToken::KanbanCardFg);
+
+    // O título: o do cartão do Inspector (CARD_TITLE_PX, mais forte), centrado na cabeça.
+    let tpx = m::CARD_TITLE_PX;
     crate::paint::paint_text_title(
         ts,
         scene,
         store.menu_title(kind),
-        g.titulo.x,
-        g.titulo.y + (g.titulo.h - tpx) * 0.5,
+        g.cabeca.x + m::CARD_PAD_X,
+        g.cabeca.y + m::CARD_PAD_TOP + (m::CARD_HEAD_H - tpx) * 0.5,
         tpx,
-        g.titulo.w,
-        sup.cor(ColorToken::Text1),
+        g.cabeca.w - m::CARD_PAD_X * 2.0,
+        fg,
     );
 
-    let curva = EASES.iter().any(|e| marcado(e.1));
-    for (i, &(id, chave, icone)) in BLOCOS.iter().enumerate() {
-        let b = g.blocos[i];
-        let on = if id == c::CTX_MENU_TL_CURVE {
-            curva
-        } else {
-            marcado(id)
-        };
-        let tinta = botao(sup, theme, scene, b, on, hot(id));
-        hit.register(id, b);
-        let ix = b.x + (b.w - TILE_ICON) * 0.5;
-        let iy = b.y + Spacing::Sm.px();
-        paint_icon(
-            scene,
-            icone,
-            Rect::new(ix, iy, TILE_ICON, TILE_ICON),
-            tinta,
-            StrokeToken::Default.px(),
-        );
-        centrado(
-            ts,
-            scene,
-            tr(chave),
-            b,
-            b.y + b.h - px - Spacing::Sm.px(),
-            tinta,
-        );
-    }
-    for (i, &(id, linha, _, chave)) in EASES.iter().enumerate() {
-        let b = g.eases[i];
-        let tinta = botao(sup, theme, scene, b, marcado(linha), hot(id));
-        hit.register(id, b);
-        centrado(ts, scene, tr(chave), b, ty(b), tinta);
-    }
-    // A forma da curva: o rótulo à esquerda, o botão com o nome à direita (abre a lista).
-    paint_text(
-        ts,
+    let rotulo = |scene: &mut VectorScene, ts: &mut TextSystem, r: Rect, chave: &str| {
+        crate::widget::card_field::paint_label(scene, ts, ink, r.x, r.y, r.w, tr(chave));
+    };
+
+    rotulo(
         scene,
-        tr("chrome.timeline_menu.shape"),
-        g.forma_rotulo.x,
-        ty(g.forma_rotulo),
-        px,
-        g.forma_rotulo.w,
-        sup.cor(ColorToken::Text3),
+        ts,
+        g.rotulo_interp,
+        "chrome.timeline_menu.section_interp",
     );
+    let curva = EASES.iter().any(|e| marcado(e.1));
+    let interp: Vec<(&str, bool, NodeId)> = INTERP
+        .iter()
+        .map(|&(id, chave)| {
+            let on = if id == c::CTX_MENU_TL_CURVE {
+                curva
+            } else {
+                marcado(id)
+            };
+            (tr(chave), on, id)
+        })
+        .collect();
+    crate::widget::panel_chrome::paint_segmented_group(
+        g.interp, &interp, scene, ts, theme, store, hit,
+    );
+
+    rotulo(
+        scene,
+        ts,
+        g.rotulo_ease,
+        "chrome.timeline_menu.section_ease",
+    );
+    let eases: Vec<(&str, bool, NodeId)> = EASES
+        .iter()
+        .map(|&(id, linha, _, chave)| (tr(chave), marcado(linha), id))
+        .collect();
+    crate::widget::panel_chrome::paint_segmented_group(
+        g.ease, &eases, scene, ts, theme, store, hit,
+    );
+
+    rotulo(scene, ts, g.rotulo_forma, "chrome.timeline_menu.shape");
     let (forma, _) = forma_e_modo(store, kind);
     let nome = c::TIMELINE_EASE_MENU
         .iter()
         .find(|row| row.0 == forma)
         .map_or("", |row: &(NodeId, TextKey, _)| row.1.tr());
-    let tinta = sup.botao(scene, g.forma, false, hot(c::CTX_MENU_TL_SHAPE));
+    crate::widget::paint_card_chip(scene, ts, ink, g.forma, nome, quente(c::CTX_MENU_TL_SHAPE));
     hit.register(c::CTX_MENU_TL_SHAPE, g.forma);
-    let ic = INLINE_ICON_PX;
-    let pad_x = Spacing::Sm.px();
+
+    // Rove: a caixa de marcar da casa e o rótulo ao lado; a linha inteira é o alvo.
+    let caixa = crate::widget::card_check_rect(g.rove.x, g.rove.y, g.rove.h);
+    crate::widget::paint_card_check(
+        scene,
+        ink,
+        caixa,
+        marcado(c::CTX_MENU_TL_ROVE),
+        quente(c::CTX_MENU_TL_ROVE),
+    );
+    let px = TypeToken::Sm.px();
+    let tx = caixa.x + caixa.w + m::FIELD_GAP;
+    let meio = |r: Rect| r.y + (r.h - px) * 0.5;
+    let rove = tr("chrome.timeline_menu.rove_check");
     paint_text(
         ts,
         scene,
-        nome,
-        g.forma.x + pad_x,
-        ty(g.forma),
+        rove,
+        tx,
+        meio(g.rove),
         px,
-        g.forma.w - ic - pad_x * 2.0,
-        tinta,
+        g.rove.x + g.rove.w - tx,
+        fg,
     );
-    paint_icon(
-        scene,
-        crate::icons::IconId::ChevronDown,
-        Rect::new(
-            g.forma.x + g.forma.w - ic - pad_x,
-            g.forma.y + (g.forma.h - ic) * 0.5,
-            ic,
-            ic,
-        ),
-        tinta,
-        StrokeToken::Default.px(),
-    );
+    hit.register(c::CTX_MENU_TL_ROVE, g.rove);
 
-    fill_rounded_rect(
+    // Done: o botão primário do cartão (o acento), no canto de baixo.
+    let fundo = ink.color(ColorToken::KanbanBlueBold);
+    let fundo = if quente(c::CTX_MENU_TL_KEY_DONE) {
+        fundo.with_alpha(0.85)
+    } else {
+        fundo
+    };
+    fill_rounded_rect(scene, g.done, m::FIELD_RADIUS, fundo);
+    let done = tr("chrome.timeline_menu.done");
+    let w = ts.prefix_width(done, px).min(g.done.w);
+    let cor = ink.color(ColorToken::AccentFg);
+    paint_text(
+        ts,
         scene,
-        Rect::new(g.cartao.x, g.risco_y, g.cartao.w, 1.0),
-        0.0,
-        sup.cor(ColorToken::Border),
+        done,
+        g.done.x + (g.done.w - w) * 0.5,
+        meio(g.done),
+        px,
+        g.done.w,
+        cor,
     );
-    for (i, &(id, chave)) in LINHAS.iter().enumerate() {
-        let l = g.linhas[i];
-        hit.register(id, l);
-        if hot(id) {
-            sup.realce(scene, l);
-        }
-        let on = marcado(id);
-        let x = l.x + Spacing::Md.px();
-        if on {
-            let dot = ph2d_vector::Circle::new(
-                ph2d_vector::Point::new(f64::from(x), f64::from(l.y + l.h * 0.5)),
-                3.0, // LITERAL-PX-OK: a bolinha do estado corrente, a mesma do menu em lista
-            );
-            scene.inner_mut().fill(
-                ph2d_vector::Fill::NonZero,
-                ph2d_vector::Affine::IDENTITY,
-                &ph2d_vector::Brush::Solid(sup.cor(ColorToken::Accent)),
-                None,
-                &dot,
-            );
-        }
-        let gx = x + Spacing::Sm.px() + Spacing::Xs.px();
-        if let Some(icone) = super::menu_row_look::icone(id) {
-            let cor = sup.cor(if on {
-                ColorToken::Accent
-            } else {
-                ColorToken::Text2
-            });
-            paint_icon(
-                scene,
-                icone,
-                Rect::new(gx, l.y + (l.h - ic) * 0.5, ic, ic),
-                cor,
-                StrokeToken::Default.px(),
-            );
-        }
-        let tx = gx + ic + ph2d_tokens::icon_label_gap_px();
-        let cor = sup.cor(if on {
-            ColorToken::Text1
-        } else {
-            ColorToken::Text2
-        });
-        paint_text(
-            ts,
-            scene,
-            tr(chave),
-            tx,
-            ty(l),
-            px,
-            (l.x + l.w - tx - Spacing::Md.px()).max(0.0),
-            cor,
-        );
-    }
+    hit.register(c::CTX_MENU_TL_KEY_DONE, g.done);
 }
 
 #[cfg(test)]

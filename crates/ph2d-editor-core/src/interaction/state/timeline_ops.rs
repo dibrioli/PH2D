@@ -31,6 +31,27 @@ impl WidgetStore {
         self.menu_marks.2.push_str(titulo);
     }
 
+    /// Lembra o cartão da chave aberto (`req`) para a lista das formas voltar a ele.
+    pub fn set_key_card_volta(&mut self, req: Option<crate::interaction::ContextMenuRequest>) {
+        self.key_card.1 = req;
+    }
+
+    /// O cartão a que a lista das formas volta (uma vez).
+    pub fn take_key_card_volta(&mut self) -> Option<crate::interaction::ContextMenuRequest> {
+        self.key_card.1.take()
+    }
+
+    /// A pega do arrasto do cartão da chave: `(dx, dy)` do cursor ao canto do cartão.
+    #[must_use]
+    pub fn key_card_grab(&self) -> Option<(f32, f32)> {
+        self.key_card.0
+    }
+
+    /// Arma (`Some`) ou solta (`None`) o arrasto do cartão da chave.
+    pub fn set_key_card_grab(&mut self, grab: Option<(f32, f32)>) {
+        self.key_card.0 = grab;
+    }
+
     /// O cabeçalho publicado para o menu `kind` (vazio se não houver).
     #[must_use]
     pub fn menu_title(&self, kind: crate::interaction::ContextMenuKind) -> &str {

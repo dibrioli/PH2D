@@ -110,6 +110,7 @@ pub(super) fn dispatch_up<'frame>(
     // a quick click into a «long press» that swallowed the selection (smoke 09/11, GEF 28).
     let drag_end = store.end_hierarchy_drag();
     store.end_tab_drag();
+    store.set_key_card_grab(None);
     // ⭐ **Estações 2 e 3: ACTIVAR e RESOLVER.** Um arrasto que nunca activa e um que activa e cai
     // no `over_self` leem-se igual do lado de fora — e as curas são opostas.
     if super::hierarchy::diag_on()

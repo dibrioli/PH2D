@@ -399,6 +399,10 @@ pub const fn menu_row_swatch(id: NodeId, key: &'static str, rgba: [u8; 4]) -> Me
 // paleta de comandos (ela não tem cartão).
 /// O fundo do cartão: um clique nele não fecha nem faz nada.
 pub const CTX_MENU_TL_KEY_CARD: NodeId = hash_node_id("ctx_menu_tl_key_card");
+/// O título do cartão: a pega para o ARRASTAR (dono 13/11).
+pub const CTX_MENU_TL_KEY_CARD_HEAD: NodeId = hash_node_id("ctx_menu_tl_key_card_head");
+/// **Done**: fecha o cartão (as escolhas não o fecham, dono 13/11).
+pub const CTX_MENU_TL_KEY_DONE: NodeId = hash_node_id("ctx_menu_tl_key_done");
 /// Bloco **Curve**: a forma escolhida (ou Cubic) no modo escolhido (ou In-Out).
 pub const CTX_MENU_TL_CURVE: NodeId = hash_node_id("ctx_menu_tl_curve");
 /// Botão **Ease in**: a forma escolhida (ou Cubic), a acelerar.
@@ -411,15 +415,13 @@ pub const CTX_MENU_TL_CURVE_OUT: NodeId = hash_node_id("ctx_menu_tl_curve_out");
 pub const CTX_MENU_TL_SHAPE: NodeId = hash_node_id("ctx_menu_tl_shape");
 
 /// Os ids que só o cartão da chave tem — registados pelo `pre_populate` como toda tabela.
-pub const TIMELINE_KEY_CARD: [MenuRow; 5] = [
+pub const TIMELINE_KEY_CARD: [MenuRow; 6] = [
     menu_row(CTX_MENU_TL_CURVE, "chrome.timeline_menu.curve"),
-    menu_row(CTX_MENU_TL_CURVE_IN, "chrome.timeline_menu.chip_ease_in"),
-    menu_row(
-        CTX_MENU_TL_CURVE_INOUT,
-        "chrome.timeline_menu.chip_ease_in_out",
-    ),
-    menu_row(CTX_MENU_TL_CURVE_OUT, "chrome.timeline_menu.chip_ease_out"),
+    menu_row(CTX_MENU_TL_CURVE_IN, "chrome.timeline_menu.seg_in"),
+    menu_row(CTX_MENU_TL_CURVE_INOUT, "chrome.timeline_menu.seg_in_out"),
+    menu_row(CTX_MENU_TL_CURVE_OUT, "chrome.timeline_menu.seg_out"),
     menu_row(CTX_MENU_TL_SHAPE, "chrome.timeline_menu.shape"),
+    menu_row(CTX_MENU_TL_KEY_DONE, "chrome.timeline_menu.done"),
 ];
 
 /// Uma tabela de menu — o que a [`ALL_TIMELINE_MENUS`] lista e o overlay pinta.

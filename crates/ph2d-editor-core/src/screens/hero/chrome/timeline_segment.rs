@@ -47,13 +47,22 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         };
         match a {
             Acao::Nada => {}
+            // ⭐ O cartão FICA aberto enquanto o artista ajusta (dono 13/11); fecha no Done.
             Acao::Escolhe { item, mode } => {
                 hero.pending_timeline_interp = Some(TimelineInterpPick { scope, item, mode });
+            }
+            Acao::Fecha => {
                 hero.store.close_context_menu();
                 hero.store.consume_last_context_menu();
             }
             Acao::AbreFormas { mode } => {
-                let (x, y) = super::cascade_anchor(hero, id);
+                // A lista das formas troca o cartão; escolher nela VOLTA ao cartão, no mesmo sítio.
+                hero.store.set_key_card_volta(req);
+                // Abre DEBAIXO do campo, como toda lista do app.
+                let (x, y) = hero
+                    .hit_index
+                    .rect_for(id)
+                    .map_or_else(|| super::cascade_anchor(hero, id), |r| (r.x, r.y + r.h));
                 hero.store.open_context_menu(ContextMenuRequest {
                     x,
                     y,
@@ -102,6 +111,21 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         item: id,
         mode: open_mode,
     });
+    if hero
+        .store
+        .context_menu()
+        .is_some_and(|r| crate::screens::hero::key_card::e_cartao(r.kind))
+    {
+        // Uma linha do cartão (Straight, Hold, Nearest, Custom, Rove): o cartão fica aberto.
+        return true;
+    }
+    if is_family
+        && let Some(volta) = hero.store.take_key_card_volta()
+        && volta.kind == (ContextMenuKind::TimelineSegment { scope })
+    {
+        hero.store.open_context_menu(volta);
+        return true;
+    }
     hero.store.close_context_menu();
     // Drop the parked request: it is spent, and leaving it would let a later
     // stray Click on one of these ids re-apply the preset to the same key.

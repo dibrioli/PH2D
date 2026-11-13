@@ -54,6 +54,9 @@ pub(super) fn dispatch_down<'frame>(
 
     store.note_card_press(event.x, event.y); // T7: a pressão num cartão PRESO é do sujeito dele
     let hit = hit_index.hit_with_rect(event.x, event.y);
+    if super::key_card_drag::pega(store, hit, event) {
+        return;
+    }
     // Antes de toda captura: uma lista aberta sobre a tira da Timeline ou do Flip não fechava com o
     // clique nela (visto em janela real, F8). O clique continua a valer no que acertou.
     super::pointer_down_menus::light_dismiss_dropdown(store, hit, event);

@@ -79,8 +79,6 @@ pub enum TimelineTinta {
     PesoPilula,
     /// O olho de uma faixa muda (fechado, avermelhado e meio apagado).
     OlhoMudo,
-    /// O bloco/botão ESCOLHIDO do cartão da chave (maquete do dono 13/11, medido: `#354C73`).
-    BlocoEscolhido,
     /// A faixa fina do laço no topo da régua (o `.c13lp` da maquete B: o verde da [`Self::PecaA`]).
     LacoDaRegua,
     /// O losango `Mudado` do Inspector e o valor do campo mudado (maquete B1: `#FF9F5A`, o laranja do
@@ -134,7 +132,6 @@ impl TimelineTinta {
             Self::MudadoContorno => (T::KanbanList, [162, 107, 71]),
             Self::PesoPilula => (T::KanbanList, [33, 37, 52]),
             Self::OlhoMudo => (T::KanbanList, [137, 83, 87]),
-            Self::BlocoEscolhido => (T::KanbanList, [53, 76, 115]),
         }
     }
 

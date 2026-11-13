@@ -61,15 +61,11 @@ fn each_card_click_asks_the_same_pick_the_list_menu_would() {
     assert_eq!(acao(c::CTX_MENU_TL_CURVE, fade, &store), None);
 }
 
-/// Todo alvo cabe no cartão, e nenhum alvo cobre outro.
+/// Todo alvo cabe no cartão, nenhum cobre outro, e o título (a pega do arrasto) é o topo.
 #[test]
 fn every_card_target_fits_and_none_overlaps() {
     let g = geo(10.0, 20.0);
-    let mut alvos: Vec<Rect> = Vec::new();
-    alvos.extend(g.blocos);
-    alvos.extend(g.eases);
-    alvos.push(g.forma);
-    alvos.extend(g.linhas);
+    let alvos = [g.cabeca, g.interp, g.ease, g.forma, g.rove, g.done];
     let dentro = |r: &Rect| {
         r.x >= g.cartao.x
             && r.y >= g.cartao.y
@@ -86,4 +82,29 @@ fn every_card_target_fits_and_none_overlaps() {
             assert!(!cruza, "dois alvos sobrepostos");
         }
     }
+    assert_eq!((g.cabeca.x, g.cabeca.y), (g.cartao.x, g.cartao.y));
+}
+
+/// Done fecha; o título e o fundo não fazem nada (e por isso o cartão fica aberto).
+#[test]
+fn done_closes_and_the_title_does_nothing() {
+    let store = WidgetStore::default();
+    assert_eq!(
+        acao(c::CTX_MENU_TL_KEY_DONE, KIND, &store),
+        Some(Acao::Fecha)
+    );
+    assert_eq!(
+        acao(c::CTX_MENU_TL_KEY_CARD_HEAD, KIND, &store),
+        Some(Acao::Nada)
+    );
+    // Todo alvo do cartão é «dele»: apertá-lo não fecha o cartão (o aperto fecha o que não é).
+    for id in [
+        c::CTX_MENU_TL_CURVE_IN,
+        c::CTX_MENU_TL_LINEAR,
+        c::CTX_MENU_TL_ROVE,
+        c::CTX_MENU_TL_SHAPE,
+    ] {
+        assert!(e_alvo_do_cartao(id));
+    }
+    assert!(!e_alvo_do_cartao(c::CTX_MENU_TL_DELETE_TRACK));
 }

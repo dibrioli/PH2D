@@ -166,6 +166,7 @@ impl WidgetStore {
             card_fields: Default::default(),
             card_lists: Default::default(),
             menu_marks: Default::default(),
+            key_card: Default::default(),
         }
     }
 

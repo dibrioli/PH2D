@@ -604,6 +604,10 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     for (id, _, _) in ids::ALL_TIMELINE_MENUS.iter().copied().flatten() {
         store.register(*id, InteractiveState::Plain);
     }
+    // O fundo e o título (a pega do arrasto) do cartão da chave: alvos sem rótulo.
+    for id in [ids::CTX_MENU_TL_KEY_CARD, ids::CTX_MENU_TL_KEY_CARD_HEAD] {
+        store.register(id, InteractiveState::Plain);
+    }
 }
 
 fn populate_scrollbars(store: &mut WidgetStore) {

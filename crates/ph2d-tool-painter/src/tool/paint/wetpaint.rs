@@ -303,6 +303,8 @@ mod camada_nova_paridade_tests;
 #[cfg(test)]
 mod camada_nova_toque_tests;
 #[cfg(test)]
+mod captura_da_caixa_tests;
+#[cfg(test)]
 mod dentro_do_wet_tests;
 mod dormente; // a tinta adormecida comprimida em RAM (dono 06/11)
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC

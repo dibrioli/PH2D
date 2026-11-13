@@ -91,7 +91,10 @@ pub(crate) struct TileJournal<T> {
     /// **2,2× um memcpy** a 2048², onde a cópia fica abaixo do limiar do rayon e o paralelo não salva
     /// (doc 28 §5.25). Com ele o fallback custa exatamente o que o fork custa **em toda tela**, que é o
     /// que a política *"quem não sabe passa o plano inteiro"* promete.
-    whole: Option<Box<[T]>>,
+    ///
+    /// Um `Arc` porque a captura inteira de um plano PARTILHADO não copia ([`Self::capture_shared`]): o buffer
+    /// velho já é o `before`, e o fork da escrita que vem a seguir copia-o de qualquer modo.
+    whole: Option<std::sync::Arc<Vec<T>>>,
 }
 
 impl<T> Default for TileJournal<T> {
@@ -177,7 +180,7 @@ impl<T: Copy + Default + Send + Sync> TileJournal<T> {
         // **O plano inteiro, contíguo** — só quando nenhum tile foi tomado ainda, porque a primeira
         // captura de cada tile é a que vale e uma cópia do buffer de AGORA já traria bytes escritos.
         if area.is_none() && self.taken == 0 {
-            self.whole = Some(crate::plane_copy::par_clone(buf).into_boxed_slice());
+            self.whole = Some(std::sync::Arc::new(crate::plane_copy::par_clone(buf)));
             return;
         }
         let (x0, y0, x1, y1) = area.unwrap_or((0, 0, stride, rows));
@@ -294,8 +297,31 @@ impl<T: Copy + Default + Send + Sync> TileJournal<T> {
     ///
     /// Ele é o lado `before` COMPLETO, então quem o tem não precisa de janela nenhuma — e é por isso
     /// que a [`Self::window`] se cala aqui em vez de devolver a caixa de todos os tiles.
-    pub(crate) fn whole(&self) -> Option<&[T]> {
-        self.whole.as_deref()
+    /// Um `Arc`: quem o guarda como lado `before` do passo não copia o plano.
+    pub(crate) fn whole(&self) -> Option<&std::sync::Arc<Vec<T>>> {
+        self.whole.as_ref()
+    }
+
+    /// **A captura de plano INTEIRO pelo `Arc`, sem copiar**: o journal passa a ser mais um dono do buffer
+    /// velho, e quem escreve a seguir (o fork, `make_mut`) copia-o para um novo — uma cópia só por passo, em
+    /// vez da do journal MAIS a do fork quando o plano já tinha outro dono (a camada nova: 2 × 33 MB a 4K).
+    /// Com tiles já tomados cai na captura por bytes (a primeira captura de cada tile é a que vale).
+    ///
+    /// ⚠️ Só serve a quem escreve pelo `Arc` (fork / troca do plano): com o journal como dono, ninguém consegue
+    /// escrever no buffer velho sem o copiar, e é isso que torna o `before` imutável.
+    pub(crate) fn capture_shared(&mut self, arc: &std::sync::Arc<Vec<T>>, stride: usize) {
+        if stride == 0 || arc.is_empty() || !arc.len().is_multiple_of(stride) {
+            return;
+        }
+        self.arm(stride, arc.len() / stride);
+        if self.whole.is_some() {
+            return;
+        }
+        if self.taken == 0 {
+            self.whole = Some(std::sync::Arc::clone(arc));
+            return;
+        }
+        self.capture(arc, stride, None);
     }
 
     /// **Devolve `out` (o plano de agora) ao estado do último reset**: escreve por cima os bytes velhos de cada tile

@@ -281,11 +281,21 @@ impl PainterTool {
         };
         // A escrita é da própria sessão: a porta do canvas não a retém (reter copiaria a tela a cada composição).
         self.undo.write_state.vigia_a_tela(None);
+        // O composite e o véu só escrevem `px0..px1 × py0..py1` (a mesma caixa que o `declare_wrote` abaixo
+        // publica): o desfazer guarda os tiles dela, não a tela inteira (33 MB a 4K por traço).
+        let caixa_da_escrita = crate::tool::paint::plane_fork::CAPTURA_PELA_CAIXA
+            .get()
+            .then_some(Region {
+                x: px0 as u32,
+                y: py0 as u32,
+                w: (px1 - px0) as u32,
+                h: (py1 - py0) as u32,
+            });
         let canvas = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            caixa_da_escrita,
         );
         // ROW-PARALLEL, pelo MESMO ADR-0109 e pela mesma razão do render acima: um map puro por-pixel
         // cujas linhas são independentes — cada uma lê `pigment`/`base` no seu próprio offset e escreve

@@ -179,10 +179,29 @@ pub(super) fn fork_canvas<'a>(
     width_px: u32,
     area: Option<crate::compositor::Region>,
 ) -> &'a mut Vec<u8> {
-    win.capture_canvas(arc, width_px as usize * 4, elems(area, 4));
+    match elems(area, 4) {
+        // Só quando o fork ia copiar de qualquer modo (a MESMA pergunta do `fork_par_raw`): com um dono só o
+        // `make_mut` escreve no lugar e o ponteiro da tela fica — o guarda de identidade do Wet Paint lê-o.
+        None if CAPTURA_PARTILHADA.get()
+            && Arc::strong_count(arc) > 1
+            && worth_parallel::<u8>(arc.len()) =>
+        {
+            win.capture_canvas_arc(arc, width_px as usize * 4)
+        }
+        a => win.capture_canvas(arc, width_px as usize * 4, a),
+    };
     win.a_tela_sai(arc);
     open_access(win);
     fork_par_raw(arc)
+}
+
+thread_local! {
+    /// A×B da captura inteira pelo `Arc` (`false` = a cópia por bytes de antes). Só a sonda e o gate o desligam.
+    #[doc(hidden)]
+    pub static CAPTURA_PARTILHADA: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+    /// A×B da captura do composite do Wet Paint pela caixa que ele escreve (`false` = a tela inteira de antes).
+    #[doc(hidden)]
+    pub static CAPTURA_PELA_CAIXA: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
 }
 
 /// **A porta da TROCA DE PLANO** — o campo `canvas_rgba` passa a hospedar, por um trecho, um plano
@@ -224,9 +243,15 @@ pub(crate) fn swap_canvas_plane(
 impl crate::tool::PainterTool {
     pub(crate) fn replace_canvas(&mut self, new: Arc<Vec<u8>>) {
         let stride = self.source_size.0 as usize * 4;
-        self.undo
-            .write_state
-            .capture_canvas(&self.canvas_rgba, stride, None);
+        if CAPTURA_PARTILHADA.get() {
+            self.undo
+                .write_state
+                .capture_canvas_arc(&self.canvas_rgba, stride);
+        } else {
+            self.undo
+                .write_state
+                .capture_canvas(&self.canvas_rgba, stride, None);
+        }
         self.undo.write_state.a_tela_sai(&self.canvas_rgba);
         // O plano inteiro muda sem declaração: o commit seguinte varre (B01.5 — uma janela aberta antes da
         // troca de camada perdia a tela inteira no undo).

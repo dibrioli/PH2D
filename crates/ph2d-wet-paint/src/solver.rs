@@ -618,7 +618,7 @@ pub(crate) use advect_jacobi::tinta as tinta_transporte;
 pub(crate) use chao_forca::fotografa as fotografa_o_chao;
 #[doc(hidden)]
 pub use chao_forca::{
-    CHAO_ATRITO, CHAO_ATRITO_P, CHAO_FORCA, CHAO_MEDE, CHAO_ROTA, CHAO_SECO,
+    CHAO_ATRITO, CHAO_ATRITO_P, CHAO_FORCA, CHAO_MEDE, CHAO_ROTA, CHAO_SECO, CHAO_SEM_REAL_SALTA,
     MEDIDA as MEDIDA_DO_CHAO, MedidaChao,
 };
 #[doc(hidden)]

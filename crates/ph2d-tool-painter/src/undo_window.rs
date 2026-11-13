@@ -372,6 +372,15 @@ impl WriteState {
         self.canvas.borrow_mut().capture(buf, stride, area);
     }
 
+    /// A captura INTEIRA da tela pelo `Arc` (sem copiar; [`crate::undo::journal::TileJournal::capture_shared`]):
+    /// só para quem escreve pelo `Arc` a seguir (o fork, a troca do plano).
+    pub(crate) fn capture_canvas_arc(&self, arc: &std::sync::Arc<Vec<u8>>, stride: usize) {
+        if self.on_foreign_plane() {
+            return;
+        }
+        self.canvas.borrow_mut().capture_shared(arc, stride);
+    }
+
     /// `true` se nada da tela foi capturado desde o último reset.
     #[must_use]
     pub(crate) fn canvas_untouched(&self) -> bool {

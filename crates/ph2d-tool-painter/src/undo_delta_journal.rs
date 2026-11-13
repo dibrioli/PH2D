@@ -176,11 +176,11 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             if w.len() != live.len() {
                 return None; // o journal descreve um plano de outra forma
             }
-            if w == live.as_slice() {
+            if Arc::ptr_eq(w, live) || w.as_slice() == live.as_slice() {
                 return Some(Self::Unchanged);
             }
             return Some(Self::Whole {
-                before: Arc::new(w.to_vec()),
+                before: Arc::clone(w),
                 after: Arc::clone(live),
             });
         }

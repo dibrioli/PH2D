@@ -365,7 +365,7 @@ impl PlaneDeltas {
                     // Captura INTEIRA (quem não sabia onde ia escrever): o antes já está completo, e a janela
                     // declarada + os tiles marcados guardam só o que mudou, como o `split` de um antes segurado.
                     if let Some(w) = j.whole().filter(|w| w.len() == after.canvas_rgba.len()) {
-                        let mut b = std::sync::Arc::new(w.to_vec());
+                        let mut b = std::sync::Arc::clone(w);
                         let mut a = std::sync::Arc::clone(&after.canvas_rgba);
                         return Some(StoredPlane::split_tiled(&mut b, &mut a, stride, win, tiles));
                     }

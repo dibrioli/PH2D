@@ -23,6 +23,10 @@ pub static CHAO_FORCA: AtomicU32 = AtomicU32::new(0);
 /// Ferramenta de MEDIÇÃO: bit 0 = a ladeira continua TAMBÉM no nivelamento; bit 1 = também com o Real Oil na mão.
 #[doc(hidden)]
 pub static CHAO_ROTA: AtomicU8 = AtomicU8::new(0);
+/// A×B do salto sem Real Oil na grade (`false` = calcular o chão inteiro e descobrir que é zero, o de antes).
+#[doc(hidden)]
+pub static CHAO_SEM_REAL_SALTA: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(true);
 /// Ferramenta de MEDIÇÃO: os bits de um `f32` — `0` = [`FILM_SECO`], senão outro.
 #[doc(hidden)]
 pub static CHAO_SECO: AtomicU32 = AtomicU32::new(0);
@@ -104,7 +108,11 @@ pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
     } else {
         crate::par::copia_plano(&g.sett, &mut g.sett_do_traco);
     }
-    if !(ativo(oleo_na_mao) || CHAO_MEDE.load(Relaxed) != 0) || g.oleo.is_empty() {
+    // Sem Real Oil em célula nenhuma o ganho (`Depth × Real Oil`) é 0 em toda a grade e o chão sairia todo zero (o
+    // `Vec::new()` do fim): o campo do óleo existe só pelo meio/solubilidade/corpo. Medido a 4K (n.º 6): 33 MB de
+    // memória nova e ~5 ms por traço de Wet Wash para nada.
+    let sem_real = !g.oleo_real && CHAO_SEM_REAL_SALTA.load(Relaxed);
+    if !(ativo(oleo_na_mao) || CHAO_MEDE.load(Relaxed) != 0) || g.oleo.is_empty() || sem_real {
         g.chao = Vec::new();
         return;
     }
@@ -286,3 +294,7 @@ fn junta(a: &mut MedidaChao, b: &MedidaChao) {
     a.ladeira_livre += b.ladeira_livre;
     a.clamp_morde += b.clamp_morde;
 }
+
+#[cfg(test)]
+#[path = "chao_sem_real_tests.rs"]
+mod chao_sem_real_tests;

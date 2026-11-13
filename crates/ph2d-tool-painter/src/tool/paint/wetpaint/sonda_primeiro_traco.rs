@@ -70,6 +70,15 @@ fn sonda_primeiro_traco() {
     // `PH2D_SONDA_VIDRO_ANTIGO`: o borrão deixa o vidro recongelar em todo evento (o de antes do B18.4).
     super::super::watercolor_vidro::VIDRO_SEGUE_A_BASE
         .set(std::env::var("PH2D_SONDA_VIDRO_ANTIGO").is_err());
+    // `PH2D_SONDA_CAPTURA_ANTIGA`: o desfazer copia a tela inteira por bytes (o de antes do n.º 6).
+    super::super::plane_fork::CAPTURA_PARTILHADA
+        .set(std::env::var("PH2D_SONDA_CAPTURA_ANTIGA").is_err());
+    super::super::plane_fork::CAPTURA_PELA_CAIXA
+        .set(std::env::var("PH2D_SONDA_CAPTURA_ANTIGA").is_err());
+    ph2d_wet_paint::solver::CHAO_SEM_REAL_SALTA.store(
+        std::env::var("PH2D_SONDA_CHAO_ANTIGO").is_err(),
+        std::sync::atomic::Ordering::Relaxed,
+    );
     super::preparo::liga_no_teste(std::env::var("PH2D_SONDA_PREPARO").is_ok());
     let so = std::env::var("PH2D_SONDA_SO").ok();
     let nomes = [

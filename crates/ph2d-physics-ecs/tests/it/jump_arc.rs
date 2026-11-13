@@ -5,10 +5,11 @@ use crate::platform_scene::{pose, scene};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, PlayerInput};
-use ph2d_platformer::arc::{JumpArc, TouchKind, jump_arcs};
+use ph2d_platformer::arc::{JumpArc, TouchKind};
 use ph2d_platformer::feel::Feel;
 
-/// O que se compara de um pulo: o ápice (acima do arranque, para o lado), o tempo no ar e o alcance.
+/// O que se compara de um pulo: o ápice (acima do arranque, para o lado), o tique do pouso e o
+/// alcance nele.
 #[derive(Debug)]
 struct Medido {
     apex_up: f32,
@@ -17,38 +18,45 @@ struct Medido {
     reach: f32,
 }
 
-/// O pouso, igual para os dois: o primeiro tique depois do ápice abaixo de [`POUSO`]. A perna do
-/// jogo apara a queda (não desce à linha de partida); o desenho atravessa-a no mesmo tique.
-const POUSO: f32 = 0.1;
-
-fn pouso(ys: &[[f32; 2]]) -> usize {
-    let top = ys
-        .iter()
-        .enumerate()
-        .max_by(|a, b| a.1[1].total_cmp(&b.1[1]))
-        .map_or(0, |(i, _)| i);
-    (top..ys.len())
-        .find(|&i| ys[i][1] < POUSO)
-        .unwrap_or(ys.len() - 1)
-}
-
-fn medir(pts: &[[f32; 2]]) -> Medido {
-    let top = pts
-        .iter()
+fn apice(pts: &[[f32; 2]]) -> [f32; 2] {
+    pts.iter()
         .copied()
         .max_by(|a, b| a[1].total_cmp(&b[1]))
-        .unwrap();
-    let i = pouso(pts);
+        .unwrap()
+}
+
+/// O desenho cortado no terreno: o pouso é o fim do traço (o tique em que a perna agarra).
+fn do_arco(a: &JumpArc) -> Medido {
+    let top = apice(&a.points);
+    let toque = a.touch.expect("a curva não pousou");
+    assert_eq!(toque.kind, TouchKind::Land, "{toque:?}");
+    Medido {
+        apex_up: top[1],
+        apex_side: top[0],
+        air_ticks: a.points.len() - 1,
+        reach: toque.at[0],
+    }
+}
+
+/// Quanto o jogo pode afastar-se do voo livre da lei sem ter pousado: no ar o desenho é o jogo a
+/// ~3e-7 m (12/11); no tique em que a perna agarra na ponta do alcance a mola desce-o só 0,4 mm
+/// (Floaty 2,5 m), então 1 mm dava o pouso um tique tarde.
+const VOO: f32 = 1.0e-4;
+
+/// O pouso do JOGO: o primeiro tique em que o player real sai do voo livre (`voo`, a lei sem
+/// corte) — a perna agarrou e a mola tomou conta. Não há outro relógio público do pouso: o
+/// `footing` diz «chão» a subida inteira de um pulo baixo (o raio vê o chão de partida).
+fn do_jogo_medido(pts: &[[f32; 2]], voo: &[[f32; 2]]) -> Medido {
+    let top = apice(pts);
+    let i = (1..pts.len().min(voo.len()))
+        .find(|&i| (pts[i][1] - voo[i][1]).abs() > VOO)
+        .unwrap_or(pts.len() - 1);
     Medido {
         apex_up: top[1],
         apex_side: top[0],
         air_ticks: i,
         reach: pts[i][0],
     }
-}
-
-fn do_arco(a: &JumpArc) -> Medido {
-    medir(&a.points)
 }
 
 #[derive(Copy, Clone)]
@@ -58,7 +66,17 @@ enum Como {
     Curto,
 }
 
-fn do_jogo(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, como: Como) -> Medido {
+/// O desenho (lei + corte no chão, lidos na pose assentada) e o pulo do player REAL.
+fn caso(feel: Option<Feel>, como: Como, h: f32) -> (Medido, Medido) {
+    let (mut sim, mut bridge, player) = scene(0.0, -20.0);
+    {
+        let mut e = sim.world_mut().entity_mut(player);
+        let mut p = e.get_mut::<PlatformPlayer>().unwrap();
+        if let Some(f) = feel {
+            p.set_feel(f);
+        }
+        p.jump_height = h;
+    }
     let drive = 1.0;
     let mut tick = 0_u64;
     // Assenta na perna; correndo, já chega à velocidade máxima antes do salto.
@@ -76,9 +94,30 @@ fn do_jogo(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, como:
             },
         );
         tick += 1;
-        bridge.dispatch(sim, true, tick);
+        bridge.dispatch(&mut sim, true, tick);
     }
-    let (x0, y0) = pose(sim);
+    let (x0, y0) = pose(&sim);
+    let settings = bridge.settings();
+    let w = ph2d_physics_ecs::arc_world(&settings, 1.0);
+    let (mut arcs, fh) = {
+        let p = sim.world().get::<PlatformPlayer>(player).unwrap();
+        (p.jump_arcs(w), p.float_height)
+    };
+    let pick = |a: &ph2d_platformer::arc::JumpArcs| match como {
+        Como::Correndo => a.full.clone(),
+        Como::Parado => a.standing.clone(),
+        Como::Curto => a.short.clone(),
+    };
+    let voo = pick(&arcs).points;
+    ph2d_physics_ecs::arc_terrain::cut_on_terrain(
+        sim.world(),
+        &settings,
+        player,
+        [x0, y0 - fh],
+        [0.0, 1.0],
+        &mut arcs,
+    );
+    let arco = pick(&arcs);
     let mut pts = vec![[0.0, 0.0]];
     for i in 0..200 {
         let jump = match como {
@@ -94,32 +133,11 @@ fn do_jogo(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, como:
             },
         );
         tick += 1;
-        bridge.dispatch(sim, true, tick);
-        let (x, y) = pose(sim);
+        bridge.dispatch(&mut sim, true, tick);
+        let (x, y) = pose(&sim);
         pts.push([x - x0, y - y0]);
     }
-    medir(&pts)
-}
-
-fn caso(feel: Option<Feel>, como: Como, h: f32) -> (Medido, Medido) {
-    let (mut sim, mut bridge, player) = scene(0.0, -20.0);
-    let w = ph2d_physics_ecs::arc_world(&bridge.settings(), 1.0);
-    let cfg = {
-        let mut e = sim.world_mut().entity_mut(player);
-        let mut p = e.get_mut::<PlatformPlayer>().unwrap();
-        if let Some(f) = feel {
-            p.set_feel(f);
-        }
-        p.jump_height = h;
-        p.config()
-    };
-    let arcs = jump_arcs(&cfg, w);
-    let arco = match como {
-        Como::Correndo => &arcs.full,
-        Como::Parado => &arcs.standing,
-        Como::Curto => &arcs.short,
-    };
-    (do_arco(arco), do_jogo(&mut sim, &mut bridge, player, como))
+    (do_arco(&arco), do_jogo_medido(&pts, &voo))
 }
 
 /// As alturas dos gates da Jump Height (m): a de partida e as pontas da faixa que se usa.
@@ -155,18 +173,13 @@ fn o_arco_do_desenho_e_o_do_jogo() {
                 let apice = (a.apex_up - j.apex_up).abs() < MEIO_PX
                     && (!cheio || ((a.apex_up - h).abs() <= LEI && (j.apex_up - h).abs() <= LEI))
                     && (a.apex_side - j.apex_side).abs() < 0.11;
-                // O pouso só na altura de partida: abaixo de ~1 m a perna do jogo apanha o corpo
-                // antes de POUSO (0,5 m: 49 × 47 tiques), outra régua (ficha GEF 04, 12/11).
-                let pouso = h != 2.0
-                    || (a.air_ticks.abs_diff(j.air_ticks) <= 1
-                        // O pouso é o tique em que se cruza POUSO: ±1 tique, logo um tique de corrida.
-                        && (a.reach - j.reach).abs() < 0.11);
+                // O pouso em TODAS as alturas: o MESMO tique em que a perna agarra (medido 12/11:
+                // 48/48 iguais, alcance a ≤ 1 cm). ±1 escondia o sinal da velocidade no ápice (a
+                // perna lida pela média do tique pousa um tique tarde o pulo curto de 0,5 m).
+                let pouso = a.air_ticks == j.air_ticks && (a.reach - j.reach).abs() < 0.11;
                 let ok = apice && pouso;
                 if !ok {
-                    falhas.push(format!(
-                        "{feel:?} h={h} {nome}: desenho {:.4} jogo {:.4}",
-                        a.apex_up, j.apex_up
-                    ));
+                    falhas.push(format!("{feel:?} h={h} {nome}: desenho {a:?} jogo {j:?}"));
                 }
             }
         }
@@ -339,16 +352,47 @@ fn assenta(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, corre
     60
 }
 
-/// A curva desenhada (cortada no terreno) e o pulo real: pontos relativos ao centro do arranque.
-fn terreno(extra: impl Fn(&mut SimWorld, f32), correndo: bool) -> (JumpArc, Vec<[f32; 2]>) {
+/// A curva desenhada (cortada no terreno) e o pulo real: pontos relativos ao centro do arranque, e
+/// o voo livre da lei (a curva sem corte).
+fn terreno(
+    extra: impl Fn(&mut SimWorld, f32),
+    correndo: bool,
+) -> (JumpArc, Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    terreno_com(extra, correndo, None, None)
+}
+
+/// [`terreno`] com uma sensação e uma Jump Height (`ajuste`).
+fn terreno_com(
+    extra: impl Fn(&mut SimWorld, f32),
+    correndo: bool,
+    ajuste: Option<(Option<Feel>, f32)>,
+    matriz: Option<ph2d_physics_ecs::LayerMatrix>,
+) -> (JumpArc, Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    let ajusta = |sim: &mut SimWorld, player: Entity| {
+        if let Some((feel, h)) = ajuste {
+            let mut e = sim.world_mut().entity_mut(player);
+            let mut p = e.get_mut::<PlatformPlayer>().unwrap();
+            if let Some(f) = feel {
+                p.set_feel(f);
+            }
+            p.jump_height = h;
+        }
+    };
     // O x em que o player fica depois de assentar: corrida de ensaio sem terreno extra.
     let x_assentado = {
         let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+        ajusta(&mut sim, player);
         assenta(&mut sim, &mut bridge, player, correndo);
         pose(&sim).0
     };
     let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+    ajusta(&mut sim, player);
     extra(&mut sim, x_assentado);
+    if let Some(m) = matriz {
+        let mut s = bridge.settings();
+        s.layer_matrix = m.rows();
+        bridge.set_settings(s);
+    }
     let mut tick = assenta(&mut sim, &mut bridge, player, correndo);
     let (x0, y0) = pose(&sim);
     let settings = bridge.settings();
@@ -358,6 +402,9 @@ fn terreno(extra: impl Fn(&mut SimWorld, f32), correndo: bool) -> (JumpArc, Vec<
         (p.jump_arcs(w), p.float_height)
     };
     let chao = [x0, y0 - fh];
+    let voo = if correndo { &arcs.full } else { &arcs.standing }
+        .points
+        .clone();
     ph2d_physics_ecs::arc_terrain::cut_on_terrain(
         sim.world(),
         &settings,
@@ -382,25 +429,24 @@ fn terreno(extra: impl Fn(&mut SimWorld, f32), correndo: bool) -> (JumpArc, Vec<
         let (x, y) = pose(&sim);
         pts.push([x - x0, y - y0]);
     }
-    (arco, pts)
+    (arco, pts, voo)
 }
 
-/// O pouso do jogo sobre a altura `h` (relativa): o primeiro tique depois do ápice abaixo de
-/// `h + POUSO`, e a altura em que o corpo ASSENTA logo depois (a da superfície que o pegou).
-fn pouso_real(pts: &[[f32; 2]], h: f32) -> (usize, f32, f32) {
-    let top = pts
-        .iter()
-        .enumerate()
-        .max_by(|a, b| a.1[1].total_cmp(&b.1[1]))
-        .map_or(0, |(i, _)| i);
-    let i = (top..pts.len())
-        .find(|&i| pts[i][1] < h + POUSO)
-        .unwrap_or(pts.len() - 1);
+/// O pouso do jogo ([`do_jogo_medido`]), o x nele, e a altura em que o corpo ASSENTA logo depois
+/// (a da superfície que o pegou).
+fn pouso_real(pts: &[[f32; 2]], voo: &[[f32; 2]]) -> (usize, f32, f32) {
+    let m = do_jogo_medido(pts, voo);
+    let i = m.air_ticks;
     // Assenta: 20 tiques depois (a mola acaba de apanhar o corpo; ele continua a correr).
-    (i, pts[i][0], pts[(i + 20).min(pts.len() - 1)][1])
+    (i, m.reach, pts[(i + 20).min(pts.len() - 1)][1])
 }
 
-fn confere_pouso(nome: &str, arco: &JumpArc, pts: &[[f32; 2]], h_esperada: f32) {
+fn confere_pouso(
+    nome: &str,
+    arco: &JumpArc,
+    (pts, voo): (&[[f32; 2]], &[[f32; 2]]),
+    h_esperada: f32,
+) {
     let toque = arco
         .touch
         .unwrap_or_else(|| panic!("{nome}: a curva não tocou o terreno"));
@@ -412,7 +458,7 @@ fn confere_pouso(nome: &str, arco: &JumpArc, pts: &[[f32; 2]], h_esperada: f32) 
     );
     let t = toque.at;
     let tique = arco.points.len() - 1;
-    let (i, x, assenta) = pouso_real(pts, t[1]);
+    let (i, x, assenta) = pouso_real(pts, voo);
     eprintln!(
         "{nome}: desenho toca {t:?} no tique {tique} · jogo {i} x {x:.3} assenta {assenta:.3}"
     );
@@ -425,7 +471,7 @@ fn confere_pouso(nome: &str, arco: &JumpArc, pts: &[[f32; 2]], h_esperada: f32) 
         "{nome}: o jogo assenta em {assenta}, a curva em {}",
         t[1]
     );
-    assert!(tique.abs_diff(i) <= 1, "{nome}: tique {tique} × jogo {i}");
+    assert_eq!(tique, i, "{nome}: tique {tique} × jogo {i}");
     assert!((t[0] - x).abs() < 0.11, "{nome}: x {} × jogo {x}", t[0]);
 }
 
@@ -441,36 +487,67 @@ fn ergue(sim: &mut SimWorld, dy: f32) {
     }
 }
 
+/// As quatro sensações dos gates.
+const FEELS: [Option<Feel>; 4] = [
+    None,
+    Some(Feel::Floaty),
+    Some(Feel::Snappy),
+    Some(Feel::Heavy),
+];
+
 /// (a) Arranque numa plataforma 1 m acima do chão, que acaba à frente: a curva DESCE ao chão de
-/// baixo e pousa onde o player real pousa. Corrida e parado.
+/// baixo e pousa onde o player real pousa. Corrida e parado, em toda Jump Height e sensação.
 #[test]
 fn a_curva_desce_ao_chao_de_baixo_e_pousa_onde_o_jogo_pousa() {
-    for correndo in [true, false] {
-        let (arco, pts) = terreno(
-            |sim, x| {
-                caixa(sim, x - 8.0, x + 0.6, 1.5, 1.0);
-                ergue(sim, 1.0);
-                // Uma zona-sensor atravessada pela curva: não a pára (o jogo atravessa-a).
-                sensor(sim, x + 2.0, x + 5.0, 4.0, 3.5);
-            },
-            correndo,
-        );
-        confere_pouso(&format!("desce correndo={correndo}"), &arco, &pts, -1.0);
+    for feel in FEELS {
+        for h in ALTURAS {
+            for correndo in [true, false] {
+                let (arco, pts, voo) = terreno_com(
+                    |sim, x| {
+                        caixa(sim, x - 8.0, x + 0.6, 1.5, 1.0);
+                        ergue(sim, 1.0);
+                        // Uma zona-sensor atravessada pela curva: não a pára (o jogo atravessa-a).
+                        sensor(sim, x + 2.0, x + 5.0, 4.0, 3.5);
+                    },
+                    correndo,
+                    Some((feel, h)),
+                    None,
+                );
+                confere_pouso(
+                    &format!("desce {feel:?} h={h} correndo={correndo}"),
+                    &arco,
+                    (&pts, &voo),
+                    -1.0,
+                );
+            }
+        }
     }
 }
 
-/// (b) Uma plataforma 1 m mais alta à frente, que o pulo alcança: a curva pousa em cima dela.
+/// (b) Uma plataforma 1 m mais alta à frente, que o pulo alcança: a curva pousa em cima dela —
+/// nas Jump Heights que passam de 1 m, em toda sensação.
 #[test]
 fn a_curva_pousa_na_plataforma_mais_alta() {
-    for correndo in [true, false] {
-        let ahead = if correndo { 3.0 } else { 1.5 };
-        let (arco, pts) = terreno(
-            |sim, x| {
-                caixa(sim, x + ahead, x + 20.0, 1.5, 1.0);
-            },
-            correndo,
-        );
-        confere_pouso(&format!("sobe correndo={correndo}"), &arco, &pts, 1.0);
+    for feel in FEELS {
+        for h in [1.25, 2.0, 2.5] {
+            for correndo in [true, false] {
+                let ahead = if correndo { 3.0 } else { 1.5 };
+                let (arco, pts, voo) = terreno_com(
+                    |sim, x| {
+                        caixa(sim, x + ahead, x + 20.0, 1.5, 1.0);
+                    },
+                    correndo,
+                    Some((feel, h)),
+                    None,
+                );
+                confere_pouso(
+                    &format!("sobe {feel:?} h={h} correndo={correndo}"),
+                    &arco,
+                    (&pts, &voo),
+                    1.0,
+                );
+            }
+        }
     }
 }
 
@@ -478,7 +555,7 @@ fn a_curva_pousa_na_plataforma_mais_alta() {
 #[test]
 fn a_curva_para_na_parede() {
     let face = 2.0;
-    let (arco, pts) = terreno(
+    let (arco, pts, _) = terreno(
         |sim, x| {
             caixa(sim, x + face, x + face + 1.0, 10.0, 9.5);
         },
@@ -511,7 +588,7 @@ fn a_curva_para_na_parede() {
 fn o_teto_baixo_para_a_curva_por_choque_com_o_contacto_no_teto() {
     // O fundo do teto, acima do pé (o chão de `platform_scene` tem o topo em 0,5).
     let fundo = 1.6;
-    let (arco, _) = terreno(
+    let (arco, _, _) = terreno(
         |sim, x| {
             caixa(sim, x - 3.0, x + 6.0, 0.5 + fundo + 0.4, 0.4);
         },
@@ -564,5 +641,129 @@ fn custo_das_curvas_no_terreno() {
     eprintln!(
         "lei + corte (3 formas, Air Jumps 1): {:.1} µs por chamada (mínimo de 5 blocos)",
         best * 1e6
+    );
+}
+
+// ── GEF 04: o corte segue a exceção de camadas de CADA forma (`layer_override`) ───────────────────
+
+/// A camada da plataforma dos casos de exceção (o player e o chão moram na 0).
+const OUTRA: u8 = 3;
+
+/// O player da cena.
+fn o_player(sim: &mut SimWorld) -> Entity {
+    let mut q = sim.world_mut().query::<(Entity, &ph2d_ecs::Name)>();
+    q.iter(sim.world())
+        .find(|(_, n)| n.as_str() == "Player")
+        .map(|(e, _)| e)
+        .unwrap()
+}
+
+fn excecao(sim: &mut SimWorld, e: Entity, include: u32, exclude: u32) {
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_physics_ecs::CollisionOverride { include, exclude });
+}
+
+/// A plataforma de (b), 1 m acima, na camada [`OUTRA`], com a exceção nela ou (`no_player`) no
+/// player.
+fn plataforma_com_excecao(
+    nome: &str,
+    no_player: bool,
+    include: u32,
+    exclude: u32,
+    matriz: Option<ph2d_physics_ecs::LayerMatrix>,
+    h_esperada: f32,
+) {
+    let (arco, pts, voo) = terreno_com(
+        |sim, x| {
+            let p = caixa(sim, x + 3.0, x + 20.0, 1.5, 1.0);
+            sim.world_mut()
+                .get_mut::<ph2d_physics_ecs::Collider>(p)
+                .unwrap()
+                .layer = OUTRA;
+            let quem = if no_player { o_player(sim) } else { p };
+            excecao(sim, quem, include, exclude);
+        },
+        true,
+        None,
+        matriz,
+    );
+    confere_pouso(nome, &arco, (&pts, &voo), h_esperada);
+}
+
+/// A matriz em que a camada do player e a [`OUTRA`] NÃO colidem.
+fn matriz_separada() -> ph2d_physics_ecs::LayerMatrix {
+    let mut m = ph2d_physics_ecs::LayerMatrix::all();
+    m.set(0, usize::from(OUTRA), false);
+    m
+}
+
+/// A exceção que SOLTA: a plataforma colide pela matriz, mas uma exceção (dela ou do player)
+/// exclui o par — o player real atravessa-a e pousa no chão de baixo, e a curva também.
+#[test]
+fn a_excecao_que_solta_deixa_a_curva_atravessar_como_o_jogo() {
+    plataforma_com_excecao("cena exclui o player", false, 0, 1, None, 0.0);
+    plataforma_com_excecao("player exclui a cena", true, 0, 1 << OUTRA, None, 0.0);
+}
+
+/// A exceção que PRENDE: a matriz separa as duas camadas, mas um `include` (dela ou do player)
+/// junta-as — o player real pousa na plataforma, e a curva também.
+#[test]
+fn a_excecao_que_prende_para_a_curva_como_o_jogo() {
+    let m = Some(matriz_separada());
+    plataforma_com_excecao("cena inclui o player", false, 1, 0, m, 1.0);
+    plataforma_com_excecao("player inclui a cena", true, 1 << OUTRA, 0, m, 1.0);
+    // O controlo: sem exceção a matriz separa, e os dois atravessam.
+    plataforma_com_excecao("só a matriz", false, 0, 0, m, 0.0);
+}
+
+/// (e) **A perna agarra a borda que o pé não alcança**: uma plataforma 1 m acima que acaba onde o
+/// pé, a descer, ainda vai 12 cm acima do topo dela (dentro do `cling_distance`). O pé nunca cruza
+/// o topo, mas o player real pousa na borda — e a curva também (o critério do pé passava por cima).
+#[test]
+fn a_perna_agarra_a_borda_que_o_pe_nao_alcanca() {
+    let voo = {
+        let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+        assenta(&mut sim, &mut bridge, player, true);
+        let w = ph2d_physics_ecs::arc_world(&bridge.settings(), 1.0);
+        let p = sim.world().get::<PlatformPlayer>(player).unwrap();
+        p.jump_arcs(w).full.points
+    };
+    let top = voo
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1[1].total_cmp(&b.1[1]))
+        .map_or(0, |(i, _)| i);
+    let borda = voo[(top..voo.len()).find(|&i| voo[i][1] < 1.12).unwrap()][0] + 0.05;
+    let (arco, pts, voo) = terreno(
+        |sim, x| {
+            caixa(sim, x + 3.0, x + borda, 1.5, 1.0);
+        },
+        true,
+    );
+    // Pousa na borda e, a correr, sai dela logo depois: o assentar dos outros casos não vale aqui.
+    let toque = arco.touch.expect("a curva não tocou a borda");
+    assert_eq!(toque.kind, TouchKind::Land, "{toque:?}");
+    assert!(
+        (toque.at[1] - 1.0).abs() < 0.02,
+        "a curva passou a borda: {toque:?}"
+    );
+    let (i, x, _) = pouso_real(&pts, &voo);
+    let tique = arco.points.len() - 1;
+    eprintln!(
+        "borda: desenho {:?} no tique {tique} · jogo {i} x {x:.3} · y a seguir {:?}",
+        toque.at,
+        &pts[i..i + 3]
+    );
+    assert_eq!(tique, i, "tique {tique} × jogo {i}");
+    assert!(
+        (toque.at[0] - x).abs() < 0.11,
+        "x {} × jogo {x}",
+        toque.at[0]
+    );
+    assert!(
+        pts[i + 2][1] > 0.9,
+        "o jogo não ficou na borda: {:?}",
+        &pts[i..i + 3]
     );
 }

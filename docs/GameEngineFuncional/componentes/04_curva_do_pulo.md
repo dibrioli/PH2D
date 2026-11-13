@@ -155,8 +155,20 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
   Jump Height em 4 sensações × 0,5/1/2/2,5 m (chão e ar). O readout escreve pela conta do campo
   (`curva_do_pulo_numero::numero_da_alca`: px inteiro, centímetro em metros — antes `{:.0}` dava «2 m» para 2,5 m).
   ⚠️ Aberto: a ponte não passa os passos do projecto à lei (`bridge/player.rs`), então com sub-passos ou iterações
-  fora de fábrica o ápice volta a errar (desenho = jogo continua); o pouso abaixo de ~1 m difere 2 tiques (a perna
-  apanha o corpo antes de `POUSO`).
+  fora de fábrica o ápice volta a errar (desenho = jogo continua). ~~O pouso abaixo de ~1 m difere 2 tiques~~:
+  fechado 12/11 (abaixo).
+- **O pouso é o da PERNA** (fechado 12/11): o corte pousa no tique em que a perna do jogo agarra — o leque de
+  raios do centro com o alcance `float_height + cling_distance`, chão caminhável, a descer no FIM do tique (no ápice a
+  média do tique e a velocidade final discordam de sinal) —, não quando o pé cruza a linha; o traço acaba na pose
+  seguinte com o pé na superfície. Pelo pé o desenho pousava +3..+16 tiques tarde a 0,5 m (o pulo curto Snappy sobe
+  0,22 m, dentro do alcance da perna: o jogo pousa no ápice), +1..+4 a 2 m; agora o MESMO tique em 48/48 (4 sensações
+  × 4 alturas × correndo/parado/curto) e nos terrenos, alcance a ≤ 1 cm. A perna também agarra a borda que o pé não
+  alcança (`a_perna_agarra_a_borda_que_o_pe_nao_alcanca`). O pouso do jogo nos gates é o tique em que ele sai do voo
+  livre da lei (> 0,1 mm): o `footing` diz «chão» a subida inteira de um pulo baixo.
+- **A exceção de camadas por forma** (fechado 12/11): o terreno da curva passa pela regra dos contactos,
+  `layer_override::pair_collides` com o lado de CADA forma (a principal do player, de onde a perna pergunta, e cada
+  forma da cena, com a `CollisionOverride` dela) — gates `a_excecao_que_solta_…` e `a_excecao_que_prende_…` contra o
+  player real.
 - **O ápice real é a Jump Height** (`f3a92736ab`): `launch_speed` resolve v₀ pelas bandas de gravidade; o cartão
   diz 2,00 e a alça fica a 2,00.
 - **Fotos** (`PH2D_GAME_SMOKE=4`): [`curva_terreno.png`](fotos_04/curva_terreno.png) ·

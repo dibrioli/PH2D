@@ -123,8 +123,6 @@ pub mod physics_smoke_kin_push;
 pub mod physics_smoke_kin_water;
 pub mod physics_smoke_lead;
 pub mod physics_smoke_leave;
-pub mod physics_smoke_ledge;
-pub mod physics_smoke_multi_jump;
 pub mod physics_smoke_player_bake;
 pub mod physics_smoke_player_carry;
 pub mod physics_smoke_player_crouch;
@@ -154,6 +152,3 @@ pub mod physics_smoke_wheel;
 pub mod physics_smoke_world_pin;
 pub mod physics_smoke_zone_force;
 pub mod physics_smoke_zones;
-
-#[cfg(test)]
-mod wall_jump_tests;

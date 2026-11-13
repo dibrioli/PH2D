@@ -6172,6 +6172,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-physics-outline",
  "ph2d-physics-scene",
+ "ph2d-physics-smoke-jump",
  "ph2d-physics-smoke-scenes",
  "ph2d-preview-drive",
  "ph2d-render",
@@ -10964,6 +10965,18 @@ dependencies = [
  "ph2d-render",
  "ph2d-shape-handles",
  "ph2d-topdown",
+]
+
+[[package]]
+name = "ph2d-physics-smoke-jump"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-physics-scene",
+ "ph2d-physics-smoke-scenes",
 ]
 
 [[package]]

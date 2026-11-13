@@ -31,6 +31,7 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-physics-scene = { path = "../ph2d-physics-scene" }
 # O `SceneCtx` e as cenas que só povoam um `World` (GEF02 onda 0): re-exportados em `lib.rs`.
 ph2d-physics-smoke-scenes = { path = "../ph2d-physics-smoke-scenes" }
+ph2d-physics-smoke-jump = { path = "../ph2d-physics-smoke-jump" }
 # As alças da forma no canvas: o cartão pergunta quem está em edição.
 ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 # ⭐ A árvore de tags (TOP-20 #9, W3c) — o caminho do filtro na row *Only for tag*.

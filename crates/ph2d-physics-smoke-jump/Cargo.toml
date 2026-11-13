@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-physics-smoke-jump"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# As cenas de smoke do PULO (110 a prateleira alta, 111 a beirada) e o gate do pulo encostado na
+# parede (Bug #14) como FOLHA: saíram da `ph2d-physics-smoke-scenes` pela catraca
+# `the_shell_only_shrinks_and_every_app_crate_too` (13/11). A `ph2d-app-physics` re-exporta-as.
+[lib]
+
+[dependencies]
+# Versões LITERAIS, como as irmãs: este workspace não tem `[workspace.dependencies]`.
+bevy_ecs = "0.20"
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-physics-scene = { path = "../ph2d-physics-scene" }
+# O `SceneCtx` mora na folha irmã.
+ph2d-physics-smoke-scenes = { path = "../ph2d-physics-smoke-scenes" }
+
+[lints]
+workspace = true

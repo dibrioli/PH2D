@@ -114,7 +114,7 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, air_jumps: u32) 
 }
 
 /// **A prateleira alta** — o pulo do ar.
-pub fn physics_smoke_multi_jump(ctx: &mut crate::SceneCtx<'_>) {
+pub fn physics_smoke_multi_jump(ctx: &mut ph2d_physics_smoke_scenes::SceneCtx<'_>) {
     let _ = build_multi_jump_scene(ctx.world);
     eprintln!("{MULTI_JUMP_SMOKE_MESSAGE}");
 }

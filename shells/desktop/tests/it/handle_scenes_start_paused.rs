@@ -58,13 +58,14 @@ const HANDLE_WORDS: &[&str] = &[
 /// *"até a próxima `fn `"* — um segundo critério de fronteira seria a segunda
 /// porta que diverge da primeira.
 fn scene_sources() -> String {
-    // ⚠️⚠️ **TRÊS pastas** (a shell, a família e a folha das cenas): ler menos devolve um conjunto
+    // ⚠️⚠️ **QUATRO pastas** (a shell, a família e as duas folhas das cenas): ler menos devolve um conjunto
     // menor **sem reprovar** (82 ficheiros, 09/11); o controlo `…_can_match_something` obriga-o a falar.
     let mut out = String::new();
     for dir in [
         "src/physics",
         "../../crates/ph2d-app-physics/src",
         "../../crates/ph2d-physics-smoke-scenes/src",
+        "../../crates/ph2d-physics-smoke-jump/src",
     ] {
         let Ok(rd) = fs::read_dir(dir) else {
             continue;
@@ -194,6 +195,17 @@ fn handle_gesture_scenes() -> Vec<(String, String, String)> {
     );
 
     let mut out = Vec::new();
+    // ⛔ Um braço cuja `fn` nenhuma pasta lida contém é uma cena que o censo deixou de ver
+    //    (HOWTO §2: o censo por pasta que passa a varrer menos) — reprova, nunca salta.
+    let sem_corpo: Vec<&String> = arms
+        .values()
+        .filter(|f| body_of(&all, f).is_none())
+        .collect();
+    assert!(
+        sem_corpo.is_empty(),
+        "cenas do roteador sem corpo nas pastas lidas por `scene_sources` (a cena mudou de \
+         crate?): {sem_corpo:?}"
+    );
     for (num, f) in &arms {
         let Some(body) = body_of(&all, f) else {
             continue;

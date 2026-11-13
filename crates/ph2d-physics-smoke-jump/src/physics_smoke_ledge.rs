@@ -73,7 +73,7 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, grab: f32) -> En
 }
 
 /// **O parapeito** — a beirada.
-pub fn physics_smoke_ledge(ctx: &mut crate::SceneCtx<'_>) {
+pub fn physics_smoke_ledge(ctx: &mut ph2d_physics_smoke_scenes::SceneCtx<'_>) {
     let _ = build_ledge_scene(ctx.world);
     eprintln!("{LEDGE_SMOKE_MESSAGE}");
 }

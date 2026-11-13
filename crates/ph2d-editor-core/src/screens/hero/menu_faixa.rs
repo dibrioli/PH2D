@@ -80,7 +80,7 @@ pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Fa
     let menu = Rect::new(bar.x + Spacing::Xs.px(), bar.y, menu_w(text_system), bar.h);
     let janela = super::window_buttons::rects(bar, frame);
     let fim = super::window_buttons::start_x(bar, &janela);
-    let play_w = super::transport_bar::play_width(text_system, bar.h);
+    let play_w = super::transport_bar::play_width(text_system);
     let jogo = super::transport_bar::rects(bar, menu.x + menu.w, fim, play_w);
     let gap = super::document_tabs::gap_px();
     let de = menu.x + menu.w + gap;

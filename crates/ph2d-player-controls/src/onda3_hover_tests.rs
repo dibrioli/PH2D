@@ -155,7 +155,7 @@ fn sobre_o_botao_da_barra_o_movimento_sai_da_tela() {
         AREA.w,
         ph2d_editor_core::screens::hero::menu_bar::MENU_BAR_H,
     );
-    let play_w = transport_bar::play_width(&mut ts, bar.h);
+    let play_w = transport_bar::play_width(&mut ts);
     let botoes = transport_bar::rects(bar, AREA.w * 0.25, AREA.w * 0.75, play_w);
     let (hits, store) = (&mut hero.hit_index, &hero.store);
     let mut scene = VectorScene::new();

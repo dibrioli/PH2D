@@ -40,7 +40,7 @@ fn nome_do_play() -> &'static str {
 
 /// A largura do Play com nome: o glifo, o nome e o respiro dos dois lados.
 #[must_use]
-pub fn play_width(text_system: &mut ph2d_text::TextSystem, bar_h: f32) -> f32 {
+pub fn play_width(text_system: &mut ph2d_text::TextSystem) -> f32 {
     let nome = text_system.prefix_width(nome_do_play(), TypeToken::Sm.px());
     Spacing::Sm.px()
         + ph2d_tokens::BAR_ICON_PX

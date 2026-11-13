@@ -25,9 +25,7 @@ use ph2d_a11y::NodeId;
 use ph2d_board_model::{BoardId, BoardSet};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{
-    ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken, icon_label_gap_px,
-};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken, icon_label_gap_px};
 use ph2d_vector::VectorScene;
 
 /// ⛔ O salto que separa o id da aba de um QUADRO de tudo o resto (bijecção: não cria colisão nova).

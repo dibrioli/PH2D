@@ -284,7 +284,7 @@ fn a_cena_p5_poe_o_ponteiro_no_controls_da_barra() {
     assert_eq!(codigo(p5), Some("P5"));
     let a = super::AREA;
     let bar = Rect::new(a.x, a.y, a.w, MENU_BAR_H);
-    let play_w = transport_bar::play_width(&mut ph2d_text::TextSystem::new(), bar.h);
+    let play_w = transport_bar::play_width(&mut ph2d_text::TextSystem::new());
     let modos = [
         transport_bar::rects(bar, a.w * 0.25, a.w * 0.75, play_w),
         transport_bar::rects_palco(a),

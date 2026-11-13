@@ -35,6 +35,8 @@ menu_teach, menu_reveal, menu_row, document_tabs (96), design_token_sync (9).
 `fotos/onda8_lado_a_lado_file_export.png` (antes · maquete · agora, mesma escala 2×) · `onda8_x3_file_export.png` ·
 `onda8_x3_view.png` · `onda8_{1..7}_*.png` · antes: `onda8_antes_*`. Script: `ferramentas/fotos_onda8.sh <prefixo>`.
 
+## Smoke do dono (13/11): APROVADO.
+
 ## Aberto
 - O texto do app é mais pesado que o da maquete (peso da fonte é preferência do app, Edit ▸ Preferences ▸ Font weight).
 - Mutação dos portões novos e clippy/fmt das crates tocadas: no fecho da linha.

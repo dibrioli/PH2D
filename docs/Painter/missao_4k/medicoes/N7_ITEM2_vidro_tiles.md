@@ -8,6 +8,7 @@
 | passo | commit | o quê |
 |---|---|---|
 | 1 (D1) | `d8e8502075` | `VidroJournal` (`undo_window_vidro.rs`, molde do `ReliefJournals`) no `WriteState`; porta `plane_fork::fork_vidro`; os três sítios (`abre_o_vidro` aguada e Wet, `continua_o_vidro_do_traco`) passam por ela com a região do `declare_wrote`. Comportamento igual: o `before` ainda segura o plano. |
+| 2+3 (D2+D4) | `5c6766c81e` | Chave `VIDRO_PELO_JOURNAL` (`undo::window::{set_,}vidro_pelo_journal`, `true`). O vidro é a 4.ª família de `ElidedRelief` (`vidros: Weak`); `snapshot_model_eliding_relief`/`set_cursor` esvaziam o mapa forte; commit por `UndoEntry::vidro_map` (`undo_planes.rs`, ANTES do `relief_maps`, que zera as testemunhas) → `StoredMap::from_journal` via `WriteState::with_vidro_before`; elidido+recusado = indescritível; `side` do vidro do VIVO quando o cursor elidiu; `continua_o_vidro_do_traco` lê `vidro_antes_na_janela` (journal+vivo) antes do `fork_vidro`; `base_for_top` exige `vidro_untouched`; a absorção limpa `vidros` com a chave. |
 | 0 (medição) | `40516925ce` | `quem_segura_o_vidro_no_segundo_pen_down` (teste leve, não ignorado) + acessor `cfg(test)` `UndoController::cursor_segura_o_vidro`. |
 
 Sonda pesada do passo 0 a 4K: **na fila** (`bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh`, posição 5): o
@@ -43,6 +44,25 @@ No pen-down somam-se o `before` (`stroke_undo`) e o congelado da aguada, que rec
   `o_vidro_segue_a_base_que_o_borrao_move_sem_copiar_o_plano`, `mask_gate_copia_tests::*`,
   `regiao_do_journal::*` (12 verdes).
 
+**Passos 2+3** (256×160, `quem_segura_o_vidro_no_segundo_pen_down` com a chave ligada):
+
+| momento | antes (oráculo) | com `VIDRO_PELO_JOURNAL` |
+|---|---|---|
+| repouso depois do 1.º traço | 3 (mapa · cursor · `OnlyAfter`) | **2** (mapa · `OnlyAfter` do 1.º traço) |
+| repouso depois do 2.º traço | 2 | **1** (só o mapa) |
+| cópias do plano no 2.º traço | 1 | **1** — a entrada `OnlyAfter` do 1.º traço ainda segura o `Arc` |
+| cópias do plano no 3.º traço | 1 | **0** |
+
+O congelado da aguada NÃO apareceu como dono neste teste (sem Smudge): o D3 continua a ser preciso para o `vbase`
+correcto com Smudge e para a sonda 4K, mas aqui não força cópia.
+
+Gates (verdes por nome, 14): `o_vidro_do_traco_volta_ao_bit_no_desfazer_e_no_refazer` (NOVO: 8 traços WB sobrepostos e
+disjuntos; desfaz tudo, refaz tudo, desfaz metade, pinta outro, desfaz; vidro e tela ao bit do oráculo `false` no mesmo
+processo E do vidro/tela GRAVADOS depois de cada traço — o `side` é partilhado, a paridade sozinha não pega mutação nele;
+`VIDRO_FROM_JOURNAL ≥ 7`) + todos os vizinhos do passo 1. Mutações: «o undo escreve o `after`» ⇒ VERMELHO (desfeito o
+traço 8); «o `side` lê o cursor elidido» ⇒ VERMELHO (pânico `undo.rs:488`). Falta a 3.ª do ADR («janela sem
+`intersect`» deve ficar verde).
+
 ## Armadilhas achadas
 
 1. **O plano que nasce no 1.º quadro era capturado nos quadros seguintes do MESMO traço** (1 MB a 520×390, sem
@@ -59,21 +79,18 @@ No pen-down somam-se o `before` (`stroke_undo`) e o congelado da aguada, que rec
 5. `--ignored` e `fila-pesada.sh pôr '…&&…'` são recusados no subagente: a sonda vai num script (`N7_ITEM2_sonda.sh`).
 6. `VIDRO_PELO_JOURNAL` ainda NÃO existe: o passo 1 não muda comportamento. Nasce no passo 2/3.
 
+7. **O `relief_maps` zera `before.relief_elided` inteiro** no sucesso: o vidro tem de sair ANTES (é o que o
+   `vidro_map` faz, com `mem::take` das testemunhas do vidro).
+8. Uma mutação no `side` atinge as DUAS rotas: o gate compara também com o estado GRAVADO.
+
 ## Próximo passo exato
 
-**Passos 2 + 3 juntos** (são acoplados: elidir o `before` sem tirar o delta do journal faz o `split` ver o mapa
-vazio ⇒ `OnlyAfter` ⇒ o undo apagaria o vidro), sob a chave `VIDRO_PELO_JOURNAL` (`thread_local`, `true`; `false` =
-oráculo):
-1. `ElidedRelief` (`undo_elide.rs`) ganha `vidros: BTreeMap<LayerId, Weak<Vec<Vidro>>>`; `snapshot_model_eliding_relief`
-   (`tool/layers/undo.rs:26`) e `set_cursor` (`undo_record.rs:137`) elidem o vidro no mesmo passo do relevo;
-2. `undo_planes.rs:224`: `StoredMap::from_journal(&before.vidros, &el.vidros, &after.vidros, camada, absent, journal,
-   win_scalar)` no molde do `relief_maps` (`:385`), com fallback ao `split` só se o `before` não elidiu (senão
-   `indescribable`, como o relevo `:455`); expor o journal por um `with_vidro_before(writes, layer, |j| …)` irmão do
-   `with_relief_before` (`undo_window_relief.rs`);
-3. `side()` (`undo_planes.rs:500`) do vidro a partir do VIVO, como o relevo; restauro `tool/layers/undo.rs:199`
-   (`self.vidros = m.vidros`) não pode trocar o vivo por um mapa elidido vazio;
-4. `continua_o_vidro_do_traco` lê `vantes[i]` por `vidro_before(i).unwrap_or(vivo[i])` materializado na janela `r`
-   ANTES do `fork_vidro` (tirar o `cfg(test)` de `vidro_before`/`vidro_speaks_for`);
-5. Gates: `o_segundo_traco_nao_copia_o_plano_do_vidro` (só verde depois do passo 4/D3 — ver medição: o congelado
-   copia), `o_vidro_do_traco_volta_ao_bit_no_desfazer_e_no_refazer`, `o_traco_digital_sobre_a_aguada_…`.
-Depois: **passo 4 (D3)** — sem ele o alvo de 0 cópias não chega.
+1. **O 2.º traço ainda copia 1×**: a entrada `OnlyAfter` do 1.º traço (o plano NASCEU nele) guarda `Arc::clone` do
+   vivo (`undo_delta_journal.rs:327`). Cura: para o vidro, o `OnlyAfter` guarda só a janela fora do neutro (o
+   `aparece` já a acha, `undo_delta_aparece.rs`) e o redo recria o plano neutro + a janela — variante nova de
+   `StoredEntry` (toca `undo_delta.rs`, `_copiado`, `_confine`, `undo_planes_inspect`). Depois, escrever
+   `o_segundo_traco_nao_copia_o_plano_do_vidro` (`COPIAS_DO_VIDRO == 0` no 2.º..8.º; controlo `false` ≥ 1).
+2. Gate `o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal` (Digital sobre aguada, vidro = oráculo).
+3. **Passo 4 (D3)** como no ADR; a sonda `N7_ITEM2_sonda.sh` já mede com a chave por omissão (`true`); para o A×B,
+   o script tem de ganhar a corrida com `set_vidro_pelo_journal(false)` (a sonda é Rust: um env lido no teste).
+4. Passos 5, 6, 7.

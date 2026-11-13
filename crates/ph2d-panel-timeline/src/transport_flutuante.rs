@@ -1,13 +1,17 @@
-//! ⭐ **Os controlos de tocar FLUTUAM acima do painel** (dono 13/11): no canto superior esquerdo, colados
-//! ao lado de fora da moldura — não ocupam fileira nenhuma. ⏮ ‹ ■ ▶ › ⏭ ●: o ■ é o Stop (pára e volta
-//! ao início), o ▶ verde, o ● vermelho é o Auto Key (a caixa saiu da barra; o clique é o do mesmo id).
+//! ⭐ **Os controlos de tocar numa ABA do painel** (dono 13/11): colada ao topo da moldura, no canto
+//! esquerdo, com a tinta da lista — painel e aba leem-se como UM objecto; não ocupa fileira nenhuma.
+//! ● ⏮ ‹ ▶ ■ › ⏭: o ● vermelho é o Auto Key (a caixa saiu da barra; o clique é o do mesmo id), o ▶
+//! verde, o ■ o Stop (pára e volta ao início).
 
 use super::*;
 
 /// As células, na ordem da fila.
 const N: usize = 7;
 
-/// As células e a tinta de cada uma: o tocar verde, o gravar vermelho; o resto, a de sempre.
+/// A folga entre a fila e a borda da aba.
+const FOLGA: f32 = m::SEG_PAD * 2.0;
+
+/// As células e a tinta de cada uma: o gravar vermelho, o tocar verde; o resto, a de sempre.
 fn celulas(snap: &TimelineViewSnapshot, view: BarView) -> ([Icone; N], [Option<ColorToken>; N]) {
     let [inicio, antes, tocar, depois, fim] = fileira_do_transporte(snap, view);
     let vivo = |id, icon, on| Icone {
@@ -18,53 +22,50 @@ fn celulas(snap: &TimelineViewSnapshot, view: BarView) -> ([Icone; N], [Option<C
     let gravar = vivo(TIMELINE_AUTOKEY, IconId::CardDot, snap.auto_key);
     let parar = vivo(ids::TIMELINE_STOP, IconId::Stop, false);
     (
-        [inicio, antes, parar, tocar, depois, fim, gravar],
+        [gravar, inicio, antes, tocar, parar, depois, fim],
         [
-            None,
+            Some(ColorToken::Danger),
             None,
             None,
             Some(ColorToken::Success),
             None,
             None,
-            Some(ColorToken::Danger),
+            None,
         ],
     )
 }
 
-/// Onde a fila flutua: à esquerda do painel, logo acima da moldura (dentro da janela).
-pub(super) fn rect(painel: Rect, viewport: Rect) -> Rect {
-    let w = banda::icones_w(N);
-    let y = (painel.y - m::FIELD_GAP - m::FIELD_H).max(viewport.y);
-    Rect::new(painel.x, y, w, m::FIELD_H)
+/// A aba: em cima da lista do painel, encostada à esquerda dela (dentro da janela).
+pub(super) fn aba(painel: Rect, viewport: Rect) -> Rect {
+    let lista = banda::geometria(painel).lista;
+    let (w, h) = (banda::icones_w(N) + FOLGA * 2.0, m::FIELD_H + FOLGA * 2.0);
+    Rect::new(lista.x, (lista.y - h).max(viewport.y), w, h)
 }
 
-/// Pinta a fila em [`rect`]: o fundo do cartão por baixo, para ler-se sobre o canvas.
+/// Pinta a aba e a fila. A tinta é a da lista e a aba desce um raio para dentro da moldura: o canto
+/// de cima-esquerdo do painel fica coberto e a junta não se vê.
 pub(super) fn pinta(
     ctx: &mut PaintCtx,
     theme: Theme,
     painel: Rect,
     (snap, view): (&TimelineViewSnapshot, BarView),
 ) {
-    let r = rect(painel, ctx.viewport);
-    ph2d_editor_core::screens::hero::bottom_hud::publica_fila_flutuante(r);
-    let ink = CardInk::of_list(theme);
-    let fundo = Rect::new(
-        r.x - m::SEG_PAD,
-        r.y - m::SEG_PAD,
-        r.w + m::SEG_PAD * 2.0,
-        r.h + m::SEG_PAD * 2.0,
-    );
-    ph2d_editor_core::paint::fill_rounded_rect(
+    let a = aba(painel, ctx.viewport);
+    ph2d_editor_core::screens::hero::bottom_hud::publica_fila_flutuante(a);
+    let raio = m::LIST_RADIUS;
+    ph2d_editor_core::paint::fill_rounded_rect_radii(
         ctx.scene,
-        fundo,
-        m::FIELD_RADIUS + m::SEG_PAD,
-        ink.color(ColorToken::KanbanList),
+        Rect::new(a.x, a.y, a.w, a.h + raio),
+        (raio, raio, 0.0, 0.0),
+        ph2d_editor_core::paint::resolve(ColorToken::KanbanList, theme),
     );
+    let ink = CardInk::of_list(theme);
+    let r = Rect::new(a.x + FOLGA, a.y + FOLGA, banda::icones_w(N), m::FIELD_H);
     let (icones, cores) = celulas(snap, view);
     cartao(ctx, ink, r).icones_em_fila_tingidos(&icones, &cores, (r.x, r.y), StrokeToken::Thick);
     // O gravar é uma bola CHEIA (o glifo do ponto é pequeno demais para ler-se como «gravar»).
     let d = m::ICON_GLYPH * 0.6;
-    let cx = r.x + m::FIELD_H * (N - 1) as f32 + m::FIELD_H * 0.5;
+    let cx = r.x + m::FIELD_H * 0.5;
     let bola = Rect::new(cx - d * 0.5, r.y + (r.h - d) * 0.5, d, d);
     ph2d_editor_core::paint::fill_rounded_rect(
         ctx.scene,

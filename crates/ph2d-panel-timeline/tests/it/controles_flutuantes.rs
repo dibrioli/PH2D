@@ -1,4 +1,4 @@
-//! ⭐ Dono 13/11: os controlos de tocar FLUTUAM acima do painel, no canto superior esquerdo (⏮ ‹ ■ ▶ › ⏭ ●);
+//! ⭐ Dono 13/11: os controlos de tocar numa ABA colada ao topo do painel, à esquerda (● ⏮ ‹ ▶ ■ › ⏭);
 //! a caixa Auto Key sai da barra e vira o ● (o mesmo id, o mesmo clique); o ■ pára e volta ao início;
 //! a duração do clipe entra entre as abas e o Time (e sai da engrenagem).
 
@@ -41,13 +41,13 @@ fn os_controlos_flutuam_acima_do_painel() {
     let m0 = mesa();
     let abas = m0.rect(ids::TIMELINE_TAB_KEYS).expect("a aba Keys");
     let fila = [
+        ids::TIMELINE_AUTOKEY,
         ids::TIMELINE_GO_START,
         ids::TIMELINE_PREV_FRAME,
-        ids::TIMELINE_STOP,
         ids::TIMELINE_PLAY,
+        ids::TIMELINE_STOP,
         ids::TIMELINE_NEXT_FRAME,
         ids::TIMELINE_GO_END,
-        ids::TIMELINE_AUTOKEY,
     ]
     .map(|id| m0.rect(id).unwrap_or_else(|| panic!("{id:?} não pintado")));
     for (i, r) in fila.iter().enumerate() {

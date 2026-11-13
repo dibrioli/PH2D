@@ -99,24 +99,23 @@ fn prova_que_nada_sai(mesa: &mut Mesa<TimelinePanel>) -> (Rect, Rect) {
     assert!(caixas.len() > 50, "a régua leu a cena: {}", caixas.len());
     // A sombra do cartão (o único primitivo que ENVOLVE o cartão inteiro) é dele, por fora de propósito.
     let sombra = |r: &Rect| dentro(c, *r, 0.0);
-    // E os controlos de tocar FLUTUAM acima do cartão de propósito (dono 13/11): a fila do ⏮ ao ●,
-    // com o fundo que os lê sobre o canvas, colada por cima da moldura.
+    // E os controlos de tocar moram numa ABA colada ao topo do cartão (dono 13/11): a fila do ● ao ⏭,
+    // com a tinta da lista que desce um raio para dentro da moldura e cobre a junta.
     let regs = mesa.host.registos_da_ultima_pintura();
     let rect = |id| regs.iter().find(|(w, _)| *w == id).map(|(_, r)| *r);
-    let (ini, rec) = (
-        rect(ids::TIMELINE_GO_START).expect("o ⏮ flutua"),
-        rect(ids::TIMELINE_AUTOKEY).expect("o ● flutua"),
+    let (rec, fim) = (
+        rect(ids::TIMELINE_AUTOKEY).expect("o ● na aba"),
+        rect(ids::TIMELINE_GO_END).expect("o ⏭ na aba"),
     );
-    assert!(
-        ini.y + ini.h <= c.y,
-        "os controlos não flutuam acima do cartão"
-    );
-    let pad = ph2d_editor_core::panel::cards::banda::metrics::SEG_PAD;
+    assert!(rec.y < c.y, "a aba não sobe acima do cartão");
+    let folga = ph2d_editor_core::panel::cards::banda::metrics::SEG_PAD * 2.0 + 0.5;
+    let raio = ph2d_editor_core::panel::cards::banda::metrics::LIST_RADIUS;
+    let topo = rec.y - folga;
     let fila = Rect::new(
-        ini.x - pad,
-        ini.y - pad,
-        rec.x + rec.w - ini.x + pad * 2.0,
-        ini.h + pad * 2.0,
+        rec.x - folga,
+        topo,
+        fim.x + fim.w - rec.x + folga * 2.0,
+        c.y + ph2d_editor_core::panel::cards::banda::metrics::LIST_MARGIN + raio + folga - topo,
     );
     let fora: Vec<_> = caixas
         .iter()

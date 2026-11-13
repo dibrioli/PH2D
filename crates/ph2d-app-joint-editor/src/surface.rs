@@ -177,8 +177,8 @@ impl DocumentSurface for JointEditorTab {
         self.open && (self.doc.drag.is_some() || self.doc.typing.is_some())
     }
 
-    fn wheel(&mut self, _id: u64, _x: f32, _y: f32, _dy: f32, _shift: bool) -> bool {
-        false
+    fn wheel(&mut self, _id: u64, x: f32, y: f32, dy: f32, _shift: bool) -> bool {
+        self.doc.wheel(x, y, dy)
     }
 
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {

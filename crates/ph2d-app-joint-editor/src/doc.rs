@@ -177,9 +177,13 @@ pub struct JointEditorDoc {
     pub(crate) counts: Vec<u16>,
     /// A frase do pé: o que a última queda fez.
     pub(crate) note: Option<String>,
-    pub(crate) area: Rect,
-    /// O painel de baixo, como a última pintura o deixou.
+    pub area: Rect,
+    /// O painel da direita e o palco, como a última pintura os deixou.
     pub panel: Rect,
+    pub stage: Rect,
+    /// Quanto o painel está rolado, e o máximo (o que não cabe).
+    pub(crate) scroll: f32,
+    pub(crate) scroll_max: f32,
     /// Onde cada alça pintada mede o cursor.
     pub(crate) geo: Vec<(Handle, crate::paint_stage::Geo)>,
 }
@@ -206,6 +210,9 @@ impl Default for JointEditorDoc {
             note: None,
             area: Rect::default(),
             panel: Rect::default(),
+            stage: Rect::default(),
+            scroll: 0.0,
+            scroll_max: 0.0,
             geo: Vec::new(),
         }
     }
@@ -503,6 +510,16 @@ impl JointEditorDoc {
     #[must_use]
     pub fn dropping_line(&self) -> Option<String> {
         self.dropping.as_ref().map(|d| d.line.clone())
+    }
+
+    /// A roda sobre o painel: rola-o dentro do que não cabe. `true` = mudou.
+    pub fn wheel(&mut self, x: f32, y: f32, dy: f32) -> bool {
+        if !self.panel.contains(x, y) || self.menu.is_some() {
+            return false;
+        }
+        let before = self.scroll;
+        self.scroll = (self.scroll - dy).clamp(0.0, self.scroll_max);
+        (self.scroll - before).abs() > f32::EPSILON
     }
 
     /// O alvo pintado debaixo do cursor (o último pintado ganha: as listas abertas vêm por cima).

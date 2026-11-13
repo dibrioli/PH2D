@@ -228,34 +228,53 @@ fn o_painel_edita_as_duas_rodas_ou_uma_e_abre_o_inspector() {
     );
 }
 
-/// ⭐ **O painel do carro é compacto** (dono 13/11): cartões por assunto, a letra dentro da caixa. Antes (W3)
-/// o Car pedia `350` px (folgas 18, faixa 34, alcance 34, 4 filas de números × 49, Drive 34, Breakable 34);
-/// o alvo é metade, e nenhuma caixa de número estica pelo painel.
+/// ⭐ **O painel é uma coluna à direita** (dono 13/11): da largura do Inspector, a toda a altura da aba, à
+/// direita do palco, que fica com a altura inteira (sem faixa em cima nem painel em baixo). Os números do
+/// carro estão todos à vista e nenhum passa de metade do painel (dois por fila).
 #[test]
-fn o_painel_do_carro_cabe_em_metade_da_altura_e_os_campos_sao_estreitos() {
+fn o_painel_e_uma_coluna_a_direita_e_os_campos_ocupam_meia_largura() {
     use ph2d_app_joint_editor::doc::Field;
     use ph2d_card_stack::metrics as cm;
-    const ANTES: f32 = 350.0;
     let mut m = Mesa::aberta();
     m.drop("Kart Body", 0);
     m.drop("Kart Rear Wheel", 1);
     m.drop("Kart Front Wheel", 2);
-    let h = m.tab().doc.panel.h;
+    let (p, st, area) = (m.tab().doc.panel, m.tab().doc.stage, m.tab().doc.area);
+    let full = area.h - cm::CARD_GAP * 2.0;
+    let ok = |a: f32, b: f32| (a - b).abs() < 0.5;
     assert!(
-        h <= ANTES * 0.5,
-        "o painel do Car pede {h} px (antes {ANTES})"
+        p.x >= st.x + st.w,
+        "o painel ({p:?}) à direita do palco ({st:?})"
+    );
+    assert!(
+        ok(p.w, ph2d_tokens::INSPECTOR_W_PX),
+        "a largura do Inspector: {p:?}"
+    );
+    assert!(
+        ok(p.h, full) && ok(st.h, full) && p.y == st.y,
+        "a toda a altura {full}: {p:?} {st:?}"
     );
     use Field::{Damping, LimitMax, LimitMin, MotorForce, MotorSpeed, Stiffness, Wheelbase};
     let fields = [
         Stiffness, Damping, LimitMin, LimitMax, MotorSpeed, MotorForce, Wheelbase,
     ];
-    for f in fields {
+    let more = [
+        Hit::OpenMenu(ph2d_app_joint_editor::doc::Menu::Kind),
+        Hit::Inspect,
+        Hit::Scope(0),
+    ];
+    for h in fields.map(Hit::Field).into_iter().chain(more) {
         let r = m
             .tab()
             .doc
-            .hits_for(&Hit::Field(f))
-            .unwrap_or_else(|| panic!("{f:?} pintado"));
-        assert!(r.w <= cm::FIELD_VALUE_MIN_W * 2.5, "{f:?} mede {} px", r.w);
+            .hits_for(&h)
+            .unwrap_or_else(|| panic!("{h:?} pintado"));
+        assert!(
+            r.x >= p.x && r.x + r.w <= p.x + p.w,
+            "{h:?} dentro do painel"
+        );
+        let narrow = !matches!(h, Hit::Field(_)) || r.w <= p.w * 0.5;
+        assert!(narrow, "{h:?} mede {} px", r.w);
     }
 }
 

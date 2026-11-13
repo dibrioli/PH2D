@@ -194,7 +194,7 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                     bw,
                     m::FIELD_H,
                 );
-                ui.button(b, tr("joint_editor.use_scene"), Hit::World(ri), false);
+                ui.button(b, tr("joint_editor.use_scene"), Hit::World(ri), true);
             }
         }
     }

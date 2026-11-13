@@ -2,6 +2,7 @@
 //! regista o alvo dele em `doc.hits` com o rótulo que o leitor de ecrã lê: pintou ⟹ clicável.
 
 use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, folga_do_texto, paint_icon, paint_text_elided};
 use ph2d_editor_core::widget::card_field::{
     Glyph, handle_rect, paint_field_caret, paint_field_frame, value_rect,
@@ -10,17 +11,13 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::widget::{card_check_rect, paint_card_check};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, StrokeToken};
+use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
 use crate::doc::{Field, Hit, JointEditorDoc};
 
 /// A coluna das montagens.
 pub const LIST_W: f32 = 220.0;
-/// O painel de baixo quando não há junta (o título e uma frase).
-pub const PANEL_MIN_H: f32 = 96.0;
-/// A caixa de um número do painel: a célula da letra e um valor de até ~7 caracteres com a unidade.
-pub const NUM_W: f32 = m::FIELD_VALUE_MIN_W * 2.0;
 /// A folga do gabarito dentro do palco (o rótulo da peça cabe por baixo da forma).
 pub const STAGE_PAD: f32 = 48.0;
 /// O maior zoom do desenho, px por metro: o carro de fábrica (2,4 m) fica com ~670 px e sobra palco.
@@ -82,6 +79,7 @@ pub struct Ui<'a> {
     pub scene: &'a mut VectorScene,
     pub ts: &'a mut TextSystem,
     pub ink: CardInk,
+    pub theme: Theme,
 }
 
 impl Ui<'_> {
@@ -103,28 +101,37 @@ impl Ui<'_> {
         text(self.ts, self.scene, s, r, px, c);
     }
 
-    pub fn put_centred(&mut self, s: &str, r: Rect, px: f32, t: ColorToken) {
-        let c = self.c(t);
-        text_centred(self.ts, self.scene, s, r, px, c);
-    }
-
     pub fn label(&mut self, s: &str, r: Rect) {
         let c = self.c(ColorToken::CardLabel);
         text(self.ts, self.scene, s, r, m::LABEL_PX, c);
     }
 
-    /// Um botão: `primary` = o azul.
-    pub fn button(&mut self, r: Rect, label: &str, h: Hit, primary: bool) {
-        let (bg, fg) = match (primary, self.hot(&h)) {
-            (true, false) => (ColorToken::Accent, ColorToken::AccentFg),
-            (true, true) => (ColorToken::AccentHover, ColorToken::AccentFg),
-            (false, false) => (ColorToken::CardField, ColorToken::Text1),
-            (false, true) => (ColorToken::CardFieldHover, ColorToken::Text1),
+    /// Um botão; desligado (`on == false`) pinta-se apagado e não se clica.
+    pub fn button(&mut self, r: Rect, label: &str, h: Hit, on: bool) {
+        let (bg, fg) = match (on, self.hot(&h)) {
+            (false, _) => (ColorToken::CardField, ColorToken::TextDisabled),
+            (true, false) => (ColorToken::CardField, ColorToken::Text1),
+            (true, true) => (ColorToken::CardFieldHover, ColorToken::Text1),
         };
         fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, self.c(bg));
         let c = self.c(fg);
         text_centred(self.ts, self.scene, label, r, m::VALUE_PX, c);
-        self.hit(r, h, label);
+        if on {
+            self.hit(r, h, label);
+        }
+    }
+
+    /// A caixa de uma lista suspensa: o campo do cartão com o valor e a seta.
+    pub fn dropdown(&mut self, b: Rect, value: &str, h: Hit, a11y: &str) {
+        paint_field_frame(self.scene, self.ink, b, self.hot(&h), false);
+        let cw = m::CARD_CHEVRON + m::FIELD_PAD_R;
+        let t = Rect::new(b.x + m::FIELD_PAD_R, b.y, b.w - m::FIELD_PAD_R - cw, b.h);
+        self.put(value, t, m::VALUE_PX, ColorToken::Text1);
+        let g = m::CARD_CHEVRON;
+        let chev = Rect::new(b.x + b.w - cw, b.y + (b.h - g) * 0.5, g, g);
+        let c = self.c(ColorToken::Text2);
+        paint_icon(self.scene, IconId::ChevronDown, chev, c, m::KEY_MARK_STROKE);
+        self.hit(b, h, a11y);
     }
 
     /// Uma escolha segmentada a toda a largura de `r`.
@@ -135,17 +142,21 @@ impl Ui<'_> {
             m::FIELD_RADIUS,
             self.c(ColorToken::CardField),
         );
-        let n = opts.len().max(1);
-        #[allow(clippy::cast_precision_loss)]
-        let w = (r.w - m::SEG_PAD * 2.0) / n as f32;
-        for (i, (label, h, on)) in opts.iter().enumerate() {
-            #[allow(clippy::cast_precision_loss)]
-            let s = Rect::new(
-                r.x + m::SEG_PAD + w * i as f32,
-                r.y + m::SEG_PAD,
-                w,
-                r.h - m::SEG_PAD * 2.0,
-            );
+        // D32: cada segmento com a largura do que mostra; a sobra reparte-se.
+        let need: Vec<(f32, bool)> = opts
+            .iter()
+            .map(|(l, _, _)| {
+                (
+                    self.ts.prefix_width(l, m::SEG_TEXT_PX) + m::SEG_INSET * 2.0,
+                    false,
+                )
+            })
+            .collect();
+        let ws = m::seg_widths(&need, r.w - m::SEG_PAD * 2.0);
+        let mut x = r.x + m::SEG_PAD;
+        for ((label, h, on), w) in opts.iter().zip(ws) {
+            let s = Rect::new(x, r.y + m::SEG_PAD, w, r.h - m::SEG_PAD * 2.0);
+            x += w;
             if *on {
                 fill_rounded_rect(self.scene, s, m::SEG_RADIUS, self.c(ColorToken::Accent));
             } else if self.hot(h) {
@@ -164,22 +175,6 @@ impl Ui<'_> {
             text_centred(self.ts, self.scene, label, s, m::SEG_TEXT_PX, fg);
             self.hit(s, h.clone(), label);
         }
-    }
-
-    /// A largura de um botão do tamanho do texto.
-    pub fn button_w(&mut self, label: &str) -> f32 {
-        self.ts.prefix_width(label, m::VALUE_PX) + m::CARD_PAD_X * 2.0
-    }
-
-    /// A largura de uma escolha segmentada: segmentos iguais, do tamanho do maior texto.
-    pub fn segmented_w(&mut self, opts: &[(String, Hit, bool)]) -> f32 {
-        let widest = opts
-            .iter()
-            .map(|(l, _, _)| self.ts.prefix_width(l, m::SEG_TEXT_PX))
-            .fold(0.0, f32::max);
-        #[allow(clippy::cast_precision_loss)]
-        let n = opts.len() as f32;
-        (widest + m::SEG_INSET * 2.0) * n + m::SEG_PAD * 2.0
     }
 
     /// ⭐ O campo do cartão do app (`card_field`): a letra ou o ícone na caixa, na cor do rótulo; o valor (ou
@@ -222,12 +217,6 @@ impl Ui<'_> {
             text(self.ts, self.scene, unit, u, m::LABEL_PX, tint);
         }
         self.hit(b, Hit::Field(f), name);
-    }
-
-    /// A largura de uma caixa de marcar na moldura.
-    pub fn check_w(&mut self, label: &str) -> f32 {
-        let t = self.ts.prefix_width(label, m::VALUE_PX);
-        m::SEG_INSET + m::CHECK_BOX + m::CHECK_GAP + t + m::FIELD_PAD_R
     }
 
     /// A caixa de marcar do app numa MOLDURA, como a Godot (dono 13/11): caixa e texto dentro do fundo

@@ -54,6 +54,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.group.spring" => "Spring",
         "joint_editor.group.length" => "Length",
         "joint_editor.group.breaks" => "Breaks",
+        "joint_editor.group.assembly" => "Assembly",
+        "joint_editor.group.applies_to" => "Applies to",
         "joint_editor.glyph.stiffness" => "S",
         "joint_editor.glyph.damping" => "D",
         "joint_editor.glyph.speed" => "V",
@@ -76,7 +78,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.empty_panel" => {
             "Drop a part into the template to make its joint. The settings show up here."
         }
-        "joint_editor.parts_of" => "{n} of {of} parts \u{b7} {joints} joints",
+        "joint_editor.parts_of" => "{name} \u{b7} {n} of {of} parts \u{b7} {joints} joints",
         "joint_editor.open_inspector" => "Open in Inspector",
         "joint_editor.no_joint_yet" => "No joint yet. Drop the part it holds on to as well.",
         "panel.inspector.joint.open_in_joint_editor" => "Open in Joint Editor",

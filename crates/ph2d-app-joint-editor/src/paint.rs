@@ -1,5 +1,5 @@
-//! **A pintura da aba** (maquete B): à esquerda as montagens; em cima os seletores Joint e Template; no
-//! meio o desenho do gabarito; em baixo os números. As listas suspensas pintam-se por último, por cima.
+//! **A pintura da aba** (maquete B, painel do dono 13/11): à esquerda as montagens; no meio o desenho do
+//! gabarito; à direita o painel em cartões. As listas suspensas pintam-se por último, por cima.
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect_dashed};
@@ -19,37 +19,23 @@ use crate::widgets::{self as w, Ui};
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Layout {
     pub list: Rect,
-    pub top: Rect,
     pub stage: Rect,
     pub panel: Rect,
 }
 
 impl Layout {
+    /// As montagens à esquerda, o painel da largura do Inspector à direita, o palco com o resto; os três a
+    /// toda a altura.
     #[must_use]
-    pub fn of(area: Rect, panel_want: f32) -> Self {
+    pub fn of(area: Rect) -> Self {
         let g = m::CARD_GAP;
-        let list = Rect::new(
-            area.x + g,
-            area.y + g,
-            w::LIST_W,
-            (area.h - g * 2.0).max(0.0),
-        );
+        let h = (area.h - g * 2.0).max(0.0);
+        let list = Rect::new(area.x + g, area.y + g, w::LIST_W, h);
+        let pw = ph2d_tokens::INSPECTOR_W_PX;
+        let panel = Rect::new(area.x + area.w - g - pw, list.y, pw, h);
         let x = list.x + list.w + g;
-        let rw = (area.x + area.w - g - x).max(0.0);
-        let top_h =
-            m::CARD_PAD_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::CARD_PAD_BOTTOM;
-        let top = Rect::new(x, list.y, rw, top_h);
-        // O painel cresce com as linhas do tipo, até metade da aba; o palco fica com o resto.
-        let panel_h = panel_want.min((area.h * 0.5).max(0.0));
-        let panel = Rect::new(x, area.y + area.h - g - panel_h, rw, panel_h);
-        let sy = top.y + top.h + g;
-        let stage = Rect::new(x, sy, rw, (panel.y - g - sy).max(0.0));
-        Self {
-            list,
-            top,
-            stage,
-            panel,
-        }
+        let stage = Rect::new(x, list.y, (panel.x - g - x).max(0.0), h);
+        Self { list, stage, panel }
     }
 }
 
@@ -70,33 +56,29 @@ pub fn paint(
         scene,
         ts,
         ink,
+        theme,
     };
-    let want = crate::panel::wanted(&mut ui, Layout::of(area, 0.0).panel.w);
-    let l = Layout::of(area, want);
+    let l = Layout::of(area);
     ui.doc.panel = l.panel;
-    for r in [l.list, l.top, l.stage, l.panel] {
+    ui.doc.stage = l.stage;
+    for r in [l.list, l.stage] {
         fill_rounded_rect(ui.scene, r, m::CARD_RADIUS, ui.c(ColorToken::KanbanCard));
     }
     paint_list(&mut ui, l.list);
-    paint_top(&mut ui, l.top);
     crate::paint_stage::paint(&mut ui, l.stage);
-    crate::panel::paint(&mut ui, l.panel);
+    let at = crate::panel::paint(&mut ui, l.panel);
     if let Some(menu) = ui.doc.menu {
-        paint_menu(&mut ui, l.top, menu);
+        paint_menu(&mut ui, at[menu as usize], menu);
     }
 }
 
-fn inner(r: Rect) -> Rect {
-    Rect::new(
+fn paint_list(ui: &mut Ui<'_>, r: Rect) {
+    let i = Rect::new(
         r.x + m::CARD_PAD_X,
         r.y + m::CARD_PAD_TOP,
-        (r.w - m::CARD_PAD_X * 2.0).max(0.0),
-        (r.h - m::CARD_PAD_TOP - m::CARD_PAD_BOTTOM).max(0.0),
-    )
-}
-
-fn paint_list(ui: &mut Ui<'_>, r: Rect) {
-    let i = inner(r);
+        r.w - m::CARD_PAD_X * 2.0,
+        r.h - m::CARD_PAD_TOP - m::CARD_PAD_BOTTOM,
+    );
     ui.label(
         tr("joint_editor.assemblies"),
         Rect::new(i.x, i.y, i.w, m::LABEL_PX + m::LABEL_BOTTOM),
@@ -176,81 +158,11 @@ fn paint_list(ui: &mut Ui<'_>, r: Rect) {
         Rect::new(i.x, buttons_y, half, m::FIELD_H),
         tr("joint_editor.new"),
         Hit::New,
-        false,
+        true,
     );
     let rm = Rect::new(i.x + half + m::FIELD_GAP, buttons_y, half, m::FIELD_H);
-    if ui.doc.assembly().is_some() {
-        ui.button(rm, tr("joint_editor.remove"), Hit::Remove, false);
-    } else {
-        fill_rounded_rect(ui.scene, rm, m::FIELD_RADIUS, ui.c(ColorToken::CardField));
-        ui.put_centred(
-            tr("joint_editor.remove"),
-            rm,
-            m::VALUE_PX,
-            ColorToken::TextDisabled,
-        );
-    }
-}
-
-fn dropdown(ui: &mut Ui<'_>, r: Rect, label: &str, value: &str, h: Hit, tip: &str) {
-    ui.label(
-        label,
-        Rect::new(r.x, r.y, r.w, m::LABEL_PX + m::LABEL_BOTTOM),
-    );
-    let b = Rect::new(r.x, r.y + m::LABEL_PX + m::LABEL_BOTTOM, r.w, m::FIELD_H);
-    let bg = if ui.doc.hover.as_ref() == Some(&h) {
-        ColorToken::CardFieldHover
-    } else {
-        ColorToken::CardField
-    };
-    fill_rounded_rect(ui.scene, b, m::FIELD_RADIUS, ui.c(bg));
-    let c = ui.c(ColorToken::Text1);
-    let t = Rect::new(
-        b.x + m::FIELD_PAD_R,
-        b.y,
-        b.w - m::FIELD_PAD_R * 2.0 - m::CARD_CHEVRON,
-        b.h,
-    );
-    w::text(ui.ts, ui.scene, value, t, m::VALUE_PX, c);
-    let chev = Rect::new(
-        b.x + b.w - m::FIELD_PAD_R - m::CARD_CHEVRON,
-        b.y + (b.h - m::CARD_CHEVRON) * 0.5,
-        m::CARD_CHEVRON,
-        m::CARD_CHEVRON,
-    );
-    let ic = ui.c(ColorToken::Text2);
-    ph2d_editor_core::paint::paint_icon(
-        ui.scene,
-        ph2d_editor_core::icons::IconId::ChevronDown,
-        chev,
-        ic,
-        m::KEY_MARK_STROKE,
-    );
-    let a11y = format!("{label}: {value}. {tip}");
-    ui.hit(b, h, &a11y);
-}
-
-fn paint_top(ui: &mut Ui<'_>, r: Rect) {
-    let i = inner(r);
-    let half = (i.w - m::FIELD_GAP) * 0.5;
-    let t = ui.doc.template();
-    let kind = tr(kind_key(t.kind)).to_owned();
-    dropdown(
-        ui,
-        Rect::new(i.x, i.y, half, i.h),
-        tr("joint_editor.joint"),
-        &kind,
-        Hit::OpenMenu(Menu::Kind),
-        tr("joint_editor.joint_tip"),
-    );
-    dropdown(
-        ui,
-        Rect::new(i.x + half + m::FIELD_GAP, i.y, half, i.h),
-        tr("joint_editor.template"),
-        t.name,
-        Hit::OpenMenu(Menu::Template),
-        tr("joint_editor.template_tip"),
-    );
+    let on = ui.doc.assembly().is_some();
+    ui.button(rm, tr("joint_editor.remove"), Hit::Remove, on);
 }
 
 /// A miniatura de um gabarito: as formas-guia tracejadas, sem rótulos (desenho, não campo).
@@ -270,20 +182,16 @@ pub fn thumbnail(ui: &mut Ui<'_>, t: &ph2d_joint_templates::Template, r: Rect) {
     }
 }
 
-fn paint_menu(ui: &mut Ui<'_>, top: Rect, menu: Menu) {
-    let i = inner(top);
-    let half = (i.w - m::FIELD_GAP) * 0.5;
-    let x = match menu {
-        Menu::Kind => i.x,
-        Menu::Template => i.x + half + m::FIELD_GAP,
-    };
-    let y0 = i.y + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::SEG_PAD;
-    let rows: Vec<(
-        Hit,
-        String,
-        String,
-        Option<&'static ph2d_joint_templates::Template>,
-    )> = match menu {
+/// Uma opção da lista: o alvo, o nome, a linha de baixo e a miniatura do gabarito.
+type MenuRow = (
+    Hit,
+    String,
+    String,
+    Option<&'static ph2d_joint_templates::Template>,
+);
+
+fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
+    let rows: Vec<MenuRow> = match menu {
         Menu::Kind => kinds()
             .into_iter()
             .map(|k| {
@@ -314,7 +222,12 @@ fn paint_menu(ui: &mut Ui<'_>, top: Rect, menu: Menu) {
     };
     #[allow(clippy::cast_precision_loss)]
     let h = row_h * rows.len() as f32 + m::SEG_PAD * 2.0;
-    let r = Rect::new(x, y0, half, h);
+    // Por baixo da caixa; se não cabe até ao fundo da aba, sobe o que falta.
+    let area = ui.doc.area;
+    let y0 = (b.y + b.h + m::SEG_PAD)
+        .min(area.y + area.h - h)
+        .max(area.y);
+    let r = Rect::new(b.x, y0, b.w, h);
     let shade = ui.c(ColorToken::KanbanListShadow);
     ph2d_editor_core::paint_flight::shadow(ui.scene, r, m::CARD_RADIUS, shade, m::LIST_SHADOW_FAR);
     fill_rounded_rect(

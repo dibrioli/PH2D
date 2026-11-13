@@ -1,19 +1,22 @@
-//! **O painel de baixo** (dono 13/11): a faixa (montagem, peças, alcance «Both wheels · Rear · Front», «Open
-//! in Inspector») e os números em cartões por assunto, lado a lado, que só quebram quando não cabem. Cada
-//! número é o campo do cartão do app (a letra ou o ícone na caixa, valor, unidade); o nome é o rótulo a11y.
+//! **O painel da direita** (dono 13/11): uma coluna de cartões como os nossos painéis, um assunto cada —
+//! Assembly (Joint, Template, as peças, «Open in Inspector»), Applies to (o alcance) e os números do tipo.
+//! Cada número é o campo do cartão do app (a letra ou o ícone na caixa, valor, unidade), dois por fila; o
+//! nome é o rótulo a11y. A coluna rola com a roda quando não cabe.
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::stroke_rounded_rect;
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, folga_do_texto, paint_text_title_elided_tracked, rect_to_vello,
+};
 use ph2d_editor_core::widget::card_field::Glyph;
+use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_joint_templates::JointKind;
 use ph2d_tokens::ColorToken;
-use ph2d_vector::VectorScene;
 
-use crate::doc::{Field, Flag, Hit, scope_options};
-use crate::widgets::{self as w, Ui};
+use crate::doc::{Field, Flag, Hit, Menu, kind_key, scope_options};
+use crate::widgets::Ui;
 
 /// Um controlo de um cartão.
 enum Item {
@@ -21,35 +24,28 @@ enum Item {
     Num(Field, Glyph<'static>, &'static str, &'static str),
     /// A caixa «On» e o nome dela.
     Check(Flag, &'static str, bool),
-    Drive,
+    /// Uma frase (parte-se em linhas na largura do cartão).
     Note(&'static str),
+    /// Uma lista suspensa com o rótulo por cima.
+    Menu(Menu),
+    /// Uma linha de leitura apagada.
+    Line(String),
+    Inspect,
+    /// Uma escolha segmentada a toda a largura (o alcance, o Drive).
+    Scope(Vec<(String, Hit, bool)>),
 }
 
-/// Um cartão: o título e os controlos, lado a lado.
+/// Um cartão: o título e os controlos (os números dois a dois, o resto a toda a largura).
 struct Group(&'static str, Vec<Item>);
-
-fn limit_unit(k: JointKind) -> &'static str {
-    if k.limits_in_metres() {
-        "joint_editor.unit.m"
-    } else {
-        "joint_editor.unit.deg"
-    }
-}
-
-fn speed_unit(k: JointKind) -> &'static str {
-    if k.motor_in_metres() {
-        "joint_editor.unit.m_per_s"
-    } else {
-        "joint_editor.unit.deg_per_s"
-    }
-}
 
 /// Os cartões do tipo `k`, lidos da 1.ª junta do alcance. Uma tabela: um controlo por linha.
 #[rustfmt::skip]
-fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointInfo, wheelbase: bool) -> Vec<Group> {
+fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointInfo, wheelbase: bool, drive: Vec<(String, Hit, bool)>) -> Vec<Group> {
     use Item::{Check, Num};
     use Glyph::{Icon, Text as Key};
-    let (lim, spd, metre) = (limit_unit(k), speed_unit(k), "joint_editor.unit.m");
+    let lim = if k.limits_in_metres() { "joint_editor.unit.m" } else { "joint_editor.unit.deg" };
+    let spd = if k.motor_in_metres() { "joint_editor.unit.m_per_s" } else { "joint_editor.unit.deg_per_s" };
+    let metre = "joint_editor.unit.m";
     let speed = |name| Num(Field::MotorSpeed, Key("joint_editor.glyph.speed"), name, spd);
     let force = || Num(Field::MotorForce, Key("joint_editor.glyph.force"), "component.field.joint.9", "");
     let mut out = Vec::new();
@@ -63,7 +59,7 @@ fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJoin
                 Num(Field::LimitMin, Icon(IconId::ArrowDown), "panel.inspector.joint.travel_down", lim),
                 Num(Field::LimitMax, Icon(IconId::ArrowUp), "panel.inspector.joint.travel_up", lim),
             ]));
-            let mut drive = vec![Item::Drive];
+            let mut drive = vec![Item::Scope(drive)];
             if info.motor_enabled {
                 drive.extend([speed("panel.inspector.joint.spin_speed"), force()]);
             } else {
@@ -114,134 +110,186 @@ fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJoin
     out
 }
 
-/// A folga de dentro de um cartão do painel.
-const PAD: f32 = m::FIELD_GAP;
-/// A altura de um cartão: a folga, o título, a fila dos controlos e a folga.
-const GROUP_H: f32 = PAD * 2.0 + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H;
-
-/// A altura que o painel pede na largura `wide`: a pintura num rascunho (os textos decidem as quebras).
-pub fn wanted(ui: &mut Ui<'_>, wide: f32) -> f32 {
-    let n = ui.doc.hits.len();
-    let mut scratch = VectorScene::new();
-    let mut dry = Ui {
-        doc: &mut *ui.doc,
-        scene: &mut scratch,
-        ts: &mut *ui.ts,
-        ink: ui.ink,
-    };
-    let h = paint(&mut dry, Rect::new(0.0, 0.0, wide, f32::INFINITY));
-    ui.doc.hits.truncate(n);
-    h.max(w::PANEL_MIN_H)
-}
-
-/// Pinta o painel em `r` e devolve a altura que ocupou.
-pub fn paint(ui: &mut Ui<'_>, r: Rect) -> f32 {
-    let i = Rect::new(
-        r.x + m::CARD_PAD_X,
-        r.y + m::CARD_PAD_TOP,
-        (r.w - m::CARD_PAD_X * 2.0).max(0.0),
-        (r.h - m::CARD_PAD_TOP - m::CARD_PAD_BOTTOM).max(0.0),
-    );
-    let line = |y: f32| Rect::new(i.x, y, i.w, m::FIELD_H);
+/// Os cartões da coluna, de cima para baixo.
+fn cards(ui: &Ui<'_>) -> Vec<Group> {
+    let mut head = vec![Item::Menu(Menu::Kind), Item::Menu(Menu::Template)];
     let Some(a) = ui.doc.assembly().cloned() else {
-        let head = tr_with(
+        let t = ui.doc.template().name;
+        head.push(Item::Line(tr_with(
             "joint_editor.draft_title",
-            &[("template", &ui.doc.template().name)],
-        );
-        ui.put(&head, line(i.y), m::CARD_TITLE_PX, ColorToken::Text1);
-        let s = tr("joint_editor.empty_panel");
-        ui.put(s, line(i.y + m::FIELD_H), m::VALUE_PX, ColorToken::Text2);
-        return w::PANEL_MIN_H;
+            &[("template", &t)],
+        )));
+        head.push(Item::Note("joint_editor.empty_panel"));
+        return vec![Group("joint_editor.group.assembly", head)];
     };
-    // A faixa: o nome, quantas peças, o alcance e o botão do cartão inteiro, à direita.
-    let tw = ui.ts.prefix_width(&a.name, m::CARD_TITLE_PX);
-    let nr = Rect::new(i.x, i.y, tw + 1.0, m::FIELD_H);
-    ui.put(&a.name, nr, m::CARD_TITLE_PX, ColorToken::Text1);
-    let mut right = i.x + i.w;
-    if !ui.doc.targets().is_empty() {
-        let label = tr("joint_editor.open_inspector");
-        let bw = ui.button_w(label);
-        right -= bw;
-        let b = Rect::new(right, i.y, bw, m::FIELD_H);
-        ui.button(b, label, Hit::Inspect, false);
-        right -= m::CARD_GAP;
-    }
-    let parts = tr_with(
-        "joint_editor.parts_of",
-        &[
-            ("n", &a.filled_roles()),
-            ("of", &a.template.roles.len()),
-            ("joints", &a.joints.len()),
-        ],
-    );
-    let px = i.x + tw + m::CARD_GAP;
-    let pw = ui
-        .ts
-        .prefix_width(&parts, m::VALUE_PX)
-        .min((right - px).max(0.0));
-    let pr = Rect::new(px, i.y, pw + 1.0, m::FIELD_H);
-    ui.put(&parts, pr, m::VALUE_PX, ColorToken::Text2);
-    let mut y = i.y + m::FIELD_H + m::FIELD_ROW_GAP;
+    let (n, of, joints) = (a.filled_roles(), a.template.roles.len(), a.joints.len());
+    let parts = [
+        ("name", &a.name as &dyn std::fmt::Display),
+        ("n", &n),
+        ("of", &of),
+        ("joints", &joints),
+    ];
+    head.push(Item::Line(tr_with("joint_editor.parts_of", &parts)));
+    let info = ui.doc.targets().first().and_then(|j| j.info.clone());
+    head.push(match info {
+        Some(_) => Item::Inspect,
+        None => Item::Note("joint_editor.no_joint_yet"),
+    });
+    let mut out = vec![Group("joint_editor.group.assembly", head)];
     let opts = scope_options(a.template);
     if opts.len() > 1 && !a.joints.is_empty() {
         let cur = ui.doc.scope_index(&a, &opts);
-        let segs: Vec<(String, Hit, bool)> = opts
+        let segs = opts
             .iter()
             .enumerate()
             .map(|(k, o)| (o.label.clone(), Hit::Scope(k), k == cur))
             .collect();
-        let sw = ui.segmented_w(&segs);
-        let sx = px + pw + m::CARD_GAP * 2.0;
-        if sx + sw <= right {
-            ui.segmented(Rect::new(sx, i.y, sw, m::FIELD_H), &segs);
-        } else {
-            ui.segmented(Rect::new(i.x, y, sw, m::FIELD_H), &segs);
-            y += m::FIELD_H + m::FIELD_ROW_GAP;
-        }
+        out.push(Group(
+            "joint_editor.group.applies_to",
+            vec![Item::Scope(segs)],
+        ));
     }
-    let Some(info) = ui.doc.targets().first().and_then(|j| j.info.clone()) else {
-        let s = tr("joint_editor.no_joint_yet");
-        ui.put(s, line(y), m::VALUE_PX, ColorToken::Text2);
-        return y + m::FIELD_H + m::CARD_PAD_BOTTOM - r.y;
+    if let Some(info) = info {
+        let kind = ph2d_app_physics::joint::kind_of(info.kind_tag);
+        out.extend(groups_of(
+            kind,
+            &info,
+            ui.doc.wheelbase().is_some(),
+            drive_segs(ui),
+        ));
+    }
+    out
+}
+
+/// Pinta a coluna em `r`, a partir do rolamento da aba, e devolve as caixas das listas suspensas (por
+/// [`Menu`]): a lista abre-se por baixo da dela.
+pub fn paint(ui: &mut Ui<'_>, r: Rect) -> [Rect; 2] {
+    let mut at = [Rect::default(); 2];
+    let n = ui.doc.hits.len();
+    let groups = cards(ui);
+    let total = |ui: &mut Ui<'_>, w: f32| -> f32 {
+        let hs: Vec<f32> = groups.iter().map(|g| card_h(ui, g, w)).collect();
+        hs.iter().sum::<f32>() + m::CARD_GAP * (hs.len().max(1) - 1) as f32
     };
-    let kind = ph2d_app_physics::joint::kind_of(info.kind_tag);
-    let mut x = i.x;
-    let mut bottom = y;
-    for g in groups_of(kind, &info, ui.doc.wheelbase().is_some()) {
-        let gw = group_w(ui, &g);
-        if x > i.x && x + gw > i.x + i.w {
-            x = i.x;
-            y += GROUP_H + m::CARD_GAP;
-        }
-        if y + GROUP_H <= i.y + i.h {
-            paint_group(ui, Rect::new(x, y, gw, GROUP_H), &g);
-        }
-        bottom = y + GROUP_H;
-        x += gw + m::CARD_GAP;
+    // A barra do nosso painel só quando não cabe; os cartões encolhem para lhe dar a faixa.
+    let mut content = total(ui, r.w);
+    let track = scrollbar_track_rect(r);
+    let cw = if content > r.h {
+        let cw = track.x - m::LIST_BAR_GAP - r.x;
+        content = total(ui, cw);
+        cw
+    } else {
+        r.w
+    };
+    ui.doc.scroll_max = (content - r.h).max(0.0);
+    ui.doc.scroll = ui.doc.scroll.clamp(0.0, ui.doc.scroll_max);
+    ui.scene.push_clip(&rect_to_vello(r));
+    let mut y = r.y - ui.doc.scroll;
+    for g in &groups {
+        y += card(ui, Rect::new(r.x, y, cw, 0.0), g, &mut at) + m::CARD_GAP;
     }
-    bottom + m::CARD_PAD_BOTTOM - r.y
+    ui.scene.pop_layer();
+    let state = (ScrollbarState::Normal, 0.0);
+    paint_scrollbar(r, ui.doc.scroll, content, r.h, state, ui.scene, ui.theme);
+    // O que a coluna corta não se clica: um alvo vale só se couber inteiro na parte à vista.
+    let tail = ui.doc.hits.split_off(n);
+    let seen = |h: &Rect| h.y >= r.y && h.y + h.h <= r.y + r.h;
+    ui.doc
+        .hits
+        .extend(tail.into_iter().filter(|(h, _, _)| seen(h)));
+    at
 }
 
-/// A largura de um controlo dentro de um cartão.
-fn item_w(ui: &mut Ui<'_>, it: &Item) -> f32 {
+/// As linhas de uma frase na largura `wide`.
+fn wrap(ui: &mut Ui<'_>, s: &str, wide: f32) -> Vec<String> {
+    let mut lines: Vec<String> = Vec::new();
+    for word in s.split(' ') {
+        match lines.last_mut() {
+            Some(l) if ui.ts.prefix_width(&format!("{l} {word}"), m::VALUE_PX) <= wide => {
+                l.push(' ');
+                l.push_str(word);
+            }
+            _ => lines.push(word.to_owned()),
+        }
+    }
+    lines
+}
+
+/// A altura de uma linha de frase.
+const NOTE_LINE: f32 = m::VALUE_PX + m::LABEL_BOTTOM * 2.0;
+
+/// As filas de um cartão: os números aos pares, o resto sozinho.
+fn rows(items: &[Item]) -> Vec<Vec<&Item>> {
+    let mut out: Vec<Vec<&Item>> = Vec::new();
+    for it in items {
+        match (it, out.last_mut()) {
+            (Item::Num(..), Some(last)) if last.len() == 1 && matches!(last[0], Item::Num(..)) => {
+                last.push(it);
+            }
+            _ => out.push(vec![it]),
+        }
+    }
+    out
+}
+
+fn row_h(ui: &mut Ui<'_>, it: &Item, wide: f32) -> f32 {
     match it {
-        Item::Num(..) => w::NUM_W,
-        Item::Check(..) => ui.check_w(tr("joint_editor.on")),
-        Item::Drive => {
-            let segs = drive_segs(ui);
-            ui.segmented_w(&segs)
-        }
-        Item::Note(k) => ui.ts.prefix_width(tr(k), m::VALUE_PX),
+        Item::Menu(_) => m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H,
+        #[allow(clippy::cast_precision_loss)]
+        Item::Note(k) => wrap(ui, tr(k), wide).len() as f32 * NOTE_LINE,
+        _ => m::FIELD_H,
     }
 }
 
-fn group_w(ui: &mut Ui<'_>, g: &Group) -> f32 {
-    let mut sum = 0.0;
-    for (n, it) in g.1.iter().enumerate() {
-        sum += item_w(ui, it) + if n > 0 { m::FIELD_GAP } else { 0.0 };
+/// A cabeça de um cartão: a folga de cima, o título e o vão até ao corpo.
+const TOP: f32 = m::CARD_PAD_TOP + m::CARD_HEAD_H + m::CARD_HEAD_BOTTOM;
+
+/// A altura de um cartão na largura `w`.
+fn card_h(ui: &mut Ui<'_>, g: &Group, w: f32) -> f32 {
+    let iw = (w - m::CARD_PAD_X * 2.0).max(0.0);
+    let mut body = 0.0;
+    for (k, row) in rows(&g.1).iter().enumerate() {
+        body += row_h(ui, row[0], iw) + if k > 0 { m::FIELD_ROW_GAP } else { 0.0 };
     }
-    let title = ui.ts.prefix_width(tr(g.0), m::LABEL_PX);
-    sum.max(title) + PAD * 2.0
+    TOP + body + m::CARD_PAD_BOTTOM
+}
+
+/// Pinta um cartão no topo de `r` (a largura da coluna) e devolve a altura dele.
+fn card(ui: &mut Ui<'_>, r: Rect, g: &Group, at: &mut [Rect; 2]) -> f32 {
+    let iw = (r.w - m::CARD_PAD_X * 2.0).max(0.0);
+    let h = card_h(ui, g, r.w);
+    let bg = ui.c(ColorToken::KanbanCard);
+    fill_rounded_rect(ui.scene, Rect::new(r.x, r.y, r.w, h), m::CARD_RADIUS, bg);
+    let ink = ui.c(ColorToken::Text1);
+    let ty = r.y + m::CARD_PAD_TOP + folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX);
+    let tx = r.x + m::CARD_PAD_X;
+    paint_text_title_elided_tracked(
+        ui.ts,
+        ui.scene,
+        tr(g.0),
+        [tx, ty],
+        m::CARD_TITLE_PX,
+        iw,
+        ink,
+        0.0,
+    );
+    let mut y = r.y + TOP;
+    let half = (iw - m::FIELD_GAP) * 0.5;
+    for row in rows(&g.1) {
+        let rh = row_h(ui, row[0], iw);
+        let wide = if matches!(row[0], Item::Num(..)) {
+            half
+        } else {
+            iw
+        };
+        for (k, it) in row.into_iter().enumerate() {
+            #[allow(clippy::cast_precision_loss)]
+            let x = tx + (half + m::FIELD_GAP) * k as f32;
+            item(ui, Rect::new(x, y, wide, rh), it, at);
+        }
+        y += rh + m::FIELD_ROW_GAP;
+    }
+    h
 }
 
 fn drive_segs(ui: &Ui<'_>) -> Vec<(String, Hit, bool)> {
@@ -264,34 +312,47 @@ fn full_name(name: &str, unit: &str) -> String {
     )
 }
 
-fn paint_group(ui: &mut Ui<'_>, r: Rect, g: &Group) {
-    let border = ui.c(ColorToken::Border);
-    stroke_rounded_rect(ui.scene, r, m::CARD_RADIUS, m::FIELD_BORDER, border);
-    let t = Rect::new(r.x + PAD, r.y + PAD, r.w - PAD * 2.0, m::LABEL_PX);
-    ui.label(tr(g.0), t);
-    let mut x = r.x + PAD;
-    let y = r.y + PAD + m::LABEL_PX + m::LABEL_BOTTOM;
-    for it in &g.1 {
-        let iw = item_w(ui, it);
-        let b = Rect::new(x, y, iw, m::FIELD_H);
-        match *it {
-            Item::Num(f, glyph, name, unit) => {
-                let gl = match glyph {
-                    Glyph::Text(k) => Glyph::Text(tr(k)),
-                    icon @ Glyph::Icon(_) => icon,
-                };
-                let u = if unit.is_empty() { "" } else { tr(unit) };
-                ui.number(b, gl, &full_name(name, unit), u, f);
-            }
-            Item::Check(f, name, on) => {
-                ui.check(b, tr("joint_editor.on"), tr(name), Hit::Flag(f), on)
-            }
-            Item::Drive => {
-                let segs = drive_segs(ui);
-                ui.segmented(b, &segs);
-            }
-            Item::Note(k) => ui.put(tr(k), b, m::VALUE_PX, ColorToken::Text2),
+fn item(ui: &mut Ui<'_>, b: Rect, it: &Item, at: &mut [Rect; 2]) {
+    match it {
+        Item::Num(f, glyph, name, unit) => {
+            let gl = match *glyph {
+                Glyph::Text(k) => Glyph::Text(tr(k)),
+                icon @ Glyph::Icon(_) => icon,
+            };
+            let u = if unit.is_empty() { "" } else { tr(unit) };
+            ui.number(b, gl, &full_name(name, unit), u, *f);
         }
-        x += iw + m::FIELD_GAP;
+        Item::Check(f, name, on) => {
+            ui.check(b, tr("joint_editor.on"), tr(name), Hit::Flag(*f), *on);
+        }
+        Item::Scope(segs) => ui.segmented(b, segs),
+        Item::Note(k) => {
+            for (n, l) in wrap(ui, tr(k), b.w).iter().enumerate() {
+                #[allow(clippy::cast_precision_loss)]
+                let lr = Rect::new(b.x, b.y + NOTE_LINE * n as f32, b.w, NOTE_LINE);
+                ui.put(l, lr, m::VALUE_PX, ColorToken::Text2);
+            }
+        }
+        Item::Line(s) => ui.put(s, b, m::VALUE_PX, ColorToken::Text2),
+        Item::Inspect => ui.button(b, tr("joint_editor.open_inspector"), Hit::Inspect, true),
+        Item::Menu(menu) => {
+            let t = ui.doc.template();
+            let (label, value, tip) = match menu {
+                Menu::Kind => (
+                    "joint_editor.joint",
+                    tr(kind_key(t.kind)),
+                    "joint_editor.joint_tip",
+                ),
+                Menu::Template => ("joint_editor.template", t.name, "joint_editor.template_tip"),
+            };
+            let (label, h) = (tr(label), Hit::OpenMenu(*menu));
+            ui.label(
+                label,
+                Rect::new(b.x, b.y, b.w, m::LABEL_PX + m::LABEL_BOTTOM),
+            );
+            let bx = Rect::new(b.x, b.y + m::LABEL_PX + m::LABEL_BOTTOM, b.w, m::FIELD_H);
+            ui.dropdown(bx, value, h, &format!("{label}: {value}. {}", tr(tip)));
+            at[*menu as usize] = bx;
+        }
     }
 }

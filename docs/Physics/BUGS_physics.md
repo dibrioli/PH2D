@@ -1426,3 +1426,21 @@ o player DINÂMICO, fora do Snap — aberto, por bissectar entre `62c9ff8e9c` e 
    1,4123, e a frase «concordam na quarta decimal» (acaso de fase da faixa antiga) passa a ser a diferença
    calculada dos `BOB` (~5 %). O cinemático também reprovava (1,0079 contra 1,0860), escondido atrás do
    `assert` do dinâmico.
+4. **A prateleira alta (`physics_smoke_multi_jump`, cena 110) — culpado `f3a92736ab`** (o ápice real É a
+   Jump Height). Bissecção: `4f46a3573c` verde (centro final 3,10); `f3a92736ab`, `48afab6f40`, `eb83c15600`,
+   `62c9ff8e9c`, `eb729a2253`, `f820043427` vermelhos (2,70–2,71). Mecanismo: o v0 velho subia ~2,1 m para
+   2,0 pedidos; com o v0 exacto o corpo bate mais baixo na parede da alta. Mas a cena **nunca pousou**: o
+   gesto do gate começava encostado na parede da BAIXA, e o `assert` comparava o CENTRO com o topo — na
+   base o corpo escorregava pela parede com os pés 0,4 m abaixo do topo. Além disso, com 3,5 m de pista, um
+   pulo SIMPLES da beira da baixa chegava à alta. **A física nova está certa**; a cena foi refeita pela lei:
+   baixa 1,0 m, alta 3,6 m (acima de um pulo dado da baixa, 3,40; abaixo de dois do chão, 4,40), pista 6 m
+   (`HIGH_X0` 10), `FEET_GAP = FLOAT − 0,5`; gates pelos PÉS e parados, de três pontos da pista, e o novo
+   `a_single_jump_from_the_low_shelf_does_not_reach_the_high_one`.
+
+### Bug #14 — pular encostado na parede, com a seta contra ela, perde ~63 % do pulo — ⚠️ ABERTO (13/11)
+
+Medido na cena 110 (player dinâmico, Jump Height 2,0, segurado): parado no chão sobe 1,969; encostado na
+parede com `drive = 1` sobe **0,726** (com `drive = 0` encostado: 1,969). Igual em `4f46a3573c` (0,766),
+logo anterior a esta linha. Suspeita: atrito de Coulomb da cápsula contra a parede, com a força normal do
+motor de andar. Por decidir a cura (atrito zero nas paredes do player × combinar atrito só com o chão);
+a cena 110 contorna-o pedindo o pulo na pista.

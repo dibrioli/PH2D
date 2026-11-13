@@ -5,32 +5,55 @@
 //! gate que só afirmasse *"o da direita sobe"* passaria numa cena cuja
 //! prateleira alta fosse baixa demais para separar coisa alguma.
 
-use super::{HIGH_TOP, LANE_A, LANE_B, LANE_SPAN, LOW_TOP, build_multi_jump_scene};
+use super::{
+    FEET_GAP, FLOOR_LEN, HIGH_TOP, HIGH_X0, LANE_A, LANE_B, LANE_SPAN, LOW_TOP, LOW_X1,
+    build_multi_jump_scene,
+};
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
+use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, PlayerInput};
 
-/// O alcance MEDIDO de um pulo segurado (`measure_the_reachable_height`).
-const REACH_ONE: f32 = 1.903;
-/// O alcance MEDIDO de dois pulos segurados.
-const REACH_TWO: f32 = 4.028;
+/// A metade da cápsula de `spawn_player` (0,3 + 0,2): centro − isto = os pés.
+const HALF_H: f32 = 0.5;
 
-/// **A aritmética que a mensagem imprime está certa** — em tempo de compilação.
+/// **A aritmética que a mensagem imprime está certa** — derivada das alturas que a
+/// LEI promete (`jump_height` é o ápice real desde `f3a92736ab`), nunca de um alcance
+/// medido com a lei velha (1,903 / 4,028 deixavam de valer).
 ///
-/// ⚠️ **É este gate que impede a cena de deixar de conter o próprio fenômeno:**
-/// baixar a prateleira alta para dentro do alcance de um pulo faria os DOIS
-/// personagens subirem, e o smoke passaria a aprovar uma cena que não distingue
-/// nada.
+/// ⚠️ **É este gate que impede a cena de deixar de conter o próprio fenômeno.**
 #[test]
 fn the_scene_delivers_the_numbers_its_message_prints() {
+    let p = PlatformPlayer::default();
+    let one = FEET_GAP + p.jump_height;
+    let two = one + p.air_jump_height;
     // A baixa cabe num pulo só — é ela que prova que os dois sabem pular.
-    const _: () = assert!(LOW_TOP < REACH_ONE);
-    // A alta NÃO cabe num, e cabe em dois: é exatamente o vão desta wave.
-    const _: () = assert!(HIGH_TOP > REACH_ONE);
-    const _: () = assert!(HIGH_TOP < REACH_TWO);
-    // ⚠️ E as raias não se tocam: a raia mede 12 m de chão, então um vão menor
-    // deixaria um personagem alcançar a geometria do vizinho e o contraste
-    // deixaria de ser entre DOIS mundos iguais.
-    const _: () = assert!(LANE_SPAN >= 12.0);
+    assert!(LOW_TOP < one, "baixa {LOW_TOP} × um pulo {one}");
+    // A alta NÃO cabe num pulo, nem dado de cima da baixa, e cabe em dois do chão.
+    assert!(
+        HIGH_TOP > LOW_TOP + one,
+        "alta {HIGH_TOP} × da baixa {}",
+        LOW_TOP + one
+    );
+    assert!(HIGH_TOP < two, "alta {HIGH_TOP} × dois pulos {two}");
+    // O repouso medido é o `FEET_GAP` da conta.
+    let mut sim = SimWorld::new();
+    let (_, b) = build_multi_jump_scene(sim.world_mut());
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=30 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let rest = sim
+        .world()
+        .get::<Transform>(b)
+        .expect("transform")
+        .translation
+        .y;
+    assert!(
+        (rest - HALF_H - FEET_GAP).abs() < 0.01,
+        "pés em repouso {}",
+        rest - HALF_H
+    );
+    // ⚠️ E as raias não se tocam.
+    const _: () = assert!(LANE_SPAN >= FLOOR_LEN);
     const _: () = assert!(LANE_B - LANE_A == LANE_SPAN);
 }
 
@@ -94,10 +117,10 @@ fn the_same_gesture_lifts_only_the_one_with_a_charge() {
     // E o alto que ele alcança tem de passar da prateleira ALTA, senão a cena
     // mostra uma diferença que não chega a lugar nenhum.
     assert!(
-        two > HIGH_TOP,
+        two - HALF_H > HIGH_TOP,
         "o da direita tem de passar do topo da prateleira alta ({HIGH_TOP}): {two:.3}"
     );
-    assert!(one < HIGH_TOP, "e o da esquerda NAO: {one:.3}");
+    assert!(one - HALF_H < HIGH_TOP, "e o da esquerda NAO: {one:.3}");
 }
 
 /// **E os dois sobem a prateleira BAIXA** — o controle que torna a falha acima
@@ -110,32 +133,25 @@ fn both_of_them_clear_the_low_shelf() {
     let (one, two) = drive(&script);
     for (who, y) in [("sem carga", one), ("com carga", two)] {
         assert!(
-            y > LOW_TOP,
+            y - HALF_H > LOW_TOP,
             "o {who} tem de passar do topo da prateleira baixa ({LOW_TOP}): {y:.3}"
         );
     }
 }
 
-/// **E o passo 3 do roteiro é VERDADE: ele POUSA em cima da prateleira alta.**
-///
-/// ⚠️ **O pico não é o mesmo que pousar**, e é por isso que este gate existe ao
-/// lado do de cima: um personagem pode passar do topo e cair de volta do lado
-/// errado. A mensagem promete um pouso, e uma promessa de roteiro que a cena não
-/// cumpre é o que faz o artista concluir que a feature está quebrada.
-#[test]
-fn the_charged_one_lands_on_the_high_shelf() {
+/// Põe os dois em `x0 + at` (`y` pela altura), dirige a MESMA entrada e devolve o
+/// centro final de cada um.
+fn run_from(at: f32, y0: f32, script: &[(bool, f32)]) -> (f32, f32) {
     let mut sim = SimWorld::new();
     let (one, two) = build_multi_jump_scene(sim.world_mut());
+    for (e, x0) in [(one, LANE_A), (two, LANE_B)] {
+        let mut t = sim.world_mut().get_mut::<Transform>(e).expect("transform");
+        t.translation.x = x0 + at;
+        t.translation.y = y0;
+    }
     let mut bridge = PhysicsBridge::new();
-    let y = |sim: &SimWorld, e: Entity| {
-        sim.world()
-            .get::<Transform>(e)
-            .expect("transform")
-            .translation
-            .y
-    };
     let mut tick = 0_u64;
-    let mut step = |sim: &mut SimWorld, bridge: &mut PhysicsBridge, jump: bool, drive: f32| {
+    for &(jump, drive) in std::iter::repeat_n(&(false, 0.0), 30).chain(script) {
         let input = PlayerInput {
             jump,
             drive,
@@ -144,34 +160,67 @@ fn the_charged_one_lands_on_the_high_shelf() {
         bridge.set_player_input(one, input);
         bridge.set_player_input(two, input);
         tick += 1;
-        bridge.dispatch(sim, true, tick);
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    let y = |e: Entity| {
+        sim.world()
+            .get::<Transform>(e)
+            .expect("transform")
+            .translation
+            .y
     };
-    for _ in 0..30 {
-        step(&mut sim, &mut bridge, false, 0.0);
+    (y(one), y(two))
+}
+
+/// O gesto do passo 3, correndo: segura, solta, aperta de novo — e assenta parado.
+fn step_three() -> Vec<(bool, f32)> {
+    let mut s = vec![(true, 1.0); 22];
+    s.push((false, 1.0));
+    s.extend(std::iter::repeat_n((true, 1.0), 40));
+    s.extend(std::iter::repeat_n((false, 0.0), 90));
+    s
+}
+
+/// **E o passo 3 do roteiro é VERDADE: ele POUSA em cima da prateleira alta**, de
+/// qualquer ponto da pista em que o artista comece a correr.
+///
+/// ⚠️ **Pousar = os PÉS em cima do topo, parados.** O gate de antes comparava o
+/// CENTRO com o topo e passava com o corpo a escorregar pela parede (pés 0,4 m
+/// abaixo do topo) — e o gesto começava encostado na parede da baixa.
+#[test]
+fn the_charged_one_lands_on_the_high_shelf() {
+    let rest = FEET_GAP + HALF_H;
+    for lead in [0.3_f32, 0.8, 1.5] {
+        let (a, b) = run_from(LOW_X1 + lead, rest, &step_three());
+        assert!(
+            (b - HALF_H - FEET_GAP - HIGH_TOP).abs() < 0.02,
+            "da pista +{lead} o da direita tinha de POUSAR na prateleira (topo {HIGH_TOP}): \
+             pés {:.3}",
+            b - HALF_H
+        );
+        assert!(
+            a - HALF_H < HIGH_TOP,
+            "e o da esquerda tinha de ficar embaixo dela: pés {:.3}",
+            a - HALF_H
+        );
     }
-    // Anda para a direita até encostar na parede da prateleira alta.
-    for _ in 0..150 {
-        step(&mut sim, &mut bridge, false, 1.0);
+}
+
+/// **E nem da beira da prateleira BAIXA um pulo só chega à alta** — o atalho que a
+/// cena de 3,5 m de pista deixava aberto (o da esquerda aprovado no lugar do da direita).
+#[test]
+fn a_single_jump_from_the_low_shelf_does_not_reach_the_high_one() {
+    let on_low = LOW_TOP + FEET_GAP + HALF_H;
+    for (start, run) in [(2.5_f32, 15_usize), (2.5, 12), (3.0, 6), (3.6, 0)] {
+        let mut s = vec![(false, 1.0); run];
+        s.extend(std::iter::repeat_n((true, 1.0), 60));
+        s.extend(std::iter::repeat_n((false, 0.0), 60));
+        let (a, _) = run_from(start, on_low, &s);
+        assert!(
+            a - HALF_H < HIGH_TOP,
+            "da baixa (x {start}, corrida {run}) o da esquerda chegou à alta: pés {:.3}",
+            a - HALF_H
+        );
     }
-    // O gesto do passo 3: segura, solta, aperta de novo — sempre andando.
-    for _ in 0..22 {
-        step(&mut sim, &mut bridge, true, 1.0);
-    }
-    step(&mut sim, &mut bridge, false, 1.0);
-    for _ in 0..40 {
-        step(&mut sim, &mut bridge, true, 1.0);
-    }
-    // E deixa assentar onde quer que tenha parado.
-    for _ in 0..90 {
-        step(&mut sim, &mut bridge, false, 1.0);
-    }
-    let (a, b) = (y(&sim, one), y(&sim, two));
-    assert!(
-        b > HIGH_TOP,
-        "o da direita tinha de POUSAR em cima da prateleira (topo {HIGH_TOP}): {b:.3}"
-    );
-    assert!(
-        a < HIGH_TOP,
-        "e o da esquerda tinha de ficar embaixo dela: {a:.3}"
-    );
+    const _: () = assert!(HIGH_X0 > LOW_X1);
 }

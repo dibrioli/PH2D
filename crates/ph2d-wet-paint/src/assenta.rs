@@ -11,6 +11,10 @@ use crate::colorops::{km_glaze_channel_linear, velatura};
 #[path = "assenta/ponto.rs"]
 mod ponto;
 use ponto::{Parada, d_de, prepara};
+#[path = "assenta/newton.rs"]
+mod newton;
+pub use newton::{NEWTON_VOLTAS, VOLTAS_DE_FABRICA, VOLTAS_EXATAS};
+use newton::{newton_voltas, resolve};
 #[path = "assenta/memo.rs"]
 mod memo;
 pub use memo::{
@@ -379,63 +383,29 @@ const CEGO: f64 = 0.1;
 /// nada sobre este (11 · 6,41 | 15 · 12,69).
 const CEGO_COM_GLAZE: f64 = 0.01;
 
-/// Newton por canal sobre a cor que muda (`x`), a partir do palpite físico, até o ecrã voltar a `alvo`
-/// (a velatura do filme não compõe em passos: o palpite deixa um resto). A derivada é numérica — com o
-/// filme grosso a velatura pesa mais que a cobertura (medido: assumir `1 − a` dava passos 4× grandes e o
-/// miolo ia a preto); o passo tem tecto.
-///
-/// ⛔ Os canais NÃO são independentes: o tapar extra pesa a diferença de pigmento das TRÊS cores, e mexer
-/// num canal muda o ecrã dos outros. Cada canal lê o ecrã DEPOIS do anterior (Bug #49: com o ecrã do
-/// início da volta, a derivada do verde media a mudança do vermelho e o assentado ia a verde-água).
-///
-/// `cego`: a sensibilidade abaixo da qual o canal fica no palpite ([`CEGO`]; [`CEGO_COM_GLAZE`] sob o Glaze).
-fn resolve(
-    mut x: [f64; 3],
-    alvo: [f64; 3],
-    cego: f64,
-    ecra: impl Fn([f64; 3]) -> [f64; 3],
-    canal: impl Fn([f64; 3], usize) -> f64,
-) -> [f64; 3] {
-    const H: f64 = 0.5;
-    let mut y = ecra(x);
-    for _ in 0..4 {
-        if (0..3).all(|c| (y[c] - alvo[c]).abs() < 0.01) {
-            break;
-        }
-        let mut mexeu = false;
-        for c in 0..3 {
-            let mut xh = x;
-            xh[c] = if x[c] + H <= 255.0 {
-                x[c] + H
-            } else {
-                x[c] - H
-            };
-            // A derivada lê só o canal `c`: `canal(x, c) == ecra(x)[c]` ao bit (31/10, `assenta_bit_tests`).
-            let d = (canal(xh, c) - y[c]) / (xh[c] - x[c]);
-            // Onde o ecrã quase não vê esta cor (o filme grosso esconde o assentado) o palpite físico
-            // fica: corrigi-lo ali escrevia uma cor ESCONDIDA que aparecia quando o filme afinava
-            // (medido: o miolo esverdeava +24 ao secar).
-            if d.abs() < cego {
-                continue;
-            }
-            let passo = ((y[c] - alvo[c]) / d).clamp(-48.0, 48.0);
-            x[c] = (x[c] - passo).clamp(0.0, 255.0);
-            y = ecra(x);
-            mexeu = true;
-        }
-        // SEM (31/10, ao bit): uma volta com todo canal cego não mexe `x` nem `y` — a seguinte seria a mesma conta.
-        if !mexeu {
-            break;
-        }
-    }
-    x
-}
-
 /// **ASSENTAR:** a cor nova do assentado quando a cobertura do assentado passa de `a_s` a `a_s2` e a do
 /// filme de `a_f` a `a_f2` (o filme `uc` não muda de cor) — a que mantém [`cor`]. Sem a caixa das tintas de
 /// [`levanta`]: a tinta clara que TAPA a escura (a lei do Rebelle) guarda-se mais clara que a escura, e com o
 /// tecto o cruzamento seco ficava malva (`05 §4b` «Mistura II», tetraedro 0 → 15 %, o Rebelle 0).
 pub fn assenta(
+    e: Ecra,
+    sc: [f64; 3],
+    uc: [f64; 3],
+    a_s: f64,
+    a_f: f64,
+    a_s2: f64,
+    a_f2: f64,
+) -> [f64; 3] {
+    assenta_com_voltas(newton_voltas(), e, sc, uc, a_s, a_f, a_s2, a_f2)
+}
+
+/// [`assenta`] com as voltas do Newton à mão ([`VOLTAS_EXATAS`] = a conta exacta): os portões comparam sem mexer na
+/// chave global.
+#[doc(hidden)]
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn assenta_com_voltas(
+    voltas: u8,
     e: Ecra,
     sc: [f64; 3],
     uc: [f64; 3],
@@ -450,16 +420,21 @@ pub fn assenta(
         let par = Parada::de(vela, uc);
         let mut d_scuc = None;
         let mut h_af = None;
-        let alvo = prepara(
-            e,
-            sc,
-            uc,
-            a_s,
-            a_f,
-            || *h_af.get_or_insert_with(|| tapa(e, a_f)),
-            || *d_scuc.get_or_insert_with(|| par.d(vela, sc)),
-        )
-        .sobre_branco();
+        // Com 0 voltas o Newton não lê o alvo nem o `h2`: só o palpite (rodada 4).
+        let alvo = if voltas == 0 {
+            [0.0; 3]
+        } else {
+            prepara(
+                e,
+                sc,
+                uc,
+                a_s,
+                a_f,
+                || *h_af.get_or_insert_with(|| tapa(e, a_f)),
+                || *d_scuc.get_or_insert_with(|| par.d(vela, sc)),
+            )
+            .sobre_branco()
+        };
         if a_s <= 0.0 && a_f2 <= 0.0 {
             return uc;
         }
@@ -503,10 +478,14 @@ pub fn assenta(
                 x0[k] += m * (produto - x0[k]);
             }
         }
+        if voltas == 0 {
+            return ponto::na_caixa_opaca(opaca, a_s, sc, uc, x0);
+        }
         let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
         let h2 = tapa_de_novo(e, h_af, a_f, a_f2);
         let ecra = |x: [f64; 3]| prepara(e, x, uc, a_s2, a_f2, || h2, || par.d(vela, x));
         let x = resolve(
+            voltas,
             x0,
             alvo,
             cego,
@@ -542,7 +521,7 @@ pub fn assenta(
                 [0, 1, 2].map(|c| sc[c] + (uc[c] - sc[c]) * w)
             };
             let ecra = |x| cor(e, x, uc, a_s2, a_f2);
-            resolve(x0, alvo, CEGO, ecra, |x, c| ecra(x)[c])
+            resolve(voltas, x0, alvo, CEGO, ecra, |x, c| ecra(x)[c])
         }
     }
 }
@@ -586,6 +565,7 @@ fn levanta_cobre(
     let h2 = tapa_de_novo(e, h_af, a_f, a_f2);
     let ecra = |x: [f64; 3]| prepara(e, sc, x, a_s2, a_f2, || h2, || par.d(vela, x));
     resolve(
+        VOLTAS_EXATAS,
         x0,
         alvo,
         CEGO,
@@ -686,11 +666,14 @@ fn levanta_resto(
                 [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
             };
             let ecra = |x| cor(e, sc, x, a_s2, a_f2);
-            resolve(x0, alvo, CEGO, ecra, |x, c| ecra(x)[c])
+            resolve(VOLTAS_EXATAS, x0, alvo, CEGO, ecra, |x, c| ecra(x)[c])
         }
     }
 }
 
+#[cfg(test)]
+#[path = "assenta/aproxima_tests.rs"]
+mod aproxima_tests;
 #[cfg(test)]
 #[path = "assenta/tests.rs"]
 mod tests;

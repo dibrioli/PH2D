@@ -66,6 +66,9 @@ fn rota(r: &str) {
     ph2d_wet_paint::solver::TRANSPORTE_LANES.store(1, Relaxed);
     use ph2d_wet_paint::assenta as asn;
     asn::MEMO_ASSENTA.store(1, Relaxed);
+    asn::NEWTON_VOLTAS.store(asn::VOLTAS_EXATAS, Relaxed);
+    asn::memo_esquece();
+    asn::MEMO_BITS.store(15, Relaxed);
     let n = r.get(1..).and_then(|v| v.parse().ok());
     match (r.as_bytes().first(), n) {
         (Some(b'f'), Some(n)) => BLOCO_LINHAS.store(n, Relaxed),
@@ -74,6 +77,18 @@ fn rota(r: &str) {
         (Some(b'm'), _) => MOMENTO_FORA.store(0, Relaxed),
         // N.º 7: `z` = o TECTO de qualquer conta do assentar — a secagem sem ela (`MEMO_ASSENTA = 3`, resultado
         // errado). Medido 13/11: 6 traços média 30,5 (produto) × 27,1 ms (`z`) = 0,92 sim-s/s; `N7_ITEM1_sim6.md`.
+        // N.º 7 rodada 4: `wN` = o Newton do assentar com N voltas (4 = exacta; 0 = só o palpite).
+        (Some(b'w'), Some(n)) => asn::NEWTON_VOLTAS.store(u8::try_from(n).unwrap_or(4), Relaxed),
+        // `u` = só o palpite sem o memo; `pN` = só o palpite com o memo de N bits.
+        (Some(b'u'), _) => {
+            asn::NEWTON_VOLTAS.store(0, Relaxed);
+            asn::MEMO_ASSENTA.store(0, Relaxed);
+        }
+        (Some(b'p'), Some(n)) => {
+            asn::NEWTON_VOLTAS.store(0, Relaxed);
+            asn::MEMO_BITS.store(u8::try_from(n).unwrap_or(15), Relaxed);
+        }
+        (Some(b'y'), _) => asn::MEMO_ASSENTA.store(2, Relaxed),
         (Some(b'z'), _) => asn::MEMO_ASSENTA.store(3, Relaxed),
         // N.º 7 advecção: `q` = o commit em passe à parte (o de antes do complemento nos blocos).
         (Some(b'q'), _) => ph2d_wet_paint::solver::COMMIT_NO_BLOCO.store(0, Relaxed),
@@ -158,6 +173,16 @@ fn main() {
                 st[j].push(por);
             }
             hs[j] = hash(e.active_grid());
+        }
+    }
+    {
+        use std::sync::atomic::Ordering::Relaxed;
+        let [a, f] = [0, 1].map(|i| ph2d_wet_paint::assenta::MEMO_CONTA[i].load(Relaxed));
+        if a + f > 0 {
+            println!(
+                "  memo do assentar (rota y): {a} acertos · {f} falhas ({:.1} % falhas)",
+                100.0 * f as f64 / (a + f) as f64
+            );
         }
     }
     rota("a");

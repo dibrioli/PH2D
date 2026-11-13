@@ -103,7 +103,7 @@ Commits `adcd392fc7..HEAD` (5, só a curva do pulo, GEF 04):
 
 ### ABERTO para o INTEGRADOR / GEF02
 
-- **Ponte (proibida a esta linha):** em `bridge/player.rs`, depois de `let mut cfg = cfg.config();`, pôr `cfg.jump.world_steps = crate::world_steps(&self.settings());` — e o mesmo em `components/player_arc.rs` (`jump_arcs`). Sem isso, um projeto com sub-passos/iterações fora da fábrica volta a errar a Jump Height (desenho e jogo seguem iguais entre si, ambos com 16).
+- ~~**Ponte:** `world_steps` do projeto para a lei~~ — FECHADO em `eb83c15600` (ver «Ponte autorizada»).
 - ~~Menor: abaixo de ~1 m a perna do jogo apanha o corpo antes da linha de pouso~~ — FECHADO em `15429fc87f`.
 - ~~Foto com nome sem prefixo `fisica_` falha calado~~ — FECHADO em `3b1060f92d`.
 
@@ -121,6 +121,7 @@ Pouso em pulo baixo (perna do jogo) · `layer_override` por forma no corte da cu
 
 ### ABERTO (o que resta)
 
-- **Ponte:** `world_steps` do projeto para a lei (linha pronta no adendo «Smoke do dono 12/11») e unificar a conta do degrau (`arc_terrain.rs` × `bridge/player_leg.rs`).
+- ~~**Ponte:** `world_steps` do projeto para a lei~~ — FECHADO em `eb83c15600`: a ponte escreve `cfg.jump.world_steps` do mundo VIVO (`settings_vivos`) e `arc::simulate` os do `ArcWorld`; `launch_speed` corrige até `LAUNCH_TOL` = 1e-5 m (os 3 passos fixos deixavam 1,6 mm a 1×1). Gate `os_passos_do_projeto_sao_os_da_lei` (2×8, 8×2, 1×1; ≤ 1 mm, desenho = jogo).
+- ~~Unificar a conta do degrau (`arc_terrain.rs` × `bridge/player_leg.rs`)~~ — FECHADO em `895cfb7883`: UMA régua, `WalkConfig::step_limit() → StepLimit::refuses` (`STEP_EPS` em `ph2d-platformer` `walk_brink.rs`), a cópia sai. Gates gémeos `player_foot_fan::the_leg_refuses_an_outer_foot_on_a_step_steeper_than_the_limit` e `jump_arc::a_curva_recusa_o_degrau_que_a_perna_recusa` (eb83c15600).
 - **Bug #11 do wall jump** (GEF02, [BUGS_physics.md](../../Physics/BUGS_physics.md)).
 - **Tecto da shell:** reconte pelo integrador (§4).

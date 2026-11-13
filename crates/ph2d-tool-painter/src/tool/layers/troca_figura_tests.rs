@@ -508,3 +508,103 @@ fn a_troca_com_a_tinta_viva_do_wet_marca_so_a_janela_da_tinta() {
         }
     }
 }
+
+/// Uma mudança de píxeis ainda por drenar na activa (a simulação viva do Wet marca a sua a ~40 imagens/s): escreve
+/// uma faixa e marca-a. Devolve a região.
+fn sujo_pendente(t: &mut PainterTool, k: u8) -> crate::compositor::Region {
+    let r = crate::compositor::Region {
+        x: 4,
+        y: 8 + u32::from(k % 4) * 6,
+        w: 30,
+        h: 4,
+    };
+    let l = LADO as usize * 4;
+    let px = Arc::make_mut(&mut t.canvas_rgba);
+    for y in r.y..r.y + r.h {
+        let i = y as usize * l + r.x as usize * 4;
+        for p in px[i..i + r.w as usize * 4].chunks_mut(4) {
+            p.copy_from_slice(&[200, 30 + k, 60, 255]);
+        }
+    }
+    t.mark_dirty(r);
+    r
+}
+
+/// N7 onda 4 — a troca com um sujo CONFINADO pendente (no app a simulação viva do Wet deixa-o quase sempre no
+/// clique): o cache fica, o sujo continua o da mudança (nunca a tela inteira), e a figura mostrada é, bit a bit, a
+/// da recomposição inteira (undo/redo também) — pista CPU com e sem a tinta viva, e pista da placa (a reivindicação
+/// fica confinada). O controlo (`TROCA_RECOMPOE_SEMPRE`) recompõe tudo e dá a mesma figura.
+#[test]
+fn a_troca_com_um_sujo_pendente_nao_recompoe_e_a_figura_fica() {
+    for (wet, antes) in [(false, false), (true, false), (false, true), (true, true)] {
+        let mut d = doc(wet);
+        if wet {
+            d.t.select_layer(d.b);
+            d.t.set_paint_tool_mode("wetpaint");
+            traco(&mut d.t, 24.0);
+            assert!(d.t.tinta_viva(), "controlo: a sessão viva");
+        }
+        let (a, b, c) = (d.a, d.b, d.c);
+        for (k, alvo) in [a, c, b, a].into_iter().enumerate() {
+            if d.t.layers.active() == Some(alvo) {
+                continue;
+            }
+            let caso = format!("wet={wet} antes={antes} passo {k}");
+            let _ = na_tela(&mut d.t);
+            let r = sujo_pendente(&mut d.t, k as u8);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+            d.t.select_layer(alvo);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+            assert_eq!(
+                d.t.composited_is_some(),
+                !antes,
+                "{caso}: o cache ficou (ou não)"
+            );
+            if !antes {
+                let s = d.t.dirty_rect.expect("o sujo pendente");
+                // Com a tinta viva a janela da que adormece soma-se (o ruído da fixture cobre a tela inteira).
+                assert!(
+                    wet || s.w < LADO || s.h < LADO,
+                    "{caso}: o sujo virou a tela inteira ({s:?})"
+                );
+                assert!(
+                    s.x <= r.x && s.y <= r.y && s.x + s.w >= r.x + r.w && s.y + s.h >= r.y + r.h,
+                    "{caso}: o sujo pendente perdeu-se ({s:?} ⊉ {r:?})"
+                );
+            }
+            confere_a_figura(&mut d.t, &caso);
+            assert!(d.t.undo_last(), "{caso}: desfaz");
+            confere_a_figura(&mut d.t, &format!("{caso} · undo"));
+            assert!(d.t.redo_last(), "{caso}: refaz");
+            confere_a_figura(&mut d.t, &format!("{caso} · redo"));
+        }
+    }
+    // A pista da placa: o slot é a figura fora do sujo; a troca não a declara velha e a reivindicação fica a do sujo.
+    for antes in [false, true] {
+        let mut d = doc(false);
+        let (a, c) = (d.a, d.c);
+        for (k, alvo) in [a, c].into_iter().enumerate() {
+            d.t.pede_a_composicao_inteira();
+            assert!(d.t.take_preview_dirty(), "a placa drena");
+            let r = sujo_pendente(&mut d.t, k as u8);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(antes));
+            d.t.select_layer(alvo);
+            TROCA_RECOMPOE_SEMPRE.with(|x| x.set(false));
+            assert_eq!(
+                d.t.gpu_lane_stale, antes,
+                "placa antes={antes}: a pista ficou velha (ou não)"
+            );
+            assert!(d.t.take_preview_dirty(), "placa: o sujo pendente drena");
+            let claim = d.t.preview_gpu_region();
+            if antes {
+                assert_eq!(claim, None, "controlo: a placa refaz inteira");
+            } else {
+                assert_eq!(
+                    claim,
+                    Some((r.x, r.y, r.w, r.h)),
+                    "placa: a reivindicação é a do sujo"
+                );
+            }
+        }
+    }
+}

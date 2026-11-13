@@ -32,6 +32,8 @@ mod passo_tests;
 mod preview;
 #[cfg(test)]
 mod sonda_4k_tests;
+#[cfg(test)]
+mod sonda_n7_app_tests;
 mod texture;
 #[cfg(test)]
 mod troca_figura_tests;

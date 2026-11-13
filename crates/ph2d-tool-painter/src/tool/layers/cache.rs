@@ -113,7 +113,9 @@ impl PainterTool {
         // N7: a pista da placa drena com `composited = None`; sem sujo nem pista velha, o slot dela é a figura.
         let placa_em_dia = !antes && self.composited.is_none() && !self.gpu_lane_stale;
         (self.composited.as_ref().is_some_and(|c| c.len() == n) || placa_em_dia)
-            && !self.preview_dirty
+            // N7 onda 4: o sujo CONFINADO pendente (a simulação viva do Wet marca-o a ~40 imagens/s) fica para a
+            // drenagem seguinte, que o recompõe de qualquer modo; fora dele o cache é a figura.
+            && (!self.preview_dirty || (!antes && self.dirty_rect.is_some()))
             && self.canvas_rgba.len() == n
             && (self.layers.active() == Some(alvo)
                 || self

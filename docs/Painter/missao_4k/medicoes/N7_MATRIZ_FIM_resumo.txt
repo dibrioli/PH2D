@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/docs/Painter/ferramentas/mede_pen_up_4k.py", line 562, in <module>
+    matriz(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/docs/Painter/ferramentas/mede_pen_up_4k.py", line 35, in matriz
+    ultimo = int(d["parede"])
+ValueError: invalid literal for int() with base 10: ''

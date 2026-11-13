@@ -119,3 +119,55 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && cargo
   o vidro da vizinha fora da janela da tinta+vidro, não entra (o prazo do agente acabou antes da prova).
 - `cargo build -p ph2d-tool-painter --profile smoke --tests` compila. Vizinhos verdes por nome: `troca` 37 · `fundo` 6 ·
   `duplicate` 2 · `camadas_integridade` 9 · `o_fundo_do_toque` 3 · `adormec` 32 · `mais_sem_diff` 3 · `vidro` 32.
+
+## Onda 4 (13/11) — o que o APP paga além dos testes
+
+Matriz do app (camada nova, 4K, Textured Paper, load < 1), ms (trocar / voltar / duplicar / apagar / grupo):
+antes das ondas `N7_MATRIZ_NOVA_resumo.txt`, depois das ondas 1–3 `N7_MATRIZ_FIM_NOVA_resumo.txt` (log `N7_MATRIZ_FIM_NOVA.log`):
+
+| pincel | antes das ondas | depois das ondas 1–3 |
+|---|---|---|
+| Digital (Chalk etc.) | 34/34/40/33/41 | 13/13/34/27/36 |
+| Watercolor Basic | 80/73/76/74/80 | 14/13/85/66/72 |
+| Express Oil | 235/82/41/77/41 | 45/43/41/49/41 |
+| Filbert | 239/96/39/93/41 | 64/63/46/60/40 |
+| Wet Liner | 88/91/53/73/42 | **100**/41/61/44/47 |
+| omissão wet | 75/78/55/66/46 | 73/81/55/37/41 |
+
+Leitura dos logs por pincel (`target/mede-pen-up/matriz/*.log`, o quadro lento e o `[paint-perf] WORST split` na janela
+de tempo de cada marca; as linhas da coluna 3 das `.marcas` não batem com o log, use o relógio `parede=`):
+
+1. **Wet a trocar (40–100 ms) — mecanismo e cura (feito).** Wet Liner: quadro 99 ms, despacho 45 ms com a dobra em
+   **TELA** (27 ms), ou seja, `invalidate_composite`. No app a simulação viva marca o próprio sujo a ~40 imagens/s
+   (`wet_ultima_imagem`), então no clique há quase sempre um sujo **pendente**, e `a_troca_mantem_com` exigia
+   `!preview_dirty`. Os testes da onda 3 andam com o relógio fixo, sem sujo pendente. Cura (`cache.rs::a_troca_mantem_com`):
+   um sujo pendente **confinado** (`dirty_rect` presente) não impede manter a figura. A drenagem seguinte recompõe-o de
+   qualquer modo, e fora dele o cache (ou o slot da placa, sem `gpu_lane_stale`) é a figura. Com
+   `PH2D_TROCA_RECOMPOE=1` vale o `!preview_dirty` de antes.
+   - Gate `a_troca_com_um_sujo_pendente_nao_recompoe_e_a_figura_fica`: píxeis escritos e marcados na activa antes da
+     troca; pista CPU com e sem a tinta viva do Wet; o cache fica, o sujo contém o pendente (sem a tinta viva, não é a
+     tela), a figura é a da recomposição inteira ao bit, com undo/redo; na pista da placa a pista não fica velha e a
+     reivindicação é a do sujo; o controlo `TROCA_RECOMPOE_SEMPRE` recompõe. Mutação M7 (volta `!preview_dirty`) dá vermelho.
+   - Sonda `sonda_n7_app_tests.rs` (`#[ignore]`: a cena da matriz a 4K com Textured Paper, `--profile smoke`), drenagem
+     depois da troca com o sujo pendente: digital 45,8/43,9 → **2,0/1,4 ms**, Wet 41,7/40,6 → **6,5/6,3 ms**.
+2. **O piso de ~25–35 ms do duplicar/apagar/grupo (mecanismo achado, NÃO curado).** Chalk: duplicar dá um quadro de
+   32,6 ms com despacho de 5,0 ms e `fold 0.3 janela=rect`; apagar 25,6/1,2; grupo 34,7/0,9. A ferramenta já confina (a
+   sonda mede gesto ~1,3 ms + drenagem CPU 4,6–5,8 ms). Quem paga é a **placa**: `ph2d-app-painter/src/painter_gpu_preview.rs::regiao_suja`
+   só confina a composição quando `s.entradas.0 == ops`. Duplicar, apagar e agrupar mudam a lista achatada, então a
+   placa compõe a pilha 4K inteira (≈24 ms, a mesma conta da onda 1), mesmo com a dobra já confinada.
+   Cura proposta: a ferramenta expõe «a estrutura mudou só no sujo» (posto por `a_estrutura_muda_so_em` no ramo
+   `Window`, consumido no `take_preview_dirty`), e o `regiao_suja` aceita `ops` diferentes quando esse sinal vem com
+   luts e papel iguais. Prova necessária: `composite_region_into_canvas` com a lista nova recompõe a região só das
+   fatias, sem cache intermédio por lista. Gate na placa ao bit contra `SEMPRE_INTEIRA`, com mutação. Não entrou nesta
+   onda porque o prazo do agente não cobria o gate na placa.
+3. **Watercolor Basic duplicar/apagar/grupo (66–85 ms): não provado, continua a recompor.** O log diz pista CPU,
+   `branch=FULL-composite`, preview 49–68 ms + upload 5,3: `alcance_da_tinta_de` → `None` pela guarda
+   `papel_atravessa_vidro` (a do «+»). O caso vidro + papel de cor continua sem prova (ver a onda 3). Também ficam de
+   fora **Wet duplicar/grupo**: `alcance_da_tinta_de` recusa a `tinta_viva()` e a sonda mostra a drenagem inteira
+   (44–50 ms). A cura seria a da troca da onda 3 (marcar a janela da que adormece/acorda).
+
+Vizinhos verdes por nome (`--profile smoke`): `troca` 36 · `fundo` 6 · `duplicate` 2 · `camadas_integridade` 9 ·
+`o_fundo_do_toque` 3 · `adormec` 32 · `mais_sem_diff` 3 · `vidro` 32. `cargo build -p ph2d-tool-painter --profile smoke --tests` compila.
+
+Re-correr (coordenador): a mesma linha do «Re-correr a matriz» acima. Esperado: Wet trocar/voltar caem para ~13–20 ms;
+duplicar/apagar/grupo ficam iguais até ao item 2.

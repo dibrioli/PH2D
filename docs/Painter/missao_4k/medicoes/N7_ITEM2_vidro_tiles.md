@@ -1,7 +1,7 @@
 # N.º 7, item 2 — o vidro no journal por tile (ADR-0204): estado
 
 > ADR: [`0204`](../../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md).
-> Linha `line/PainterWatercolor`, 13/11. 4.º agente (45 min): risco do D3 fechado por gate; cena do Digital e passos 5–7 por fazer.
+> Linha `line/PainterWatercolor`, 13/11. 5.º agente (45 min): cópia da camada, cena do Digital, passos 5 e 6 fechados; passos 7 e 8 por fazer.
 
 ## Passos feitos
 
@@ -14,6 +14,9 @@
 | sonda A×B | `85c5ca59db` | `sonda_primeiro_traco`: `PH2D_SONDA_VIDRO=1\|0\|ab` + `PH2D_SONDA_REPETE`; o script pede `ab` × 4. NÃO corrida. |
 | 4 (D3) | `7d170f223d` | `BaseCongelada = (Weak, camada, SessaoDoVidro)`: `TileJournal<Vidro>` ancorado na congelação, alimentado no `abre_o_vidro` (antes da escrita do quadro) e no `continua_o_vidro_do_traco` (aguada e `molhada` da mesma camada). `Quadro.vbase` = `JanelaDoVidro` densa da caixa do quadro, `Index` pelo índice GLOBAL (os sete leitores em `texel.rs`/`pixel.rs` só mudam de tipo). O congelado deixa de ser dono do plano. |
 | 0 (medição) | `40516925ce` | `quem_segura_o_vidro_no_segundo_pen_down` (teste leve, não ignorado) + acessor `cfg(test)` `UndoController::cursor_segura_o_vidro`. |
+| 6 (cópia) | `d1d8940867` | `GuardaDaSessao { tela, camada }`: a guarda da sessão molhada leva a camada dona; a CÓPIA (que partilha o `Arc`, B18.1) não herda a sessão. |
+| D2 Digital | `cd08bc8ef3` | Cena de aguada alfa < 255 (camada transparente) em papel de cor, com dreno por evento: separa o journal do vivo. |
+| 5 + 6 | `f0996ce78b` | `o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer`, `a_camada_nova_e_o_vidro_elidido_dao_o_bit`. |
 
 Sonda pesada do passo 0 a 4K: **na fila** (`bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh`, posição 5): o
 subagente não pode correr `--ignored`. É a mesma sonda para o «depois» do alvo.
@@ -136,6 +139,32 @@ devagar), fluxo < 1. Não simplificar o código.
   vivo). Cura a decidir no passo 6: duplicar/trocar de camada seca a sessão, ou a cópia herda a sessão (journal) da
   original.
 
+**5.º agente (13/11).**
+- **Cópia da camada (passo 6), CURADO.** Decisão: a cópia é um objecto novo e começa SEM sessão; a sessão é da
+  original. Coerente com a troca de camada de hoje: A→B→A sem pintar B continua a sessão de A (a tela volta com o
+  mesmo `Arc`, `flush_active_to_images`/`own_image`); pintar aguada em B abre sessão nova (a de A acaba), como antes.
+  Cura sem custo (copiar o plano para dar `Arc` novo à cópia custaria 67 MB a 4K): `wet_session_canvas` passa a
+  `GuardaDaSessao { tela, camada }`, e `wet_session_continues` exige `camada == layers.active()`
+  (`watercolor_backdrop.rs`, `arma_a_guarda_da_sessao` nos três armadores). Gate
+  `duplicar_a_camada_com_vidro_e_pintar_uma_nao_muda_a_outra` (2 aguadas, duplicar; a cópia começa sessão própria;
+  pintar a cópia não muda a original e vice-versa; ir à original e voltar sem pintar CONTINUA a sessão da cópia;
+  `vbase` ao bit em > 20 janelas) + a duplicação de volta em `trocar_de_meio_a_meio_da_sessao_da_o_vidro_da_base_ao_bit`.
+  Mutação «a guarda sem a camada» ⇒ **VERMELHO nos dois** («a cópia herdou a sessão»). Vizinhos verdes por nome:
+  `watercolor_session` (26), `vidro` (29), `troca` (31), `adormec` (29), `copias_de_plano` (4), `duplicate` (2),
+  `watercolor_liga_a_meio`, `wet_session`.
+- **Cena do Digital, FECHADA.** A mutação sobrevivia por um motivo de RÉGUA, não de cena: o vidro só segue o traço
+  QUADRO a QUADRO no dreno da pré-visualização (`segue_o_vidro_no_quadro`, `dreno.rs`, e só com papel de cor), e o
+  teste nunca chamava `take_preview_arc` — então `continua_o_vidro_do_traco` corria uma vez, no pen-up, com
+  vivo = antes (sonda: 8 leituras, 0 diferenças). Cena nova no mesmo gate: camada transparente (alfa < 255,
+  controlo) + papel de cor + `take_preview_arc` por evento: 108 leituras, 100 com journal ≠ vivo. Mutação «o
+  antes lê o vivo» ⇒ **VERMELHO** («o vidro difere do oráculo»).
+- **Passo 5** `o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer`: 3 aguadas + 3 Wet (vai e volta, dreno) em
+  papel de cor; controlo: o Wet escreveu o vidro; desfaz 6 e refaz 6, o documento inteiro (todos os vidros e telas) ao
+  bit do oráculo a cada passo. **Verde** (sem mutação própria).
+- **Passo 6** `a_camada_nova_e_o_vidro_elidido_dao_o_bit`: verde; desfaz até ao fim (≥ 6 passos, a camada nova sem
+  vidro) e refaz tudo ao bit. **Cópias do plano no 1.º traço na base depois do «+»: 0** (gravado, não asserido).
+- Gates do ficheiro do journal: 7 verdes por nome (`watercolor_vidro_journal_tests`), do restauro: 3.
+
 ## Armadilhas achadas
 
 1. **O plano que nasce no 1.º quadro era capturado nos quadros seguintes do MESMO traço** (1 MB a 520×390, sem
@@ -157,6 +186,17 @@ devagar), fluxo < 1. Não simplificar o código.
 8. Uma mutação no `side` atinge as DUAS rotas: o gate compara também com o estado GRAVADO.
 
 ## Próximo passo exato
+
+1. **Passo 7 (D5)**: `o_tecto_do_desfazer_conta_o_journal_do_vidro`. O journal do PASSO já soma em
+   `WriteState::journal_bytes_retidos` (`undo_window.rs:428`, `+ self.vidro.borrow().heap_bytes()`). Falta a
+   SESSÃO: `SessaoDoVidro::bytes` (`watercolor_vidro.rs:54`) é `cfg(test)`; tirá-lo do `cfg`, somar as duas sessões de
+   `vidro_congelado` num `vidro_congelado.bytes()` e esse no `bytes_do_instantaneo` (`instantaneo.rs:188`) — ⚠️ o gate
+   `medida_instantaneo_memoria` compara esse número com o alocador: correr por nome depois. Gate: gesto aberto ⇒ os
+   bytes = tiles capturados (passo + sessão); com o mesmo `max_bytes` a pilha retém ≥ os passos do oráculo.
+2. **Passo 8 (D7)**: censo dos `fork_canvas(.., None)` / `capture_canvas_arc` no traço WB e Wet a 4K (não começado).
+3. Coordenador: `bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh` (A×B, `ab` × 4).
+
+### Lista anterior (feita até ao 4)
 
 0. Risco do D3: FEITO (acima); falta o achado da cópia (passo 6).
 1. **Cena do Digital** (acima): aguada de alfa < 255 + Digital lento, fluxo 0,3, mesmo texel em 2 quadros; acrescentar

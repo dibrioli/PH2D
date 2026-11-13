@@ -81,9 +81,24 @@ pub enum Foto {
     Fisica(ph2d_physics_scene::fotos_dos_cartoes::CasoFisica),
 }
 
+/// Os nomes que [`foto_de`] aceita além dos `fisica_*` (censo em [`crate::nomes`]).
+pub const NOMES: &str = "seletor sprite_vazio sprite_uso sprite_advanced sprite_custom sprite_recibo sprite_repetida \
+    sprite_pivo_pe sprite_painter_volta sprite_painter_aplica sprite_painter_sem_pintar \
+    sprite_no_painter sprite_no_painter_traco sprite_transform_no_draw sprite_pivot_chave sprite_moeda \
+    trocado bloco bandeira animada largada baixa larga uso_animada uso_parada player_parado \
+    repetida_da_parada voltas heroi_animado player_repetido memoria memoria_repetida camera \
+    camera_livre camera_zoom camera_limites camera_retro camera_olhar camera_arrasta camera_clique \
+    camera_borda camera_canto camera_olhar_arrasta camera_chave camera_desfaz camera_fora camera_segue \
+    camera_sem_previa camera_larga ordem_sonda";
+
 #[must_use]
 pub fn foto() -> Option<Foto> {
-    let pedida = std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?;
+    foto_de(&std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?)
+}
+
+/// A foto deste nome.
+#[must_use]
+pub fn foto_de(pedida: &str) -> Option<Foto> {
     if let Some(c) = ph2d_physics_scene::fotos_dos_cartoes::caso(pedida.trim()) {
         return Some(Foto::Fisica(c));
     }

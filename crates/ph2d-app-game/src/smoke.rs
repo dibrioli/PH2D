@@ -70,7 +70,7 @@ pub use ph2d_game_smoke_fotos::{
 };
 pub use ph2d_physics_scene::fotos_dos_cartoes::{CasoFisica, estado_do_player, plano_da_forma};
 
-pub use ph2d_game_smoke_fotos::{player, por_nome};
+pub use ph2d_game_smoke_fotos::{nomes, player, por_nome};
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[
     ph2d_app_host::SmokeRouter {
@@ -152,6 +152,32 @@ pub fn conducao_in(get: impl Fn(&str) -> Option<String>) -> Option<GameStage> {
         "fullscreen" => Some(GameStage::Fullscreen),
         "editor" => Some(GameStage::Editor),
         _ => None,
+    }
+}
+
+/// Os condutores que [`conducao_in`] aceita (censo em `smoke_tests`).
+pub const CONDUCOES: &str = "window fullscreen editor";
+
+/// A recusa dos nomes do smoke (`PH2D_GAME_SMOKE_FOTO`, `PH2D_GAME_SMOKE_DRIVE`) lidos por `get`; sem eles, `None`.
+#[must_use]
+pub fn recusa_in(get: impl Fn(&str) -> Option<String>) -> Option<String> {
+    use ph2d_game_smoke_fotos::nomes::{aceita_foto, nomes_da_foto, recusa};
+    let lida = |k: &str| get(k).filter(|v| !v.trim().is_empty());
+    let foto = lida("PH2D_GAME_SMOKE_FOTO")
+        .and_then(|f| recusa("PH2D_GAME_SMOKE_FOTO", &f, &nomes_da_foto(), aceita_foto));
+    foto.or_else(|| {
+        let d = lida("PH2D_GAME_SMOKE_DRIVE")?;
+        recusa("PH2D_GAME_SMOKE_DRIVE", &d, CONDUCOES, |n| {
+            conducao_in(|_| Some(n.to_owned())).is_some()
+        })
+    })
+}
+
+/// No arranque, antes da janela: um nome que nenhum leitor aceita sai com a mensagem e o código 2.
+pub fn recusa_nomes_desconhecidos() {
+    if let Some(m) = recusa_in(|k| std::env::var(k).ok()) {
+        eprintln!("{m}");
+        std::process::exit(2);
     }
 }
 

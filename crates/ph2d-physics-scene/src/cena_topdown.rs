@@ -133,6 +133,9 @@ pub enum Foto {
     Desligado,
 }
 
+/// Os nomes que [`foto`] aceita (censo em `ph2d_game_smoke_fotos::nomes`).
+pub const NOMES: &str = "topdown_more topdown_off";
+
 /// A foto pedida pelo nome.
 #[must_use]
 pub fn foto(nome: Option<&str>) -> Option<Foto> {

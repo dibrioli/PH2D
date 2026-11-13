@@ -144,9 +144,25 @@ pub enum Foto {
     PivoSegueEscalaDesfaz,
 }
 
+/// Os nomes que [`foto_de`] aceita (`animado_idle_q<N>` por um exemplo; censo em `ph2d_game_smoke_fotos::nomes`).
+pub const NOMES: &str = "animado_idle_q0 animado_vazio animado_uso animado_more animado_editor animado_inicio animado_aviso \
+    animado_regra animado_estreito animado_prova_play animado_prova_desfaz animado_folhas \
+    animado_folhas_editor animado_folhas_apagada animado_folhas_trim animado_folhas_trim0 \
+    animado_folhas_edit animado_folhas_pivo animado_folhas_troca animado_alinhadas_idle \
+    animado_alinhadas_run animado_align animado_align_escala animado_align_desfaz animado_align_pes \
+    animado_align_pes_desfaz animado_desalinhadas animado_desalinhadas_acertadas animado_pivot \
+    animado_pivot_pes animado_pivot_desfaz animado_pivot_mao animado_pivot_segue \
+    animado_pivot_segue_desfaz animado_pivot_segue_escala_desfaz animado_folhas_desfaz \
+    animado_tira_rolada";
+
 #[must_use]
 pub fn foto() -> Option<Foto> {
-    let nome = std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?;
+    foto_de(&std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?)
+}
+
+/// A foto deste nome.
+#[must_use]
+pub fn foto_de(nome: &str) -> Option<Foto> {
     if let Some(k) = nome.trim().strip_prefix("animado_idle_q") {
         return k.parse().ok().map(Foto::IdleQuadro);
     }

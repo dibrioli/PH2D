@@ -165,6 +165,17 @@ pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
     })
 }
 
+/// Os nomes que [`caso`] aceita, separados por espaço; o arranque do smoke recusa o nome que nenhum leitor aceita
+/// (`ph2d_game_smoke_fotos::nomes`), e o censo de lá confere esta lista contra os braços de [`caso`].
+pub const NOMES: &str = "fisica_dynamic fisica_kinematic fisica_static fisica_baixa fisica_larga fisica_sensor fisica_bola \
+    fisica_esticada fisica_player fisica_player_cartoes fisica_player_pulo fisica_player_pulo_terreno \
+    fisica_solta fisica_peca fisica_vazia fisica_camadas fisica_camada_sozinha fisica_camada_com_pares \
+    fisica_camadas_no_painel fisica_forma_caixa fisica_forma_arrasto fisica_forma_bola \
+    fisica_forma_player fisica_forma_rodado fisica_forma_espelho fisica_forma_pivo fisica_forma_desfaz \
+    fisica_forma_chave fisica_forma_chave_desfaz fisica_forma_esc fisica_forma_esc_chave \
+    fisica_forma_alt fisica_forma_shift fisica_forma_desliga fisica_forma_peca fisica_forma_sensor \
+    fisica_forma_solta fisica_forma_clique fisica_forma_ponta fisica_forma_fit fisica_forma_fit_fica";
+
 /// O caso do nome pedido em `PH2D_GAME_SMOKE_FOTO`.
 #[must_use]
 pub fn caso(nome: &str) -> Option<CasoFisica> {

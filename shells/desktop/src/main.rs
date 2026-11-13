@@ -975,6 +975,7 @@ pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 /// (`forge`, `workshop`, `sunstone`, `blueprint`).
 fn main() {
     install_panic_hook();
+    ph2d_app_game::smoke::recusa_nomes_desconhecidos(); // nome do smoke que ninguém lê sai ALTO, antes da janela
     // Os cartões do Inspector (`PH2D_CARDS=0` = a coluna clássica); na thread do laço de eventos.
     #[cfg(feature = "panel-inspector")]
     ph2d_panel_inspector::set_cards_on(std::env::var("PH2D_CARDS").as_deref() != Ok("0"));

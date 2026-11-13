@@ -4,6 +4,7 @@
 mod foto;
 pub mod janela;
 pub mod mao;
+pub mod nomes;
 
 pub use foto::{
     CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, FotoDaCamera, ONDE_LARGA, PassoDoDono, PlanoDaFoto,

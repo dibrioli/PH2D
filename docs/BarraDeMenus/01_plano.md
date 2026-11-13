@@ -35,4 +35,5 @@ Layouts Scene·Draw·Vector·Flip·Animate·Nodes **saem**. Lições **fora** da
    loja de preferências por utilizador → contador «3.ª vez pelo menu» e o chip que ensina o atalho;
    Open Recent.
 4. **Faixa única**: sem decoração do SO, min/max/fechar desenhados, arrasto e redimensionar pelo app —
-   testado no KWin (Wayland) antes de virar omissão.
+   testado no KWin (Wayland) antes de virar omissão. **Feito (ondas 4–5):** rato e caneta aprovados no smoke do dono
+   12/11; é a omissão, `PH2D_FAIXA_UNICA=0` volta à barra do sistema.

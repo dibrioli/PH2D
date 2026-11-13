@@ -1,4 +1,4 @@
-# kwin_faixa_unica.sh — 2026-11-12T22:54:36-03:00 — kwin 6.8.2
+# kwin_faixa_unica.sh — 2026-11-12T23:25:03-03:00 — kwin 6.8.2
 1 abre:            288 116 1024 768 noBorder=false minimized=false
 foto onda4_1_abre_sem_a_barra_do_sistema.png 1600x1000
 2 arrasta +150+100: 438 216 1024 768 (dx=150 dy=100)

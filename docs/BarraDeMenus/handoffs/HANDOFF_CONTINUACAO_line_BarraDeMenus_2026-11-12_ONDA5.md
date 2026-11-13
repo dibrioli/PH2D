@@ -22,10 +22,10 @@ Antes: [onda 4](HANDOFF_CONTINUACAO_line_BarraDeMenus_2026-11-12_ONDA4.md) · pl
 - ⚠️ **A caneta NÃO tem prova automática:** o KWin `--virtual` não tem libinput nem tablete falso (`fake_input` = rato,
   toque, teclado). A prova é o smoke do dono. Um tablete `uinput` mexeria na sessão real do dono: recusado.
 
-## Smoke do dono (por fazer)
-Com `PH2D_FAIXA_UNICA=1`: arrastar a faixa com a caneta, redimensionar pela borda/canto, duplo toque maximiza. E (da onda 4,
-ainda sem resultado) a barra de tarefas com a caneta **com a barra do sistema**: se falhar também, é do KDE.
+## Smoke do dono (12/11) — OK
+A caneta move, redimensiona e maximiza pela faixa. ⇒ `faixa_unica::ligada()` é a omissão de novo; `PH2D_FAIXA_UNICA=0`
+volta à barra do sistema. Ainda sem resultado (da onda 4): clicar no app minimizado na barra de tarefas com a caneta,
+**com a barra do sistema** — se falhar também, é do KDE e não é desta linha.
 
 ## PRÓXIMO
-1. Smoke verde ⇒ `faixa_unica::ligada()` volta à omissão (`PH2D_FAIXA_UNICA=0` desliga) e o `kwin_faixa_unica.sh` deixa
-   de a forçar. Vermelho ⇒ correr com `PH2D_FAIXA_LOG=1` e ler se o pedido saiu (linha `caneta:`) ou se o KWin o ignorou.
+A barra de menus (plano itens 1–4) está completa: fechar a linha (`/pd-linha-fechar`) quando o dono mandar.

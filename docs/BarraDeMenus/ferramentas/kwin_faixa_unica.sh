@@ -84,7 +84,7 @@ foto() {  # a tela virtual inteira, pelo D-Bus DELA (foto_kwin.py recusa o do do
 }
 fundo() { grep -a 'fundo livre' "$TMP/app.log" | tail -1 | sed 's/.*x=\([-0-9]*\).*/\1/'; }
 env -u DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_PATH="$CACHE" MESA_SHADER_CACHE_DIR="$CACHE/mesa" \
-  __GL_SHADER_DISK_CACHE_SIZE=17179869184 PH2D_FAIXA_UNICA=1 PH2D_FAIXA_LOG=1 PH2D_GAME_SMOKE=2 \
+  __GL_SHADER_DISK_CACHE_SIZE=17179869184 PH2D_FAIXA_LOG=1 PH2D_GAME_SMOKE=2 \
   "$BIN" > "$TMP/app.log" 2>&1 &
 APP=$!
 for _ in $(seq 120); do

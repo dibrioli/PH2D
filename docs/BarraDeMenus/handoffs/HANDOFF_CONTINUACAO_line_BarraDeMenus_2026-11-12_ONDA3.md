@@ -85,4 +85,4 @@ Tudo OK salvo dois passos:
   é o `close_on_row_click` no Up, a porta do Enter). Teste `o_clique_de_rato_numa_linha_conta_como_escolha_pelo_menu`
   (Down/Up reais pelo `dispatch_pointer`). As fotos da onda 3 usavam o teclado — o script passou a usar o rato.
 Fotos: `onda3_2b_clique_jump_abre_a_list.png`, `onda3_7_chip.png` (três cliques de rato). Testes por nome verdes
-(editor-core lib 399 + it 34, registry-init 52, input-map-editor 9). **Re-smoke dos passos 3 e 6 por fazer.**
+(editor-core lib 399 + it 34, registry-init 52, input-map-editor 9). **Re-smoke dos passos 3 e 6: OK (dono, 12/11). Onda 3 aprovada.** Próximo: onda 4.

@@ -93,6 +93,8 @@ struct Mesa {
     sel: Option<usize>,
     /// Quanto a mão anda (em x) entre Down e Up.
     tremor: f32,
+    /// A caneta que pousa sem se aproximar: o Down chega sem um Move nem um quadro antes.
+    sem_aproximar: bool,
 }
 
 impl Mesa {
@@ -105,6 +107,7 @@ impl Mesa {
             t: 1_000_000_000,
             sel,
             tremor: 0.0,
+            sem_aproximar: false,
         };
         m.host.set_panel_visible(PANEL_TIMELINE, false);
         for _ in 0..10 {
@@ -163,8 +166,11 @@ impl Mesa {
         quadros: usize,
         hold_ns: u128,
     ) -> (Vec<WidgetEvent>, Vec<EditorAction>) {
-        let mut ev = self.ponteiro(PointerKind::Move, p);
-        self.quadro();
+        let mut ev = Vec::new();
+        if !self.sem_aproximar {
+            ev.extend(self.ponteiro(PointerKind::Move, p));
+            self.quadro();
+        }
         ev.extend(self.ponteiro(PointerKind::Down, p));
         let t0 = self.t;
         for _ in 0..quadros {
@@ -250,4 +256,23 @@ fn uma_pressao_de_450_ms_ainda_seleciona() {
 #[test]
 fn um_clique_com_6_px_de_tremor_ainda_seleciona() {
     um_clique_com_tremor(true, None, N - 1, 0.35, 120_000_000, 6.0);
+}
+
+/// ⚠️ A caneta (e o primeiro clique vindo de outro painel) pousa SEM aproximar: o Down chega sem Move nem
+/// quadro antes — a linha ainda não está apontada (ícones à direita só com hover, 11/11).
+#[test]
+fn um_clique_sem_aproximar_ainda_seleciona() {
+    for cards_on in [true, false] {
+        for fx in [0.2, 0.35, 0.5] {
+            let mut m = Mesa::nova(cards_on, None);
+            m.sem_aproximar = true;
+            let r = m.rect(id_de(1)).expect("linha 1");
+            let p = (r.x + r.w * fx, r.y + r.h * 0.5);
+            let (ev, acts) = m.clique(p, 3, 120_000_000);
+            assert!(
+                acts.contains(&seleciona(id_de(1))),
+                "cards {cards_on} fx {fx}: {ev:?} · {acts:?}"
+            );
+        }
+    }
 }

@@ -11,6 +11,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 #[test]
 fn as_tiras_de_cache_e_o_salto_em_todos_os_modos_sao_a_rota_antiga_ao_bit() {
+    let _trava = crate::compositor::compose::resumo::trava_das_chaves();
     for (w, h) in [(1, 1), (7, 3), (513, 300), (3840, 20)] {
         for espacial in [true, false] {
             let (s, src, vidros) = pilha(w, h, espacial);
@@ -53,6 +54,7 @@ fn as_tiras_de_cache_e_o_salto_em_todos_os_modos_sao_a_rota_antiga_ao_bit() {
 #[test]
 #[ignore]
 fn mede_as_tiras_de_cache_4k() {
+    let _trava = crate::compositor::compose::resumo::trava_das_chaves();
     let (w, h) = (3840u32, 2160u32);
     for cena in ["vazias", "tracos", "ruido"] {
         for n in [1u32, 4, 16] {

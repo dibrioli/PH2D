@@ -63,6 +63,7 @@ fn pinta(img: &mut LayerImage, w: u32, cx: u32, cy: u32, cor: [u8; 4]) {
 
 #[test]
 fn o_resumo_por_ladrilho_e_a_rota_sem_resumo_ao_bit_e_nunca_fica_velho() {
+    let _trava = crate::compositor::compose::resumo::trava_das_chaves();
     let (w, h) = (333u32, 131u32);
     for espacial in [false, true] {
         let (s, mut src, _) = pilha(w, h, espacial);

@@ -308,6 +308,7 @@ fn mede_o_arrasto_com_espacial_acima_4k() {
 /// ESPARSAS (blocos de 64 px todos α=0), senão o resumo não salta nada e o gate não prova nada.
 #[test]
 fn o_arrasto_de_ajustes_com_resumo_e_a_rota_sem_resumo_ao_bit() {
+    let _trava = crate::compositor::compose::resumo::trava_das_chaves();
     use crate::compositor::compose::resumo::SEM_RESUMO;
     let esparsa = |w: u32, h: u32, semente: u32| {
         let mut img = tinta(w, h, semente);

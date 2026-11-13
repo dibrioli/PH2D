@@ -228,6 +228,7 @@ pub(super) fn bits(
 /// default rule really bands (CONTROL).
 #[test]
 fn a_composicao_em_faixas_e_a_da_rota_antiga_ao_bit() {
+    let _trava = crate::compositor::compose::resumo::trava_das_chaves();
     for (w, h) in [(1, 1), (7, 3), (513, 300), (1025, 257), (3840, 64)] {
         for espacial in [true, false] {
             let (s, src, vidros) = pilha(w, h, espacial);

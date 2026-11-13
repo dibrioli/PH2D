@@ -113,7 +113,10 @@ fn junta<S: LayerPixelSource>(
             LayerKind::Group(g) => junta(stack, &g.children, src, (w, h), out, depth + 1),
             LayerKind::Raster(_) | LayerKind::Texture(_) => {
                 let n = (w as usize) * (h as usize) * 4;
-                if let (Some(p), Some(r)) = (src.layer_plane(id), src.layer_rgba(id))
+                // O plano primeiro: sem ele (a camada activa, uma fonte sem planos) a imagem não se pede — no
+                // recomeço do cache as camadas de baixo não se lêem (`cache_hit_skips_below_layers`).
+                if let Some(p) = src.layer_plane(id)
+                    && let Some(r) = src.layer_rgba(id)
                     && p.len() == n
                     && std::ptr::eq(p.as_ptr(), r.as_ptr())
                     && r.len() == n
@@ -191,6 +194,16 @@ pub(super) fn blend_window_resumo(
 #[inline]
 fn resumo_ligado() -> bool {
     true
+}
+/// A trava dos testes que mexem nas chaves GLOBAIS do compositor (`SEM_RESUMO`, `SALTO_SO_NORMAL`, `LINHAS_DA_TIRA`,
+/// `FIOS_DA_REGIAO`): sem ela dois testes em paralelo trocam a rota um do outro a meio (o resumo desligado por um
+/// fazia o outro reprovar em «o resumo existe»).
+#[cfg(test)]
+pub(in crate::compositor) fn trava_das_chaves() -> std::sync::MutexGuard<'static, ()> {
+    static TRAVA: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    TRAVA
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 #[cfg(test)]
 pub(in crate::compositor) static SEM_RESUMO: std::sync::atomic::AtomicBool =

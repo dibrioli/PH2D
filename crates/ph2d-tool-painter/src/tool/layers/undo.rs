@@ -206,6 +206,8 @@ impl PainterTool {
         self.covers = m.covers;
         self.mats = m.mats;
         self.vidros = m.vidros;
+        // As duas sessões molhadas acabam neste restauro (abaixo); o journal delas descreve um plano trocado.
+        self.vidro_congelado.larga_as_sessoes(None);
         self.tintas_molhadas = m.tintas_molhadas;
         // The live-edit buffer describes a stroke on a ground that no longer exists — forget it, or the
         // next Depth drag would rebuild an undone stroke out of thin air.

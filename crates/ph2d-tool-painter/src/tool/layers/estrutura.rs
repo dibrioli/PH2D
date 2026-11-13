@@ -55,6 +55,7 @@ impl PainterTool {
         let vivas: std::collections::BTreeSet<RtLayerId> = self.layers.all_ids().collect();
         self.images.retain(|l, _| vivas.contains(l));
         self.vidros.retain(|l, _| vivas.contains(l));
+        self.vidro_congelado.larga_as_sessoes(Some(&vivas));
         self.heights.retain(|l, _| vivas.contains(l));
         self.covers.retain(|l, _| vivas.contains(l));
         self.mats.retain(|l, _| vivas.contains(l));

@@ -1,7 +1,7 @@
 # N.º 7, item 2 — o vidro no journal por tile (ADR-0204): estado
 
 > ADR: [`0204`](../../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md).
-> Linha `line/PainterWatercolor`, 13/11. 3.º agente (45 min): D3 (passo 4) feito; passos 5–7 por fazer.
+> Linha `line/PainterWatercolor`, 13/11. 4.º agente (45 min): risco do D3 fechado por gate; cena do Digital e passos 5–7 por fazer.
 
 ## Passos feitos
 
@@ -110,10 +110,31 @@ porque com `o` de alfa 255 sobre aguada saturada o ramo `a0 = 1` dá o mesmo sel
 aguada de **alfa < 255** (Dilution alta, ou camada transparente) com o MESMO texel tocado em dois quadros (vai e volta
 devagar), fluxo < 1. Não simplificar o código.
 
-⚠️ Risco do D3 não coberto por gate: um escritor do vidro fora de `abre_o_vidro`/`continua_o_vidro_do_traco` (undo/redo,
-duplicar, restauro) com a sessão molhada VIVA deixa a sessão sem os tiles dele. Com o `Arc` antigo o congelado via
-sempre o início; agora vê o vivo. Conferir no passo 5/6 se undo/redo com sessão viva existe (a base da sessão
-sobrevive ao Ctrl+Z?) e, se sim, zerar `vidro_congelado.{aguada,molhada}` no restauro.
+**Risco do D3: censo dos escritores do plano do vidro** (4.º agente, 13/11). Fora do `abre_o_vidro` e do
+`continua_o_vidro_do_traco` só escrevem o restauro (`layers/undo.rs` `self.vidros = m.vidros`), duplicar
+(`estrutura.rs`, insere o `Arc` na camada NOVA), apagar (`poda_os_mapas_por_camada`) e a troca de documento
+(`documents.rs`/`trait_impls_raster.rs`, que já zeravam o congelado). O composite Wet escreve pelo `abre_o_vidro` da
+`molhada`.
+- **Ctrl+Z / Ctrl+Shift+Z: correcto por construção.** O restauro chama `wetpaint_end_session` e `dry_session_now`, então
+  a aguada seguinte recongela a partir da tela restaurada; se a tela restaurada for o MESMO `Arc` da base antiga, o
+  journal dela guarda valores do início e o vivo restaurado também é o início. Gate
+  `o_ctrl_z_no_meio_da_sessao_molhada_da_o_vidro_da_base_ao_bit` (oráculo independente do journal: cada janela do
+  `vbase` = o vidro vivo no pen-down cuja tela é a base da sessão; 3 traços na sessão (controlo: base = pen-down 0),
+  Ctrl+Z, desfazer até ao 1.º, desfazer+refazer, desfazer tudo; > 20 janelas). Mutação «a janela da sessão lê o vivo»
+  ⇒ **VERMELHO**.
+- **Curas defensivas** (mutação SOBREVIVE, por desenho): o restauro larga as duas sessões
+  (`VidroCongelado::larga_as_sessoes(None)`), a poda larga a da camada apagada (o id reaproveita-se), e o
+  `abre_o_vidro` captura também na sessão do OUTRO meio da mesma camada (o mesmo que o `continua_o_vidro_do_traco` já
+  fazia). Gate `trocar_de_meio_a_meio_da_sessao_da_o_vidro_da_base_ao_bit` (aguada ×3, Wet na mesma camada, aguada ×2):
+  verde, mas o traço Wet muda a tela, a guarda da sessão da aguada quebra e a aguada seguinte abre sessão NOVA
+  (base = o pen-down depois do Wet) — a mutação «sem a captura cruzada» fica VERDE: não há cena conhecida em que as
+  duas sessões vivas se cruzem.
+- ⚠️ **ACHADO (anterior ao D3, passo 6): a sessão molhada atravessa para a CÓPIA da camada.** `duplicate_layer`
+  partilha o `Arc` da tela; a guarda (`wet_session_canvas`) bate e a aguada na cópia continua a sessão da original
+  (base = a tela do início da sessão), mas o congelado (camada ≠) recongela do plano da cópia, que já tem os traços
+  da sessão: o `vbase` ≠ o vidro da base (reprova o oráculo acima, linha 43). Antes do D3 era igual (`Arc::clone` do
+  vivo). Cura a decidir no passo 6: duplicar/trocar de camada seca a sessão, ou a cópia herda a sessão (journal) da
+  original.
 
 ## Armadilhas achadas
 
@@ -137,9 +158,9 @@ sobrevive ao Ctrl+Z?) e, se sim, zerar `vidro_congelado.{aguada,molhada}` no res
 
 ## Próximo passo exato
 
+0. Risco do D3: FEITO (acima); falta o achado da cópia (passo 6).
 1. **Cena do Digital** (acima): aguada de alfa < 255 + Digital lento, fluxo 0,3, mesmo texel em 2 quadros; acrescentar
    ao `o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal` e ver a mutação «lê o vivo» VERMELHA.
-2. **Risco do D3**: undo/redo com sessão molhada viva (acima); gate se existir.
 3. **Passo 5 (Wet)**: `o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer` (o `molhada` já vai pelo D3).
 4. **Passo 6**: `a_camada_nova_e_o_vidro_elidido_dao_o_bit`, `duplicar_a_camada_com_vidro_e_pintar_uma_nao_muda_a_outra`.
 5. **Passo 7 (D5)**: `o_tecto_do_desfazer_conta_o_journal_do_vidro` — somar `SessaoDoVidro::bytes` no dono do

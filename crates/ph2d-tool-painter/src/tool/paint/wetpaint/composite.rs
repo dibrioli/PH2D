@@ -261,6 +261,7 @@ impl PainterTool {
             super::watercolor_vidro::abre_o_vidro(
                 &mut self.vidros,
                 &mut self.vidro_congelado.molhada,
+                &mut self.vidro_congelado.aguada,
                 c,
                 self.source_size,
                 &sess.base,

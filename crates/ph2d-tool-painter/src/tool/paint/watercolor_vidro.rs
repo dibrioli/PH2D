@@ -117,6 +117,21 @@ thread_local! {
 }
 
 impl VidroCongelado {
+    /// Larga a sessão de cada meio cuja camada não está em `vivas` (`None` = todas): o restauro troca o plano
+    /// inteiro e o id de uma camada apagada reaproveita-se.
+    pub(crate) fn larga_as_sessoes(
+        &mut self,
+        vivas: Option<&std::collections::BTreeSet<RtLayerId>>,
+    ) {
+        for s in [&mut self.aguada, &mut self.molhada] {
+            if s.as_ref()
+                .is_some_and(|c| vivas.is_none_or(|v| !v.contains(&c.1)))
+            {
+                *s = None;
+            }
+        }
+    }
+
     /// **A base mudou de `Arc`, não de dados** (B18.4, Watercolor Basic a 4K): o borrão escreve a base no lugar e,
     /// com o `Weak` daqui vivo, o `make_mut` MOVE-a para um `Arc` novo — o `Weak` morria, o vidro recongelava a
     /// partir do plano JÁ escrito e o copiava inteiro em todo evento (58 MB/quadro a 3840×2160). Religa só o
@@ -160,6 +175,7 @@ impl PainterTool {
         let (plano, vbase) = abre_o_vidro(
             &mut self.vidros,
             &mut self.vidro_congelado.aguada,
+            &mut self.vidro_congelado.molhada,
             camada,
             self.source_size,
             base,
@@ -380,6 +396,7 @@ fn cobertura_do_over(o: &[u8], px: &[u8], cor: [f32; 3]) -> f32 {
 pub(super) fn abre_o_vidro(
     vidros: &mut crate::compositor::vidro::Vidros,
     congelado: &mut Option<BaseCongelada>,
+    outra: &mut Option<BaseCongelada>,
     camada: RtLayerId,
     size: (u32, u32),
     base: &Arc<Vec<u8>>,
@@ -417,8 +434,12 @@ pub(super) fn abre_o_vidro(
             (y0 + r.h as usize).min(fh),
         )
     });
-    // Antes da escrita deste quadro: a sessão toma os tiles que ele vai escrever, e a janela lê-os.
+    // Antes da escrita deste quadro: a sessão toma os tiles que ele vai escrever, e a janela lê-os. A sessão
+    // do OUTRO meio na mesma camada também (as duas podem estar vivas: trocar de meio não seca a aguada).
     sessao.captura(&plano, fw, caixa);
+    if let Some(o) = outra.as_mut().filter(|o| o.1 == camada) {
+        o.2.captura(&plano, fw, caixa);
+    }
     let vbase = sessao.janela(&plano, fw, caixa);
     #[cfg(test)]
     if let Some(i) = &sessao.inicio {

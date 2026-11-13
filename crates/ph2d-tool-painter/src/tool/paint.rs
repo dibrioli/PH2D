@@ -137,6 +137,8 @@ pub(crate) mod watercolor_vidro; // a transparência POR CANAL da aguada sobre o
 mod watercolor_vidro_journal_tests;
 #[cfg(test)]
 mod watercolor_vidro_segue_tests;
+#[cfg(test)]
+mod watercolor_vidro_restauro_tests;
 pub(crate) use paint_mode::{
     ERASER_SLOT, PaintMode, SLOT_COUNT, WET_TOOL_SLOT0, slot_da_ferramenta,
 };

@@ -14,6 +14,9 @@ authors.workspace = true
 ph2d-host = { path = "../ph2d-host" }
 # O cursor da caneta acompanha o da janela (o `CursorIcon` do winit é este).
 cursor-icon = "1.2"
+# A caneta move e redimensiona a janela (`porta::arrasta_janela`): o `xdg_toplevel` só o winit o tem.
+# Opcional: só a shell desktop o liga (o `ph2d-pixel-ponte` não paga o winit).
+winit = { version = "0.30", optional = true }
 
 # A caneta de verdade no Wayland, ao lado do winit 0.30 (ADR-0189): o winit não liga o
 # `zwp_tablet_manager_v2` e o KWin não emula ponteiro para quem não o liga.
@@ -26,6 +29,9 @@ wayland-backend = { version = "0.3", features = ["client_system"] }
 # já pede `client`+`staging`+`unstable`, logo nada recompila.
 wayland-protocols = { version = "0.32.13", features = ["client", "staging", "unstable"] }
 rustix = { version = "1", features = ["event", "fs", "pipe"] }
+
+[features]
+winit = ["dep:winit"]
 
 [dev-dependencies]
 # O oráculo (`tests/oraculo_libinput.rs`) lê o `.zst` gravado tal como está; já no lock (`ctt`).

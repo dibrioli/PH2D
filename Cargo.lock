@@ -10868,6 +10868,7 @@ dependencies = [
  "wayland-backend",
  "wayland-client",
  "wayland-protocols",
+ "winit",
  "zstd",
 ]
 

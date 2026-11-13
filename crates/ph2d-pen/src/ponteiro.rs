@@ -229,6 +229,15 @@ impl Conversor {
         }
     }
 
+    /// A ponta subiu em silêncio (o compositor arrasta a janela): sem `Up` para a app.
+    pub fn solta(&mut self) {
+        self.em_baixo.retain(|b| *b != PointerButton::Primary);
+        if self.premido == Some(PointerButton::Primary) {
+            self.premido = None;
+        }
+        self.pressao = 0.0;
+    }
+
     fn na_mesa(&self) -> bool {
         self.em_baixo.contains(&PointerButton::Primary)
     }

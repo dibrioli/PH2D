@@ -10,6 +10,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::Write as _;
 use std::os::fd::OwnedFd;
+use std::ptr::NonNull;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
@@ -39,6 +40,7 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_tool_v2::{self, ZwpTabletToolV2},
     zwp_tablet_v2::{self, ZwpTabletV2},
 };
+use wayland_protocols::xdg::shell::client::xdg_toplevel::{self, XdgToplevel};
 
 use crate::forma::forma_de;
 use crate::sessao::{PenEvent, ProtocolEvent, Sessao, ToolKind};
@@ -91,8 +93,24 @@ pub struct PenReceiver {
     /// Escrever acorda o fio (cursor novo); fechar pára-o.
     ctl: Option<OwnedFd>,
     cursor: Arc<Mutex<CursorIcon>>,
+    arrasto: Arc<Mutex<Option<Pedido>>>,
     thread: Option<JoinHandle<()>>,
 }
+
+/// A caneta pede ao compositor que a janela a siga: mover, ou redimensionar por uma borda.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Arrasto {
+    Mover,
+    Borda(xdg_toplevel::ResizeEdge),
+}
+
+/// O `xdg_toplevel` do winit (vivo enquanto a janela vive, e ela vive mais que o receptor) e o pedido.
+struct Pedido {
+    toplevel: NonNull<c_void>,
+    arrasto: Arrasto,
+}
+// SAFETY: o ponteiro só se usa no fio da caneta, por pedidos (a libwayland é segura entre fios).
+unsafe impl Send for Pedido {}
 
 /// A `wl_display` do winit, levada ao fio: a libwayland é segura entre fios.
 struct Display(*mut c_void);
@@ -124,13 +142,23 @@ impl PenReceiver {
         let (tx, events) = mpsc::channel();
         let cursor = Arc::new(Mutex::new(CursorIcon::Default));
         let cursor_fio = Arc::clone(&cursor);
+        let arrasto = Arc::new(Mutex::new(None));
+        let arrasto_fio = Arc::clone(&arrasto);
         let log = abre_registo();
         let (ready_tx, ready_rx) = mpsc::sync_channel(1);
         let thread = std::thread::Builder::new()
             .name("ph2d-pen".into())
             .spawn(move || {
                 let display = display;
-                match Worker::new(display, surface, tx, Box::new(wake), cursor_fio, log) {
+                match Worker::new(
+                    display,
+                    surface,
+                    tx,
+                    Box::new(wake),
+                    cursor_fio,
+                    arrasto_fio,
+                    log,
+                ) {
                     Ok((worker, queue)) => {
                         let _ = ready_tx.send(Ok(()));
                         worker.run(queue, ctl_r);
@@ -145,6 +173,7 @@ impl PenReceiver {
                 events,
                 ctl: Some(ctl_w),
                 cursor,
+                arrasto,
                 thread: Some(thread),
             })),
             Ok(Err(e)) => {
@@ -180,6 +209,19 @@ impl PenReceiver {
     }
 }
 
+impl PenReceiver {
+    /// A janela segue a caneta pousada (o `down` da ferramenta é o serial que o KWin 6.8 aceita:
+    /// `InputRedirection::implicitGrabPositionBySerial`). `toplevel` = o `xdg_toplevel` da MESMA janela
+    /// do `attach`, viva mais que este receptor. Sem ponta pousada o fio não pede nada.
+    pub(crate) fn arrasta(&self, toplevel: NonNull<c_void>, arrasto: Arrasto) {
+        *self.arrasto.lock().unwrap_or_else(PoisonError::into_inner) =
+            Some(Pedido { toplevel, arrasto });
+        if let Some(ctl) = &self.ctl {
+            let _ = rustix::io::write(ctl, b"a");
+        }
+    }
+}
+
 impl Drop for PenReceiver {
     fn drop(&mut self) {
         drop(self.ctl.take());
@@ -207,6 +249,10 @@ struct Ferramenta {
     forma: Option<WpCursorShapeDeviceV1>,
     /// O `serial` do último `proximity_in` na NOSSA superfície, enquanto dura.
     entrou: Option<u32>,
+    /// O `serial` do `down` na NOSSA superfície, enquanto a ponta está pousada (mover a janela).
+    pousada: Option<u32>,
+    /// O assento da mesa que anunciou a ferramenta.
+    seat: Option<WlSeat>,
 }
 
 struct Assento {
@@ -228,6 +274,7 @@ struct Worker {
     pad_parts: Vec<Box<dyn FnOnce()>>,
     sessao: Sessao,
     cursor: Arc<Mutex<CursorIcon>>,
+    arrasto: Arc<Mutex<Option<Pedido>>>,
     buf: Vec<PenEvent>,
     tx: Sender<PenEvent>,
     wake: Box<dyn Fn() + Send>,
@@ -241,6 +288,7 @@ impl Worker {
         tx: Sender<PenEvent>,
         wake: Box<dyn Fn() + Send>,
         cursor: Arc<Mutex<CursorIcon>>,
+        arrasto: Arc<Mutex<Option<Pedido>>>,
         log: Option<File>,
     ) -> Result<(Self, EventQueue<Self>), AttachError> {
         // SAFETY: a `wl_display` do winit vive mais que este fio (ver `PenReceiver`).
@@ -268,6 +316,7 @@ impl Worker {
             pad_parts: Vec::new(),
             sessao: Sessao::default(),
             cursor,
+            arrasto,
             buf: Vec::new(),
             tx,
             wake,
@@ -380,6 +429,7 @@ impl Worker {
                     return;
                 }
                 self.aplica_cursor_a_todas(&queue.handle());
+                self.cumpre_arrasto();
             }
         }
     }
@@ -433,6 +483,48 @@ impl Worker {
             .forma
             .get_or_insert_with(|| formas.get_tablet_tool_v2(&t.proxy, qh, ()));
         dev.set_shape(serial, forma_de(icon));
+    }
+
+    /// O pedido da faixa: `xdg_toplevel.move/resize` com o `down` da ferramenta pousada.
+    fn cumpre_arrasto(&mut self) {
+        let Some(p) = self
+            .arrasto
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
+        else {
+            return;
+        };
+        let pousada = self
+            .tools
+            .iter()
+            .find_map(|(id, t)| Some((*id, t.pousada?, t.seat.clone()?)));
+        let Some((id, serial, seat)) = pousada else {
+            eprintln!(
+                "ph2d-pen: drag {:?} without the pen tip down: ignored",
+                p.arrasto
+            );
+            return;
+        };
+        // SAFETY: `p.toplevel` é o `xdg_toplevel` vivo da janela (contrato de `PenReceiver::arrasta`).
+        let objeto =
+            unsafe { ObjectId::from_ptr(XdgToplevel::interface(), p.toplevel.as_ptr().cast()) };
+        let Ok(toplevel) = objeto.and_then(|o| XdgToplevel::from_id(&self.conn, o)) else {
+            eprintln!("ph2d-pen: the window's xdg_toplevel is not valid");
+            return;
+        };
+        match p.arrasto {
+            Arrasto::Mover => toplevel._move(&seat, serial),
+            Arrasto::Borda(edge) => toplevel.resize(&seat, serial, edge),
+        }
+        if std::env::var_os("PH2D_FAIXA_LOG").is_some() {
+            eprintln!("[faixa única] caneta: {:?} serial {serial}", p.arrasto);
+        }
+        // O compositor fica com o contacto: o `up` não chega; a ponta sobe aqui, calada.
+        if let Some(t) = self.tools.get_mut(&id) {
+            t.pousada = None;
+        }
+        self.sessao.solta(u64::from(id));
     }
 
     fn feed(&mut self, id: u32, ev: ProtocolEvent) {

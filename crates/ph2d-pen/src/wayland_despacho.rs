@@ -45,11 +45,22 @@ impl Dispatch<ZwpTabletToolV2, ()> for Worker {
             E::ProximityOut => {
                 if let Some(t) = w.tools.get_mut(&id) {
                     t.entrou = None;
+                    t.pousada = None;
                 }
                 ProtocolEvent::ProximityOut
             }
-            E::Down { .. } => ProtocolEvent::Down,
-            E::Up => ProtocolEvent::Up,
+            E::Down { serial } => {
+                if let Some(t) = w.tools.get_mut(&id) {
+                    t.pousada = t.entrou.map(|_| serial);
+                }
+                ProtocolEvent::Down
+            }
+            E::Up => {
+                if let Some(t) = w.tools.get_mut(&id) {
+                    t.pousada = None;
+                }
+                ProtocolEvent::Up
+            }
             E::Motion { x, y } => ProtocolEvent::Motion { x, y },
             E::Pressure { pressure } => ProtocolEvent::Pressure(pressure),
             E::Distance { distance } => ProtocolEvent::Distance(distance),
@@ -83,7 +94,7 @@ impl Dispatch<ZwpTabletToolV2, ()> for Worker {
 impl Dispatch<ZwpTabletSeatV2, ()> for Worker {
     fn event(
         w: &mut Self,
-        _: &ZwpTabletSeatV2,
+        tablet_seat: &ZwpTabletSeatV2,
         event: zwp_tablet_seat_v2::Event,
         _: &(),
         _: &Connection,
@@ -91,6 +102,11 @@ impl Dispatch<ZwpTabletSeatV2, ()> for Worker {
     ) {
         match event {
             zwp_tablet_seat_v2::Event::ToolAdded { id } => {
+                let seat = w
+                    .assentos
+                    .iter()
+                    .find(|a| a.tablet_seat == *tablet_seat)
+                    .map(|a| a.seat.clone());
                 w.tools.insert(
                     id.id().protocol_id(),
                     Ferramenta {
@@ -98,6 +114,8 @@ impl Dispatch<ZwpTabletSeatV2, ()> for Worker {
                         kind: ToolKind::Pen,
                         forma: None,
                         entrou: None,
+                        pousada: None,
+                        seat,
                     },
                 );
             }

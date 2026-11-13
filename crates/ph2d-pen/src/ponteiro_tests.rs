@@ -501,3 +501,69 @@ fn timestamps_keep_the_compositor_spacing_anchored_to_the_host_clock() {
     let t = ts(&out);
     assert_eq!(t, [AGORA + 30 * ms, AGORA + 31 * ms]);
 }
+
+/// A faixa entrega o contacto ao compositor (a caneta arrasta a janela): o `up` nunca chega. Depois
+/// disso a caneta paira (sem pressão nem botão preso), o próximo toque é um `Down` novo e a saída não
+/// inventa um `Up`.
+#[test]
+fn a_contact_taken_by_the_window_drag_leaves_no_tip_stuck_down() {
+    let (mut c, mut s) = (Conversor::default(), Sessao::default());
+    let out = corre(
+        &mut c,
+        &mut s,
+        &[
+            entra(ToolKind::Pen),
+            P::Motion { x: 4.0, y: 2.0 },
+            P::Down,
+            pressao(0.6),
+            P::Frame { time_ms: 10 },
+        ],
+        AGORA,
+    );
+    assert!(resumo(&out).iter().any(|r| r.0 == PointerKind::Down));
+    s.solta(1);
+    c.solta();
+    let out = corre(
+        &mut c,
+        &mut s,
+        &[P::Motion { x: 9.0, y: 2.0 }, P::Frame { time_ms: 30 }],
+        AGORA + 20,
+    );
+    assert_eq!(
+        resumo(&out).iter().map(|r| (r.0, r.2)).collect::<Vec<_>>(),
+        [(PointerKind::Move, 0.0)]
+    );
+    assert!(!c.na_mesa(), "a ponta não ficou presa");
+    let out = corre(
+        &mut c,
+        &mut s,
+        &[P::Down, P::Frame { time_ms: 50 }],
+        AGORA + 40,
+    );
+    assert_eq!(
+        resumo(&out)
+            .iter()
+            .filter(|r| r.0 == PointerKind::Down)
+            .count(),
+        1
+    );
+    let out = corre(
+        &mut c,
+        &mut s,
+        &[
+            P::Up,
+            P::Frame { time_ms: 60 },
+            P::ProximityOut,
+            P::Frame { time_ms: 70 },
+        ],
+        AGORA + 60,
+    );
+    assert_eq!(
+        resumo(&out)
+            .iter()
+            .filter(|r| r.0 == PointerKind::Up)
+            .count(),
+        1,
+        "um Up, o do toque novo"
+    );
+}

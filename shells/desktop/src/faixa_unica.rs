@@ -35,8 +35,8 @@ fn direcao(e: Edge) -> ResizeDirection {
 impl App {
     /// O Down primário em `(x, y)`: `true` = a janela tomou-o (arrasto, borda, maximizar).
     ///
-    /// ⚠️ A caneta (`caneta`) chega fora do evento do winit, sem o número de série que o Wayland pede para
-    /// mover ou redimensionar: dela só se toma o duplo clique (maximizar); o resto segue para o editor.
+    /// A caneta (`caneta`) chega fora do evento do winit: move e redimensiona pelo `down` dela
+    /// (`ph2d_pen::porta::arrasta_janela`); sem caneta Wayland o Down segue para o editor.
     pub(crate) fn faixa_unica_down(&mut self, x: f32, y: f32, caneta: bool) -> bool {
         let (Some(w), Some(h)) = (
             self.window.as_ref(),
@@ -53,7 +53,10 @@ impl App {
         }
         let r = match acao {
             None => return false,
-            Some(PressAction::Resize(_) | PressAction::Move) if caneta => return false,
+            Some(PressAction::Resize(e)) if caneta => {
+                return ph2d_pen::porta::arrasta_janela(w, Some(direcao(e)));
+            }
+            Some(PressAction::Move) if caneta => return ph2d_pen::porta::arrasta_janela(w, None),
             Some(PressAction::Resize(e)) => w.drag_resize_window(direcao(e)),
             Some(PressAction::Move) => w.drag_window(),
             Some(PressAction::ToggleMaximize) => {

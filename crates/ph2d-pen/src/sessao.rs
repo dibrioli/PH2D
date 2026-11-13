@@ -276,6 +276,16 @@ impl Sessao {
         }
     }
 
+    /// O compositor tomou o contacto (a caneta arrasta a janela): o `up` não virá — a ponta sobe em
+    /// silêncio, sem amostra (a app nunca viu o `Down`, a faixa tomou-o).
+    pub fn solta(&mut self, tool: ToolKey) {
+        if let Some(t) = self.tools.get_mut(&tool) {
+            t.ponta.clear();
+            t.na_mesa = false;
+            t.pressure = 0;
+        }
+    }
+
     /// A ferramenta deixou de existir (`removed`, a mesa desligada): fecha o traço e sai.
     pub fn remove(&mut self, tool: ToolKey, out: &mut Vec<PenEvent>) {
         let Some(mut t) = self.tools.remove(&tool) else {

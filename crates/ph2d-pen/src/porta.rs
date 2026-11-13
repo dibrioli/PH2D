@@ -60,6 +60,55 @@ pub fn cursor(icon: cursor_icon::CursorIcon) {
     let _ = icon;
 }
 
+/// A caneta pousada na faixa move a janela (`borda = None`) ou redimensiona-a pela borda, como o rato
+/// pelo `drag_window`. `false` = não há caneta Wayland nesta janela (a faixa deixa o Down ao editor).
+/// O compositor fica com o contacto: o conversor larga a ponta sem `Up`.
+#[cfg(all(target_os = "linux", feature = "winit"))]
+pub fn arrasta_janela(
+    janela: &winit::window::Window,
+    borda: Option<winit::window::ResizeDirection>,
+) -> bool {
+    use wayland_protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as E;
+    use winit::platform::wayland::WindowExtWayland as _;
+    use winit::window::ResizeDirection as D;
+    let Some(toplevel) = janela.xdg_toplevel() else {
+        return false;
+    };
+    let arrasto = match borda {
+        None => crate::wayland::Arrasto::Mover,
+        Some(d) => crate::wayland::Arrasto::Borda(match d {
+            D::North => E::Top,
+            D::South => E::Bottom,
+            D::East => E::Right,
+            D::West => E::Left,
+            D::NorthEast => E::TopRight,
+            D::NorthWest => E::TopLeft,
+            D::SouthEast => E::BottomRight,
+            D::SouthWest => E::BottomLeft,
+        }),
+    };
+    let pediu = RECEPTOR.with(|r| match r.borrow().as_ref() {
+        Some(Some(rx)) => {
+            rx.arrasta(toplevel, arrasto);
+            true
+        }
+        _ => false,
+    });
+    if pediu {
+        CONVERSOR.with(|c| c.borrow_mut().solta());
+    }
+    pediu
+}
+
+/// Fora do Linux a janela não segue a caneta (ainda — ADR-0189 §2).
+#[cfg(all(not(target_os = "linux"), feature = "winit"))]
+pub fn arrasta_janela(
+    _: &winit::window::Window,
+    _: Option<winit::window::ResizeDirection>,
+) -> bool {
+    false
+}
+
 /// Larga o receptor ANTES de a ligação do winit fechar.
 pub fn larga() {
     #[cfg(target_os = "linux")]

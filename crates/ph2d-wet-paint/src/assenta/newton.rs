@@ -24,6 +24,18 @@ pub(super) fn newton_voltas() -> u8 {
     v
 }
 
+/// **O palpite está ligado?** (n.º 8, o checkbox «Performance» do dono 13/11: opção a mais, desligada de fábrica.)
+#[must_use]
+pub fn palpite_ligado() -> bool {
+    newton_voltas() == 0
+}
+
+/// Liga ou desliga o palpite: as voltas e o memo da `assenta` (que guarda contas feitas com as voltas de antes).
+pub fn liga_o_palpite(sim: bool) {
+    NEWTON_VOLTAS.store(if sim { 0 } else { VOLTAS_DE_FABRICA }, Relaxed);
+    super::memo::memo_esquece();
+}
+
 /// Newton por canal sobre a cor que muda (`x`), a partir do palpite físico, até o ecrã voltar a `alvo`
 /// (a velatura do filme não compõe em passos: o palpite deixa um resto). A derivada é numérica — com o
 /// filme grosso a velatura pesa mais que a cobertura (medido: assumir `1 − a` dava passos 4× grandes e o

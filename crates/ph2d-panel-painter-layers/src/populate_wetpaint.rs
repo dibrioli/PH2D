@@ -15,6 +15,7 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
     for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS
         .into_iter()
         .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG)
+        .chain([ph2d_tool_painter::ids::PAINTER_PERFORMANCE_PALPITE])
     {
         store.register(
             id,

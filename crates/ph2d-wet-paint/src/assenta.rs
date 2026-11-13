@@ -13,7 +13,7 @@ mod ponto;
 use ponto::{Parada, d_de, prepara};
 #[path = "assenta/newton.rs"]
 mod newton;
-pub use newton::{NEWTON_VOLTAS, VOLTAS_DE_FABRICA, VOLTAS_EXATAS};
+pub use newton::{NEWTON_VOLTAS, VOLTAS_DE_FABRICA, VOLTAS_EXATAS, liga_o_palpite, palpite_ligado};
 use newton::{newton_voltas, resolve};
 #[path = "assenta/memo.rs"]
 mod memo;

@@ -24,6 +24,7 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_PEN_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_PERFORMANCE_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION);
     // Impasto — MISSING since the section landed: its header painted a chevron that could not

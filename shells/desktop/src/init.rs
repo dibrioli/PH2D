@@ -368,6 +368,7 @@ fn boot_hero_screen(
         hero.view.ui_mirrored = prefs.left_handed;
         hero.view.luz2d = prefs.luz2d;
         ph2d_editor_core::recovery_pref::set_secs(prefs.recovery.duration().as_secs());
+        ph2d_tool_painter::instala_o_palpite(prefs.wet_guess);
         // ⭐⭐ **A ARRUMAÇÃO do artista** (`~/.ph2d/layout.txt`, decisão D4): que painel está em
         // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e

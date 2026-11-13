@@ -175,6 +175,19 @@ fn left_handed_round_trips_and_an_old_file_is_right_handed() {
     assert!(!parse("ui_sound=1\n").left_handed);
 }
 
+/// n.º 8: a caixa «Faster wet paint» do cartão Performance volta igual; um ficheiro sem a chave nasce desligado.
+#[test]
+fn wet_guess_round_trips_and_an_old_file_is_off() {
+    for wet_guess in [false, true] {
+        let p = Prefs {
+            wet_guess,
+            ..Prefs::default()
+        };
+        assert_eq!(parse(&serialize(&p)), p);
+    }
+    assert!(!parse("ui_sound=1\n").wet_guess);
+}
+
 /// ⭐ **A nitidez da luz ATRAVESSA o ficheiro** (Settings ▸ 2D Light), todo nível × automático; um
 /// valor desconhecido cai na fábrica (Alta, automático).
 #[test]

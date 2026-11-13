@@ -112,6 +112,7 @@ impl PainterTool {
             || self.route_brush_jitter_event(&event)
             || self.route_brush_watercolor_event(&event)
             || self.route_brush_wetpaint_event(&event)
+            || super::paint::route_desempenho(&event)
             || self.route_brush_impasto_event(&event)
             || self.route_substrate_event(&event)
             || self.route_shape_deposit_event(&event)

@@ -7,10 +7,10 @@
 use crate::cards_tela::{self, Tela};
 use crate::paint_texture::Previa;
 use crate::{
-    cards_aleatorio, cards_camadas, cards_caneta, cards_composto, cards_exclusivos,
-    cards_ferramenta, cards_grao, cards_impasto, cards_nativos, cards_papel, cards_rampa,
-    cards_shape, cards_shape_tom, cards_topo, cards_traco, cards_watercolor, cards_wet, paint,
-    paint_brush, paint_brush_top, preview_pino, state,
+    cards_aleatorio, cards_camadas, cards_caneta, cards_composto, cards_desempenho,
+    cards_exclusivos, cards_ferramenta, cards_grao, cards_impasto, cards_nativos, cards_papel,
+    cards_rampa, cards_shape, cards_shape_tom, cards_topo, cards_traco, cards_watercolor,
+    cards_wet, paint, paint_brush, paint_brush_top, preview_pino, state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -80,6 +80,8 @@ enum Conteudo {
     /// Color Mixing (`cards_mistura`).
     Mistura,
     Wet,
+    /// O palpite do motor Wet (n.º 8).
+    Desempenho,
     /// A prévia do Flow.
     Watercolor(Previa),
     Impasto,
@@ -107,7 +109,8 @@ impl Presente {
             | Conteudo::Camadas(_)
             | Conteudo::Mascara
             | Conteudo::Deform
-            | Conteudo::Selecao => None,
+            | Conteudo::Selecao
+            | Conteudo::Desempenho => None,
             Conteudo::Wet => Some(pids::PAINTER_WETPAINT_RESET),
             Conteudo::Watercolor(_) => Some(pids::PAINTER_WATERCOLOR_RESET),
             Conteudo::Impasto => Some(pids::PAINTER_IMPASTO_RESET),
@@ -290,6 +293,14 @@ fn secoes_do_pincel(ctx: &mut PaintCtx) -> Vec<Presente> {
             });
         }
     }
+    // n.º 8: o cartão Performance fecha a lista (é do motor, não do pincel; no fim não empurra nenhum outro).
+    if cards_desempenho::presente(&brush) {
+        presentes.push(Presente {
+            id: pids::PAINTER_PERFORMANCE_SECTION,
+            titulo: cards_desempenho::titulo().to_owned(),
+            conteudo: Conteudo::Desempenho,
+        });
+    }
     presentes
 }
 
@@ -344,6 +355,7 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                     crate::cards_mistura::corpo(c, &pincel_atual(), y)
                 }),
                 (None, Conteudo::Wet) => Box::new(cards_wet::corpo),
+                (None, Conteudo::Desempenho) => Box::new(cards_desempenho::corpo),
                 (None, Conteudo::Watercolor(previa)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_watercolor::corpo(c, previa, y))
                 }
@@ -415,6 +427,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         cards_topo::prepare(ctx.host.store_mut(), &pincel);
         crate::cards_mistura::prepare(ctx.host.store_mut(), &pincel);
         cards_wet::prepare(ctx.host.store_mut(), &pincel);
+        cards_desempenho::prepare(ctx.host.store_mut(), &pincel);
         cards_watercolor::prepare(ctx.host.store_mut(), &pincel);
         cards_impasto::prepare(ctx, &pincel);
         cards_shape::prepare(ctx, &pincel);

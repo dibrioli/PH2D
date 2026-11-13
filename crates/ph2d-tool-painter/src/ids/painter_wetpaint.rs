@@ -225,6 +225,13 @@ pub const PAINTER_WETPAINT_PIGMENT_MIXING: NodeId =
 /// **Tuning** checkbox — shows/hides the side panel with the full knob table.
 pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint_tuning");
 
+/// The **Performance** card (n.º 8, owner 13/11: «Ambas SIM, mas como opções a mais»): its own card under Wet Paint.
+pub const PAINTER_PERFORMANCE_SECTION: NodeId = hash_node_id("painter_brush.performance_section");
+
+/// Performance checkbox — the settling GUESS of the Wet engine (`assenta` Newton with 0 rounds): faster
+/// simulation, brushes paint slightly differently. Off by default.
+pub const PAINTER_PERFORMANCE_PALPITE: NodeId = hash_node_id("painter_brush.performance_palpite");
+
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.

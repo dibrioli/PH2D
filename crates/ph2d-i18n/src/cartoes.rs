@@ -172,6 +172,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Run the drying of the whole canvas fast, until it is dry"
         }
         "card.painter.wet.material" => "Material",
+        "card.painter.performance.title" => "Performance",
+        "card.painter.performance.guess" => "Faster wet paint",
+        "card.painter.performance.guess_tip" => {
+            "Wet paint flows faster when many strokes are wet at once. Some brushes look a little different"
+        }
+
         "card.painter.ramp.color_mode" => "Color mode",
         "card.painter.ramp.interpolation" => "Interpolation",
         "card.painter.ramp.stop" => "Stop",

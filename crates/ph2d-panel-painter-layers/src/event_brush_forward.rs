@@ -124,6 +124,7 @@ pub(crate) fn is_forwarded_click(id: NodeId) -> bool {
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
                 // Wet Paint (see PAINTER_WETPAINT_CLICKS: absent here = dead under the mouse).
                 || ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_PERFORMANCE_PALPITE
                 // Watercolor section: Wet-edges + Pigment toggles + the section reset.
                 || ph2d_tool_painter::ids::PAINTER_WATERCOLOR_CLICKS.contains(&id)
                 // Impasto: Enable + the section reset + Depth-Source / Draw-To segments + Show Impasto.

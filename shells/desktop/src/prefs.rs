@@ -27,6 +27,8 @@ pub struct Prefs {
     pub recovery: ph2d_recovery::Period,
     /// A última vista da aba Input Map (`input_map_view`); a de omissão (nunca escolhida) é o Keyboard.
     pub input_map_view: View,
+    /// O cartão Performance do Painter (n.º 8): o palpite do Wet — da máquina do artista.
+    pub wet_guess: bool,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -42,7 +44,7 @@ pub fn serialize(p: &Prefs) -> String {
     format!(
         "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\nui_font={}\n\
          ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\nlight_quality={}\nlight_auto={}\nrecovery.minutes={}\n\
-         input_map_view={}\n",
+         input_map_view={}\nwet_guess={}\n",
         p.character.wire(),
         u8::from(p.reduced_motion),
         u8::from(p.ui_sound),
@@ -55,6 +57,7 @@ pub fn serialize(p: &Prefs) -> String {
         u8::from(p.luz2d.automatica),
         p.recovery.to_minutes(),
         p.input_map_view.pref_key(),
+        u8::from(p.wet_guess),
     )
 }
 
@@ -84,6 +87,7 @@ pub fn parse(text: &str) -> Prefs {
             "ui_sound" => p.ui_sound = value.trim() == "1",
             "recovery.minutes" => p.recovery = ph2d_recovery::Period::from_minutes(value),
             "left_handed" => p.left_handed = value.trim() == "1",
+            "wet_guess" => p.wet_guess = value.trim() == "1",
             // ⚠️ Os nomes vêm de `from_wire` dos próprios tipos, pela razão do carácter acima.
             "ui_font" => {
                 if let Some(f) = ph2d_tokens::UiFont::from_wire(value.trim()) {

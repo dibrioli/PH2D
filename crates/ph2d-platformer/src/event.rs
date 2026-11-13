@@ -57,9 +57,23 @@ pub enum PlayerEvent {
     },
     /// **A cabeça bateu** — o espelho do [`Self::Landed`], na outra ponta.
     ///
-    /// A `speed` é a velocidade de SUBIDA (m/s, sempre ≥ 0) no tique em que o
-    /// sensor relatou o bloqueio, medida antes de o motor daquele tique correr
-    /// — a mesma régua e o mesmo instante do pouso.
+    /// A `speed` é a subida PRETENDIDA no tique do choque (m/s, sempre ≥ 0): a
+    /// velocidade para cima que o corpo levou ao passo — motores e lançamento
+    /// do pulo já aplicados — e que o teto cortou. O MESMO critério nos dois
+    /// caminhos que acendem o bit: a sonda de antes do passo (o teto ao
+    /// alcance) e o teto medido depois do passo pelos contactos ou pelo
+    /// movimento cinemático cortado (Bug #12b, `ph2d_physics_ecs`
+    /// `bridge::ceiling_fact`). Um teto a 2 cm da cabeça bate no tique da
+    /// decolagem, e a subida que ele cortou é o lançamento inteiro.
+    ///
+    /// ⚠️ **Quem carimba é a ponte.** [`events_between`] só tem as duas vistas
+    /// e publica a subida da vista (a de antes do motor) como valor
+    /// provisório; a ponte troca-a pela pretendida antes de o evento sair.
+    /// Um consumidor da lei pura (sem ponte) recebe a régua da vista.
+    ///
+    /// ⚠️ Diferente do [`Self::Landed`], que mede antes do motor: o pouso é
+    /// julgado pela lei ANTES de agir; a batida é um facto do mundo DEPOIS de
+    /// o movimento ter sido pedido.
     ///
     /// ⚠️ **ABSOLUTA, não relativa ao teto**, e a diferença para o irmão é
     /// honesta em vez de esquecida: a vista publica a velocidade do CHÃO

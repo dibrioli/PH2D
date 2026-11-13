@@ -1331,4 +1331,4 @@ quina 0,12 e 0: um `Bonked`, no tique do `Jumped` ou no seguinte, a ±25 % do `l
 reprovam (`[]`); publicar por cima da sonda (sem a guarda `lit_now`) → a varredura reprova («exactamente
 uma»); sem a guarda da vista anterior → a varredura reprova; restaurado, verde. O censo
 `no_std_transcendental_reaches_the_deterministic_hash` apanhou um `f32::cos` na primeira versão (agora
-`libm::cosf`). Sob Snap o caminho do movimento não tem gate dedicado (a fixtura é dinâmica).
+`libm::cosf`). **Gate Snap (12/11):** `under_snap_every_ceiling_in_reach_is_bonked_once` (H 1,0/1,2/1,8/2,6 × quina 0,12 e 0, teto a cabeça + 0,02, + 0,05 e + 0,10..topo livre: um `Bonked` e uma borda do bit; nada a livre + 0,10; marquise sob Snap não bate) — desligar o corte em `player_kinmove` reprova 26 casos. `Bonked.speed` é UM contrato: a subida PRETENDIDA do tique do choque nos dois caminhos (a ponte recarimba o da sonda em `arm_ceiling_fact`); gate `the_bonk_speed_is_the_intended_rise_on_both_paths` (sem o recarimbo, Snap publica 3,286 contra 3,123). Nenhum consumidor de produção lê `speed` (o sinal `player.bonked` só leva o nome).

@@ -50,9 +50,14 @@ impl PhysicsBridge {
     /// contra o chão, e o `move_shape` lê o BVH que o `step` ANTERIOR deixou (o
     /// mesmo contrato do sensor, ver o topo de [`super::player`]) — nada aqui
     /// depende dos impulsos deste tique.
-    /// Devolve os que bateram com a cabeça (`bridge::ceiling_fact`): `(player, subida pedida m/s)`.
-    pub(super) fn apply_kin_moves(&mut self, moves: Vec<KinMove>, dt: f32) -> Vec<(Entity, f32)> {
-        let mut bonks = Vec::new();
+    /// Devolve, por player movido, `(player, subida pedida m/s, cortada contra um teto)` — o que o
+    /// `bridge::ceiling_fact` precisa: a subida pretendida de quem escreve a própria pose.
+    pub(super) fn apply_kin_moves(
+        &mut self,
+        moves: Vec<KinMove>,
+        dt: f32,
+    ) -> Vec<(Entity, f32, bool)> {
+        let mut rises = Vec::new();
         // ⚠️ **UM buffer para o laço inteiro**, limpo pela porta que o preenche
         // (ver `move_character`): uma lista por personagem seria uma alocação
         // por player por tique, para carregar no máximo um punhado de contatos.
@@ -67,14 +72,12 @@ impl PhysicsBridge {
             self.toques_do_mover
                 .extend(hits.iter().filter_map(|h| h.body.map(|b| (m.entity, b))));
             // ⭐ O TETO do movimento (Bug #12b): subida pedida, cortada, contra uma normal de teto.
-            if m.wanted[1] > 0.0
+            let cut = m.wanted[1] > 0.0
                 && got.translation[1] < m.wanted[1] - 1e-5
                 && hits.iter().any(|h| {
                     super::super::ceiling_fact::is_ceiling_line(h.normal, m.params.max_slope_deg)
-                })
-            {
-                bonks.push((m.entity, m.wanted[1] / dt));
-            }
+                });
+            rises.push((m.entity, m.wanted[1] / dt, cut));
             // ── O EMPURRÃO (W-KinPush) ───────────────────────────────────────
             //
             // ⚠️ **Um corpo cinemático tem massa INFINITA para o solver**, então
@@ -135,6 +138,6 @@ impl PhysicsBridge {
                 );
             }
         }
-        bonks
+        rises
     }
 }

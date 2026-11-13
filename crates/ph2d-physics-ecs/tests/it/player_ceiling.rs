@@ -68,6 +68,10 @@ fn jumper_h(corner_reach: f32, jump_height: f32) -> PlatformPlayer {
 struct Run {
     /// A velocidade de cada `Bonked` publicado.
     bonks: Vec<f32>,
+    /// O tique de cada `Bonked`.
+    bonk_ticks: Vec<u64>,
+    /// A subida de cada tique (m/s, diferença de posição; índice = tique − 1).
+    vy: Vec<f32>,
     /// Quantas vezes o bit `ceiling` ACENDEU (bordas de subida).
     lit: usize,
     /// O CONTROLE: sem ele um gate que mede *"bateu"* fica verde num personagem
@@ -81,6 +85,21 @@ struct Run {
 }
 
 fn go(jump_height: f32, corner_reach: f32, ceiling_bottom: Option<f32>) -> Run {
+    go_as(false, jump_height, corner_reach, ceiling_bottom)
+}
+
+/// Põe o player em Snap (`PlayerMode::Kinematic` + corpo cinemático) — o gesto da §14 escreve os
+/// dois por uma porta.
+fn snap(sim: &mut SimWorld, who: ph2d_ecs::Entity) {
+    let mut e = sim.world_mut().entity_mut(who);
+    e.insert(ph2d_physics_ecs::PlayerMode::Kinematic);
+    if let Some(mut rb) = e.get_mut::<RigidBody>() {
+        rb.kind = BodyKind::Kinematic;
+    }
+}
+
+/// A corrida, dinâmica (`kinematic = false`) ou sob Snap.
+fn go_as(kinematic: bool, jump_height: f32, corner_reach: f32, ceiling_bottom: Option<f32>) -> Run {
     let mut sim = SimWorld::new();
     floor(&mut sim, 0.0);
     if let Some(b) = ceiling_bottom {
@@ -92,17 +111,29 @@ fn go(jump_height: f32, corner_reach: f32, ceiling_bottom: Option<f32>) -> Run {
         FLOAT,
         Some(jumper_h(corner_reach, jump_height)),
     );
+    if kinematic {
+        snap(&mut sim, who);
+    }
     let mut bridge = PhysicsBridge::new();
-    let start = scene::y_of(&sim, "Subject");
+    let mut start = scene::y_of(&sim, "Subject");
     let (mut prev, mut top, mut vmax) = (start, start, 0.0_f32);
+    // Sob Snap o corpo assenta noutra altura que a do spawn: a cabeça mede-se assente.
+    let rest_tick = if kinematic { 59 } else { 0 };
     let (mut bonks, mut lit, mut was_lit) = (Vec::new(), 0, false);
+    let (mut bonk_ticks, mut vy) = (Vec::new(), Vec::new());
     for t in 1..=150u64 {
         // Segura o pulo até depois do ápice do mais alto (2,6 m ≈ 44 tiques):
         // soltar antes CORTA a subida, e a altura medida deixaria de ser a lei.
         bridge.set_player_input(
             who,
             PlayerInput {
-                jump: t <= 60,
+                // Sob Snap o corpo assenta devagar (medido: apertar no tique 20 subia 0,36 m a H = 1,0;
+                // no 60, 0,96): o aperto vem depois de assentar.
+                jump: if kinematic {
+                    (60..=120).contains(&t)
+                } else {
+                    t <= 60
+                },
                 ..PlayerInput::default()
             },
         );
@@ -113,9 +144,14 @@ fn go(jump_height: f32, corner_reach: f32, ceiling_bottom: Option<f32>) -> Run {
         for (_, ev) in bridge.player_events() {
             if let ph2d_platformer::PlayerEvent::Bonked { speed } = ev {
                 bonks.push(*speed);
+                bonk_ticks.push(t);
             }
         }
         let y = scene::y_of(&sim, "Subject");
+        if t == rest_tick {
+            (start, prev, top, vmax) = (y, y, y, 0.0);
+        }
+        vy.push((y - prev) * 60.0);
         vmax = vmax.max((y - prev) * 60.0);
         top = top.max(y);
         prev = y;
@@ -123,6 +159,8 @@ fn go(jump_height: f32, corner_reach: f32, ceiling_bottom: Option<f32>) -> Run {
     let lid = scene::HALF_H + scene::RADIUS;
     Run {
         bonks,
+        bonk_ticks,
+        vy,
         lit,
         rose: top > start + 0.2,
         head: start + lid,
@@ -211,9 +249,9 @@ fn standing_under_an_overhang_is_not_a_ceiling() {
 // ── E O QUE O TETO PUBLICA: `PlayerEvent::Bonked` ────────────────────────────
 //
 // ⚠️ **Estes gates moram AQUI, na ponte, e não ao lado do `events_between`:** o
-// `speed` que o evento carrega é a velocidade de subida no tique em que o
-// SENSOR relatou o bloqueio, e um teste que soletrasse as duas vistas à mão
-// estaria a afirmar o número que ele próprio escreveu. O oráculo é um teto de
+// `speed` que o evento carrega é a subida PRETENDIDA no tique do choque (a ponte
+// carimba-a nos dois caminhos, `bridge::ceiling_fact`), e um teste que soletrasse
+// as duas vistas à mão estaria a afirmar o número que ele próprio escreveu. O oráculo é um teto de
 // verdade e uma cabeça a subir contra ele.
 
 /// **Uma cabeça que bate publica UM evento, com a velocidade que ela trazia.**
@@ -462,4 +500,121 @@ fn the_bonk_reaches_the_signal_bus_with_a_name() {
         1,
         "a batida tem de sair pelo barramento, uma vez: {names:?}"
     );
+}
+
+/// **Sob Snap o teto também é um facto, uma vez por batida** (Bug #12b, o caminho do movimento).
+///
+/// O corpo cinemático não gera contacto no solver: quem vê o teto dentro do tique da decolagem é
+/// o `apply_kin_moves` (subida pedida, cortada contra uma normal de teto). Fundo do teto a
+/// cabeça + 0,02, + 0,05 e de + 0,10 até o topo livre, em quatro alturas de pulo, quina armada e
+/// desarmada: exactamente um `Bonked` e uma borda do bit; nada a topo livre + 0,10; `speed`
+/// nunca cresce quando o teto sobe. De pé sob a marquise, sob Snap, não é batida.
+///
+/// ⚠️ **Mutação que deve sangrar:** desligar o reporte do corte (`let cut = false && …` em
+/// `player_kinmove`) → os tetos a + 0,02/+ 0,05 ficam sem batida.
+#[test]
+fn under_snap_every_ceiling_in_reach_is_bonked_once() {
+    let mut bad = Vec::new();
+    for h in [1.0_f32, 1.2, 1.8, 2.6] {
+        for reach in [0.12_f32, 0.0] {
+            let free = go_as(true, h, reach, None);
+            if !free.rose {
+                bad.push(format!(
+                    "h={h} q={reach}: sob Snap nao saiu do chao (cabeca {:.3} topo {:.3} vy {:.3})",
+                    free.head, free.top, free.vmax
+                ));
+                continue;
+            }
+            let mut offsets = vec![0.02_f32, 0.05];
+            offsets.extend(
+                (0..)
+                    .map(|k| 0.10 + 0.10 * k as f32)
+                    .take_while(|o| free.head + o < free.top - 0.02),
+            );
+            let mut last = f32::INFINITY;
+            for o in offsets {
+                let r = go_as(true, h, reach, Some(free.head + o));
+                if r.bonks.len() != 1 || r.lit != 1 {
+                    bad.push(format!(
+                        "h={h} q={reach} cabeca+{o:.2} (livre {:.3}): {:?} lit={}",
+                        free.top - free.head,
+                        r.bonks,
+                        r.lit
+                    ));
+                } else if r.bonks[0] > last + 1e-3 {
+                    bad.push(format!(
+                        "h={h} q={reach} cabeca+{o:.2}: {:.3} > {last:.3} (nao esvanece)",
+                        r.bonks[0]
+                    ));
+                }
+                last = r.bonks.first().copied().unwrap_or(last);
+            }
+            let r = go_as(true, h, reach, Some(free.top + 0.10));
+            if !r.bonks.is_empty() || r.lit != 0 {
+                bad.push(format!(
+                    "h={h} q={reach} livre+0,10: {:?} lit={}",
+                    r.bonks, r.lit
+                ));
+            }
+        }
+    }
+    assert!(bad.is_empty(), "{} falhas:\n{}", bad.len(), bad.join("\n"));
+
+    // De pé sob a marquise, sob Snap: nunca acende.
+    let mut sim = SimWorld::new();
+    floor(&mut sim, 0.0);
+    ceiling(&mut sim, FLOAT + 0.6);
+    let who = subject_tuned(&mut sim, true, FLOAT, Some(jumper(0.12)));
+    snap(&mut sim, who);
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=90u64 {
+        bridge.set_player_input(who, PlayerInput::default());
+        bridge.dispatch(&mut sim, true, t);
+        assert!(
+            !bridge.player_view(who).is_some_and(|v| v.ceiling),
+            "sob Snap, parado sob a marquise nao bate (tique {t})"
+        );
+        assert!(
+            !bridge
+                .player_events()
+                .iter()
+                .any(|(_, e)| matches!(e, ph2d_platformer::PlayerEvent::Bonked { .. })),
+            "sob Snap, parado sob a marquise nao publica Bonked (tique {t})"
+        );
+    }
+}
+
+/// **`Bonked.speed` é UM critério nos dois caminhos** — a subida PRETENDIDA do tique do choque.
+///
+/// Até ao choque a corrida com teto é a corrida livre, então a subida pretendida do tique da
+/// batida é a que a corrida livre ANDOU nesse tique (diferença de posição; o atrito da gravidade
+/// dentro do tique fica abaixo de `g·dt/2` ≈ 0,08 m/s). A régua antiga da sonda (a vista, antes do
+/// motor) é a do tique ANTERIOR — `g·dt` ≈ 0,16 m/s acima. Teto ao alcance da sonda (topo livre
+/// − 0,6 e − 0,3) e dentro do tique da decolagem (cabeça + 0,02), dinâmico e Snap.
+///
+/// ⚠️ **Mutação que deve sangrar:** não recarimbar o `Bonked` da sonda em
+/// `arm_ceiling_fact` (`if false && view.ceiling`) → sob Snap os tetos da sonda publicam a vista
+/// (3,286 contra 3,123). Dinâmico as duas réguas coincidem fora da decolagem: a gravidade é do
+/// solver e o motor da subida é zero (`takeoff_gravity = 1`).
+#[test]
+fn the_bonk_speed_is_the_intended_rise_on_both_paths() {
+    let mut bad = Vec::new();
+    for kinematic in [false, true] {
+        let free = go_as(kinematic, H, 0.12, None);
+        for b in [free.top - 0.6, free.top - 0.3, free.head + 0.02] {
+            let r = go_as(kinematic, H, 0.12, Some(b));
+            let (Some(&speed), Some(&t)) = (r.bonks.first(), r.bonk_ticks.first()) else {
+                bad.push(format!("snap={kinematic} teto={b:.3}: sem batida"));
+                continue;
+            };
+            let want = free.vy[t as usize - 1];
+            if (speed - want).abs() > 0.1 {
+                bad.push(format!(
+                    "snap={kinematic} teto={b:.3} tique {t}: speed {speed:.3} contra a subida \
+                     pretendida {want:.3}"
+                ));
+            }
+        }
+    }
+    assert!(bad.is_empty(), "{}", bad.join("\n"));
 }

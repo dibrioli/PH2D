@@ -19,6 +19,10 @@
 //!
 //! **Uma batida por subida, sem duplicar:** o bit acende na vista; o `Bonked` só sai se nem a
 //! sonda deste tique nem a vista anterior já estavam acesas — a mesma borda do `events_between`.
+//!
+//! **Um só `speed`:** nos dois caminhos o `Bonked` leva a subida PRETENDIDA deste tique — a que
+//! foi entregue ao solver (ou ao movimento) e que o teto cortou. O da sonda sai do
+//! `events_between` com a subida da vista (antes do motor) e é recarimbado aqui ao armar.
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics::RigidBodyHandle;
@@ -56,11 +60,13 @@ pub(super) fn is_ceiling_line(n: [f32; 2], max_slope_deg: f32) -> bool {
 impl PhysicsBridge {
     /// **Arma a medição** — chamado por `apply_player_results` depois dos motores e dos movimentos
     /// cinemáticos e ANTES de a tabela de vistas ser reescrita (a anterior ainda é a do tique
-    /// passado). `kin_cuts` = `(player Snap, subida pedida m/s)` cortada contra um teto.
+    /// passado). `kin` = `(player Snap, subida pedida m/s, cortada contra um teto)`. O `Bonked`
+    /// que a sonda deste tique publicou em `events` recebe a subida pretendida (um só critério).
     pub(super) fn arm_ceiling_fact(
         &mut self,
         views: &[(Entity, ph2d_platformer::PlayerView)],
-        kin_cuts: &[(Entity, f32)],
+        kin: &[(Entity, f32, bool)],
+        events: &mut [(Entity, PlayerEvent)],
     ) {
         self.ceiling_watch.clear();
         for (entity, view) in views {
@@ -68,10 +74,19 @@ impl PhysicsBridge {
                 continue;
             };
             // Sob Snap a subida pretendida é a do movimento pedido; dinâmico, a do corpo.
-            let kin = kin_cuts.iter().find(|(e, _)| e == entity).map(|&(_, r)| r);
-            let kin_cut = kin.is_some();
-            let rise =
-                kin.unwrap_or_else(|| self.world.body_velocity(b.handle).map_or(0.0, |v| v[1]));
+            let mine = kin.iter().find(|(e, ..)| e == entity);
+            let kin_cut = mine.is_some_and(|&(_, _, cut)| cut);
+            let rise = mine.map_or_else(
+                || self.world.body_velocity(b.handle).map_or(0.0, |v| v[1]),
+                |&(_, r, _)| r,
+            );
+            if view.ceiling {
+                for (e, ev) in events.iter_mut() {
+                    if let (true, PlayerEvent::Bonked { speed }) = (e == entity, ev) {
+                        *speed = if rise.is_finite() { rise.max(0.0) } else { 0.0 };
+                    }
+                }
+            }
             self.ceiling_watch.push(CeilingWatch {
                 entity: *entity,
                 handle: b.handle,

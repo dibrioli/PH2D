@@ -215,6 +215,8 @@ fn voltar_com_a_tinta_comprimida_nao_engasga() {
     let mut t = com_oleo();
     t.set_paint_media(PaintMedia::Digital);
     t.paint.wetpaint.adormecidas[0].encolhe_ja();
+    // Não engasgar é do relógio da parede; no fixo o acordar espera o fio (B18.5).
+    t.set_wet_relogio_fixo(false);
     t.set_paint_media(PaintMedia::WetPaint);
     assert!(
         t.paint.wetpaint.session.is_none(),
@@ -228,6 +230,7 @@ fn voltar_com_a_tinta_comprimida_nao_engasga() {
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
     assert!(t.paint.wetpaint.session.is_some(), "o quadro acorda-a");
+    t.set_wet_relogio_fixo(true);
     t.set_paint_tool_mode("eraser");
     assert_eq!(diferentes(&vivo, &apaga(&mut t)), 0);
 }

@@ -320,6 +320,8 @@ mod sonda_borracha_morta;
 mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC
 #[cfg(test)]
 mod tampa_tests; // what a wet SESSION is (data model) — child file (LOC cap)
+#[cfg(test)]
+mod undo_largura_do_pool_tests;
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};
 

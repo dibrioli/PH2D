@@ -276,12 +276,12 @@ impl PainterTool {
     /// corre num fio e o quadro seguinte volta a tentar. O pen-down e o resto esperam, pela de sempre.
     pub(in crate::tool::paint) fn wet_acorda_sem_esperar(&mut self) -> bool {
         let camada = self.layers.active();
-        if let Some(a) = self
-            .paint
-            .wetpaint
-            .adormecidas
-            .iter()
-            .find(|a| a.camada == camada)
+        // B18.5: num relógio que não é o da parede (gates, miniaturas, a macro) o quadro do acordar não pode depender
+        // do fio da compressão: espera-o, e a mesma sequência dá o mesmo bit.
+        let w = &self.paint.wetpaint;
+        let sem_parede = w.relogio_fixo.is_some() || w.fita.is_some() || w.ritmo.is_some();
+        if !sem_parede
+            && let Some(a) = w.adormecidas.iter().find(|a| a.camada == camada)
             && !a.pronta()
         {
             a.aquece();

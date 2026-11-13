@@ -223,11 +223,8 @@ fn a_marca_molhada_confinada_da_o_bit_do_caminho_antigo_na_sprite_crua() {
     corre(sprite_crua, false);
 }
 
-/// O undo/redo depois do «+» e dos traços: com o pool rayon de 1 fio o controlo e as duas curas dão o bit
-/// (3 corridas × 3); com o pool cheio o CONTROLO (os três no caminho antigo) diverge numa volta que muda de
-/// corrida para corrida (undo 3, redo 1, redo 2) — o Wet sob undo não é determinístico na largura do pool.
+/// O undo/redo depois do «+» e dos traços (B18.5: o acordar da adormecida espera o fio no relógio fixo).
 #[test]
-#[ignore = "B18.4: o undo/redo do Wet diverge com o pool rayon cheio, até no controlo (RAYON_NUM_THREADS=1: verde)"]
 fn o_undo_e_o_redo_dao_o_bit_do_caminho_antigo() {
     corre_com(sprite_crua, true, true);
     corre_com(no_papel_do_dono, true, true);

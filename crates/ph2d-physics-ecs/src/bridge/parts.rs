@@ -266,6 +266,7 @@ impl PhysicsBridge {
             ),
             ..desc
         };
+        let desc = super::bodies::player_sem_atrito(world, owner, desc);
         Some((desc, [rel.translation.x, rel.translation.y, rel.rotation]))
     }
 

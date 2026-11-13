@@ -6,14 +6,12 @@
 //! duas respostas para *o que conta como parede*, e a segunda divergiria da
 //! primeira no dia em que alguém mexesse num limiar.
 //!
-//! # ⚠️ O CONTROLE desta cena não é uma queda livre — é a COLA
+//! # ⚠️ O CONTROLE desta cena é a queda LIVRE (desde o Bug #14)
 //!
-//! O primeiro corte destes gates supunha que, com a capacidade desligada, o
-//! personagem cairia. **Ele não cai:** medido, desce 9 cm em um segundo inteiro,
-//! porque o atrito contra a normal que o controle aéreo sustenta mais a
-//! gravidade do ÁPICE (metade do peso) o seguram. O oráculo escrito sobre a
-//! premissa errada nasceu vermelho sobre produto correto — e foi ele que
-//! derrubou a primeira versão da LEI, que era um teto e nunca dispararia.
+//! Até 13/11 o corpo do player raspava na parede (atrito de Coulomb contra a normal que o
+//! controle aéreo sustenta) e, sem a capacidade, descia só 9 cm em 1 s — a «cola». O corpo do
+//! player agora não tem atrito com nada (`player_sem_atrito`): sem a capacidade ele CAI, e a
+//! única coisa que o segura numa parede é a lei autorada.
 //!
 //! A tabela está no `measure_wall`.
 
@@ -46,9 +44,8 @@ fn run(r: &mut Rig, input: PlayerInput, ticks: u64, from: u64) -> u64 {
 /// número que o produto honra"* — e nenhum bug que apenas o faça cair satisfaz
 /// isto.
 ///
-/// ⚠️ E o CONTROLE é a **COLA**: com a capacidade desligada o personagem
-/// pressionado contra a parede quase não desce (9 cm em 1 s, medido). É esse
-/// estado que a wave existe para substituir, e é ele que torna um teto inerte.
+/// ⚠️ E o CONTROLE é a **queda livre**: com a capacidade desligada o personagem pressionado
+/// contra a parede cai como solto (6,05 m em 1 s, medido) — nada de atrito o segura (Bug #14).
 #[test]
 fn the_slide_descends_at_the_authored_speed() {
     let stuck = {
@@ -69,8 +66,9 @@ fn the_slide_descends_at_the_authored_speed() {
 
     let (dstuck, dslow, dfast) = (START_Y - stuck, START_Y - slow, START_Y - fast);
     assert!(
-        dstuck < 0.3,
-        "o CONTROLE e' a cola: sem a capacidade ele quase nao desce, e desceu {dstuck:.3} m"
+        dstuck > dfast,
+        "o CONTROLE e' a queda livre: sem a capacidade a parede nao freia ({dstuck:.3} m) e \
+         desce mais que o escorregar mais rapido ({dfast:.3} m)"
     );
     assert!(
         dslow > 2.0,
@@ -208,8 +206,8 @@ fn without_the_capability_the_same_press_does_nothing() {
 ///
 /// ⚠️ **O oráculo é o PULO, e não o escorregamento** — a escolha está medida no
 /// `measure_wall_flank`. A descida quase não denuncia o defeito (0,0500 →
-/// 0,0632 m/tique) porque a **cola** que o cabeçalho deste arquivo documenta
-/// segura o personagem de qualquer jeito; o pulo não tem cola: ou a lei vê
+/// 0,0632 m/tique, medido quando ainda havia a «cola» do atrito, Bug #14) porque o
+/// escorregar governa a descida de qualquer jeito; o pulo não: ou a lei vê
 /// parede naquele tique, ou o aperto do botão não faz **nada**.
 ///
 /// ⚠️ **E a fresta é 0,8 e não 0,4 por um motivo medido:** abaixo de ~0,70 m o
@@ -350,9 +348,8 @@ fn no_jump_leaves_faster_than_its_launch_or_above_its_apex() {
 /// **O GATE DO AGARRAR-SE (W23): com o botão apertado ele PARA na parede.**
 ///
 /// ⚠️ **O oráculo é a razão entre dois regimes da MESMA cena**, não uma distância
-/// absoluta — a lição que o gate do escorregamento já carrega: com a capacidade
-/// desligada o personagem pressionado contra uma parede quase não desce (a
-/// *cola*), então qualquer número solto seria pequeno e não diria nada. O que
+/// absoluta — a lição que o gate do escorregamento já carrega (nasceu sobre a
+/// *cola* do atrito, que o Bug #14 tirou): qualquer número solto não diria nada. O que
 /// diz é: **agarrado ele desce muito menos do que escorregando**, e depois de a
 /// reserva acabar volta a escorregar.
 ///

@@ -206,6 +206,28 @@ fn the_charged_one_lands_on_the_high_shelf() {
     }
 }
 
+/// **E o gesto NATURAL também: correr até à parede da alta e pular ENCOSTADO nela**, a seta
+/// premida contra a face. Até o Bug #14 o atrito comia 61 % do pulo e a cena pedia o pulo na pista.
+#[test]
+fn the_charged_one_lands_on_the_high_shelf_jumping_against_its_wall() {
+    let rest = FEET_GAP + HALF_H;
+    for run in [20_usize, 60] {
+        let mut s = vec![(false, 1.0); run];
+        s.extend(step_three());
+        let (a, b) = run_from(HIGH_X0 - 1.5, rest, &s);
+        assert!(
+            (b - HALF_H - FEET_GAP - HIGH_TOP).abs() < 0.02,
+            "encostado ({run} tiques de corrida) o da direita tinha de POUSAR na alta: pés {:.3}",
+            b - HALF_H
+        );
+        assert!(
+            a - HALF_H < HIGH_TOP,
+            "e o da esquerda tinha de ficar embaixo dela: pés {:.3}",
+            a - HALF_H
+        );
+    }
+}
+
 /// **E nem da beira da prateleira BAIXA um pulo só chega à alta** — o atalho que a
 /// cena de 3,5 m de pista deixava aberto (o da esquerda aprovado no lugar do da direita).
 #[test]

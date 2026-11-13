@@ -1,6 +1,8 @@
-//! **O personagem sem atrito não cola na parede** (dono 04/11), com o rapier de verdade.
+//! **O personagem não cola na parede** (dono 04/11), com o rapier de verdade.
 //!
-//! Atrito 0 sozinho não basta: a regra `Average` deixa metade do atrito da parede. Só `Min` zera.
+//! Desde o Bug #14 o corpo de TODO player é sem atrito (`player_sem_atrito`: atrito 0 + `Min`,
+//! imposto pela ponte), qualquer que seja o material autorado — antes o padrão (0,5 `Average`)
+//! colava (0,08 m em 30 tiques contra 0,90 solto) e o atrito 0 com `Average` ainda freava.
 
 use crate::platform_wall_rig::{Rig, START_Y, into_wall, pose, rig};
 use ph2d_physics_ecs::{Collider, CombineRule, MaterialCombine, PlayerInput};
@@ -69,15 +71,16 @@ fn sem_atrito_o_personagem_desce_a_parede_como_quem_cai_solto() {
          atrito 0 + Min {com_min:.3}\nandar {ANDAR} tiques: padrão {anda_padrao:.3} m · sem atrito {anda_zero:.3}"
     );
 
-    assert!(colado < solto * 0.5, "o controle cola: {colado} × {solto}");
-    assert!(
-        so_zero < com_min,
-        "Average ainda freia: {so_zero} × {com_min}"
-    );
-    assert!(
-        (com_min - solto).abs() < solto * 0.05,
-        "sem atrito a parede não freia: {com_min} × {solto}"
-    );
+    for (qual, desce) in [
+        ("padrão", colado),
+        ("atrito 0 Average", so_zero),
+        ("Min", com_min),
+    ] {
+        assert!(
+            (desce - solto).abs() < solto * 0.01,
+            "{qual}: o player não raspa — desce {desce} × solto {solto}"
+        );
+    }
     assert!(
         (anda_zero - anda_padrao).abs() < anda_padrao * 0.02,
         "o andar no chão não muda: {anda_zero} × {anda_padrao}"

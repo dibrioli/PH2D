@@ -26,9 +26,8 @@
 //! pulo só — prova que os DOIS sabem pular —, e a **alta em 3,6 m** fica acima de um
 //! pulo dado da baixa (3,40) e abaixo de dois do chão (4,40).
 //!
-//! ⚠️ Pular ENCOSTADO na parede, segurando a seta contra ela, sobe só ~0,73 m dos
-//! 2,0 (atrito da cápsula, Bug #14 no BUGS da física): o roteiro pede o pulo na
-//! pista, antes da parede.
+//! Pular ENCOSTADO na parede, a seta contra ela, sobe o mesmo que na pista: o corpo do player
+//! não raspa (Bug #14, curado; até lá subia 0,77 m dos 2,0 e o roteiro pedia o pulo na pista).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
@@ -147,8 +146,8 @@ pub const MULTI_JUMP_SMOKE_MESSAGE: &str = concat!(
     " 2. Ande para a DIREITA e suba na prateleira BAIXA. Os DOIS conseguem --\n",
     "    ela cabe num pulo so' (2.00 m, a Jump Height). E' isto que torna a\n",
     "    falha do passo 3 uma FALTA DE PULO, e nao um personagem quebrado.\n",
-    " 3. Desca para a pista e, correndo para a prateleira ALTA (3.60 m), pule\n",
-    "    ANTES de encostar nela. Segure o pulo: o da ESQUERDA bate na parede e\n",
+    " 3. Desca para a pista e corra ate' a prateleira ALTA (3.60 m); pule junto\n",
+    "    dela, encostado ou nao. Segure o pulo: o da ESQUERDA bate na parede e\n",
     "    cai -- nem pulando da beira da baixa ele chega. Com o da direita,\n",
     "    SEGURE, solte, e aperte de novo no alto do arco: ele POUSA em cima.\n",
     " 4. Ja' em cima, tente o segundo pulo de novo antes de pousar -- nao ha'\n",

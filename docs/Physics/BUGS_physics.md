@@ -1437,10 +1437,41 @@ o player DINÂMICO, fora do Snap — aberto, por bissectar entre `62c9ff8e9c` e 
    (`HIGH_X0` 10), `FEET_GAP = FLOAT − 0,5`; gates pelos PÉS e parados, de três pontos da pista, e o novo
    `a_single_jump_from_the_low_shelf_does_not_reach_the_high_one`.
 
-### Bug #14 — pular encostado na parede, com a seta contra ela, perde ~63 % do pulo — ⚠️ ABERTO (13/11)
+### Bug #14 — pular encostado na parede, com a seta contra ela, perde ~63 % do pulo — ✅ FECHADO (13/11)
 
-Medido na cena 110 (player dinâmico, Jump Height 2,0, segurado): parado no chão sobe 1,969; encostado na
-parede com `drive = 1` sobe **0,726** (com `drive = 0` encostado: 1,969). Igual em `4f46a3573c` (0,766),
-logo anterior a esta linha. Suspeita: atrito de Coulomb da cápsula contra a parede, com a força normal do
-motor de andar. Por decidir a cura (atrito zero nas paredes do player × combinar atrito só com o chão);
-a cena 110 contorna-o pedindo o pulo na pista.
+**Sintoma.** Cena 110 (player dinâmico, Jump Height 2,0, segurado): parado sobe 1,969; encostado com
+`drive = 1` sobe **0,726** (0,766 já em `4f46a3573c`).
+
+**Mecanismo (medido, fixture `wall_jump_tests.rs`, sobe do repouso):** atrito de Coulomb da cápsula
+contra a face, com a normal que o andar (seta premida) sustenta. Player μ 0,5 / parede μ 0,5
+`Average`: **0,774**; player μ 0 sozinho **1,105** (a `Average` deixa 0,25); parede μ 0 sozinha
+**1,105**; os dois 0 **2,000**; player 0 + `Min` **2,000**; o Snap (cinemático) já subia **2,000**. O chão
+não depende do atrito: o Dynamic flutua na mola (a cápsula não toca o chão) e a correia, o lift, o
+andar e a travagem são da lei (`ground_velocity`, walk/brake) — o andar no chão é idêntico com e
+sem atrito (`platform_wall_sem_atrito`, 4,330 m × 4,330 m).
+
+**Cura.** Estado da arte dos character controllers (Unity `CharacterController`, Godot
+`CharacterBody2D`): o corpo do player não raspa em nada — `bridge::bodies::player_sem_atrito`
+impõe atrito 0 + regra `Min` à forma de todo corpo com `PlatformPlayer` (e às peças dele), na porta
+única `desc_do_corpo` (o agachar herda pelo `rest`). O material autorado no Collider do player deixa
+de valer (**aberto, UI**: o Inspector ainda mostra Friction/Combine no player — controlo morto a
+esconder, fora desta linha).
+
+**O que o atrito escondia, curado pela lei (não reposto):** o freio da parede (`wall_slide`)
+somava-se ao boost do pulo de parede no tique da saída — dois donos do eixo — e o pulo saía 0,24 m/s
+acima do arranque (`no_jump_leaves_faster_than_its_launch_or_above_its_apex`, vermelho 21/21 com o
+atrito a 0). Cura: o freio cala-se com `jumped` (`ph2d-platformer` `player_motor`).
+
+**Gates que estavam VERDES sobre o defeito, e porquê:** os da parede tinham o atrito como CONTROLO
+(`the_slide_descends_at_the_authored_speed` pedia a «cola» < 0,3 m; `platform_wall_sem_atrito` pedia
+que o padrão colasse); a cena 111 (`physics_smoke_ledge`) foi calibrada sobre o pulo encostado comido
+(lábio 2,4 m para um ápice de 2,145) e a 110 pedia o pulo na pista. Re-derivados: controlo = queda
+livre; lábio da 111 em **3,7 m** (topo no ápice 3,4 + `GRAB`/2), `REACH_ONE` = `jump_height` (sem
+literal); a 110 ganha o gesto natural (`the_charged_one_lands_on_the_high_shelf_jumping_against_its_wall`).
+`zero_reach_is_the_world_before_this_wave`: sem atrito a calota da cápsula escorrega ~1 cm da quina
+do lábio e pára (geometria, não a lei); o gate passou a `< 2 cm` e parado.
+
+**Gate novo:** `a_jump_against_a_wall_rises_the_full_jump_height` — alturas 1/1,5/2/2,5 × Dynamic/Snap
+× paredes desligadas/slide/grab: encostado = livre ±1 mm. **Mutações:** tirar o
+`player_sem_atrito` de `desc_do_corpo` ⇒ o gate novo reprova; tirar o `&& !jumped` do freio ⇒
+`no_jump_leaves_faster…` reprova; restauradas, verdes.

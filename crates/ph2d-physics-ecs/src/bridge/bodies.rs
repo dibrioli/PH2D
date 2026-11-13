@@ -253,7 +253,7 @@ impl PhysicsBridge {
             shape_off,
             ..desc
         };
-        (shape, Some(desc))
+        (shape, Some(player_sem_atrito(world, e, desc)))
     }
 }
 
@@ -359,4 +359,27 @@ pub(super) fn area_effect(
         // dobra a escala sincada no offset (W-Offset), que é a mesma regra.
         mirror: ph2d_physics::AreaEffect::UNMIRRORED,
     })
+}
+
+/// **O corpo de um player não raspa em nada** (Bug #14): atrito 0 com a regra `Min`, que vence a de
+/// qualquer superfície. Aderência e travagem são da LEI (walk/brake e a mola da perna), nunca de
+/// Coulomb — com atrito, a força do andar contra uma parede × μ travava a subida do pulo (0,77 m de
+/// 2,0). O estado da arte dos character controllers (Unity `CharacterController`, Godot
+/// `CharacterBody2D`). Medição: [BUGS_physics.md #14](../../../../docs/Physics/BUGS_physics.md).
+pub(super) fn player_sem_atrito(
+    world: &bevy_ecs::world::World,
+    owner: Entity,
+    desc: BodyDesc,
+) -> BodyDesc {
+    if world.get::<crate::PlatformPlayer>(owner).is_none() {
+        return desc;
+    }
+    BodyDesc {
+        friction: 0.0,
+        material: ph2d_physics::CombineRules {
+            friction: ph2d_physics::CoefficientCombineRule::Min,
+            ..desc.material
+        },
+        ..desc
+    }
 }

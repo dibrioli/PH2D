@@ -239,15 +239,18 @@ fn the_assist_refuses_to_shove_the_body_into_what_is_beside_it() {
     );
 }
 
-/// **`corner_reach = 0` é o mundo de antes desta wave**, e o gate afirma a
-/// identidade em vez de um limiar.
+/// **`corner_reach = 0` é o mundo de antes desta wave**: a lei não desloca ninguém.
+///
+/// ⚠️ Sobra a GEOMETRIA: a calota da cápsula toca a quina do lábio numa normal inclinada e, sem
+/// atrito (Bug #14), escorrega para fora ~1 cm (medido −0,0099) e pára — o escape que a lei dá
+/// chega a 0,13 m. Até o #14 o atrito a segurava, e este gate pedia `< 1 mm`.
 #[test]
 fn zero_reach_is_the_world_before_this_wave() {
-    let (a, xa, _) = jump(&mut rig(0.10, 0.0, 20.0));
+    let (a, xa, mid) = jump(&mut rig(0.10, 0.0, 20.0));
     let (b, xb, _) = jump(&mut rig(0.10, 0.0, 20.0));
     assert_eq!((a, xa), (b, xb), "a cena e' determinista");
     assert!(
-        xa.abs() < 1.0e-3,
-        "sem alcance ninguem desloca ninguem: {xa:.4}"
+        xa.abs() < 0.02 && (xa - mid).abs() < 1.0e-3,
+        "sem alcance so' a calota escorrega da quina, e para: {xa:.4} (tique 45: {mid:.4})"
     );
 }

@@ -460,8 +460,10 @@ pub fn player_motor(
     // ⚠️ **O freio da parede só vale com a perna CALADA**, e não é higiene: com
     // o pé no chão a mola já governa o eixo vertical, e um segundo termo a
     // escrever velocidade ali seria dois donos do mesmo número. A `standing` é a
-    // mesma resposta que a mola consumiu.
-    let slide = if standing.is_none() && !dashing && !ledging {
+    // mesma resposta que a mola consumiu. ⚠️ **E cala-se no tique em que um pulo sai** (`jumped`,
+    // de parede incluído): o boost do pulo já é dono do eixo; somado ao freio, o pulo de parede
+    // saía 0,24 m/s acima do arranque — escondido até o Bug #14 pelo atrito na face.
+    let slide = if standing.is_none() && !dashing && !ledging && !jumped {
         wall::wall_slide(&cfg.wall, clinging.is_some(), gripping, rel_up, up)
     } else {
         Motor::default()

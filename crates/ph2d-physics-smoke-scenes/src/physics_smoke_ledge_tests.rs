@@ -9,17 +9,20 @@ use super::{FLOAT, GRAB, HIGH_TOP, LANE_A, LANE_B, LANE_SPAN, LOW_TOP, build_led
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
 
-/// O alcance MEDIDO de um pulo segurado (`measure_the_reachable_height`).
-const REACH_ONE: f32 = 1.903;
 /// A meia-altura da cápsula do `spawn_player`.
 const HALF_H: f32 = 0.5;
-/// **O topo do corpo no ápice de um pulo COLADO À PAREDE**, medido pela sonda
-/// deste arquivo (`measure_what_a_jump_against_the_wall_reaches`): 0,745 m de
-/// subida contra os 1,903 do ar livre — o atrito contra a face come **61%**.
-///
-/// ⚠️ **É esta a régua da cena, e não o `REACH_ONE`:** chega-se a um patamar
-/// encostado nele.
-const WALL_HUG_PEAK_TOP: f32 = 2.145;
+
+/// **O alcance de um pulo segurado é a altura PEDIDA** (`jump_height`, o ápice real desde
+/// `f3a92736ab`) — encostado na parede ou não, desde que o corpo do player não raspa (Bug #14; até
+/// lá o atrito na face comia 61 % e esta régua era um 0,745 medido).
+fn reach_one() -> f32 {
+    ph2d_physics_ecs::PlatformPlayer::default().jump_height
+}
+
+/// O topo do corpo no ápice de um pulo dado do chão.
+fn peak_top() -> f32 {
+    FLOAT + reach_one() + HALF_H
+}
 
 /// **A aritmética que a mensagem imprime está certa** — em tempo de compilação.
 ///
@@ -33,34 +36,21 @@ const WALL_HUG_PEAK_TOP: f32 = 2.145;
 ///   nunca foi oferecida.
 #[test]
 fn the_scene_delivers_the_numbers_its_message_prints() {
-    // ⚠️ **O baixo cabe num pulo COLADO À PAREDE**, e é essa a régua: os PÉS
-    // chegam a `WALL_HUG_PEAK_TOP − 2·HALF_H`. A primeira versão desta cena o
-    // pôs em 1,5 usando o número do ar livre, e ele ficou **intransponível** —
-    // o personagem encostava na face e pulava no lugar para sempre.
-    const _: () = assert!(LOW_TOP < WALL_HUG_PEAK_TOP - 2.0 * HALF_H);
-    // E cabe num pulo de ar livre, obviamente.
-    const _: () = assert!(LOW_TOP < REACH_ONE);
-    // ⚠️ **No alto ninguém POUSA a pular, e a régua são os PÉS** — num pulo de
-    // ar livre perfeito eles chegam a `FLOAT + REACH_ONE − HALF_H`.
-    const _: () = assert!(FLOAT + REACH_ONE - HALF_H < HIGH_TOP);
-    // ⚠️ **E a JANELA tem de estar no caminho do arco COLADO à parede**, que é o
-    // gesto do passo 3 — as duas linhas que a primeira versão desta cena não
-    // tinha, e por cuja falta o corpo nunca chegava a ver o lábio.
-    const _: () = assert!(HIGH_TOP > WALL_HUG_PEAK_TOP);
-    const _: () = assert!(HIGH_TOP - GRAB < WALL_HUG_PEAK_TOP);
-    // O alto NÃO — um pulo sozinho não põe ninguém de pé nele (de pé é
-    // `HIGH_TOP + FLOAT`, e o ápice é `FLOAT + REACH_ONE`).
-    const _: () = assert!(HIGH_TOP > REACH_ONE);
-    // …mas o TOPO DO CORPO no ápice desse pulo PASSA do lábio, e é isso que põe
-    // a janela de agarre no caminho da subida.
-    //
-    // ⚠️ **A quarta asserção desta lista nasceu ERRADA e o compilador a
-    // reprovou**, o que é o gate a fazer o seu trabalho: ela pedia que o lábio
-    // estivesse *ao alcance do braço a partir do ápice*, e no ápice a cabeça
-    // está **acima** do lábio — não abaixo. A janela é cruzada a SUBIR, antes do
-    // ápice, e o que a torna alcançável é o corpo passar por ela, que é o que a
-    // linha abaixo afirma.
-    const _: () = assert!(HIGH_TOP < FLOAT + REACH_ONE + HALF_H);
+    // O baixo cabe num pulo: os PÉS chegam a `peak_top − 2·HALF_H`.
+    assert!(LOW_TOP < peak_top() - 2.0 * HALF_H, "baixo {LOW_TOP}");
+    // ⚠️ **No alto ninguém POUSA a pular, e a régua são os PÉS.**
+    assert!(peak_top() - 2.0 * HALF_H < HIGH_TOP, "alto {HIGH_TOP}");
+    // ⚠️ **E a JANELA do braço contém o lábio no ápice do gesto do passo 3** (pular colado à
+    // face): o lábio fica acima da cabeça e a menos de `GRAB` dela.
+    assert!(
+        HIGH_TOP > peak_top(),
+        "lábio {HIGH_TOP} × topo no ápice {}",
+        peak_top()
+    );
+    assert!(
+        HIGH_TOP - GRAB < peak_top(),
+        "lábio {HIGH_TOP} fora do braço"
+    );
     // E o braço existe — quanto tempo a janela dura é dinâmica, e quem a afirma
     // é o gate de comportamento ao lado.
     const _: () = assert!(GRAB > 0.0);
@@ -144,12 +134,9 @@ fn drive(mantle: bool) -> (f32, f32) {
 
 /// **O contraste que a cena É: com o mesmo gesto, só um fica PRESO.**
 ///
-/// ⚠️ **A metade de controlo NÃO é *"o outro cai"*, e a primeira versão deste
-/// gate a escreveu assim e falhou.** Quem empurra contra uma parede sem
-/// `wall_slide_speed` **fica preso pelo atrito** e desce devagarinho — medido,
-/// ele para 17 cm abaixo do lábio, que é perto demais para distinguir seja o que
-/// for. O que separa os dois não é a ALTURA, é **estar ou não SEGURO**: um fica
-/// exatamente onde está, o outro continua a escorregar.
+/// A metade de controlo é **o outro CAI**: sem atrito no corpo do player (Bug #14) nada o segura
+/// na face, e no fim do gesto ele já está de pé no chão. (Até o #14 o atrito o prendia 17 cm
+/// abaixo do lábio e este gate media o escorregar de 7,5 cm/s.)
 #[test]
 fn the_same_gesture_hangs_only_the_one_with_a_reach() {
     let ((plain0, ledge0), (plain1, ledge1)) = hang_then_wait();
@@ -165,16 +152,13 @@ fn the_same_gesture_hangs_only_the_one_with_a_reach() {
         (ledge1 - ledge0).abs() < 0.02,
         "e tinha de FICAR: {ledge0:.3} -> {ledge1:.3}"
     );
-    // O da esquerda não está seguro por nada: ele escorrega.
-    // ⚠️ **A barra é 0,08 e o número medido é 0,15 em dois segundos** — o
-    // atrito deixa-o descer ~7,5 cm/s (é a mesma taxa que o doc do `wall_slide`
-    // mediu ao derrubar a versão-teto daquela lei). Pedir mais seria pedir que a
-    // parede o soltasse; pedir menos não distinguiria de estar preso.
-    assert!(
-        plain0 - plain1 > 0.08,
-        "o da esquerda nao esta' preso a nada — tinha de escorregar: \
-         {plain0:.3} -> {plain1:.3}"
-    );
+    // O da esquerda não está seguro por nada: ele cai e fica de pé no chão.
+    for y in [plain0, plain1] {
+        assert!(
+            (y - FLOAT).abs() < 0.02,
+            "o da esquerda nao esta' preso a nada — tinha de estar no chao: {plain0:.3} -> {plain1:.3}"
+        );
+    }
 }
 
 /// O gesto do passo 3 e, depois dele, mais DOIS segundos de dedo preso.
@@ -265,10 +249,7 @@ fn both_of_them_clear_the_low_shelf() {
 /// **Quanto um pulo COLADO À PAREDE alcança** — o número que escolhe o patamar
 /// alto.
 ///
-/// ⚠️ **O `REACH_ONE` de 1,903 m é de AR LIVRE**, e a cena não é: o gesto é
-/// correr contra a parede e pular a segurar a direção, e aí o atrito contra a
-/// face come parte da subida. Usar o número do ar livre foi como a primeira
-/// versão desta cena nasceu — e o patamar alto ficou fora do caminho do corpo.
+/// Desde o Bug #14 é o mesmo do ar livre (`reach_one`); até lá o atrito contra a face comia 61 %.
 #[test]
 #[ignore = "sonda de medicao"]
 fn measure_what_a_jump_against_the_wall_reaches() {
@@ -319,7 +300,7 @@ fn measure_what_a_jump_against_the_wall_reaches() {
         peak + HALF_H,
         peak - rest
     );
-    println!("  em AR LIVRE ele subiria {REACH_ONE:.3} m");
+    println!("  em AR LIVRE ele subiria {:.3} m", reach_one());
 }
 
 /// **O PERCURSO da raia** — onde ele chega, com o gesto do artista.

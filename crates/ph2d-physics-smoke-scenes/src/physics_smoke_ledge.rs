@@ -7,13 +7,13 @@ use ph2d_physics_ecs::PlatformPlayer;
 
 use ph2d_physics_scene::{slab, spawn_player};
 
-/// O topo do patamar BAIXO — ⚠️ **1,0 e não 1,5**, e o número vem do pulo
-/// COLADO À PAREDE: os pés dele chegam a **1,145 m** (medido), então um degrau
-/// de 1,5 é intransponível para quem chega encostado à face — que é como se
-/// chega a um patamar.
+/// O topo do patamar BAIXO — um pulo (`jump_height` 2,0) leva os pés de `FLOAT − 0,5` a 2,4 m,
+/// encostado na face ou não (o corpo do player não raspa, Bug #14).
 pub const LOW_TOP: f32 = 1.0;
-/// O topo do patamar ALTO — acima do que um pulo alcança, e dentro do braço.
-pub const HIGH_TOP: f32 = 2.4;
+/// O topo do patamar ALTO — acima do TOPO do corpo no ápice (`FLOAT + jump_height + 0,5` = 3,4 m)
+/// e dentro do braço `GRAB` dele (4,0 m): 3,4 + `GRAB`/2. Até o Bug #14 o atrito na face comia
+/// 61 % do pulo e este lábio estava em 2,4.
+pub const HIGH_TOP: f32 = 3.7;
 
 /// O alcance autorado na raia da direita.
 pub const GRAB: f32 = 0.6;
@@ -93,7 +93,7 @@ pub const LEDGE_SMOKE_MESSAGE: &str = concat!(
     "[physics-smoke 111] O PARAPEITO (W-Ledge). Duas raias iguais, dois\n",
     "personagens iguais -- e o teclado dirige os DOIS ao mesmo tempo.\n",
     "O da ESQUERDA nao tem beirada; o da DIREITA alcanca 0.60 m.\n",
-    "Patamar baixo: topo 1.00 m. Patamar alto: topo 2.40 m.\n",
+    "Patamar baixo: topo 1.00 m. Patamar alto: topo 3.70 m.\n",
     "\n",
     "⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n",
     "\n",
@@ -105,7 +105,7 @@ pub const LEDGE_SMOKE_MESSAGE: &str = concat!(
     " 2. Ande para a DIREITA e suba no patamar BAIXO. Os DOIS conseguem -- ele\n",
     "    cabe num pulo so'. E' isto que torna a falha do passo 3 uma FALTA DE\n",
     "    BRACO, e nao um personagem quebrado.\n",
-    " 3. Desca e siga ate' o patamar ALTO (2.40 m). Pule contra ele SEGURANDO a\n",
+    " 3. Desca e siga ate' o patamar ALTO (3.70 m). Pule contra ele SEGURANDO a\n",
     "    direcao: o da ESQUERDA bate e cai. O da DIREITA fica PENDURADO, com o\n",
     "    topo do corpo no labio -- e fica la' enquanto o dedo segurar.\n",
     " 4. Pendurado, aperte o PULO: ele sobe e fica DE PE' em cima do patamar.\n",

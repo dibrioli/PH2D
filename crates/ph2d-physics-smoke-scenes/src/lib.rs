@@ -154,3 +154,6 @@ pub mod physics_smoke_wheel;
 pub mod physics_smoke_world_pin;
 pub mod physics_smoke_zone_force;
 pub mod physics_smoke_zones;
+
+#[cfg(test)]
+mod wall_jump_tests;

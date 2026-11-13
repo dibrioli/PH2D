@@ -579,8 +579,18 @@ fn sonda_quem_mexe_e_a_banda() {
             let medir = step % 10 == 9;
             let antes = medir.then(|| bits(g));
             let seca = (sim.frame + 1).is_multiple_of(sim.dry_every);
+            let mut por = [0f64; 7];
             let a = Instant::now();
-            pools[1].install(|| while sim_step_stage(sim, g, tuning).is_none() {});
+            pools[1].install(|| {
+                for k in 0.. {
+                    let b = Instant::now();
+                    let fim = sim_step_stage(sim, g, tuning).is_some();
+                    por[k.min(6)] += b.elapsed().as_secs_f64() * 1e3;
+                    if fim {
+                        break;
+                    }
+                }
+            });
             let dt = a.elapsed().as_secs_f64() * 1e3;
             ms = ms.min(dt);
             let Some((f0, q0)) = antes else { continue };
@@ -604,6 +614,7 @@ fn sonda_quem_mexe_e_a_banda() {
             linhas.push((
                 step,
                 seca,
+                por.map(|m| (m * 10.0).round() / 10.0),
                 dt,
                 g.live_span_cells(),
                 troco,
@@ -613,11 +624,14 @@ fn sonda_quem_mexe_e_a_banda() {
                 mudou_q,
             ));
         }
-        println!("    {n} traço(s) · passo mín {ms:.2} ms ({fios} fios)");
-        for (step, seca, dt, faixa, troco, film, vel, mf, mq) in linhas {
+        println!(
+            "    {n} traço(s) · passo mín {ms:.2} ms ({fios} fios) · ecra {:?}",
+            sim.gather_params(tuning).ecra
+        );
+        for (step, seca, por, dt, faixa, troco, film, vel, mf, mq) in linhas {
             let bstar = banda[1] * 1e9 * dt * 1e-3 / troco.max(1) as f64;
             println!(
-                "      passo {step:>3}{} {dt:>6.2} ms · faixa {faixa} · troços {troco} · film>0 {film} · vel≠0 {vel} · mudou fina {mf} ({:.3} da faixa) · fluxo {mq} · {:.2} ns/célula · B* {bstar:.0} B/célula",
+                "      passo {step:>3}{} {dt:>6.2} ms · estágios {por:?} · faixa {faixa} · troços {troco} · film>0 {film} · vel≠0 {vel} · mudou fina {mf} ({:.3} da faixa) · fluxo {mq} · {:.2} ns/célula · B* {bstar:.0} B/célula",
                 if seca { " seca" } else { "     " },
                 mf as f64 / faixa.max(1) as f64,
                 dt * 1e6 / troco.max(1) as f64,

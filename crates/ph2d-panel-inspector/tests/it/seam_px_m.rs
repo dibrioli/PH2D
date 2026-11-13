@@ -97,6 +97,7 @@ fn projectil() -> InspectorProjectileInfo {
         has_body: true,
         clock_playing: true,
         flight_over: false,
+        target_pick_armed: false,
         selected_count: 1,
     }
 }

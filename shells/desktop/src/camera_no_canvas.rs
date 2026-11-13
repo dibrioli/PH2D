@@ -85,9 +85,13 @@ impl crate::App {
 
     /// GEF 20 C4 — o `Esc` a meio de um arrasto da câmera devolve a alça ao valor do `Down`. `true` = consumido.
     pub(crate) fn camera_frame_escape(&mut self) -> bool {
-        // GEF 20 C2: o Esc desarma o Eyedropper do Target.
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
-            && hero.view.camera_canvas.escolhe_alvo.take().is_some()
+        // GEF 20 C2 e GEF 06: o Esc desarma o Eyedropper do Target (câmera ou bala).
+        if let Some(g) = self.gfx.as_mut()
+            && (g
+                .hero_screen
+                .as_mut()
+                .is_some_and(|h| h.view.camera_canvas.escolhe_alvo.take().is_some())
+                | ph2d_app_components::projectile_inspector::desarma(g.sim.world_mut()).is_some())
         {
             return true;
         }
@@ -104,12 +108,14 @@ impl crate::App {
         true
     }
 
-    /// O Eyedropper do Target do Follow está armado (GEF 20 C2).
+    /// O Eyedropper do Target do Follow (GEF 20 C2) ou o do Target da bala (GEF 06) está armado.
     pub(crate) fn camera_target_armed(&self) -> bool {
-        self.gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.view.camera_canvas.escolhe_alvo.is_some())
+        self.gfx.as_ref().is_some_and(|g| {
+            g.hero_screen
+                .as_ref()
+                .is_some_and(|h| h.view.camera_canvas.escolhe_alvo.is_some())
+                || ph2d_app_components::projectile_inspector::armado(g.sim.world())
+        })
     }
 
     /// O cursor da alça sob o ponteiro (ou da que está agarrada) — o gesto que ela promete (17b A10). Com o

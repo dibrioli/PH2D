@@ -19,15 +19,28 @@ pub(crate) fn apply_projectile_event(host: &mut dyn PanelHostInternal, ev: Widge
     };
     let bits = info.entity_bits;
 
-    if let WidgetEvent::Toggled(id) = ev
-        && id == crate::ids::INSP_PJ_FACE_VELOCITY
+    if let WidgetEvent::Click(id) = ev
+        && id == crate::ids::INSP_PJ_TARGET_PICK
     {
-        // ⚠️ **O estado vem do SNAPSHOT**, e a edição é o INVERTIDO dele.
         push(
             host,
             bits,
-            ProjectileFieldEdit::FaceVelocity(!info.face_velocity),
+            ProjectileFieldEdit::PickTarget(!info.target_pick_armed),
         );
+        return true;
+    }
+
+    if let WidgetEvent::Toggled(id) = ev {
+        // ⚠️ **O estado vem do SNAPSHOT**, e a edição é o INVERTIDO dele.
+        let edit = match id {
+            crate::ids::INSP_PJ_FACE_VELOCITY => {
+                ProjectileFieldEdit::FaceVelocity(!info.face_velocity)
+            }
+            crate::ids::INSP_PJ_BOUNCE => ProjectileFieldEdit::Bounce(info.max_bounces == 0),
+            crate::ids::INSP_PJ_HOMING => ProjectileFieldEdit::Homing(info.homing_accel <= 0.0),
+            _ => return false,
+        };
+        push(host, bits, edit);
         return true;
     }
 

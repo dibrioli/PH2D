@@ -312,11 +312,12 @@ fn cada_dica_declarada_chega_ao_store() {
                  chega à mão de ninguém"
             );
         }
-        // ⛔ **O CONTROLO**: um controlo cujo nome nunca carregou regra NÃO ganha balão.
+        // ⛔ **O CONTROLO**: um controlo cujo nome nunca carregou regra NÃO ganha balão. (O `Speed` da bala era o
+        //    controlo até o cartão GEF 06 dar dica a toda linha, a ordem do dono para os cartões novos.)
         assert!(
-            host.store().tooltip_for(iid::INSP_PJ_SPEED).is_none(),
-            "o `Speed` ganhou balão — esta régua deixa de distinguir «a regra foi para o hover» \
-             de «há balões em todo o lado»"
+            host.store().tooltip_for(iid::INSP_RAY_ORIGIN_X).is_none(),
+            "o `Origin X` do raio ganhou balão — esta régua deixa de distinguir «a regra foi para o \
+             hover» de «há balões em todo o lado»"
         );
     });
 

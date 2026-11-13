@@ -117,6 +117,7 @@ fn as_quatro_seccoes_que_estreavam_a_catraca_chegam_a_pixel() {
         has_body: true,
         clock_playing: true,
         flight_over: false,
+        target_pick_armed: false,
         selected_count: 1,
     };
     assert!(

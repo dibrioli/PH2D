@@ -184,6 +184,8 @@ mod pixel_slices;
 /// O PIXEL ART (ADR-0196): as tabelas da família sem pasta própria.
 mod pixel_tabelas;
 mod pixel_teclas;
+/// O cartão Projectile Motion (GEF 06): avisos, caixas Bounce e Homing, a dobra Speed change e as dicas.
+mod projectile;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
@@ -609,6 +611,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| macros_smoke8::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
+            .or_else(|| projectile::tr(k))
             .or_else(|| component_catalog::tr(k))
             .or_else(|| component_keywords::tr(k))
             .or_else(|| paint_engines::tr(k))

@@ -49,8 +49,7 @@ fn o_instantaneo_le_a_lei() {
     assert!(i.has_body && i.body_is_kinematic);
 }
 
-/// ⭐⭐ **O ALVO é um NOME nos DOIS sentidos** — o painel escreve texto, o componente guarda o hash,
-/// e o instantâneo devolve o texto outra vez.
+/// ⭐⭐ **O ALVO é um NOME nos DOIS sentidos**: texto → hash → texto.
 #[test]
 fn o_alvo_atravessa_como_nome_nos_dois_sentidos() {
     let (mut sim, bits) = cena();
@@ -115,8 +114,7 @@ fn limpar_o_alvo_escreve_zero() {
     assert_eq!(c.homing_target, 0, "so' espacos e' ninguem");
 }
 
-/// ⚠️⚠️ **As cercas do painel estão escritas TAMBÉM no dreno** — o campo é alcançável por outra
-/// rota (um script, um ficheiro), e acima de `1` a bala GANHARIA energia a cada parede.
+/// ⚠️⚠️ **As cercas do painel valem TAMBÉM no dreno** (script, ficheiro).
 #[test]
 fn as_cercas_do_painel_valem_no_dreno() {
     let (mut sim, bits) = cena();
@@ -138,8 +136,7 @@ fn as_cercas_do_painel_valem_no_dreno() {
     assert!(c.bounciness.abs() < 1.0e-6);
 }
 
-/// ⚠️ **A aceleração pode ser NEGATIVA** — é o que faz uma bala travar no ar, e prendê-la em `0`
-/// apagaria metade do campo.
+/// ⚠️ **A aceleração pode ser NEGATIVA**: a bala trava no ar.
 #[test]
 fn a_aceleracao_pode_ser_negativa() {
     let (mut sim, bits) = cena();
@@ -165,4 +162,63 @@ fn uma_entidade_morta_nao_parte_o_dreno() {
         bits,
         &ProjectileFieldEdit::Range(5.0)
     ));
+}
+
+fn lei(sim: &SimWorld, bits: u64) -> ph2d_projectile::ProjectileLaw {
+    sim.world()
+        .get::<ProjectileMotion>(Entity::from_bits(bits))
+        .expect("tem")
+        .law()
+}
+
+/// ⭐ GEF 06 — as caixas Bounce e Homing escrevem os números: ligar põe o valor de fábrica, desligar zera.
+#[test]
+fn as_caixas_bounce_e_homing_escrevem_os_numeros() {
+    let (mut sim, bits) = cena();
+    for (edit, ricochetes, puxa) in [
+        (ProjectileFieldEdit::Bounce(true), BOUNCES_AO_LIGAR, 0.0),
+        (
+            ProjectileFieldEdit::Homing(true),
+            BOUNCES_AO_LIGAR,
+            PULL_AO_LIGAR,
+        ),
+        (ProjectileFieldEdit::Bounce(false), 0, PULL_AO_LIGAR),
+        (ProjectileFieldEdit::Homing(false), 0, 0.0),
+    ] {
+        assert!(apply_projectile_edit(sim.world_mut(), bits, &edit));
+        let l = lei(&sim, bits);
+        assert_eq!(l.max_bounces, ricochetes, "{edit:?}");
+        assert!((l.homing_accel - puxa).abs() < 1.0e-6, "{edit:?}");
+    }
+}
+
+/// ⭐ GEF 06 — o conta-gotas: armar não toca no documento e só ESTA bala lê «armado»; o clique no palco escolhe o de
+/// cima com nome (não a bala) pela porta do Inspector e desarma; o vazio só desarma; desarmado, o clique não é dele.
+#[test]
+fn o_conta_gotas_arma_escolhe_e_desarma() {
+    let (mut sim, bits) = cena();
+    let w = sim.world_mut();
+    let outra = w.spawn(ProjectileMotion::default()).id().to_bits();
+    let heroi = w.spawn(Name::new("Hero")).id().to_bits();
+    let mut bus = ph2d_editor_core::action_bus::ActionBus::default();
+    assert!(
+        !escolher_alvo(sim.world_mut(), &mut bus, &[heroi]),
+        "desarmado"
+    );
+    let antes = lei(&sim, bits);
+    for (debaixo, escolhe) in [(vec![bits, heroi], true), (vec![], false)] {
+        let arma = ProjectileFieldEdit::PickTarget(true);
+        assert!(!apply_projectile_edit(sim.world_mut(), bits, &arma));
+        assert_eq!(lei(&sim, bits), antes, "armar não toca no documento");
+        let info = |b| build_projectile_info(sim.world(), b, 1, true, false).expect("tem");
+        assert!(info(bits).target_pick_armed && !info(outra).target_pick_armed);
+        assert!(escolher_alvo(sim.world_mut(), &mut bus, &debaixo));
+        assert!(!armado(sim.world()) && desarma(sim.world_mut()).is_none());
+        let nome = ProjectileFieldEdit::HomingTarget("Hero".into());
+        let esperado = escolhe.then_some(EditorAction::InspectorComponentEdit {
+            entity_bits: bits,
+            edit: ComponentEdit::Projectile(nome),
+        });
+        assert_eq!(bus.drain().collect::<Vec<_>>(), Vec::from_iter(esperado));
+    }
 }

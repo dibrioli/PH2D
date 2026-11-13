@@ -704,13 +704,34 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/projectile.rs::corpo",
+        "sections/projectile.rs::numero",
         Canal,
         &[
             "component.field.projectile_motion.0",
             "component.field.projectile_motion.1",
         ],
         "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/projectile.rs::voo",
+        Canal,
+        &["component.field.projectile_motion.7"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/projectile.rs::ricochete",
+        NaoAnimavel,
+        &["INSP_PJ_BOUNCE"],
+        "a caixa Bounce escreve Max Bounces (que tem canal), não é um campo (GEF 06)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/projectile.rs::perseguicao",
+        NaoAnimavel,
+        &["INSP_PJ_HOMING"],
+        "a caixa Homing escreve o Pull (que tem canal), não é um campo (GEF 06)",
     ),
     (
         "ph2d-panel-inspector",

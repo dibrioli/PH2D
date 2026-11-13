@@ -31,18 +31,65 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 7] = [
     (ids::INSP_PJ_MAX_SPEED, 0.0, 0.0, 500.0, 0.5), // LITERAL-PX-OK: m/s
     (ids::INSP_PJ_GRAVITY, 0.0, 0.0, 200.0, 0.5), // LITERAL-PX-OK: m/s²
     (ids::INSP_PJ_BOUNCINESS, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fracção
-    (ids::INSP_PJ_MAX_BOUNCES, 0.0, 0.0, 32.0, 1.0), // LITERAL-PX-OK: contagem
-    (ids::INSP_PJ_RANGE, 0.0, 0.0, 10_000.0, 1.0), // LITERAL-PX-OK: metros
+    // ⭐ GEF 06: o campo só existe com a caixa Bounce ligada — zero é desmarcar a caixa, nunca o campo
+    // sumir debaixo do arrasto.
+    (ids::INSP_PJ_MAX_BOUNCES, 3.0, 1.0, 32.0, 1.0), // LITERAL-PX-OK: contagem
+    (ids::INSP_PJ_RANGE, 0.0, 0.0, 10_000.0, 1.0),   // LITERAL-PX-OK: metros
+];
+
+/// As dicas de hover (Plain English) das linhas do cartão GEF 06; Gravity, Range, Bounciness, Pull e Max Speed têm a
+/// sua no `populate_dicas`.
+const DICAS: [(ph2d_a11y::NodeId, &str); 9] = [
+    (ids::INSP_PJ_SPEED, "panel.inspector.projectile.tip_speed"),
+    (
+        ids::INSP_PJ_FACE_VELOCITY,
+        "panel.inspector.projectile.tip_faces_path",
+    ),
+    (ids::INSP_PJ_BOUNCE, "panel.inspector.projectile.tip_bounce"),
+    (
+        ids::INSP_PJ_MAX_BOUNCES,
+        "panel.inspector.projectile.tip_max_bounces",
+    ),
+    (ids::INSP_PJ_HOMING, "panel.inspector.projectile.tip_homing"),
+    (
+        ids::INSP_PJ_HOMING_TARGET,
+        "panel.inspector.projectile.tip_target",
+    ),
+    (
+        ids::INSP_PJ_TARGET_PICK,
+        "panel.inspector.projectile.tip_target_pick",
+    ),
+    (
+        ids::INSP_PJ_ACCEL,
+        "panel.inspector.projectile.tip_acceleration",
+    ),
+    (
+        ids::INSP_PJ_FOLD_SPEED_CHANGE,
+        "panel.inspector.projectile.tip_speed_change",
+    ),
 ];
 
 pub(crate) fn populate_projectile(store: &mut WidgetStore) {
-    store.register(
+    for (id, chave) in DICAS {
+        store.set_tooltip(id, ph2d_i18n::tr(chave));
+    }
+    // ⭐ A dobra Speed change nasce FECHADA; depois manda o que o artista abriu.
+    store.mark_collapsible_section(ids::INSP_PJ_FOLD_SPEED_CHANGE);
+    store.set_collapsed_if_unchosen(ids::INSP_PJ_FOLD_SPEED_CHANGE, true);
+    crate::populate::register_button_ids(store, &[ids::INSP_PJ_TARGET_PICK]);
+    for id in [
         ids::INSP_PJ_FACE_VELOCITY,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Checked,
-        },
-    );
+        ids::INSP_PJ_BOUNCE,
+        ids::INSP_PJ_HOMING,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
     // ⚠️ A perseguição é um número como os outros, mas a faixa é MUITO maior: um míssil precisa de
     // acelerar bem mais do que anda para virar depressa.
     store.register(
@@ -56,7 +103,8 @@ pub(crate) fn populate_projectile(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    store.set_number_range(ids::INSP_PJ_HOMING_ACCEL, 0.0, 5000.0, 10.0); // LITERAL-PX-OK: m/s²
+    // ⭐ GEF 06: como o Max Bounces, só existe com a caixa ligada — o piso é 1, não 0.
+    store.set_number_range(ids::INSP_PJ_HOMING_ACCEL, 1.0, 5000.0, 1.0); // LITERAL-PX-OK: m/s²
     // ⚠️ **O ALVO é TEXTO** — o componente guarda o `stable_name_id`, e quem traduz é a shell.
     store.register(
         ids::INSP_PJ_HOMING_TARGET,

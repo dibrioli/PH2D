@@ -53,6 +53,8 @@ pub struct InspectorProjectileInfo {
     pub clock_playing: bool,
     /// ⭐ **O voo já acabou** — ver o cabeçalho.
     pub flight_over: bool,
+    /// ⭐ GEF 06 — o conta-gotas do Target está armado PARA ESTE objecto: o próximo clique no palco escolhe.
+    pub target_pick_armed: bool,
     pub selected_count: usize,
 }
 
@@ -70,7 +72,20 @@ pub enum ProjectileFieldEdit {
     HomingAccel(f32),
     /// ⚠️ O NOME, cru. Quem o converte em `stable_name_id` é a shell.
     HomingTarget(String),
+    /// ⭐ GEF 06 — a caixa «Bounce»: ligada põe [`BOUNCES_AO_LIGAR`] ricochetes; desligada, zero.
+    Bounce(bool),
+    /// ⭐ GEF 06 — a caixa «Homing»: ligada põe [`PULL_AO_LIGAR`] de perseguição; desligada, zero.
+    Homing(bool),
+    /// ⭐ GEF 06 — arma (`true`) ou desarma o conta-gotas do Target. Não toca no documento.
+    PickTarget(bool),
 }
+
+/// Os ricochetes que a caixa «Bounce» liga (a bala que quica três vezes da ficha GEF 06).
+pub const BOUNCES_AO_LIGAR: u8 = 3;
+
+/// A perseguição que a caixa «Homing» liga, m/s²: a 12 m/s de fábrica a curva fecha num raio de
+/// `v²/a = 4,8 m` — vê-se a bala virar sem a ver girar no sítio (ficha GEF 06).
+pub const PULL_AO_LIGAR: f32 = 30.0;
 
 #[cfg(test)]
 mod tests {
@@ -124,6 +139,7 @@ mod tests {
             has_body: true,
             clock_playing: true,
             flight_over: false,
+            target_pick_armed: false,
             selected_count: 1,
         };
         assert!(

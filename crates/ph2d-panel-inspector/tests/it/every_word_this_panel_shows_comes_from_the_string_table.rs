@@ -60,6 +60,8 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/inspector_input_map.rs",
     // A 11.ª: o cartão do Top-Down Player (GEF 05), com as palavras do mover.
     "crates/ph2d-i18n/src/topdown.rs",
+    // A 12.ª: o cartão do Projectile Motion (GEF 06), com as palavras da bala.
+    "crates/ph2d-i18n/src/projectile.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

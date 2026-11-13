@@ -762,6 +762,7 @@ fn arma_o_top20() {
         has_body: true,
         clock_playing: true,
         flight_over: false,
+        target_pick_armed: false,
         selected_count: selecionados(),
     }));
     insp::set_current_inspector_statemachine(Some(InspectorStateMachineInfo {

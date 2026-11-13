@@ -3,11 +3,8 @@
 //! ⚠️ **Irmão de [`super::inspector`] por CAP de LOC** — o mesmo corte do
 //! [`super::inspector_topdown`].
 //!
-//! # ⚠️ Não há segmentado nenhum, e isso é o desenho
-//!
-//! O `ProjectileMotion` não tem um único enum: ele é nove números, uma caixa e um nome. ⇒ não há
-//! posição-no-array a ser tag de clique aqui, que é a armadilha que os três segmentados do irmão
-//! carregam.
+//! Não há segmentado: o `ProjectileMotion` é nove números, uma caixa e um nome; as caixas Bounce e Homing do
+//! cartão (GEF 06) escrevem esses números.
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
@@ -32,3 +29,11 @@ pub const INSP_PJ_FACE_VELOCITY: NodeId = hash_node_id("insp_pj_face_velocity");
 pub const INSP_PJ_HOMING_ACCEL: NodeId = hash_node_id("insp_pj_homing_accel");
 /// **O NOME de quem ele persegue** — ⚠️ só pintado quando a perseguição está ligada.
 pub const INSP_PJ_HOMING_TARGET: NodeId = hash_node_id("insp_pj_homing_target");
+/// ⭐ GEF 06 (versão B) — a caixa «Bounce»: ligada mostra Max Bounces e Bounciness.
+pub const INSP_PJ_BOUNCE: NodeId = hash_node_id("insp_pj_bounce");
+/// ⭐ GEF 06 — a caixa «Homing»: ligada mostra Target e Pull.
+pub const INSP_PJ_HOMING: NodeId = hash_node_id("insp_pj_homing");
+/// ⭐ GEF 06 — o conta-gotas do Target: arma, e o próximo clique no palco escolhe o objecto perseguido.
+pub const INSP_PJ_TARGET_PICK: NodeId = hash_node_id("insp_pj_target_pick");
+/// ⭐ GEF 06 — a dobra «Speed change» (Acceleration, Max Speed): nasce FECHADA; o cabeçalho leva o resumo.
+pub const INSP_PJ_FOLD_SPEED_CHANGE: NodeId = hash_node_id("insp_pj_fold_speed_change");

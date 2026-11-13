@@ -92,27 +92,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That tag was deleted \u{b7} this reaches nobody."
         }
         "panel.inspector.physics.any" => "(any)",
-        "panel.inspector.projectile.no_body_u_add_a_rigid_body_for_this_to_move_anything" => {
-            "No body \u{2014} add a Rigid Body for this to move anything."
-        }
-        "panel.inspector.projectile.the_body_must_be_kinematic_u_a_dynamic_body_belongs_to_the_solver" => {
-            "The body must be Kinematic \u{2014} a dynamic body belongs to the solver."
-        }
-        "panel.inspector.projectile.the_flight_is_over_u_rewind_to_launch_it_again" => {
-            "The flight is over \u{2014} rewind to launch it again."
-        }
-        "panel.inspector.projectile.the_clock_is_stopped_u_it_flies_while_the_clock_plays" => {
-            "The clock is stopped \u{2014} it flies while the clock plays."
-        }
-        "panel.inspector.projectile.max_speed_hint" => "0 = no cap.",
-        "panel.inspector.projectile.gravity_hint" => "0 = flies straight.",
-        "panel.inspector.projectile.bounciness_hint" => "1 = a perfect bounce.",
-        "panel.inspector.projectile.range_hint" => "0 = flies forever.",
-        "panel.inspector.projectile.homing_hint" => "0 = no homing.",
-        "panel.inspector.projectile.target_object_name_u" => "target object name\u{2026}",
-        "panel.inspector.projectile.no_object_in_the_scene_has_that_name" => {
-            "No object in the scene has that name."
-        }
         // ⭐⭐⭐ O RAIO (suplente #21) — o objecto que OLHA.
         // ⭐⭐⭐ A PARALAXE (plano 24) — ⚠️ os rótulos são os que o roteiro da cena `=1` nomeia,
         // e há gate derivado do próprio roteiro a exigir que cada nome entre crases exista aqui.

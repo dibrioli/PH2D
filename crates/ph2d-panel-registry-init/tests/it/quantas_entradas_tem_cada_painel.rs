@@ -1132,7 +1132,10 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    nova**: o «Create and set key» da linha Key do cartão Trigger (`INSP_TRIGGER_SET_KEY`). Os botões de um corpo
     //    de formas desligadas da NAV REGION (GEF02 09/11) são UMA capacidade ao longo da fila e declaram-se composto
     //    (`sections/nav_desligados.rs`); sem isso a fixtura armada lia `108` (um por corpo).
-    ("inspector", 104),
+    // ⬆️ `104 → 105` em 2026-11-13 (`line/GameEngineFuncional`, GEF 06 versão B, escolhida pelo dono) — **capacidade
+    //    nova**: o conta-gotas do Target da bala (`INSP_PJ_TARGET_PICK`), o mesmo gesto do da câmera. As caixas
+    //    Bounce e Homing são toggles, não comandos.
+    ("inspector", 105),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     // ⬆️ `4 → 5` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21).

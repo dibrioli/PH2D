@@ -1,33 +1,56 @@
-//! **A secção PROJECTILE MOTION: o instantâneo e o dreno** (TOP-20 #14, W3).
+//! **A secção PROJECTILE MOTION: o instantâneo, o dreno e o conta-gotas do Target** (TOP-20 #14, GEF 06).
 //!
-//! ⛔⛔ **Ele MUDOU-SE da shell para cá em 2026-09-19**, na wave do RAIO (suplente #21), e não foi
-//! arrumação: a catraca `the_shell_only_shrinks` reprovou (`197 070` contra o tecto de `196 990`), e
-//! a cura que ela prescreve por escrito é **MOVER para `crates/ph2d-app-<família>`, nunca subir o
-//! número**. ⭐ O irmão novo nasceu já aqui, e ao escrever no cabeçalho dele *«ao contrário dos
-//! irmãos mais velhos»* ficou claro que a frase certa era mover o velho — *uma nota que explica uma
-//! inconsistência é mais barata de apagar do que de manter*.
-//!
-//! ⚠️ **As duas metades vivem juntas de propósito** — o mesmo molde do
-//! [`super::inspector_topdown`]: quem lê o mundo para o painel e quem escreve a edição de volta
-//! fazem a MESMA tradução, e separá-los seria a porta pela qual as duas divergem.
-//!
-//! # ⭐⭐ O que esta secção faz que a do irmão não faz: o ALVO é um NOME
-//!
-//! O componente guarda o `stable_name_id`; o painel mostra e recebe **texto**. A tradução é aqui, e
-//! nos dois sentidos — ⛔ os bits de uma entidade não sobrevivem a um `Ctrl+Z`, e um alvo guardado
-//! em bits apontaria para outra coisa (ou para nada) no primeiro undo.
-//!
-//! ⚠️ **E «o nome que ninguém tem» é uma resposta própria**, não um vazio: um alvo apagado tem de
-//! se ler como *«este nome não existe»*, e não como *«sem alvo»*.
+//! O ALVO é um NOME nos dois sentidos: o componente guarda o `stable_name_id` (os bits não sobrevivem a um
+//! `Ctrl+Z`), o painel mostra e recebe texto, e «o nome que ninguém tem» é uma resposta própria, não um vazio.
 
+use bevy_ecs::prelude::Resource;
 use ph2d_ecs::{Entity, Name, World, stable_name_id};
-use ph2d_editor_core::projectile_edits::{InspectorProjectileInfo, ProjectileFieldEdit};
+use ph2d_editor_core::action_bus::{ActionBus, ComponentEdit, EditorAction};
+use ph2d_editor_core::projectile_edits::{
+    BOUNCES_AO_LIGAR, InspectorProjectileInfo, PULL_AO_LIGAR, ProjectileFieldEdit,
+};
 use ph2d_physics_ecs::{BodyKind, ProjectileMotion, RigidBody};
 
-/// **O NOME de quem tem este `stable_name_id`** — e se ele existe.
-///
-/// ⚠️ **Devolve as DUAS coisas de uma vez.** Perguntar «qual é o nome?» e «ele existe?» em duas
-/// varreduras seria duas respostas à mesma pergunta, e a segunda envelhece.
+/// ⭐ GEF 06 — a bala cujo Target o próximo clique no palco escolhe (o conta-gotas). Estado de sessão.
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AlvoArmado(pub Option<u64>);
+
+/// O conta-gotas do Target está armado?
+#[must_use]
+pub fn armado(world: &World) -> bool {
+    world
+        .get_resource::<AlvoArmado>()
+        .is_some_and(|a| a.0.is_some())
+}
+
+/// Desarma o conta-gotas (o `Esc`) e devolve a bala que estava armada.
+pub fn desarma(world: &mut World) -> Option<u64> {
+    world.get_resource_mut::<AlvoArmado>()?.0.take()
+}
+
+/// ⭐ **O clique do conta-gotas no palco**: o de cima em `debaixo` com nome, que não é a bala, vira o Target pela
+/// porta do Inspector (um passo de desfazer); escolha ou vazio, desarma. `false` = não estava armado.
+pub fn escolher_alvo(world: &mut World, bus: &mut ActionBus, debaixo: &[u64]) -> bool {
+    let Some(bala) = desarma(world) else {
+        return false;
+    };
+    let nome = debaixo.iter().filter(|&&b| b != bala).find_map(|&b| {
+        world
+            .get_entity(Entity::from_bits(b))
+            .ok()
+            .and_then(|e| e.get::<Name>().map(|n| n.as_str().trim().to_string()))
+            .filter(|n| !n.is_empty())
+    });
+    if let Some(nome) = nome {
+        bus.push(EditorAction::InspectorComponentEdit {
+            entity_bits: bala,
+            edit: ComponentEdit::Projectile(ProjectileFieldEdit::HomingTarget(nome)),
+        });
+    }
+    true
+}
+
+/// **O NOME de quem tem este `stable_name_id`** e se ele falta — numa varredura só.
 pub(crate) fn nome_do_alvo(world: &World, id: u64) -> (String, bool) {
     if id == 0 {
         return (String::new(), false);
@@ -41,9 +64,7 @@ pub(crate) fn nome_do_alvo(world: &World, id: u64) -> (String, bool) {
             return (n.as_str().to_string(), false);
         }
     }
-    // ⚠️ **O nome perdeu-se com o objecto.** O componente guarda um hash, não o texto — então o
-    // painel não tem como mostrar o nome que o artista escreveu. O que ele pode dizer é que o
-    // objecto não está lá, e é isso que a segunda metade carrega.
+    // O hash não devolve o texto: o painel só pode dizer que o objecto não está lá.
     (String::new(), true)
 }
 
@@ -74,11 +95,13 @@ pub fn build_projectile_info(
         homing_target: alvo,
         homing_target_missing: em_falta,
         has_body: corpo.is_some(),
-        // ⚠️ **A pergunta é `== Kinematic` e não `!= Dynamic`**: um corpo estático também não serve,
-        // e a forma negativa deixaria-o passar como se estivesse bem.
+        // `== Kinematic`, não `!= Dynamic`: um corpo estático também não serve.
         body_is_kinematic: corpo.is_some_and(|b| b.kind == BodyKind::Kinematic),
         clock_playing,
         flight_over,
+        target_pick_armed: world
+            .get_resource::<AlvoArmado>()
+            .is_some_and(|a| a.0 == Some(bits)),
         selected_count,
     })
 }
@@ -89,8 +112,12 @@ pub fn apply_projectile_edit(world: &mut World, bits: u64, edit: &ProjectileFiel
     if world.get_entity(e).is_err() {
         return false;
     }
-    // ⚠️ **O alvo resolve-se ANTES do empréstimo mutável** — ele precisa de varrer o mundo, e
-    // fazê-lo com o componente já emprestado não compila.
+    if let ProjectileFieldEdit::PickTarget(arma) = edit {
+        // ⭐ O conta-gotas é da SESSÃO: armar não muda o documento (nenhum passo de desfazer).
+        world.insert_resource(AlvoArmado(arma.then_some(bits)));
+        return false;
+    }
+    // O alvo resolve-se ANTES do empréstimo mutável: ele varre o mundo.
     let alvo = match edit {
         ProjectileFieldEdit::HomingTarget(nome) => {
             let t = nome.trim();
@@ -106,13 +133,11 @@ pub fn apply_projectile_edit(world: &mut World, bits: u64, edit: &ProjectileFiel
     let mut alvo_novo = c.homing_target;
     match edit {
         ProjectileFieldEdit::InitialSpeed(v) => law.initial_speed = *v,
-        // ⚠️ **A aceleração pode ser NEGATIVA** — é o que faz uma bala travar no ar, e prendê-la em
-        // `0` apagaria metade do campo.
+        // A aceleração pode ser NEGATIVA: a bala trava no ar.
         ProjectileFieldEdit::Acceleration(v) => law.acceleration = *v,
         ProjectileFieldEdit::MaxSpeed(v) => law.max_speed = *v,
         ProjectileFieldEdit::Gravity(v) => law.gravity = *v,
-        // ⚠️ **A cerca é a do PAINEL escrita também AQUI**: o campo é alcançável por outra rota (um
-        // script, um ficheiro), e acima de `1` a bala **ganharia energia** a cada parede.
+        // A cerca do painel vale também aqui (script, ficheiro): acima de `1` a bala ganharia energia.
         ProjectileFieldEdit::Bounciness(v) => law.bounciness = *v,
         ProjectileFieldEdit::MaxBounces(n) => {
             law.max_bounces = u8::try_from((*n).min(32)).unwrap_or(0);
@@ -123,15 +148,19 @@ pub fn apply_projectile_edit(world: &mut World, bits: u64, edit: &ProjectileFiel
         ProjectileFieldEdit::HomingTarget(_) => {
             alvo_novo = alvo.unwrap_or(0);
         }
+        ProjectileFieldEdit::Bounce(on) => law.max_bounces = BOUNCES_AO_LIGAR * u8::from(*on),
+        ProjectileFieldEdit::Homing(on) => {
+            law.homing_accel = PULL_AO_LIGAR * f32::from(u8::from(*on))
+        }
+        ProjectileFieldEdit::PickTarget(_) => return false,
     }
     *c = ProjectileMotion::from_law(law, alvo_novo);
     sanitize_projectile(&mut c);
     true
 }
 
-/// ⭐ **A lei dos números do PROJÉCTIL** — o que o painel e o script (doc CodeEditor 08 §3.5) podem
-/// lá pôr: velocidades, gravidade, alcance e perseguição `≥ 0` (a aceleração tem sinal: travar),
-/// quique em `0..=1` (acima de `1` a bala ganharia energia a cada parede), no máximo 32 ressaltos.
+/// ⭐ **A lei dos números do PROJÉCTIL** (painel e script, doc CodeEditor 08 §3.5): tudo `≥ 0` menos a
+/// aceleração, quique em `0..=1`, no máximo 32 ressaltos.
 pub(crate) fn sanitize_projectile(c: &mut ProjectileMotion) {
     for v in [
         &mut c.initial_speed,

@@ -1,5 +1,7 @@
 # HANDOFF de continuação — line/JointEditor, W2 feita (12/11/2026)
 
+✅ **Smoke da W2 aprovado pelo dono (12/11).**
+
 Leitor: a próxima LLM da linha. Ramo `line/JointEditor`, worktree `Worktrees/line-JointEditor`. Commits da W2: `ca75ff30cf` (ponte) ·
 `031edd57bb` + `0da4f8d570` (Inspector) · `6955fa7e3e` (cena 123 + fotos). Não é handoff de integração (a linha não fechou).
 Plano: [01_plano.md](../01_plano.md) · números: [02_gabaritos_medidos.md](../02_gabaritos_medidos.md) ·

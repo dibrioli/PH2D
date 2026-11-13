@@ -350,14 +350,14 @@ impl PhysicsBridge {
 
             let rel_up = relative_rise(stand, vel, UP);
             // ⚠️ **A condição é a do FATO, e o ASSIST entra como argumento.** As
-            // duas coincidem na configuração que shipa (`corner_reach = 0,12`),
-            // então o sensor roda exactamente onde rodava e o teto custa uma
-            // varredura a mais — nunca uma invocação nova. O que a separação
-            // compra é o caso em que o artista DESARMA a quina: ali o leque
-            // continua a não custar raio nenhum, e o `is_on_ceiling` continua a
-            // existir, porque um fato não é opt-in.
-            let assist = corner_probe_wanted(&cfg.jump, stand.is_some(), rel_up);
-            let ceiling = if ceiling_fact_wanted(stand.is_some(), rel_up) {
+            // duas coincidem com `corner_reach = 0,12` (o teto custa uma varredura
+            // a mais, nunca uma invocação nova). A separação compra o caso
+            // em que o artista DESARMA a quina: o leque não custa
+            // raio, e o `is_on_ceiling` existe (um fato não é opt-in). «No chão» é
+            // `on_ground` (sensor E não no ar), nunca o sensor cru (Bug #12).
+            let grounded = was.jump.on_ground(stand);
+            let assist = corner_probe_wanted(&cfg.jump, grounded, rel_up);
+            let ceiling = if ceiling_fact_wanted(grounded, rel_up) {
                 probe_ceiling(
                     &self.world,
                     b.handle,

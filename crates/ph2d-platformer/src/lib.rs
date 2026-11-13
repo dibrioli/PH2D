@@ -451,7 +451,7 @@ pub fn player_motor(
     // (`corner_probe_wanted`), então a assistência não pode existir num lado e
     // não no outro. Sem sensor não há correção — e um sensor entregue fora da
     // hora ainda assim não age.
-    let nudge = if corner::corner_probe_wanted(&cfg.jump, footing.is_some(), rel_up) {
+    let nudge = if corner::corner_probe_wanted(&cfg.jump, grounded, rel_up) {
         corner::corner_nudge(ceiling, &cfg.jump, up)
     } else {
         [0.0, 0.0]

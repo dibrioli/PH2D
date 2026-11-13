@@ -1265,3 +1265,46 @@ um ponto não vê uma janela.
 + 0,05, subida ≤ altura + 0,25 e ≥ 0,6 × altura. A fixtura voltou a 2,0 e `OLD_LAW_WALL_JUMP_HEIGHT` saiu.
 **Mutação:** tirar a recusa do `cast_leg` → a varredura reprova (h=1,50…2,05, 27,02 m/s) e
 `the_wall_jump_survives_…` também; restaurado, verde.
+
+## Bug #12 — Teto baixo batido sem `ceiling` nem `Bonked` nos primeiros ~0,3 m da subida — ✅ FECHADO (12/11)
+
+Achado em 12/11 pela varredura da linha GEF (sondas sobre `tests/it/player_ceiling.rs`).
+
+**Sintoma:** em TODAS as alturas de pulo (1,0–2,6), um teto cujo fundo fica 0,10–0,30 m acima da cabeça
+(cabeça parada = 1,40; fundo 1,50–1,70) é batido — a subida morre contra ele — e a vista não acende
+`ceiling` nem publica `Bonked` (nem `player.bonked` no barramento).
+
+**Mecanismo:** nos primeiros ~0,3 m da subida a perna (`cling_distance`) ainda vê o chão, logo `stand` é
+`Some`. A ponte (`ph2d-physics-ecs/src/bridge/player.rs`) passava `stand.is_some()` como «no chão» a
+`ceiling_fact_wanted` e a `corner_probe_wanted`, e a lei (`ph2d-platformer/src/lib.rs`, a quina) passava
+`footing.is_some()`: as duas portas diziam «de pé sob uma marquise», e o sensor do teto não corria. A lei
+já tinha a resposta certa: `JumpState::on_ground` (sensor E não `airborne`), que separa *«estou de pé»* de
+*«acabei de sair daqui»* — e `lib.rs` já a calculava (`let grounded`) para o pulo, o arranque e a beirada.
+
+**Cura:** a ponte usa `was.jump.on_ground(stand)` nas duas portas; a lei usa o `grounded` que já tinha na
+porta da quina. `bridge/player.rs` ficou nos 700 (tecto) — a linha nova saiu de um comentário.
+Efeito colateral medido: a ajuda de quina passa a agir também nesses tetos baixos; os três testes de
+`platform_corner` ficam verdes com e sem a cura (nenhum mudou).
+
+**O gate que estava verde:** os gates de `player_ceiling` mediam UM teto (1,9, com 1,3146 m e o pulo
+solto no tique 8, topo livre 2,17) — muito acima da janela —, e o «esvanecer» uma tabela de tetos fixos
+presa à lei velha.
+
+**Gate novo:** `player_ceiling::every_ceiling_in_reach_is_bonked_once_at_every_jump_height` — Jump Height
+1,0–2,6 (passo 0,05) × fundo do teto de cabeça + 0,10 até o topo livre (passo 0,05), quina 0,12 e 0:
+exactamente UM `Bonked` e UMA borda do bit; nada a topo livre + 0,05 e + 0,10; vy ≤ `launch_speed`;
+velocidade publicada nunca cresce com o teto. A fixtura `jumper` voltou a 1,2 m, o pulo é segurado até
+depois do ápice (t ≤ 60; soltar no tique 8 cortava a subida), e o topo livre mede-se = cabeça + H (2,60 a
+1,2). `the_bonk_fades_…` passou a tetos RELATIVOS ao topo livre (−0,60: 3,123 m/s · −0,01: 0,349 · +0,01:
+nada). Verde também sobre `62c9ff8e9c` (tique dividido na faixa).
+**Mutação:** repor `stand.is_some()` na ponte e `footing.is_some()` na lei → a varredura reprova com 266
+falhas (tetos 1,50–1,70); restaurado, verde.
+
+### Bug #12b — teto DENTRO do tique da decolagem (cabeça + ≤ ~0,05) — ⏳ ABERTO
+
+Fundo a cabeça + 0,05 (1,45) reprova nas 33 alturas, com e sem a cura. Outro mecanismo, medido tique a
+tique (h=1,2): no tique do pulo a ponte sonda ANTES de a lei lançar (`rel_up` = −0,082, logo não sonda); o
+solver leva a cabeça a 1,4554 (contacto) no mesmo tique; no seguinte `rel_up` já é −0,031 — a subida
+morreu sem ninguém perguntar. Curar pede sondar com a velocidade DEPOIS do lançamento (ou o fato do teto
+passar a ser um pós-passo à Godot `is_on_ceiling`) — mudança de desenho, não feita. A varredura começa em
+cabeça + 0,10 por isso, e o doc-comment dela o diz.

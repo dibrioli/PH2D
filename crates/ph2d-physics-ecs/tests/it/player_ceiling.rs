@@ -43,52 +43,109 @@ fn ceiling(sim: &mut SimWorld, bottom: f32) {
     ));
 }
 
-/// O personagem destes gates: pula alto o bastante para alcançar o teto.
+/// A altura natural do pulo destes gates — a do [`PlatformPlayer::default`] não
+/// alcança teto nenhum desta cena, e esta alcança com folga.
 ///
-/// A tabela de tetos foi medida com `v0 = √(2·g·1,2)` = 4,852 m/s; a lei do ápice real (GEF 04)
-/// dá esse MESMO `v0` a 1,3146 m (`launch_speed_custa_pouco`). Com 1,2 o teto de 2,15 sai do
-/// alcance e a margem silenciosa deixa de ter batida.
+/// ⚠️ **As alturas de teto dos gates são RELATIVAS ao topo livre** ([`free_top`]):
+/// a lei do ápice real (GEF 04) moveu o `v0` de cada altura, e uma tabela de
+/// tetos fixos ficou verde ou vermelha por acaso cada vez que a lei mudou.
+const H: f32 = 1.2;
+
 fn jumper(corner_reach: f32) -> PlatformPlayer {
+    jumper_h(corner_reach, H)
+}
+
+fn jumper_h(corner_reach: f32, jump_height: f32) -> PlatformPlayer {
     PlatformPlayer {
         float_height: FLOAT,
-        jump_height: 1.3146,
+        jump_height,
         corner_reach,
         ..PlatformPlayer::default()
     }
 }
 
-/// Corre a cena e devolve `(bateu alguma vez, subiu alguma vez)`.
-///
-/// O segundo é o **CONTROLE**: sem ele um gate que mede *"bateu"* fica verde num
-/// personagem que nunca saiu do chão, e a razão da falha seria invisível.
-fn run(corner_reach: f32, ceiling_bottom: Option<f32>) -> (bool, bool) {
+/// O que uma corrida mede.
+struct Run {
+    /// A velocidade de cada `Bonked` publicado.
+    bonks: Vec<f32>,
+    /// Quantas vezes o bit `ceiling` ACENDEU (bordas de subida).
+    lit: usize,
+    /// O CONTROLE: sem ele um gate que mede *"bateu"* fica verde num personagem
+    /// que nunca saiu do chão.
+    rose: bool,
+    /// O topo do collider parado no chão (a cabeça) e o mais alto que chegou.
+    head: f32,
+    top: f32,
+    /// A maior subida por tique (m/s, diferença de posição).
+    vmax: f32,
+}
+
+fn go(jump_height: f32, corner_reach: f32, ceiling_bottom: Option<f32>) -> Run {
     let mut sim = SimWorld::new();
     floor(&mut sim, 0.0);
     if let Some(b) = ceiling_bottom {
         ceiling(&mut sim, b);
     }
-    let who = subject_tuned(&mut sim, true, FLOAT, Some(jumper(corner_reach)));
+    let who = subject_tuned(
+        &mut sim,
+        true,
+        FLOAT,
+        Some(jumper_h(corner_reach, jump_height)),
+    );
     let mut bridge = PhysicsBridge::new();
-
-    let mut bonked = false;
-    let mut rose = false;
     let start = scene::y_of(&sim, "Subject");
-    for t in 1..=120u64 {
-        // Segura o pulo nos primeiros tiques: o buffer/coyote resolve o resto.
+    let (mut prev, mut top, mut vmax) = (start, start, 0.0_f32);
+    let (mut bonks, mut lit, mut was_lit) = (Vec::new(), 0, false);
+    for t in 1..=150u64 {
+        // Segura o pulo até depois do ápice do mais alto (2,6 m ≈ 44 tiques):
+        // soltar antes CORTA a subida, e a altura medida deixaria de ser a lei.
         bridge.set_player_input(
             who,
             PlayerInput {
-                jump: t <= 8,
+                jump: t <= 60,
                 ..PlayerInput::default()
             },
         );
         bridge.dispatch(&mut sim, true, t);
-        if let Some(v) = bridge.player_view(who) {
-            bonked |= v.ceiling;
+        let now_lit = bridge.player_view(who).is_some_and(|v| v.ceiling);
+        lit += usize::from(now_lit && !was_lit);
+        was_lit = now_lit;
+        for (_, ev) in bridge.player_events() {
+            if let ph2d_platformer::PlayerEvent::Bonked { speed } = ev {
+                bonks.push(*speed);
+            }
         }
-        rose |= scene::y_of(&sim, "Subject") > start + 0.2;
+        let y = scene::y_of(&sim, "Subject");
+        vmax = vmax.max((y - prev) * 60.0);
+        top = top.max(y);
+        prev = y;
     }
-    (bonked, rose)
+    let lid = scene::HALF_H + scene::RADIUS;
+    Run {
+        bonks,
+        lit,
+        rose: top > start + 0.2,
+        head: start + lid,
+        top: top + lid,
+        vmax,
+    }
+}
+
+/// O topo do collider no ápice de um pulo sem teto — a régua dos tetos.
+fn free_top(jump_height: f32) -> f32 {
+    go(jump_height, 0.12, None).top
+}
+
+/// `(bateu alguma vez, subiu alguma vez)`.
+fn run(corner_reach: f32, ceiling_bottom: Option<f32>) -> (bool, bool) {
+    let r = go(H, corner_reach, ceiling_bottom);
+    (r.lit > 0, r.rose)
+}
+
+/// `(velocidades das batidas, subiu alguma vez)`.
+fn bonks(corner_reach: f32, ceiling_bottom: Option<f32>) -> (Vec<f32>, bool) {
+    let r = go(H, corner_reach, ceiling_bottom);
+    (r.bonks, r.rose)
 }
 
 /// **O FATO SOBREVIVE À ASSISTÊNCIA DE QUINA ESTAR DESLIGADA** — o gate da wave.
@@ -161,9 +218,8 @@ fn standing_under_an_overhang_is_not_a_ceiling() {
 
 /// **Uma cabeça que bate publica UM evento, com a velocidade que ela trazia.**
 ///
-/// Medido na cena: o topo do collider chega a 1,4 mm do teto no tique 8 com
-/// `vy = 3,8712`, e no tique seguinte percorre **0,6 mm** em vez dos 65 mm que a
-/// velocidade pedia — é uma batida, não um quase.
+/// O teto 1,9 fica 0,7 m abaixo do topo livre: uma batida cheia (a tabela do
+/// `the_bonk_fades_…` põe-na entre 3,12 e 3,78 m/s), não um quase.
 ///
 /// ⚠️ **Mutação que deve sangrar:** derivar o evento do NÍVEL do bit em vez da
 /// BORDA (`after.ceiling` sem o `&& !before.ceiling`). O bit fica de pé nos
@@ -194,25 +250,25 @@ fn a_clear_sky_never_publishes_a_bonk() {
 ///
 /// O sensor olha um tique à frente (`rel_up * dt`), então há uma janela em que
 /// ele diz *bloqueado* e o contato é marginal — a pergunta honesta é **quão
-/// alto** o evento grita ali. A varredura de altura de teto responde: a
-/// velocidade publicada desce continuamente até o teto sair do alcance, e o
-/// último evento antes do corte carrega ~9% de uma batida cheia.
+/// alto** o evento grita ali. Com `H` = 1,2 a cabeça parte de 1,40 e o topo
+/// livre é 2,60 (= cabeça + H, a lei do ápice real); a velocidade publicada desce
+/// continuamente até o teto sair do alcance:
 ///
-/// | teto | m/s   |   | teto | m/s   |
-/// |------|-------|---|------|-------|
-/// | 1,80 | 4,035 |   | 2,05 | 1,746 |
-/// | 1,90 | 3,871 |   | 2,10 | 0,847 |
-/// | 2,00 | 3,054 |   | 2,15 | 0,438 |
-/// |      |       |   | 2,20 | —     |
+/// | teto − livre | m/s   |   | teto − livre | m/s   |
+/// |--------------|-------|---|--------------|-------|
+/// | −0,80        | 3,777 |   | −0,10        | 1,003 |
+/// | −0,60        | 3,123 |   | −0,05        | 0,676 |
+/// | −0,40        | 2,469 |   | −0,01        | 0,349 |
+/// | −0,20        | 1,412 |   | +0,01        | —     |
 ///
-/// ⚠️ **E o corte cai onde a GEOMETRIA manda:** o ápice livre põe o topo do
-/// collider em 2,1715, e o primeiro teto sem batida é 2,20 — não há evento com
-/// o teto fora de alcance. Reproduzir: `measure_the_bonk_across_ceiling_heights`.
+/// ⚠️ **E o corte cai onde a GEOMETRIA manda:** 1 cm abaixo do topo livre ainda
+/// bate, 1 cm acima já não. Reproduzir: `measure_the_bonk_across_ceiling_heights`.
 #[test]
 fn the_bonk_fades_to_nothing_as_the_ceiling_leaves_reach() {
-    let hard = bonks(0.12, Some(1.8)).0;
-    let graze = bonks(0.12, Some(2.15)).0;
-    let clear = bonks(0.12, Some(2.20)).0;
+    let free = free_top(H);
+    let hard = bonks(0.12, Some(free - 0.6)).0;
+    let graze = bonks(0.12, Some(free - 0.01)).0;
+    let clear = bonks(0.12, Some(free + 0.01)).0;
     assert_eq!(hard.len(), 1, "{hard:?}");
     assert_eq!(graze.len(), 1, "{graze:?}");
     assert!(clear.is_empty(), "teto fora de alcance: {clear:?}");
@@ -222,53 +278,90 @@ fn the_bonk_fades_to_nothing_as_the_ceiling_leaves_reach() {
     );
 }
 
-/// A SONDA da tabela acima — varre a altura do teto e imprime o que sai.
-///
-/// `cargo test -p ph2d-physics-ecs --test player_ceiling measure_the_bonk -- --ignored --nocapture`
+/// A SONDA da tabela acima — varre a altura do teto RELATIVA ao topo livre.
 #[test]
 #[ignore = "sonda: imprime, nao afirma"]
 fn measure_the_bonk_across_ceiling_heights() {
-    println!("teto | bonk m/s");
-    let mut b = 1.80f32;
-    while b <= 2.40 {
-        match bonks(0.12, Some(b)).0.first() {
-            Some(s) => println!("{b:.2} | {s:8.4}"),
-            None => println!("{b:.2} |        -"),
-        }
-        b += 0.05;
+    let (free, head) = (free_top(H), go(H, 0.12, None).head);
+    println!("H={H} cabeca={head:.4} topo livre={free:.4}");
+    println!("teto-livre | bonks m/s");
+    for k in [
+        -1.15_f32, -0.8, -0.6, -0.4, -0.3, -0.2, -0.1, -0.05, -0.03, -0.01, 0.01, 0.05,
+    ] {
+        let b = free + k;
+        let r = go(H, 0.12, Some(b));
+        println!("{:+.2} ({b:.3}) | {:?} lit={}", b - free, r.bonks, r.lit);
     }
 }
 
-/// Corre a cena e devolve `(velocidades das batidas, subiu alguma vez)`.
-fn bonks(corner_reach: f32, ceiling_bottom: Option<f32>) -> (Vec<f32>, bool) {
-    let mut sim = SimWorld::new();
-    floor(&mut sim, 0.0);
-    if let Some(b) = ceiling_bottom {
-        ceiling(&mut sim, b);
-    }
-    let who = subject_tuned(&mut sim, true, FLOAT, Some(jumper(corner_reach)));
-    let mut bridge = PhysicsBridge::new();
-
-    let mut out = Vec::new();
-    let mut rose = false;
-    let start = scene::y_of(&sim, "Subject");
-    for t in 1..=120u64 {
-        bridge.set_player_input(
-            who,
-            PlayerInput {
-                jump: t <= 8,
-                ..PlayerInput::default()
-            },
-        );
-        bridge.dispatch(&mut sim, true, t);
-        for (_, ev) in bridge.player_events() {
-            if let ph2d_platformer::PlayerEvent::Bonked { speed } = ev {
-                out.push(*speed);
+/// **TODO teto ao alcance é batido UMA vez, em TODA altura de pulo** (Bug #12).
+///
+/// Jump Height 1,0–2,6 (passo 0,05) × fundo do teto da cabeça + 0,10 até o topo
+/// livre (passo 0,05), com a quina armada e desarmada: exactamente UMA batida
+/// (o bit acende uma vez E um `Bonked`), nenhuma com o teto fora do alcance
+/// (topo livre + 0,05 e + 0,10), a subida nunca acima do `v0` da lei, e a
+/// velocidade publicada nunca CRESCE quando o teto sobe.
+///
+/// ⚠️ **O gate que estava verde era de UM ponto** (teto 1,9 com 1,3146 m): os
+/// tetos baixos — os primeiros ~0,3 m da subida, onde a perna ainda vê o chão —
+/// não eram medidos, e ali a porta do teto lia o sensor cru como *no chão*.
+///
+/// ⚠️ **ABERTO (Bug #12b, `BUGS_physics.md`): a cabeça + 0,05 reprova nas 33
+/// alturas.** É outro mecanismo: o teto está dentro do PRÓPRIO tique da
+/// decolagem (o sensor corre antes da lei lançar, com `rel_up` < 0, e no tique
+/// seguinte o solver já matou a subida), por isso a grelha começa em + 0,10.
+#[test]
+fn every_ceiling_in_reach_is_bonked_once_at_every_jump_height() {
+    let g = -ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y;
+    let mut bad = Vec::new();
+    for i in 0..=32 {
+        let h = 1.0 + 0.05 * i as f32;
+        let law = jumper_h(0.12, h).config().jump;
+        let v0 = ph2d_platformer::launch_speed(&law, g, h, false, 1.0 / 60.0);
+        for reach in [0.12_f32, 0.0] {
+            let free = go(h, reach, None);
+            let mut last = f32::INFINITY;
+            let mut b = free.head + 0.10;
+            while b < free.top {
+                let r = go(h, reach, Some(b));
+                if r.bonks.len() != 1 || r.lit != 1 {
+                    bad.push(format!(
+                        "h={h:.2} q={reach} teto={b:.3} (livre {:.3}): {:?} lit={}",
+                        free.top, r.bonks, r.lit
+                    ));
+                } else if r.bonks[0] > last + 1e-3 {
+                    bad.push(format!(
+                        "h={h:.2} q={reach} teto={b:.3}: {:.3} > {last:.3} (nao esvanece)",
+                        r.bonks[0]
+                    ));
+                }
+                if r.vmax > v0 + 1e-3 {
+                    bad.push(format!(
+                        "h={h:.2} q={reach} teto={b:.3}: vy {:.3} > v0 {v0:.3}",
+                        r.vmax
+                    ));
+                }
+                last = r.bonks.first().copied().unwrap_or(last);
+                b += 0.05;
+            }
+            for over in [0.05_f32, 0.10] {
+                let r = go(h, reach, Some(free.top + over));
+                if !r.bonks.is_empty() || r.lit != 0 {
+                    bad.push(format!(
+                        "h={h:.2} q={reach} teto livre+{over}: {:?} lit={}",
+                        r.bonks, r.lit
+                    ));
+                }
+            }
+            if !free.rose || free.vmax > v0 + 1e-3 {
+                bad.push(format!(
+                    "h={h:.2} q={reach} sem teto: subiu={} vy {:.3} v0 {v0:.3}",
+                    free.rose, free.vmax
+                ));
             }
         }
-        rose |= scene::y_of(&sim, "Subject") > start + 0.2;
     }
-    (out, rose)
+    assert!(bad.is_empty(), "{} falhas:\n{}", bad.len(), bad.join("\n"));
 }
 
 /// **E a batida chega ao BARRAMENTO com nome** — a quarta condição da política

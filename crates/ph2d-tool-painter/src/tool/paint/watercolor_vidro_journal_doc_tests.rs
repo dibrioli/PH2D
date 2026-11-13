@@ -86,6 +86,9 @@ fn o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer() {
     par(
         &mut |t| {
             t.set_paint_media(PaintMedia::WetPaint);
+            // n.º 8: o relógio FIXO — com o de parede a sim do `j` e a do `o` andavam passos diferentes sob carga
+            // (vermelho 1 em 3 com a crate a correr em paralelo, na HEAD de antes).
+            t.set_wet_relogio_fixo(true);
             t.set_brush_color_srgb8([200, 40, 30]);
         },
         &mut j,

@@ -131,6 +131,46 @@ impl WriteState {
         j.layer.is_none() && !j.mixed && !j.incomplete && !j.absent
     }
 
+    /// **O vidro do último reset, SEGURADO** — a absorção do escorrido (ADR-0204): `testemunhas` = o cursor
+    /// elidido, `vivo` = o mapa de agora. A camada do journal volta pelos tiles (`rewind_into`); as outras
+    /// têm de ser o MESMO plano que a testemunha aponta. `None` = o journal não o descreve (quem chama recusa).
+    pub(crate) fn vidro_no_reset(
+        &self,
+        testemunhas: &std::collections::BTreeMap<
+            crate::layers::LayerId,
+            std::sync::Weak<Vec<Vidro>>,
+        >,
+        vivo: &crate::compositor::vidro::Vidros,
+    ) -> Option<crate::compositor::vidro::Vidros> {
+        let j = self.vidro.borrow();
+        if j.mixed || j.incomplete {
+            return None;
+        }
+        let mut out = crate::compositor::vidro::Vidros::new();
+        for (k, w) in testemunhas {
+            let live = vivo.get(k)?;
+            if j.layer == Some(*k) && (j.absent || !j.tiles.is_empty()) {
+                // Plano que não existia no reset e a testemunha diz que sim: o mesmo braço recusado do `from_journal`.
+                if j.absent {
+                    return None;
+                }
+                let mut v = live.as_ref().clone();
+                if !j.tiles.rewind_into(&mut v) {
+                    return None;
+                }
+                out.insert(*k, std::sync::Arc::new(v));
+            } else if w
+                .upgrade()
+                .is_some_and(|p| std::sync::Arc::ptr_eq(&p, live))
+            {
+                out.insert(*k, std::sync::Arc::clone(live));
+            } else {
+                return None;
+            }
+        }
+        Some(out)
+    }
+
     /// O journal do vidro descreve o passo que começou em `writes`: `f(camada, absent, tiles)`.
     pub(crate) fn with_vidro_before<R>(
         &self,

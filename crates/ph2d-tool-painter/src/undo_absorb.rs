@@ -59,9 +59,54 @@ impl UndoController {
     /// em cada plano, então **sem escrita estrangeira ele não lê um byte**. Reusar essa porta em vez de
     /// escrever uma segunda lista de planos é deliberado: uma segunda lista é a que nasce incompleta
     /// quando o vigésimo plano aparecer.
+    ///
+    /// # O VIDRO pelo journal (ADR-0204)
+    ///
+    /// O cursor elide o vidro (não segura os bytes), então ele não testemunha no detector. Mas o escorrido
+    /// do Wet ESCREVE o vidro depois do commit, e essa escrita é do topo como a da tela. Só quando o journal
+    /// do vidro capturou algo desde o reset (o caso comum não paga nada) o cursor é trocado, durante a
+    /// absorção, por um que SEGURA o vidro do reset (`journal.get(i).unwrap_or(vivo[i])`): o detector, a base
+    /// e a re-partição passam a ser as do oráculo. Sem disparo, o cursor elidido volta.
     pub(crate) fn absorb_foreign_writes(&mut self, before: &ModelSnapshot) {
+        let Some(held) = self.cursor_com_o_vidro_do_reset(before) else {
+            self.absorb_foreign_writes_inner(before, false);
+            return;
+        };
+        let elidido = self.cursor.replace(Box::new(held));
+        if !self.absorb_foreign_writes_inner(before, true) {
+            self.cursor = elidido;
+        }
+    }
+
+    /// O cursor com o vidro do último reset segurado — `None` (sem custo) quando o journal do vidro está
+    /// calado, a chave desligada, o cursor o segura, ou o `before` também o elide (o commit: a absorção do
+    /// escorrido já correu no pen-down).
+    fn cursor_com_o_vidro_do_reset(&self, before: &ModelSnapshot) -> Option<ModelSnapshot> {
+        let cursor = self.cursor.as_deref()?;
+        if !crate::undo::window::vidro_pelo_journal()
+            || cursor.relief_elided.vidros.is_empty()
+            || !before.relief_elided.vidros.is_empty()
+            || self.write_state.vidro_untouched()
+        {
+            return None;
+        }
+        let vidros = self
+            .write_state
+            .vidro_no_reset(&cursor.relief_elided.vidros, &before.vidros)?;
+        let mut c = cursor.clone();
+        c.vidros = vidros;
+        c.relief_elided.vidros.clear();
+        Some(c)
+    }
+
+    /// `true` = re-partiu o topo (e o cursor andou).
+    fn absorb_foreign_writes_inner(
+        &mut self,
+        before: &ModelSnapshot,
+        vidro_segurado: bool,
+    ) -> bool {
         let Some(cursor) = self.cursor.as_deref() else {
-            return; // história vazia: não há topo a corrigir
+            return false; // história vazia: não há topo a corrigir
         };
         // `split` esvazia o que recebe, então ele come CÓPIAS — e uma cópia de `ModelSnapshot` é um
         // punhado de refcounts.
@@ -85,7 +130,7 @@ impl UndoController {
                 self.canvas_held(cursor, &live),
                 self.canvas_held(before, &live),
             ) else {
-                return; // a testemunha morreu: não há o que comparar honestamente
+                return false; // a testemunha morreu: não há o que comparar honestamente
             };
             a.canvas_rgba = ca;
             b.canvas_rgba = cb;
@@ -108,7 +153,7 @@ impl UndoController {
             m.covers.clear();
             m.mats.clear();
             // O vidro descrito pelo journal (ADR-0204) também não testemunha aqui, pela mesma razão.
-            if crate::undo::window::vidro_pelo_journal() {
+            if crate::undo::window::vidro_pelo_journal() && !vidro_segurado {
                 m.vidros.clear();
             }
             m.relief_elided = crate::undo::elide::ElidedRelief::default();
@@ -144,27 +189,27 @@ impl UndoController {
         let mut detected = crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None);
         *detected.canvas_mut() = canvas;
         if detected.heap_bytes() == 0 {
-            return; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
+            return false; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }
         // ⚠️ **A base do RELEVO vem da porta única** ([`Self::base_for_top`]): o cursor elide os planos
         // (degrau 4) e materializar contra ele devolveria `None`, matando a absorção em silêncio. Ela
         // recusa quando alguém escreveu relevo desde o commit, e aí a absorção sai calada — que é a
         // mesma resposta que ela já dava quando o cursor não descrevia o topo.
         let Some(base) = self.base_for_top(Some(&live)) else {
-            return;
+            return false;
         };
         let Some(cursor) = self.cursor.as_deref() else {
-            return;
+            return false;
         };
         let (Some(cursor), Some(before_h)) = (
             self.with_canvas_held(cursor, &live),
             self.with_canvas_held(before, &live),
         ) else {
-            return;
+            return false;
         };
         let cursor = &cursor;
         let Some(mut top) = self.undo.pop() else {
-            return;
+            return false;
         };
         let (kind, old_bytes, transacao) = (top.kind, top.heap_bytes(), top.transacao);
         // ⭐ **O CANVAS vai pelo caminho barato quando ele dá a MESMA resposta** (medido 2026-09-24:
@@ -195,7 +240,7 @@ impl UndoController {
                 *top.planes.canvas_mut() = canvas;
             }
             self.undo.push(top);
-            return;
+            return false;
         };
         if cheap.is_some() {
             // O mesmo `Arc` dos dois lados: o `split` vê-os idênticos e não varre o canvas.
@@ -220,5 +265,6 @@ impl UndoController {
         self.undo.push(entry);
         // O cursor anda junto: o topo agora termina no estado que este passo encontrou.
         self.set_cursor(before.clone());
+        true
     }
 }

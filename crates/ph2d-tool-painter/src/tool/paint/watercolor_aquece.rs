@@ -8,8 +8,8 @@
 
 use super::watercolor_backdrop::ChaveDoFundo;
 use super::*;
-use crate::compositor::composite_below;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+use crate::compositor::{Corte, composite_below_cortavel};
+use std::sync::atomic::Ordering::SeqCst;
 use std::sync::{Arc, OnceLock};
 
 thread_local! {
@@ -31,14 +31,14 @@ type Feito = (Arc<Vec<u8>>, Option<Arc<Vec<u8>>>);
 
 pub(crate) struct Aquecendo {
     chave: ChaveDoFundo,
-    cancela: Arc<AtomicBool>,
+    cancela: Arc<Corte>,
     fio: std::thread::JoinHandle<Option<Feito>>,
 }
 
 impl Aquecendo {
     /// Desiste: o fio sai antes da fase seguinte e larga o instantâneo sozinho (sem esperar por ele aqui).
     fn descarta(self) {
-        self.cancela.store(true, SeqCst);
+        self.cancela.para.store(true, SeqCst);
         #[cfg(test)]
         CONTAS.set((CONTAS.get().0, CONTAS.get().1 + 1));
     }
@@ -73,10 +73,15 @@ impl PainterTool {
         if !FUNDO_AQUECIDO_EM_FUNDO.get() || !super::watercolor_backdrop::FUNDO_EM_CACHE.get() {
             return false;
         }
+        let chave = self.chave_do_fundo();
         if let Some(a) = self.paint.aquecimento.0.take() {
+            if a.chave.casa(&chave) {
+                // A troca de pincel depois do clique (ou duas portas no mesmo gesto) não refaz o que já corre.
+                self.paint.aquecimento.0 = Some(a);
+                return true;
+            }
             a.descarta();
         }
-        let chave = self.chave_do_fundo();
         let pronto = matches!(&self.paint.fundo_em_cache,
             Some((c, f)) if c.casa(&chave) && self.chao_preto_fresco(f));
         if pronto {
@@ -87,7 +92,7 @@ impl PainterTool {
         let images = self.images.clone();
         let (w, h) = self.source_size;
         let papel = self.cor_do_chao();
-        let cancela = Arc::new(AtomicBool::new(false));
+        let cancela = Arc::new(Corte::default());
         let parar = Arc::clone(&cancela);
         #[cfg(test)]
         let atraso = ATRASO_DO_AQUECIMENTO_MS.get();
@@ -100,16 +105,16 @@ impl PainterTool {
                     active_rgba: &[],
                     images: &images,
                 };
-                Arc::new(pool().install(|| composite_below(&pilha, &src, w, h, camada, chao)))
+                pool()
+                    .install(|| composite_below_cortavel(&pilha, &src, w, h, camada, chao, &parar))
+                    .map(Arc::new)
             };
-            if parar.load(SeqCst) {
-                return None;
-            }
-            let fundo = compoe(papel);
-            if parar.load(SeqCst) {
-                return None;
-            }
-            let preto = abaixo.then(|| compoe([0, 0, 0]));
+            let fundo = compoe(papel)?;
+            let preto = if abaixo {
+                Some(compoe([0, 0, 0])?)
+            } else {
+                None
+            };
             drop((images, pilha)); // o instantâneo sai antes de o pen-down ver o resultado
             Some((fundo, preto))
         };
@@ -146,6 +151,16 @@ impl PainterTool {
         CONTAS.set((CONTAS.get().0 + 1, CONTAS.get().1));
         self.paint.fundo_em_cache = Some((a.chave, Arc::clone(&fundo)));
         self.guarda_o_chao_preto(&fundo, preto);
+    }
+
+    /// O corte do aquecimento por colher (o gate do fio descartado).
+    #[cfg(test)]
+    pub(super) fn corte_do_aquecimento(&self) -> Option<Arc<Corte>> {
+        self.paint
+            .aquecimento
+            .0
+            .as_ref()
+            .map(|a| Arc::clone(&a.cancela))
     }
 
     /// O fio do aquecimento já acabou (`None` = não há aquecimento por colher).

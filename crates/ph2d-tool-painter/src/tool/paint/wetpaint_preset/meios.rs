@@ -105,7 +105,7 @@ impl PainterTool {
         let Some(m) = meio_do_preset(&p.parametros.media) else {
             return Err(MeioDesconhecido(p.parametros.media.clone()));
         };
-        Ok(crate::macro_track::porta!(
+        let falhas = crate::macro_track::porta!(
             self,
             |_| crate::macro_track::Passo::PresetAplica {
                 parametros: serde_json::to_string(&p.parametros).unwrap_or_default(),
@@ -123,7 +123,11 @@ impl PainterTool {
                     self.meio_preset_aplicar_corpo(m, p)
                 }
             }
-        ))
+        );
+        // Trocar de pincel para a aguada sem trocar de camada também aquece o fundo do 1.º toque (n.º 7 item 3f,
+        // «Continuação 6»): no fim, com o pincel e o papel do preset já postos.
+        self.aquece_o_fundo_do_toque();
+        Ok(falhas)
     }
 
     /// ⭐ **O que o pincel guarda FORA do `BrushSpec` volta ao de fábrica** antes de um preset: a pilha do

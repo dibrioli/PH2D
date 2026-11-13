@@ -28,6 +28,55 @@ pub fn composite_below(
     composite_below_com(stack, src, width, height, anchor, ground, None, FAIXA_PX)
 }
 
+/// **O corte de uma composição em fundo** (n.º 7 item 3f, «Continuação 6»): `para` lê-se antes de cada faixa (e de
+/// cada fatia da rota de um fio), por isso um fio descartado sai depois da faixa em curso — no máximo uma por
+/// operário. `feitas` conta as faixas acabadas e `depois` as que acabaram com `para` já de pé (o gate).
+#[derive(Default)]
+pub struct Corte {
+    pub para: std::sync::atomic::AtomicBool,
+    pub feitas: std::sync::atomic::AtomicU32,
+    pub depois: std::sync::atomic::AtomicU32,
+}
+
+impl Corte {
+    fn parou(&self) -> bool {
+        self.para.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    fn acabou_uma(&self) {
+        use std::sync::atomic::Ordering::SeqCst;
+        self.feitas.fetch_add(1, SeqCst);
+        if self.parou() {
+            self.depois.fetch_add(1, SeqCst);
+        }
+    }
+}
+
+/// [`composite_below`] que pára entre faixas quando `corte.para` sobe: `None` = cortada (o resto do plano não
+/// existe). Sem corte, o mesmo bit.
+#[must_use]
+pub fn composite_below_cortavel(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    anchor: LayerId,
+    ground: [u8; 3],
+    corte: &Corte,
+) -> Option<Vec<u8>> {
+    composite_below_corte(
+        stack,
+        src,
+        width,
+        height,
+        anchor,
+        ground,
+        None,
+        FAIXA_PX,
+        Some(corte),
+    )
+}
+
 /// [`composite_below`] with the split forced (`fios`: `None` = the core count) — the gate's door.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn composite_below_com(
@@ -40,6 +89,24 @@ pub(super) fn composite_below_com(
     fios: Option<usize>,
     faixa_px: usize,
 ) -> Vec<u8> {
+    composite_below_corte(
+        stack, src, width, height, anchor, ground, fios, faixa_px, None,
+    )
+    .expect("sem corte, a composição acaba")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn composite_below_corte(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    anchor: LayerId,
+    ground: [u8; 3],
+    fios: Option<usize>,
+    faixa_px: usize,
+    corte: Option<&Corte>,
+) -> Option<Vec<u8>> {
     // The below-slices along the root→anchor path, outermost first.
     let mut slices: Vec<&[LayerId]> = Vec::new();
     fn descend<'a>(
@@ -82,7 +149,11 @@ pub(super) fn composite_below_com(
     // non-empty slice of layers that all happen to be invisible still takes the long path, because
     // *"empty"* is a fact about the list and *"invisible"* is a fact about each layer.
     if !found || slices.iter().all(|s| s.is_empty()) {
-        return flat_fill(width, height, [ground[0], ground[1], ground[2], 255]);
+        return Some(flat_fill(
+            width,
+            height,
+            [ground[0], ground[1], ground[2], 255],
+        ));
     }
     // Seed the accumulator with the opaque ground.
     let g = [
@@ -101,7 +172,7 @@ pub(super) fn composite_below_com(
     } else {
         fios.unwrap_or_else(|| parallel_threads(n, height as usize))
     };
-    abaixo_em_faixas(stack, src, width, height, &slices, g, fios, faixa_px)
+    abaixo_em_faixas(stack, src, width, height, &slices, g, fios, faixa_px, corte)
 }
 
 /// Pixels of one cache strip of the banded walk (`[f32;4]` = 256 KiB, L2-resident): 4 rows at UHD.
@@ -122,11 +193,16 @@ fn abaixo_em_faixas(
     g: [f32; 4],
     fios: usize,
     faixa_px: usize,
-) -> Vec<u8> {
+    corte: Option<&Corte>,
+) -> Option<Vec<u8>> {
+    let parou = || corte.is_some_and(Corte::parou);
     let w = width as usize;
     if fios <= 1 || w == 0 {
         let mut acc = vec![g; w * (height as usize)];
         for ids in slices {
+            if parou() {
+                return None;
+            }
             composite_into(
                 &mut acc,
                 ids,
@@ -141,8 +217,11 @@ fn abaixo_em_faixas(
                 None,
                 None,
             );
+            if let Some(c) = corte {
+                c.acabou_uma();
+            }
         }
-        return encode(&acc);
+        return (!parou()).then(|| encode(&acc));
     }
     let mut out = vec![0u8; w * (height as usize) * 4];
     let rpb = (height as usize).div_ceil(fios);
@@ -155,6 +234,9 @@ fn abaixo_em_faixas(
             .for_each(|(bi, banda)| {
                 let mut acc = Vec::new();
                 for (k, faixa) in banda.chunks_mut(linhas * w * 4).enumerate() {
+                    if parou() {
+                        return;
+                    }
                     let fh = faixa.len() / (w * 4);
                     let y0 = (bi * rpb + k * linhas) as u32;
                     acc.clear();
@@ -178,10 +260,13 @@ fn abaixo_em_faixas(
                     for (o, a) in faixa.as_chunks_mut::<4>().0.iter_mut().zip(&acc) {
                         *o = a.map(super::encode_byte);
                     }
+                    if let Some(c) = corte {
+                        c.acabou_uma();
+                    }
                 }
             });
     }
-    out
+    (!parou()).then_some(out)
 }
 
 #[cfg(test)]

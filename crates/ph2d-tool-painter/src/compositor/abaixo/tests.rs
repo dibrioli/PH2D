@@ -310,3 +310,71 @@ fn mede_o_salto_alfa_zero_4k() {
         );
     }
 }
+
+/// ⭐ **Um fio descartado pára entre faixas** (n.º 7 item 3f, «Continuação 6»): com `corte.para` de pé a meio, cada
+/// banda acaba no máximo a faixa em curso (`depois ≤ bandas`), o plano não sai (`None`) e muito ficou por compor.
+/// CONTROLO: sem corte, a mesma rota é o `composite_below` ao bit e acaba todas as faixas.
+///
+/// **Mutação que sangra:** tirar o `if parou() { return; }` do laço das faixas (`depois` ≈ o resto do plano).
+#[test]
+fn o_fundo_cortado_para_entre_faixas() {
+    use std::sync::atomic::Ordering::SeqCst;
+    let (w, h, bandas) = (1024u32, 512u32, 4usize);
+    let chao = [231u8, 222, 200];
+    let (s, src, ancora) = pilha(w, h, None);
+    let faixas = h; // uma linha por faixa
+    let inteiro = Corte::default();
+    let todo = composite_below_corte(
+        &s,
+        &src,
+        w,
+        h,
+        ancora,
+        chao,
+        Some(bandas),
+        w as usize,
+        Some(&inteiro),
+    );
+    assert!(
+        todo.as_deref() == Some(&composite_below(&s, &src, w, h, ancora, chao)[..]),
+        "CONTROLO: sem corte, o mesmo bit"
+    );
+    assert_eq!(
+        inteiro.feitas.load(SeqCst),
+        faixas,
+        "CONTROLO: todas as faixas"
+    );
+    assert_eq!(inteiro.depois.load(SeqCst), 0);
+
+    let corte = Corte::default();
+    let (saiu, ms) = std::thread::scope(|e| {
+        let fio = e.spawn(|| {
+            composite_below_corte(
+                &s,
+                &src,
+                w,
+                h,
+                ancora,
+                chao,
+                Some(bandas),
+                w as usize,
+                Some(&corte),
+            )
+        });
+        while corte.feitas.load(SeqCst) == 0 {
+            std::hint::spin_loop();
+        }
+        let t0 = std::time::Instant::now();
+        corte.para.store(true, SeqCst);
+        let saiu = fio.join().expect("o fio");
+        (saiu, t0.elapsed().as_secs_f64() * 1e3)
+    });
+    let (feitas, depois) = (corte.feitas.load(SeqCst), corte.depois.load(SeqCst));
+    eprintln!("cortado: {feitas}/{faixas} faixas, {depois} depois do corte, saiu em {ms:.3} ms");
+    assert!(saiu.is_none(), "cortado, o plano não sai");
+    assert!(
+        depois as usize <= bandas,
+        "≤ 1 faixa por banda depois do corte: {depois} > {bandas}"
+    );
+    assert!(feitas < faixas / 2, "parou cedo: {feitas}/{faixas}");
+}

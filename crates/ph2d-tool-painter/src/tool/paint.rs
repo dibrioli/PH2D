@@ -76,6 +76,8 @@ mod sculpt_close; // Sculpt: Inflate's footprint is a morphological CLOSING (fil
 mod sculpt_filter; // Sculpt: the WHOLE-LAYER filter (W5b) — the same kernel, driven by a uniform `amount`
 mod sculpt_inflate; // Sculpt: Inflate's render — the BLOB (the one verb that moves matter), split from sculpt_blur
 pub use sculpt_filter::FilterScope; // the two scopes the card's Filter buttons ask for
+#[cfg(test)]
+mod mais_sem_diff_tests;
 mod sculpt_offset; // Sculpt: Inflate's kernel — the relief offset by a BALL (dilation / erosion)
 mod sculpt_panel; // Sculpt: the seam with the card — the accessors it paints from + the event router
 mod sculpt_session; // Sculpt: the per-stroke session — birth, the dab walk, snapshot, cancel, re-stamp
@@ -96,9 +98,9 @@ mod watercolor_aa;
 /// Watercolor stroke buffers: per-stroke coverage + deposited-colour accumulation (+ dirty tracking).
 mod watercolor_accum;
 mod watercolor_accum_cor; // o splat da COR da lavagem, irmão do da cobertura
+pub(crate) mod watercolor_aquece; // o fundo do toque compõe-se num fio, fora do clique (n.º 7 item 3f)
 /// Watercolor real GROUND (backdrop under the active layer + document paper colour) + water soak.
 mod watercolor_backdrop;
-pub(crate) mod watercolor_aquece; // o fundo do toque compõe-se num fio, fora do clique (n.º 7 item 3f)
 /// Watercolor SECAGEM: o decaimento por-quadro do mapa de umidade; irmão do backdrop (LOC + assunto).
 mod watercolor_dry;
 pub(crate) mod watercolor_field;
@@ -107,11 +109,13 @@ mod watercolor_fios;
 /// A forma da borda da aguada: o FLUXO do Ragged Edge e o PAPEL na borda (BUGS #31).
 mod watercolor_flow;
 #[cfg(test)]
-mod watercolor_fundo_cache_tests;
-#[cfg(test)]
 mod watercolor_fundo_aquecido_tests;
 #[cfg(test)]
+mod watercolor_fundo_cache_tests;
+#[cfg(test)]
 mod watercolor_fundo_em_fundo_tests;
+#[cfg(test)]
+mod watercolor_fundo_troca_de_pincel_tests;
 /// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).
 mod watercolor_lut;
 mod watercolor_mistura; // o Pigment mistura tinta com tinta: nunca com o papel, e molhado sobre molhado
@@ -141,11 +145,9 @@ pub(crate) mod watercolor_vidro; // a transparência POR CANAL da aguada sobre o
 #[cfg(test)]
 mod watercolor_vidro_journal_tests;
 #[cfg(test)]
-mod mais_sem_diff_tests;
+mod watercolor_vidro_restauro_tests;
 #[cfg(test)]
 mod watercolor_vidro_segue_tests;
-#[cfg(test)]
-mod watercolor_vidro_restauro_tests;
 pub(crate) use paint_mode::{
     ERASER_SLOT, PaintMode, SLOT_COUNT, WET_TOOL_SLOT0, slot_da_ferramenta,
 };

@@ -158,7 +158,7 @@ mod oraculo_vizinhanca_tests;
 #[cfg(test)]
 mod tests;
 pub mod vidro;
-pub use abaixo::composite_below;
+pub use abaixo::{Corte, composite_below, composite_below_cortavel};
 #[cfg(test)]
 pub(crate) use cache::SAIDAS_REUSADAS;
 pub use cache::{CompositorCache, composite_with_cache, composite_with_cache_into};

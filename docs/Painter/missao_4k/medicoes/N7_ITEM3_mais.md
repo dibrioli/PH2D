@@ -306,3 +306,38 @@ O clique fica ≤ 1 ms. Com a pausa humana o toque é o mesmo. Colado ao clique,
   - O «+» síncrono cresce com o número de camadas (40 → 171 ms de 2 a 33 camadas a 4K): `composite_below` sobre a
     pilha inteira. O fio esconde-o do clique, mas não do toque colado.
   - Um fio descartado corre até ao fim da fase em curso (≤ 1 composição) no seu pool, ao lado do traço que começou.
+
+## Continuação 6 (13/11): a troca de pincel também aquece; o fio descartado pára entre faixas
+
+Fecha dois abertos da Continuação 5. Sem chave nova: o mesmo `FUNDO_AQUECIDO_EM_FUNDO` (e o `FUNDO_AQUECIDO_NA_TROCA`
+por cima dele) governa as duas portas.
+
+- **Troca de pincel** (`wetpaint_preset/meios.rs`): `preset_aplicar`, a porta única de preset (navegador, miniatura,
+  bancada, macro), chama `aquece_o_fundo_do_toque` no fim, já com o pincel e o papel do preset postos. As condições
+  são as do «+»: aguada, modo Paint, sem borracha e nenhum traço aberto. Num pincel seco, nada se lança.
+  `aquece_em_fundo` já não relança quando o fio pendente casa com a chave de agora (duas portas no mesmo gesto ou
+  um preset logo depois do «+» não refazem a composição). Chave diferente: descarta e lança, como antes.
+- **Corte entre faixas** (`compositor/abaixo.rs`): `composite_below_cortavel(…, &Corte)` lê `Corte::para` antes de
+  cada faixa (e de cada fatia na rota de um fio só). Cortada, devolve `None` e o resto do plano não se compõe. Sem
+  corte, é o `composite_below` ao bit, e `composite_below_com` passa pela mesma função com `None`. O fio do
+  aquecimento usa-a para as duas fases, por isso o `descarta()` (que sobe `para`) pára-o a meio da composição.
+  Medido no gate (1024×512, 4 bandas, uma linha por faixa, perfil `smoke`): **5/512 faixas compostas, 4 acabadas
+  depois do corte (≤ 1 por banda), saiu 0,59 ms depois do corte**.
+- **Gates** (por nome, verdes):
+  - `o_fundo_do_toque_aquece_na_troca_de_pincel_e_e_o_mesmo_bit` (`watercolor_fundo_troca_de_pincel_tests.rs`):
+    Hard Round, «+» (CONTROLO: nada aquecido), preset Watercolor Basic na mesma camada ⇒ o fio lançado (na rota do
+    clique, a cache pronta), o 1.º toque colhe-o (1, 0) e as fotos (fundo do toque, tela, chão preto) são as da rota
+    do clique ao bit. Caso descartado (a base muda entre a troca e o toque) ⇒ (0, 1) e o mesmo bit. CONTROLO: Hard
+    Round depois do «+» não aquece.
+  - `o_fundo_cortado_para_entre_faixas` (`compositor/abaixo/tests.rs`): o corte a meio ⇒ `None`, `depois ≤ bandas`,
+    `feitas < metade`. CONTROLO: sem corte, o mesmo bit e todas as faixas.
+- **Mutações:** (M1) tirar a chamada do fim de `preset_aplicar` → vermelho · (M2) tirar o `if parou()` do laço das
+  faixas → vermelho.
+- Vizinhos verdes por nome: `o_fundo_do_toque` 3, `fundo` 6, `vidro` 32 (5), `troca` 33 (5), `adormec` 32 (2),
+  `mais_sem_diff` 3, `o_chao_em_faixas` 1, `a_brush_preset` 1. O filtro `preset` tem 5 vermelhos que já estavam antes
+  e não tocam nesta mudança: contagens de presets de fábrica (56/45 × 57/46), costura do papel em `tiling`, Filbert
+  Dry no portão-mãe do óleo e o censo do preview sobre `PaintState.fundo_em_cache` (o campo vem de `8627ecf68a`).
+- `N7_ITEM3f_sonda.sh` fica como está: não há eixo novo, e a troca de pincel e o corte correm sob o mesmo
+  `PH2D_SONDA_EM_FUNDO=ab`.
+- **Aberto:** o «+» síncrono continua a crescer com o número de camadas (Continuação 5). A troca de meio pelo chip
+  (`set_paint_media`) e a troca de ferramenta ainda não aquecem; só a porta de preset o faz.

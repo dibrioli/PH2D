@@ -13,6 +13,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
         "chrome.timeline_menu.hold" => "Hold",
+        "chrome.timeline_menu.curve" => "Curve",
+        "chrome.timeline_menu.straight" => "Straight",
+        "chrome.timeline_menu.chip_ease_in" => "Ease in",
+        "chrome.timeline_menu.chip_ease_in_out" => "Ease in-out",
+        "chrome.timeline_menu.chip_ease_out" => "Ease out",
+        "chrome.timeline_menu.shape" => "Curve shape",
+        "chrome.timeline_menu.key_at" => "Key at frame {n} \u{b7} {canal}",
+        "chrome.timeline_menu.keys_at" => "Keys at frame {n}",
         "chrome.timeline_menu.nearest" => "Nearest",
         "chrome.timeline_menu.linear" => "Linear",
         "chrome.timeline_menu.ease_in" => "Ease In",

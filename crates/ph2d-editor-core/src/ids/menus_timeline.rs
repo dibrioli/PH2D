@@ -391,6 +391,37 @@ pub const fn menu_row(id: NodeId, key: &'static str) -> MenuRow {
 pub const fn menu_row_swatch(id: NodeId, key: &'static str, rgba: [u8; 4]) -> MenuRow {
     (id, TextKey::new(key), Some(rgba))
 }
+// ── O CARTÃO da chave (maquete do dono, 13/11) ─────────────────────────────
+// O menu da chave (escopos `Key`/`Column`) pinta-se como um cartão: três blocos grandes
+// (Curve · Straight · Hold), a fileira do ease e a forma da curva, e embaixo as linhas que a
+// maquete não tem. Estes são os ids que só o cartão tem; o Straight é o `CTX_MENU_TL_LINEAR` e o
+// Hold o `CTX_MENU_TL_HOLD` de sempre. A tabela continua a ser a `TIMELINE_SEGMENT_MENU` para a
+// paleta de comandos (ela não tem cartão).
+/// O fundo do cartão: um clique nele não fecha nem faz nada.
+pub const CTX_MENU_TL_KEY_CARD: NodeId = hash_node_id("ctx_menu_tl_key_card");
+/// Bloco **Curve**: a forma escolhida (ou Cubic) no modo escolhido (ou In-Out).
+pub const CTX_MENU_TL_CURVE: NodeId = hash_node_id("ctx_menu_tl_curve");
+/// Botão **Ease in**: a forma escolhida (ou Cubic), a acelerar.
+pub const CTX_MENU_TL_CURVE_IN: NodeId = hash_node_id("ctx_menu_tl_curve_in");
+/// Botão **Ease in-out**.
+pub const CTX_MENU_TL_CURVE_INOUT: NodeId = hash_node_id("ctx_menu_tl_curve_inout");
+/// Botão **Ease out**.
+pub const CTX_MENU_TL_CURVE_OUT: NodeId = hash_node_id("ctx_menu_tl_curve_out");
+/// O botão com o nome da forma («Cubic ▾»): abre a lista das dez formas.
+pub const CTX_MENU_TL_SHAPE: NodeId = hash_node_id("ctx_menu_tl_shape");
+
+/// Os ids que só o cartão da chave tem — registados pelo `pre_populate` como toda tabela.
+pub const TIMELINE_KEY_CARD: [MenuRow; 5] = [
+    menu_row(CTX_MENU_TL_CURVE, "chrome.timeline_menu.curve"),
+    menu_row(CTX_MENU_TL_CURVE_IN, "chrome.timeline_menu.chip_ease_in"),
+    menu_row(
+        CTX_MENU_TL_CURVE_INOUT,
+        "chrome.timeline_menu.chip_ease_in_out",
+    ),
+    menu_row(CTX_MENU_TL_CURVE_OUT, "chrome.timeline_menu.chip_ease_out"),
+    menu_row(CTX_MENU_TL_SHAPE, "chrome.timeline_menu.shape"),
+];
+
 /// Uma tabela de menu — o que a [`ALL_TIMELINE_MENUS`] lista e o overlay pinta.
 pub type MenuTable = &'static [MenuRow];
 
@@ -408,6 +439,7 @@ pub type MenuTable = &'static [MenuRow];
 /// lista**, e o gate `every_timeline_menu_row_is_registered` recusa a tabela que faltar.
 pub const ALL_TIMELINE_MENUS: &[MenuTable] = &[
     &TIMELINE_SEGMENT_MENU,
+    &TIMELINE_KEY_CARD,
     &TIMELINE_EASE_MENU,
     &TIMELINE_FADE_MENU,
     &TIMELINE_TRACK_MENU,

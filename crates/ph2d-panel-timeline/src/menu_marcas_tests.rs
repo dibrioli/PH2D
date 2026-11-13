@@ -32,6 +32,7 @@ fn snap() -> TimelineViewSnapshot {
             expr: None,
             keys: vec![chave(1, 0.0, Interp::Hold), chave(2, 1.0, quad_out)],
         }],
+        fps: 24.0,
         ..Default::default()
     }
 }
@@ -43,10 +44,15 @@ fn the_lit_row_is_the_interpolation_and_extrapolation_under_the_click() {
         scope: S::Key { target: 9, key },
     };
     assert_eq!(linhas_acesas(seg(1), &s), Some(vec![c::CTX_MENU_TL_HOLD]));
+    // Uma chave suavizada acende o modo E a forma (o cartão diz «Quad» e o ease mantém-na).
     assert_eq!(
         linhas_acesas(seg(2), &s),
-        Some(vec![c::CTX_MENU_TL_EASE_OUT])
+        Some(vec![c::CTX_MENU_TL_EASE_OUT, c::CTX_MENU_TL_FAM_QUAD])
     );
+    // O título do cartão: o quadro da chave e o canal.
+    let t = titulo(seg(2), &s);
+    assert!(t.starts_with("Key at frame 24"), "{t:?}");
+    assert!(t.contains("Position X"), "{t:?}");
     // O submenu acende a família só no modo dela.
     let ease = |mode| K::TimelineSegmentEase {
         scope: S::Key { target: 9, key: 2 },
@@ -70,6 +76,6 @@ fn the_lit_row_is_the_interpolation_and_extrapolation_under_the_click() {
         linhas_acesas(extrap(crate::ids::TL_EXTRAP_SIDE_POST), &s),
         Some(vec![c::CTX_MENU_TL_EXTRAP_PINGPONG])
     );
-    // Uma chave que não existe não acende nada.
-    assert_eq!(linhas_acesas(seg(77), &s), None);
+    // Uma chave que não existe não acende nada (o cartão abre só com o título).
+    assert_eq!(linhas_acesas(seg(77), &s), Some(vec![]));
 }

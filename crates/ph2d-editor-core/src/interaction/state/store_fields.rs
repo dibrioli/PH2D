@@ -670,6 +670,9 @@ pub struct WidgetStore {
     /// As listas de cartões dos painéis — ver [`card_list_ops`].
     pub(in crate::interaction) card_lists: card_list_ops::CardLists,
     /// As linhas ACESAS do menu aberto, pelo dono dele — ver [`Self::set_menu_marks`].
-    pub(in crate::interaction) menu_marks:
-        (Option<crate::interaction::ContextMenuKind>, Vec<NodeId>),
+    pub(in crate::interaction) menu_marks: (
+        Option<crate::interaction::ContextMenuKind>,
+        Vec<NodeId>,
+        String,
+    ),
 }

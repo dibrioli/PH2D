@@ -207,6 +207,18 @@ Mecanismo e provas dos seis ajustes da barra: [continuação dos ajustes](HANDOF
 - Por nome ✓: editor-core context_menu 31, menu_row 13, every_menu_row 5, every_timeline_menu 3, timeline 45 · panel-timeline menu_marcas 1, timeline_presets_menu 10, extrapolation 5, grupo_de_canais 5, every_word 3 · i18n tests 10 · host-desktop timeline_presets 14 · fmt ✓ · clippy `-D warnings` (editor-core, panel-timeline, `--all-targets`) ✓ · `cargo build --profile smoke` ✓.
 - Smoke do dono: pendente.
 
+## Acréscimo 8 — dono 13/11: o menu da chave vira o CARTÃO da maquete
+
+- **Pedido** (verbatim: «veja a maquete. Melhore a nossa»; [maquete](../fotos/31_cartao_da_chave_maquete.png)): título «Key at frame 12 · Position Y», três blocos Curve · Straight · Hold, fileira Ease in · Ease in-out · Ease out, escolhido em azul.
+- **`editor-core/src/screens/hero/key_card.rs`** (novo): o overlay desvia `TimelineSegment{Key|Column}` para o cartão (`e_cartao`); o fade continua em lista. Cartão = título · 3 blocos (`TILE_W/H` 76×58) · fileira do ease · «Curve shape [Cubic ▾]» (abre a lista das dez formas, `TimelineSegmentEase`) · risco · Nearest / Custom (Bézier) / Rove Across Time (o que a maquete não tem; nenhuma função saiu). `geo()` é a conta única do desenho e do teste.
+- **Cliques** pela mesma `TimelineInterpPick` (a shell não mudou): `key_card::acao` → Curve = forma acesa (ou Cubic) × modo aceso (ou In-Out); Ease x = forma acesa × modo x; Shape abre a lista no modo aceso; o fundo (`CTX_MENU_TL_KEY_CARD`, em `click_belongs_to_the_open_menu`) não fecha. Straight/Hold/linhas de baixo = os ids de sempre. Ids novos `CTX_MENU_TL_{KEY_CARD,CURVE,CURVE_IN,CURVE_INOUT,CURVE_OUT,SHAPE}` na tabela `TIMELINE_KEY_CARD` (em `ALL_TIMELINE_MENUS` ⇒ registados).
+- **Estado e título** pelo canal do acréscimo 7: `set_menu_marks(kind, ids, titulo)` + `menu_title(kind)`; `menu_marcas` publica também a FORMA no menu da chave e o título («Key at frame {n} · {canal}», «Keys at frame {n}» no Summary; quadro = `round(t·fps)`); coluna mista ⇒ título sem marca.
+- **Cores medidas na maquete:** fundo do bloco = o botão de cartão (`CardField`); escolhido `TimelineTinta::BlocoEscolhido` (novo, `#354C73` medido) com texto `TextoCabecalho`; não escolhido com texto `TextoPropriedade` (cinzento, como na maquete). Rótulos dos blocos/ease em peso NORMAL (o app pinta MEDIUM; a maquete é normal), título `paint_text_title` em `Base`.
+- **Fotos:** [maquete × nosso](../fotos/31_cartao_da_chave_lado_a_lado.png) (depois de clicar Ease in: Curve + Ease in acesos, Cubic) · [chave Linear](../fotos/31_cartao_da_chave_straight.png).
+- Testes novos `editor-core key_card::tests` (2: cada clique pede a mesma escolha do menu em lista; todo alvo cabe e nenhum se sobrepõe); `menu_marcas` atualizado (forma acesa, título, chave inexistente = título sem marca).
+- Por nome ✓: panel-timeline menu_marcas 1, timeline_presets_menu 10, extrapolation 5 · editor-core key_card 2, menu_row 13, context_menu 31, every_menu_row 5, every_timeline_menu 3, timeline 45 · host-desktop timeline_presets 14 · i18n tests 10 · tokens timeline_tinta 2, contrast 10 · fmt ✓ · clippy `-D warnings` (editor-core, panel-timeline, tokens) ✓.
+- Smoke do dono: pendente.
+
 ## Aberto (visto, NÃO feito)
 
 1. **Limite conhecido:** com o pai ANIMADO durante o clip, o duplo-clique na curva projeta pelo pai na 1.ª chave (desenho e âncoras são exatos por instante). Foto de cena com pai rodado não tirada.

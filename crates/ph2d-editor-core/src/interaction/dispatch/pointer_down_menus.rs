@@ -345,6 +345,8 @@ pub(super) fn click_belongs_to_the_open_menu(
     match kind {
         // A lista de cenas hospeda um TextInput (a busca): clicar nele não pode fechar o menu, ou
         // o utilizador não consegue escrever. As linhas fecham-no elas próprias, depois de agir.
+        // O fundo do cartão da chave (título, folgas): clicar ali não fecha o cartão.
+        ContextMenuKind::TimelineSegment { .. } => id == crate::ids::CTX_MENU_TL_KEY_CARD,
         ContextMenuKind::SceneList => {
             id == crate::ids::CTX_SCENE_SEARCH || crate::ids::CTX_SCENE_ROWS.contains(&id)
         }

@@ -18,9 +18,8 @@ pub(crate) fn publica(store: &mut WidgetStore, snap: &TimelineViewSnapshot) {
     let Some(kind) = store.context_menu().map(|r| r.kind) else {
         return;
     };
-    let marcas = linhas_acesas(kind, snap);
-    if let Some(marcas) = marcas {
-        store.set_menu_marks(kind, &marcas);
+    if let Some(marcas) = linhas_acesas(kind, snap) {
+        store.set_menu_marks(kind, &marcas, &titulo(kind, snap));
     }
 }
 
@@ -29,10 +28,20 @@ pub(crate) fn publica(store: &mut WidgetStore, snap: &TimelineViewSnapshot) {
 pub(crate) fn linhas_acesas(kind: K, snap: &TimelineViewSnapshot) -> Option<Vec<NodeId>> {
     match kind {
         K::TimelineSegment { scope } => {
-            let (interp, rove) = interp_de(scope, snap)?;
+            if matches!(scope, S::StripFade { .. }) {
+                return None;
+            }
+            // ⚠️ Chaves que discordam (uma coluna mista) publicam o TÍTULO sem marca nenhuma.
+            let Some((interp, rove)) = interp_de(scope, snap) else {
+                return Some(Vec::new());
+            };
             let mut v = vec![linha_da_interp(interp)];
             if rove {
                 v.push(c::CTX_MENU_TL_ROVE);
+            }
+            // A FORMA também, para o cartão dizer «Cubic» e o Ease in/out mantê-la.
+            if let Interp::Eased(e) = interp {
+                v.extend(familia(e));
             }
             Some(v)
         }
@@ -41,13 +50,16 @@ pub(crate) fn linhas_acesas(kind: K, snap: &TimelineViewSnapshot) -> Option<Vec<
             let Interp::Eased(e) = interp else {
                 return Some(Vec::new());
             };
-            Some(
-                c::TIMELINE_EASE_MENU
-                    .iter()
-                    .map(|&(id, ..)| id)
-                    .filter(|&id| preset_for(id, mode) == Some(Preset::Eased(e)))
-                    .collect(),
-            )
+            let modo = match mode {
+                c::TL_EASE_MODE_IN => EasingMode::In,
+                c::TL_EASE_MODE_OUT => EasingMode::Out,
+                _ => EasingMode::InOut,
+            };
+            Some(if e.mode == modo {
+                familia(e).collect()
+            } else {
+                Vec::new()
+            })
         }
         K::TimelineExtrap { target, side, .. } => {
             let t = snap.tracks.iter().find(|t| t.target.get() == target)?;
@@ -64,6 +76,49 @@ pub(crate) fn linhas_acesas(kind: K, snap: &TimelineViewSnapshot) -> Option<Vec<
             }])
         }
         _ => None,
+    }
+}
+
+/// O id da forma `e.family` no submenu das formas.
+fn familia(e: ph2d_anim::Easing) -> impl Iterator<Item = NodeId> {
+    c::TIMELINE_EASE_MENU
+        .iter()
+        .map(|&(id, ..)| id)
+        .filter(move |&id| {
+            preset_for(id, ph2d_editor_core::ids::TL_EASE_MODE_IN)
+                .is_some_and(|p| matches!(p, Preset::Eased(x) if x.family == e.family))
+        })
+}
+
+/// O cabeçalho do cartão da chave: «Key at frame 12 · Position Y», ou «Keys at frame 12» numa
+/// coluna do Summary. Vazio para os outros menus.
+fn titulo(kind: K, snap: &TimelineViewSnapshot) -> String {
+    let quadro = |t: f64| (t * snap.fps).round() as i64;
+    match kind {
+        K::TimelineSegment {
+            scope: S::Key { target, key },
+        } => snap
+            .tracks
+            .iter()
+            .find(|t| t.target.get() == target)
+            .and_then(|t| {
+                let k = t.keys.iter().find(|k| k.id.get() == key)?;
+                let canal = snap
+                    .channel_name(t.prop)
+                    .map_or_else(|| crate::nome_do_canal(t.prop), str::to_owned);
+                Some(ph2d_i18n::tr_with(
+                    "chrome.timeline_menu.key_at",
+                    &[("n", &quadro(k.t_seconds)), ("canal", &canal)],
+                ))
+            })
+            .unwrap_or_default(),
+        K::TimelineSegment {
+            scope: S::Column { t_bits },
+        } => ph2d_i18n::tr_with(
+            "chrome.timeline_menu.keys_at",
+            &[("n", &quadro(f64::from_bits(t_bits)))],
+        ),
+        _ => String::new(),
     }
 }
 

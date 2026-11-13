@@ -38,6 +38,31 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         .store
         .context_menu()
         .or_else(|| hero.store.last_context_menu());
+    if let Some(kind) = req.map(|r| r.kind)
+        && let Some(a) = crate::screens::hero::key_card::acao(id, kind, &hero.store)
+    {
+        use crate::screens::hero::key_card::Acao;
+        let ContextMenuKind::TimelineSegment { scope } = kind else {
+            return false;
+        };
+        match a {
+            Acao::Nada => {}
+            Acao::Escolhe { item, mode } => {
+                hero.pending_timeline_interp = Some(TimelineInterpPick { scope, item, mode });
+                hero.store.close_context_menu();
+                hero.store.consume_last_context_menu();
+            }
+            Acao::AbreFormas { mode } => {
+                let (x, y) = super::cascade_anchor(hero, id);
+                hero.store.open_context_menu(ContextMenuRequest {
+                    x,
+                    y,
+                    kind: ContextMenuKind::TimelineSegmentEase { scope, mode },
+                });
+            }
+        }
+        return true;
+    }
     let (scope, open_mode) = match req.map(|r| r.kind) {
         Some(ContextMenuKind::TimelineSegment { scope }) => (scope, TL_NO_EASE_MODE),
         Some(ContextMenuKind::TimelineSegmentEase { scope, mode }) => (scope, mode),

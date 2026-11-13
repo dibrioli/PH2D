@@ -16,10 +16,29 @@ impl WidgetStore {
     /// interpolação da chave, a extrapolação da faixa). O pintor do menu acende-as.
     ///
     /// ⚠️ Presas ao `kind` (que traz a chave/faixa): as de um menu já fechado nunca acendem outro.
-    pub fn set_menu_marks(&mut self, kind: crate::interaction::ContextMenuKind, ids: &[NodeId]) {
+    /// `titulo` é o cabeçalho que o menu mostra (o cartão da chave: «Key at frame 12 · …»); `""`
+    /// = sem cabeçalho.
+    pub fn set_menu_marks(
+        &mut self,
+        kind: crate::interaction::ContextMenuKind,
+        ids: &[NodeId],
+        titulo: &str,
+    ) {
         self.menu_marks.0 = Some(kind);
         self.menu_marks.1.clear();
         self.menu_marks.1.extend_from_slice(ids);
+        self.menu_marks.2.clear();
+        self.menu_marks.2.push_str(titulo);
+    }
+
+    /// O cabeçalho publicado para o menu `kind` (vazio se não houver).
+    #[must_use]
+    pub fn menu_title(&self, kind: crate::interaction::ContextMenuKind) -> &str {
+        if self.menu_marks.0 == Some(kind) {
+            &self.menu_marks.2
+        } else {
+            ""
+        }
     }
 
     /// A linha `id` do menu `kind` foi publicada como acesa por [`Self::set_menu_marks`].

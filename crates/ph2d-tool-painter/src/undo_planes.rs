@@ -10,10 +10,20 @@ use crate::undo_delta::{StoredImages, StoredMap, StoredPlane, Strides};
 use ph2d_painter_brush::material::MaterialBytes;
 use std::sync::Arc;
 
+/// O que uma entrada retém e o que clonar aloca — as contas do tecto em BYTES.
+#[path = "undo_planes_bytes.rs"]
+mod bytes;
 /// Os instrumentos que leem a lista (relatórios de variante e de alcance, e as divergências de dois
 /// snapshots) — só de teste e debug, cortados daqui pelo tecto de LOC, POR ASSUNTO.
 #[path = "undo_planes_inspect.rs"]
 mod inspect;
+/// O teste «a linha é a neutra» de cada plano do relevo.
+#[path = "undo_planes_neutra.rs"]
+mod neutra;
+use neutra::{
+    altura_neutra, cobertura_neutra, linha_de_altura_neutra, linha_de_cobertura_neutra,
+    linha_de_material_neutra,
+};
 
 /// **De onde sai o lado `before` do RELEVO** — dos journals do passo, em vez de um segundo snapshot
 /// (doc 28 §5.58.2, degrau 2).
@@ -651,114 +661,5 @@ impl PlaneDeltas {
     /// A mesma porta, para escrever o plano que a absorção calculou.
     pub(crate) fn canvas_mut(&mut self) -> &mut StoredPlane<u8> {
         &mut self.canvas_rgba
-    }
-
-    /// O que esta entrada retém — o número que o cap em BYTES conta.
-    pub(crate) fn heap_bytes(&self) -> usize {
-        self.canvas_rgba.heap_bytes()
-            + self.images.heap_bytes()
-            + self.heights.heap_bytes()
-            + self.covers.heap_bytes()
-            + self.mats.heap_bytes()
-            + self.vidros.heap_bytes()
-            + self.mask_scratch.heap_bytes()
-            + self.selection_mask.heap_bytes()
-            + self.selection_crisp.heap_bytes()
-            + self.deform_disp.heap_bytes()
-            + self.deform_pre.heap_bytes()
-            + self.deform_pre_h.heap_bytes()
-            + self.deform_pre_cover.heap_bytes()
-            + self.deform_pre_mats.heap_bytes()
-            + self.sculpt_pre.heap_bytes()
-            + self.sculpt_amount.heap_bytes()
-            + self.sculpt_plane_sum.heap_bytes()
-            + self.sculpt_pre_cover.heap_bytes()
-            + self.sculpt_pre_mats.heap_bytes()
-            + self.sculpt_pre_rgba.heap_bytes()
-    }
-
-    /// O que CLONAR esta entrada aloca (as janelas; os planos inteiros são `Arc` partilhados) — o que um
-    /// instantâneo do tocador declara ([`Self::heap_bytes`] é o teto do cap, que conta o pior caso).
-    pub(crate) fn copiado_bytes(&self) -> usize {
-        self.canvas_rgba.copiado_bytes()
-            + self.images.copiado_bytes()
-            + self.heights.copiado_bytes()
-            + self.covers.copiado_bytes()
-            + self.mats.copiado_bytes()
-            + self.vidros.copiado_bytes()
-            + self.mask_scratch.copiado_bytes()
-            + self.selection_mask.copiado_bytes()
-            + self.selection_crisp.copiado_bytes()
-            + self.deform_disp.copiado_bytes()
-            + self.deform_pre.copiado_bytes()
-            + self.deform_pre_h.copiado_bytes()
-            + self.deform_pre_cover.copiado_bytes()
-            + self.deform_pre_mats.copiado_bytes()
-            + self.sculpt_pre.copiado_bytes()
-            + self.sculpt_amount.copiado_bytes()
-            + self.sculpt_plane_sum.copiado_bytes()
-            + self.sculpt_pre_cover.copiado_bytes()
-            + self.sculpt_pre_mats.copiado_bytes()
-            + self.sculpt_pre_rgba.copiado_bytes()
-    }
-}
-
-fn linha_de_altura_neutra(l: &[f32]) -> bool {
-    l.iter().fold(0u32, |a, v| a | v.to_bits()) == 0
-}
-
-fn altura_neutra(v: &f32) -> bool {
-    v.to_bits() == 0
-}
-
-fn linha_de_cobertura_neutra(l: &[u8]) -> bool {
-    l.iter().fold(0u8, |a, &b| a | b) == 0
-}
-
-const fn cobertura_neutra(v: &u8) -> bool {
-    *v == 0
-}
-
-/// A linha de material é a neutra: comparada em BYTES contra a linha-modelo (`memcmp`), não texel a texel —
-/// o OR por texel de `[u8; 7]` não vectoriza e era 16 % do Ctrl+Z do 1.º traço Impasto a 4K (B08c.M2).
-fn linha_de_material_neutra(l: &[MaterialBytes], modelo: &[MaterialBytes]) -> bool {
-    l.as_flattened() == modelo[..l.len()].as_flattened()
-}
-
-#[cfg(test)]
-mod linha_neutra_tests {
-    use super::{MaterialBytes, linha_de_material_neutra};
-
-    /// O `memcmp` contra a linha-modelo responde o mesmo que o OR texel a texel (o oráculo de antes),
-    /// também quando só o ÚLTIMO byte do ÚLTIMO texel foge do neutro.
-    #[test]
-    fn a_linha_de_material_neutra_por_bytes_e_a_de_texel_a_texel() {
-        let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
-        let velho = |l: &[MaterialBytes]| {
-            l.iter().fold(0u8, |a, m| {
-                a | (0..7).fold(0u8, |b, k| b | (m[k] ^ neutro[k]))
-            }) == 0
-        };
-        let w = 37;
-        let modelo = vec![neutro; w];
-        let mut casos = vec![modelo.clone()];
-        for i in [0, 18, w - 1] {
-            for k in 0..7 {
-                let mut l = modelo.clone();
-                l[i][k] ^= 1;
-                casos.push(l);
-            }
-        }
-        for l in &casos {
-            assert_eq!(linha_de_material_neutra(l, &modelo), velho(l));
-        }
-        assert!(linha_de_material_neutra(&casos[0], &modelo));
-        assert_eq!(
-            casos
-                .iter()
-                .filter(|l| !linha_de_material_neutra(l, &modelo))
-                .count(),
-            21
-        );
     }
 }

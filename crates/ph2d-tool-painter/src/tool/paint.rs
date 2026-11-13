@@ -143,6 +143,8 @@ mod watercolor_smudge;
 pub(crate) mod watercolor_solido;
 pub(crate) mod watercolor_vidro; // a transparência POR CANAL da aguada sobre o papel de cor (doc 48)
 #[cfg(test)]
+mod watercolor_vidro_journal_doc_tests;
+#[cfg(test)]
 mod watercolor_vidro_journal_tests;
 #[cfg(test)]
 mod watercolor_vidro_restauro_tests;

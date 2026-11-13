@@ -258,6 +258,17 @@ mod tests {
                 "{lado}: o glifo encolheu ({})",
                 bb.width()
             );
+            // A origem da viewbox no MEIO do pixel (é o que põe o traço de 1,5 inteiro num pixel): o
+            // círculo da lupa começa em 4/24 do lado, o canto do glifo é o resto (mutação 4b, fecho).
+            let meio = f64::from(crate::ui_scale::meio_pixel());
+            for (eixo, borda) in [("x", bb.x0), ("y", bb.y0)] {
+                let origem = borda - f64::from(lado) * 4.0 / 24.0;
+                let fora = (origem - meio - (origem - meio).round()).abs();
+                assert!(
+                    fora < 1e-3,
+                    "{lado}: a origem em {eixo} ({origem}) fora do meio do pixel"
+                );
+            }
         }
     }
 

@@ -153,11 +153,7 @@ fn quem_segura_o_vidro_no_segundo_pen_down() {
             .and_then(|s| s.vidros.get(&c))
             .is_some_and(|v| Arc::ptr_eq(v, &p));
         let cursor = t.undo.cursor_segura_o_vidro(c, &p);
-        let congelado = t
-            .vidro_congelado
-            .aguada
-            .as_ref()
-            .is_some_and(|b| Arc::ptr_eq(&b.2, &p));
+        let congelado = false; // D3: o congelado guarda o journal da sessão, não o plano
         let nomeados = 1 + usize::from(antes) + usize::from(cursor) + usize::from(congelado);
         println!(
             "{quando}: strong={total} · mapa=1 · before={antes} · cursor={cursor} · congelado={congelado} · sem nome={}",

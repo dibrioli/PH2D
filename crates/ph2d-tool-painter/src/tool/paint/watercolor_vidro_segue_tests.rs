@@ -22,9 +22,11 @@ fn cp(x: f32, phase: PointerPhase) -> CanvasPointer {
     }
 }
 
-/// Um traço com Smudge: os píxeis da tela depois de cada tique e quantas vezes o plano do vidro mudou de `Arc`.
-fn traco(segue: bool) -> (Vec<Vec<u8>>, usize, usize) {
+/// Um traço com Smudge: os píxeis da tela depois de cada tique, quantas vezes o plano do vidro mudou de `Arc`
+/// e quantas vezes a sessão do vidro congelou (ADR-0204 D3: recongelar já não copia o plano, recomeça a sessão).
+fn traco(segue: bool) -> (Vec<Vec<u8>>, usize, usize, usize) {
     VIDRO_SEGUE_A_BASE.set(segue);
+    super::watercolor_vidro::CONGELACOES.set(0);
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
     t.set_paint_media(PaintMedia::Watercolor);
@@ -55,17 +57,19 @@ fn traco(segue: bool) -> (Vec<Vec<u8>>, usize, usize) {
         ev(&mut t, 30.0 + 12.0 * k as f32, PointerPhase::Move);
     }
     VIDRO_SEGUE_A_BASE.set(true);
-    (telas, trocas, moves)
+    let congelacoes = super::watercolor_vidro::CONGELACOES.get();
+    (telas, trocas, moves, congelacoes)
 }
 
 #[test]
 fn o_vidro_segue_a_base_que_o_borrao_move_sem_copiar_o_plano() {
-    let (antes, trocas_antes, moves) = traco(false);
-    let (cura, trocas_cura, _) = traco(true);
+    let (antes, _, moves, cong_antes) = traco(false);
+    let (cura, trocas_cura, _, cong_cura) = traco(true);
     assert!(
-        trocas_antes >= moves - 2,
-        "controlo: o caminho de antes recopia o vidro em quase todo quadro ({trocas_antes} de {moves})"
+        cong_antes >= moves - 2,
+        "controlo: o caminho de antes recongela o vidro em quase todo quadro ({cong_antes} de {moves})"
     );
+    assert_eq!(cong_cura, 1, "a sessão do vidro recongelou {cong_cura} vezes num traço");
     assert!(
         trocas_cura <= 1,
         "o plano do vidro foi recopiado {trocas_cura} vezes num traço (só o 1.º quadro o pode copiar)"
@@ -128,4 +132,71 @@ fn primeiro_e_segundo_traco() -> (usize, usize) {
     };
     let primeiro = traco(&mut t, 50.0);
     (primeiro, traco(&mut t, 110.0))
+}
+
+/// **O `vbase` é o vidro do INÍCIO da sessão** (ADR-0204 D3): três traços WB com Smudge na mesma sessão
+/// molhada; cada janela que o quadro lê = o plano tirado inteiro na congelação, ao bit. Controlo: a sessão
+/// atravessa traços e, nas janelas dos traços seguintes, o vivo já não é o início (o journal da sessão é que
+/// responde; o do passo zerou no commit).
+#[test]
+fn o_vidro_da_base_da_sessao_e_o_do_inicio_da_sessao_ao_bit() {
+    use super::watercolor_vidro::{GUARDA_O_INICIO_DA_SESSAO, JANELAS_DO_VBASE};
+    GUARDA_O_INICIO_DA_SESSAO.set(true);
+    JANELAS_DO_VBASE.with(|j| j.borrow_mut().clear());
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+    t.set_paint_media(PaintMedia::Watercolor);
+    crate::tool::paint::tests::aquarela_neutra(&mut t);
+    crate::tool::paint::tests::watercolor_basic_de_antes(&mut t);
+    t.set_brush_size_px(14.0);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.paint.brush.wet_smudge = 0.4;
+    let mut sessoes = Vec::new();
+    let mut vivo_difere = 0usize;
+    for (k, y) in [70.0f32, 80.0, 90.0].into_iter().enumerate() {
+        let c = t.layers.active().expect("camada");
+        let vivo_antes = t.vidros.get(&c).map(|p| p.as_ref().clone());
+        let p = |x: f32, phase| CanvasPointer {
+            pos: [x, y],
+            ..cp(x, phase)
+        };
+        t.on_canvas_pointer(p(40.0, PointerPhase::Down));
+        t.on_tick(1000.0 / 60.0);
+        for i in 1..=8 {
+            t.on_canvas_pointer(p(40.0 + 16.0 * i as f32, PointerPhase::Move));
+            t.on_tick(1000.0 / 60.0);
+        }
+        t.on_canvas_pointer(p(170.0, PointerPhase::Up));
+        for _ in 0..3 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        let janelas = JANELAS_DO_VBASE.with(|j| std::mem::take(&mut *j.borrow_mut()));
+        assert!(!janelas.is_empty(), "traço {k}: nenhum quadro leu o vbase");
+        for (j, inicio) in &janelas {
+            sessoes.push((k, Arc::as_ptr(inicio)));
+            let fw = W as usize;
+            for (r, linha) in j.dados.chunks(j.w).enumerate() {
+                let y = j.y0 + r;
+                assert_eq!(
+                    linha,
+                    &inicio[y * fw + j.x0..y * fw + j.x0 + j.w],
+                    "traço {k}: o vbase na linha {y} não é o vidro do início da sessão"
+                );
+                if let Some(v) = &vivo_antes
+                    && linha != &v[y * fw + j.x0..y * fw + j.x0 + j.w]
+                {
+                    vivo_difere += 1;
+                }
+            }
+        }
+    }
+    GUARDA_O_INICIO_DA_SESSAO.set(false);
+    let atravessa = sessoes
+        .iter()
+        .any(|&(k, s)| k > 0 && sessoes.iter().any(|&(k0, s0)| k0 < k && s0 == s));
+    assert!(atravessa, "controlo: a sessão molhada não atravessou traços ({sessoes:?})");
+    assert!(
+        vivo_difere > 0,
+        "controlo: em nenhuma janela o vivo de antes do traço diferia do início da sessão"
+    );
 }

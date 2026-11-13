@@ -344,7 +344,7 @@ impl PainterTool {
             Some(v) => (Some(v.camada), Some(v.plano), Some(v.base), v.chao_preto),
             None => (None, None, None, None),
         };
-        let vbase: Option<&[crate::compositor::vidro::Vidro]> = vbase.as_deref().map(Vec::as_slice);
+        let vbase = vbase.as_ref();
         let vchao: Option<&[u8]> = vchao.as_deref().map(Vec::as_slice);
         let halo = if has_style {
             dono::DonoDoHalo::build(style_owner, (fw, fh), (rx0, ry0, rw, rh), pad)

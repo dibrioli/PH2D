@@ -55,7 +55,7 @@ pub(super) struct Quadro<'a> {
     pub(super) gsel: Option<&'a [u8]>,
     pub(super) gprot: Option<&'a [u8]>,
     pub(super) alock_on: bool,
-    pub(super) vbase: Option<&'a [Vidro]>,
+    pub(super) vbase: Option<&'a crate::tool::paint::watercolor_vidro::JanelaDoVidro>,
     pub(super) vchao: Option<&'a [u8]>,
 }
 
@@ -387,7 +387,7 @@ impl Quadro<'_> {
         // O VIDRO deste texel (doc 48): a mesma óptica sobre o chão PRETO, com a base posta
         // sobre ele pelo vidro DELA; o que muda de um chão ao outro, canal a canal, é o que
         // o chão atravessa ([`super::super::watercolor_vidro::alfas_do_vidro`]).
-        let vidro_do = |px: [u8; 4], b: &[crate::compositor::vidro::Vidro]| {
+        let vidro_do = |px: [u8; 4], b: &crate::tool::paint::watercolor_vidro::JanelaDoVidro| {
             let i = gy * fw + gx;
             let cb = vchao.map_or([0u8; 3], |g| [g[gi], g[gi + 1], g[gi + 2]]);
             let ab_c = crate::compositor::vidro::alfas(&base[gi..gi + 4], &b[i]);

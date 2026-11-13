@@ -278,7 +278,7 @@ impl PainterTool {
             Some((c, p, b)) => (Some(c), Some(p), Some(b)),
             None => (None, None, None),
         };
-        let vbase: Option<&[crate::compositor::vidro::Vidro]> = vbase.as_deref().map(Vec::as_slice);
+        let vbase = vbase.as_ref();
         let vlinhas: Vec<Option<&mut [crate::compositor::vidro::Vidro]>> = match vplano.as_mut() {
             Some(p) => Arc::get_mut(p).expect("o plano é só deste quadro")[py0 * w..py1 * w]
                 .chunks_mut(w)

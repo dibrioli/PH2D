@@ -9,10 +9,76 @@ use super::*;
 use crate::compositor::vidro::Vidro;
 use std::sync::Weak;
 
-/// A base congelada (e a camada) e o vidro dela.
-pub(super) type BaseCongelada = (Weak<Vec<u8>>, RtLayerId, Arc<Vec<Vidro>>);
-/// O plano do vidro aberto para escrita e o vidro congelado da base.
-pub(super) type PlanoEBase = (Arc<Vec<Vidro>>, Arc<Vec<Vidro>>);
+/// A base congelada (e a camada) e o vidro dela, pelo journal da sessão (ADR-0204 D3).
+pub(super) type BaseCongelada = (Weak<Vec<u8>>, RtLayerId, SessaoDoVidro);
+/// O plano do vidro aberto para escrita e o vidro da base na janela do quadro.
+pub(super) type PlanoEBase = (Arc<Vec<Vidro>>, JanelaDoVidro);
+
+/// **O vidro do início da sessão molhada** (ADR-0204 D3): os tiles que a sessão escreveu, tomados na 1.ª
+/// escrita de cada um; o resto é o vivo (§5.28). Atravessa traços: não zera com o passo.
+#[derive(Clone, Default)]
+pub(super) struct SessaoDoVidro {
+    tiles: crate::undo::journal::TileJournal<Vidro>,
+    /// O plano inteiro na congelação, só com [`GUARDA_O_INICIO_DA_SESSAO`] (o oráculo dos portões).
+    #[cfg(test)]
+    pub(super) inicio: Option<Arc<Vec<Vidro>>>,
+}
+
+impl SessaoDoVidro {
+    /// Toma os tiles de `caixa` (`x0, x1, y0, y1`, em texels) de `vivo` ANTES de alguém os escrever.
+    pub(super) fn captura(&mut self, vivo: &[Vidro], fw: usize, (x0, x1, y0, y1): Caixa) {
+        self.tiles.capture(vivo, fw, Some((x0, y0, x1, y1)));
+    }
+
+    /// O vidro do início da sessão em `caixa`: o journal da sessão com o vivo por baixo.
+    fn janela(&self, vivo: &[Vidro], fw: usize, (x0, x1, y0, y1): Caixa) -> JanelaDoVidro {
+        let w = x1 - x0;
+        let mut dados = Vec::with_capacity(w * (y1 - y0));
+        for y in y0..y1 {
+            if self.tiles.is_empty() {
+                dados.extend_from_slice(&vivo[y * fw + x0..y * fw + x1]);
+            } else {
+                self.tiles.read_row_into(y, x0, w, vivo, &mut dados);
+            }
+        }
+        JanelaDoVidro {
+            dados,
+            x0,
+            y0,
+            w,
+            fw,
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn bytes(&self) -> usize {
+        self.tiles.heap_bytes()
+    }
+}
+
+/// `(x0, x1, y0, y1)` meio-aberta, em texels.
+pub(super) type Caixa = (usize, usize, usize, usize);
+
+/// **O `vbase` de um quadro**: o vidro do início da sessão, denso, só na caixa que o quadro escreve. Indexa-se
+/// pelo índice GLOBAL do texel (`gy * fw + gx`), como o plano; fora da caixa, pânico.
+#[derive(Clone, Debug)]
+pub(crate) struct JanelaDoVidro {
+    pub(super) dados: Vec<Vidro>,
+    pub(super) x0: usize,
+    pub(super) y0: usize,
+    pub(super) w: usize,
+    fw: usize,
+}
+
+impl std::ops::Index<usize> for JanelaDoVidro {
+    type Output = Vidro;
+    #[inline]
+    fn index(&self, i: usize) -> &Vidro {
+        let (y, x) = (i / self.fw, i % self.fw);
+        debug_assert!(x >= self.x0 && x < self.x0 + self.w && y >= self.y0, "fora da janela do vbase");
+        &self.dados[(y - self.y0) * self.w + (x - self.x0)]
+    }
+}
 /// O chão (o `Weak` dele) e o chão preto que lhe corresponde (`None` = o preto puro).
 type ChaoCongelado = (Weak<Vec<u8>>, Option<Arc<Vec<u8>>>);
 
@@ -38,6 +104,13 @@ thread_local! {
 thread_local! {
     /// As cópias do plano do vidro feitas pelo [`abre_o_vidro`] neste fio (a régua dos portões).
     pub(super) static COPIAS_DO_VIDRO: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// As congelações da sessão do vidro neste fio (uma por sessão; o caminho sem B18.4 recongela a cada quadro).
+    pub(super) static CONGELACOES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Liga o oráculo do D3: a congelação guarda o plano inteiro e cada [`abre_o_vidro`] grava a janela que deu.
+    pub(super) static GUARDA_O_INICIO_DA_SESSAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// As janelas do `vbase` que [`abre_o_vidro`] deu, com o início da sessão de cada uma.
+    pub(super) static JANELAS_DO_VBASE: std::cell::RefCell<Vec<(JanelaDoVidro, Arc<Vec<Vidro>>)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
 }
 
 impl VidroCongelado {
@@ -61,7 +134,7 @@ impl VidroCongelado {
 pub(super) struct VidroDoQuadro {
     pub camada: RtLayerId,
     pub plano: Arc<Vec<Vidro>>,
-    pub base: Arc<Vec<Vidro>>,
+    pub base: JanelaDoVidro,
     pub chao_preto: Option<Arc<Vec<u8>>>,
 }
 
@@ -177,6 +250,14 @@ impl PainterTool {
                 (i / w - y0) * vw + (i % w - x0)
             }
         };
+        // A sessão molhada desta camada vê o vidro de antes desta escrita (D3).
+        for s in [&mut self.vidro_congelado.aguada, &mut self.vidro_congelado.molhada]
+            .into_iter()
+            .flatten()
+            .filter(|s| s.1 == camada)
+        {
+            s.2.captura(vivo, w, (x0, x1, y0, y1));
+        }
         let plano = super::plane_fork::fork_vidro(
             self.vidros.get_mut(&camada)?,
             &self.undo.write_state,
@@ -306,17 +387,32 @@ pub(super) fn abre_o_vidro(
     let guardado = vidros.remove(&camada).filter(|p| p.len() == n);
     let nasce = guardado.is_none();
     let mut plano = guardado.unwrap_or_else(|| Arc::new(vec![[0u8; 7]; n]));
-    let vbase = match congelado {
-        Some((w, c, v))
-            if *c == camada && Weak::ptr_eq(w, &Arc::downgrade(base)) && v.len() == n =>
-        {
-            Arc::clone(v)
-        }
-        _ => {
-            *congelado = Some((Arc::downgrade(base), camada, Arc::clone(&plano)));
-            Arc::clone(&plano)
-        }
-    };
+    let fresca = matches!(congelado, Some((w, c, _)) if *c == camada && Weak::ptr_eq(w, &Arc::downgrade(base)));
+    if !fresca {
+        let sessao = SessaoDoVidro {
+            #[cfg(test)]
+            inicio: GUARDA_O_INICIO_DA_SESSAO
+                .get()
+                .then(|| Arc::new(plano.as_ref().clone())),
+            ..Default::default()
+        };
+        #[cfg(test)]
+        CONGELACOES.with(|c| c.set(c.get() + 1));
+        *congelado = Some((Arc::downgrade(base), camada, sessao));
+    }
+    let sessao = &mut congelado.as_mut()?.2;
+    let (fw, fh) = (size.0 as usize, size.1 as usize);
+    let caixa = area.map_or((0, fw, 0, fh), |r| {
+        let (x0, y0) = ((r.x as usize).min(fw), (r.y as usize).min(fh));
+        (x0, (x0 + r.w as usize).min(fw), y0, (y0 + r.h as usize).min(fh))
+    });
+    // Antes da escrita deste quadro: a sessão toma os tiles que ele vai escrever, e a janela lê-os.
+    sessao.captura(&plano, fw, caixa);
+    let vbase = sessao.janela(&plano, fw, caixa);
+    #[cfg(test)]
+    if let Some(i) = &sessao.inicio {
+        JANELAS_DO_VBASE.with(|j| j.borrow_mut().push((vbase.clone(), Arc::clone(i))));
+    }
     // O plano é escrito no lugar: quem o partilha (o desfazer, a base congelada) fica com a cópia. O que
     // nasceu AGORA é zeros: a cópia é outro plano zerado, cujas páginas só existem onde o traço escreve
     // (B18.4 WB: a 4K, 58 MB copiados no 1.º toque de cada camada nova).

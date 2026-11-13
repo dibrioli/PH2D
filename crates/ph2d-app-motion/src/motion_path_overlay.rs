@@ -37,6 +37,7 @@ use ph2d_ecs::World;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_timeline::{AnimTarget, PropKind, TimelineDoc};
+use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{BezPath, Point, VectorScene};
 
 /// O traço com que um ponto de tempo é desenhado.
@@ -74,18 +75,17 @@ const MAX_DOTS: usize = 600;
 /// fisicamente* — uma trajetória não é uma resposta a essa pergunta.
 const PATH_RGBA: [f32; 4] = ph2d_editor_core::editor_highlight::amber(0.95);
 
-/// A LINHA de uma alça de tangente — a mesma âmbar, meia força: ela sai da âncora e
-/// termina na ponta agarrável, e é a coisa que diz *"esta âncora tem uma tangente
-/// para puxar"*. Mais forte que o fio (a alça se edita), mais fraca que os pontos.
-const TANGENT_LINE_RGBA: [f32; 4] = ph2d_editor_core::editor_highlight::amber(0.6);
+/// A alça de tangente fala o idioma da casa para «alça» (`motion_key_handles`): linha fina
+/// `TimelineHandleLine`, círculo CHEIO `TimelineHandle`, a arrastada `TimelineKeyActive` —
+/// nunca o âmbar do caminho (smoke do dono 12/11: «pequenas e da mesma cor do caminho»).
+/// Círculo, não quadrado: a âncora translada a curva, a ponta a MOLDA.
+pub(crate) const TANGENT_TIP_TOKEN: ColorToken = ColorToken::TimelineHandle;
+pub(crate) const TANGENT_TIP_LIVE_TOKEN: ColorToken = ColorToken::TimelineKeyActive;
+const TANGENT_LINE_TOKEN: ColorToken = ColorToken::TimelineHandleLine;
 
-/// Raio do círculo da ponta de uma alça de tangente. Círculo, não quadrado: a âncora é
-/// o quadrado (o que translada a curva), a ponta é o círculo (o que a MOLDA) — a mesma
-/// distinção que todo editor vetorial faz.
-const TANGENT_TIP_R: f64 = 2.5; // LITERAL-PX-OK: chrome de overlay, geometria de tela
-
-/// A espessura com que a linha e a ponta de uma alça são traçadas.
-const TANGENT_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
+/// Raio da ponta: o MESMO das alças do modo X/Y separado.
+pub(crate) const TANGENT_TIP_R: f64 = crate::motion_key_handles::ALCA_R;
+pub(crate) const TANGENT_TIP_LIVE_R: f64 = crate::motion_key_handles::ALCA_VIVA_R;
 
 /// A alça só é oferecida (desenhada E agarrável) quando a ponta está a pelo menos isto
 /// da âncora, em px de tela. Duas razões, uma só: uma ponta colada na âncora vira ruído
@@ -207,6 +207,20 @@ pub fn marks(
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<OverlayMark> {
+    marks_dragging(keys_tab, world, doc, selected, None, camera, window)
+}
+
+/// [`marks`] com o arrasto em curso: a ponta agarrada sai num grupo `TangentTip` à parte,
+/// maior e em `TimelineKeyActive` — o mesmo realce da alça arrastada do modo separado.
+pub fn marks_dragging(
+    keys_tab: bool,
+    world: &World,
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+    drag: Option<MotionPathGrab>,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Vec<OverlayMark> {
     let mut out = Vec::new();
     let Some((b, path)) = active_path(doc, selected, keys_tab) else {
         return out;
@@ -315,19 +329,32 @@ pub fn marks(
     //    âncora e o quadrado dela tem de ficar por cima. Pela MESMA porta que o hit-test.
     let mut tan_lines = BezPath::new();
     let mut tan_tips = BezPath::new();
+    let mut live_tip = BezPath::new();
     let mut any_tan = false;
-    for (_, _, _, anchor_pt, tip) in tangent_screen(keys_tab, world, doc, selected, camera, window)
+    for (target, i, out_side, anchor_pt, tip) in
+        tangent_screen(keys_tab, world, doc, selected, camera, window)
     {
         tan_lines.move_to(anchor_pt);
         tan_lines.line_to(tip);
-        push_circle(&mut tan_tips, tip, TANGENT_TIP_R);
+        let live = drag
+            == Some(MotionPathGrab::Tangent {
+                target,
+                i,
+                out: out_side,
+            });
+        if live {
+            push_circle(&mut live_tip, tip, TANGENT_TIP_LIVE_R);
+        } else {
+            push_circle(&mut tan_tips, tip, TANGENT_TIP_R);
+        }
         any_tan = true;
     }
+    let thin = f64::from(StrokeToken::Thin.px());
     if any_tan {
         out.push(OverlayMark {
             path: tan_lines,
-            rgba: TANGENT_LINE_RGBA,
-            width: TANGENT_PX,
+            rgba: crate::motion_key_handles::rgba(TANGENT_LINE_TOKEN),
+            width: thin,
             role: MarkRole::TangentLine,
         });
     }
@@ -374,13 +401,18 @@ pub fn marks(
 
     // 5. AS PONTAS DAS TANGENTES — por cima de tudo, porque são o alvo mais fino de
     //    agarrar e não podem ser enterradas pela linha nem pela âncora.
-    if any_tan {
-        out.push(OverlayMark {
-            path: tan_tips,
-            rgba: PATH_RGBA,
-            width: TANGENT_PX,
-            role: MarkRole::TangentTip,
-        });
+    for (path, token) in [
+        (tan_tips, TANGENT_TIP_TOKEN),
+        (live_tip, TANGENT_TIP_LIVE_TOKEN),
+    ] {
+        if !path.elements().is_empty() {
+            out.push(OverlayMark {
+                path,
+                rgba: crate::motion_key_handles::rgba(token),
+                width: thin,
+                role: MarkRole::TangentTip,
+            });
+        }
     }
     out
 }
@@ -586,29 +618,38 @@ fn push_circle(p: &mut BezPath, c: Point, r: f64) {
 const STEP_COS_SIN: (f64, f64) = (0.866_025_403_784_438_6, 0.5); // cos30°, sin30°
 
 /// Pinta. No-op quando [`marks`] não devolve nada.
+#[allow(clippy::too_many_arguments)]
 pub fn draw(
     keys_tab: bool,
     world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
+    drag: Option<MotionPathGrab>,
     camera: &Camera2d,
     window: WindowSize,
     vector_scene: &mut VectorScene,
 ) {
-    use ph2d_vector::{Affine, Brush, Color, Stroke};
+    use ph2d_vector::{Affine, Brush, Color, Fill, Stroke};
     // A ordem de pintura é o PAPEL de cada marca, não a ordem em que `marks` a empurrou:
     // glow por baixo, a ponta da alça por cima. Estável, então bandas de mesma camada
     // mantêm a ordem em que nasceram.
-    let mut ms = marks(keys_tab, world, doc, selected, camera, window);
+    let mut ms = marks_dragging(keys_tab, world, doc, selected, drag, camera, window);
     ms.sort_by_key(|m| m.role.layer());
+    let s = vector_scene.inner_mut();
     for m in ms {
-        vector_scene.inner_mut().stroke(
-            &Stroke::new(m.width),
-            Affine::IDENTITY,
-            &Brush::Solid(Color::new(m.rgba)),
-            None,
-            &m.path,
-        );
+        let brush = Brush::Solid(Color::new(m.rgba));
+        // A ponta da alça é um disco CHEIO, como a do modo separado; o resto é traço.
+        if m.role == MarkRole::TangentTip {
+            s.fill(Fill::NonZero, Affine::IDENTITY, &brush, None, &m.path);
+        } else {
+            s.stroke(
+                &Stroke::new(m.width),
+                Affine::IDENTITY,
+                &brush,
+                None,
+                &m.path,
+            );
+        }
     }
 }
 

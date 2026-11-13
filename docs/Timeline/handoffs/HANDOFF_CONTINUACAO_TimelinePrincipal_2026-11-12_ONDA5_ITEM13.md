@@ -67,6 +67,8 @@ Modelo **A** (After Effects): uma linha «Position» = ritmo ao longo do caminho
 
 Fecho: `cargo fmt --all`; clippy `-D warnings` limpo em `ph2d-app-motion`, `ph2d-timeline`, `ph2d-host-desktop`; por nome verdes: `ph2d-app-motion motion_key_handles|motion_key_points|motion_path`, `ph2d-timeline path_convert|view_clock`, `ph2d-host-desktop the_motion_path|shrinks|gizmo`; `cargo build --profile smoke -p ph2d-host-desktop` ok. Foto da prova do item 1: não tirada (sem cena com pai rodado; criar uma não coube no prazo).
 
+4. **Alças do caminho pequenas e da cor do caminho (smoke do dono 12/11, com foto).** As pontas de tangente do motion path saíam em âmbar `PATH_RGBA`, contorno de 1 px, raio 2,5. Agora falam o idioma de alça do modo X/Y separado: linha `TimelineHandleLine` (`StrokeToken::Thin`), disco CHEIO `TimelineHandle`, a arrastada `TimelineKeyActive` (o `draw` do overlay recebe o `drag`; `marks_dragging`); raio = `motion_key_handles::ALCA_R` 3,5→5,0 e `ALCA_VIVA_R` 5,0→6,5, o mesmo nas duas famílias; `HIT_R_PX` 7 ≥ 6,5. Teste `motion_path_overlay::tests::the_tangent_tip_wears_the_handle_token_and_radius_not_the_path_amber` (token, raio desenhado, linha ≠ âmbar, a arrastada realçada). Mutações: ponta em `PATH_RGBA` ⇒ vermelho; `ALCA_R` 3,5 ⇒ vermelho; `TANGENT_TIP_R` 2,5 ⇒ vermelho; restaurado ⇒ verde. Foto: [17_item13_alcas_maiores.png](../fotos/17_item13_alcas_maiores.png) (discos rosa cheios, linhas escuras, distintos do âmbar).
+
 ## ABERTO (visto, NÃO feito)
 1. Integração NÃO feita.
 2. Smoke do dono dos 3 itens acima; foto do item 1 (cena com pai rodado) por fazer.

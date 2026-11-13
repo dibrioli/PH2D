@@ -19,10 +19,12 @@ use ph2d_vector::{BezPath, Point, VectorScene};
 use crate::motion_key_points::{has_path, key_times, local_for_world};
 use crate::motion_path_overlay::MotionPathGrab;
 
-/// Raio do círculo da alça: o mesmo das alças do grafo da Timeline (`graph_paint::HANDLE_R`).
-const ALCA_R: f64 = 3.5; // LITERAL-PX-OK: chrome de overlay, geometria de tela
+/// Raio do círculo da alça no canvas — o MESMO nas tangentes do caminho
+/// (`motion_path_overlay`), para as duas famílias de alça serem iguais (smoke do dono 12/11:
+/// «alças maiores e de outra cor»). Fica < `HIT_R_PX`: o pegável cobre o desenhado.
+pub(crate) const ALCA_R: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay, geometria de tela
 /// Raio da alça arrastada: realçada.
-const ALCA_VIVA_R: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay, geometria de tela
+pub(crate) const ALCA_VIVA_R: f64 = 6.5; // LITERAL-PX-OK: chrome de overlay, geometria de tela
 /// Raio de pega: o mesmo das alças do grafo e dos losangos.
 const HIT_R_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay, alvo de mouse
 /// Segmentos do círculo.
@@ -194,13 +196,13 @@ pub fn drag_alca(
     convertido || state.doc.path_anchor(target, i) != antes
 }
 
-fn rgba(token: ColorToken) -> [f32; 4] {
+pub(crate) fn rgba(token: ColorToken) -> [f32; 4] {
     let c = token.resolve(REFERENCIA);
     let u = |v: u8| f32::from(v) / f32::from(u8::MAX);
     [u(c.r), u(c.g), u(c.b), u(c.a)]
 }
 
-fn circulo(c: Point, r: f64) -> BezPath {
+pub(crate) fn circulo(c: Point, r: f64) -> BezPath {
     let mut p = BezPath::new();
     for k in 0..=CIRC_SEGS {
         let a = std::f64::consts::TAU * k as f64 / CIRC_SEGS as f64;

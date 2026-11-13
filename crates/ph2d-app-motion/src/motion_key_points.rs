@@ -425,6 +425,7 @@ pub fn draw(
         world,
         doc,
         selected,
+        drag,
         camera,
         window,
         vector_scene,

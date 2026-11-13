@@ -641,3 +641,85 @@ fn a_constant_speed_track_paints_a_uniform_ribbon() {
          uniforme não deu uma fita uniforme"
     );
 }
+
+/// **A ponta da tangente é uma ALÇA, não um pedaço do caminho** (smoke do dono 12/11: «alças
+/// pequenas e da mesma cor do caminho»). A ponta pinta com o token de alça da casa e o raio
+/// das alças do modo separado; a arrastada, com o realce e o raio maior; e o pegável cobre o
+/// desenhado. Voltar ao âmbar do caminho ou ao raio antigo (2,5) sangra aqui.
+#[test]
+fn the_tangent_tip_wears_the_handle_token_and_radius_not_the_path_amber() {
+    use super::{
+        HIT_R_PX, PATH_RGBA, TANGENT_TIP_LIVE_R, TANGENT_TIP_LIVE_TOKEN, TANGENT_TIP_R,
+        TANGENT_TIP_TOKEN, marks_dragging,
+    };
+    use crate::motion_key_handles::{ALCA_R, ALCA_VIVA_R, rgba};
+    assert_eq!(
+        TANGENT_TIP_R, ALCA_R,
+        "as duas famílias de alça têm de ter o mesmo raio"
+    );
+    assert_eq!(TANGENT_TIP_LIVE_R, ALCA_VIVA_R);
+    const {
+        assert!(TANGENT_TIP_R >= 5.0, "a ponta voltou a ser pequena");
+        assert!(
+            HIT_R_PX >= TANGENT_TIP_LIVE_R,
+            "o pegável ficou menor que o desenhado"
+        );
+    }
+    assert_ne!(
+        rgba(TANGENT_TIP_TOKEN),
+        PATH_RGBA,
+        "a alça tem a cor do caminho"
+    );
+
+    let (doc, e) = doc_shaped();
+    let (cam, win) = (camera(), window());
+    let w = ph2d_ecs::World::new();
+    // Raio DESENHADO: a maior distância de um vértice ao centro do seu círculo (13 vértices).
+    let radius = |m: &OverlayMark| {
+        points(&m.path)
+            .chunks(13)
+            .map(|c| {
+                // O 13º vértice repete o 1º (o círculo fecha): fora da média.
+                let c = &c[..12];
+                let n = c.len() as f64;
+                let (cx, cy) = c
+                    .iter()
+                    .fold((0.0, 0.0), |(a, b), p| (a + p.0 / n, b + p.1 / n));
+                c.iter()
+                    .map(|p| (p.0 - cx).hypot(p.1 - cy))
+                    .fold(0.0, f64::max)
+            })
+            .fold(0.0, f64::max)
+    };
+    let rest = marks(true, &w, &doc, Some(e), &cam, win);
+    let tip = only(&rest, MarkRole::TangentTip);
+    assert_eq!(
+        tip.rgba,
+        rgba(TANGENT_TIP_TOKEN),
+        "a ponta não pinta com o token de alça"
+    );
+    assert!(
+        (radius(tip) - ALCA_R).abs() < 0.5,
+        "raio desenhado {}",
+        radius(tip)
+    );
+    assert_ne!(
+        only(&rest, MarkRole::TangentLine).rgba,
+        PATH_RGBA,
+        "a linha da alça tem a cor do caminho"
+    );
+
+    let (target, i, out, _, _) = super::tangent_screen(true, &w, &doc, Some(e), &cam, win)[0];
+    let grab = Some(MotionPathGrab::Tangent { target, i, out });
+    let live = marks_dragging(true, &w, &doc, Some(e), grab, &cam, win);
+    let hot: Vec<_> = all(&live, MarkRole::TangentTip)
+        .into_iter()
+        .filter(|m| m.rgba == rgba(TANGENT_TIP_LIVE_TOKEN))
+        .collect();
+    assert_eq!(hot.len(), 1, "a ponta arrastada não ganhou o realce");
+    assert!(
+        (radius(hot[0]) - ALCA_VIVA_R).abs() < 0.5,
+        "raio vivo {}",
+        radius(hot[0])
+    );
+}

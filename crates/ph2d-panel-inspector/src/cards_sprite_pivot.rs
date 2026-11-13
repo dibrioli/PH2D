@@ -176,8 +176,9 @@ pub(crate) fn grade_de_lado(
     y + lado + m::FIELD_ROW_GAP
 }
 
-/// A caixa `Keep in place`, à direita dos botões do Mirror. Onde o texto não cabe nessa coluna, ou a grade do Pivot
-/// ocupa a linha, desce para a largura inteira do cartão. Devolve o fundo.
+/// A caixa `Keep in place`, à direita dos botões do Mirror: a linha começa em `linha_y` (a do Mirror), o nome ao lado
+/// do «Mirror object» e a moldura ao lado dos botões. Onde não cabe nessa coluna, ou a grade do Pivot ocupa a linha,
+/// desce para a largura inteira do cartão. Devolve o fundo.
 fn caixa_do_mirror(
     c: &mut CardCtx<'_>,
     coluna: (f32, f32),
@@ -201,10 +202,9 @@ fn caixa_do_mirror(
     if fim_grade <= linha_y && c.largura_pedida(&caixa) <= coluna.1 {
         let (x0, w0) = (c.x, c.w);
         (c.x, c.w) = coluna;
-        // A linha sem rótulo desce `FIELD_ROW_GAP`; aqui ela divide a fila com os botões do Mirror.
-        c.row(&[caixa], linha_y - m::FIELD_ROW_GAP);
+        let fundo = c.row(&[caixa], linha_y);
         (c.x, c.w) = (x0, w0);
-        return fim.max(fim_grade);
+        return fim.max(fim_grade).max(fundo);
     }
     c.row(&[caixa], fim.max(fim_grade))
 }
@@ -264,7 +264,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
         .and_then(|i| slot_image::factos().filter(|f| f.entity_bits == i.entity_bits))
     else {
         (c.x, c.w) = (x0, w0);
-        return caixa_do_mirror(c, (xb, wb), fim_espelhos - m::FIELD_H, fim_espelhos, y);
+        return caixa_do_mirror(c, (xb, wb), fim_flip, fim_espelhos, y);
     };
     (c.x, c.w) = (xb, wb);
     if f.pivot_no_editor {
@@ -279,8 +279,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
             y,
         );
         (c.x, c.w) = (x0, w0);
-        let linha = fim_espelhos - m::FIELD_H;
-        return caixa_do_mirror(c, (xb, wb), linha, fim_espelhos, fim_botao);
+        return caixa_do_mirror(c, (xb, wb), fim_flip, fim_espelhos, fim_botao);
     }
     c.row(
         &[Cell::new(Widget::Readout { text: "" })
@@ -292,8 +291,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let topo = fim_flip - m::FIELD_H;
     let fim_grade = grade_do_pivot(c, topo, f);
     (c.x, c.w) = (x0, w0);
-    let linha = fim_espelhos - m::FIELD_H;
-    let fim = caixa_do_mirror(c, (xb, wb), linha, fim_espelhos, fim_grade);
+    let fim = caixa_do_mirror(c, (xb, wb), fim_flip, fim_espelhos, fim_grade);
     if !pivot_campos_abertos(&f) {
         return fim;
     }

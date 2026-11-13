@@ -10,12 +10,12 @@
 mod campos;
 #[path = "cards_corpo_marca.rs"]
 mod marca;
+pub use campos::{
+    LABEL_PX, ROW_GAP, bar_field, check_in, colunas_iguais, facts, fields_in, swatch_grid,
+    swatch_in, swatch_strip, text_in,
+};
 pub(crate) use marca::pede as pede_marca;
 pub(super) use marca::{FAIXA as FAIXA_DA_MARCA, check_em};
-pub use campos::{
-    LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, check_in, colunas_iguais, facts,
-    fields_in, swatch_grid, swatch_in, swatch_strip, text_in,
-};
 
 use super::{CardCtx, Cell, Seg, Widget, censo, compacta};
 use crate::interaction::{HitIndex, WidgetStore};

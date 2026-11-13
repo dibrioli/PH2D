@@ -43,14 +43,18 @@ fn meia_do_par(c: &CardCtx<'_>) -> Option<f32> {
     (meia >= m::ICON_CELL + m::FIELD_VALUE_MIN_W).then_some(meia)
 }
 
-/// O par em que algo é inerte pinta-se célula a célula: o véu é de cada uma. Uma caixa sem rótulo ao lado de um campo
-/// rotulado assenta na linha do campo, como em `compact` (05 §4, lei 1) — pintadas a sós, a faixa do rótulo descia o campo.
+/// O par em que algo é inerte pinta-se célula a célula: o véu é de cada uma. Uma célula sem nome em cima ao lado de um
+/// campo rotulado assenta na linha do campo, como em `compact` (05 §4, lei 1); a caixa de marcar traz o nome em cima
+/// (a moldura à Godot, 13/11), logo conta como rotulada.
 /// O par cujo texto não cabe em meia coluna desce, uma célula por linha, como em `compact` (lei 5: nada cortado).
 fn par_com_inerte(c: &mut CardCtx<'_>, par: &[Item], y: f32) -> f32 {
     let pinta = |c: &mut CardCtx<'_>, item: &Item, y: f32| {
         com_lei(c, item.id(), y, |c, y| c.row(&[item.cell()], y))
     };
-    let rotulado = |i: &Item| i.cell().label.is_some();
+    let rotulado = |i: &Item| {
+        let cell = i.cell();
+        cell.label.is_some() || matches!(cell.widget, Widget::Check { .. })
+    };
     let ([a, b], Some(meia)) = (par, meia_do_par(c)) else {
         return em_pares(c, par, y, pinta);
     };

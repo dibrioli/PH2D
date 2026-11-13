@@ -134,7 +134,7 @@ pub(super) fn em_cartao(
         &coluna_z,
         1.0,
     );
-    check_row(
+    yy = yy.max(check_row(
         scene,
         text_system,
         theme,
@@ -142,11 +142,11 @@ pub(super) fn em_cartao(
         store,
         xb,
         wb,
-        corpo::caixa_ao_lado_do_rotulo(y),
+        y,
         ids::INSP_ORDER_YSORT_ENABLED,
         TextKey::new("component.field.y_sort.1"),
         sec,
-    );
+    ));
     let live = |id: NodeId, snap: bool| match store.checkbox(id).map(|(_, v)| v) {
         Some(CheckboxValue::Checked) => true,
         Some(CheckboxValue::Unchecked) => false,

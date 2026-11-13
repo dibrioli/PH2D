@@ -376,7 +376,8 @@ fn os_quatro() -> [(ph2d_editor_core::NodeId, (f32, f32)); 4] {
         (h("cards.insp.object"), (280.0, 110.0)),
         (h("cards.insp.appearance"), (280.0, 220.0)),
         (h("cards.insp.ordering"), (620.0, 110.0)),
-        (h("cards.insp.material"), (620.0, 240.0)),
+        // Abaixo do Ordering inteiro (Z Index · Y-Sort, Sorting Layer e Order option): em 240 cobria o Sorting Layer.
+        (h("cards.insp.material"), (620.0, 310.0)),
     ]
 }
 

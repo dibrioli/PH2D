@@ -314,9 +314,3 @@ pub fn colunas_iguais(x: f32, w: f32) -> [(f32, f32); 2] {
     let meia = (w - m::FIELD_GAP) * 0.5;
     [(x, meia), (x + meia + m::FIELD_GAP, meia)]
 }
-
-/// O `y` a pedir para uma caixa de marcar ficar ao lado da caixa de uma coluna com rótulo pedida em `y`.
-#[must_use]
-pub fn caixa_ao_lado_do_rotulo(y: f32) -> f32 {
-    y + m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM - m::FIELD_ROW_GAP
-}

@@ -58,6 +58,8 @@ ph2d-app-components = { path = "../../crates/ph2d-app-components" }
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
 # A aba Input Map (docs/InputMap/01_plano.md).
 ph2d-app-input-map = { path = "../../crates/ph2d-app-input-map" }
+# A aba Joint Editor (docs/JointEditor/01_plano.md §W3).
+ph2d-app-joint-editor = { path = "../../crates/ph2d-app-joint-editor" }
 # A tela «Controls» do jogador no Play (docs/InputMap/01_plano.md §4).
 ph2d-player-controls = { path = "../../crates/ph2d-player-controls" }
 # O Painter na folha extra visível (plano GEF 26 F13).

@@ -64,6 +64,28 @@ pub(super) fn paint_linked_row(
     )
 }
 
+/// «Open in Joint Editor» — só numa junta de montagem: a aba abre na montagem dela.
+pub(super) fn paint_open_editor_row(
+    (scene, text_system, theme): (&mut VectorScene, &mut TextSystem, Theme),
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    (x, w, y): (f32, f32, f32),
+    info: &InspectorJointInfo,
+) -> f32 {
+    if info.title.is_empty() {
+        return y;
+    }
+    let label = tr("panel.inspector.joint.open_in_joint_editor");
+    let r = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, label);
+    let id = ids::INSP_JOINT_OPEN_EDITOR;
+    let btn = Button::new(id, label)
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(id));
+    paint_button(&btn, r, scene, text_system, theme);
+    hit_index.register(id, r);
+    ph2d_editor_core::property_row::abaixo_do_botao(r)
+}
+
 /// A caixa existe? Pin sem motor e não quebrável — o mesmo que o motor da física aceita.
 #[must_use]
 pub(super) fn offers_one_chain(info: &InspectorJointInfo) -> bool {

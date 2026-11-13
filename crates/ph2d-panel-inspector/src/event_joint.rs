@@ -20,6 +20,12 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     let Some(info) = state::current_inspector_joint() else {
         return false;
     };
+    // «Open in Joint Editor» (W3): não é uma edição da junta, é o pedido da aba da montagem dela.
+    if ev == WidgetEvent::Click(crate::ids::INSP_JOINT_OPEN_EDITOR) {
+        ph2d_editor_core::panel::seam_reset_button(host, crate::ids::INSP_JOINT_OPEN_EDITOR);
+        host.store_mut().request_joint_editor(info.entity_bits);
+        return true;
+    }
     let edit = match ev {
         WidgetEvent::Click(id) => {
             if id == crate::ids::INSP_JOINT_REMOVE {

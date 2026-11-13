@@ -1,0 +1,37 @@
+[package]
+name = "ph2d-app-joint-editor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A família da aba Joint Editor (plano `docs/JointEditor/01_plano.md` §W3, versão B): a lista de montagens,
+# os seletores Joint e Template, o desenho do gabarito com uma forma tracejada por papel, a queda de um objeto
+# num papel (`joint_assembly::place_part`) e o painel de baixo com os números das juntas pelo funil do Inspector
+# (`joint::joint_with_edit`). O desfazer é o do diff do projeto.
+
+[dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-app-physics = { path = "../ph2d-app-physics" }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-joint-templates = { path = "../ph2d-joint-templates" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+# `libm`: HR-5, a trigonometria bit-idêntica entre OS (o eixo da suspensão no desenho).
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

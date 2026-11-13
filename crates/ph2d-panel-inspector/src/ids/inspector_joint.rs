@@ -229,6 +229,9 @@ pub const INSP_JOINT_SWAP: NodeId = hash_node_id("insp_joint_swap");
 /// **«Same as …»** (Joint Editor W2) — a caixa que liga o grupo da montagem.
 pub const INSP_JOINT_LINKED: NodeId = hash_node_id("insp_joint_linked");
 
+/// **«Open in Joint Editor»** (Joint Editor W3) — a aba da montagem desta junta.
+pub const INSP_JOINT_OPEN_EDITOR: NodeId = hash_node_id("insp_joint_open_editor");
+
 /// **«Solve as one chain»** (Joint Editor W2) — a caixa do Pin resolvido como uma corrente.
 pub const INSP_JOINT_ONE_CHAIN: NodeId = hash_node_id("insp_joint_one_chain");
 

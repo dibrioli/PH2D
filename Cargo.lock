@@ -5908,6 +5908,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-joint-editor"
+version = "0.0.0"
+dependencies = [
+ "libm",
+ "ph2d-a11y",
+ "ph2d-app-host",
+ "ph2d-app-physics",
+ "ph2d-card-stack",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-joint-templates",
+ "ph2d-physics-ecs",
+ "ph2d-render",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-app-kanban"
 version = "0.0.0"
 dependencies = [
@@ -6272,6 +6294,7 @@ dependencies = [
  "ph2d-app-game",
  "ph2d-app-host",
  "ph2d-app-input-map",
+ "ph2d-app-joint-editor",
  "ph2d-app-kanban",
  "ph2d-app-light2d",
  "ph2d-app-macros",
@@ -7629,6 +7652,7 @@ dependencies = [
  "ph2d-app-game",
  "ph2d-app-host",
  "ph2d-app-input-map",
+ "ph2d-app-joint-editor",
  "ph2d-app-kanban",
  "ph2d-app-light2d",
  "ph2d-app-macros",

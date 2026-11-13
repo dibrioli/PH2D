@@ -323,6 +323,8 @@ pub struct WidgetStore {
     pub(in crate::interaction) fill_modal: Option<((f32, f32), (f32, f32))>,
     /// O menu pediu a ABA do Input Map; a família (`ph2d-app-input-map`) drena-o no `frame`.
     pub(in crate::interaction) input_map_tab_request: bool,
+    /// O Inspector ou o menu pediram a aba Joint Editor: `Some(montagem)` (`0` = nenhuma). A família drena-o.
+    pub(in crate::interaction) joint_editor_request: Option<u64>,
     /// **Qual acção está à ESCUTA de uma tecla** (o gesto *press-to-bind*).
     ///
     /// ⚠️ Enquanto isto é `Some`, a próxima tecla é **conteúdo**, não atalho — e é o despacho de

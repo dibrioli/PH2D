@@ -20,6 +20,7 @@ ph2d-app-constraints = { path = "../ph2d-app-constraints", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
 ph2d-app-game = { path = "../ph2d-app-game", optional = true }
 ph2d-app-input-map = { path = "../ph2d-app-input-map", optional = true }
+ph2d-app-joint-editor = { path = "../ph2d-app-joint-editor", optional = true }
 ph2d-app-kanban = { path = "../ph2d-app-kanban", optional = true }
 ph2d-app-light2d = { path = "../ph2d-app-light2d", optional = true }
 ph2d-app-macros = { path = "../ph2d-app-macros", optional = true }
@@ -50,6 +51,7 @@ default = [
     "app-flip",
     "app-game",
     "app-input-map",
+    "app-joint-editor",
     "app-kanban",
     "app-light2d",
     "app-macros",
@@ -76,6 +78,7 @@ app-constraints = ["dep:ph2d-app-constraints"]
 app-flip = ["dep:ph2d-app-flip"]
 app-game = ["dep:ph2d-app-game"]
 app-input-map = ["dep:ph2d-app-input-map"]
+app-joint-editor = ["dep:ph2d-app-joint-editor"]
 app-kanban = ["dep:ph2d-app-kanban"]
 app-light2d = ["dep:ph2d-app-light2d"]
 app-macros = ["dep:ph2d-app-macros"]

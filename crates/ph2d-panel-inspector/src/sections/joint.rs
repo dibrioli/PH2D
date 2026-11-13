@@ -356,6 +356,13 @@ pub(crate) fn paint_joint_section(
         yy,
         info,
     );
+    yy = assembly_rows::paint_open_editor_row(
+        (scene, text_system, theme),
+        hit_index,
+        store,
+        (x, w, yy),
+        info,
+    );
 
     // The PAIR cluster: who the two ends are, the gesture that exchanges them,
     // and the one fact that is about the pair rather than about the constraint.

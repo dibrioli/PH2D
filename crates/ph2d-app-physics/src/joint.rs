@@ -349,7 +349,7 @@ pub fn paste_joint_properties(
 /// `None` for the edits that are not a component write (the eyedroppers arm
 /// shell state; `Remove` deletes the entity).
 #[must_use]
-pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Option<PhysicsJoint> {
+pub fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Option<PhysicsJoint> {
     let mut next = current;
     let prev_kind = current.kind;
     match edit {

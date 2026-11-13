@@ -90,6 +90,7 @@ impl WidgetStore {
             pixel: crate::pixel_panel::PixelDialogs::default(),
             fill_modal: None,
             input_map_tab_request: false,
+            joint_editor_request: None,
             input_map_listening: None,
             input_map_captured: None,
             input_map_listen_replaces: false,

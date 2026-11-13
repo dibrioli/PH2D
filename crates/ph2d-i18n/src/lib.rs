@@ -104,6 +104,8 @@ mod hier_rows;
 mod image_tools;
 /// A ABA Input Map e as suas vistas (`docs/InputMap/01_plano.md` §7).
 mod input_map_tab;
+/// A ABA Joint Editor (`docs/JointEditor/01_plano.md` §W3).
+mod joint_editor_tab;
 /// O que o KANBAN diz (TrelloClone W2).
 mod kanban;
 mod kanban_back;
@@ -625,6 +627,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| node_options::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| input_map_tab::tr(k))
+            .or_else(|| joint_editor_tab::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| painter_marca::tr(k))
             .or_else(|| painter_ponta::tr(k))

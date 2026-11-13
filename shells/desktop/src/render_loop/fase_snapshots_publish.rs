@@ -280,6 +280,7 @@ fn document_families(
     ph2d_app_planner::frame(hero, toasts);
     let pad = gilrs.is_some_and(|g| g.gamepads().next().is_some());
     ph2d_app_input_map::frame(sim.world(), hero, pad, (input, jogador));
+    ph2d_app_joint_editor::frame(sim, hero);
     if let Some(t) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() {
         t.doc.forget_reaches(jogador, &hero.input_map); // o «Forget them» no Play chega à sessão
     }

@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 17] = [
+const WRITERS: [&str; 19] = [
     "../../crates/ph2d-app-physics/src/physics_apply.rs",
     "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
@@ -89,6 +89,10 @@ const WRITERS: [&str; 17] = [
     "../../crates/ph2d-app-physics/src/physics_colide.rs",
     // ⭐ O Look da forma (GEF02 onda 8): o cartão Look escreve o `ShapeLook` por `queue_set`.
     "../../crates/ph2d-shape-handles/src/look.rs",
+    // ⭐ A MONTAGEM de juntas (Joint Editor W3): a aba cria-a e põe cada peça no papel dela
+    // (`place_part`), e a caixa «Same as» do cartão Joint escreve o `JointAssembly::linked`.
+    "../../crates/ph2d-app-joint-editor/src/apply.rs",
+    "../../crates/ph2d-app-physics/src/joint_assembly_card.rs",
 ];
 
 #[test]

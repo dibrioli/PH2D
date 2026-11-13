@@ -389,6 +389,7 @@ fn boot_hero_screen(
         ph2d_app_sfxlab::install(&mut hero);
         ph2d_panel_physics::aba::familia::install(&mut hero); // A aba «Collision Layers» (GEF02 9a).
         ph2d_app_input_map::install(&mut hero, prefs.input_map_view);
+        ph2d_app_joint_editor::install(&mut hero);
         Some(hero)
     } else {
         None

@@ -118,3 +118,43 @@ alavanca de tamanho certo, de várias horas, não feita.
 | `with_min_len(4)` nos andadores por linha | 30,0 → 30,0 ms | ao bit, mas o pin do rayon é ociosidade, não sobrecarga |
 | `with_min_len(16)` | 43,4 ms (rodada de 4, carga a variar) | pedaços grandes pioram o equilíbrio |
 | `RAYON_NUM_THREADS` 12 / 14 (fatia de 16) | 33,4 / 31,4 contra 30,0 ms | menos fios = menos parede; sem sobre-subscrição a corrigir |
+
+## Advecção, rodada 3 (13/11, 01:42–02:00): o transporte em lanes — `TRANSPORTE_LANES` (commit `6c1a3527b8`)
+
+**Restrições medidas antes de escolher:** `unsafe_code = "forbid"` na workspace inteira ⇒ `core::arch` (AVX2 +
+`is_x86_feature_detected!`) está FORA sem decisão de política; o alvo é `x86-64-v2` (SSE4.2: f64 de 2 lanes, sem
+gather); nenhum `mul_add` na crate e o Rust não contrai ⇒ sem FMA. Escolhida a opção «blocos de 8 lanes em
+arrays fixos que o LLVM vetoriza» (`advect_lanes.rs`), com o escalar (`transport_cell`) como cauda e oráculo.
+
+**Onde pesa o `transport_row` (perf annotate, escalar):** espalhado — a `divsd` do `1/want` (~7 % por derrapagem),
+os ramos `want > 0` / `active` / retro-traço (~6 %), as conversões `cvtss2sd` dos 4 cantos × 3 planos. Não é um
+gargalo único de gather. **Não é banda de memória:** o núcleo escala 4 → 8 → 16 fios 38,6 → 20,4 → 12,7 ms.
+
+| corrida | load | rota | média ms | mediana | núcleo mín | hash |
+|---|---|---|---|---|---|---|
+| lanes v1 (recolhe a cor sempre), 24×6 | 7,5→6,5 | `v` escalar | 28,6 | 23,9 | 13,21 | `a9bac64ac5b857c8` |
+| | | `a` lanes | 29,4 | 24,4 | **14,16** (pior) | `a9bac64ac5b857c8` |
+| lanes v1, 4 / 8 / 16 fios (12×3) | ~7 | `v` × `a` | — | — | 38,6×41,1 · 20,4×21,9 · 12,7×13,1 | — |
+| v2: cor só se alguma lane troca, 24×6 | 3,6→4,0 | `v` | 27,9 | 23,0 | 12,53 | `a9bac64ac5b857c8` |
+| | | **`a`** | **27,8** | 23,0 | **12,18** | `a9bac64ac5b857c8` |
+| v3: + divisão só com troca, 24×8 | 7,6→9,3 | `v` | 28,5 | 23,4 | 14,68 | `a9bac64ac5b857c8` |
+| | | **`a`** | **28,2** | 24,2 | **14,39** | `a9bac64ac5b857c8` |
+
+Leitura: sem ramos, toda célula ativa pagava as 12 leituras da cor e a divisão que a escalar salta com `want = 0`
+(células que só puxam água) — a v1 perdia ~7 %. Com a cor e a divisão só onde alguma lane troca, as lanes ganham
+~0,3 ms do núcleo (2–3 %), média −0,1 a −0,3 ms: ficam por omissão (mesmo hash), mas **não** chegam a 1,0.
+Gate `o_transporte_em_lanes_da_o_escalar_ao_bit` (controlos no commit). O `outflow_block` NÃO foi tocado: é um
+scatter-add cuja ordem de soma por célula de saída é a lei do bit; vetorizá-lo pede outro desenho.
+
+### ⛔ Recusas MEDIDAS (rodada 3)
+
+| ideia | medido | porquê |
+|---|---|---|
+| lanes que recolhem os 4 cantos × 6 planos sempre | núcleo 13,21 → 14,16 ms | a escalar salta cor e divisão com `want = 0`; sem ramos isso vira trabalho |
+| AVX2 por `core::arch` | não construído | `unsafe` proibido na workspace (política do dono/ADR, não da linha) |
+| reassociar a soma `want` (como controlo) | gate verde | 1 ulp em f64 some na saída f32 — mutação equivalente, não serve de controlo |
+
+### ABERTO
+A média continua ~28 ms (0,89 sim-s/s; mediana 23 = 1,0). O que resta do núcleo é conta escalar espalhada; o
+próximo degrau de tamanho certo é AVX2 com gather (precisa de abrir `unsafe` num módulo isolado — decisão de
+política) ou os picos (secagem/campo/project a coincidir, ver rodada 2).

@@ -545,10 +545,12 @@ fn check_rows_leave_the_pairing_to_the_flow_only_while_the_body_runs() {
     assert!(!mesma_fila(true), "no fluxo, quem emparelha é ele");
 }
 
-/// Numa coluna de duas, a marca da caixa anda com o nome: no fim da coluna lia-se da vizinha (05 §8).
-/// *Mutação: `colada` sempre falso em `check_em` ⇒ vermelho.*
+/// ⭐ **Dono 13/11 — a linha de marcar numa MOLDURA, à Godot**: o nome em cima (a faixa dos rótulos), a
+/// moldura à altura do campo por baixo; clicar na moldura E no nome marca; o losango pinta-se na linha
+/// do nome, acima do canto superior direito da SUA moldura (antes colava-se ao fim do nome: «Faces path◇»).
+/// *Mutações: `tem_rotulo` só pelo `label` (sem faixa) · o nome sem alvo · o losango na linha da moldura.*
 #[test]
-fn the_mark_of_a_check_in_a_pair_walks_with_its_name() {
+fn a_check_row_is_a_frame_under_its_name_with_the_key_mark_above_its_corner() {
     let mut f = mesa();
     f.scene.record();
     let celula = |id, chave| {
@@ -559,16 +561,35 @@ fn the_mark_of_a_check_in_a_pair_walks_with_its_name() {
             off: false,
         })
     };
-    {
+    let fim = {
         let mut c = ctx(&mut f, 257.0);
         c.row_inteira(
             &[celula(A, "card.bones.smart"), celula(B, "card.bones.ik")],
             0.0,
-        );
-    }
-    let ra = f.hit.rect_for(A).unwrap();
-    let (fim, k) = (f64::from(ra.x + ra.w), f64::from(m::KEY_MARK_BOX));
-    let pontos: Vec<f64> = f
+        )
+    };
+    let (ra, rb) = (f.hit.rect_for(A).unwrap(), f.hit.rect_for(B).unwrap());
+    let faixa = m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM;
+    assert_eq!(
+        (ra.y, ra.h),
+        (faixa, m::FIELD_H),
+        "a moldura por baixo do nome"
+    );
+    assert_eq!((rb.y, rb.w), (ra.y, ra.w), "o par alinha");
+    assert_eq!(fim, ra.y + m::FIELD_H);
+    let nome_y = m::LABEL_TOP + m::LABEL_PX * 0.5;
+    assert_eq!(
+        f.hit.hit(ra.x + 1.0, nome_y),
+        Some(A),
+        "clicar no nome marca"
+    );
+    assert_eq!(
+        f.hit.hit(ra.x + ra.w * 0.5, ra.y + ra.h * 0.5),
+        Some(A),
+        "a moldura marca"
+    );
+    let (canto, k) = (f64::from(ra.x + ra.w), f64::from(m::KEY_MARK_BOX));
+    let marcas: Vec<_> = f
         .scene
         .take_record()
         .into_iter()
@@ -576,16 +597,17 @@ fn the_mark_of_a_check_in_a_pair_walks_with_its_name() {
             ph2d_vector::DrawOp::Fill { path, .. } => {
                 use ph2d_vector::Shape as _;
                 let b = path.bounding_box();
-                (b.width() <= k && b.height() <= k && b.x0 < fim && b.x0 > f64::from(ra.x))
-                    .then_some(b.x1)
+                (b.width() <= k && b.height() <= k && b.x0 >= canto - k && b.x1 <= canto)
+                    .then_some(b)
             }
             _ => None,
         })
         .collect();
-    assert!(!pontos.is_empty(), "a marca não se pintou");
+    assert!(!marcas.is_empty(), "o losango não se pintou no canto");
     assert!(
-        pontos.iter().all(|x| *x < fim - k),
-        "marca no fim da coluna: {pontos:?}, fim {fim}"
+        marcas.iter().all(|b| b.y1 <= f64::from(ra.y)),
+        "o losango acima da moldura: {marcas:?}, topo {}",
+        ra.y
     );
 }
 

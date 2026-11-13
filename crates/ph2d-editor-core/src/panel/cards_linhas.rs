@@ -30,7 +30,7 @@ impl<'s> CardCtx<'s> {
 
     /// A linha tal como vem, sem descer nada (`row` e `compact` em `cards_compacta.rs`).
     pub(super) fn row_inteira(&mut self, cells: &[Cell<'_>], y: f32) -> f32 {
-        let rotulos = cells.iter().any(|c| c.label.is_some());
+        let rotulos = cells.iter().any(super::rotulos::tem_rotulo);
         let marcas = !rotulos && cells.iter().any(|c| c.key.is_some());
         let mut y = if rotulos {
             y + m::LABEL_TOP
@@ -145,7 +145,6 @@ impl<'s> CardCtx<'s> {
                     r,
                     (id, label),
                     (value, off),
-                    cells.len() > 1,
                 ),
             }
         }
@@ -197,12 +196,7 @@ impl<'s> CardCtx<'s> {
             Widget::Dropdown { text, .. } => {
                 ts.prefix_width(text, m::VALUE_PX).ceil() + m::ICON_CELL + m::FIELD_PAD_R
             }
-            Widget::Check { label, .. } => {
-                m::CHECK_BOX
-                    + m::CHECK_GAP
-                    + ts.prefix_width(label.texto, m::VALUE_PX).ceil()
-                    + label.reserva_da_marca()
-            }
+            Widget::Check { label, .. } => corpo::pede_marca(ts, label),
             _ => 0.0,
         };
         let rotulo = c.label.map_or(0.0, |l| {

@@ -334,10 +334,9 @@ impl CardCtx<'_> {
         }
     }
 
-    /// Uma caixa de marcar à Figma (T64), como 1.ª linha do corpo ou depois de outra. O que não anima
-    /// (estado da vista) passa [`Rotulo::vista`] e não leva marca.
+    /// Uma caixa de marcar na moldura (dono 13/11): o nome em cima, como qualquer campo, 1.ª linha ou
+    /// não. O que não anima (estado da vista) passa [`Rotulo::vista`] e não leva marca.
     pub fn check<'r>(&mut self, id: NodeId, label: impl Into<Rotulo<'r>>, on: bool, y: f32) -> f32 {
-        let y = if self.first { y - m::FIELD_ROW_GAP } else { y };
         self.first = false;
         corpo::check(
             self.scene,
@@ -554,14 +553,15 @@ mod tests {
         }
     }
 
-    /// A marca como 1.ª linha não abre vão; depois de outra linha, abre.
+    /// A linha de marcar tem a faixa do nome como qualquer campo (dono 13/11, a moldura à Godot), 1.ª ou não.
     #[test]
-    fn a_check_takes_the_gap_only_after_another_line() {
+    fn a_check_takes_the_label_band_like_any_field_row() {
         let mut f = mesa();
         let mut c = ctx(&mut f, 200.0);
+        let linha = m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H;
         let a = c.check(NodeId(1), "Enabled", true, 0.0);
-        assert_eq!(a, m::FIELD_H);
+        assert_eq!(a, linha);
         let b = c.check(NodeId(2), "Show", false, a);
-        assert_eq!(b, a + m::FIELD_ROW_GAP + m::FIELD_H);
+        assert_eq!(b, a + linha);
     }
 }

@@ -325,8 +325,8 @@ impl Curto {
     /// O fundo do curto sozinho na linha: o rótulo é sempre UMA linha (com reticências se não couber).
     fn fundo_sozinho(&self, y: f32) -> f32 {
         match self {
-            Self::Marca { .. } => y + m::FIELD_ROW_GAP + m::FIELD_H,
-            Self::Numero { .. }
+            Self::Marca { .. }
+            | Self::Numero { .. }
             | Self::Amostra { .. }
             | Self::Fato { .. }
             | Self::Escolha { .. } => y + m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H,

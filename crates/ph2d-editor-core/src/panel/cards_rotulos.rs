@@ -34,6 +34,11 @@ pub(super) fn par_de_eixos(cells: &[Cell<'_>]) -> bool {
             .any(|(e, f)| p.eq_ignore_ascii_case(e) && q.eq_ignore_ascii_case(f))
 }
 
+/// A célula traz nome em cima: o rótulo dela ou a linha de marcar, que pinta o seu na faixa.
+pub(super) fn tem_rotulo(c: &Cell<'_>) -> bool {
+    c.label.is_some() || matches!(c.widget, Widget::Check { .. })
+}
+
 pub(super) fn reserva(c: &Cell<'_>) -> f32 {
     if c.key.is_some() {
         m::KEY_MARK_BOX
@@ -46,7 +51,7 @@ pub(super) fn reserva(c: &Cell<'_>) -> f32 {
 /// quatro amostras), e pára antes da primeira marca de animação desse troço — nunca a pinta por cima.
 fn largura_do_rotulo(cells: &[Cell<'_>], cols: &[(f32, f32)], i: usize) -> f32 {
     let fim = (i + 1..cells.len())
-        .find(|&j| cells[j].label.is_some())
+        .find(|&j| tem_rotulo(&cells[j]))
         .unwrap_or(cells.len());
     let ate = (i..fim)
         .find(|&j| cells[j].key.is_some())

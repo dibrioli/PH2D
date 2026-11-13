@@ -8,6 +8,10 @@
 
 #[path = "cards_corpo_campos.rs"]
 mod campos;
+#[path = "cards_corpo_marca.rs"]
+mod marca;
+pub(crate) use marca::pede as pede_marca;
+pub(super) use marca::{FAIXA as FAIXA_DA_MARCA, check_em};
 pub use campos::{
     LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, check_in, colunas_iguais, facts,
     fields_in, swatch_grid, swatch_in, swatch_strip, text_in,
@@ -471,9 +475,8 @@ pub struct Marca<'a> {
     pub on: bool,
 }
 
-/// ⭐ **T64 — a caixa de marcar do cartão, à Figma** (dono 02/11): o quadradinho com ✓ e o nome à
-/// direita, numa linha; a linha inteira é o alvo (o clique no nome marca) e a marca de animação
-/// fica no fim. Devolve o fundo.
+/// ⭐ **A caixa de marcar do cartão, numa MOLDURA à Godot** (dono 13/11; antes T64 à Figma): o nome
+/// em cima com o losango, a moldura com ✓ e «On» por baixo; nome e moldura marcam. Devolve o fundo.
 #[allow(clippy::too_many_arguments)]
 pub fn check(
     scene: &mut VectorScene,
@@ -533,7 +536,7 @@ fn check_valor(
     ) {
         return fim;
     }
-    let y = y + m::FIELD_ROW_GAP;
+    let y = y + m::LABEL_TOP + FAIXA_DA_MARCA;
     let r = Rect::new(x, y, w, m::FIELD_H);
     check_em(
         scene,
@@ -544,13 +547,9 @@ fn check_valor(
         r,
         (id, label),
         (valor, parada),
-        false,
     );
     if censo::ligado() {
-        let pede = m::CHECK_BOX
-            + m::CHECK_GAP
-            + text_system.prefix_width(label.texto, m::VALUE_PX).ceil()
-            + label.reserva_da_marca();
+        let pede = pede_marca(text_system, label);
         censo::linha((x, w), y, y + m::FIELD_H, || {
             vec![censo::CelulaMedida {
                 nome: label.texto.to_owned(),
@@ -560,59 +559,6 @@ fn check_valor(
         });
     }
     y + m::FIELD_H
-}
-
-/// A caixa de marcar do cartão no rect `r`: o quadradinho, o nome e a marca de animação no fim.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn check_em(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    store: &WidgetStore,
-    hit_index: &mut HitIndex,
-    ink: CardInk,
-    r: Rect,
-    (id, label): (NodeId, Rotulo<'_>),
-    (valor, parada): (CheckboxValue, bool),
-    colada: bool,
-) {
-    let (x, y, w, h) = (r.x, r.y, r.w, r.h);
-    let (b, k) = (m::CHECK_BOX, label.reserva_da_marca());
-    hit_index.register(id, r);
-    if censo::ligado() {
-        let tw = text_system.prefix_width(label.texto, m::VALUE_PX);
-        censo::texto(label.texto, b + m::CHECK_GAP + tw + k, w);
-    }
-    let caixa = crate::widget::card_check_rect(x, y, h);
-    let hover = !parada && store.hover_live(id) > 0.0;
-    crate::widget::paint_card_check_value(scene, ink, caixa, valor, hover);
-    let tx = x + b + m::CHECK_GAP;
-    crate::paint::paint_text_elided(
-        text_system,
-        scene,
-        label.texto,
-        tx,
-        y + crate::paint::folga_do_texto(h, m::VALUE_PX),
-        m::VALUE_PX,
-        (x + w - tx - k).max(0.0),
-        ink.color(if parada {
-            ColorToken::CardLabel
-        } else {
-            ColorToken::KanbanCardFg
-        }),
-    );
-    // Numa coluna de duas a marca anda com o nome: no fim ela encostava na vizinha e lia-se dela (05 §8).
-    let dx = if colada {
-        let tw = text_system.prefix_width(label.texto, m::VALUE_PX).ceil();
-        (tx + tw).min(x + w - k)
-    } else {
-        x + w - k
-    };
-    let dot = Rect::new(dx, y + (h - k) * 0.5, k, k);
-    if let Some(alvo) =
-        crate::widget::key_mark::paint_decorator_campo(scene, ink.theme, dot, &[id], label)
-    {
-        hit_index.register(alvo, dot);
-    }
 }
 
 pub(super) fn ctx<'s>(

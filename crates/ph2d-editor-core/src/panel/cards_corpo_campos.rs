@@ -75,16 +75,15 @@ pub fn check_in(
         crate::widget::CheckboxValue::Unchecked
     };
     let mut alvos = HitIndex::default();
-    super::check_em(
+    super::marca::check_solto(
         scene,
         text_system,
         store,
         if parada { &mut alvos } else { hit_index },
         ink,
         r,
-        (id, crate::widget::key_mark::Rotulo::vista_de(nome)),
+        (id, nome),
         (valor, parada),
-        false,
     );
 }
 

@@ -90,10 +90,32 @@ fn sonda_primeiro_traco() {
         "Wet Liner",
         "Marker Bullet",
     ];
-    for n in nomes
+    // `PH2D_SONDA_VIDRO`: `1` (omissão) a chave `VIDRO_PELO_JOURNAL` ligada, `0` desligada, `ab` as duas
+    // intercaladas em blocos rodados (`PH2D_SONDA_REPETE` blocos) no MESMO binário (ADR-0204, A×B).
+    let repete: usize = std::env::var("PH2D_SONDA_REPETE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
+    let rotas: Vec<bool> = match std::env::var("PH2D_SONDA_VIDRO").as_deref() {
+        Ok("0") => vec![false; repete],
+        Ok("ab") => (0..repete)
+            .flat_map(|r| {
+                if r % 2 == 0 {
+                    [true, false]
+                } else {
+                    [false, true]
+                }
+            })
+            .collect(),
+        _ => vec![true; repete],
+    };
+    let corridas = nomes
         .iter()
         .filter(|n| so.as_deref().is_none_or(|s| s == **n))
-    {
+        .flat_map(|n| rotas.iter().map(move |&r| (n, r)));
+    for (n, rota) in corridas {
+        crate::undo::window::set_vidro_pelo_journal(rota);
+        println!("ROTA\t{n}\tvidro_pelo_journal={rota}");
         let mut t = PainterTool::default();
         t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
         t.set_paint_tool_mode("wetpaint");
@@ -179,7 +201,11 @@ fn sonda_primeiro_traco() {
                 o[o.len() / 2]
             )
         };
-        println!("TRACO\t{n}\t1.º {}\t2.º {}", fmt(&um), fmt(&dois));
+        println!(
+            "TRACO\t{n}\tjournal={rota}\t1.º {}\t2.º {}",
+            fmt(&um),
+            fmt(&dois)
+        );
     }
     println!(
         "preparo usado (motores, papéis): {:?}",
@@ -187,4 +213,5 @@ fn sonda_primeiro_traco() {
     );
     super::preparo::liga_no_teste(false);
     forca_no_teste(None);
+    crate::undo::window::set_vidro_pelo_journal(true);
 }

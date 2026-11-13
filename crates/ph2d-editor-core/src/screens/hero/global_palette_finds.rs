@@ -65,7 +65,7 @@ fn input_actions(hero: &HeroScreen) -> Option<PaletteGroup> {
                 label,
                 id: action_item(a.id),
                 keywords: "",
-                badge: None,
+                badge: Some(tr("chrome.palette.kind_action").to_owned()),
             }
         })
         .collect();
@@ -86,7 +86,7 @@ fn scene_objects(store: &WidgetStore) -> Option<PaletteGroup> {
             label: name.clone(),
             id: *row,
             keywords: "",
-            badge: None,
+            badge: Some(tr("chrome.palette.kind_object").to_owned()),
         })
         .collect();
     group(
@@ -112,7 +112,7 @@ fn card_fields(store: &WidgetStore) -> Option<PaletteGroup> {
                 label: f.label.clone(),
                 id: f.id,
                 keywords: "",
-                badge: None,
+                badge: Some(tr("chrome.palette.kind_setting").to_owned()),
             })
             .collect();
         if items.is_empty() {
@@ -120,7 +120,7 @@ fn card_fields(store: &WidgetStore) -> Option<PaletteGroup> {
                 label: title.clone(),
                 id: *card,
                 keywords: "",
-                badge: None,
+                badge: Some(tr("chrome.palette.kind_setting").to_owned()),
             });
         } else {
             subs.push(PaletteSub {

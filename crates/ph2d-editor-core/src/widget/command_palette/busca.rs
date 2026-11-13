@@ -152,6 +152,49 @@ pub fn fuzzy_score(query: &str, name: &str) -> Option<i32> {
     (qi == q.len()).then_some(s)
 }
 
+/// ⭐ **Where `query` lands in `name`** (byte ranges, in order, merged): the substring if there is one
+/// (the [`label_matches`] tier), else the letters the [`fuzzy_score`] walk takes. Empty = no match. The
+/// list paints these in bold, so what the artist sees lit is what found the row.
+#[must_use]
+pub fn match_ranges(query: &str, name: &str) -> Vec<std::ops::Range<usize>> {
+    let q: Vec<char> = query.trim().chars().flat_map(char::to_lowercase).collect();
+    if q.is_empty() {
+        return Vec::new();
+    }
+    // (byte start, lowercased char) — a char that lowercases to several keeps its start.
+    let n: Vec<(usize, usize, char)> = name
+        .char_indices()
+        .flat_map(|(b, c)| {
+            let end = b + c.len_utf8();
+            c.to_lowercase().map(move |l| (b, end, l))
+        })
+        .collect();
+    let at = |i: usize, j: usize| n[i].0..n[j].1;
+    if let Some(i) = (0..n.len())
+        .find(|&i| n.len() - i >= q.len() && q.iter().enumerate().all(|(k, c)| n[i + k].2 == *c))
+    {
+        return vec![at(i, i + q.len() - 1)];
+    }
+    let q: Vec<char> = q.into_iter().filter(|c| !c.is_whitespace()).collect();
+    let mut out: Vec<std::ops::Range<usize>> = Vec::new();
+    let mut qi = 0;
+    for (i, (_, _, ch)) in n.iter().enumerate() {
+        if qi == q.len() {
+            break;
+        }
+        if *ch != q[qi] {
+            continue;
+        }
+        qi += 1;
+        let r = at(i, i);
+        match out.last_mut() {
+            Some(last) if last.end >= r.start => last.end = last.end.max(r.end),
+            _ => out.push(r),
+        }
+    }
+    if qi == q.len() { out } else { Vec::new() }
+}
+
 /// A copy of `model` keeping only items whose label matches `query`, dropping any sub-cluster or category
 /// that ends up empty — so a filtered library never shows a coloured header with nothing under it. An
 /// empty query is handled by the caller (it uses the model unfiltered); here every item still matches.

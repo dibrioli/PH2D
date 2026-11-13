@@ -77,10 +77,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A paleta em lista (onda 2): «Recent», a contagem ao filtrar e as dicas do rodapé.
         "chrome.palette.recent" => "Recent",
         "chrome.palette.n_of_m" => "{n} of {m}",
-        "chrome.palette.hint_run" => "Enter to run",
-        "chrome.palette.hint_move" => "Up and Down to move",
-        "chrome.palette.hint_close" => "Esc to close",
-        "chrome.palette.hint_where" => "Alt+Enter to show where it lives",
+        "chrome.palette.hint_run" => "Enter to open",
+        "chrome.palette.hint_where" => "Alt+Enter: show me where it lives",
+        // A plaquinha do TIPO em cada linha da busca (onda 6, maquete C «Tudo numa busca»).
+        "chrome.palette.kind_action" => "Action",
+        "chrome.palette.kind_setting" => "Setting",
+        "chrome.palette.kind_object" => "Object",
+        "chrome.palette.kind_command" => "Command",
+        "chrome.palette.n_kinds" => "{n} {n?kind|kinds}",
         "chrome.palette.input_map" => "Input Map",
         "chrome.palette.scene" => "Scene",
         "chrome.palette.inspector" => "Inspector",

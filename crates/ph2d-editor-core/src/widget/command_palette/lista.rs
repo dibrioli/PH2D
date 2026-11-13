@@ -5,17 +5,19 @@
 //! O caminho de um item é o título do grupo e o da fatia dele (`File · Export`): nenhuma tabela.
 //! A ordem que se pinta é a do modelo que [`arrange`] devolve — a mesma que as setas percorrem.
 
+use super::layout::{badge_font, badge_size};
 use super::{
     HitIndex, PaletteGroup, PaletteItem, PaletteModel, PaletteSub, Scoped, fuzzy_score,
-    label_matches, split_shortcut,
+    label_matches, match_ranges, split_shortcut,
 };
-use crate::paint::{fill_rounded_rect, paint_text_elided};
+use crate::paint::{fill_rounded_rect, paint_text_elided, paint_text_elided_in_weight, resolve};
 use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
-use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_text::{FontWeight, TextSystem};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_vector::Color;
 use ph2d_vector::VectorScene;
 use std::borrow::Cow;
 
@@ -187,8 +189,14 @@ fn head_h() -> f32 {
 fn height(row: &Row<'_>) -> f32 {
     match row {
         Row::Head(_) => head_h(),
-        Row::Item(..) => ROW_H_PX,
+        Row::Item(..) => item_h(),
     }
+}
+
+/// A altura de uma linha de item: a do campo do cartão (maquete C: `.c15it.tall`, 30 px).
+#[must_use]
+pub fn item_h() -> f32 {
+    m::FIELD_H
 }
 
 /// A altura que a lista pede.
@@ -232,8 +240,142 @@ pub fn follow_scroll((y, h): (f32, f32), scroll: f32, view_h: f32) -> f32 {
     }
 }
 
+/// ⭐ **Os tons da lista** (onda 6, maquete C «Tudo numa busca») — o pintor e o portão de contraste
+/// leem ESTA função, nunca uma cópia: o que o teste mede é o que se pinta.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tons {
+    /// O fundo do cartão.
+    pub fundo: Color,
+    /// O nome, e a parte dele que casou com a busca (a negrito, na cor da chave).
+    pub nome: Color,
+    pub chave: Color,
+    /// «Onde mora» e o atalho, apagados.
+    pub onde: Color,
+    /// A linha sob o rato.
+    pub realce: Color,
+    /// A linha escolhida: cheia na cor do foco, o texto invertido.
+    pub escolhido: Color,
+    pub invertido: Color,
+    /// A plaquinha do tipo: o fundo e o texto dela.
+    pub chip: Color,
+    pub chip_texto: Color,
+}
+
+/// Os [`Tons`] da lista em `theme`, no modo vigente (cartões ou o de antes).
+#[must_use]
+pub fn tons(theme: Theme) -> Tons {
+    let s = Superficie::de(theme);
+    let (realce, escolhido, invertido) = match s.tinta() {
+        Some(ink) => (
+            ink.color(ColorToken::CardFieldHover),
+            ink.color(ColorToken::KanbanBlueBold),
+            ink.color(ColorToken::AccentFg),
+        ),
+        None => (
+            resolve(ColorToken::Bg2, theme),
+            resolve(ColorToken::Accent, theme),
+            resolve(ColorToken::AccentFg, theme),
+        ),
+    };
+    let (fundo, nome) = (s.fundo(), s.cor(ColorToken::Text1));
+    let le = |c| legivel(c, nome, [fundo, realce]);
+    Tons {
+        fundo,
+        nome,
+        chave: le(s.cor(ColorToken::Accent)),
+        onde: le(s.cor(ColorToken::Text3)),
+        realce,
+        escolhido,
+        invertido,
+        chip: s.cor(ColorToken::Border),
+        chip_texto: s.cor(ColorToken::Text2),
+    }
+}
+
+/// O contraste mínimo de um texto (WCAG AA, corpo normal) — lei do dono 12/11.
+pub const TEXTO_MIN: f64 = 4.5;
+
+/// `fg` pousada sobre `bg` (o translúcido mede-se sobre o que tem por baixo), em 8 bits opacos.
+#[must_use]
+pub fn pousa(fg: Color, bg: Color) -> ph2d_tokens::Color {
+    let (f, b) = (fg.to_rgba8(), bg.to_rgba8());
+    let a = f32::from(f.a) / 255.0;
+    let mix = |x: u8, y: u8| (f32::from(x) * a + f32::from(y) * (1.0 - a)).round() as u8;
+    ph2d_tokens::Color {
+        r: mix(f.r, b.r),
+        g: mix(f.g, b.g),
+        b: mix(f.b, b.b),
+        a: u8::MAX,
+    }
+}
+
+/// ⭐ **A cor apagada que ainda se LÊ**: `c` puxada para `nome` só o bastante para ter
+/// [`TEXTO_MIN`] contra cada um dos `fundos` (pousados sobre o primeiro). O tom do tema fica onde
+/// ele já lê; onde não lê, aproxima-se do texto — nunca um hex novo.
+fn legivel(c: Color, nome: Color, fundos: [Color; 2]) -> Color {
+    let base = fundos[0];
+    let lê = |x: Color| {
+        fundos.iter().all(|f| {
+            let bg = pousa(*f, base);
+            let bg_v = Color::from_rgba8(bg.r, bg.g, bg.b, u8::MAX);
+            pousa(x, bg_v).contrast_ratio(&bg) >= TEXTO_MIN
+        })
+    };
+    const PASSOS: u8 = 32; // LITERAL-PX-OK: CONTAGEM de passos da mistura, não medida
+    (0..=PASSOS)
+        .map(|k| c.lerp_rect(nome, f32::from(k) / f32::from(PASSOS)))
+        .find(|x| lê(*x))
+        .unwrap_or(nome)
+}
+
+/// O nome com os trechos que casaram com a busca a negrito (`key`); devolve a largura pintada.
+#[allow(clippy::too_many_arguments)]
+fn paint_name(
+    ts: &mut TextSystem,
+    scene: &mut VectorScene,
+    name: &str,
+    lit: &[std::ops::Range<usize>],
+    [x, y, room, px]: [f32; 4],
+    base: Color,
+    key: Color,
+) -> f32 {
+    let mut cuts: Vec<(std::ops::Range<usize>, bool)> = Vec::new();
+    let mut at = 0;
+    for r in lit {
+        if r.start > at {
+            cuts.push((at..r.start, false));
+        }
+        cuts.push((r.clone(), true));
+        at = r.end;
+    }
+    if at < name.len() {
+        cuts.push((at..name.len(), false));
+    }
+    let mut dx = 0.0_f32;
+    for (r, on) in cuts {
+        let left = room - dx;
+        if left <= 0.0 {
+            break;
+        }
+        let (part, weight) = (
+            &name[r],
+            if on {
+                FontWeight::BOLD
+            } else {
+                FontWeight::NORMAL
+            },
+        );
+        let w = ph2d_text::com_peso_exato(|| ts.prefix_width_weighted(part, px, weight));
+        let ink = if on { key } else { base };
+        paint_text_elided_in_weight(ts, scene, part, [x + dx, y], px, left, ink, weight);
+        dx += w.min(left);
+    }
+    dx
+}
+
 /// Pinta as linhas a partir de `(x, top)` (já rolado) e regista o alvo de cada item. Só as que
-/// tocam `body` se pintam.
+/// tocam `body` se pintam. Cada item: o nome (a parte que casou com `query` a negrito, na cor da
+/// chave), onde ele mora e o atalho apagados, e a plaquinha do TIPO à direita (maquete C).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_rows(
     scene: &mut VectorScene,
@@ -241,15 +383,17 @@ pub(super) fn paint_rows(
     theme: Theme,
     hit_index: &mut HitIndex,
     model: &PaletteModel,
+    query: &str,
     (x, top, w): (f32, f32, f32),
     body: Rect,
     [hot, chosen]: [Option<NodeId>; 2],
 ) {
     let superficie = Superficie::de(theme);
+    let t = tons(theme);
     let (sm, xs) = (TypeToken::Sm.px(), TypeToken::Xs.px());
     let pad = Spacing::Sm.px();
-    let gap = Spacing::Md.px();
-    let faded = superficie.cor(ColorToken::Text3);
+    let gap = Spacing::Sm.px();
+    let q = query.strip_prefix('>').unwrap_or(query);
     let inner_w = (w - pad * 2.0).max(0.0);
     let mut y = top;
     for row in rows(model) {
@@ -264,37 +408,69 @@ pub(super) fn paint_rows(
         match row {
             Row::Head(title) => {
                 let ty = row_y + superficie.folga(h, xs);
-                paint_text_elided(ts, scene, title, x + pad, ty, xs, inner_w, faded);
+                paint_text_elided(ts, scene, title, x + pad, ty, xs, inner_w, t.onde);
             }
             Row::Item(it, path) => {
                 let r = Rect::new(x, row_y, w, h);
                 let on = chosen == Some(it.id);
-                let (fg, dim) = if on {
-                    let fg = superficie.botao(scene, r, true, false);
-                    (fg, fg)
+                let (fg, dim, key) = if on {
+                    fill_rounded_rect(scene, r, m::SEG_RADIUS, t.escolhido);
+                    (t.invertido, t.invertido, t.invertido)
                 } else {
                     if hot == Some(it.id) {
-                        superficie.realce(scene, r);
+                        fill_rounded_rect(scene, r, m::SEG_RADIUS, t.realce);
                     }
-                    (superficie.cor(ColorToken::Text1), faded)
+                    (t.nome, t.onde, t.chave)
+                };
+                // A plaquinha do tipo, encostada à direita.
+                let chip_w = it.badge.as_deref().map_or(0.0, |b| {
+                    let (cw, ch) = badge_size(ts, b);
+                    let c = Rect::new(r.x + r.w - pad - cw, r.y + (h - ch) * 0.5, cw, ch);
+                    // Na linha escolhida, a plaquinha é um furo no tom do cartão (maquete:
+                    // `rgba(0,0,0,.2)` sobre o foco), com o texto do nome — o par já medido.
+                    let (fundo, tinta) = if on {
+                        (t.fundo, t.nome)
+                    } else {
+                        (t.chip, t.chip_texto)
+                    };
+                    fill_rounded_rect(scene, c, ch * 0.5, fundo);
+                    let (px, weight) = badge_font();
+                    let ty = c.y + superficie.folga(ch, px);
+                    let tx = c.x + Spacing::Xs.px();
+                    paint_text_elided_in_weight(ts, scene, b, [tx, ty], px, cw, tinta, weight);
+                    cw + gap
+                });
+                let room = (inner_w - chip_w).max(0.0);
+                let (name, shortcut) = split_shortcut(&it.label);
+                let lit = if q.trim().is_empty() {
+                    Vec::new()
+                } else {
+                    match_ranges(q, name)
                 };
                 let ty = r.y + superficie.folga(h, sm);
-                let (name, key) = split_shortcut(&it.label);
-                // O atalho, na coluna da direita.
-                let key_w = key.map_or(0.0, |k| ts.prefix_width(k, sm));
-                if let Some(k) = key {
-                    let kx = r.x + r.w - pad - key_w;
-                    paint_text_elided(ts, scene, k, kx, ty, sm, key_w + pad, dim);
-                }
-                let room = (inner_w - key.map_or(0.0, |_| key_w + gap)).max(0.0);
-                let name_w = ts.prefix_width(name, sm).min(room);
-                paint_text_elided(ts, scene, name, r.x + pad, ty, sm, name_w + pad, fg);
-                // O caminho de onde o comando mora, apagado, logo depois do nome.
-                let path_room = room - name_w - gap;
-                if let Some(p) = path.filter(|_| path_room > m::FIELD_H) {
+                let name_w = paint_name(ts, scene, name, &lit, [r.x + pad, ty, room, sm], fg, key);
+                // Onde o item mora e o atalho, apagados, logo depois do nome.
+                let onde = match (path, shortcut) {
+                    (Some(p), Some(k)) => Cow::Owned(format!("{p}{PATH_SEP}{k}")),
+                    (Some(p), None) => Cow::Borrowed(p),
+                    (None, Some(k)) => Cow::Borrowed(k),
+                    (None, None) => Cow::Borrowed(""),
+                };
+                let onde_room = room - name_w - gap;
+                if !onde.is_empty() && onde_room > m::FIELD_H {
                     let px = r.x + pad + name_w + gap;
                     let py = r.y + superficie.folga(h, xs);
-                    paint_text_elided(ts, scene, p, px, py, xs, path_room, dim);
+                    let normal = FontWeight::NORMAL;
+                    paint_text_elided_in_weight(
+                        ts,
+                        scene,
+                        &onde,
+                        [px, py],
+                        xs,
+                        onde_room,
+                        dim,
+                        normal,
+                    );
                 }
                 hit_index.register(it.id, r);
             }
@@ -302,28 +478,26 @@ pub(super) fn paint_rows(
     }
 }
 
-/// As dicas do rodapé numa linha, separadas por «·».
+/// As dicas do rodapé, pela ordem (maquete C: «Enter to open», «Alt+Enter: show me where it lives»).
 #[must_use]
-pub fn footer_text() -> String {
-    [
-        "chrome.palette.hint_run",
-        "chrome.palette.hint_where",
-        "chrome.palette.hint_move",
-        "chrome.palette.hint_close",
-    ]
-    .map(ph2d_i18n::tr)
-    .join(PATH_SEP)
+pub fn footer_hints() -> [&'static str; 2] {
+    ["chrome.palette.hint_run", "chrome.palette.hint_where"].map(ph2d_i18n::tr)
 }
 
-/// Pinta as dicas do rodapé ([`footer_text`]).
+/// Pinta as dicas do rodapé ([`footer_hints`]) lado a lado, sob um filete.
 pub(super) fn paint_footer(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, at: Rect) {
     let superficie = Superficie::de(theme);
     let xs = TypeToken::Xs.px();
-    let color = superficie.cor(ColorToken::Text3);
+    let color = tons(theme).onde;
     let y = at.y + superficie.folga(at.h, xs);
-    let x = at.x + Spacing::Sm.px();
-    let room = (at.x + at.w - x).max(0.0);
-    paint_text_elided(ts, scene, &footer_text(), x, y, xs, room, color);
+    let mut x = at.x + Spacing::Sm.px();
+    for hint in footer_hints() {
+        let room = (at.x + at.w - x).max(0.0);
+        let normal = FontWeight::NORMAL;
+        paint_text_elided_in_weight(ts, scene, hint, [x, y], xs, room, color, normal);
+        x += ph2d_text::com_peso_exato(|| ts.prefix_width_weighted(hint, xs, normal));
+        x += Spacing::Lg.px();
+    }
     // Um filete separa as dicas da lista.
     let rule = ph2d_tokens::StrokeToken::Default.px();
     fill_rounded_rect(

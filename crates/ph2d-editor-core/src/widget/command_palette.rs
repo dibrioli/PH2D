@@ -206,8 +206,8 @@ impl PaletteModel {
 mod busca;
 use busca::filter_model;
 pub use busca::{
-    SHORTCUT_SEP, fuzzy_score, item_matches, label_matches, model_item_matches, shortcut_column,
-    split_shortcut, top_match,
+    SHORTCUT_SEP, fuzzy_score, item_matches, label_matches, match_ranges, model_item_matches,
+    shortcut_column, split_shortcut, top_match,
 };
 
 /// **Os PREFIXOS** `>` `@` `:` (CodeEditor I14) — irmão pelo tecto de 500 LOC dos primitivos.
@@ -369,7 +369,7 @@ pub fn paint(
         };
         let at = (content_x, content_y - scroll, content_w - bar);
         let state = [store.hot_id(), chosen];
-        lista::paint_rows(scene, ts, theme, hit_index, model, at, body, state);
+        lista::paint_rows(scene, ts, theme, hit_index, model, query, at, body, state);
     } else {
         // ⚠️ A CASCATA: o cartão `i` desenha-se subido por `cascade_rise(t)` e o hit regista na
         //    posição ASSENTE. É a mesma lei do `hover_lift` — o alvo que o dedo procura não pode

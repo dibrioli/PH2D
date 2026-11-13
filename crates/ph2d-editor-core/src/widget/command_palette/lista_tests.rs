@@ -222,11 +222,11 @@ fn a_linha_destacada_rola_para_ficar_a_vista() {
     let view = scoped(&m, "", None);
     let (y0, h0) = row_span(&view.model, id("Select")).unwrap();
     assert_eq!(y0, 0.0, "a 1.ª linha leva o cabeçalho dela");
-    assert_eq!(h0, head_h() + ROW_H_PX);
+    assert_eq!(h0, head_h() + item_h());
     let last = row_span(&view.model, id("Export Video\u{2026}")).unwrap();
     assert_eq!(last.0 + last.1, content_h(&view.model));
-    assert_eq!(last.1, ROW_H_PX);
-    let view_h = ROW_H_PX * 2.0;
+    assert_eq!(last.1, item_h());
+    let view_h = item_h() * 2.0;
     let down = follow_scroll(last, 0.0, view_h);
     assert_eq!(
         down,
@@ -250,7 +250,7 @@ fn a_lista_e_uma_linha_por_item_e_as_outras_paletas_continuam_em_nuvem() {
     assert_eq!(rects.len(), 5);
     for pair in rects.windows(2) {
         let (a, b) = (pair[0].1, pair[1].1);
-        assert_eq!((a.x, a.w, a.h), (b.x, b.w, ROW_H_PX));
+        assert_eq!((a.x, a.w, a.h), (b.x, b.w, item_h()));
         assert!(b.y >= a.y + a.h, "duas linhas na mesma altura");
     }
     // A mesma paleta em nuvem: pílulas lado a lado, e o acabamento de sempre.
@@ -299,12 +299,12 @@ fn sem_busca_cada_linha_leva_o_caminho_e_o_atalho() {
     assert_eq!(split_shortcut(&all[2].0).1, Some("Ctrl+S"));
 }
 
-/// ⭐ **O rodapé separa as dicas por «·».**
+/// ⭐ **O rodapé são as duas dicas da maquete C**, lado a lado, sem «·» (dono 12/11).
 #[test]
-fn o_rodape_separa_as_dicas_por_ponto() {
+fn o_rodape_tem_as_duas_dicas_da_maquete() {
     assert_eq!(
-        footer_text(),
-        "Enter to run \u{00b7} Alt+Enter to show where it lives \u{00b7} Up and Down to move \u{00b7} Esc to close"
+        footer_hints(),
+        ["Enter to open", "Alt+Enter: show me where it lives"]
     );
 }
 
@@ -349,17 +349,93 @@ fn a_linha_que_nao_cabe_inteira_nao_se_pinta() {
     let mut scene = VectorScene::new();
     let mut ts = TextSystem::new();
     let mut hit = HitIndex::new();
-    let body = Rect::new(0.0, 0.0, 400.0, head_h() + ROW_H_PX * 1.5);
+    let body = Rect::new(0.0, 0.0, 400.0, head_h() + item_h() * 1.5);
     paint_rows(
         &mut scene,
         &mut ts,
         Theme::default(),
         &mut hit,
         &view.model,
+        "",
         (0.0, 0.0, 400.0),
         body,
         [None, None],
     );
     assert!(hit.rect_for(id("Select")).is_some());
     assert!(hit.rect_for(id("Move")).is_none(), "meia linha pintada");
+}
+
+/// ⭐ **O que casou com a busca é o que se acende**: a substring inteira quando há uma (o degrau do
+/// `label_matches`), senão as letras que o `fuzzy_score` toma — em bytes, juntadas.
+///
+/// (Mutação: devolver `0..q.len()` sempre ⇒ RED em «Height» e no fuzzy.)
+#[test]
+fn a_parte_que_casou_e_a_que_se_acende() {
+    assert_eq!(match_ranges("jump", "Jump Height"), [0..4]);
+    assert_eq!(match_ranges("JUMP", "Make the hero jump"), [14..18]);
+    assert_eq!(match_ranges("height", "Jump Height"), [5..11]);
+    assert_eq!(match_ranges("jh", "Jump Height"), [0..1, 5..6]);
+    assert_eq!(
+        match_ranges("ju", "Jump"),
+        [0..2],
+        "letras seguidas juntam-se"
+    );
+    assert_eq!(
+        match_ranges("\u{e9}", "Caf\u{e9}"),
+        [3..5],
+        "bytes, não letras"
+    );
+    assert!(match_ranges("zz", "Jump").is_empty());
+    assert!(match_ranges("", "Jump").is_empty());
+}
+
+/// ⭐⭐ **O CONTRASTE da busca, nos 12 temas, na UI de cartões** (dono 12/11): todo texto ≥ 4,5:1
+/// contra o fundo em que se pinta — o nome, a parte acesa e o «onde mora» sobre o cartão e sobre a
+/// linha do rato, o texto invertido sobre a linha escolhida, o tipo sobre a plaquinha dele — e a
+/// linha escolhida ≥ 3:1 contra o cartão (é o estado). Portão permanente: os tons são os que o
+/// pintor lê ([`tons`]); o translúcido mede-se pousado sobre o que tem por baixo.
+#[test]
+fn a_busca_tem_contraste_em_todos_os_temas() {
+    use crate::widget::lista_flutuante::force_cromo_on_this_thread;
+    let mut fails = Vec::new();
+    let (mut min_text, mut min_state) = (f64::MAX, f64::MAX);
+    // A UI do dono é a de cartões; `PH2D_CARDS=0` é só a saída de referência (CLAUDE.md §1).
+    for cards in [true] {
+        force_cromo_on_this_thread(Some(cards));
+        for theme in Theme::ALL {
+            let t = tons(theme);
+            let fundo = pousa(t.fundo, t.fundo);
+            let as_vello =
+                |c: ph2d_tokens::Color| ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 255);
+            let realce = pousa(t.realce, t.fundo);
+            let escolhido = pousa(t.escolhido, t.fundo);
+            let chip = pousa(t.chip, t.fundo);
+            let on = |fg, bg: ph2d_tokens::Color| pousa(fg, as_vello(bg));
+            let texts = [
+                ("nome/fundo", on(t.nome, fundo), fundo),
+                ("chave/fundo", on(t.chave, fundo), fundo),
+                ("onde/fundo", on(t.onde, fundo), fundo),
+                ("nome/realce", on(t.nome, realce), realce),
+                ("chave/realce", on(t.chave, realce), realce),
+                ("onde/realce", on(t.onde, realce), realce),
+                ("invertido/escolhido", on(t.invertido, escolhido), escolhido),
+                ("tipo/chip", on(t.chip_texto, chip), chip),
+            ];
+            for (what, fg, bg) in texts {
+                let r = fg.contrast_ratio(&bg);
+                min_text = min_text.min(r);
+                if r < TEXTO_MIN {
+                    fails.push(format!("{theme:?} cards={cards} {what}: {r:.2}"));
+                }
+            }
+            let r = escolhido.contrast_ratio(&fundo);
+            min_state = min_state.min(r);
+            if r < 3.0 {
+                fails.push(format!("{theme:?} cards={cards} escolhido/fundo: {r:.2}"));
+            }
+        }
+    }
+    force_cromo_on_this_thread(None);
+    eprintln!("contraste mínimo: texto {min_text:.2}, estado {min_state:.2}");
+    assert!(fails.is_empty(), "{fails:#?}");
 }

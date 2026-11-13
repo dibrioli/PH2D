@@ -47,6 +47,24 @@ pub const CMD_PALETTE_SHOW_ALL: NodeId = hash_node_id("command_palette.show_all"
 /// O lado do quadrado da caixa.
 const BOX_W: f32 = 16.0; // LITERAL-PX-OK: lado da caixa de marcar da banda
 
+/// Quantos TIPOS (plaquinhas distintas) a lista mostra.
+fn kinds(model: &PaletteModel) -> usize {
+    let mut seen: Vec<&str> = Vec::new();
+    for it in model
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+    {
+        if let Some(b) = it.badge.as_deref()
+            && !seen.contains(&b)
+        {
+            seen.push(b);
+        }
+    }
+    seen.len()
+}
+
 /// Pinta a banda inteira e devolve o rect do X de fechar (que o chamador regista POR ÚLTIMO, para
 /// ele ganhar dentro do cartão).
 #[allow(clippy::too_many_arguments)]
@@ -70,17 +88,25 @@ pub(super) fn paint_header(
     let font = lk.title_font;
     // ── Header band: title left, search box in the middle, count centre-right, close-X right. ──
     let superficie = Superficie::de(theme);
-    let title_w = ts.prefix_width(&model.title, font).min(content_w * 0.35); // LITERAL-PX-OK: FRAÇÃO da banda que o título pode tomar antes de ceder ao campo de busca
-    paint_text(
-        ts,
-        scene,
-        &model.title,
-        content_x,
-        header_y + superficie.folga(header_h, font),
-        font,
-        title_w,
-        superficie.cor(ColorToken::Text1),
-    );
+    // ⭐ A lista (maquete C «Tudo numa busca»): sem título nem X — o campo é a banda inteira e a
+    //    contagem mora DENTRO dele, à direita; o Esc e o clique fora fecham.
+    let list = model.is_list();
+    let title_w = if list {
+        -Spacing::Md.px()
+    } else {
+        let w = ts.prefix_width(&model.title, font).min(content_w * 0.35); // LITERAL-PX-OK: FRAÇÃO da banda que o título pode tomar antes de ceder ao campo de busca
+        paint_text(
+            ts,
+            scene,
+            &model.title,
+            content_x,
+            header_y + superficie.folga(header_h, font),
+            font,
+            w,
+            superficie.cor(ColorToken::Text1),
+        );
+        w
+    };
     // ⚠️ **«items», e não «nodes».** O widget serve TRÊS paletas desde a F3 (nós do Motion,
     // comandos do `Ctrl+K`, componentes do `+`), e o substantivo estava colado à primeira — a
     // paleta de componentes lia *"43 nodes"* sobre uma lista onde não há nó nenhum. Um substantivo
@@ -88,25 +114,36 @@ pub(super) fn paint_header(
     // três consumidores que declarassem o óbvio.
     let shown = model.item_count();
     let count_str = match total {
-        // A lista, a filtrar: «7 of 116».
+        // A lista, a filtrar: quantos TIPOS a busca achou («5 kinds»).
         Some(all) if shown != all => {
-            ph2d_i18n::tr_with("chrome.palette.n_of_m", &[("n", &shown), ("m", &all)])
+            ph2d_i18n::tr_with("chrome.palette.n_kinds", &[("n", &kinds(model))])
         }
         _ => ph2d_i18n::tr_with("chrome.palette.n_items", &[("n", &shown)]),
     };
-    let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
-    let close_x = card_x + card_w - CLOSE_W - pad;
+    let count_font = if list {
+        TypeToken::Xs.px()
+    } else {
+        TypeToken::Sm.px()
+    };
+    let count_w = ts.prefix_width(&count_str, count_font);
+    let close_x = if list {
+        content_x + content_w + Spacing::Md.px()
+    } else {
+        card_x + card_w - CLOSE_W - pad
+    };
     let count_x = close_x - count_w - Spacing::Sm.px();
-    paint_text(
-        ts,
-        scene,
-        &count_str,
-        count_x,
-        header_y + superficie.folga(header_h, TypeToken::Sm.px()),
-        TypeToken::Sm.px(),
-        count_w,
-        superficie.cor(ColorToken::Text3),
-    );
+    if !list {
+        paint_text(
+            ts,
+            scene,
+            &count_str,
+            count_x,
+            header_y + superficie.folga(header_h, count_font),
+            count_font,
+            count_w,
+            superficie.cor(ColorToken::Text3),
+        );
+    }
 
     // ⭐ **A caixa da banda** (ADR-0166 / F3), à esquerda da contagem — e o que ela toma sai do
     //    campo de busca, senão os dois desenham um por cima do outro.
@@ -125,7 +162,11 @@ pub(super) fn paint_header(
     let sm = TypeToken::Sm.px();
     let search_h = (header_h - Spacing::Sm.px()).max(PILL_H);
     let sb_x = content_x + title_w + Spacing::Md.px();
-    let sb_w = (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
+    let sb_w = if list {
+        content_w
+    } else {
+        (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5)
+    };
     let sb = Rect::new(sb_x, header_y + (header_h - search_h) * 0.5, sb_w, search_h);
     hit_index.register(super::CMD_PALETTE_SEARCH, sb);
     if let Some(ink) = superficie.tinta() {
@@ -169,6 +210,15 @@ pub(super) fn paint_header(
         0.0
     };
     let text_x = sb.x + Spacing::Sm.px() + lupa;
+    let inside = if list {
+        let cx = sb.x + sb.w - Spacing::Sm.px() - count_w;
+        let cy = sb.y + superficie.folga(sb.h, count_font);
+        let dim = superficie.cor(ColorToken::Text3);
+        paint_text(ts, scene, &count_str, cx, cy, count_font, count_w, dim);
+        count_w + Spacing::Sm.px()
+    } else {
+        0.0
+    };
     paint_text(
         ts,
         scene,
@@ -176,7 +226,7 @@ pub(super) fn paint_header(
         text_x,
         text_y,
         sm,
-        sb.w - Spacing::Sm.px() * 2.0 - lupa,
+        sb.w - Spacing::Sm.px() * 2.0 - lupa - inside,
         search_color,
     );
     // ⭐ Com foco (o acabamento da referência), o caret do campo do cartão, também na caixa vazia: ele
@@ -206,6 +256,9 @@ pub(super) fn paint_header(
             0.0,
             superficie.cor(ColorToken::Text1),
         );
+    }
+    if list {
+        return Rect::new(close_x, header_y, 0.0, 0.0);
     }
     let close_rect = Rect::new(
         close_x,

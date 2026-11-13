@@ -276,6 +276,16 @@ fn as_list(mut model: PaletteModel, recent: &[NodeId]) -> PaletteModel {
     model.layout = PaletteLayout::List {
         recent: recent.to_vec(),
     };
+    // A plaquinha do TIPO (maquete C): as fontes da busca já disseram o delas; o resto é comando.
+    let command = tr("chrome.palette.kind_command");
+    for it in model
+        .groups
+        .iter_mut()
+        .flat_map(|g| g.subs.iter_mut())
+        .flat_map(|s| s.items.iter_mut())
+    {
+        it.badge.get_or_insert_with(|| command.to_owned());
+    }
     let first = item_ids(&scoped(&model, "", None).model).first().copied();
     model.select = first.map(|initial| PaletteSelect {
         initial,

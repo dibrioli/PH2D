@@ -167,7 +167,7 @@ fn papel_texturizado(
 
 /// **B10c: o Ctrl+Z do 1.º traço sobre o papel texturizado é confinado nos 4 meios**, à janela do traço — e
 /// a tela da pista parcial é a do repaint inteiro ao bit (undo e redo) nos 4 meios. Era `None` no Watercolor
-/// (o vidro aparece: `v=WHOLE`) e no Impasto (o relevo aparece e o `has_relief` vira), dobra e prévia da
+/// (o vidro aparece; desde o ADR-0204 guarda só a janela, a rota antiga `v=WHOLE`) e no Impasto (o relevo aparece e o `has_relief` vira), dobra e prévia da
 /// TELA no app; e no Wet (`tintas_molhadas` vira: agora a janela da tinta da camada).
 #[test]
 fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
@@ -184,9 +184,19 @@ fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
         );
         let why = fast.undo.peek_confine_diagnosis(false).unwrap_or_default();
         if meio == Watercolor {
+            // O vidro APARECE neste passo. Com `VIDRO_PELO_JOURNAL` (ADR-0204) guarda só a janela; a rota
+            // antiga (o controlo) guarda o plano inteiro.
             assert!(
-                why.contains("v=WHOLE"),
-                "controlo: o vidro aparece neste passo — {why}"
+                why.contains("v=") && !why.contains("v=WHOLE"),
+                "o vidro que aparece guarda a janela — {why}"
+            );
+            crate::undo::window::set_vidro_pelo_journal(false);
+            let antigo = papel_texturizado(256, meio, true);
+            crate::undo::window::set_vidro_pelo_journal(true);
+            let velho = antigo.undo.peek_confine_diagnosis(false).unwrap_or_default();
+            assert!(
+                velho.contains("v=WHOLE"),
+                "controlo: sem a chave o vidro aparece inteiro — {velho}"
             );
         }
         match fast.regiao_do_proximo_passo(false) {

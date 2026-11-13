@@ -79,3 +79,42 @@ Próximas a medir: `#[inline(always)]` no `flow_at_point` (ao bit, mesma ordem);
 campo de fluxo 1 em 4, project 1 em 3) — a média é o relógio, os picos são ~metade do excesso.
 Alarmes de pincel NÃO corridos nesta cura: a árvore tinha edições alheias em `ph2d-tool-painter` (outro agente)
 que confundiriam a lista dos 77; o motor está provado ao bit pelo hash e pelos gates.
+
+## Advecção, rodada 2 (13/11, 01:37–01:41): embutir, pedaços do rayon, número de fios — nada compra
+
+Variantes no MESMO binário `smoke`, chave em execução (código provisório, revertido — nada no produto):
+rota `i` = o momentum chama uma cópia `#[inline(always)]` do `flow_at_point` (mesma expressão); rota `lN` =
+`.with_min_len(N)` nos cinco `walk_rows*` SEM redução (cada linha escreve só a sua ⇒ ao bit por construção);
+`RAYON_NUM_THREADS` em processos à parte. 6 traços, 24 passos × 8 rondas, `ph2d-run.sh` (CPU ≤ 1600 %).
+
+| corrida | load | rota | média ms | sim-s/s | mediana | p90 | hash |
+|---|---|---|---|---|---|---|---|
+| 16 fios | 5,2→9,9 | `a` produto | 30,0 | 0,83 | 25,3 | 67,5 | `a9bac64ac5b857c8` |
+| | | `i` embutido | 30,3 | 0,82 | 25,5 | 69,2 | `a9bac64ac5b857c8` |
+| | | `l4` | 30,0 | 0,83 | 24,9 | 69,5 | `a9bac64ac5b857c8` |
+| 12 fios | 9,9→9,1 | `a` | 33,4 | 0,75 | 26,8 | 76,6 | `a9bac64ac5b857c8` |
+| 14 fios | 9,1→8,2 | `a` | 31,4 | 0,80 | 26,3 | 71,7 | `a9bac64ac5b857c8` |
+| 24×4 (1.ª) | 8,6→5,7 | `l16` | 43,4 | — | 73,5 | 194,9 | `a9bac64ac5b857c8` |
+
+Partes do advect (mín): `a` 3,18 · 13,47 · `i` 3,11 · 13,26 · `l4` 3,22 · 13,65 · `l16` 3,42 · 13,37 ms (ruído).
+Perfil `perf -k` sem `-g` (rota `a`, média 29,8): `transport_row` 16,0 % · `outflow_block` 8,9 % ·
+`momentum_row` 8,4 % · `crossbeam_epoch` pin 7,9 % · `smooth_velocity` 5,1 % · `flow_rows` 5,0 % ·
+`prepare_row` 4,9 % · `assenta` 4,6 % · `dry_cell` 4,0 %.
+
+**Leitura:** a MEDIANA já está em ~25 ms (= 1,0); a média de 30 ms é toda dos picos (p90 ~68 ms: o passo
+em que secagem 1/`dry_every`, campo 1/4 e project 1/3 coincidem). Os picos têm dependência de dados em série
+(secagem → campo lê o filme; project lê a velocidade do advect): adiantá-los ou sobrepô-los muda QUANDO se
+calcula ⇒ muda o bit. O `crossbeam_epoch` é o pin de cada tentativa de roubo dos operários ociosos — o
+sintoma do desequilíbrio, não um custo de parede: agrupar linhas (`l4`, `l16`) não o converte em tempo.
+O `transport_row` é um *gather* com retro-traço dependente de dados e soma `f64` em ordem fixa: não
+auto-vetoriza; SIMD manual ao bit (gather de 4 cantos × 3 planos, a mesma ordem de soma) é a próxima
+alavanca de tamanho certo, de várias horas, não feita.
+
+### ⛔ Recusas MEDIDAS (rodada 2)
+
+| ideia | medido | porquê |
+|---|---|---|
+| `#[inline(always)]` no `flow_at_point` do momentum | 30,0 → 30,3 ms; momentum 3,18 → 3,11 | já embutido de facto (`momentum_row` 8,4 % sem símbolo próprio do amostrador) |
+| `with_min_len(4)` nos andadores por linha | 30,0 → 30,0 ms | ao bit, mas o pin do rayon é ociosidade, não sobrecarga |
+| `with_min_len(16)` | 43,4 ms (rodada de 4, carga a variar) | pedaços grandes pioram o equilíbrio |
+| `RAYON_NUM_THREADS` 12 / 14 (fatia de 16) | 33,4 / 31,4 contra 30,0 ms | menos fios = menos parede; sem sobre-subscrição a corrigir |

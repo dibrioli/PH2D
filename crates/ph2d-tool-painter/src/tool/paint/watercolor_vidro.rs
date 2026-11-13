@@ -75,7 +75,10 @@ impl std::ops::Index<usize> for JanelaDoVidro {
     #[inline]
     fn index(&self, i: usize) -> &Vidro {
         let (y, x) = (i / self.fw, i % self.fw);
-        debug_assert!(x >= self.x0 && x < self.x0 + self.w && y >= self.y0, "fora da janela do vbase");
+        debug_assert!(
+            x >= self.x0 && x < self.x0 + self.w && y >= self.y0,
+            "fora da janela do vbase"
+        );
         &self.dados[(y - self.y0) * self.w + (x - self.x0)]
     }
 }
@@ -251,10 +254,13 @@ impl PainterTool {
             }
         };
         // A sessão molhada desta camada vê o vidro de antes desta escrita (D3).
-        for s in [&mut self.vidro_congelado.aguada, &mut self.vidro_congelado.molhada]
-            .into_iter()
-            .flatten()
-            .filter(|s| s.1 == camada)
+        for s in [
+            &mut self.vidro_congelado.aguada,
+            &mut self.vidro_congelado.molhada,
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|s| s.1 == camada)
         {
             s.2.captura(vivo, w, (x0, x1, y0, y1));
         }
@@ -404,7 +410,12 @@ pub(super) fn abre_o_vidro(
     let (fw, fh) = (size.0 as usize, size.1 as usize);
     let caixa = area.map_or((0, fw, 0, fh), |r| {
         let (x0, y0) = ((r.x as usize).min(fw), (r.y as usize).min(fh));
-        (x0, (x0 + r.w as usize).min(fw), y0, (y0 + r.h as usize).min(fh))
+        (
+            x0,
+            (x0 + r.w as usize).min(fw),
+            y0,
+            (y0 + r.h as usize).min(fh),
+        )
     });
     // Antes da escrita deste quadro: a sessão toma os tiles que ele vai escrever, e a janela lê-os.
     sessao.captura(&plano, fw, caixa);

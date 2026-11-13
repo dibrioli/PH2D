@@ -1,7 +1,7 @@
 # N.º 7, item 2 — o vidro no journal por tile (ADR-0204): estado
 
 > ADR: [`0204`](../../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md).
-> Linha `line/PainterWatercolor`, 13/11. 2.º agente (45 min): a cópia do 2.º traço saiu; D3 (passo 4) por fazer.
+> Linha `line/PainterWatercolor`, 13/11. 3.º agente (45 min): D3 (passo 4) feito; passos 5–7 por fazer.
 
 ## Passos feitos
 
@@ -12,6 +12,7 @@
 | 2.º traço | `fa5f8d7f83` | `StoredEntry::Aparece { len, win, after }`: sob a chave, o `OnlyAfter` do vidro (o plano NASCEU no passo) troca o `Arc` vivo pela janela fora do neutro (`larga_os_planos_que_aparecem`, `undo_delta_aparece.rs`, depois do `guarda_janelas_que_aparecem`); o refazer `recria` neutro + janela. Alcance = a janela (não `Whole`). |
 | D2 Digital | `d733a21555` | Gate `o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal`. |
 | sonda A×B | `85c5ca59db` | `sonda_primeiro_traco`: `PH2D_SONDA_VIDRO=1\|0\|ab` + `PH2D_SONDA_REPETE`; o script pede `ab` × 4. NÃO corrida. |
+| 4 (D3) | `7d170f223d` | `BaseCongelada = (Weak, camada, SessaoDoVidro)`: `TileJournal<Vidro>` ancorado na congelação, alimentado no `abre_o_vidro` (antes da escrita do quadro) e no `continua_o_vidro_do_traco` (aguada e `molhada` da mesma camada). `Quadro.vbase` = `JanelaDoVidro` densa da caixa do quadro, `Index` pelo índice GLOBAL (os sete leitores em `texel.rs`/`pixel.rs` só mudam de tipo). O congelado deixa de ser dono do plano. |
 | 0 (medição) | `40516925ce` | `quem_segura_o_vidro_no_segundo_pen_down` (teste leve, não ignorado) + acessor `cfg(test)` `UndoController::cursor_segura_o_vidro`. |
 
 Sonda pesada do passo 0 a 4K: **na fila** (`bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh`, posição 5): o
@@ -89,9 +90,30 @@ traço 8); «o `side` lê o cursor elidido» ⇒ VERMELHO (pânico `undo.rs:488`
   selo. Ou a releitura é idempotente por construção (`sela∘cobre∘alfas` sobre o próprio selo) e então o journal
   não é preciso ali — provar no papel —, ou falta a cena que a separa (papel de cor? apagar dentro do traço?).
 
-Gates verdes por nome depois disto (17): os 14 de cima + `o_segundo_traco_nao_copia_o_plano_do_vidro`,
+Gates por nome depois disto (**16 passam + 1 ignorado**, `sonda_b40a4_custo_da_protecao_4k`; o «17» de antes contava o ignorado): os 14 de cima + `o_segundo_traco_nao_copia_o_plano_do_vidro`,
 `o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal`, `quem_segura_o_vidro_no_segundo_pen_down`
 (asserção ajustada: com a chave a entrada do 1.º traço já não segura o plano).
+
+**D3** (`7d170f223d`, 256×160): gate `o_vidro_da_base_da_sessao_e_o_do_inicio_da_sessao_ao_bit` (3 traços WB +
+Smudge 0,4 na mesma sessão; cada janela que `abre_o_vidro` deu = o plano inteiro tirado na congelação, ao bit; oráculo
+só em teste por `GUARDA_O_INICIO_DA_SESSAO`). Controlos verdes: a sessão atravessa traços (mesmo `inicio` em traços
+diferentes) e há janelas onde o vivo de antes do traço ≠ início. Mutação «o `vbase` lê o journal do passo»
+(`win.vidro_antes_na_janela`) ⇒ **VERMELHO** (traço 0, linha 57). `o_vidro_segue_a_base…` (n.º 5): o controlo media «o
+caminho sem B18.4 recopia o plano»; com o D3 recongelar já não copia, então a régua passou a `CONGELACOES` (sem a cura
+≥ moves−2; com ela = 1) — o mesmo defeito, na unidade nova. Corrida de vizinhos por nome: 24 verdes + 1 ignorado
+(inclui os 16 acima, `vidro_tests::*`, `regiao_do_journal::*`, `mask_gate_copia_tests::*`, `plane_copy::…vidro…`).
+
+**ABERTO do Digital — decidido no papel: NÃO é idempotente, o journal fica.** `alfas(o, v)` só devolve os alfas do selo
+quando `v[..4] == o`; um texel selado no quadro k guarda `px_k ≠ o`, e reler o vivo em k+1 cai no ramo «o alfa
+desceu ⇒ escala por `a'/a`» (ou na cobertura `f`) em vez de dar `alfas(o, vantes)`. As duas cenas tentadas passaram
+porque com `o` de alfa 255 sobre aguada saturada o ramo `a0 = 1` dá o mesmo selo. Cena que falta: Digital sobre uma
+aguada de **alfa < 255** (Dilution alta, ou camada transparente) com o MESMO texel tocado em dois quadros (vai e volta
+devagar), fluxo < 1. Não simplificar o código.
+
+⚠️ Risco do D3 não coberto por gate: um escritor do vidro fora de `abre_o_vidro`/`continua_o_vidro_do_traco` (undo/redo,
+duplicar, restauro) com a sessão molhada VIVA deixa a sessão sem os tiles dele. Com o `Arc` antigo o congelado via
+sempre o início; agora vê o vivo. Conferir no passo 5/6 se undo/redo com sessão viva existe (a base da sessão
+sobrevive ao Ctrl+Z?) e, se sim, zerar `vidro_congelado.{aguada,molhada}` no restauro.
 
 ## Armadilhas achadas
 
@@ -115,10 +137,11 @@ Gates verdes por nome depois disto (17): os 14 de cima + `o_segundo_traco_nao_co
 
 ## Próximo passo exato
 
-1. **Passo 4 (D3)**: `vbase` por journal da sessão (`BaseCongelada` com `TileJournal`, janela densa no `Quadro`, o
-   congelado `molhada`); gate `o_vidro_da_base_da_sessao_e_o_do_inicio_da_sessao_ao_bit` (WB + Smudge, 3 traços na
-   sessão; oráculo = cópia inteira tirada na congelação, só em teste; mutação «o `vbase` lê o journal do passo» ⇒
-   vermelho); `o_vidro_segue_a_base_que_o_borrao_move_sem_copiar_o_plano` e `o_primeiro_traco_…` verdes.
-2. Decidir o ABERTO do Digital (acima): prova de idempotência ou cena que reprova a mutação.
-3. Coordenador: `bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh` (agora A×B intercalado, `ab` × 4).
-4. Passos 5 (Wet sobre aguada), 6 (camada nova/duplicar), 7 (tecto de bytes) do ADR.
+1. **Cena do Digital** (acima): aguada de alfa < 255 + Digital lento, fluxo 0,3, mesmo texel em 2 quadros; acrescentar
+   ao `o_traco_digital_sobre_a_aguada_continua_o_vidro_lendo_o_journal` e ver a mutação «lê o vivo» VERMELHA.
+2. **Risco do D3**: undo/redo com sessão molhada viva (acima); gate se existir.
+3. **Passo 5 (Wet)**: `o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer` (o `molhada` já vai pelo D3).
+4. **Passo 6**: `a_camada_nova_e_o_vidro_elidido_dao_o_bit`, `duplicar_a_camada_com_vidro_e_pintar_uma_nao_muda_a_outra`.
+5. **Passo 7 (D5)**: `o_tecto_do_desfazer_conta_o_journal_do_vidro` — somar `SessaoDoVidro::bytes` no dono do
+   congelado e em `journal_bytes_retidos`.
+6. Coordenador: `bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh` (A×B, `ab` × 4) — agora mede também o D3.

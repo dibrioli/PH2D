@@ -69,7 +69,10 @@ fn o_vidro_segue_a_base_que_o_borrao_move_sem_copiar_o_plano() {
         cong_antes >= moves - 2,
         "controlo: o caminho de antes recongela o vidro em quase todo quadro ({cong_antes} de {moves})"
     );
-    assert_eq!(cong_cura, 1, "a sessão do vidro recongelou {cong_cura} vezes num traço");
+    assert_eq!(
+        cong_cura, 1,
+        "a sessão do vidro recongelou {cong_cura} vezes num traço"
+    );
     assert!(
         trocas_cura <= 1,
         "o plano do vidro foi recopiado {trocas_cura} vezes num traço (só o 1.º quadro o pode copiar)"
@@ -194,7 +197,10 @@ fn o_vidro_da_base_da_sessao_e_o_do_inicio_da_sessao_ao_bit() {
     let atravessa = sessoes
         .iter()
         .any(|&(k, s)| k > 0 && sessoes.iter().any(|&(k0, s0)| k0 < k && s0 == s));
-    assert!(atravessa, "controlo: a sessão molhada não atravessou traços ({sessoes:?})");
+    assert!(
+        atravessa,
+        "controlo: a sessão molhada não atravessou traços ({sessoes:?})"
+    );
     assert!(
         vivo_difere > 0,
         "controlo: em nenhuma janela o vivo de antes do traço diferia do início da sessão"

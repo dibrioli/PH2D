@@ -87,7 +87,7 @@ fn o_primeiro_traco_da_camada_nao_copia_o_vidro_que_nasce_zerado() {
     crate::tool::paint::tests::aquarela_neutra(&mut t);
     crate::tool::paint::tests::watercolor_basic_de_antes(&mut t);
     t.set_brush_size_px(10.0);
-    let mut traco = |t: &mut PainterTool, y: f32| {
+    let traco = |t: &mut PainterTool, y: f32| {
         COPIAS_DO_VIDRO.set(0);
         let p = |x: f32, phase| CanvasPointer {
             pos: [x, y],

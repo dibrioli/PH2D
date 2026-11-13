@@ -59,7 +59,12 @@ impl crate::App {
         let voa = self.morph_machines.values().any(|m| m.is_flying());
         let som = self.audio.as_ref().is_some_and(|a| a.audivel());
         let rede = ph2d_app_board::live::ao_vivo();
-        tem.extend([(conduz, P::Smoke), (rede, P::Rede), (som, P::Som), (voa, P::Animacao)]);
+        tem.extend([
+            (conduz, P::Smoke),
+            (rede, P::Rede),
+            (som, P::Som),
+            (voa, P::Animacao),
+        ]);
         if let Some(g) = self.gfx.as_mut() {
             ph2d_app_painter::painter_bridge_queries::quer_quadro(&mut g.tools, &mut ativos);
             ph2d_app_motion::motion_quadro::quer_quadro(&g.motion, &mut ativos);
@@ -68,7 +73,10 @@ impl crate::App {
             tem.push((!g.toasts.is_empty() || !g.jobs.is_empty(), P::Toast));
             let ui = g.hero_screen.as_ref().is_some_and(|h| h.a_ui_mexe());
             let ui = ui || ph2d_shape_handles::anima_pontos::a_mexer(g.sim.world());
-            tem.push((ui || g.ui_machines.values().any(|m| m.is_animating()), P::UiAnima));
+            tem.push((
+                ui || g.ui_machines.values().any(|m| m.is_animating()),
+                P::UiAnima,
+            ));
             let folha = g.sim.world().get_resource::<SheetCache>();
             tem.push((folha.is_some_and(SheetCache::quer_quadro), P::FolhaDevida));
         }

@@ -132,6 +132,14 @@ fn sonda_primeiro_traco() {
                 t0.elapsed().as_secs_f64() * 1e3,
                 (faltas() - f0) as f64 * 4096.0 / 1e6
             );
+            // O artista leva mais de um quadro do «+» ao toque: o preparo corre nesse tempo.
+            if std::env::var("PH2D_SONDA_PREPARO").is_ok() {
+                for _ in 0..60 {
+                    std::thread::sleep(std::time::Duration::from_millis(16));
+                    t.on_tick(1000.0 / 60.0);
+                    let _ = t.take_preview_arc();
+                }
+            }
             (um, dois) = (traco(&mut t, 800.0), traco(&mut t, 1100.0));
         }
         // Para o perfil: só pen-downs, com o motor na mão.

@@ -234,7 +234,7 @@ thread_local! {
 /// cada quadro cujo INTERVALO desde o fim do anterior passa de `n` ms, com o relógio de parede (ns desde a época, o
 /// mesmo do `date +%s%N` da sonda) — o agregado por janela esconde um quadro só, e um quadro parado À ESPERA (placa,
 /// trinco) não aparece no perfil de CPU. `quadro` = o relógio do `PaintFrameTimer`; `intervalo` = fim a fim.
-fn quadro_lento(total_ms: f32) {
+fn quadro_lento(total_ms: f32, info: Option<FrameInfo>) {
     LENTO.with(|c| {
         let (antes, limiar) = c.get();
         let limiar = limiar.unwrap_or_else(|| {
@@ -247,8 +247,15 @@ fn quadro_lento(total_ms: f32) {
             let intervalo = agora.duration_since(a).as_secs_f32() * 1e3;
             if intervalo > n {
                 let parede = parede_ns();
+                // n.º 8: as partes do Painter NESTE quadro (o resto do `quadro` é a shell e a apresentação).
+                let partes = info.map_or_else(String::new, |f| {
+                    format!(
+                        " painter: dispatch={:.1} preview={:.1} painel={:.1} overlay={:.1} upload={:.1} dobra={:.1} ramo={:?}",
+                        f.dispatch_ms, f.preview_ms, f.panel_ms, f.overlay_ms, f.upload_ms, f.fold_ms, f.branch
+                    )
+                });
                 eprintln!(
-                    "[quadro-lento] parede={parede} intervalo={intervalo:.1} quadro={total_ms:.1}"
+                    "[quadro-lento] parede={parede} intervalo={intervalo:.1} quadro={total_ms:.1}{partes}"
                 );
             }
         }
@@ -259,7 +266,7 @@ fn quadro_lento(total_ms: f32) {
 /// Close the frame with its whole-frame wall clock; aggregate + emit a summary every `WINDOW`
 /// painter frames. A frame with no recorded dispatch (painter inactive) is skipped.
 pub fn end_frame(total_ms: f32) {
-    quadro_lento(total_ms);
+    quadro_lento(total_ms, AGG.with(|c| c.borrow().cur));
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
         let agora = std::time::Instant::now();

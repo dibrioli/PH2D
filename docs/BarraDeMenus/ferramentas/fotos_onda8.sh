@@ -3,6 +3,7 @@
 # de conta, cena PH2D_GAME_SMOKE=2, UI de cartões, tema `TEMA` (omissão: o do app). Abre o «Menu», pousa em
 # File e em Export (a cascata com o caminho aceso), Window ▸ Pixel, Help, Edit, View e a seta do Play;
 # fotografa cada um e amplia 3× (vizinho mais próximo) o File ▸ Export.
+# CARTOES=0: a UI de antes (PH2D_CARDS=0).
 # Uso (da raiz da worktree, binário `target/smoke` feito):
 #   PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/BarraDeMenus/ferramentas/fotos_onda8.sh [prefixo]
 set -uo pipefail
@@ -26,7 +27,7 @@ fim() {
 trap fim EXIT
 . "$RAIZ/docs/CodeEditor/ferramentas/xvfb_livre.sh"
 xvfb_livre ${JW}x${JH}x24 "$T/xvfb.log" || exit 2
-(cd "$RAIZ" && env -u WAYLAND_DISPLAY -u PH2D_CARDS DISPLAY="$DSP" HOME="$T/home" XDG_SESSION_TYPE=x11 \
+(cd "$RAIZ" && env -u WAYLAND_DISPLAY -u PH2D_CARDS ${CARTOES:+PH2D_CARDS=$CARTOES} DISPLAY="$DSP" HOME="$T/home" XDG_SESSION_TYPE=x11 \
   PH2D_GAME_SMOKE="${CENA:-2}" timeout 300 "$APP" >"$T/app.log" 2>&1) &
 AP=$!
 sleep 3

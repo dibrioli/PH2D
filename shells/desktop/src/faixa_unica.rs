@@ -1,6 +1,6 @@
 //! A faixa única (line/BarraDeMenus, onda 4): a lei mora em
-//! `ph2d_editor_core::screens::hero::window_buttons`; aqui só o `winit`. `PH2D_FAIXA_UNICA=0` volta à
-//! barra do sistema. Prova no KWin: `docs/BarraDeMenus/ferramentas/kwin_faixa_unica.sh`.
+//! `ph2d_editor_core::screens::hero::window_buttons`; aqui só o `winit`. `PH2D_FAIXA_UNICA=1` liga-a; por
+//! omissão a janela tem a barra do sistema (smoke do dono 12/11: a caneta não arrasta). Prova no KWin: `docs/BarraDeMenus/ferramentas/kwin_faixa_unica.sh`.
 
 use crate::App;
 use ph2d_editor_core::screens::hero::window_buttons::{
@@ -9,9 +9,9 @@ use ph2d_editor_core::screens::hero::window_buttons::{
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{CursorIcon, ResizeDirection, Window};
 
-/// A janela nasce sem a barra do sistema?
+/// A janela nasce sem a barra do sistema? Só com `PH2D_FAIXA_UNICA=1` até a caneta arrastar.
 pub(crate) fn ligada() -> bool {
-    std::env::var("PH2D_FAIXA_UNICA").map_or(true, |v| v != "0")
+    std::env::var("PH2D_FAIXA_UNICA").is_ok_and(|v| v == "1")
 }
 
 fn tamanho(w: &Window) -> (f32, f32) {

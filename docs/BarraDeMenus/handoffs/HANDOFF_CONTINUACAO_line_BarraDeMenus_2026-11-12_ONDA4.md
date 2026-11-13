@@ -70,3 +70,19 @@ i18n `known_keys`/`as_chaves` · registry-init `the_app_frame_is_reachable` · h
 
 ## PRÓXIMO
 Smoke do dono da onda 4.
+
+## Smoke do dono (12/11) — rato OK, CANETA NÃO ⇒ a barra do sistema volta a ser a omissão
+Passos 1–7 (rato) OK. Passo 8: **a caneta não arrasta a janela** (esperado, ver «Aberto») **e não consegue clicar no
+app minimizado na barra de tarefas** (a barra de tarefas é do Plasma, outro cliente: por conferir se é do nosso app ou
+do KDE — com a barra do sistema, minimizar pelo botão do KWin e restaurar pela barra de tarefas, ambos com a caneta).
+Pela ordem do dono («se algo não funcionar lá, mantenha a barra do sistema»): `faixa_unica::ligada()` passou a
+**opt-in** (`PH2D_FAIXA_UNICA=1`); sem ela a faixa é a da onda 3 (sem − □ ×). `kwin_faixa_unica.sh` liga-a sozinho.
+
+## PRÓXIMO (onda 5, janela nova): a caneta move e redimensiona a janela
+1. Conferir a barra de tarefas com a caneta e a barra do sistema (acima) — se falhar também, é do KDE e sai desta lista.
+2. `xdg_toplevel.move/resize` com o serial do `zwp_tablet_tool_v2.down` (o KWin aceita serial de tablete? medir no
+   código/comportamento do KWin 6.8 antes de construir). O winit 0.30 não expõe o `xdg_toplevel` nem aceita outro
+   serial: avaliar (a) a porta da caneta (`ph2d-pen`, que já fala o tablet-v2) a mandar o pedido pelo objeto do winit
+   (`raw-window-handle` dá só o `wl_surface`), (b) patch do winit no workspace, (c) xdg-toplevel próprio. Padrão-ouro.
+3. Prova: o rato falso não tem tablete; achar injeção de tablete na tela virtual (ou o dono no smoke).
+4. Só depois a faixa única volta a ser a omissão.

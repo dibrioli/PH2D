@@ -16,6 +16,25 @@ pub(super) struct VidroJournal {
     tiles: crate::undo::journal::TileJournal<Vidro>,
 }
 
+thread_local! {
+    /// **A chave do A×B** (ADR-0204): `true` = o `before` e o cursor DESCREVEM o vidro (testemunha `Weak` +
+    /// journal por tile); `false` = o caminho de antes, que os segura (o oráculo).
+    static VIDRO_PELO_JOURNAL: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
+/// A chave [`VIDRO_PELO_JOURNAL`] deste fio.
+#[doc(hidden)]
+#[must_use]
+pub fn vidro_pelo_journal() -> bool {
+    VIDRO_PELO_JOURNAL.with(std::cell::Cell::get)
+}
+
+/// Liga/desliga [`VIDRO_PELO_JOURNAL`] neste fio (a sonda e os gates intercalam as duas rotas).
+#[doc(hidden)]
+pub fn set_vidro_pelo_journal(on: bool) {
+    VIDRO_PELO_JOURNAL.with(|c| c.set(on));
+}
+
 impl VidroJournal {
     fn note_layer(&mut self, l: crate::layers::LayerId) {
         match self.layer {
@@ -68,7 +87,6 @@ impl WriteState {
     }
 
     /// `true` se o journal do vidro pode responder pela camada `l`.
-    #[cfg(test)]
     #[must_use]
     pub(crate) fn vidro_speaks_for(&self, l: crate::layers::LayerId) -> bool {
         let j = self.vidro.borrow();
@@ -76,10 +94,50 @@ impl WriteState {
     }
 
     /// O antes do texel `i`, se o journal o capturou (`antes[i] = journal.get(i).unwrap_or(vivo[i])`, §5.28).
-    #[cfg(test)]
     #[must_use]
     pub(crate) fn vidro_before(&self, i: usize) -> Option<Vidro> {
         self.vidro.borrow().tiles.get(i)
+    }
+
+    /// **O antes do vidro, numa janela densa** `[x0, x1) × [y0, y1)` de um plano `w` de largura:
+    /// `journal.get(i).unwrap_or(vivo[i])` (ADR-0204 D2). Tirada ANTES da escrita da janela.
+    #[must_use]
+    pub(crate) fn vidro_antes_na_janela(
+        &self,
+        vivo: &[Vidro],
+        w: usize,
+        (x0, x1, y0, y1): (usize, usize, usize, usize),
+    ) -> Vec<Vidro> {
+        let j = self.vidro.borrow();
+        let mut out = Vec::with_capacity((x1 - x0) * (y1 - y0));
+        for y in y0..y1 {
+            out.extend((x0..x1).map(|x| j.tiles.get(y * w + x).unwrap_or(vivo[y * w + x])));
+        }
+        out
+    }
+
+    /// Ninguém escreveu vidro desde o último reset (o vivo É o antes, pelos mesmos bytes).
+    #[must_use]
+    pub(crate) fn vidro_untouched(&self) -> bool {
+        let j = self.vidro.borrow();
+        j.layer.is_none() && !j.mixed && !j.incomplete && !j.absent
+    }
+
+    /// O journal do vidro descreve o passo que começou em `writes`: `f(camada, absent, tiles)`.
+    pub(crate) fn with_vidro_before<R>(
+        &self,
+        writes: u64,
+        fallback_layer: crate::layers::LayerId,
+        f: impl FnOnce(crate::layers::LayerId, bool, &crate::undo::journal::TileJournal<Vidro>) -> R,
+    ) -> Option<R> {
+        if !self.journal_describes_step_at(writes) {
+            return None;
+        }
+        let j = self.vidro.borrow();
+        if j.mixed || j.incomplete {
+            return None;
+        }
+        Some(f(j.layer.unwrap_or(fallback_layer), j.absent, &j.tiles))
     }
 
     /// Os bytes que o journal do vidro retém.

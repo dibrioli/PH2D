@@ -184,3 +184,125 @@ fn quem_segura_o_vidro_no_segundo_pen_down() {
         "depois do 2.º traço: só mapa + cursor"
     );
 }
+
+/// Um tool WB numa tela branca, com a chave `VIDRO_PELO_JOURNAL` em `journal`.
+fn tool_wb(journal: bool) -> PainterTool {
+    crate::undo::window::set_vidro_pelo_journal(journal);
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+    t.set_paint_media(PaintMedia::Watercolor);
+    crate::tool::paint::tests::aquarela_neutra(&mut t);
+    crate::tool::paint::tests::watercolor_basic_de_antes(&mut t);
+    t.set_brush_size_px(14.0);
+    t
+}
+
+/// O traço `k` (sobrepostos e disjuntos, a cruzar fronteiras de tile).
+fn traco_k(t: &mut PainterTool, k: usize) {
+    let y = 40.0 + 41.0 * (k % 8) as f32;
+    let (x0, x1) = if k % 2 == 0 {
+        (30.0, 300.0)
+    } else {
+        (110.0, 480.0)
+    };
+    ev(t, [x0, y], PointerPhase::Down);
+    for s in 1..=8 {
+        let f = s as f32 / 8.0;
+        ev(t, [x0 + (x1 - x0) * f, y + 30.0 * f], PointerPhase::Move);
+    }
+    ev(t, [x1, y + 30.0], PointerPhase::Up);
+    for _ in 0..3 {
+        t.on_tick(1000.0 / 60.0);
+    }
+}
+
+/// ADR-0204 D4: com o `before` e o cursor a DESCREVER o vidro (journal por tile), o desfazer e o refazer do
+/// 1.º, 2.º e N-ésimo traço dão o vidro E a tela ao bit do oráculo (a chave desligada), no mesmo processo.
+#[test]
+fn o_vidro_do_traco_volta_ao_bit_no_desfazer_e_no_refazer() {
+    use crate::undo_planes::VIDRO_FROM_JOURNAL;
+    let mut j = tool_wb(true);
+    let mut o = tool_wb(false);
+    let confere = |j: &PainterTool, o: &PainterTool, quando: &str| {
+        assert!(plano(j) == plano(o), "{quando}: o vidro difere do oráculo");
+        assert!(
+            j.canvas_rgba.as_slice() == o.canvas_rgba.as_slice(),
+            "{quando}: a tela difere do oráculo"
+        );
+    };
+    // Cada rota corre com a SUA chave.
+    let em = |t: &mut PainterTool, journal: bool, f: &mut dyn FnMut(&mut PainterTool)| {
+        crate::undo::window::set_vidro_pelo_journal(journal);
+        f(t);
+    };
+    VIDRO_FROM_JOURNAL.set(0);
+    const N: usize = 8;
+    // O vidro e a tela depois de cada traço: a verdade absoluta (o `side` é partilhado pelas duas rotas).
+    let mut gravado = vec![(plano(&j), j.canvas_rgba.to_vec())];
+    for k in 0..N {
+        em(&mut j, true, &mut |t| traco_k(t, k));
+        em(&mut o, false, &mut |t| traco_k(t, k));
+        confere(&j, &o, &format!("depois do traço {}", k + 1));
+        gravado.push((plano(&j), j.canvas_rgba.to_vec()));
+    }
+    let no_gravado = |j: &PainterTool, i: usize, quando: &str| {
+        assert!(
+            plano(j) == gravado[i].0,
+            "{quando}: o vidro não é o de depois do traço {i}"
+        );
+        assert!(
+            j.canvas_rgba.as_slice() == gravado[i].1.as_slice(),
+            "{quando}: a tela não é a de depois do traço {i}"
+        );
+    };
+    assert!(
+        VIDRO_FROM_JOURNAL.get() >= (N - 1) as u32,
+        "o vidro saiu do journal em {} de {N} traços (verde por vácuo?)",
+        VIDRO_FROM_JOURNAL.get()
+    );
+    assert!(!plano(&j).is_empty(), "a aguada criou o vidro");
+    for k in (0..N).rev() {
+        let (a, b) = (
+            {
+                crate::undo::window::set_vidro_pelo_journal(true);
+                j.undo_last()
+            },
+            {
+                crate::undo::window::set_vidro_pelo_journal(false);
+                o.undo_last()
+            },
+        );
+        assert!(a && b, "desfazer o traço {}", k + 1);
+        confere(&j, &o, &format!("desfeito o traço {}", k + 1));
+        no_gravado(&j, k, &format!("desfeito o traço {}", k + 1));
+    }
+    assert!(
+        plano(&j).is_empty(),
+        "desfazer tudo tira o vidro que o 1.º traço criou"
+    );
+    for k in 0..N {
+        crate::undo::window::set_vidro_pelo_journal(true);
+        let a = j.redo_last();
+        crate::undo::window::set_vidro_pelo_journal(false);
+        let b = o.redo_last();
+        assert!(a && b, "refazer o traço {}", k + 1);
+        confere(&j, &o, &format!("refeito o traço {}", k + 1));
+        no_gravado(&j, k + 1, &format!("refeito o traço {}", k + 1));
+    }
+    for k in 0..N / 2 {
+        crate::undo::window::set_vidro_pelo_journal(true);
+        j.undo_last();
+        crate::undo::window::set_vidro_pelo_journal(false);
+        o.undo_last();
+        confere(&j, &o, &format!("desfeita a metade, passo {}", k + 1));
+    }
+    em(&mut j, true, &mut |t| traco_k(t, 3));
+    em(&mut o, false, &mut |t| traco_k(t, 3));
+    confere(&j, &o, "pintado outro traço depois da metade");
+    crate::undo::window::set_vidro_pelo_journal(true);
+    assert!(j.undo_last());
+    crate::undo::window::set_vidro_pelo_journal(false);
+    assert!(o.undo_last());
+    confere(&j, &o, "desfeito o traço novo");
+    crate::undo::window::set_vidro_pelo_journal(true);
+}

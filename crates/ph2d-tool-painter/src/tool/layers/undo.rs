@@ -84,11 +84,20 @@ impl PainterTool {
         if !self.undo.elide_relief {
             return m; // a ablação do A/B — ver `UndoController::elide_relief`
         }
-        m.relief_elided =
-            crate::undo::elide::ElidedRelief::of(&self.heights, &self.covers, &self.mats);
+        // O vidro (ADR-0204 D2), sob a chave: o lado de antes é o journal dele.
+        let vidro = crate::undo::window::vidro_pelo_journal();
+        m.relief_elided = crate::undo::elide::ElidedRelief::of(
+            &self.heights,
+            &self.covers,
+            &self.mats,
+            vidro.then_some(&self.vidros),
+        );
         m.heights.clear();
         m.covers.clear();
         m.mats.clear();
+        if vidro {
+            m.vidros.clear();
+        }
         // E a TELA (B17.4): o lado de antes é o journal dela, então o 1.º dab escreve no lugar.
         if !self.undo.write_state.on_foreign_plane() {
             m.elide_canvas();

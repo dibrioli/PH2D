@@ -126,9 +126,15 @@ impl PainterTool {
         {
             return None;
         }
-        let vantes = Arc::clone(self.paint.stroke_undo.as_ref()?.vidros.get(&camada)?);
+        // O vidro de antes do traço: o que o `before` segura (o oráculo) ou, descrito (ADR-0204 D2), o journal
+        // sobre o vivo, materializado na janela que este passe escreve ANTES do `fork_vidro`.
+        let antes = self.paint.stroke_undo.as_ref()?;
+        let segurado = antes.vidros.get(&camada).map(Arc::clone);
+        if segurado.is_none() && !antes.relief_elided.vidros.contains_key(&camada) {
+            return None;
+        }
         let pantes = self.tela_de_antes_do_traco(true)?;
-        if vantes.len() != n || pantes.len() != n * 4 {
+        if pantes.len() != n * 4 {
             return None;
         }
         let tecto = (self.paint.stroke_mask.len() == n).then_some(&self.paint.stroke_mask);
@@ -144,6 +150,33 @@ impl PainterTool {
             });
         let (x0, y0) = (r.x as usize, r.y as usize);
         let (x1, y1) = ((x0 + r.w as usize).min(w), (y0 + r.h as usize).min(h));
+        if x0 >= x1 || y0 >= y1 {
+            return None;
+        }
+        let vivo = self.vidros.get(&camada)?;
+        if vivo.len() != n {
+            return None;
+        }
+        // `vantes(i)`: o antes do texel `i` da janela.
+        let (vantes, vw): (Arc<Vec<_>>, usize) = match segurado {
+            Some(v) if v.len() == n => (v, 0),
+            Some(_) => return None,
+            None => (
+                Arc::new(
+                    self.undo
+                        .write_state
+                        .vidro_antes_na_janela(vivo, w, (x0, x1, y0, y1)),
+                ),
+                x1 - x0,
+            ),
+        };
+        let vi = move |i: usize| {
+            if vw == 0 {
+                i
+            } else {
+                (i / w - y0) * vw + (i % w - x0)
+            }
+        };
         let plano = super::plane_fork::fork_vidro(
             self.vidros.get_mut(&camada)?,
             &self.undo.write_state,
@@ -170,7 +203,7 @@ impl PainterTool {
                         Some(m) if m > 0 => f32::from(m) / 255.0,
                         _ => cobertura_do_over(o, px, cor),
                     };
-                    let a = crate::compositor::vidro::alfas(o, &vantes[i]);
+                    let a = crate::compositor::vidro::alfas(o, &vantes[vi(i)]);
                     *slot = crate::compositor::vidro::sela(
                         [px[0], px[1], px[2], px[3]],
                         crate::compositor::vidro::cobre(a, s),

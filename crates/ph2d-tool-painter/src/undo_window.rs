@@ -520,6 +520,8 @@ pub(crate) use relief::ReliefPlane;
 
 #[path = "undo_window_vidro.rs"]
 mod vidro;
+#[doc(hidden)]
+pub use vidro::{set_vidro_pelo_journal, vidro_pelo_journal};
 
 #[cfg(test)]
 mod tests {

@@ -47,6 +47,8 @@ thread_local! {
     /// conta o próprio trabalho — e um contador por-thread não tem a lista de "quem precisa travar" que a
     /// §5.57 viu apodrecer no contador da LUT do `ph2d-painter-brush`.
     pub(crate) static RELIEF_FROM_JOURNAL: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// O mesmo contador para o vidro (ADR-0204): o gate do round-trip não pode ser verde por vácuo.
+    pub(crate) static VIDRO_FROM_JOURNAL: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
 /// **Os DEZENOVE planos canvas-shaped de um `ModelSnapshot`, guardados como delta.**
@@ -210,6 +212,9 @@ impl PlaneDeltas {
                 relief.as_ref(),
             ),
         };
+        // O vidro ANTES do relevo: o `relief_maps` zera as testemunhas que lê (ADR-0204 D4).
+        let (mut vidros, vidro_indescribable) =
+            Self::vidro_map(before, after, s.scalar, win_scalar, relief.as_ref());
         let (mut heights, mut covers, mut mats, relief_indescribable) =
             Self::relief_maps(before, after, s.scalar, win_scalar, relief);
         heights.guarda_janelas_que_aparecem(win_scalar, linha_de_altura_neutra, altura_neutra);
@@ -221,15 +226,13 @@ impl PlaneDeltas {
             |l| linha_de_material_neutra(l, &modelo),
             move |m| *m == neutro,
         );
-        let mut vidros =
-            StoredMap::split(&mut before.vidros, &mut after.vidros, s.scalar, win_scalar);
         vidros.guarda_janelas_que_aparecem(
             win_scalar,
             crate::undo_delta::confine::linha_sem_vidro,
             crate::undo_delta::confine::vidro_neutro,
         );
         Self {
-            relief_indescribable: relief_indescribable || canvas_lost,
+            relief_indescribable: relief_indescribable || canvas_lost || vidro_indescribable,
             canvas_rgba,
             images: StoredImages::split(&mut before.images, &mut after.images),
             vidros,
@@ -382,6 +385,52 @@ impl PlaneDeltas {
         }
     }
 
+    /// **O delta do vidro** (ADR-0204 D4): com o `before` a DESCREVER o vidro, pelo journal por tile
+    /// ([`StoredMap::from_journal`]); a segurá-lo (a chave desligada, um snapshot estrutural), pelo `split`.
+    /// Elidido e o journal a recusar = indescritível: o `split` leria toda chave como `OnlyAfter` e o undo
+    /// APAGARIA o vidro (o mesmo braço do relevo, abaixo).
+    fn vidro_map(
+        before: &mut crate::undo::ModelSnapshot,
+        after: &mut crate::undo::ModelSnapshot,
+        stride: usize,
+        win: Option<crate::undo_delta::PlaneWindow>,
+        relief: Option<&ReliefSource<'_>>,
+    ) -> (StoredMap<crate::compositor::vidro::Vidro>, bool) {
+        let el = std::mem::take(&mut before.relief_elided.vidros);
+        if el.is_empty() {
+            return (
+                StoredMap::split(&mut before.vidros, &mut after.vidros, stride, win),
+                false,
+            );
+        }
+        let built = relief
+            .and_then(|src| {
+                src.state
+                    .with_vidro_before(src.writes, src.layer, |l, absent, j| {
+                        StoredMap::from_journal(
+                            &before.vidros,
+                            &el,
+                            &after.vidros,
+                            l,
+                            absent,
+                            j,
+                            win,
+                        )
+                    })
+            })
+            .flatten();
+        before.vidros.clear();
+        after.vidros.clear();
+        match built {
+            Some(m) => {
+                #[cfg(test)]
+                VIDRO_FROM_JOURNAL.with(|c| c.set(c.get() + 1));
+                (m, false)
+            }
+            None => (StoredMap::default(), true),
+        }
+    }
+
     fn relief_maps(
         before: &mut crate::undo::ModelSnapshot,
         after: &mut crate::undo::ModelSnapshot,
@@ -497,7 +546,13 @@ impl PlaneDeltas {
         out.heights = self.heights.side(&live.heights, b)?;
         out.covers = self.covers.side(&live.covers, b)?;
         out.mats = self.mats.side(&live.mats, b)?;
-        out.vidros = self.vidros.side(&cursor.vidros, b)?;
+        // O vidro do VIVO, como o relevo: o cursor descreve-o sem o segurar (ADR-0204 D2).
+        let vbase = if cursor.relief_elided.vidros.is_empty() {
+            &cursor.vidros
+        } else {
+            &live.vidros
+        };
+        out.vidros = self.vidros.side(vbase, b)?;
         out.mask_scratch = self.mask_scratch.side(&cursor.mask_scratch, b)?;
         out.selection_mask = self.selection_mask.side(&cursor.selection_mask, b)?;
         out.selection_crisp = self.selection_crisp.side(&cursor.selection_crisp, b)?;

@@ -107,6 +107,10 @@ impl UndoController {
             m.heights.clear();
             m.covers.clear();
             m.mats.clear();
+            // O vidro descrito pelo journal (ADR-0204) também não testemunha aqui, pela mesma razão.
+            if crate::undo::window::vidro_pelo_journal() {
+                m.vidros.clear();
+            }
             m.relief_elided = crate::undo::elide::ElidedRelief::default();
         }
         // ⭐ **O CANVAS é perguntado só dentro da janela DECLARADA** (`crate::undo::window`), quando

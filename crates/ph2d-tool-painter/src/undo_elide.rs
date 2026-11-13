@@ -49,6 +49,8 @@ pub struct ElidedRelief {
     pub(crate) heights: BTreeMap<RtLayerId, Weak<Vec<f32>>>,
     pub(crate) covers: BTreeMap<RtLayerId, Weak<Vec<u8>>>,
     pub(crate) mats: BTreeMap<RtLayerId, Weak<Vec<MaterialBytes>>>,
+    /// A 4.ª família (ADR-0204 D2): o vidro, sob a chave `VIDRO_PELO_JOURNAL`.
+    pub(crate) vidros: BTreeMap<RtLayerId, Weak<Vec<crate::compositor::vidro::Vidro>>>,
 }
 
 fn downgrade<T>(m: &BTreeMap<RtLayerId, Arc<Vec<T>>>) -> BTreeMap<RtLayerId, Weak<Vec<T>>> {
@@ -64,17 +66,22 @@ impl ElidedRelief {
         heights: &BTreeMap<RtLayerId, Arc<Vec<f32>>>,
         covers: &BTreeMap<RtLayerId, Arc<Vec<u8>>>,
         mats: &BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
+        vidros: Option<&BTreeMap<RtLayerId, Arc<Vec<crate::compositor::vidro::Vidro>>>>,
     ) -> Self {
         Self {
             heights: downgrade(heights),
             covers: downgrade(covers),
             mats: downgrade(mats),
+            vidros: vidros.map(downgrade).unwrap_or_default(),
         }
     }
 
     /// `true` quando este snapshot não elide nada.
     pub(crate) fn is_empty(&self) -> bool {
-        self.heights.is_empty() && self.covers.is_empty() && self.mats.is_empty()
+        self.heights.is_empty()
+            && self.covers.is_empty()
+            && self.mats.is_empty()
+            && self.vidros.is_empty()
     }
 
     /// **Devolve os planos ao snapshot, pelas testemunhas** — `false` quando alguma não dá upgrade.
@@ -100,6 +107,7 @@ impl ElidedRelief {
         up(&self.heights, &mut m.heights)
             && up(&self.covers, &mut m.covers)
             && up(&self.mats, &mut m.mats)
+            && up(&self.vidros, &mut m.vidros)
     }
 }
 

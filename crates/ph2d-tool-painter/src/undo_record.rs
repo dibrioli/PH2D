@@ -110,7 +110,9 @@ impl UndoController {
         if base.relief_elided.is_empty() {
             return Some(base); // nada elidido: o cursor já É a base
         }
-        if !self.write_state.relief_untouched() {
+        if !self.write_state.relief_untouched()
+            || (!base.relief_elided.vidros.is_empty() && !self.write_state.vidro_untouched())
+        {
             return None;
         }
         let el = base.relief_elided.clone();
@@ -140,11 +142,19 @@ impl UndoController {
         #[cfg(not(test))]
         let elide = true;
         if elide {
-            at.relief_elided =
-                crate::undo::elide::ElidedRelief::of(&at.heights, &at.covers, &at.mats);
+            let vidro = crate::undo::window::vidro_pelo_journal();
+            at.relief_elided = crate::undo::elide::ElidedRelief::of(
+                &at.heights,
+                &at.covers,
+                &at.mats,
+                vidro.then_some(&at.vidros),
+            );
             at.heights.clear();
             at.covers.clear();
             at.mats.clear();
+            if vidro {
+                at.vidros.clear();
+            }
         }
         self.cursor = Some(Box::new(at));
         self.write_state.reset_journal();

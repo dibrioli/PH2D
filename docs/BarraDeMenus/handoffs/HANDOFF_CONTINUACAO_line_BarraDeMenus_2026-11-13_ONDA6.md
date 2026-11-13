@@ -31,3 +31,21 @@ fina, a busca «muitíssimo mais bela», e **contraste suficiente entre widgets 
 ## Fotos
 `fotos/onda6_app_inteiro.png` · `onda6_faixa_maquete_em_cima_app_embaixo.png` · `onda6_maquete_em_cima_app_embaixo.png`
 (fila) · `onda6_busca_lado_a_lado.png`.
+
+## Smoke do dono (13/11) — NÃO aprovado: «a aparência não é bela o suficiente»
+Palavras do dono: *«não bem alinhada, as barras poderiam ser um pouco mais largas [= mais altas/grossas], o alinhamento
+melhor, os ícones melhores e mais nítidos. Busque o estado da arte. Acabamento e polimento intenso.»*
+
+## PRÓXIMO — onda 7: polimento intenso (faixa, fila fina, busca)
+1. **Estado da arte, MEDIDO** (não lido): capturas de Figma UI3, Linear, Zed, VS Code, JetBrains New UI, Rive — altura
+   da barra, altura dos controlos, tamanho/traço dos ícones, vão entre itens, linha de base comum. Tabela com números
+   antes de mexer (CLAUDE.md §0.0 e §0.9).
+2. **Alinhamento:** uma linha de centro comum a TODOS os itens da faixa e da fila (glifo, texto, plaquinha, Play,
+   abas, − □ ×); bordas esquerdas alinhadas entre as duas barras (marca/Menu ↔ primeiro glifo da fila); medir na foto
+   com uma régua de pixels (centro vertical de cada item ± 0,5 px), e fazer disso um portão.
+3. **Barras um pouco mais altas** (faixa e fila): números do passo 1, por token (`chrome.menu-bar-h`, `chrome.tool-row-h`).
+4. **Ícones nítidos:** encaixe ao pixel (traço ímpar em meio pixel, caixa inteira), o glifo da fila desenha ~10 px dentro
+   de 13 (o pintor recua) — corrigir; avaliar o conjunto de ícones e o traço contra o estado da arte; foto ampliada 4×.
+5. Pause/Stop só a jogar (maquete C); «Hierarchy»/«Inspector» na fila — decidir com números.
+6. Cada passo: foto lado a lado com a maquete e com as referências, ampliada, ANTES do smoke (memória
+   `feedback_a_mockup_is_compared_side_by_side_before_the_smoke`). Contraste: os três portões continuam a valer.

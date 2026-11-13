@@ -412,6 +412,26 @@ impl WidgetStore {
         self.card_dropdown_open = true;
     }
 
+    /// ⭐ **Há algo aberto que um clique de fora fecha?** — menu (e a cascata), busca, modal do Fill,
+    /// seletor de cor, lista suspensa (do widget, do cartão ou própria). Quem toma o Down antes do
+    /// despacho (a porta da janela, que arrastaria pelo fundo da faixa) cede-o enquanto isto for
+    /// verdade: é o despacho que fecha, e o clique que fecha não faz mais nada.
+    #[must_use]
+    pub fn closes_on_outside_press(&self) -> bool {
+        self.context_menu().is_some()
+            || self.command_palette_model().is_some()
+            || self.fill_modal_pos().is_some()
+            || self.picker_target().is_some()
+            || self.own_list.is_some()
+            || self.card_dropdown_open
+            || self.dropdown_popover.is_some_and(|(dd, _)| {
+                matches!(
+                    self.get(dd),
+                    Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
+                )
+            })
+    }
+
     /// A lista suspensa do cartão fechou.
     pub fn close_card_dropdown(&mut self) {
         self.card_dropdown_open = false;

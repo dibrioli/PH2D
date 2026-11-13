@@ -2,7 +2,8 @@
 
 use super::*;
 use crate::interaction::dispatch::keymap as k;
-use crate::screens::hero::menu_bar::{CASCADES, MENUS};
+use crate::screens::hero::menu_bar::{CASCADES, MENU_BAR_H, MENUS};
+use crate::screens::hero::window_buttons;
 use bumpalo::Bump;
 use ph2d_host::{Modifiers, PointerButton, PointerSource};
 use ph2d_text::TextSystem;
@@ -15,6 +16,30 @@ struct Palco {
 }
 
 impl Palco {
+    /// A janela do app (sem a barra do sistema): a faixa tem fundo que arrasta e borda.
+    fn novo_na_janela() -> Self {
+        let mut p = Self::novo();
+        p.hero.store.set_window_frame(Some(false));
+        p.pinta();
+        p
+    }
+
+    /// Um menu, um submenu ou a busca abertos.
+    fn algo_aberto(&self) -> bool {
+        self.hero.store.context_menu().is_some() || self.hero.store.command_palette_open()
+    }
+
+    /// O clique como a shell o entrega: a porta da janela primeiro; o que ela toma o editor não vê.
+    fn clica_pela_janela(&mut self, x: f32, y: f32) -> Option<window_buttons::PressAction> {
+        self.ponteiro(PointerKind::Move, x, y);
+        let acao = window_buttons::press(&mut self.hero, x, y, (JANELA.w, JANELA.h), 0);
+        if acao.is_none() {
+            self.ponteiro(PointerKind::Down, x, y);
+            self.ponteiro(PointerKind::Up, x, y);
+        }
+        acao
+    }
+
     fn novo() -> Self {
         crate::test_support::ensure_panel_registry();
         let mut p = Self {
@@ -356,4 +381,58 @@ fn a_seta_do_play_escolhe_o_palco() {
         crate::screens::hero::menu_bar::module_is_on(&p.hero, ids::MENUBAR_RUN_WINDOW),
         Some(true)
     );
+}
+
+/// ⭐ **Clicar fora fecha** (bug do dono, smoke 13/11): cada menu e a busca que a faixa abre, e cada
+/// sítio de fora — o canvas, a fila de ferramentas, um painel, o FUNDO da faixa (que sem menu arrasta
+/// a janela) e a borda que redimensiona. O Down passa primeiro pela porta da janela, como na shell
+/// (`faixa_unica_down`): se ela o toma, o editor nunca o vê. O clique que fecha não arrasta a janela.
+#[test]
+fn clicar_fora_fecha_o_que_a_faixa_abriu() {
+    let fora = |p: &Palco| {
+        let fundo = window_buttons::free_backdrop_x(&p.hero, JANELA.w).expect("fundo livre");
+        [
+            ("canvas", (JANELA.w * 0.5, JANELA.h * 0.5)),
+            ("fila", (JANELA.w * 0.25, MENU_BAR_H + 10.0)),
+            ("painel", (JANELA.w - 60.0, JANELA.h * 0.4)),
+            ("fundo da faixa", (fundo, MENU_BAR_H * 0.5)),
+            ("borda", (fundo, 1.0)),
+        ]
+    };
+    let abertos = [
+        (ids::MENUBAR_W, "Menu"),
+        (ids::MENUBAR_PLAY_MENU, "seta do Play"),
+        (ids::MENUBAR_FIND, "busca"),
+    ];
+    let mut falhas = Vec::new();
+    for (abre, nome) in abertos {
+        for (onde, (x, y)) in fora(&Palco::novo_na_janela()) {
+            // A caixa da busca desce sobre a fila: lá é dentro dela, não fora.
+            if abre == ids::MENUBAR_FIND && onde == "fila" {
+                continue;
+            }
+            let mut p = Palco::novo_na_janela();
+            p.clica(abre);
+            assert!(p.algo_aberto(), "{nome} não abriu");
+            let janela = p.clica_pela_janela(x, y);
+            if p.algo_aberto() || janela.is_some() {
+                falhas.push(format!(
+                    "{nome} · {onde} ({x}, {y}): aberto={} janela={janela:?}",
+                    p.algo_aberto()
+                ));
+            }
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "clicar fora não fechou:\n{}",
+        falhas.join("\n")
+    );
+    // Sem nada aberto, o fundo volta a arrastar a janela; o Escape continua a fechar.
+    let mut p = Palco::novo_na_janela();
+    let fundo = window_buttons::free_backdrop_x(&p.hero, JANELA.w).expect("fundo livre");
+    assert!(p.clica_pela_janela(fundo, MENU_BAR_H * 0.5).is_some());
+    p.clica(ids::MENUBAR_W);
+    p.toca(k::KEY_ESCAPE);
+    assert!(!p.algo_aberto(), "o Escape fecha");
 }

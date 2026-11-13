@@ -129,6 +129,11 @@ pub fn press(
     t_ns: u128,
 ) -> Option<PressAction> {
     let maximized = hero.store.window_frame()?;
+    // Um menu aberto é dono do clique: fora dele o Down FECHA-O (no despacho), sem arrastar a janela.
+    if hero.store.closes_on_outside_press() {
+        hero.store.window_press_mut().forget_backdrop();
+        return None;
+    }
     let hit = hero.hit_index.hit(x, y);
     hero.store
         .window_press_mut()

@@ -83,6 +83,11 @@ pub struct WindowPress {
 }
 
 impl WindowPress {
+    /// O Down seguinte no fundo não faz par de duplo clique com o anterior.
+    pub fn forget_backdrop(&mut self) {
+        self.last_backdrop_ns = None;
+    }
+
     /// `hit` é o alvo do editor sob o ponteiro; `t_ns` o relógio da shell.
     pub fn press(
         &mut self,

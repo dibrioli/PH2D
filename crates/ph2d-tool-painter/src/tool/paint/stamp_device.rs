@@ -323,3 +323,7 @@ impl crate::tool::PainterTool {
 #[cfg(test)]
 #[path = "stamp_device_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "stamp_device_contagem_tests.rs"]
+mod contagem_tests; // B25.8: quantos pincéis de fábrica sobem à placa

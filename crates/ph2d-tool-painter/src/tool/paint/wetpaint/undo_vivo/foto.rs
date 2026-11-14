@@ -14,7 +14,7 @@ pub(crate) struct Relogio {
 }
 
 impl Relogio {
-    pub(super) fn de(e: &Engine) -> Self {
+    fn de(e: &Engine) -> Self {
         let s = &e.sim;
         Self {
             frame: s.frame,
@@ -33,23 +33,6 @@ impl Relogio {
         s.rewet_base = self.rewet_base;
         s.semente_do_po = self.semente_do_po;
     }
-}
-
-/// A foto do «depois» e o repoe do undo numa passada ([`FotoDoMotor::de_e_repoe`]); `PH2D_FOTO_FUNDE=0` (lida uma vez)
-/// = o par `de` + `repoe_sobre` de antes.
-pub(super) fn funde() -> bool {
-    #[cfg(test)]
-    if SEPARADA.with(std::cell::Cell::get) {
-        return false;
-    }
-    static F: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *F.get_or_init(|| std::env::var("PH2D_FOTO_FUNDE").map_or(true, |v| v != "0"))
-}
-
-#[cfg(test)]
-thread_local! {
-    /// O par de antes (o oráculo da passada única), por fio.
-    pub(super) static SEPARADA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// O motor num instante, FORA das grades (essas voltam pelo histórico do motor): a ladeira do óleo, o fluxo e o
@@ -87,45 +70,6 @@ impl FotoDoMotor {
                 })
                 .collect(),
             relogio: Relogio::de(e),
-        }
-    }
-
-    /// O «depois» do undo (`Self::de(e, Some(self))`) e o `self.repoe_sobre(e, Some(&depois))` numa passada por tile
-    /// ([`PlanoEmTiles::de_e_repoe`]), com o `relogio` do «depois» tirado antes do undo do motor. Só vale quando o undo
-    /// do motor não escreveu a ladeira nem o fluxo (a mesma condição do `ja` do `repoe_sobre`).
-    pub(super) fn de_e_repoe(&self, e: &mut Engine, relogio: Relogio) -> Self {
-        let oleo_antes = e
-            .layers
-            .iter_mut()
-            .enumerate()
-            .map(|(i, l)| match self.oleo_antes.get(i) {
-                Some(a) => PlanoEmTiles::de_e_repoe(&mut l.grid.oleo_antes, l.grid.s, a),
-                None => PlanoEmTiles::de(&l.grid.oleo_antes, l.grid.s, None),
-            })
-            .collect();
-        let fluxo = e
-            .layers
-            .iter_mut()
-            .enumerate()
-            .map(|(i, l)| {
-                let s = l.grid.flow.s;
-                match self.fluxo.get(i) {
-                    Some((ax, ay)) => (
-                        PlanoEmTiles::de_e_repoe(&mut l.grid.flow_x, s, ax),
-                        PlanoEmTiles::de_e_repoe(&mut l.grid.flow_y, s, ay),
-                    ),
-                    None => (
-                        PlanoEmTiles::de(&l.grid.flow_x, s, None),
-                        PlanoEmTiles::de(&l.grid.flow_y, s, None),
-                    ),
-                }
-            })
-            .collect();
-        self.relogio.poe(e);
-        Self {
-            oleo_antes,
-            fluxo,
-            relogio,
         }
     }
 

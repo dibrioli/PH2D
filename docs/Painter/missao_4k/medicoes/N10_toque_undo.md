@@ -120,3 +120,21 @@ escrita: só a linha `troca: fluxo` é comparável entre `serie0` e `serie1` (as
 Próximo passo exato: (1) a janela corre a s6 com `PH2D_FOTO_FUNDE=1` e `=0`, 2 pares intercalados, e lê `volta: FotoDoMotor::de` +
 `volta: repoe` do undo. Se a passada não baixar a soma (ela é memória: lê o vivo e o `antes`, escreve o diferente), reverter a
 chamada em `undo_vivo.rs` e deixar o `copia_tile`. (2) Filbert toque, B17.4/B17.5 e a família 7: não iniciados nesta janela (F1e).
+
+## F1e (14/11) — a cura 4 medida e retirada; o toque do Filbert localizado
+
+**Cura 4 (A×B, janela principal):** s6, 7 rodadas, `PH2D_FOTO_FUNDE=1/0` × 2 intercalados, load **8–42**
+(`target/n10/f1d/load_funde.txt`; saídas `funde{0,1}_r{1,2}.txt`, não comitadas). Undo, mínimo, `de` + `repoe` (ms):
+
+| pincel | funde=0 r1 · r2 | funde=1 r1 · r2 | mínimo 0 → 1 |
+|---|---|---|---|
+| Wet Flat 240 | 3,49+2,33 = 5,82 · 2,84+1,85 = **4,69** | 0+4,69 = **4,69** · 5,08 | 4,69 → 4,69 (igual) |
+| Dabber 120 | 4,20+0,30 = **4,50** · 5,69+0,36 = 6,05 | 4,74 · 6,15 | 4,50 → 4,74 (+0,24, pior) |
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B18.11 cura 4 (foto + repoe numa passada) | **recusada, medida** | soma `de`+`repoe` 4,69/4,50 → 4,69/4,74 | este commit | a passada única lê o vivo E o `antes` e escreve o diferente: os mesmos bytes do par, só reordenados — memória, sem ganho. Tirados `PlanoEmTiles::de_e_repoe`, `FotoDoMotor::de_e_repoe`, a chave `PH2D_FOTO_FUNDE` e os dois gates dela; ⛔ não reconstruir. Fica o `copia_tile` num tampão reusado, agora também no `PlanoEmTiles::de` (`map_init`: um tampão por fio, não um `Vec` por tile). |
+| Filbert toque 57–75 ms | **localizado, não curado (pegada F2b/F4d)** | `INPUT down` máx. 31–64 ms (fora do quadro) | — | `mede_pen_up_4k.sh perf 3840x2160 Filbert:wet` (binário com símbolos do F6, load 25–46, indicativo: os quadros PARADOS também davam 16/60 ms). Nos ~87 ms depois do `down` o fio principal tem 3 amostras (espera) e o operário do Wet faz o 1.º dab SÍNCRONO: `trail::bico::pesos_da_recolha`, `grid::aparencia::pousa`, `grid::oleo_celula::pousa` (o depósito: **F2b**), `oleo_real::CampoAltura::de_com_em::<EmSerie>` (o relevo em série: **F4d/render**), `render::pigment_row`, `oleo_luz::luz_directa`, `oleo_sombra::rebote_no_papel`, `composite::pixel::laco_de_pixel`. Do toque/undo só `undo_delta::confine::janela_da_tinta` (~2 amostras) e um `copia_tile` (foto do antes): ≤ 3 ms. |
+
+Próximo passo exato (toque Filbert): F2b leva o 1.º dab do Óleo Real para fora do fio do evento; F4d põe `CampoAltura::de_com_em`
+no pool (`EmSerie` → por faixa) para o toque. Medir com `mede_pen_up_4k.sh perf` em load < 5 (`STRIP=none`).

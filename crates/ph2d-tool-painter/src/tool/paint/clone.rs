@@ -164,7 +164,14 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            super::blur_route::lote_bounds(
+                dabs,
+                w,
+                h,
+                source_size,
+                tiling,
+                base.tip_reach().max(1.0),
+            ),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {

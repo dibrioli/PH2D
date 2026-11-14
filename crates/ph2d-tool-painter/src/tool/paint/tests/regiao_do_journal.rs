@@ -104,6 +104,27 @@ fn o_blur_captura_so_a_regiao_do_lote() {
     }
 }
 
+/// O Clone (redondo, máscara em cache, grão por pixel): a fonte é lida da própria tela, a escrita é a pegada do lote.
+#[test]
+fn o_clone_captura_so_a_regiao_do_lote() {
+    for (nome, forma) in [
+        ("clone redondo", None),
+        ("clone máscara", Some(TextureMapping::ViewPlane)),
+        ("clone grão", Some(TextureMapping::Tiled)),
+    ] {
+        let mut t = tela();
+        t.set_paint_tool_mode("clone");
+        if let Some(m) = forma {
+            t.set_brush_shape_kind(TextureKind::Checker.to_u8());
+            t.paint.brush.shape.mapping = m;
+        }
+        pincel(&mut t);
+        t.set_clone_source([9.0, 200.0]); // a fonte 5 px à direita do toque
+        assert!(matches!(t.paint.paint_mode, PaintMode::Clone));
+        exige_a_regiao(nome, t);
+    }
+}
+
 /// O carimbo de cor assado (Texture Color sobre o xadrez em View): a rota `stamp_dabs_cached_ramp_color`.
 #[test]
 fn o_carimbo_de_cor_assado_captura_so_a_regiao_do_lote() {

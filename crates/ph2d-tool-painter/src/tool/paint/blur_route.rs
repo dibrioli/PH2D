@@ -24,6 +24,18 @@ fn blur_bounds(
     source_size: (u32, u32),
     tiling: [bool; 2],
 ) -> Option<Region> {
+    lote_bounds(dabs, w, h, source_size, tiling, 1.0)
+}
+
+/// [`blur_bounds`] com o alcance da ponta `reach` (o Clone: `BrushSpec::tip_reach`).
+pub(super) fn lote_bounds(
+    dabs: &[Dab],
+    w: u32,
+    h: u32,
+    source_size: (u32, u32),
+    tiling: [bool; 2],
+    reach: f32,
+) -> Option<Region> {
     let mut acc: Option<Region> = None;
     let mut offs = [[0.0f32; 2]; 9];
     for d in dabs {
@@ -36,7 +48,7 @@ fn blur_bounds(
         for off in &offs[..n] {
             let c = [d.center[0] + off[0], d.center[1] + off[1]];
             let Some(r) =
-                ph2d_painter_brush::dab_write_bounds(c, d.radius_px.max(0.5), [1.0, 1.0], w, h)
+                ph2d_painter_brush::dab_write_bounds(c, d.radius_px.max(0.5), [reach, reach], w, h)
             else {
                 continue;
             };

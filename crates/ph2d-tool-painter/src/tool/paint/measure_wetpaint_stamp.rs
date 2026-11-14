@@ -293,7 +293,7 @@ fn measure_the_stamp_landing_on_a_puddle_that_is_already_there() {
                 wetted(4096, radius)
             };
             t.set_paint_media(PaintMedia::WetPaint);
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             // Um traço NOVO por cima, no meio da poça.
             let (x0, y0) = (900.0f32, 900.0f32);
             t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
@@ -446,7 +446,7 @@ fn measure_whether_the_grid_slider_pays_for_a_big_brush() {
             // ⚠️ A razão é congelada por SESSÃO, então tem de ser escrita ANTES
             // do pen-down — trocá-la no meio encerra a água (é o bake).
             t.set_wet_grid_ratio(ratio);
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             let (x0, y0) = (600.0f32, 2048.0f32);
             t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
             let mut ms = 0.0f64;

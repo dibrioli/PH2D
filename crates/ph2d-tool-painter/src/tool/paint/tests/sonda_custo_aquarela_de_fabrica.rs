@@ -9,7 +9,7 @@ fn traco_ms(liga: &str, raio: f32) -> f64 {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
     t.set_paint_media(PaintMedia::Watercolor);
-    t.set_brush_size_px(2.0 * raio);
+    t.set_brush_size_px(raio);
     if neutro {
         let d = BrushSpec::default();
         let b = &mut t.paint.brush;

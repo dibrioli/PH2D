@@ -286,7 +286,7 @@ fn does_the_frame_cadence_or_a_big_brush_reproduce_the_slow_stroke() {
 
     for radius in [40.0f32, 100.0, 200.0, 300.0] {
         let mut t = armed(4096);
-        t.set_brush_size_px(radius * 2.0);
+        t.set_brush_size_px(radius);
         let (mut worst_ev, mut worst_n) = (0.0f64, 0u32);
         let mut total = 0.0f64;
         for n in 0..40u32 {
@@ -335,7 +335,7 @@ fn is_it_the_brush_or_the_drain() {
     for radius in [40.0f32, 100.0, 200.0] {
         for drain in [false, true] {
             let mut t = armed(4096);
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             let mut evs = Vec::new();
             for n in 0..12u32 {
                 let y = 200.0 + (n % 8) as f32 * 60.0;

@@ -40,8 +40,8 @@ pub(super) fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 
 /// ⚠️ **`set_brush_size_px` escreve `brush.radius_px` — ele toma o RAIO, não o diâmetro.**
 ///
-/// A sonda irmã (`measure_shape_cost`) chama `set_brush_size_px(radius * 2.0)` e rotula a coluna
-/// `r=24`: o pincel que ela de fato roda tem raio **48**, e a varredura que o doc dela apresenta como
+/// A sonda irmã (`measure_shape_cost`) chamava `set_brush_size_px(radius * 2.0)` até B44.1 (N10) e rotulava a coluna
+/// `r=24`: o pincel que ela de fato rodava tinha raio **48**, e a varredura que o doc dela apresenta como
 /// *"o ponto do log de 05/08, pincel r~185"* roda com raio **370** — o dobro do raio, **quatro vezes**
 /// a área por dab. O veredito de RAZÃO daquela tabela (Impasto ÷ Digital) sobrevive, porque os dois
 /// lados pagam a mesma duplicação; os ABSOLUTOS dela descrevem outro pincel. Aqui o número é passado

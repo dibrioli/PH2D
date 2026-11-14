@@ -27,7 +27,7 @@ fn tool(size: u32, ratio: u8, radius: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     t.set_paint_media(PaintMedia::WetPaint);
-    t.set_brush_size_px(radius * 2.0);
+    t.set_brush_size_px(radius);
     // O ocre da foto do Enio.
     t.set_brush_color_srgb8([196, 150, 42]);
     t.set_wet_grid_ratio(f64::from(ratio));

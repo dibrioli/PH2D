@@ -83,7 +83,7 @@ fn the_per_texel_cost_of_a_dab_against_the_hardware_floor() {
             if !impasto {
                 t.toggle_brush_impasto(); // `tool()` o liga; aqui desligamos p/ o digital puro
             }
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             // Aquece (o 1o traco paga a alocacao dos planos por-traco).
             for _ in 0..2 {
                 t.on_canvas_pointer(cp([200.0, 300.0], PointerPhase::Down));
@@ -248,7 +248,7 @@ fn the_impasto_draw_to_split() {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (2048 * 2048 * 4) as usize], 2048, 2048);
             t.toggle_brush_impasto();
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             t.paint.brush.impasto_draw_to = draw_to;
             for slot in &mut t.paint.brush_by_mode {
                 slot.impasto_draw_to = draw_to;
@@ -360,7 +360,7 @@ fn the_height_walk_layers() {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (2048 * 2048 * 4) as usize], 2048, 2048);
             t.toggle_brush_impasto();
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             t.paint.brush.impasto_draw_to = draw;
             t.paint.brush.impasto_smooth_edges = aa;
             t.paint.brush.spacing = spacing;
@@ -406,7 +406,7 @@ fn does_the_film_aa_change_a_pixel() {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (2048 * 2048 * 4) as usize], 2048, 2048);
             t.toggle_brush_impasto();
-            t.set_brush_size_px(radius * 2.0);
+            t.set_brush_size_px(radius);
             t.paint.brush.impasto_smooth_edges = aa;
             for slot in &mut t.paint.brush_by_mode {
                 slot.impasto_smooth_edges = aa;
@@ -586,7 +586,7 @@ fn what_the_height_walk_is_made_of() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
         t.toggle_brush_impasto();
-        t.set_brush_size_px(radius * 2.0);
+        t.set_brush_size_px(radius);
         t.paint.brush.impasto_draw_to = DrawTo::Depth;
         for slot in &mut t.paint.brush_by_mode {
             slot.impasto_draw_to = DrawTo::Depth;

@@ -97,7 +97,7 @@ fn is_the_relief_commit_proportional_to_its_window() {
     );
     for r in [20.0f32, 40.0, 80.0] {
         let mut t = tool(SIDE, true);
-        t.set_brush_size_px(r * 2.0);
+        t.set_brush_size_px(r);
         let cy = f32::from(u16::try_from(SIDE / 2).unwrap_or(512));
         let mut ups = Vec::new();
         for k in 0..7u8 {

@@ -478,7 +478,7 @@ fn measure_what_the_deposit_costs() {
         for side in [1024u32, 2048, 4096] {
             for r in [20.0f32, 80.0] {
                 let mut t = tool(side, c);
-                t.set_brush_size_px(r * 2.0);
+                t.set_brush_size_px(r);
                 let (_d, mv, up) = fast_stroke(&mut t, side);
                 println!("{:<10} {r:>7.0} {side:>6} {mv:>9.2} {up:>9.2}", c.name);
             }
@@ -592,7 +592,7 @@ fn what_a_film_move_is_made_of() {
         const SIDE: u32 = 2048;
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
-        t.set_brush_size_px(radius * 2.0);
+        t.set_brush_size_px(radius);
         t.set_brush_color_srgb8([200, 30, 30]);
         if shape {
             t.set_brush_shape_kind(TextureKind::Stripes as u8);

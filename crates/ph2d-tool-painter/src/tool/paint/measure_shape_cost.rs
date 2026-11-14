@@ -28,7 +28,7 @@ fn tool(side: u32, media: PaintMedia, radius: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
     t.set_paint_media(media);
-    t.set_brush_size_px(radius * 2.0);
+    t.set_brush_size_px(radius);
     t
 }
 

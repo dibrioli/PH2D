@@ -187,9 +187,7 @@ impl PainterTool {
         if w == 0 || h == 0 || rgba.len() < w * h * 4 {
             return 0; // shape guard — bail rather than index out of a mis-sized buffer
         }
-        let Some(light) = Rig::new(&self.paint.impasto_rig)
-            .map(|r| r.com_realce_linear(self.paint_media() == crate::PaintMedia::WetPaint))
-        else {
+        let Some(light) = Rig::new(&self.paint.impasto_rig) else {
             return 0; // every lamp switched off: the canvas comes back unlit, to the byte
         };
         // B15.2: os planos que fazem a altura composta; a poda só vale quando eles são TUDO o que ela lê.
@@ -291,9 +289,7 @@ impl PainterTool {
         if rgba.len() < (region.w as usize) * (region.h as usize) * 4 {
             return; // shape guard — bail rather than index out of a mis-sized buffer
         }
-        let Some(light) = Rig::new(&self.paint.impasto_rig)
-            .map(|r| r.com_realce_linear(self.paint_media() == crate::PaintMedia::WetPaint))
-        else {
+        let Some(light) = Rig::new(&self.paint.impasto_rig) else {
             return; // every lamp switched off: the canvas comes back unlit, to the byte
         };
         let at = |x: i64, y: i64| fields.height_at(x, y);

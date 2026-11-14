@@ -359,7 +359,18 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 /// | 1000 | 2 045–2 048 | 2 232–2 233 | — | — | 2 345 |
 ///
 /// O tecto é o maior medido + 5 %; o pico varia com a janela do campo retida no fim do gesto (532 × 573).
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 605.0), (1000.0, 2345.0)];
+///
+/// 14/11 (rodada 4): a raio 1000 o pico SOBE COM A CARGA — o rascunho é retido por operário do rayon, e sob contenção
+/// mais operários tocam o campo. Não é o papel em duas leituras (`5618e94ace`): isolado, o HEAD dá o mesmo da tabela acima.
+/// Binário `it` do `ci-test` (o perfil da suíte), `MALLOC_ARENA_MAX=1` no filho:
+///
+/// | raio | isolado, smoke (load 14) | isolado, ci-test (load 9) | 3 em paralelo, ci-test (load 6–9) | suíte (load 30+) | tecto |
+/// |---|---|---|---|---|---|
+/// | 300  | 536 | 539 | 565–570 | — | 605 |
+/// | 1000 | 2 186 | 2 234 | 2 261–2 286 | 2 359 | 2 477 |
+///
+/// ABERTO (BUGS_painter #115): reter um rascunho por gesto, não por operário, devolve o pico ao isolado e o tecto desce.
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 605.0), (1000.0, 2477.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

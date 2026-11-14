@@ -102,8 +102,10 @@ pub(super) struct Rig {
     /// 256-entry row became a 2-D table with a second axis; it is baked ONCE for the process, which is
     /// what keeps the pass transcendental-free (HR-5) despite the extra freedom.
     spec: &'static ph2d_painter_brush::material::SpecLut,
-    /// B31.2 (o realce LINEAR entre entradas da tabela) — só no Wet Paint ([`Self::com_realce_linear`]); desligado =
-    /// a leitura truncada do main ao bit (BUGS_painter #115).
+    /// B31.2 (o realce LINEAR entre entradas da tabela) — só na luz da TINTA do Wet Paint (o grão sob o filme,
+    /// [`Self::com_realce_linear`]); desligado = a leitura truncada do main ao bit (BUGS_painter #115). A luz do relevo
+    /// do Impasto e do substrato fica truncada em QUALQUER ferramenta: a lei é do dono da tinta, nunca do meio activo
+    /// (trocar de meio não pode reacender a tinta pousada — `traco_longe_nao_muda_a_borracha_e_fica_na_tela`).
     realce_linear: bool,
     /// Every lamp is GREY (`r = g = b`). Then every channel's ratio is the same number, and the shade
     /// computes it **once** instead of three times.

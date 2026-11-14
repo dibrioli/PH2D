@@ -125,14 +125,16 @@ pub(super) fn cena(n: usize) -> PainterTool {
 /// antes do rebase), lei nova da tinta. Antes dele `0x29b7…4e43` (1, 2, 4) e `0xfa55…c815` (3) do merge-base até
 /// `9fb79dc282`; depois os de hoje até ao topo (`ff2077c768`), iguais nos degraus da E10 (`7c8e08d16b`, `1f9e115c7e`).
 /// Integração 13/11: a 6 regravada pela mistura espectral de 10 bandas do Wet (B32.1, `ea2024a050`, dono 10/11);
-/// com `PH2D_WET_MISTURA=km` no mesmo binário volta o `0xec88…4f2f` de antes, ao byte.
+/// com `PH2D_WET_MISTURA=km` no mesmo binário volta o `0xec88…4f2f` de antes, ao byte. Rodada 4 (13/11): as seis
+/// regravadas pelo papel em duas leituras do Wet (B33.1, `c05adf2cca`), que `5618e94ace` devolveu à tabela de fábrica;
+/// com a 2.ª leitura desligada nessa tabela, no mesmo binário, voltam as de antes ao byte (BUGS_painter #115).
 const HOJE: [(usize, u64); 6] = [
-    (0, 0x4282_f44d_b602_5076),
-    (1, 0x91c1_c72e_008a_7205),
-    (2, 0x91c1_c72e_008a_7205),
-    (3, 0x8885_c46f_88bb_3136),
-    (4, 0x91c1_c72e_008a_7205),
-    (6, 0xbfae_422b_c698_6abc),
+    (0, 0x372a_ff32_3615_eefb),
+    (1, 0x3780_d6d4_ead9_6fe1),
+    (2, 0x3780_d6d4_ead9_6fe1),
+    (3, 0xde36_ba68_abb5_17ff),
+    (4, 0x3780_d6d4_ead9_6fe1),
+    (6, 0xcd70_1308_9908_7d05),
 ];
 
 /// ⭐ **A SECÇÃO DESLIGADA É O TRAÇO DE HOJE AO BYTE** (o portão de identidade do prompt 41, nascido

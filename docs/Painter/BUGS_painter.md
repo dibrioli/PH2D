@@ -1238,6 +1238,17 @@ carimbo, o que só a escolha `None` revelou.
   com `leitura_dupla = true`. Com ela, as 15 «que voltavam com km» também andam (voltavam só por causa do defeito): a tabela CENAS
   inteira regravada pela lei Wet adotada (B32.1 `ea2024a050` + B33.1 `c05adf2cca` + as leis Wet da missão no intervalo). Alarmes de
   pincel por nome: NÃO corridos nesta rodada (prazo) — correr e regravar com `PH2D_PINCEIS_APROVA=1`.
+- **Rodada 4 (14/11, os 8 vermelhos da suíte 4):** DEFEITO — a porta do B31.2 nos quatro leitores da luz do Impasto
+  (`impasto_light` ×2, `impasto_luz_dobra`, `impasto_gpu/dobra`) decidia pelo meio da FERRAMENTA (`paint_media() == WetPaint`):
+  trocar para o Wet reacendia a tinta de Impasto já pousada (`traco_longe_nao_muda_a_borracha_e_fica_na_tela` 853 px,
+  `cada_passo_devolve_cor_relevo_e_imagem_do_mesmo_estado` «misto»). O Wet não cria relevo de Impasto (só o apaga), logo
+  esses leitores ficam truncados sempre; o linear fica na luz do Wet (`grao_no_filme`). Censo: Digital Image e Impasto Pen
+  Rotation voltam à lista do main (as saídas de `f11de56267` eram da lei da missão, já fora desses meios). Costura com Tiling:
+  a fixture leva `leitura_dupla = true` (sem ela não há 241 para costurar). Regravados pela lei B33.1 (`c05adf2cca` +
+  `5618e94ace`; com a 2.ª leitura desligada na tabela, no mesmo binário, os três voltam ao byte): `shape_color` (6),
+  `opcoes` (6), `o_po_do_aerografo`. Memória do Dabber: isolado 2 234 MiB (ci-test) = a tabela; o 2 359 da suíte é carga
+  (o rascunho do Real Oil é retido por operário do rayon) → tecto 2 477 com a tabela. **ABERTO:** reter um rascunho por gesto.
+  Alarmes de pincel por nome: verdes, sem regravar.
 
 ## Como adicionar um bug aqui
 

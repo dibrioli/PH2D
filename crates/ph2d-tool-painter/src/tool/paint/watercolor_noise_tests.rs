@@ -481,11 +481,13 @@ fn slot_paper_preset_tiles_seamlessly_under_tiling() {
     use ph2d_painter_brush::texture::{angle_basis, sample_tiled_rot, sample_tiled_rot_wrapped};
     let (pw, ph) = (100i64, 60i64);
     let tile = NoiseTile::new((pw as usize, ph as usize), [true, true]);
-    let raw = TextureSettings {
+    // The second read exists only in Wet Paint (`leitura_dupla`, BUGS_painter #115): the fixture is that paper.
+    let mut raw = TextureSettings {
         kind: TextureKind::PaperCold,
         size: [0.9, 1.3],
         ..Default::default()
     };
+    raw.lei.leitura_dupla = true;
     let snapped = snap_slot_size(raw, tile);
     let rot = angle_basis(0);
     let per = tile.slot_period();

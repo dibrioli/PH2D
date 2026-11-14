@@ -30,13 +30,15 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// 02/11 pela bisseção da linha PainterWatercolor, cada mudança num commit da lei nova: `776a9ff173` (dono 30/10,
 /// sai o Over Oil: S 4/8), `3eb13d38db` (K-M ligado de fábrica: as seis), `7a4bc540b7` (E4: bancada None) e
 /// `e8f35b5710` (E10, a parede LevelingOwnStroke sai — Bug #56: bancada None).
+/// Rodada 4 da integração 13/11: as seis regravadas pelo papel em duas leituras do Wet (B33.1, `c05adf2cca`, devolvido à
+/// tabela de fábrica por `5618e94ace`); sem a 2.ª leitura nessa tabela, no mesmo binário, voltam as de antes ao byte.
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0x4be5_bf10_fbce_2faf),
-    ("S", Some(4), 0x8bfb_b438_9466_63f5),
-    ("S", Some(8), 0x5cdb_a16f_ee13_2b96),
-    ("bancada", None, 0x4ddc_87e6_57ab_af1e),
-    ("bancada", Some(4), 0x5efd_b608_430e_d8aa),
-    ("bancada", Some(8), 0x919c_4bf2_4ee7_5379),
+    ("S", None, 0x5fcd_1548_b032_5708),
+    ("S", Some(4), 0x045a_487d_abee_a8d8),
+    ("S", Some(8), 0xb17b_48be_9d60_b4b5),
+    ("bancada", None, 0x7575_86c8_b497_ac1f),
+    ("bancada", Some(4), 0x1d50_c915_5677_dc47),
+    ("bancada", Some(8), 0xb846_e24d_d312_ad84),
 ];
 
 #[test]

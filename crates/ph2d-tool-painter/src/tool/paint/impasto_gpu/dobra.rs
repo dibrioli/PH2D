@@ -61,8 +61,7 @@ impl PainterTool {
             w: rw,
             h: rh,
         })?;
-        let rig = super::super::impasto_shade::Rig::new(&self.paint.impasto_rig)?
-            .com_realce_linear(self.paint_media() == crate::PaintMedia::WetPaint);
+        let rig = super::super::impasto_shade::Rig::new(&self.paint.impasto_rig)?;
         let realce_linear = rig.realce_linear();
         let lamps = rig.export_lamps();
         let lut = ph2d_painter_brush::material::SpecLut::get();

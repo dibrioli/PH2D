@@ -232,38 +232,46 @@ fn the_delta_history_costs_this_much_to_undo() {
     }
 }
 
-/// **O defeito do pen-down SEGUE ABERTO, e este é o número dele.**
+/// **O defeito do pen-down SEGUE ABERTO no Digital com Impasto, e este é o número dele.**
 ///
-/// Um gate, não uma medição impressa — no molde do
-/// `the_documented_hardening_is_still_there_and_this_is_its_number` (§13.10): quando a wave da captura
-/// por região chegar, é este teste que vira vermelho e diz que ela funcionou.
-///
-/// ⚠️ **O oráculo é a RAZÃO contra a CÓPIA DO CANVAS medida no mesmo instante**, e a primeira versão
-/// errou isso: ela comparava o pen-down a 1024² com o de 4096², que são dois instantes diferentes — sob
-/// a carga da suíte completa os dois flutuam de forma independente e o gate **flakou na 1ª rodada**.
-/// Um gate que flaka é pior que ausente. Medidos juntos, os dois números sobem e descem juntos, e a
-/// razão entre eles é exatamente a afirmação que interessa: **o pen-down É a cópia do canvas**.
+/// Quando a captura por região chegar a este caminho, é este teste que vira vermelho: apague-o e escreva
+/// o irmão que afirma o contrário. O oráculo é a RAZÃO contra a cópia do canvas no mesmo processo, cada
+/// lado o MÍNIMO de 5 amostras intercaladas QUENTES (`docs/DevOps/MEDIR_VELOCIDADE.md`). ⛔ A 1.ª versão
+/// comparava o 1.º pen-down com uma cópia FRIA (falhas de página da alocação de 16 MB): na integração de
+/// 13/11 leu 0,55 × 2,49 ms (0,22×) e parecia a cura; quentes, leram 0,83 × 0,79 ms (dev) e 1,33 × 0,87
+/// (smoke) — o pen-down continua do tamanho de uma cópia.
 #[test]
 fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
     const SIDE: u32 = 2048;
     let n = (SIDE as usize) * (SIDE as usize) * 4;
     let mut t = tool(SIDE);
-    let down = ms(&mut || {
-        t.on_canvas_pointer(cp([100.0, 300.0], PointerPhase::Down));
-    });
     let src: Vec<u8> = vec![7u8; n];
-    let mut dst = Vec::new();
-    let copy = ms(&mut || dst = src.clone());
-    std::hint::black_box(dst.len());
+    let (mut down, mut copy) = (f64::MAX, f64::MAX);
+    for k in 0..6 {
+        #[allow(clippy::cast_precision_loss)]
+        let y = 300.0 + (k as f32) * 40.0;
+        let d = ms(&mut || {
+            t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down));
+        });
+        t.on_canvas_pointer(cp([160.0, y], PointerPhase::Move));
+        t.on_canvas_pointer(cp([160.0, y], PointerPhase::Up));
+        let mut dst = Vec::new();
+        let c = ms(&mut || dst = src.clone());
+        std::hint::black_box(dst.len());
+        if k > 0 {
+            down = down.min(d);
+            copy = copy.min(c);
+        }
+    }
     let ratio = down / copy.max(f64::MIN_POSITIVE);
     println!(
         "[pen-down] {SIDE}: pen-down {down:.2} ms · copiar o canvas {copy:.2} ms · {ratio:.2}x"
     );
     assert!(
         ratio > 0.5,
-        "o pen-down ({down:.2} ms) deixou de ter a ordem de grandeza de uma copia do canvas \
-         ({copy:.2} ms) — se isto foi a wave da captura por REGIAO, apague este gate e escreva o irmao \
-         que afirma o contrario"
+        "o pen-down ({down:.2} ms) deixou de ter a ordem de grandeza de uma cópia do canvas \
+         ({copy:.2} ms) — se isto foi a captura por REGIÃO, apague este gate e escreva o irmão \
+         que afirma o contrário"
     );
 }
 

@@ -153,14 +153,17 @@ fn o_pigmento_mistura_como_tinta_no_digital() {
          diferença entre as duas leis.",
         espalhamento(sem)
     );
+    // B32.2 (decisão 7a, `docs/Painter/missao_4k/BACKLOG.md`): a lei do Pigment é a espectral do Wet, não o K–M
+    // de 3 canais (`55,111,202`, espalhamento 147). A espectral lê `144,181,205` (espalhamento 61, brilho 530 ×
+    // 603 do aditivo); a cor exacta pina-a `ph2d-painter-brush o_digital_com_pigment_mistura_pela_lei_do_wet`.
     assert!(
-        espalhamento(com) >= 100,
-        "com o Pigment a 1 a mistura tem de ser SATURADA (as absorvências somam), e leu {com:?} \
+        espalhamento(com) >= 45,
+        "com o Pigment a 1 a mistura tem de sair do CINZENTO (a lei subtractiva), e leu {com:?} \
          com espalhamento {} — a lei não chegou ao meio Digital",
         espalhamento(com)
     );
     assert!(
-        brilho(com) + 120 < brilho(sem),
+        brilho(com) + 50 < brilho(sem),
         "a mistura subtractiva tem de ser mais ESCURA que a aditiva: {com:?} contra {sem:?}"
     );
     // ⛔⛔ **A quarta metade é a que impede o knob de voltar a ser INALCANÇÁVEL, e ela tinha de
@@ -183,7 +186,7 @@ fn o_pigmento_mistura_como_tinta_no_impasto() {
     let sem = azul_sobre_amarelo(PaintMedia::Impasto, 0.0);
     let com = azul_sobre_amarelo(PaintMedia::Impasto, 1.0);
     assert!(
-        espalhamento(com) >= 100 && brilho(com) < brilho(sem),
+        espalhamento(com) >= 45 && brilho(com) + 50 < brilho(sem),
         "o Impasto lê a mesma porta de composite que o Digital: {com:?} contra {sem:?}"
     );
     assert!(

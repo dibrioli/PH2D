@@ -214,24 +214,22 @@ fn input_row(c: &mut CardCtx<'_>, ch: &Choices, st: Disparos, i: usize, y: f32) 
                 y,
             )
         }
-        1 => {
-            let (x0, w0) = (c.x, c.w);
-            let resto = m::FIELD_H + m::FIELD_GAP;
-            c.w = w0 - resto;
-            let a = marca(
-                c,
-                r.check,
-                "panel.widget_gallery.rive.input.boolean",
-                ch.on([Flag::InputBool0, Flag::InputBool1, Flag::InputBool2][i]),
-                y,
-            );
-            c.x = x0 + c.w + m::FIELD_GAP;
-            c.w = m::FIELD_H;
-            let b = c.row(&[menos], y);
-            c.x = x0;
-            c.w = w0;
-            a.max(b)
-        }
+        // A caixa e o «−» numa linha só: a caixa em moldura abre a faixa do nome para a linha inteira.
+        1 => c.row(
+            &[
+                ph2d_editor_core::panel::cards::ferramenta::caixa_em_celula(
+                    r.check,
+                    ph2d_editor_core::widget::key_mark::Rotulo::from(
+                        ph2d_editor_core::panel::TextKey::new(
+                            "panel.widget_gallery.rive.input.boolean",
+                        ),
+                    ),
+                    ch.on([Flag::InputBool0, Flag::InputBool1, Flag::InputBool2][i]),
+                ),
+                menos,
+            ],
+            y,
+        ),
         _ => {
             let rotulo = tr("panel.widget_gallery.rive.fired").replace("{n}", &st.0[i].to_string());
             c.row(

@@ -15,7 +15,7 @@ pub use campos::{
     swatch_in, swatch_strip, text_in,
 };
 pub(crate) use marca::pede as pede_marca;
-pub(super) use marca::{FAIXA as FAIXA_DA_MARCA, check_em};
+pub(super) use marca::{FAIXA as FAIXA_DA_MARCA, check_em, check_em_fila, pede_em_fila};
 
 use super::{CardCtx, Cell, Seg, Widget, censo, compacta};
 use crate::interaction::{HitIndex, WidgetStore};

@@ -193,6 +193,20 @@ fn colhe(
         }
         registos = host.registos_da_ultima_pintura();
     }
+    // ⭐ A marca mede-se pelo rect que o clique e o `rect_for` usam: o ÚLTIMO registo do id. A linha de
+    //   marcar em moldura (dono 13/11) regista também o NOME por cima como alvo do mesmo id
+    //   (`HitIndex::register_label`), e o nome tem a altura da letra, não a da linha.
+    let ultimo: std::collections::HashMap<_, usize> = registos
+        .iter()
+        .enumerate()
+        .map(|(i, (nid, _))| (*nid, i))
+        .collect();
+    let registos: Vec<_> = registos
+        .iter()
+        .enumerate()
+        .filter(|(i, (nid, _))| ultimo[nid] == *i)
+        .map(|(_, r)| *r)
+        .collect();
     for (nid, rect) in registos {
         // ⚠️ **As DUAS espécies de marca booleana**: o mesmo pintor serve `Checkbox` e `Toggle`
         //    ([`paint_boolean_mark`]), e medir só uma deixaria metade da população de fora.

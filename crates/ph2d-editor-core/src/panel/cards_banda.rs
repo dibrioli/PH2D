@@ -473,26 +473,26 @@ impl CardCtx<'_> {
 
     /// A largura natural de [`Self::marca_em_fila`]: a coluna da marca de animação é o vão seguinte.
     pub fn marca_em_fila_w(&mut self, nome: &str) -> f32 {
-        m::CHECK_BOX + m::CHECK_GAP + self.largura_do_texto(nome, m::VALUE_PX) + m::KEY_MARK_BOX
+        corpo::pede_em_fila(self.text_system, nome)
     }
 
-    /// A caixa T64, com o nome à direita e a linha inteira de alvo; o id continua o do `Toggle`.
+    /// A caixa em moldura numa linha da barra (o nome dentro, ao lado do ✓); o id continua o do `Toggle`.
     pub fn marca_em_fila(&mut self, id: NodeId, nome: &str, on: bool, x: f32, y: f32) {
         let w = self.marca_em_fila_w(nome);
-        corpo::check(
+        let valor = if on {
+            crate::widget::CheckboxValue::Checked
+        } else {
+            crate::widget::CheckboxValue::Unchecked
+        };
+        corpo::check_em_fila(
             self.scene,
             self.text_system,
             self.store,
             self.hit_index,
             self.ink,
-            x,
-            w,
-            y - m::FIELD_ROW_GAP,
-            corpo::Marca {
-                id,
-                label: Rotulo::vista_de(nome),
-                on,
-            },
+            Rect::new(x, y, w, m::FIELD_H),
+            (id, Rotulo::vista_de(nome)),
+            (valor, false),
         );
     }
 

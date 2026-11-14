@@ -76,6 +76,16 @@ impl HitIndex {
         crate::widget::card_censo::pintou_controlo(id, visible);
     }
 
+    /// Regista o NOME de um controlo como alvo do mesmo `id` (a linha de marcar em moldura: o clique
+    /// no nome também marca). O nome é texto, não um controlo: o censo do ritmo já o viu como rótulo
+    /// pelo pintor de texto, e contá-lo também como controlo lia-o desalinhado com a moldura dele.
+    /// Registe-o ANTES do controlo, para `rect_for` devolver o controlo.
+    pub fn register_label(&mut self, id: NodeId, rect: Rect) {
+        if let Some(visible) = self.clipped(rect) {
+            self.rects.push((id, visible));
+        }
+    }
+
     /// Regista `id` POR BAIXO do que se registou desde `marca` ([`Self::len`] antes): um contentor cuja
     /// altura só se sabe depois de pintar os filhos, medido no MESMO quadro, sem lhes tapar o clique.
     pub fn register_beneath(&mut self, marca: usize, id: NodeId, rect: Rect) {

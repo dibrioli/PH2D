@@ -205,7 +205,7 @@ def perfil(base, top=15):
     lentos = []
     for linha in open(base + ".log", errors="replace"):
         if linha.startswith("[quadro-lento]"):
-            q = dict(kv.split("=") for kv in linha.split()[1:])
+            q = dict(kv.split("=", 1) for kv in linha.split()[1:] if "=" in kv)
             fim = int(q["parede"]) - d
             lentos.append((fim - int(float(q["intervalo"]) * 1e6), fim, float(q["intervalo"])))
 
@@ -279,7 +279,7 @@ def lote(pasta):
         quadros, frames, ultimo = [], [], 0
         for linha in open(tag + ".log", errors="replace"):
             if linha.startswith("[quadro-lento]"):
-                q = dict(kv.split("=") for kv in linha.split()[1:])
+                q = dict(kv.split("=", 1) for kv in linha.split()[1:] if "=" in kv)
                 ultimo = int(q["parede"])
                 quadros.append((ultimo, float(q["intervalo"])))
             elif "composite media" in linha and ultimo:

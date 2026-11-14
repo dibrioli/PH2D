@@ -329,7 +329,7 @@ if [ "$1" = perf ]; then
   : > "$P/$TAG.marcas"
   env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$P/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=$PAINEL \
     PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=$LENTO PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" \
-    perf record -k CLOCK_MONOTONIC -F 997 -o "$P/$TAG.perf" -- "$BIN" > "$P/$TAG.log" 2>&1 &
+    perf record -k CLOCK_MONOTONIC -F 997 ${PERF_MMAP:+-m $PERF_MMAP} -o "$P/$TAG.perf" -- "$BIN" > "$P/$TAG.log" 2>&1 &
   PERF=$!
   APP=; WIN=
   for _ in $(seq 1 120); do

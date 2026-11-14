@@ -296,3 +296,72 @@ fn what_the_commit_half_is_made_of() {
         );
     }
 }
+
+/// **B44.6 — a janela do pen-up promovida a CONTAGEM** (sem relógio): o que a sonda de cima imprime
+/// ao lado do relógio vira lei. A 1024², pincel r=40, um traço reto e um diagonal de 200 e 600 px:
+/// a entrada de undo guarda uma janela CONFINADA (`Some`), que contém a pegada do traço (sub-guardar =
+/// desfazer deixa tinta) e não passa de `TECTO`× a área dela (guardar a tela = o pen-up de 512 ms que
+/// abriu esta sonda). Controlo do censo: a pegada deslocada para fora da janela TEM de reprovar.
+#[test]
+fn a_janela_do_pen_up_segue_a_pegada_do_traco() {
+    const LADO: u32 = 1024;
+    const R: f32 = 40.0;
+    // Medido 14/11: a janela passa da pegada no máximo um bloco de 64 por lado (320×128 para a pegada
+    // 280×80 do traço de 200 px; 320×348 para a diagonal 280×280).
+    const BLOCO: u32 = 64;
+    let contem = |w: &Region, (x0, y0, x1, y1): (u32, u32, u32, u32)| {
+        w.x <= x0 && w.y <= y0 && w.x + w.w >= x1 && w.y + w.h >= y1
+    };
+    for (span, diag) in [
+        (200.0f32, false),
+        (600.0, false),
+        (200.0, true),
+        (600.0, true),
+    ] {
+        let mut t = armed(LADO);
+        let y0 = 200.0;
+        let (_, win) = one_stroke(&mut t, y0, span, diag);
+        let w = win.unwrap_or_else(|| panic!("span {span} diag {diag}: janela não confinada"));
+        let dy = if diag { span } else { 0.0 };
+        let caixa = |v: f32| v.clamp(0.0, LADO as f32) as u32;
+        let pegada = (
+            caixa(60.0 - R),
+            caixa(y0 - R),
+            caixa((60.0 + span + R).ceil()),
+            caixa((y0 + dy + R).ceil()),
+        );
+        let area_p = f64::from((pegada.2 - pegada.0) * (pegada.3 - pegada.1));
+        let area_w = f64::from(w.w) * f64::from(w.h);
+        println!(
+            "[janela-gate] span {span:>4} diag {diag:<5} janela {}x{} @({},{}) pegada {:?} razão {:.2}",
+            w.w,
+            w.h,
+            w.x,
+            w.y,
+            pegada,
+            area_w / area_p
+        );
+        assert!(
+            contem(&w, pegada),
+            "span {span} diag {diag}: a janela {w:?} não contém a pegada {pegada:?}"
+        );
+        let alinhada = (
+            pegada.0.saturating_sub(BLOCO),
+            pegada.1.saturating_sub(BLOCO),
+            (pegada.2 + BLOCO).min(LADO),
+            (pegada.3 + BLOCO).min(LADO),
+        );
+        let dentro = |a: &Region, (x0, y0, x1, y1): (u32, u32, u32, u32)| {
+            a.x >= x0 && a.y >= y0 && a.x + a.w <= x1 && a.y + a.h <= y1
+        };
+        assert!(
+            dentro(&w, alinhada),
+            "span {span} diag {diag}: a janela {w:?} passa da pegada + {BLOCO} por lado {alinhada:?}"
+        );
+        let fora = (pegada.0 + w.w, pegada.1, pegada.2 + w.w, pegada.3);
+        assert!(
+            !contem(&w, fora),
+            "controlo do censo: a pegada deslocada ainda cabe (régua cega)"
+        );
+    }
+}

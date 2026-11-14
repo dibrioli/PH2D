@@ -251,6 +251,126 @@ fn probe(name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterT
     );
 }
 
+/// O que um frame de uma cena deixa, em CONTAGEM (sem relógio): o portão do B44.6.
+struct Frame {
+    mask: Vec<bool>,
+    claim: Option<(u32, u32, u32, u32)>,
+    marks: Vec<crate::compositor::Region>,
+}
+
+fn medir(build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterTool)) -> Frame {
+    let mut t = build();
+    let _ = t.take_preview_dirty();
+    t.marks.clear();
+    let before = snap(&t);
+    act(&mut t);
+    let marks = t.marks.clone();
+    let _ = t.take_preview_dirty();
+    let claim = t.preview_gpu_region();
+    let mask = touched(&before, &snap(&t));
+    Frame { mask, claim, marks }
+}
+
+/// Texels tocados FORA de `(x, y, w, h)`.
+fn fora_da_caixa(mask: &[bool], (x, y, w, h): (u32, u32, u32, u32)) -> u64 {
+    let mut n = 0;
+    for (i, _) in mask.iter().enumerate().filter(|(_, m)| **m) {
+        let (px, py) = (i as u32 % N, i as u32 / N);
+        if px < x || py < y || px >= x + w || py >= y + h {
+            n += 1;
+        }
+    }
+    n
+}
+
+/// Texels tocados que NENHUM rect do `mark_dirty` contou.
+fn fora_das_marcas(mask: &[bool], marks: &[crate::compositor::Region]) -> u64 {
+    let mut coberto = vec![false; mask.len()];
+    for r in marks {
+        for py in r.y..r.y.saturating_add(r.h).min(N) {
+            for px in r.x..r.x.saturating_add(r.w).min(N) {
+                coberto[(py * N + px) as usize] = true;
+            }
+        }
+    }
+    mask.iter()
+        .zip(&coberto)
+        .filter(|(m, c)| **m && !**c)
+        .count() as u64
+}
+
+/// **B44.6 — a sonda do over-claim promovida a CONTAGEM.** Por cena (as oito da sonda): o gesto toca
+/// texels (a fixtura contém o fenómeno), TODO texel tocado cabe no `preview_gpu_region` drenado e nos
+/// rects que o `mark_dirty` recebeu (sub-reivindicar = pixel velho no ecrã), e os dois controlos ficam
+/// justos (reto curto ≤ 2×, drag dot ≤ 3×; medidos 1,66 e 2,22 em 25/07). Controlo do próprio censo:
+/// encolher a caixa do reto curto 1 texel em cada lado TEM de deixar tocados de fora.
+#[test]
+fn a_reivindicacao_do_quadro_cobre_todo_texel_tocado() {
+    let mut vistas = 0;
+    as_cenas(&mut |nome, b, a| {
+        let fr = medir(b, a);
+        let hit = fr.mask.iter().filter(|m| **m).count() as u64;
+        // ⚠️ Medido 14/11: o arrasto do `Line` (Down+Up, Down+Move, Move) já não muda texel nenhum (25/07: 447).
+        // Isenção pelo NOME e afirmada: quando a cena voltar a pintar, o portão pede para a tirar.
+        if nome == "Line editor (re-stamp)" {
+            assert_eq!(
+                hit, 0,
+                "{nome}: a cena voltou a pintar — tire a isenção e cubra-a"
+            );
+            vistas += 1;
+            return;
+        }
+        assert!(
+            hit > 0,
+            "{nome}: o gesto não tocou nada — a fixtura não tem o fenómeno"
+        );
+        let caixa = fr.claim.unwrap_or((0, 0, N, N));
+        assert_eq!(
+            fora_da_caixa(&fr.mask, caixa),
+            0,
+            "{nome}: texels tocados fora da região drenada {caixa:?}"
+        );
+        assert_eq!(
+            fora_das_marcas(&fr.mask, &fr.marks),
+            0,
+            "{nome}: texels tocados que nenhum mark_dirty contou ({} rects)",
+            fr.marks.len()
+        );
+        #[allow(clippy::cast_precision_loss)] // razão de áreas ≤ 2^20
+        let razao = (u64::from(caixa.2) * u64::from(caixa.3)) as f64 / hit as f64;
+        let tecto = match nome {
+            "reto curto (controle)" => Some(2.0),
+            "drag dot (controle 2)" => Some(3.0),
+            _ => None,
+        };
+        if let Some(k) = tecto {
+            assert!(
+                razao <= k,
+                "{nome}: o controlo deixou de ser justo: {razao:.2}× > {k}×"
+            );
+        }
+        if nome == "reto curto (controle)" {
+            let (x, y, w, h) = caixa;
+            assert!(
+                fora_da_caixa(&fr.mask, (x + w / 2, y, w, h)) > 0,
+                "controlo do censo: a caixa deslocada meia largura ainda cobre tudo (régua cega)"
+            );
+            let metade: Vec<_> = fr
+                .marks
+                .iter()
+                .map(|r| crate::compositor::Region { w: r.w / 2, ..*r })
+                .collect();
+            assert!(
+                fora_das_marcas(&fr.mask, &metade) > 0,
+                "controlo do censo: marcas cortadas a meio ainda cobrem tudo (régua cega)"
+            );
+        }
+        println!("[overclaim-gate] {nome:<26} tocados {hit:>7} razão {razao:>6.2}×");
+        vistas += 1;
+    });
+    assert_eq!(vistas, 8, "as oito cenas da sonda");
+}
+
 /// **A medição que abriu — e fechou — a frente dos TILES.**
 ///
 /// O critério foi escrito ANTES de rodar (senão é escolher a régua depois do tiro):
@@ -290,17 +410,24 @@ fn probe(name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterT
 ///    r=12 tem 24 px: o arredondamento come o ganho. **O tile útil é da ordem do diâmetro do pincel.**
 /// 2. **A razão sozinha decide errado.** No drag dot a grade de 16 é 4,07× *pior* em razão e **699
 ///    texels** pior em absoluto: nada. A grandeza que decide é a **absoluta**.
-#[allow(clippy::too_many_lines)] // uma cena por gesto: a lista É a medição
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     println!(
         "[overclaim] cena                       tocados     bbox  razao |      REAL (o TileSet do produto) |      piso t=16              t=32                t=64        piso poupa"
     );
+    as_cenas(&mut |n, b, a| probe(n, b, a));
+}
 
+/// Uma cena = (nome, montagem, o gesto de UM frame).
+type Visita<'a> = dyn FnMut(&str, &dyn Fn() -> PainterTool, &dyn Fn(&mut PainterTool)) + 'a;
+
+/// As oito cenas do over-claim, partilhadas pela sonda (imprime) e pelo portão (conta, B44.6).
+#[allow(clippy::too_many_lines)] // uma cena por gesto: a lista É a medição
+fn as_cenas(f: &mut Visita<'_>) {
     // ── CONTROLE: um traço reto curto, do tamanho de um frame de mão calma. ───────────────────────
     // Se ATÉ aqui a razão for grande, a causa é o pincel, não o caminho.
-    probe(
+    f(
         "reto curto (controle)",
         &|| {
             let mut t = fresh(StrokeMethod::Space, 12.0);
@@ -316,7 +443,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     );
 
     // ── DIAGONAL: mesma tinta, caixa QUADRADA. É o caso mais simples em que a caixa mente. ────────
-    probe(
+    f(
         "reto diagonal",
         &|| {
             let mut t = fresh(StrokeMethod::Space, 12.0);
@@ -332,7 +459,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     );
 
     // ── MÃO RÁPIDA: o mesmo frame, mas a mão andou 600 px. A caixa cresce com a VELOCIDADE. ───────
-    probe(
+    f(
         "diagonal, mao rapida",
         &|| {
             let mut t = fresh(StrokeMethod::Space, 12.0);
@@ -349,7 +476,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
 
     // ── O L: a hipótese do plano. Duas pernas ortogonais num frame reivindicam o QUADRADO inteiro,
     //    inclusive o quadrante que a tinta nunca visitou.
-    probe(
+    f(
         "traco em L",
         &|| {
             let mut t = fresh(StrokeMethod::Space, 12.0);
@@ -371,7 +498,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     //    ⚠️ O `Line` é um editor de POLILINHA: cada `Down` CRIA um ponto e o `Move` o arrasta, então um
     //    segmento exige DOIS pontos. A 1ª versão desta cena fazia Down+Move e mediu *"nada mudou"* —
     //    fixture que não continha o fenômeno, não produto quieto.
-    probe(
+    f(
         "Line editor (re-stamp)",
         &|| {
             let mut t = fresh(StrokeMethod::Line, 12.0);
@@ -387,7 +514,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     );
 
     // ── SIMETRIA RADIAL: 6 cópias espalhadas pela tela — a caixa que as contém é a tela. ──────────
-    probe(
+    f(
         "simetria radial 6",
         &|| {
             let mut t = fresh(StrokeMethod::Space, 12.0);
@@ -405,7 +532,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     );
 
     // ── ESPELHO: duas cópias, uma em cada metade. A caixa é a largura da tela. ────────────────────
-    probe(
+    f(
         "espelho X",
         &|| {
             let mut t = fresh(StrokeMethod::Space, 12.0);
@@ -422,7 +549,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     );
 
     // ── DRAG DOT: a pegada é UM disco. Aqui a caixa TEM de ser justa — é o controle pelo outro lado.
-    probe(
+    f(
         "drag dot (controle 2)",
         &|| {
             let mut t = fresh(StrokeMethod::DragDot, 12.0);

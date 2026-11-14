@@ -31,9 +31,9 @@ fn linha_morta_nao_aparece_com_o_pai_a_zero() {
                 liga(&mut b, p, true);
             }
         }
-        assert!(row.visivel(&b), "{filha}: todos os pais ligados ⇒ visível");
+        assert!(row.visivel(&b), "{filha}: todos os pais ligados => visível");
         liga(&mut b, pai, false);
-        assert!(!row.visivel(&b), "{filha}: {pai:?} desligado ⇒ escondida");
+        assert!(!row.visivel(&b), "{filha}: {pai:?} desligado => escondida");
     }
 }
 

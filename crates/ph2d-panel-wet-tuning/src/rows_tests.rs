@@ -334,8 +334,8 @@ fn todas_as_cerdas_moram_no_shape() {
             b.wet_knobs.cerdas(b).iter().any(|l| l.chave == filha)
         };
         b.wet_knobs.knobs[i] = 0.0;
-        assert!(!a_mostra(&b), "{filha}: {pai} a zero ⇒ escondida");
+        assert!(!a_mostra(&b), "{filha}: {pai} a zero => escondida");
         b.wet_knobs.knobs[i] = KNOB_DEFS[i].max.min(1.0);
-        assert!(a_mostra(&b), "{filha}: {pai} ligado ⇒ à vista");
+        assert!(a_mostra(&b), "{filha}: {pai} ligado => à vista");
     }
 }

@@ -27,6 +27,8 @@
 // (`enabled()`), o que é a condição do «fim da linha» desta wave — a shell
 // só os chama.
 // ─────────────────────────────────────────────────────────────────────────
+/// O arranque liga as páginas grandes do malloc (B43.7): re-`exec` com `glibc.malloc.hugetlb=1`.
+pub mod arranque;
 pub mod canvas_down;
 pub mod composite_smoke;
 pub mod impasto_smoke;

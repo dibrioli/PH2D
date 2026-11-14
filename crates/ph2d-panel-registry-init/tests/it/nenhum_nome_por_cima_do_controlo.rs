@@ -196,6 +196,12 @@ const FORA: &[(&str, &str, &str)] = &[
          composto só para contar uma capacidade (`quantas_entradas_tem_cada_painel`)",
     ),
     (
+        "timeline",
+        "timeline.tab_keys",
+        "as abas de vista da Timeline (Keys · Containers · Arrange): navegam entre vistas, não escolhem um \
+         valor, como as do vector; vistas a toda a largura na árvore combinada de 13/11",
+    ),
+    (
         "widget_gallery",
         "insp_sample_tab_a",
         "a amostra do componente Tabs na galeria: é navegação, como a de cima",

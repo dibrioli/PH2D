@@ -1153,7 +1153,8 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    catraca sobre as quatro linhas juntas; a catraca só aperta.
     // ⬆️ `13 → 14` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21);
     //    os repor por knob e o «×» são os de antes.
-    ("wet_tuning", 14),
+    // ⬇️ `14 → 13` na integração de 13/11: MEDIDO `13` pela catraca na árvore combinada; a catraca só aperta.
+    ("wet_tuning", 13),
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.
@@ -2293,7 +2294,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 718 → 1 838` em 2026-11-10, ORDEM DO DONO («(b) deixar como está, mais comprido»): o Color Mixing e o
     //    Mixing viraram UM cartão, Paint Mixing, com um Pigment só; nasce ABERTO porque dobrado escondia o Pigment
     //    em todos os meios. Recusadas pelo dono: esconder Sample e números com Off (a) e nascer dobrado (c).
-    ("painter_layers", 1838.0),
+    // ⬆️ `1 838 → 1 880` e physics `1 037 → 1 055` na integração de 13/11, ORDEM DO DONO 13/11 (a caixa de marcar numa
+    //    MOLDURA à Godot, GEF `249611a86a`): o nome da caixa sobe à faixa dos rótulos, como o de qualquer campo, e
+    //    cada linha de marcar à vista ao abrir paga essa faixa. Nenhuma secção nasceu aberta. MEDIDO pelo gate.
+    ("painter_layers", 1880.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):
@@ -2368,7 +2372,8 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    dobrado (`cards::prepare`, com o resumo «Bodies: n»). Medido pelo gate.
     // ⬇️ `1 236 → 1 064` em 2026-11-07 (GEF02 onda 8): a matriz das camadas saiu para o modal central
     //    (as ondas 5–7 tinham-na levado a `1 636`); no cartão ficam o resumo e «Edit matrix…». Medido pelo gate.
-    ("physics", 1037.0), // GEF02 fecho 08/11: a matriz foi para a aba Collision Layers
+    // ⬆️ `1 037 → 1 055` em 13/11: a caixa em moldura (ver a nota do painter_layers). GEF02 fecho 08/11: a matriz foi para a aba Collision Layers.
+    ("physics", 1055.0),
     // ⬇️ `1209 → 1207` em 2026-09-24 (o mixer no molde da Física): os quatro liga/desliga do master
     //    viraram caixas de marcar (passo da casa em vez de `MUTE_H + gap`), o *Play Test* passou pela
     //    `caixa_do_botao` (`ROW_H_PX`), e saiu o `+ Spacing::Sm` escrito à mão depois do *Limiter*.

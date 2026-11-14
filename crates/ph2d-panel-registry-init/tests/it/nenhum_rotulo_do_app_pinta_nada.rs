@@ -260,18 +260,12 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    cortado: *é isso que a régua existe para mostrar*. Nas outras três larguras ele cabe.
     //    ⚠️ Curar esta linha seria apagar a medição que o painel foi construído para fazer.
     ("widget_lab", "Geometry Offset"),
+    // ⬇️ `8 → 1` na integração de 13/11: MEDIDO — sete dos oito voltaram a caber (o Tuning da rodada).
     // ⬆️ **Os oito rótulos de cartão do `wet_tuning` (12/11b)** — a coluna do rótulo do cartão mede
     //    `122 px` nos três degraus e, desde `e6bbb754be` (GEF02 8.6b, ordem do dono 10/11), o nome que
     //    não cabe fica numa linha com reticências, antes da marca de animação, em vez de quebrar em
     //    duas (maquete F). Todos têm balão; encurtar um é decisão de vocabulário do dono.
-    ("wet_tuning", "Pressure change length"),
-    ("wet_tuning", "Saturation jitter per bristle"),
-    ("wet_tuning", "Lightness jitter per bristle"),
-    ("wet_tuning", "Light touch lifts bristles"),
-    ("wet_tuning", "Smooth wash body (off · on)"),
     ("wet_tuning", "Texture follows brush size"),
-    ("wet_tuning", "Texture size reference (px)"),
-    ("wet_tuning", "Bloom pushes paint away"),
     // ✅ **As três LEGENDAS de prosa saíram em 19/09** — a do cabeçalho da galeria (`290,76` px numa
     //    coluna de `268`) e as duas da bancada (`399,79` e `386,58` em `384`). Elas eram elididas a
     //    UMA linha; hoje QUEBRAM, que é a mesma cura das duas frases de estado vazio do produto em
@@ -714,7 +708,8 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // `["Glaze layering (K-M)"]`
     // ⬇️ `2 → 1` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `1` — o
     //    «Pigment mixing (K-M)» saiu do Tuning para o cartão Wet Paint (`56993f6f54`, 30/10).
-    ("wet_tuning", 4),
+    // ⬇️ `4 → 1` (wet_tuning) na integração de 13/11: MEDIDO `1` pela catraca na árvore combinada.
+    ("wet_tuning", 1),
     ("widget_gallery", 10),
     // ⬆️ `0 → 4` (wet_tuning) e `0 → 10` (widget_gallery) na integração de 12/11b, e NÃO é a
     //    régua a mexer: o rótulo de um cartão que não cabe passou a ficar numa linha com
@@ -792,7 +787,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⚠️ `4 → 3` em 2026-10-27: medido `3` no fecho do Óleo Real W3 (ver a nota da irmã).
     // ⬇️ `3 → 0` em 2026-11-03: o nome QUEBRA em vez de elidir (ver a nota da irmã).
     // ⬆️ `0 → 4` e `0 → 10` em 12/11b: as mesmas catorze palavras da irmã, agora com reticências.
-    ("wet_tuning", 4),
+    // ⬇️ `4 → 1` (wet_tuning) na integração de 13/11: MEDIDO `1` pela catraca na árvore combinada.
+    ("wet_tuning", 1),
     ("widget_gallery", 10),
 ];
 

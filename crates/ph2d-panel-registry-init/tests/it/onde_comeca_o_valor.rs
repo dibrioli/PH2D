@@ -279,11 +279,12 @@ fn diag_tropecos() {
 const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[
     (
         "timeline",
-        2,
+        3,
         "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor; e o Time \
          (`time_num`) subiu à faixa do título com o tocar (TimelinePrincipal onda 1b, molde Rive \
          aprovado pelo dono 09/11): barra em FLUXO, onde na coluna estreita desta régua cada peça \
-         desce sozinha (y diferentes), como a do `flip_frames`",
+         desce sozinha (y diferentes), como a do `flip_frames`; `2 → 3` em 13/11: o fim do clipe \
+         entrou na barra (`clip_add`, `anim_dd`, dono 13/11) e mais uma peça do fluxo cai no troço",
     ),
     #[cfg(feature = "panel-flip-frames")]
     (
@@ -315,9 +316,10 @@ const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
     ),
     (
         "timeline",
-        3,
+        5,
         "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor; o Time \
-         (`time_num`) é a barra em fluxo do título: ver `COLUNAS_A_MAIS_DECLARADAS`",
+         (`time_num`) é a barra em fluxo do título, e desde 13/11 o fim do clipe também (`clip_add`, \
+         `anim_dd`; `3 → 5` medido na árvore combinada): ver `COLUNAS_A_MAIS_DECLARADAS`",
     ),
     (
         "widget_gallery",

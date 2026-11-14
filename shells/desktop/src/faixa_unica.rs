@@ -50,7 +50,7 @@ impl App {
         let acao = wb::press(h, lx, ly, m.to_logical(tamanho(w)), Self::timestamp_ns());
         if std::env::var_os("PH2D_FAIXA_LOG").is_some() {
             eprintln!(
-                "[faixa única] down ({x:.0}, {y:.0}) alvo {:?} → {acao:?}",
+                "[faixa única] down ({x:.0}, {y:.0}) alvo {:?} -> {acao:?}",
                 h.chrome_hit(x, y)
             );
         }

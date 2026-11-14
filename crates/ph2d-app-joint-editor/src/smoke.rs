@@ -1,7 +1,7 @@
 //! `PH2D_JOINT_EDITOR_SMOKE=<n>` — a aba aberta sobre a cena dos gabaritos (`PH2D_PHYSICS_SMOKE=123`):
 //! `1` no «Car 1» montado · `2` num carro por fazer, com três peças soltas («Kart …») na Hierarchy para
 //! arrastar · `3` na «Bridge 1» · `4` na «Door 1» · `5` o carro por fazer com a lista Template aberta (a foto
-//! da maquete B1). É a cena 123 que monta o mundo; aqui só se abre a aba,
+//! da maquete B1) · `6` o «Car 1» com o painel alargado pela divisória. É a cena 123 que monta o mundo; aqui só se abre a aba,
 //! uma vez, no primeiro quadro em que o «Car 1» existe.
 
 use ph2d_core::Vec2;
@@ -13,7 +13,7 @@ use crate::surface::JointEditorTab;
 
 pub const ENV: &str = "PH2D_JOINT_EDITOR_SMOKE";
 /// O maior nível que [`arm`] responde (conta-se no `match` abaixo).
-pub const MAX_LEVEL: u32 = 5;
+pub const MAX_LEVEL: u32 = 6;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: ENV,
@@ -99,6 +99,10 @@ pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) {
     tab.open();
     let on = match n {
         1 => car,
+        6 => {
+            tab.doc.set_panel_width(f32::MAX);
+            car
+        }
         2 => {
             spawn_kart(sim);
             0

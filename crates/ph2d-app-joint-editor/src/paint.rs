@@ -27,11 +27,10 @@ impl Layout {
     /// As montagens à esquerda, o painel da largura do Inspector à direita, o palco com o resto; os três a
     /// toda a altura.
     #[must_use]
-    pub fn of(area: Rect) -> Self {
+    pub fn of(area: Rect, pw: f32) -> Self {
         let g = m::CARD_GAP;
         let h = (area.h - g * 2.0).max(0.0);
         let list = Rect::new(area.x + g, area.y + g, w::LIST_W, h);
-        let pw = ph2d_tokens::INSPECTOR_W_PX;
         let panel = Rect::new(area.x + area.w - g - pw, list.y, pw, h);
         let x = list.x + list.w + g;
         let stage = Rect::new(x, list.y, (panel.x - g - x).max(0.0), h);
@@ -58,9 +57,10 @@ pub fn paint(
         ink,
         theme,
     };
-    let l = Layout::of(area);
+    let l = Layout::of(area, ui.doc.panel_width());
     ui.doc.panel = l.panel;
     ui.doc.stage = l.stage;
+    paint_split(&mut ui, l.panel);
     for r in [l.list, l.stage] {
         fill_rounded_rect(ui.scene, r, m::CARD_RADIUS, ui.c(ColorToken::KanbanCard));
     }
@@ -70,6 +70,27 @@ pub fn paint(
     if let Some(menu) = ui.doc.menu {
         paint_menu(&mut ui, at[menu as usize], menu);
     }
+}
+
+/// A divisória à esquerda do painel (a do Inspector): o vão inteiro é a pega, a barrinha ao meio acende.
+fn paint_split(ui: &mut Ui<'_>, panel: Rect) {
+    let g = m::CARD_GAP;
+    let pega = Rect::new(panel.x - g, panel.y, g, panel.h);
+    let hot = ui.doc.hover == Some(Hit::Split) || ui.doc.grab.is_some();
+    let (bw, bh) = (m::FIELD_BORDER * 2.0, m::FIELD_H);
+    let bar = Rect::new(
+        pega.x + (g - bw) * 0.5,
+        pega.y + (pega.h - bh) * 0.5,
+        bw,
+        bh,
+    );
+    let tone = if hot {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text3
+    };
+    fill_rounded_rect(ui.scene, bar, bw * 0.5, ui.c(tone));
+    ui.hit(pega, Hit::Split, tr("joint_editor.resize_panel"));
 }
 
 fn paint_list(ui: &mut Ui<'_>, r: Rect) {
@@ -227,7 +248,9 @@ fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
     let y0 = (b.y + b.h + m::SEG_PAD)
         .min(area.y + area.h - h)
         .max(area.y);
-    let r = Rect::new(b.x, y0, b.w, h);
+    // A lista abre na largura do cartão (Joint e Template partilham a fila; a miniatura e o nome cabem).
+    let p = ui.doc.panel;
+    let r = Rect::new(p.x + m::CARD_PAD_X, y0, p.w - m::CARD_PAD_X * 2.0, h);
     let shade = ui.c(ColorToken::KanbanListShadow);
     ph2d_editor_core::paint_flight::shadow(ui.scene, r, m::CARD_RADIUS, shade, m::LIST_SHADOW_FAR);
     fill_rounded_rect(

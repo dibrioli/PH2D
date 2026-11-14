@@ -26,6 +26,7 @@ struct Mesa {
     sim: SimWorld,
     hero: HeroScreen,
     ts: TextSystem,
+    area: Rect,
 }
 
 impl Mesa {
@@ -35,6 +36,7 @@ impl Mesa {
             sim: SimWorld::new(),
             hero: HeroScreen::new(NodeId(1)),
             ts: TextSystem::without_system_fonts(),
+            area: AREA,
         };
         smoke::spawn_kart(&mut m.sim);
         install(&mut m.hero);
@@ -48,7 +50,7 @@ impl Mesa {
         self.hero.documents.follow_surfaces();
         let mut scene = VectorScene::new();
         if let Some((f, id)) = self.hero.documents.active_surface_mut() {
-            f.paint(id, AREA, &mut scene, &mut self.ts, &Theme::default());
+            f.paint(id, self.area, &mut scene, &mut self.ts, &Theme::default());
         }
     }
 
@@ -100,19 +102,52 @@ impl Mesa {
             .hits_for(h)
             .unwrap_or_else(|| panic!("{h:?} não pintado"));
         let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        for kind in [PointerKind::Down, PointerKind::Up] {
-            let ts = &mut self.ts;
-            if let Some((f, id)) = self.hero.documents.active_surface_mut() {
-                let input = PointerInput {
-                    text: ts,
-                    mods: Modifiers::default(),
-                    now_ns: 0,
-                    primary_held: kind == PointerKind::Down,
-                };
-                f.pointer(id, input, kind, PointerButton::Primary, x, y);
-            }
+        self.ptr(PointerKind::Down, x, y);
+        self.ptr(PointerKind::Up, x, y);
+    }
+
+    /// Um evento do rato pela porta da aba, e o quadro a seguir.
+    fn ptr(&mut self, kind: PointerKind, x: f32, y: f32) {
+        let ts = &mut self.ts;
+        if let Some((f, id)) = self.hero.documents.active_surface_mut() {
+            let input = PointerInput {
+                text: ts,
+                mods: Modifiers::default(),
+                now_ns: 0,
+                primary_held: kind != PointerKind::Up,
+            };
+            f.pointer(id, input, kind, PointerButton::Primary, x, y);
         }
         self.frame();
+    }
+
+    /// Prende o centro de `h`, arrasta `(dx, dy)` e solta.
+    fn drag(&mut self, h: &Hit, dx: f32, dy: f32) {
+        let r = self
+            .tab()
+            .doc
+            .hits_for(h)
+            .unwrap_or_else(|| panic!("{h:?}"));
+        let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        self.ptr(PointerKind::Down, x, y);
+        self.ptr(PointerKind::Move, x + dx, y + dy);
+        self.ptr(PointerKind::Up, x + dx, y + dy);
+    }
+
+    fn rect(&self, h: &Hit) -> Rect {
+        self.tab()
+            .doc
+            .hits_for(h)
+            .unwrap_or_else(|| panic!("{h:?} pintado"))
+    }
+
+    /// O carro do kart montado inteiro.
+    fn carro() -> Self {
+        let mut m = Self::aberta();
+        m.drop("Kart Body", 0);
+        m.drop("Kart Rear Wheel", 1);
+        m.drop("Kart Front Wheel", 2);
+        m
     }
 
     fn joints(&mut self) -> Vec<PhysicsJoint> {
@@ -247,8 +282,8 @@ fn o_painel_e_uma_coluna_a_direita_e_os_campos_ocupam_meia_largura() {
         "o painel ({p:?}) à direita do palco ({st:?})"
     );
     assert!(
-        ok(p.w, ph2d_tokens::INSPECTOR_W_PX),
-        "a largura do Inspector: {p:?}"
+        ok(p.w, m.tab().doc.panel_width()) && p.w >= ph2d_tokens::INSPECTOR_W_PX,
+        "a largura escolhida, nunca menos que a do Inspector: {p:?}"
     );
     assert!(
         ok(p.h, full) && ok(st.h, full) && p.y == st.y,
@@ -286,4 +321,134 @@ impl Mesa {
             .find_mut::<JointEditorTab>()
             .expect("a família instalada")
     }
+}
+
+/// ⭐ **O idioma do Inspector** (dono 13/11, W3d): cada caixa tem o rótulo pequeno por cima (o vão entre o
+/// título do cartão e a 1.ª caixa leva-o), Joint e Template na MESMA fila, os números aos pares e o resumo
+/// com «Inspector» numa fila só.
+#[test]
+fn cada_caixa_tem_o_rotulo_por_cima_e_joint_e_template_partilham_a_fila() {
+    use ph2d_app_joint_editor::doc::{Field, Menu};
+    use ph2d_card_stack::metrics as cm;
+    let m = Mesa::carro();
+    let (k, t) = (
+        m.rect(&Hit::OpenMenu(Menu::Kind)),
+        m.rect(&Hit::OpenMenu(Menu::Template)),
+    );
+    assert!(
+        k.y == t.y && k.x + k.w < t.x,
+        "Joint {k:?} e Template {t:?} lado a lado"
+    );
+    let (s, d) = (
+        m.rect(&Hit::Field(Field::Stiffness)),
+        m.rect(&Hit::Field(Field::Damping)),
+    );
+    assert!(
+        s.y == d.y && s.x + s.w < d.x,
+        "Stiffness e Damping na mesma fila"
+    );
+    let head = m.rect(&Hit::Fold("joint_editor.group.suspension"));
+    assert!(
+        s.y - (head.y + head.h) >= cm::LABEL_PX + cm::LABEL_BOTTOM,
+        "o rótulo cabe entre o título {head:?} e a caixa {s:?}"
+    );
+    let assembly = m.rect(&Hit::Fold("joint_editor.group.assembly"));
+    assert!(
+        k.y - (assembly.y + assembly.h) >= cm::LABEL_PX,
+        "o rótulo Joint por cima"
+    );
+    let i = m.rect(&Hit::Inspect);
+    let p = m.tab().doc.panel;
+    assert!(
+        i.w < p.w * 0.5 && i.y > k.y,
+        "o botão é compacto, à direita do resumo: {i:?}"
+    );
+}
+
+/// ⭐ **A divisória muda a largura** dentro de [a do Inspector, metade da aba]; o palco cede.
+#[test]
+fn arrastar_a_divisoria_muda_a_largura_dentro_dos_limites() {
+    let mut m = Mesa::carro();
+    let (lo, hi) = m.tab().doc.panel_bounds();
+    let w0 = m.tab().doc.panel.w;
+    assert!((w0 - lo).abs() < 0.5, "nasce com a do Inspector");
+    m.drag(&Hit::Split, -120.0, 0.0);
+    let w1 = m.tab().doc.panel.w;
+    assert!((w1 - (w0 + 120.0)).abs() < 0.5, "{w0} → {w1}");
+    let st = m.tab().doc.stage;
+    assert!(st.x + st.w <= m.tab().doc.panel.x, "o palco cede");
+    m.drag(&Hit::Split, -5000.0, 0.0);
+    assert!(
+        (m.tab().doc.panel.w - hi).abs() < 0.5,
+        "presa a metade da aba"
+    );
+    m.drag(&Hit::Split, 5000.0, 0.0);
+    assert!(
+        (m.tab().doc.panel.w - lo).abs() < 0.5,
+        "presa à do Inspector"
+    );
+}
+
+/// ⭐ **A coluna que não cabe rola** pela roda e pela barra arrastada, e o que passa da borda não se clica
+/// (recortado no painel). Recolher um cartão esconde os campos dele.
+#[test]
+fn a_roda_e_a_barra_rolam_e_recolher_esconde_os_campos() {
+    use ph2d_app_joint_editor::doc::Field;
+    let mut m = Mesa::carro();
+    m.area = Rect { h: 420.0, ..AREA };
+    m.frame();
+    let p = m.tab().doc.panel;
+    let inside = |m: &Mesa| {
+        m.tab()
+            .doc
+            .hits_for(&Hit::Field(Field::Wheelbase))
+            .is_none_or(|r| r.y >= p.y && r.y + r.h <= p.y + p.h)
+    };
+    assert!(
+        m.tab().doc.hits_for(&Hit::Bar).is_some(),
+        "não cabe: há barra"
+    );
+    assert!(inside(&m));
+    let (x, y) = (p.x + p.w * 0.5, p.y + p.h * 0.5);
+    if let Some((f, id)) = m.hero.documents.active_surface_mut() {
+        assert!(f.wheel(id, x, y, -60.0, false), "a roda rola");
+    }
+    m.frame();
+    let s1 = m.tab().doc.scroll();
+    assert!(s1 > 0.0 && inside(&m));
+    m.drag(&Hit::Bar, 0.0, 40.0);
+    assert!(
+        m.tab().doc.scroll() > s1,
+        "a barra arrastada rola: {s1} → {}",
+        m.tab().doc.scroll()
+    );
+    m.area = AREA;
+    m.frame();
+    assert!(
+        m.tab()
+            .doc
+            .hits_for(&Hit::Field(Field::Stiffness))
+            .is_some()
+    );
+    m.click(&Hit::Fold("joint_editor.group.suspension"));
+    assert!(m.tab().doc.is_folded("joint_editor.group.suspension"));
+    for f in [
+        Field::Stiffness,
+        Field::Damping,
+        Field::LimitMin,
+        Field::LimitMax,
+    ] {
+        assert!(
+            m.tab().doc.hits_for(&Hit::Field(f)).is_none(),
+            "{f:?} recolhido"
+        );
+    }
+    m.click(&Hit::Fold("joint_editor.group.suspension"));
+    assert!(
+        m.tab()
+            .doc
+            .hits_for(&Hit::Field(Field::Stiffness))
+            .is_some(),
+        "reabre"
+    );
 }

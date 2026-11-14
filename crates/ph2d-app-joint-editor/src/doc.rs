@@ -100,6 +100,19 @@ pub enum Hit {
     Handle(Handle),
     /// «Open in Inspector»: seleciona a junta.
     Inspect,
+    /// O título de um cartão do painel (a chave dele): recolhe ou abre.
+    Fold(&'static str),
+    /// A divisória à esquerda do painel: arrastar muda a largura.
+    Split,
+    /// A barra de rolagem do painel: arrastar rola.
+    Bar,
+}
+
+/// Um arrasto do painel em curso: a divisória ou a barra, com o ponto e o valor de partida.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Grab {
+    Split { x0: f32, w0: f32 },
+    Bar { y0: f32, s0: f32 },
 }
 
 /// O que a aba pede ao mundo.
@@ -184,6 +197,13 @@ pub struct JointEditorDoc {
     /// Quanto o painel está rolado, e o máximo (o que não cabe).
     pub(crate) scroll: f32,
     pub(crate) scroll_max: f32,
+    /// Quantos px rola cada px da barra arrastada (o conteúdo sobre a vista).
+    pub(crate) scroll_per_px: f32,
+    /// A largura do painel escolhida na divisória (`0` = a do Inspector).
+    pub(crate) panel_w: f32,
+    /// Os cartões recolhidos (a chave do título).
+    pub(crate) folded: Vec<&'static str>,
+    pub(crate) grab: Option<Grab>,
     /// Onde cada alça pintada mede o cursor.
     pub(crate) geo: Vec<(Handle, crate::paint_stage::Geo)>,
 }
@@ -213,6 +233,10 @@ impl Default for JointEditorDoc {
             stage: Rect::default(),
             scroll: 0.0,
             scroll_max: 0.0,
+            scroll_per_px: 1.0,
+            panel_w: 0.0,
+            folded: Vec::new(),
+            grab: None,
             geo: Vec::new(),
         }
     }

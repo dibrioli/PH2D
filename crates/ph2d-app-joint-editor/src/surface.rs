@@ -123,6 +123,12 @@ impl DocumentSurface for JointEditorTab {
         }
         Some(match self.doc.hit_at(x, y) {
             _ if self.doc.drag.is_some() => PointerLook::Grabbing,
+            _ if matches!(self.doc.grab, Some(crate::doc::Grab::Split { .. })) => {
+                PointerLook::ResizeEw
+            }
+            _ if self.doc.grab.is_some() => PointerLook::ResizeNs,
+            Some(Hit::Split) => PointerLook::ResizeEw,
+            Some(Hit::Bar) => PointerLook::ResizeNs,
             Some(Hit::Handle(_)) => PointerLook::Grab,
             Some(Hit::Field(_)) => PointerLook::Text,
             Some(Hit::OpenMenu(_)) if self.doc.menu.is_some() => PointerLook::Arrow,
@@ -174,7 +180,8 @@ impl DocumentSurface for JointEditorTab {
     }
 
     fn wants_frame(&self) -> bool {
-        self.open && (self.doc.drag.is_some() || self.doc.typing.is_some())
+        self.open
+            && (self.doc.drag.is_some() || self.doc.grab.is_some() || self.doc.typing.is_some())
     }
 
     fn wheel(&mut self, _id: u64, x: f32, y: f32, dy: f32, _shift: bool) -> bool {

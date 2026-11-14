@@ -214,7 +214,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-flip", 28_960),        // 28_393
     ("ph2d-app-game", 2_869), // 1_993 (12/11: as fotos e a mão do smoke saíram para `ph2d-game-smoke-fotos`); +776 (integ 13/11: `posse_do_jogo`, o registo e o `game_mouse` vieram da `ph2d-app-components`, que estava 29 acima do tecto)
     ("ph2d-app-input-map", 449), // 349 (InputMap R2a, 10/11: + `listen.rs`, a escuta do comando que saiu da shell)
-    ("ph2d-app-joint-editor", 4_049), // nasceu na JointEditor W3 (12/11), medido pelo `conta()`
+    ("ph2d-app-joint-editor", 4_434), // JointEditor W3 (12/11) + W3d (13/11: divisória, barra, recolher), pelo `conta()`
     ("ph2d-app-kanban", 32_175), // 31_545
     ("ph2d-app-light2d", 25_523), // 25_023
     ("ph2d-app-macros", 14_630), // 14_344

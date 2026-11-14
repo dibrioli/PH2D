@@ -177,9 +177,9 @@ impl Ui<'_> {
         }
     }
 
-    /// ⭐ O campo do cartão do app (`card_field`): a letra ou o ícone na caixa, na cor do rótulo; o valor (ou
-    /// o que se escreve, com o cursor) e a unidade apagada. `name` é o rótulo acessível com a unidade.
-    pub fn number(&mut self, b: Rect, glyph: Glyph<'_>, name: &str, unit: &str, f: Field) {
+    /// ⭐ O campo do cartão do app (`card_field`): a letra ou o ícone na caixa, na cor do rótulo, e o valor
+    /// (ou o que se escreve, com o cursor). A unidade mora no rótulo, como no Inspector; `name` é o acessível.
+    pub fn number(&mut self, b: Rect, glyph: Glyph<'_>, name: &str, f: Field) {
         let typing = self.doc.typing_shown(f);
         let hot = self.hot(&Hit::Field(f));
         paint_field_frame(self.scene, self.ink, b, hot, typing.is_some());
@@ -207,14 +207,10 @@ impl Ui<'_> {
             .unwrap_or_else(|| self.doc.value(f).map_or_else(String::new, format));
         let c = self.c(ColorToken::Text1);
         text(self.ts, self.scene, &shown, area, m::VALUE_PX, c);
-        let vw = self.ts.prefix_width(&shown, m::VALUE_PX).min(area.w);
         if typing.is_some() {
+            let vw = self.ts.prefix_width(&shown, m::VALUE_PX).min(area.w);
             let y = area.y + folga_do_texto(area.h, m::VALUE_PX);
             paint_field_caret(self.scene, self.ink, area.x + vw, y, m::VALUE_PX);
-        } else if !unit.is_empty() {
-            let x = area.x + vw + m::SEG_PAD * 2.0;
-            let u = Rect::new(x, b.y, (area.x + area.w - x).max(0.0), b.h);
-            text(self.ts, self.scene, unit, u, m::LABEL_PX, tint);
         }
         self.hit(b, Hit::Field(f), name);
     }

@@ -9,6 +9,7 @@
 mod apply;
 pub mod doc;
 mod doc_values;
+mod grab;
 mod input;
 pub mod model;
 pub mod paint;

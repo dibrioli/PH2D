@@ -15,6 +15,10 @@ impl JointEditorDoc {
             return false;
         }
         let hit = self.hit_at(x, y).cloned();
+        if self.menu.is_none() && self.grab_start(hit.as_ref(), x, y) {
+            self.finish_typing();
+            return true;
+        }
         if !matches!(hit, Some(Hit::Field(f)) if self.typing.as_ref().is_some_and(|(t, _)| *t == f))
         {
             self.finish_typing();
@@ -36,6 +40,9 @@ impl JointEditorDoc {
 
     /// O movimento. `true` = a pintura mudou.
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
+        if self.grab_move(x, y) {
+            return true;
+        }
         let before = (self.hover.clone(), self.drag);
         self.hover = self.hit_at(x, y).cloned();
         if let Some(d) = self.drag.as_mut()
@@ -48,6 +55,9 @@ impl JointEditorDoc {
 
     /// O Up: a alça presa escreve; o controlo premido dispara só se o Up for DENTRO dele.
     pub fn release(&mut self, x: f32, y: f32) -> bool {
+        if self.grab.take().is_some() {
+            return true;
+        }
         if let Some(d) = self.drag.take() {
             self.commit(d.handle.field(), d.value);
             return true;
@@ -112,7 +122,8 @@ impl JointEditorDoc {
                     self.pending.push(Edit::Select { bits });
                 }
             }
-            Hit::Field(_) | Hit::Handle(_) => {}
+            Hit::Fold(k) => self.toggle_fold(k),
+            Hit::Field(_) | Hit::Handle(_) | Hit::Split | Hit::Bar => {}
         }
     }
 

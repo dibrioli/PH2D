@@ -70,13 +70,16 @@ fn fnv(p: &[u8]) -> u64 {
 }
 
 /// ⛔ O Watercolor Basic dá o MESMO byte que antes da lei nova (azul sobre vermelho e sobre amarelo, Pigment 0 e 1).
+/// Regravado na integração 13/11 pela lei B22.1 (secagem e encharque em passo fixo de 1/60 s, `a3ff312386` e
+/// `c37c472dd9`; dono 10/11, «ritmo fixo de secagem»): com `PH2D_RITMO_FIXO=0` no mesmo binário voltam os de antes
+/// (`0xae3e…4b35`, `0xbf2d…54e7`, `0xf37f…cc66`, `0xaeee…546a`).
 #[test]
 fn o_watercolor_basic_nao_mudou_com_o_pigment_mix() {
     let gravados: [(&str, [u8; 3], f32, u64); 4] = [
-        ("vermelho pig 0", VERMELHO, 0.0, 0xae3e_ce14_656e_4b35),
-        ("vermelho pig 1", VERMELHO, 1.0, 0xbf2d_1d62_ce08_54e7),
-        ("amarelo pig 0", AMARELO, 0.0, 0xf37f_c00b_ec43_cc66),
-        ("amarelo pig 1", AMARELO, 1.0, 0xaeee_cae1_7310_546a),
+        ("vermelho pig 0", VERMELHO, 0.0, 0xbb5a_2a1b_7fd2_1c9f),
+        ("vermelho pig 1", VERMELHO, 1.0, 0x1298_f3c3_1df1_cd27),
+        ("amarelo pig 0", AMARELO, 0.0, 0x09ac_973c_f75a_3334),
+        ("amarelo pig 1", AMARELO, 1.0, 0xd486_2c7f_b790_bd66),
     ];
     let lidos: Vec<(&str, u64, u64)> = gravados
         .iter()

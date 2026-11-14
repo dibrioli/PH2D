@@ -220,8 +220,8 @@ pub use stamp_color::{
     ColorStampMask, DynDab, FusedDab, accumulate_color_stamp_coverage,
     accumulate_color_stamps_fused, accumulate_color_stamps_fused_batch,
     accumulate_color_stamps_rgba_batch, accumulate_shape_layer_rgba,
-    accumulate_shape_layers_rgba_batch, blit_color_stamp, render_color_stamp_mask,
-    render_ramp_color_stamp,
+    accumulate_shape_layers_rgba_batch, blit_color_stamp, blit_color_stamp_forca,
+    render_color_stamp_mask, render_ramp_color_stamp,
 };
 pub use stamp_ramped::blit_stamp_ramped;
 pub use stroke::stabilize::lazy_mouse_step;

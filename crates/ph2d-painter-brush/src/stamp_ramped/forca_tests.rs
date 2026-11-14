@@ -112,3 +112,62 @@ fn o_texture_alpha_nao_mede_a_forca() {
     assert!(tela.iter().any(|&b| b != 128), "o controlo: pintou");
     assert!(f.iter().all(|&x| x == 0));
 }
+
+/// O carimbo COLORIDO (Per-Layer) mede a mesma força: sobre a tela transparente o `Mix` deixa alfa = `a`, então o
+/// plano (u16) e o alfa (u8) contam a mesma cobertura; e a tinta com e sem plano é a mesma.
+#[test]
+fn o_carimbo_colorido_mede_a_forca_que_pinta() {
+    let n = (W * W) as usize;
+    let spec = BrushSpec {
+        radius_px: 20.0,
+        hardness: 0.4,
+        ..BrushSpec::default()
+    };
+    let lum = vec![255u8; 64 * 64];
+    let camada = crate::texture::ImageMask {
+        lum: &lum,
+        width: 64,
+        height: 64,
+    };
+    let cor = crate::render_color_stamp_mask(
+        &spec,
+        &[camada],
+        &[[0.2, 0.4, 0.8]],
+        &[None],
+        &[1.0],
+        None,
+        None,
+        64,
+    );
+    let (mut tela, mut sem, mut f) = (vec![0u8; n * 4], vec![0u8; n * 4], vec![0u16; n]);
+    let c = [48.3, 47.6];
+    let _ = crate::blit_color_stamp_forca(
+        &mut tela,
+        W,
+        W,
+        c,
+        20.0,
+        &cor,
+        &spec,
+        0.7,
+        false,
+        [0.0; 3],
+        Some(&mut f),
+    );
+    let _ = crate::blit_color_stamp(&mut sem, W, W, c, 20.0, &cor, &spec, 0.7, false, [0.0; 3]);
+    assert_eq!(tela, sem, "medir a força mudou a tinta do carimbo colorido");
+    let mut medidos = 0usize;
+    for i in 0..n {
+        let alfa = f32::from(tela[i * 4 + 3]) / 255.0;
+        let forca = f32::from(f[i]) / 65535.0;
+        assert!(
+            (alfa - forca).abs() <= 1.0 / 255.0,
+            "texel {i}: alfa {alfa} × força {forca}"
+        );
+        medidos += usize::from(f[i] > 0);
+    }
+    assert!(
+        medidos > 1000,
+        "o controlo: a força cobre o dab ({medidos} texels)"
+    );
+}

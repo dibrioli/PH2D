@@ -13,7 +13,7 @@
 //! the correct, fringe-free path. Deterministic (HR-5): only `+ − × ÷` + the shared samplers.
 
 use crate::blend::BrushBlend;
-use crate::dab::{DirtyRect, encode, parallel_band_stamp};
+use crate::dab::{DirtyRect, encode};
 use crate::spec::BrushSpec;
 use crate::texture::ImageMask;
 
@@ -392,6 +392,38 @@ pub fn blit_color_stamp(
     preserve_alpha: bool,
     shift: [f32; 3],
 ) -> Option<DirtyRect> {
+    blit_color_stamp_forca(
+        buf,
+        width,
+        height,
+        center,
+        radius,
+        stamp,
+        spec,
+        coverage,
+        preserve_alpha,
+        shift,
+        None,
+    )
+}
+
+/// [`blit_color_stamp`] que também compõe o plano da força das macros (B25.5) — o `a` de cada texel, como
+/// [`crate::blit_stamp`]; `None` = a mesma tinta sem medir.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn blit_color_stamp_forca(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    radius: f32,
+    stamp: &ColorStampMask,
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    shift: [f32; 3],
+    forca: Option<&mut [u16]>,
+) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
         "buffer too small"
@@ -427,9 +459,18 @@ pub fn blit_color_stamp(
         x1,
         stride,
     };
-    let touched = parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
-        blit_color_band(&ctx, dst, band_y0)
-    });
+    let touched = crate::dab::parallel_band_stamp_masked(
+        buf,
+        None,
+        forca,
+        y0,
+        y1,
+        x0,
+        x1,
+        stride,
+        crate::dab::PARALLEL_MIN_AREA,
+        |dst, _, fband, band_y0| blit_color_band(&ctx, dst, fband, band_y0),
+    );
     if !touched {
         return None;
     }
@@ -442,7 +483,12 @@ pub fn blit_color_stamp(
 }
 
 /// Blit the cached coloured stamp into the full-width row band `dst` (first row `band_y0`).
-fn blit_color_band(ctx: &ColorBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
+fn blit_color_band(
+    ctx: &ColorBlitCtx,
+    dst: &mut [u8],
+    mut forca: Option<&mut [u16]>,
+    band_y0: i64,
+) -> bool {
     let mut touched = false;
     for r in 0..dst.len() / ctx.stride {
         let py = band_y0 + r as i64;
@@ -468,6 +514,9 @@ fn blit_color_band(ctx: &ColorBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
             };
             if a <= 0.0 {
                 continue;
+            }
+            if let Some(f) = forca.as_deref_mut() {
+                crate::stroke_cover::compoe_forca(&mut f[r * (ctx.stride / 4) + px as usize], a);
             }
             let rgb = crate::jitter::apply_color_shift(rgb, ctx.shift);
             let out = crate::blend_vazio::blend_over_pigment_modo(

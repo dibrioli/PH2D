@@ -16,7 +16,7 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, FusedDab, ImageRgb, StrokeMethod,
     TextureSettings, accumulate_color_stamps_fused_batch, blend_over_pigment_modo,
-    blit_color_stamp, render_color_stamp_mask, render_ramp_color_stamp,
+    blit_color_stamp_forca, render_color_stamp_mask, render_ramp_color_stamp,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::sync::Arc;
@@ -605,7 +605,10 @@ impl PainterTool {
             brush,
             mask_size_for(max_r * brush.stamp_domain(self.paint.shape_image.is_some())),
         );
+        // B25.5: o plano da força das macros, como `stamp_dabs_cached`.
+        let mut plano = self.undo.marca.toma_o_plano((w, h));
         let Some((stamp, _)) = self.paint.ramp_color_stamp_cache.as_ref() else {
+            self.undo.marca.devolve_o_plano(plano, None);
             return;
         };
         let buf = crate::tool::paint::plane_fork::fork_canvas(
@@ -617,7 +620,7 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = brush.at_dab(d);
-            if let Some(r) = blit_color_stamp(
+            if let Some(r) = blit_color_stamp_forca(
                 buf,
                 w,
                 h,
@@ -628,6 +631,7 @@ impl PainterTool {
                 d.coverage,
                 alpha_locked,
                 d.color_shift,
+                plano.as_deref_mut(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -638,6 +642,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.undo.marca.devolve_o_plano(plano, touched);
         self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);

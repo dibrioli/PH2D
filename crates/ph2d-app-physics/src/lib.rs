@@ -28,6 +28,24 @@ pub use ph2d_physics_smoke_scenes::{
     physics_smoke_water, physics_smoke_wheel, physics_smoke_world_pin, physics_smoke_zone_force,
     physics_smoke_zones,
 };
+pub use ph2d_physics_smoke_scenes::{
+    physics_smoke_authoring, physics_smoke_base, physics_smoke_blast, physics_smoke_brake,
+    physics_smoke_brink, physics_smoke_collider, physics_smoke_collision, physics_smoke_compound,
+    physics_smoke_contacts, physics_smoke_damping, physics_smoke_events, physics_smoke_fk,
+    physics_smoke_foot, physics_smoke_foot_fan, physics_smoke_glide, physics_smoke_grab,
+    physics_smoke_ik, physics_smoke_interact, physics_smoke_joint_break,
+    physics_smoke_joint_templates, physics_smoke_kin_pure, physics_smoke_kin_push,
+    physics_smoke_kin_water, physics_smoke_lead, physics_smoke_leave, physics_smoke_ledge,
+    physics_smoke_multi_jump, physics_smoke_player_bake, physics_smoke_player_carry,
+    physics_smoke_player_crouch, physics_smoke_player_dash, physics_smoke_player_drop,
+    physics_smoke_player_flank, physics_smoke_player_grab, physics_smoke_player_run,
+    physics_smoke_player_slope, physics_smoke_player_wall, physics_smoke_probes,
+    physics_smoke_props, physics_smoke_raft, physics_smoke_rail_rope, physics_smoke_rigs,
+    physics_smoke_rod, physics_smoke_signal, physics_smoke_signal_ends, physics_smoke_signal_leave,
+    physics_smoke_soft_weld, physics_smoke_stone, physics_smoke_surface, physics_smoke_swim,
+    physics_smoke_terminal, physics_smoke_water, physics_smoke_wheel, physics_smoke_world_pin,
+    physics_smoke_zone_force, physics_smoke_zones,
+};
 
 // ─────────────────────────────────────────────────────────────────────────
 // As cenas. ⚠️ Esta lista é ORDENADA e gerada da pasta: o roteador da shell
@@ -45,7 +63,6 @@ pub mod physics_smoke_joint_pair;
 pub mod physics_smoke_joint_pose;
 pub mod physics_smoke_joint_rig;
 pub mod physics_smoke_joint_slider;
-pub mod physics_smoke_joint_templates;
 pub mod physics_smoke_kinematic;
 pub mod physics_smoke_player_forgive;
 pub mod physics_smoke_player_tape;
@@ -155,15 +172,14 @@ pub fn aplicar_canais(
 }
 pub mod joint;
 pub mod joint_anchor_drag;
-pub mod joint_assembly;
-pub mod joint_assembly_card;
-pub mod joint_create;
+// ⭐ A montagem de juntas e os gestos de criar junta moram na `ph2d-joint-assembly` (corte 13/11).
+pub use ph2d_joint_assembly::{
+    joint_assembly, joint_assembly_card, joint_create, joint_drop, joint_world,
+};
 pub mod joint_draw;
-pub mod joint_drop;
 pub mod joint_rig;
 pub mod joint_rig_drag;
 pub mod joint_wheel;
-pub mod joint_world;
 pub mod jump_arc;
 
 // A §11 do Inspector aplicada ao ECS, e os seus vizinhos por assunto.
@@ -198,6 +214,8 @@ mod joint_world_tests;
 mod measure_player_tape;
 #[cfg(test)]
 mod physics_gesture_surface_tests;
+#[cfg(test)]
+mod physics_smoke_joint_templates_tests;
 #[cfg(test)]
 mod tape_second_life_tests;
 #[cfg(test)]

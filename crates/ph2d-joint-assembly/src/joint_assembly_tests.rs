@@ -359,7 +359,7 @@ fn the_elevator_rises_one_storey_and_stops() {
 /// **Salvar e abrir devolve a mesma montagem**, com as juntas ainda a apontar para ela.
 #[test]
 fn an_assembly_round_trips_through_the_snapshot() {
-    let reg = crate::joint_tests::registry();
+    let reg = crate::test_registry();
     let (mut sim, _, made) = built(JointKind::Wheel, "Car", false);
     let before = sim
         .world()
@@ -482,7 +482,7 @@ fn probe_factory_numbers() {
 }
 
 fn snap(sim: &mut SimWorld) -> WorldSnapshot {
-    let reg = crate::joint_tests::registry();
+    let reg = crate::test_registry();
     let mut s = WorldSnapshot::new();
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::default();
@@ -503,7 +503,7 @@ fn restoring_the_snapshot_before_the_gesture_removes_the_whole_assembly() {
     assemble(&mut sim, car, &parts).expect("assembles");
     let after = snap(&mut sim);
 
-    let reg = crate::joint_tests::registry();
+    let reg = crate::test_registry();
     let count = |s: &WorldSnapshot| {
         let mut w = SimWorld::new();
         snapshot_to_world(w.world_mut(), s, &reg).expect("load");

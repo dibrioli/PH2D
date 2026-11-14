@@ -118,6 +118,8 @@ pub mod physics_smoke_ik;
 pub mod physics_smoke_interact;
 pub mod physics_smoke_joint_break;
 pub mod physics_smoke_joint_motor;
+/// Cena 123: os testes dela ficam na `ph2d-app-physics` (editam pela porta da família).
+pub mod physics_smoke_joint_templates;
 pub mod physics_smoke_kin_pure;
 pub mod physics_smoke_kin_push;
 pub mod physics_smoke_kin_water;

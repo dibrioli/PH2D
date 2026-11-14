@@ -29,7 +29,7 @@ pub struct InspectorBodyJoint {
 /// kind actually uses. Not `Copy`, unlike its siblings, because it carries the
 /// two bodies' NAMES — the joint stores name hashes, and a hash is not
 /// something to show a person.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct InspectorJointInfo {
     pub entity_bits: u64,
     /// `0` Pin · `1` Spring · `2` Rope · `3` Weld · `4` Slider · `5` Rod ·

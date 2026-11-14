@@ -93,3 +93,12 @@ O dono disse (13/11) que o painel «ainda precisa de ajustes»: acabamento a def
 ## 10. Limpeza feita
 
 Ficheiros `.log` soltos de `docs/JointEditor/fotos/` (`w3d_painel_7`, `w3f_painel_7..9`) apagados; os `.log` já rastreados das fotos antigas ficam (ruído, não contrato).
+
+## 11. Corte de LOC (13/11, por ordem de integração)
+
+- Crate nova `ph2d-joint-assembly` (domínio, ABAIXO da `ph2d-app-physics` e da aba: a física chama para baixo, `card_context` não se inverte): `joint_assembly{,_tests}.rs`, `joint_assembly_card.rs`, `joint_drop.rs`, `joint_create.rs`, `joint_world.rs` (`pub(crate)` → `pub`) e `set_joint_body` (saiu de `joint.rs`). A física re-exporta os cinco módulos (`pub use`) e `joint::set_joint_body`: nenhum chamador mudou de caminho. 12 testes verdes (crate inteira).
+- Cena 123 (`physics_smoke_joint_templates.rs`) → `ph2d-physics-smoke-scenes`; os testes dela ficam na física (`physics_smoke_joint_templates_tests.rs`, editam por `physics_tests::apply`).
+- `ph2d-app-components`: o teste `as_linhas_body_da_junta_recebem_um_objecto` compactado (junta por `..Default::default()`, `InspectorJointInfo` ganhou `Default`; a linha inteira fica com o `seam_joint_w2`).
+- LOC (`conta()`): physics 39 545 → 37 658 (tecto 37 798) · components 80 932 → 80 869 (= tecto) · joint-editor 4 649 → tecto recontado 4 749 · `ph2d-joint-assembly` 1 714 (tecto 1 814) · smoke-scenes 19 008 → 19 195 (+187 da cena, tecto movido com o código).
+- Verde: `the_shell_only_shrinks*` 2/2, física `joint` 180, cena 123, aba 22, clippy `-D warnings` das quatro tocadas, `cargo machete` (tirou `ph2d-joint-templates` da física).
+- ⚠️ Continua por fazer: provas de mutação da W3 (§7), `censos-da-arvore-combinada.sh` após o rebase.

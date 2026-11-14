@@ -1,6 +1,6 @@
 //! **Criar um joint cujo lado B é o MUNDO** (W-JointWorld).
 //!
-//! Irmão de [`crate::joint::create_joint_at`], e separado dele porque
+//! Irmão de [`crate::joint_create::create_joint_at`], e separado dele porque
 //! aquele exige DOIS corpos por construção — ele toma bits de entidade, e o
 //! mundo não tem entidade nenhuma (`Entity::from_bits(0)` não existe).
 //!
@@ -14,7 +14,7 @@
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{JointKind, JointWorldAnchor, PhysicsJoint};
 
-use crate::joint::ensure_named;
+use crate::joint_create::ensure_named;
 
 /// **Qual ponto do gesto é o quê**, quando um dos lados é o cenário.
 ///
@@ -27,11 +27,7 @@ use crate::joint::ensure_named;
 /// aparecer. Pura, então o gate pode perguntar direto — o `joint_draw_release`
 /// exige janela e nenhum teste de unidade o alcança.
 #[must_use]
-pub(crate) fn gesture_points(
-    from_body: bool,
-    press: [f32; 2],
-    release: [f32; 2],
-) -> ([f32; 2], [f32; 2]) {
+pub fn gesture_points(from_body: bool, press: [f32; 2], release: [f32; 2]) -> ([f32; 2], [f32; 2]) {
     if from_body {
         (press, release)
     } else {
@@ -49,7 +45,7 @@ pub(crate) fn gesture_points(
 /// pontas, e uma delas presa ao cenário é outra máquina (o `motor_rate` já é o
 /// guincho). O reconcile também a recusa; recusar no gesto é o que impede o
 /// artista de criar um objeto que nasce dormente.
-pub(crate) fn create_world_pin_at(
+pub fn create_world_pin_at(
     sim: &mut SimWorld,
     a_bits: u64,
     kind: JointKind,

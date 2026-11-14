@@ -2,6 +2,7 @@
 
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_physics_ecs::{Collider, JointAssembly, PhysicsBridge, PhysicsJoint, RigidBody};
+use ph2d_physics_smoke_scenes::physics_smoke_joint_templates as scene;
 
 fn y_of(sim: &mut SimWorld, name: &str) -> Transform {
     let mut q = sim.world_mut().query::<(&Name, &Transform)>();
@@ -14,7 +15,7 @@ fn y_of(sim: &mut SimWorld, name: &str) -> Transform {
 #[test]
 fn the_template_scene_shows_four_named_machines_that_work() {
     let mut sim = SimWorld::new();
-    super::build(sim.world_mut());
+    scene::build(sim.world_mut());
     let mut names: Vec<String> = sim
         .world_mut()
         .query::<(&Name, &JointAssembly)>()
@@ -57,7 +58,7 @@ fn the_template_scene_shows_four_named_machines_that_work() {
         "the car did not drive"
     );
     assert!(
-        car.translation.x < super::END_WALL_X,
+        car.translation.x < scene::END_WALL_X,
         "the car went through the end wall"
     );
     let lift = y_of(&mut sim, "Elevator Platform");
@@ -87,7 +88,7 @@ fn probe_plank_density_against_bridge_sag() {
         .flat_map(|d| [(d, true), (d, false)])
     {
         let mut sim = SimWorld::new();
-        super::build(sim.world_mut());
+        scene::build(sim.world_mut());
         if !drop {
             // A caixa POUSADA na tábua do meio (topo 1,05 + meia caixa 0,25), sem queda.
             let mut q = sim.world_mut().query::<(&Name, &mut Transform)>();
@@ -135,7 +136,7 @@ fn probe_rope_against_pin_bridge() {
     for d in [0.1_f32, 1.0, 10.0] {
         for pin in [false, true] {
             let mut sim = SimWorld::new();
-            super::build(sim.world_mut());
+            scene::build(sim.world_mut());
             let planks: Vec<ph2d_ecs::Entity> = {
                 let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
                 q.iter(sim.world())
@@ -211,7 +212,7 @@ fn probe_solver_against_light_bridge() {
     for d in [0.1_f32, 1.0] {
         for (sub, it) in [(4, 4), (8, 4), (12, 4), (4, 16), (12, 16)] {
             let mut sim = SimWorld::new();
-            super::build(sim.world_mut());
+            scene::build(sim.world_mut());
             let planks: Vec<ph2d_ecs::Entity> = {
                 let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
                 q.iter(sim.world())
@@ -248,7 +249,7 @@ fn probe_solver_against_light_bridge() {
 fn probe_crate_density_against_bridge_sag() {
     for d in [0.1_f32, 1.0, 10.0, 40.0, 400.0] {
         let mut sim = SimWorld::new();
-        super::build(sim.world_mut());
+        scene::build(sim.world_mut());
         let c = {
             let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
             q.iter(sim.world())

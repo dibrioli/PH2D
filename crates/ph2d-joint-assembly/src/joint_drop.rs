@@ -1,6 +1,6 @@
 //! **Um objecto largado na linha Body A / Body B do cartão da junta** (`DropAction::SetJointBody`):
 //! a MESMA lei do conta-gotas — só um corpo físico que não é a própria junta, escrito por
-//! [`crate::joint::set_joint_body`] (no lugar; o desfazer vem do diff).
+//! [`crate::joint_create::set_joint_body`] (no lugar; o desfazer vem do diff).
 
 use ph2d_ecs::{Entity, SimWorld, StableId, World};
 
@@ -21,7 +21,7 @@ pub fn drop_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, stable_id: u
         return false;
     };
     is_bindable_body(sim.world(), joint_bits, target.to_bits())
-        && crate::joint::set_joint_body(sim, joint_bits, slot_b, target)
+        && crate::joint_create::set_joint_body(sim, joint_bits, slot_b, target)
 }
 
 /// [`drop_body`] e, se religou, desarma o conta-gotas armado NAQUELE lado (`side` = junta, lado B).

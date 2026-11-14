@@ -28,7 +28,7 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # Os gabaritos de montagem (ADR-0201): dado puro; quem monta no mundo é `joint_assembly`.
-ph2d-joint-templates = { path = "../ph2d-joint-templates" }
+ph2d-joint-assembly = { path = "../ph2d-joint-assembly" }
 # O chão, o personagem e a laje das cenas (`common.rs` desceu para esta folha, partilhada com o jogo).
 ph2d-physics-scene = { path = "../ph2d-physics-scene" }
 # O `SceneCtx` e as cenas que só povoam um `World` (GEF02 onda 0): re-exportados em `lib.rs`.

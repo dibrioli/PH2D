@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-joint-assembly"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A MONTAGEM de juntas sobre o ECS (ADR-0201): montar um gabarito, pôr uma peça num papel, o
+# contexto do cartão e o soltar-num-papel, e os dois gestos de criar junta que ela usa. Saiu da
+# `ph2d-app-physics` (corte de LOC do JointEditor, 13/11); fica ABAIXO dela e da aba, então a
+# família chama para baixo e o `card_context` não se inverte. A física re-exporta os módulos.
+[lib]
+
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-joint-templates = { path = "../ph2d-joint-templates" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+# `libm`: HR-5, a trigonometria bit-idêntica entre OS (a pose das peças).
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

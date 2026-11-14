@@ -11,7 +11,9 @@ use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 use ph2d_inspector_ordering::queue_set;
 
 /// O gesto que CRIA um joint mora em `inspector_joint_create` (criar é da §11, editar é da §12).
-pub(crate) use crate::joint_create::{create_joint, create_joint_at, ensure_named};
+pub(crate) use crate::joint_create::{create_joint, create_joint_at};
+/// A troca de corpo de uma junta mora na `ph2d-joint-assembly` (o soltar-num-papel também a usa).
+pub use ph2d_joint_assembly::joint_create::set_joint_body;
 
 const JOINT: &str = "ph2d::physics::PhysicsJoint";
 
@@ -186,54 +188,6 @@ pub fn build_joint_info(
         active: joint.active,
         collide_connected: joint.collide_connected,
     })
-}
-
-/// Re-bind slot A (or B, if `slot_b`) of the joint at `joint_bits` to `target`
-/// — the resolve half of the §12 eyedropper pick, called from `input_dispatch`
-/// when the armed pick's next canvas click lands on a body. Returns whether the
-/// bind took (so the caller clears the armed pick only on success).
-///
-/// Written in place (the diff undo sees it), through `clamped()`. ⚠️ Refuses a self-joint:
-/// `false`, and the pick stays armed.
-#[must_use]
-pub fn set_joint_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, target: Entity) -> bool {
-    let joint_e = Entity::from_bits(joint_bits);
-    let Some(&current) = sim.world().get::<PhysicsJoint>(joint_e) else {
-        return false;
-    };
-    let Some(name) = ensure_named(sim, target, "Body") else {
-        return false;
-    };
-    // ⚠️ A IDENTIDADE do alvo, pela entidade que este sítio tem em mãos. O `name` continua
-    // garantido (um corpo sem nome é ilegível na Hierarquia), mas não é ele que se guarda.
-    let _ = &name;
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let hash = ph2d_ecs::stable_id_of(sim.world(), target).map_or(0, |s| s.0);
-    let mut next = current;
-    if slot_b {
-        next.body_b = hash;
-    } else {
-        next.body_a = hash;
-    }
-    if next.body_a == next.body_b {
-        return false; // a self-joint is dormant — keep the pick armed instead
-    }
-    // Outro corpo: a âncora local perde o sentido; o reconcile re-deriva-a do pivô visível.
-    next.anchored = false;
-    let next = next.clamped();
-    if next != current
-        && let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(joint_e)
-    {
-        *j = next;
-    }
-    // Escolher o corpo B É escolher «Body»: o rótulo diria «World» sobre um corpo escolhido, e o
-    // clique em «Body» sem corpo B (recusado por `anchor_to_world`) só termina aqui.
-    if slot_b {
-        sim.world_mut()
-            .entity_mut(joint_e)
-            .remove::<ph2d_physics_ecs::JointWorldAnchor>();
-    }
-    true
 }
 
 /// Apply one [`JointFieldEdit`].

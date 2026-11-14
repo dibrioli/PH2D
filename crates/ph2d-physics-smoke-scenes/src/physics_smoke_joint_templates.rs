@@ -31,7 +31,7 @@ pub const MACHINES: [(JointKind, &str, f32, bool); 4] = [
 const CAMERA_CENTRE: [f32; 2] = [12.0, 3.0];
 const CAMERA_HEIGHT: f32 = 16.0;
 /// O muro onde o carro para, ainda à vista com o painel da direita aberto (foto de 12/11).
-const END_WALL_X: f32 = 21.0;
+pub const END_WALL_X: f32 = 21.0;
 
 fn block(
     world: &mut World,
@@ -150,7 +150,7 @@ pub fn build(world: &mut World) {
         };
         let p = parts(sim.world_mut(), t, x0, scenery_is_world);
         // Um gabarito que recusa as próprias peças é um defeito que o gate acusa; a cena segue.
-        let _ = crate::joint_assembly::assemble(&mut sim, t, &p);
+        let _ = ph2d_joint_assembly::joint_assembly::assemble(&mut sim, t, &p);
         if kind == JointKind::Pin
             && let Some(&(_, Some(door))) = p.iter().find(|(r, _)| *r == 1)
         {
@@ -183,7 +183,3 @@ pub fn build(world: &mut World) {
     }
     std::mem::swap(sim.world_mut(), world);
 }
-
-#[cfg(test)]
-#[path = "physics_smoke_joint_templates_tests.rs"]
-mod tests;

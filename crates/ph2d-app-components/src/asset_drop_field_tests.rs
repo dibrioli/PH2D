@@ -116,101 +116,45 @@ fn o_campo_sound_recebe_um_som_e_so_um_som() {
 fn junta(entity_bits: u64, world_anchored: bool) -> ph2d_editor_core::InspectorJointInfo {
     ph2d_editor_core::InspectorJointInfo {
         entity_bits,
-        kind_tag: 0,
         body_a_name: "Hook".into(),
-        body_b_name: String::new(),
         bound: true,
         world_anchored,
-        limits_enabled: false,
-        limit_min_ui: 0.0,
-        limit_max_ui: 0.0,
-        motor_enabled: false,
-        motor_mode_tag: 0,
-        motor_speed_ui: 0.0,
-        motor_target_ui: 0.0,
-        motor_max_force: 0.0,
-        rest_length: 1.0,
-        stiffness: 0.0,
-        damping: 0.0,
-        max_length: 0.0,
-        axis_mode_tag: [0; 3],
-        axis_min_ui: [0.0; 3],
-        axis_max_ui: [0.0; 3],
-        motor_axis_tag: 0,
-        pick_armed: 0,
-        wheel_count: 0,
-        break_enabled: false,
-        break_force: 0.0,
-        break_torque: 0.0,
-        breaks_on_torque: false,
         active: true,
-        soft: false,
-        collide_connected: false,
-        paste_targets: 0,
-        title: String::new(),
-        one_chain: false,
-        same_as: String::new(),
-        linked: false,
+        ..Default::default()
     }
 }
 
-/// ⭐ **As linhas Body A e Body B da junta recebem um OBJECTO, pela mesma porta**: arrastando um
-/// objecto, as duas acendem verde e largar religa aquele lado; uma imagem, um prefab ou um som
-/// recusam lá. ⛔ Num pino de MUNDO a linha B não tem conta-gotas e não é campo (a A continua).
-///
-/// **Mutações que devem sangrar:** tirar o `joint_body_slot_pick` do `field_target` · trocar o lado
-/// · aceitar a linha B de um pino de mundo · aceitar um asset na linha.
+/// ⭐ **As linhas Body A e Body B da junta recebem um OBJECTO, pela mesma porta**; uma imagem, um
+/// prefab ou um som recusam lá. ⛔ Num pino de MUNDO a linha B não é campo (a A continua). A linha
+/// INTEIRA (o nome, fora do ícone) prova-a o `seam_joint_w2`. **Mutações que devem sangrar:** tirar
+/// o `joint_body_slot_pick` do `field_target` · trocar o lado · aceitar a linha B de um pino de
+/// mundo · aceitar um asset na linha.
 #[test]
 fn as_linhas_body_da_junta_recebem_um_objecto() {
-    use ph2d_panel_inspector::ids::{
-        INSP_JOINT_BODY_ROW_A, INSP_JOINT_BODY_ROW_B, INSP_JOINT_PICK_A, INSP_JOINT_PICK_B,
-    };
+    use ph2d_panel_inspector::ids::{INSP_JOINT_PICK_A as A, INSP_JOINT_PICK_B as B};
     let objecto = DragPayload::Object { stable_id: 42 };
     ph2d_panel_inspector::set_current_inspector_joint(Some(junta(7, false)));
-    let marcas = field_marks(
-        [NodeId(3), INSP_JOINT_PICK_A, INSP_JOINT_PICK_B],
-        objecto,
-        None,
-    );
-    let a = field_target(INSP_JOINT_PICK_A);
-    let b = field_target(INSP_JOINT_PICK_B);
-    // A linha INTEIRA (o nome, fora do ícone) é o mesmo campo — `seam_joint_w2` prova o ponto.
-    let linhas = (
-        field_target(INSP_JOINT_BODY_ROW_A),
-        field_target(INSP_JOINT_BODY_ROW_B),
-    );
+    let marcas = field_marks([NodeId(3), A, B], objecto, None);
+    let (a, b) = (field_target(A), field_target(B));
     ph2d_panel_inspector::set_current_inspector_joint(Some(junta(7, true)));
-    let b_mundo = field_target(INSP_JOINT_PICK_B);
-    let linha_b_mundo = field_target(INSP_JOINT_BODY_ROW_B);
-    let a_mundo = field_target(INSP_JOINT_PICK_A);
+    let mundo = (field_target(A), field_target(B));
     ph2d_panel_inspector::set_current_inspector_joint(None);
-    let sem_junta = field_target(INSP_JOINT_PICK_A);
+    let sem_junta = field_target(A);
     let aceita = |id| DropFieldMark {
         id,
         verdict: DragVerdict::Accept,
         under: false,
     };
-    assert_eq!(
-        marcas,
-        [aceita(INSP_JOINT_PICK_A), aceita(INSP_JOINT_PICK_B)]
-    );
-    let a = a.expect("Body A recebe");
-    let b = b.expect("Body B recebe");
-    assert_eq!(
-        (resolve(objecto, a), resolve(objecto, b)),
-        (
-            DropAction::SetJointBody {
-                entity_bits: 7,
-                slot_b: false,
-                stable_id: 42
-            },
-            DropAction::SetJointBody {
-                entity_bits: 7,
-                slot_b: true,
-                stable_id: 42
-            }
-        )
-    );
+    assert_eq!(marcas, [aceita(A), aceita(B)]);
+    let (a, b) = (a.expect("Body A recebe"), b.expect("Body B recebe"));
+    for (t, slot_b) in [(a, false), (b, true)] {
+        let set = DropAction::SetJointBody {
+            entity_bits: 7,
+            slot_b,
+            stable_id: 42,
+        };
+        assert_eq!(resolve(objecto, t), set, "o lado {slot_b}");
+    }
     for p in [
         DragPayload::Image { asset: [0; 32] },
         DragPayload::Prefab { stable_id: 5 },
@@ -219,13 +163,6 @@ fn as_linhas_body_da_junta_recebem_um_objecto() {
     ] {
         assert_eq!(resolve(p, a), DropAction::Refuse, "{p:?}");
     }
-    assert_eq!(
-        linhas,
-        (Some(a), Some(b)),
-        "a linha inteira de Body A/B recebe"
-    );
-    assert_eq!(b_mundo, None, "a linha B de um pino de mundo não é campo");
-    assert_eq!(linha_b_mundo, None);
-    assert_eq!(a_mundo, Some(a), "a linha A de um pino de mundo continua");
+    assert_eq!(mundo, (Some(a), None), "pino de mundo: só a linha A");
     assert_eq!(sem_junta, None);
 }

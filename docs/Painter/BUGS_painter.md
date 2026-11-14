@@ -1232,6 +1232,12 @@ carimbo, o que só a escolha `None` revelou.
   (0 bytes), JSON do `iTXt` igual campo a campo salvo `"schema": 1 → 2` — o `SCHEMA` do preset subido por 1bfd772603 (B50.1,
   enums pelo nome), intencional; o teste parava no 1.º. Os três regravados com os bytes de `grava()` (os do gerador); o teste,
   ao reprovar, deixa o de hoje em `target/tmp/<nome>.ph2d-brush.png.novo` para diffar antes de regravar.
+- **Rodada 3 (13/11, `a_lei_da_tinta::sem_glaze…`):** bissecção do Oil Bristle (km) `c05adf2cca..eefe48bb1f` → primeiro mau
+  **24ff377cb6** (a própria cura só-Wet do B33.1): `substrate_relief::alturas_do_papel_de_fabrica` (só lida por `wetpaint::preparo`)
+  montava o papel com `GrainLaw::NEUTRA` → leitura única no Wet. Achado por backtrace no `sample_t(…, dupla=false)`; cura: a tabela lê
+  com `leitura_dupla = true`. Com ela, as 15 «que voltavam com km» também andam (voltavam só por causa do defeito): a tabela CENAS
+  inteira regravada pela lei Wet adotada (B32.1 `ea2024a050` + B33.1 `c05adf2cca` + as leis Wet da missão no intervalo). Alarmes de
+  pincel por nome: NÃO corridos nesta rodada (prazo) — correr e regravar com `PH2D_PINCEIS_APROVA=1`.
 
 ## Como adicionar um bug aqui
 

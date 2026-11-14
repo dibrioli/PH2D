@@ -514,7 +514,9 @@ pub(super) fn alturas_do_papel_de_fabrica() -> std::sync::Arc<ph2d_wet_paint::pa
     static Q: std::sync::OnceLock<std::sync::Arc<ph2d_wet_paint::paper::Quantis>> =
         std::sync::OnceLock::new();
     std::sync::Arc::clone(Q.get_or_init(|| {
-        let tex = default_paper();
+        // Só o Wet Paint lê esta tabela (`wetpaint::preparo`): a 2.ª leitura do papel é dele (B33.1, BUGS_painter #115).
+        let mut tex = default_paper();
+        tex.lei.leitura_dupla = true;
         let rot = ph2d_painter_brush::texture::angle_basis(tex.angle_deg);
         let n = 512u32;
         let amostras = (0..n * n)

@@ -282,8 +282,8 @@ fn o_painel_e_uma_coluna_a_direita_e_os_campos_ocupam_meia_largura() {
         "o painel ({p:?}) à direita do palco ({st:?})"
     );
     assert!(
-        ok(p.w, m.tab().doc.panel_width()) && p.w >= ph2d_tokens::INSPECTOR_W_PX,
-        "a largura escolhida, nunca menos que a do Inspector: {p:?}"
+        ok(p.w, m.tab().doc.panel_width()) && ok(p.w, ph2d_tokens::INSPECTOR_W_PX),
+        "nasce com a largura do Inspector: {p:?}"
     );
     assert!(
         ok(p.h, full) && ok(st.h, full) && p.y == st.y,
@@ -371,7 +371,14 @@ fn arrastar_a_divisoria_muda_a_largura_dentro_dos_limites() {
     let mut m = Mesa::carro();
     let (lo, hi) = m.tab().doc.panel_bounds();
     let w0 = m.tab().doc.panel.w;
-    assert!((w0 - lo).abs() < 0.5, "nasce com a do Inspector");
+    assert!(
+        (w0 - ph2d_tokens::INSPECTOR_W_PX).abs() < 0.5,
+        "nasce com a do Inspector"
+    );
+    assert!(
+        (lo - ph2d_tokens::PANEL_MIN_W_PX).abs() < 0.5,
+        "estreita até ao piso dos painéis, como o Inspector"
+    );
     m.drag(&Hit::Split, -120.0, 0.0);
     let w1 = m.tab().doc.panel.w;
     assert!((w1 - (w0 + 120.0)).abs() < 0.5, "{w0} → {w1}");
@@ -385,7 +392,7 @@ fn arrastar_a_divisoria_muda_a_largura_dentro_dos_limites() {
     m.drag(&Hit::Split, 5000.0, 0.0);
     assert!(
         (m.tab().doc.panel.w - lo).abs() < 0.5,
-        "presa à do Inspector"
+        "presa ao piso dos painéis"
     );
 }
 

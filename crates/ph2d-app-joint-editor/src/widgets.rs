@@ -142,19 +142,33 @@ impl Ui<'_> {
             m::FIELD_RADIUS,
             self.c(ColorToken::CardField),
         );
-        // D32: cada segmento com a largura do que mostra; a sobra reparte-se.
-        let need: Vec<(f32, bool)> = opts
-            .iter()
-            .map(|(l, _, _)| {
-                (
-                    self.ts.prefix_width(l, m::SEG_TEXT_PX) + m::SEG_INSET * 2.0,
-                    false,
-                )
-            })
-            .collect();
-        let ws = m::seg_widths(&need, r.w - m::SEG_PAD * 2.0);
+        // D32: cada segmento com a largura do que mostra; a sobra reparte-se. No painel estreito (dono
+        // 13/11) cada opção encolhe à primeira palavra («Rear wheel» → «Rear»); o leitor de ecrã ouve o nome inteiro.
+        let avail = r.w - m::SEG_PAD * 2.0;
+        let need_of = |ts: &mut TextSystem, short: bool| -> Vec<(f32, bool)> {
+            opts.iter()
+                .map(|(l, _, _)| {
+                    let s = if short { first_word(l) } else { l.as_str() };
+                    (
+                        ts.prefix_width(s, m::SEG_TEXT_PX) + m::SEG_INSET * 2.0,
+                        false,
+                    )
+                })
+                .collect()
+        };
+        let mut need = need_of(self.ts, false);
+        let short = need.iter().map(|s| s.0).sum::<f32>() > avail;
+        if short {
+            need = need_of(self.ts, true);
+        }
+        let ws = m::seg_widths(&need, avail);
         let mut x = r.x + m::SEG_PAD;
-        for ((label, h, on), w) in opts.iter().zip(ws) {
+        for ((full, h, on), w) in opts.iter().zip(ws) {
+            let label = if short {
+                first_word(full)
+            } else {
+                full.as_str()
+            };
             let s = Rect::new(x, r.y + m::SEG_PAD, w, r.h - m::SEG_PAD * 2.0);
             x += w;
             if *on {
@@ -173,7 +187,7 @@ impl Ui<'_> {
                 ColorToken::Text1
             });
             text_centred(self.ts, self.scene, label, s, m::SEG_TEXT_PX, fg);
-            self.hit(s, h.clone(), label);
+            self.hit(s, h.clone(), full);
         }
     }
 
@@ -227,6 +241,11 @@ impl Ui<'_> {
         self.put(label, t, m::VALUE_PX, ColorToken::Text1);
         self.hit(r, h, name);
     }
+}
+
+/// A forma curta de uma opção: a primeira palavra.
+fn first_word(s: &str) -> &str {
+    s.split_whitespace().next().unwrap_or(s)
 }
 
 /// O número como o cartão o escreve: até três casas, sem zeros à direita.

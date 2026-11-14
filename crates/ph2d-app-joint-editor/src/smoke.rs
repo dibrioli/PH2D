@@ -13,7 +13,7 @@ use crate::surface::JointEditorTab;
 
 pub const ENV: &str = "PH2D_JOINT_EDITOR_SMOKE";
 /// O maior nível que [`arm`] responde (conta-se no `match` abaixo).
-pub const MAX_LEVEL: u32 = 6;
+pub const MAX_LEVEL: u32 = 7;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: ENV,
@@ -101,6 +101,10 @@ pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) {
         1 => car,
         6 => {
             tab.doc.set_panel_width(f32::MAX);
+            car
+        }
+        7 => {
+            tab.doc.set_panel_width(0.1);
             car
         }
         2 => {

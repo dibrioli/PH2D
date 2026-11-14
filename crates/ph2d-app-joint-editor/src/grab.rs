@@ -5,22 +5,24 @@
 use crate::doc::{Grab, Hit, JointEditorDoc};
 
 impl JointEditorDoc {
-    /// A largura mínima e a máxima do painel: a do Inspector e metade da aba.
+    /// A largura mínima e a máxima do painel: o piso dos painéis do app (o Inspector estreita até ele,
+    /// dono 13/11) e metade da aba.
     #[must_use]
     pub fn panel_bounds(&self) -> (f32, f32) {
-        let min = ph2d_tokens::INSPECTOR_W_PX;
+        let min = ph2d_tokens::PANEL_MIN_W_PX;
         (min, (self.area.w * 0.5).max(min))
     }
 
-    /// A largura do painel: a escolhida na divisória, presa aos limites.
+    /// A largura do painel: a escolhida na divisória, presa aos limites; nasce com a do Inspector.
     #[must_use]
     pub fn panel_width(&self) -> f32 {
         let (lo, hi) = self.panel_bounds();
-        if self.panel_w <= 0.0 {
-            lo
+        let w = if self.panel_w <= 0.0 {
+            ph2d_tokens::INSPECTOR_W_PX
         } else {
-            self.panel_w.clamp(lo, hi)
-        }
+            self.panel_w
+        };
+        w.clamp(lo, hi)
     }
 
     /// Escolhe a largura do painel (presa aos limites na pintura).

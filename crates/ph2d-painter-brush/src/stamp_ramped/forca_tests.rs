@@ -171,3 +171,67 @@ fn o_carimbo_colorido_mede_a_forca_que_pinta() {
         "o controlo: a força cobre o dab ({medidos} texels)"
     );
 }
+
+/// A rampa POR PÍXEL (`stamp_dab_ramped_forca`, o kernel do `stamp_dab`) mede a força que pinta — sobre o
+/// transparente o alfa do `Mix` e a força contam a mesma cobertura — e a tinta com e sem plano é a mesma; o Texture
+/// Alpha não mede.
+#[test]
+fn a_rampa_por_pixel_mede_a_forca_que_pinta() {
+    let n = (W * W) as usize;
+    let spec = BrushSpec {
+        radius_px: 20.0,
+        hardness: 0.4,
+        ..BrushSpec::default()
+    };
+    let lut = [[0.2, 0.4, 0.8, 1.0], [0.2, 0.4, 0.8, 1.0]];
+    let rampa = |alpha_mode| crate::RampPaint {
+        lut: &lut,
+        alpha_mode,
+        index: crate::RampIndex::Grain,
+        shape: crate::ShapeRampLayers::default(),
+        shift: [0.0; 3],
+    };
+    let pinta = |tela: &mut [u8], modo, forca: Option<&mut [u16]>| {
+        let r = rampa(modo);
+        let c = [48.3, 47.6];
+        let _ = crate::stamp_dab_ramped_forca(
+            tela,
+            W,
+            W,
+            c,
+            &spec,
+            0.7,
+            false,
+            None,
+            None,
+            None,
+            r,
+            None,
+            [1.0, 0.0],
+            None,
+            None,
+            forca,
+        );
+    };
+    let (mut tela, mut sem, mut f) = (vec![0u8; n * 4], vec![0u8; n * 4], vec![0u16; n]);
+    pinta(&mut tela, RampAlphaMode::None, Some(&mut f));
+    pinta(&mut sem, RampAlphaMode::None, None);
+    assert_eq!(tela, sem, "medir a força mudou a tinta da rampa por píxel");
+    let mut medidos = 0usize;
+    for i in 0..n {
+        let alfa = f32::from(tela[i * 4 + 3]) / 255.0;
+        let forca = f32::from(f[i]) / 65535.0;
+        assert!(
+            (alfa - forca).abs() <= 1.0 / 255.0,
+            "texel {i}: alfa {alfa} × força {forca}"
+        );
+        medidos += usize::from(f[i] > 0);
+    }
+    assert!(
+        medidos > 1000,
+        "o controlo: a força cobre o dab ({medidos} texels)"
+    );
+    let (mut t2, mut f2) = (vec![0u8; n * 4], vec![0u16; n]);
+    pinta(&mut t2, RampAlphaMode::TextureAlpha, Some(&mut f2));
+    assert!(t2.iter().any(|&b| b != 0) && f2.iter().all(|&x| x == 0));
+}

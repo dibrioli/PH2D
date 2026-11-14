@@ -174,6 +174,13 @@ impl PainterTool {
         );
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.fatia_do_lote());
+        // B25.5: o plano da força das macros, como `stamp_dabs_per_pixel` — só onde a rampa pinta POR CIMA.
+        let mut plano = (!matches!(
+            rampa.alpha_mode,
+            ph2d_painter_brush::RampAlphaMode::TextureAlpha
+        ))
+        .then(|| self.undo.marca.toma_o_plano((w, h)))
+        .flatten();
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -220,7 +227,7 @@ impl PainterTool {
                     fp,
                 )
             });
-            if let Some(r) = ph2d_painter_brush::stamp_dab_ramped(
+            if let Some(r) = ph2d_painter_brush::stamp_dab_ramped_forca(
                 buf,
                 w,
                 h,
@@ -236,6 +243,7 @@ impl PainterTool {
                 rotor,
                 d.capsula(&spec),
                 super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w),
+                plano.as_deref_mut(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -247,6 +255,7 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = dab_rng.finish();
+        self.undo.marca.devolve_o_plano(plano, touched);
         self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);

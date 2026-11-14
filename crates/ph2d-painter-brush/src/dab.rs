@@ -355,6 +355,48 @@ pub fn stamp_dab_ramped(
     capsula: Option<crate::capsula::Capsula>,
     po: Option<crate::texture::PoDoPapel<'_>>,
 ) -> Option<DirtyRect> {
+    stamp_dab_ramped_forca(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        tex,
+        image,
+        shape,
+        ramp,
+        mask,
+        dab_rotation,
+        capsula,
+        po,
+        None,
+    )
+}
+
+/// [`stamp_dab_ramped`] que também compõe o plano da força das macros (B25.5), como o `stamp_dab`; o Texture Alpha
+/// não o escreve (baixa o alfa em vez de pintar por cima).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_ramped_forca(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
+    ramp: crate::RampPaint<'_>,
+    mask: Option<&mut [u8]>,
+    dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
+    forca: Option<&mut [u16]>,
+) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
         width,
@@ -368,7 +410,7 @@ pub fn stamp_dab_ramped(
         shape,
         Some(ramp),
         mask,
-        None,
+        forca,
         po,
         dab_rotation,
         PARALLEL_MIN_AREA,

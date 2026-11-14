@@ -4,30 +4,30 @@
 #   PH2D_PINCEIS_APROVA=1 cargo test -p ph2d-tool-painter --profile smoke --test it a_largura_de_fabrica_e_a_aprovada
 preset	2	7	26
 Airbrush	4.07	13.53	51.83
-Blender Dots	2.73	11.44	29.62
-Blender Hard	2.90	11.97	30.76
-Blender Soft	3.16	12.26	30.54
-Blender Textured	2.92	10.20	32.39
-Broad Nib	3.33	14.00	52.00
+Blender Dots	2.81	11.43	29.60
+Blender Hard	2.80	11.94	30.75
+Blender Soft	3.08	12.28	30.57
+Blender Textured	2.97	10.23	32.39
+Broad Nib	3.34	14.00	52.00
 Charcoal	3.82	14.40	52.28
 Colored 4B	3.94	13.57	51.92
 Compressed Charcoal	3.62	13.88	52.40
-Dabber	5.08	15.17	51.55
-Dabber 4	5.19	15.21	52.16
-Dip Pen	4.24	14.00	52.29
+Dabber	5.08	15.17	51.51
+Dabber 4	5.19	15.21	52.15
+Dip Pen	4.24	14.00	52.30
 Express Oil	5.00	14.00	49.24
-Fan Brush	3.83	14.68	52.30
+Fan Brush	3.83	14.74	52.27
 Filbert	5.21	14.71	52.73
 Filbert Dry	5.00	14.00	52.53
 Flat Bristle	5.00	15.00	53.07
-Gouache Flat	3.45	14.08	52.18
-Gouache Opaque	4.38	13.97	52.00
+Gouache Flat	3.46	14.07	52.16
+Gouache Opaque	4.39	13.98	52.00
 Graphite 2B	3.39	13.93	52.25
-Graphite 2H	3.29	13.63	52.30
-Graphite 8B	3.87	14.20	52.36
+Graphite 2H	3.29	13.63	52.31
+Graphite 8B	3.87	14.20	52.35
 Graphite HB	3.57	14.51	52.08
-Ink Brush	3.85	15.00	53.00
-Ink Bullet	3.99	13.78	51.34
+Ink Brush	3.87	15.00	53.00
+Ink Bullet	4.00	13.79	51.35
 Knife Dry	3.32	13.41	51.05
 Knife Grainy	4.67	15.00	52.49
 Knife Oily	5.10	14.56	52.07
@@ -35,27 +35,27 @@ Knife Smooth 3	7.00	15.32	54.00
 Knife Stain	5.88	14.61	52.54
 Knife Textured	7.34	14.00	52.00
 Marker Bullet	3.48	14.00	52.00
-Marker Chisel	4.09	14.00	52.00
+Marker Chisel	4.08	14.00	52.00
 Metallic Flat	5.87	16.00	54.00
-Oil Pastel	3.77	13.68	52.00
+Oil Pastel	3.77	13.66	51.98
 Oil Wash	5.38	14.90	52.44
-Pastel Side	3.00	13.87	49.35
-Scratch	3.81	13.52	51.46
-Smear Flat	3.87	13.90	51.39
-Smear Shattered	3.40	12.15	53.98
-Smear Soft	3.50	13.96	51.34
-Smear Spikey	3.50	13.96	51.34
-Smear Wet	4.95	12.28	50.18
-Soft Pastel	3.00	13.76	51.84
-Square Hard	3.47	14.00	52.06
+Pastel Side	3.00	13.87	49.34
+Scratch	3.81	13.52	51.49
+Smear Flat	3.79	13.90	51.38
+Smear Shattered	3.39	12.13	53.94
+Smear Soft	3.49	13.96	51.11
+Smear Spikey	3.49	13.96	51.11
+Smear Wet	5.04	12.22	49.61
+Soft Pastel	3.00	13.76	51.83
+Square Hard	3.47	14.00	52.05
 Thick Impasto	4.09	14.66	51.57
 Tilted Shade	5.00	15.07	52.14
-Water Brush	4.56	13.71	51.99
+Water Brush	4.58	13.68	51.86
 Wax Crayon	3.54	13.86	52.74
-Wax Scrape	3.45	14.11	51.94
-Wet Drip	4.16	12.97	50.80
-Wet Dry Brush	3.76	14.86	52.05
-Wet Flat	3.84	13.56	52.00
+Wax Scrape	3.46	14.11	51.92
+Wet Drip	4.14	12.97	50.82
+Wet Dry Brush	3.69	14.74	52.06
+Wet Flat	3.84	13.54	52.00
 Wet Liner	4.14	15.71	53.00
-Wet Round	4.00	13.00	51.50
+Wet Round	4.00	13.00	51.53
 Wet Wash	3.82	14.00	52.13

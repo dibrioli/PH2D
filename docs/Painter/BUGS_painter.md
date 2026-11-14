@@ -1160,6 +1160,25 @@ sessão com a tela como está, nunca congelar (#97, #98); (3) uma partição em 
 REAL do dab (#105); (4) as mutações que sobreviveram (`funde_as_caixas` acima do tecto, rejeição por banda com folga 1) são gates em
 falta — [mutacao_A](missao_4k/mutacao_A.md), [mutacao_B](missao_4k/mutacao_B.md).
 
+## Bug #114 (ABERTO 13/11, smoke do dono) — o preview do cartão Grain com «Dots» sai PRETO
+
+Dono 13/11: «dots em grain preview preto» (captura: cartão **Grain**, «Same as Paper» desmarcado, Grain = **Dots**, a faixa de
+prévia toda preta). O que já se sabe (janela n.º 9, sem cura):
+
+- A função da faixa, sozinha, NÃO dá preto com os knobs de fábrica do Dots (`Contrast 0,5 · Brightness 0,5 · Radius 0,5 ·
+  Softness 1 · Randomness 0`): `render_texture_preview(Dots, …)` a 140×60 dá média 23–130 de 255 e máximo 204–255 em
+  `size` 0,1…100 (bolinhas suaves; a `size` ≥ 10 a média de um píxel cai para ~29 e os pontos aliasam). Só `size` 0,1 com
+  Radius/Softness/Randomness 1 dá 0 (a faixa inteira entre pontos).
+- Logo o preto vem de OUTRA etapa no app. Suspeitos, por ordem: (1) a rampa de cor do Grain ligada com LUT preto/zerado
+  (`paint_texture.rs::previa_do_padrao` → `build_ramp_preview_lut`, `paint_ramp_lut.rs`), em `RampAlphaMode::None` opaco;
+  (2) a prévia não é refeita/enviada ao cartão depois da troca de kind (`cards_grao.rs::pecas`/`previa_da_camada`, cache por
+  quadro); (3) `texture_params` não repostos para os do Dots no caminho do dropdown do cartão (`set_brush_texture_kind_corpo`
+  chama `reset_texture_params` — confirme que o dropdown do Grain passa por ele).
+- ⚠️ Achado à parte, a medir: em `patterns.rs::dots_t` o tecto `.min(PI·r²/fw²)` só é a cobertura certa com o píxel DENTRO de uma
+  célula (`fw ≤ 1`); com `fw > 1` o píxel cobre ~`fw²` pontos e a média devia ser `πr²` — escurece o Dots longe (grão pequeno).
+- Reproduzir: app em cartões, Painter, um pincel, cartão Grain → Dots; fotografar; depois o gate por nome em
+  `ph2d-panel-painter-layers` que chama `previa_do_padrao` com o estado do pincel do dono e afirma píxeis não pretos.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

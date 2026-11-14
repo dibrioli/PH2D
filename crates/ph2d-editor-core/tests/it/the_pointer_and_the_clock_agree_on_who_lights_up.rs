@@ -53,20 +53,35 @@ fn variants(src: &str) -> Vec<String> {
     out
 }
 
-/// O corpo do `hover_targets`, e só ele.
+/// O corpo de `fn <nome>`, e só ele.
 ///
 /// ⚠️ **Ler o ficheiro inteiro daria um falso VERDE:** o `store_census.rs` também hospeda o
 /// `number_fields`, que menciona `InteractiveState::NumberInput` — o tipo passaria por publicado
 /// sem estar. *Um oráculo que casa com o vizinho da função não está a olhar para a função.*
-fn hover_targets_body(src: &str) -> &str {
+fn body_of<'a>(src: &'a str, sig: &str) -> &'a str {
     let start = src
-        .find("pub fn hover_targets")
-        .expect("o `hover_targets` mudou de nome ou de ficheiro");
+        .find(sig)
+        .unwrap_or_else(|| panic!("`{sig}` mudou de nome ou de ficheiro"));
     let tail = &src[start..];
     let end = tail
         .find("\n    }\n")
-        .expect("o corpo do `hover_targets` nao fecha como esperado");
+        .unwrap_or_else(|| panic!("o corpo de `{sig}` nao fecha como esperado"));
     &tail[..end]
+}
+
+/// A LEI do aceso por estado (`hover_target_of`, desde o N10 F6d) — e a prova de que os dois caminhos do
+/// relógio (a varredura `hover_targets` e o tique pelos mudados) a usam, senão a lei seria letra morta.
+fn hover_law_body(src: &str) -> &str {
+    for caminho in [
+        "pub fn hover_targets(",
+        "pub fn colhe_hover_targets_mudados(",
+    ] {
+        assert!(
+            body_of(src, caminho).contains("Self::hover_target_of("),
+            "`{caminho}` deixou de passar pela lei `hover_target_of` — o recorte já não olha para o relogio"
+        );
+    }
+    body_of(src, "fn hover_target_of(")
 }
 
 #[test]
@@ -78,7 +93,7 @@ fn every_type_the_pointer_promotes_is_driven_by_the_clock() {
         .expect("o `store_census` mudou de sitio");
 
     let promoted = variants(&hover);
-    let driven = variants(hover_targets_body(&census));
+    let driven = variants(hover_law_body(&census));
 
     // CONTROLO POSITIVO nas duas pontas: uma varredura vazia é um gate satisfeito com nada.
     assert!(

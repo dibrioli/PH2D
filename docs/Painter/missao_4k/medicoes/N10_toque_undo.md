@@ -195,3 +195,37 @@ Comando da medição (fila): a s8 `what_a_diagonal_ctrl_z_copies_at_4k` (`--prof
 
 Comando da s8 (fila da janela; imprime `impasto=false` e `impasto=true`, cura × ablação): a s8
 `what_a_diagonal_ctrl_z_copies_at_4k` com `--profile smoke -- --ignored --nocapture --test-threads=1`.
+
+## 2.ª vaga — W2a (14/11): as partes do quadro do Ctrl+Z Wet no app
+
+Binário smoke do HEAD `810c8247d8` (`target/n10/w2a/bin/ph2d-head`, com símbolos `ph2d-head-sym`, com a sonda abaixo
+`ph2d-diag`); `mede_pen_up_4k.sh perf 3840x2160 Filbert:wet` (LENTO_MS=20, `PH2D_QUADRO_A_PEDIDO=1`, `:93`) e a matriz
+`CURTO=1` Filbert/Wet Liner. Load 10–13 (`target/n10/w2a/load_*.txt`): indicativo; a FORMA bate com a matriz final calma
+(`target/n10/final/s_B1`, load < 1). Saídas em `target/n10/w2a/`, não comitadas.
+
+O Ctrl+Z são DOIS quadros, ~95 ms um do outro (B1 calmo: 25,5 e 45,4 ms; perf: 26,0 e 46,7):
+
+| quadro | partes (`[quadro-lento]` + perf por fio, cycles:u) |
+|---|---|
+| 1.º (~26 ms) | `preview` 14,7–15,2 ms = o undo do motor no fio da UI: `PlanoEmTiles::de` (a foto do «depois», 38 % dos ciclos), `troca_no_pool` (16 %), `CampoEsparso::copia_intervalo` (aparência/óleo, 10 %); o resto é o quadro da shell (~10 ms) |
+| 2.º (~47 ms) | `dispatch` 10,2 (`dobra` 6,4 = o relevo da TELA INTEIRA: `dobra_da_linha_com_papel` + `com_o_papel_em` + `planos_da_linha`, 17 fios); fora do dispatch ~36 ms: a óptica do operário a recompor a TELA INTEIRA (`pigment_row`, `suave_visto`, `laco_de_pixel`, `plano_do_suave`, ~50 ms × 17 fios) e ~20 ms com o fio da UI parado e 17 fios em `libc` (memcpy da cola da óptica) |
+
+**Causa (sonda `[undo-sujo]`, `undo_vivo.rs::diag_sujo_do_undo`, só com `PH2D_QUADRO_LENTO_MS`):** depois do
+`undo_sem_zerar_o_fluxo` + `repoe_sobre`, o sujo do motor é **`Full`** nos dois pincéis, com a caixa do restauro de
+~830×575 células (Filbert `(1472,768)–(2303,1343)`, Wet Liner `(1408,704)–(2367,1343)`) = **~6 % da tela 4K**. `Full` ⇒
+`otica.toca_tudo` ⇒ a óptica e a dobra do relevo da tela inteira: ~94 % do 2.º quadro é trabalho fora da região do passo.
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| Ctrl+Z Wet 45 ms (W2a) | **medido, causa localizada, cura aberta** | 2.º quadro 45–47 ms = óptica + dobra da tela inteira | este commit (sonda) | prazo de 45 min. |
+
+**Próximo passo exato:** o `Full` sai de `painter/historia.rs::depois_do_restauro` (crate `ph2d-wet-paint`) por um de
+dois sítios: `forma != forma_global(g)` (o 1.º traço do Filbert/Liner ALOCA os planos preguiçosos `altura`…`pigmento`;
+o undo devolve-os vazios ⇒ o `len()` muda ⇒ `mark_dirty_full`) ou `paper_changed` → `rebake_paper`. (1) Pôr no
+`[undo-sujo]` qual dos dois (e o `dirty` ANTES do undo). (2) Se é a forma: um plano preguiçoso que passa de alocado a
+vazio só mudou dentro dos tiles do registo (fora deles tinha o valor de omissão, que é o que o vazio lê) ⇒ sujo = a
+caixa do restauro; `Full` só para `oleo_real`/`suave_teto` (estado de toda a camada). Gate: tela da óptica com o sujo
+estreito × com `Full` (oráculo = o `toca_tudo` de hoje), ao bit, 1.º traço e 2.º traço, Filbert e Wet Liner (aguada e
+óleo); mutação = devolver `Full` ⇒ o contador de células recompostas (`conta_sujo`) volta à tela. (3) Depois: a dobra do
+relevo segue o `preview_gpu_region` da óptica sozinha (`painter_gpu_preview.rs`, `janelas`). (4) A matriz `Filbert:wet
+"Wet Liner:wet" "Flat Bristle:wet"` base × head, intercalada, load < 5.

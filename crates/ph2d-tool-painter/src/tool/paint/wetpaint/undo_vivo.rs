@@ -380,6 +380,7 @@ impl PainterTool {
             marca("volta: repoe");
             // Uma imagem no ar é de antes do restauro: aplicada, punha a tela de outro passo por cima, e nada a corrigia.
             // Fora do sujo do motor (a caixa do restauro e o que já estava por compor) a grade é a mesma.
+            diag_sujo_do_undo(sess.engine.dirty, caixa, (gw, gh));
             match sess.engine.dirty {
                 Dirty::Full => sess.otica.toca_tudo(sess.grid),
                 Dirty::Rect { x0, y0, x1, y1 } => {
@@ -426,6 +427,15 @@ impl PainterTool {
         }
         // Uma sessão que o restore fez nascer (não devia: o restore acaba-as) perde para a que estava viva.
         self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
+    }
+}
+
+/// ⚠️ Medição, nunca produto (N10 W2a): com `PH2D_QUADRO_LENTO_MS` posto, o sujo que o Ctrl+Z vivo entrega à óptica
+/// (`Full` = a tela inteira recomposta) e a caixa do restauro, em células.
+fn diag_sujo_do_undo(d: Dirty, caixa: Option<(usize, usize, usize, usize)>, grade: (usize, usize)) {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ON.get_or_init(|| std::env::var_os("PH2D_QUADRO_LENTO_MS").is_some()) {
+        eprintln!("[undo-sujo] motor={d:?} caixa_do_restauro={caixa:?} grade={grade:?}");
     }
 }
 

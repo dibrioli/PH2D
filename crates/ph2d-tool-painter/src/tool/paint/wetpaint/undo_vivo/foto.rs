@@ -43,6 +43,8 @@ pub(crate) struct FotoDoMotor {
     /// O fluxo do último passo: o restauro zera-o, mas o Jacobi parte dele (medido: 13 B na aguada seguinte).
     fluxo: Vec<(PlanoEmTiles, PlanoEmTiles)>,
     relogio: Relogio,
+    /// A cadência da secagem por tile (`Sim::corre_tile`, B13.4): fora do `Relogio` por não ser `Copy`.
+    corre_tile: Vec<bool>,
 }
 
 impl FotoDoMotor {
@@ -70,6 +72,7 @@ impl FotoDoMotor {
                 })
                 .collect(),
             relogio: Relogio::de(e),
+            corre_tile: e.sim.corre_tile.clone(),
         }
     }
 
@@ -92,6 +95,7 @@ impl FotoDoMotor {
             fy.repoe_sobre(&mut l.grid.flow_y, j.map(|j| &j.1));
         }
         self.relogio.poe(e);
+        e.sim.corre_tile.clone_from(&self.corre_tile);
     }
 
     /// Se o [`Self::repoe`] reescreve o fluxo da camada `i` inteiro (cópia de todos os tiles ou esvaziamento), sem ler o

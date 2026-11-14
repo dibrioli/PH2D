@@ -392,6 +392,7 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
         false,
         &ramp,
         crate::RampAlphaMode::None,
+        None,
     );
     out.push(("blit_stamp_ramped", false, written_box(&canvas, 4)));
     let stamp = render_color_stamp_mask(

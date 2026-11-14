@@ -31,7 +31,13 @@ impl PainterTool {
             brush,
             mask_size_for(max_r * brush.stamp_domain(self.paint.shape_image.is_some())),
         );
+        let alpha_mode = super::ramp_lut::BRUSH_RAMP_ALPHA;
+        // B25.5: o plano da força das macros, como `stamp_dabs_cached` — só onde a rampa pinta POR CIMA.
+        let mut plano = (!matches!(alpha_mode, ph2d_painter_brush::RampAlphaMode::TextureAlpha))
+            .then(|| self.undo.marca.toma_o_plano((w, h)))
+            .flatten();
         let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
+            self.undo.marca.devolve_o_plano(plano, None);
             return;
         };
         // Owner Shape: its two layers composed per index — both indices ARE the coverage here (the router
@@ -41,7 +47,6 @@ impl PainterTool {
         } else {
             self.paint.texture_ramp_lut.as_slice()
         };
-        let alpha_mode = super::ramp_lut::BRUSH_RAMP_ALPHA;
         // O Randomize Color: a LUT deslocada pelo desvio de cada carimbo (a lei de `ramp_texel`, entrada
         // a entrada), re-assada só quando o desvio muda.
         let mut deslocada: Vec<[f32; 4]> = Vec::new();
@@ -79,6 +84,7 @@ impl PainterTool {
                 alpha_locked,
                 ramp,
                 alpha_mode,
+                plano.as_deref_mut(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -89,6 +95,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.undo.marca.devolve_o_plano(plano, touched);
         self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);

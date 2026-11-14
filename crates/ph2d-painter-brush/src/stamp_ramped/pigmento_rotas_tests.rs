@@ -71,6 +71,7 @@ fn as_rotas_em_cache_misturam_o_pigmento_como_o_caminho_por_pixel() {
             false,
             &azul,
             crate::RampAlphaMode::None,
+            None,
         );
         let cor = crate::render_color_stamp_mask(
             &s,

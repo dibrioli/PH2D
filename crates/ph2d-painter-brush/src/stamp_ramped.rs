@@ -9,7 +9,7 @@
 //! same trade the non-ramp cache already makes (Enio 2026-06-26).
 
 use crate::blend::BrushBlend;
-use crate::dab::{DirtyRect, encode, parallel_band_stamp, ramp_sample, stamp_rgba};
+use crate::dab::{DirtyRect, encode, ramp_sample, stamp_rgba};
 use crate::ramp_alpha::RampAlphaMode;
 use crate::spec::BrushSpec;
 use crate::stamp::{StampMask, sample_mask};
@@ -53,6 +53,7 @@ pub fn blit_stamp_ramped(
     preserve_alpha: bool,
     ramp: &[[f32; 4]],
     alpha_mode: RampAlphaMode,
+    forca: Option<&mut [u16]>,
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
@@ -90,9 +91,21 @@ pub fn blit_stamp_ramped(
         x1,
         stride,
     };
-    let touched = parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
-        blit_band_ramped(&ctx, dst, band_y0)
-    });
+    // B25.5: o plano da força das macros (o `a` composto, como `blit_stamp`); o Texture Alpha baixa o alfa em vez
+    // de pintar por cima, então não o mede (o passo fecha não-exacto, a rota de recurso).
+    let forca = forca.filter(|_| !matches!(alpha_mode, RampAlphaMode::TextureAlpha));
+    let touched = crate::dab::parallel_band_stamp_masked(
+        buf,
+        None,
+        forca,
+        y0,
+        y1,
+        x0,
+        x1,
+        stride,
+        crate::dab::PARALLEL_MIN_AREA,
+        |dst, _, fband, band_y0| blit_band_ramped(&ctx, dst, fband, band_y0),
+    );
     if !touched {
         return None;
     }
@@ -106,7 +119,12 @@ pub fn blit_stamp_ramped(
 
 /// Blit the cached coverage mask into the band, colouring each texel by `ramp[coverage]` — the exact
 /// no-accumulate-cap finalize of the per-pixel [`crate::dab`] ramp branch (the 3 alpha modes).
-fn blit_band_ramped(ctx: &RampedBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
+fn blit_band_ramped(
+    ctx: &RampedBlitCtx,
+    dst: &mut [u8],
+    mut forca: Option<&mut [u16]>,
+    band_y0: i64,
+) -> bool {
     let mut touched = false;
     for r in 0..dst.len() / ctx.stride {
         let py = band_y0 + r as i64;
@@ -149,6 +167,12 @@ fn blit_band_ramped(ctx: &RampedBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
                 if a <= 0.0 {
                     continue;
                 }
+                if let Some(f) = forca.as_deref_mut() {
+                    crate::stroke_cover::compoe_forca(
+                        &mut f[r * (ctx.stride / 4) + px as usize],
+                        a,
+                    );
+                }
                 crate::blend_vazio::blend_over_pigment_modo(
                     ctx.blend,
                     prev,
@@ -171,3 +195,7 @@ fn blit_band_ramped(ctx: &RampedBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
 #[cfg(test)]
 #[path = "stamp_ramped/pigmento_rotas_tests.rs"]
 mod pigmento_rotas_tests;
+
+#[cfg(test)]
+#[path = "stamp_ramped/forca_tests.rs"]
+mod forca_tests; // B25.5

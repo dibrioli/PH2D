@@ -197,8 +197,10 @@ impl Laco {
     /// O laço deste processo, com o smoke lido do ambiente uma vez.
     #[must_use]
     pub fn do_ambiente() -> Self {
-        let smoke =
-            std::env::vars_os().any(|(k, v)| e_smoke(&k.to_string_lossy(), &v.to_string_lossy()));
+        // `PH2D_QUADRO_A_PEDIDO=1`: o smoke também a pedido (o «parado» da matriz mede a app, não o smoke).
+        let smoke = std::env::var("PH2D_QUADRO_A_PEDIDO").as_deref() != Ok("1")
+            && std::env::vars_os()
+                .any(|(k, v)| e_smoke(&k.to_string_lossy(), &v.to_string_lossy()));
         let forca_oculta = std::env::var("PH2D_OCULTA_APRESENTA")
             .ok()
             .map(|v| v != "0");

@@ -187,7 +187,9 @@ fn in_a_tiny_window_the_style_bar_stays_right_of_the_toolbar() {
         (320.0, 420.0),
         (260.0, 420.0),
         (220.0, 420.0),
-        (200.0, 400.0),
+        // A lei de (b) é a LARGURA. Era 200×400; a barra de menus onda 7 (faixa 36, fila 32) tirou ao
+        // quadro a altura em que a barra e o canto de navegação cabiam juntos — 420 como as vizinhas.
+        (200.0, 420.0),
     ] {
         let mut t = T::new();
         (t.vp_w, t.vp_h) = (w, h);

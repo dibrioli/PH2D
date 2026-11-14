@@ -167,10 +167,11 @@ fn a_escolhida_e_a_ultima_a_recolher_ao_icone() {
         .iter()
         .map(|o| crate::screens::hero::slot_tabs_face::natural_w(o.title.tr(), &mut text))
         .collect();
-    let piso = ph2d_tokens::ROW_H_PX;
+    // O piso de uma aba é a altura da fila (`TAB_BAR_H`, a da fila de ferramentas desde a onda 7).
+    let piso = crate::screens::hero::slot_tabs::TAB_BAR_H;
     let aperto = naturais[2] + piso * 2.0 + ph2d_tokens::Spacing::Xs.px() * 2.0;
     force_cromo_on_this_thread(Some(true));
-    let bar = Rect::new(0.0, 0.0, aperto, 22.0);
+    let bar = Rect::new(0.0, 0.0, aperto, piso);
     let plano = tab_plan(&occ, Some(NodeId(3)), bar, &mut text).expect("cabe sem setas");
     force_cromo_on_this_thread(None);
     assert_eq!(plano.hidden_after, 0);

@@ -1293,12 +1293,26 @@ fn a_family_click_carries_the_mode_it_inherited_from_the_cascade() {
 fn a_family_click_with_no_cascade_behind_it_parks_nothing() {
     crate::test_support::ensure_panel_registry();
     use crate::interaction::ContextMenuKind;
-    // The tables are public: a family id reaching the top-level menu would have
-    // no mode, and must not park a pick the shell cannot resolve.
+    // The tables are public: a family id reaching a top-level LIST menu would have
+    // no mode, and must not park a pick the shell cannot resolve. Since the key card
+    // (owner 13/11) only the strip fade still opens the list; the card offers the ten
+    // shapes at top level and always carries a mode (the lit one, or In-Out).
+    let fade = crate::interaction::TimelineInterpScope::StripFade {
+        lane: 0,
+        strip: 0,
+        edge: 0,
+    };
     let mut hero = HeroScreen::new(NodeId(1));
-    stage_closed_timeline_menu(&mut hero, ContextMenuKind::TimelineSegment { scope: SCOPE });
+    stage_closed_timeline_menu(&mut hero, ContextMenuKind::TimelineSegment { scope: fade });
     let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_TL_FAM_SINE));
     assert!(hero.pending_timeline_interp.is_none());
+
+    let mut hero = HeroScreen::new(NodeId(1));
+    stage_closed_timeline_menu(&mut hero, ContextMenuKind::TimelineSegment { scope: SCOPE });
+    assert!(hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_TL_FAM_SINE)));
+    let pick = hero.pending_timeline_interp.take().expect("the card parks the shape");
+    assert_eq!(pick.item, ids::CTX_MENU_TL_FAM_SINE);
+    assert_eq!(pick.mode, ids::TL_EASE_MODE_INOUT);
 }
 
 #[test]

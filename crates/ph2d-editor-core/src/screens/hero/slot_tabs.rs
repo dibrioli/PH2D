@@ -266,10 +266,9 @@ pub fn hidden_by_tabs(hero: &HeroScreen) -> Vec<NodeId> {
 
 /// ⭐⭐⭐ **O PISO de uma aba: ela nunca é mais estreita do que é ALTA.**
 ///
-/// ⛔ **Não é um número escolhido** — é a altura da própria fila ([`TAB_BAR_H`], que é o
-/// `ROW_H_PX`). Um quadrado é a menor coisa que ainda se lê como um alvo, e desde 2026-09-09 ele
-/// tem conteúdo: `22 − 14` ([`ph2d_tokens::INLINE_ICON_PX`]) deixa **4 px de cada lado**, que é o
-/// respiro padrão desta casa. ⇒ *no piso a aba é exactamente o glifo dela* — ver
+/// ⛔ **Não é um número escolhido** — é a altura da própria fila ([`TAB_BAR_H`], a da fila de
+/// ferramentas desde a onda 7 da barra de menus: 32). Um quadrado é a menor coisa que ainda se lê
+/// como um alvo, e ele tem conteúdo: o glifo nítido das barras ao meio. ⇒ *no piso a aba é exactamente o glifo dela* — ver
 /// [`super::slot_tabs_face`].
 fn tab_floor_w() -> f32 {
     TAB_BAR_H

@@ -153,8 +153,10 @@ fn no_ecra_hidpi_a_escala_multiplica_e_o_clique_cai_no_mesmo_id() {
                 ly * s
             );
         }
+        // Controlo da fixtura, não lei: medido 18 alvos (13/11) depois de a barra de menus versão C
+        // recolher os títulos File…Help no botão «Menu» (era ≥ 20 com eles); sem chrome são ~0.
         assert!(
-            alvos >= 20,
+            alvos >= 16,
             "{ecra} × {z:?}: só {alvos} alvos — a fixtura não pinta o chrome"
         );
     }

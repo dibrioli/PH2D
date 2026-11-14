@@ -16,7 +16,6 @@
 
 use super::composite::N_CAMADAS;
 use crate::tool::PainterTool;
-use std::sync::Arc;
 
 impl PainterTool {
     /// ⭐⭐⭐ **A TELA FOI DESCASCADA ⇒ A PILHA ESQUECE O QUE ACUMULOU.**

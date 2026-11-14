@@ -50,7 +50,7 @@ impl SessaoDoWet {
     }
 
     /// A sessão sai ao operário ([`fila_do_dab::enfileira`]); a próxima leitura espera-a.
-    pub(in crate::tool::paint) fn voa(&mut self, voo: EmVoo, marca: Option<u64>) {
+    pub(in crate::tool::paint::wetpaint) fn voa(&mut self, voo: EmVoo, marca: Option<u64>) {
         self.marca_em_voo = marca;
         debug_assert!(
             self.aqui.get().is_none(),
@@ -78,7 +78,10 @@ impl SessaoDoWet {
 
     /// F2f: com um lote ainda com o operário, `lote()` fica ATRÁS dele (`true`) e o evento volta sem esperar;
     /// sem voo, ou com o voo já pronto, nada muda (`false`) e a rota segue (drenando, sem espera).
-    pub(in crate::tool::paint) fn fica_atras(&mut self, lote: impl FnOnce() -> LoteAdiado) -> bool {
+    pub(in crate::tool::paint::wetpaint) fn fica_atras(
+        &mut self,
+        lote: impl FnOnce() -> LoteAdiado,
+    ) -> bool {
         let voo = self.voo.get_mut().unwrap_or_else(PoisonError::into_inner);
         if !voo.as_mut().is_some_and(|v| !v.pronto()) {
             return false;
@@ -94,7 +97,7 @@ impl SessaoDoWet {
 
     /// F2f: os lotes que ainda faltam de uma vez de adiados vão atrás do voo que acabou de sair (antes de qualquer
     /// lote de evento: `atras` está vazio, a sessão estava em casa). Sem voo, voltam a `adiados`.
-    pub(in crate::tool::paint) fn resto_atras(&mut self, resto: Vec<LoteAdiado>) {
+    pub(in crate::tool::paint::wetpaint) fn resto_atras(&mut self, resto: Vec<LoteAdiado>) {
         if resto.is_empty() {
             return;
         }

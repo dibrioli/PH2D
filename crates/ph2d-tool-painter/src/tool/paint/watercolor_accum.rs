@@ -662,13 +662,13 @@ fn zera_so_a_janela() -> bool {
 }
 
 /// B44.14: bytes zerados pelos dois `clear_wet_*` neste fio (o contador do portão «a figura zera a janela»).
-#[doc(hidden)]
+#[cfg(test)]
 pub(crate) fn bytes_zerados() -> u64 {
     BYTES_ZERADOS.with(std::cell::Cell::get)
 }
 
 /// B44.14: A×B — `Some(false)` = tela inteira (o caminho de antes), `None` = a chave do processo.
-#[doc(hidden)]
+#[cfg(test)]
 pub(crate) fn forca_zerar_a_janela(v: Option<bool>) {
     ZERA_JANELA.with(|z| z.set(v));
 }

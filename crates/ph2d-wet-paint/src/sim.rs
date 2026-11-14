@@ -13,7 +13,7 @@
 //! pointer is down" rule; this module only advances single fixed steps.
 
 use crate::colorops::ColorMix;
-use crate::drying::{drying_pass, fast_dry};
+use crate::drying::fast_dry;
 use crate::grid::Grid;
 use crate::solver::{
     advect, apply_boundaries, build_flow_field, diffusion_pass, project, rebuild_active_region,

@@ -19,8 +19,7 @@ pub(super) use super::brush_image::BrushTextureImage;
 mod escalas; // o snap de 45° e as escalas dos sliders — filho por LOC
 pub use escalas::PANEL_RAMP_STOPS;
 pub(super) use escalas::{
-    count_from_norm, size_norm_to_px, size_norm_to_px_em, size_px_to_norm, size_px_to_norm_em,
-    snap_to_45,
+    count_from_norm, size_norm_to_px, size_norm_to_px_em, size_px_to_norm_em, snap_to_45,
 };
 
 /// A compact snapshot of the active brush for the layers panel's Brush section, published each frame

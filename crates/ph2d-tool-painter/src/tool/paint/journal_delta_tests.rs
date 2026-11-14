@@ -131,8 +131,7 @@ fn relief_side(
             relevo: crate::undo_planes::Relevo::de(cursor),
         },
     )
-    .ok()
-    .expect("o cursor descreve o delta que acabamos de partir");
+    .unwrap_or_else(|_| panic!("o cursor descreve o delta que acabamos de partir"));
     let l = cursor.layers.active().expect("a camada ativa do fixture");
     (
         plane(&out.heights, l),

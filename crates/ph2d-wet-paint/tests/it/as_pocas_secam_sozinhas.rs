@@ -20,7 +20,7 @@ fn sessao(pingo: bool) -> (Vec<u32>, usize, usize) {
     for _ in 0..4 {
         e.step_simulation();
     }
-    let poca = |x: usize| x < 64 || x >= 320;
+    let poca = |x: usize| !(64..320).contains(&x);
     let molhadas = {
         let g = e.active_grid();
         (0..g.film.len())

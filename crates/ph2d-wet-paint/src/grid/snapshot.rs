@@ -342,7 +342,6 @@ macro_rules! tile_fino {
         #[cfg_attr(test, derive(Debug))]
         struct TileFino { $($f: Vec<$t>,)* guardados: Planos }
         impl TileFino {
-            fn tira(g: &Grid, r: Ret) -> Self { Self::tira_com(g, r, Planos::TODOS) }
             fn tira_com(g: &Grid, r: Ret, m: Planos) -> Self {
                 TileFino {
                     $($f: if m.$f { Plano::tira_tile(&g.$f, g.s, r) } else { Vec::new() },)*
@@ -578,7 +577,7 @@ impl Registo {
         if let Some(b) = b {
             ks.extend(b.finos.keys().filter(|k| !a.finos.contains_key(k)));
         }
-        // Por tile no pool: só lê a grade, e cada tile é o `TileFino::tira` de sempre.
+        // Por tile no pool: só lê a grade, e cada tile é o `TileFino::tira_com` dos planos que o par guarda.
         let tiles: Vec<TileFino> = ks
             .par_iter()
             .map(|k| TileFino::tira_com(g, ret_do_tile(*k, g.s, g.rows), planos_do_par(a, b, *k)))

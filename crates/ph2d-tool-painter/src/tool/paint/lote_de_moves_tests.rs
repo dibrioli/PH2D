@@ -71,7 +71,10 @@ fn arma(p: Pincel) -> PainterTool {
 }
 
 /// `lote = None`: um Move por entrega (o oráculo); `Some(k)`: `k` Moves por lote.
-fn traco(p: Pincel, lote: Option<usize>) -> (Vec<u8>, Vec<u8>, Vec<(u16, [u8; 4])>) {
+/// A tela, o relevo e as gotas do traço.
+type Traco = (Vec<u8>, Vec<u8>, Vec<(u16, [u8; 4])>);
+
+fn traco(p: Pincel, lote: Option<usize>) -> Traco {
     let mut t = arma(p);
     t.on_canvas_pointer(ev(0, PointerPhase::Down));
     let mut no_lote = 0;

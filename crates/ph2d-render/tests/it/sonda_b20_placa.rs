@@ -104,9 +104,9 @@ fn sonda_b20_2_pilha_abaixo_da_activa() {
         camadas: (0..n)
             .map(|i| {
                 let mut v = vec![0u8; px];
-                for (k, p) in v.chunks_exact_mut(4).enumerate() {
+                for (k, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
                     let a = ((k + i * 7919) % 97) as u8;
-                    p.copy_from_slice(&[a.wrapping_mul(3), a.wrapping_mul(5), a, 40 + a]);
+                    *p = [a.wrapping_mul(3), a.wrapping_mul(5), a, 40 + a];
                 }
                 v
             })

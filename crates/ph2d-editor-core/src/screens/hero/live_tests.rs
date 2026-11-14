@@ -48,14 +48,14 @@ fn mexe(hero: &mut HeroScreen, quadro: u64, semente: &mut u64) {
         *semente = semente
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
-        if (*semente >> 60) == 0 {
-            if let Some(InteractiveState::Button { state }) = hero.store.get_mut(NodeId(i)) {
-                *state = if *state == ButtonState::Normal {
-                    ButtonState::Hovered
-                } else {
-                    ButtonState::Normal
-                };
-            }
+        if (*semente >> 60) == 0
+            && let Some(InteractiveState::Button { state }) = hero.store.get_mut(NodeId(i))
+        {
+            *state = if *state == ButtonState::Normal {
+                ButtonState::Hovered
+            } else {
+                ButtonState::Normal
+            };
         }
     }
     match quadro {

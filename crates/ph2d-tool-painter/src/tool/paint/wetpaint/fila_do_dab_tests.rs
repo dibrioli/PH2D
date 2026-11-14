@@ -134,7 +134,7 @@ fn traco_inteiro_com(
     t.set_brush_size_px(60.0);
     t.set_brush_color_srgb8([40, 90, 220]);
     let mut gotas = Vec::new();
-    let mut traco = |t: &mut PainterTool, y0: f32, gotas: &mut Vec<Option<[u8; 4]>>| {
+    let traco = |t: &mut PainterTool, y0: f32, gotas: &mut Vec<Option<[u8; 4]>>| {
         porta(true);
         t.on_canvas_pointer(cp([60.0, y0], 0.6, PointerPhase::Down));
         for k in 1..=10 {

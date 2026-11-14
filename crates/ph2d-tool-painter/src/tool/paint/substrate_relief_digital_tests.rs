@@ -119,14 +119,32 @@ fn a_marca_da_tinta_do_wet_desfaz_se_com_o_traco() {
     );
 }
 
-/// **A 1.ª marca do Wet refaz a imagem inteira**: ela muda a lei da camada TODA (o dente sob a tinta Digital
-/// que já lá estava), e a luz só se refaz no retângulo do traço — sem derrubar o cache, o resto da tela fica
-/// com a lei velha até um recompose qualquer. O 2.º traço Wet na mesma camada não muda nada e não o derruba.
+/// **A 1.ª marca do Wet refaz a tinta que a camada já tinha**: ela muda a lei da camada (o dente sob a tinta
+/// Digital que já lá estava), e o traço Wet só suja o retângulo dele — sem refazer a janela dessa tinta, o resto
+/// fica com a lei velha até um recompose qualquer. Desde o B18.4 a marca refaz a janela da tinta da camada (a do
+/// undo), não a tela (a paridade ao bit com a tela inteira: `camada_nova_paridade_tests`); por isso a tinta
+/// Digital fica LONGE do toque Wet. O 2.º traço Wet na mesma camada não muda nada e não derruba o cache.
 #[test]
 fn a_primeira_marca_do_wet_refaz_a_imagem_inteira() {
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; (N * N * 4) as usize], N, N);
+    t.set_substrate_depth(0.5);
+    t.set_brush_size_px(12.0);
+    let cp = |pos, phase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    // A tinta Digital da camada, em baixo (y 76), longe do toque Wet (20, 20).
+    t.on_canvas_pointer(cp([8.0, 76.0], PointerPhase::Down));
+    for k in 1..=40 {
+        t.on_canvas_pointer(cp([8.0 + 2.0 * k as f32, 76.0], PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(cp([88.0, 76.0], PointerPhase::Up));
+    t.on_tick(8.0);
     let desce = |t: &mut PainterTool| {
         t.on_canvas_pointer(CanvasPointer {
             pos: [20.0, 20.0],
@@ -147,10 +165,13 @@ fn a_primeira_marca_do_wet_refaz_a_imagem_inteira() {
     t.set_paint_media(crate::PaintMedia::WetPaint);
     let _ = t.current_preview();
     assert!(t.composited.is_some(), "a régua precisa do cache cheio");
+    assert!(t.dirty_rect.is_none(), "a régua precisa do sujo vazio");
     desce(&mut t);
+    let cobre = |r: Region| r.x <= 14 && r.x + r.w >= 82 && r.y <= 72 && r.y + r.h >= 80;
     assert!(
-        t.composited.is_none(),
-        "a 1.ª marca do Wet não derrubou o cache"
+        t.composited.is_none() || t.dirty_rect.is_some_and(cobre),
+        "a 1.ª marca do Wet não refez a tinta Digital da camada: sujo {:?}",
+        t.dirty_rect
     );
     solta(&mut t);
     let _ = t.current_preview();

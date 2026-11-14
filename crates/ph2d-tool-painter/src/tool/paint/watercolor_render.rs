@@ -283,6 +283,7 @@ impl PainterTool {
 
         // Wet Mix pigment reserve (MIX-1, [`watercolor_reserve`]): scales the BRUSH density term
         // AFTER the rim derives from the intact coverage. Mixer never on ⇒ `None` ⇒ byte-identical.
+        let halo_do_wet = self.paint_media() == super::media::PaintMedia::WetPaint;
         let rc = self.paint.wet_reserve_cache.take();
         let reserve = self.reserve_fields((fw, n, (rx0, ry0), (rw, rh)), &cur_style, changed, rc);
         let color_buf = &self.paint.stroke_color;
@@ -346,7 +347,9 @@ impl PainterTool {
         };
         let vbase = vbase.as_ref();
         let vchao: Option<&[u8]> = vchao.as_deref().map(Vec::as_slice);
-        let halo = if has_style {
+        // B16.2 cont3 (o dono mais próximo do halo) só no Wet Paint (BUGS_painter #115): fora dele o texel sem dono
+        // resolve-se pelo pincel vivo, os bytes do main.
+        let halo = if has_style && halo_do_wet {
             dono::DonoDoHalo::build(style_owner, (fw, fh), (rx0, ry0, rw, rh), pad)
         } else {
             dono::DonoDoHalo::vazio()

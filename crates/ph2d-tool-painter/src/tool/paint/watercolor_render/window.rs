@@ -308,7 +308,23 @@ impl PainterTool {
         if COMMIT_PELA_UNIAO.get() {
             return self.paint.wet_cum_dirty;
         }
-        self.paint.wet_stroke_dirty
+        // Fora do Wet Paint o halo resolve-se pelo pincel VIVO (B16.2 cont3 só no Wet, BUGS_painter #115): com o
+        // estilo da sessão não uniforme a união dava outros bytes longe do traço, logo o pen-up é a união — o main.
+        let t = &self.paint.wet_styles.table;
+        let uniforme = t.first().is_none_or(|a| {
+            !super::super::watercolor_rewet_px::params_differ(t)
+                && t.iter().all(|s| {
+                    (s.core_r, s.spread_px, s.reserve_r) == (a.core_r, a.spread_px, a.reserve_r)
+                        && (s.wet, s.paper_edge, s.granulation)
+                            == (a.wet, a.paper_edge, a.granulation)
+                        && (s.spread_thin, s.pigment_mix) == (a.spread_thin, a.pigment_mix)
+                })
+        });
+        if uniforme || self.paint_media() == super::super::media::PaintMedia::WetPaint {
+            self.paint.wet_stroke_dirty
+        } else {
+            self.paint.wet_cum_dirty
+        }
     }
 
     /// A pegada que o pen-up DEVOLVE (o que a edição viva do Grain/Paper re-renderiza): a união da

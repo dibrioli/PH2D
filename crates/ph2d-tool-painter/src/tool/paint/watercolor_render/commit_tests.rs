@@ -157,6 +157,11 @@ fn o_decimo_traco_da_sessao_nao_paga_os_nove_anteriores() {
                 c.nome
             ));
         }
+        if c.raio_varia {
+            // Fora do Wet Paint o estilo não uniforme fica na união (o B16.2 cont3 só no Wet, BUGS_painter #115): só a
+            // paridade conta.
+            continue;
+        }
         if px_velho[TRACOS - 1] <= 2 * px_velho[0] {
             falhas.push(format!(
                 "{}: o controlo — pela união o 10.º ({}) devia pagar > 2× o 1.º ({})",

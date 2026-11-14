@@ -7,7 +7,7 @@ use super::super::*;
 use super::cache::TROCA_RECOMPOE_SEMPRE;
 use crate::compositor::vidro::sela;
 use crate::tool::paint::media::PaintMedia;
-use ph2d_editor_core::tool::{CanvasPointer, PointerPhase, RasterEditTool};
+use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
 const LADO: u32 = 48;

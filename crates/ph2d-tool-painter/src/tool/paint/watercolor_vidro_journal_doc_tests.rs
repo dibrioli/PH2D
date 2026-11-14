@@ -325,7 +325,7 @@ fn o_vidro_composto_da_o_documento_do_vidro_segurado() {
     let rota = |r: RotaDoVidro| ROTA_DO_VIDRO.with(|c| c.set(r));
     let mut j = tool_wb(true);
     let mut o = tool_wb(true);
-    let mut ambos =
+    let ambos =
         |f: &mut dyn FnMut(&mut PainterTool), j: &mut PainterTool, o: &mut PainterTool, q: &str| {
             rota(RotaDoVidro::Composta);
             f(j);

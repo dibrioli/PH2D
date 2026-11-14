@@ -200,10 +200,10 @@ impl PainterTool {
         }
         use crate::undo_delta::confine::{dilata, janela_da_tinta, janela_do_vidro, uniao};
         let tinta = janela_da_tinta(px, w as usize);
-        let tinta = match self.corpo_da_camada(id, w as usize, n / 4) {
-            Some(corpo) => uniao(tinta, dilata(corpo, 1)),
-            None => return None,
-        };
+        let tinta = uniao(
+            tinta,
+            dilata(self.corpo_da_camada(id, w as usize, n / 4)?, 1),
+        );
         // n.º 8 (B18.6): sobre o papel de cor o vidro da camada tira a transparência também onde o alfa é 0.
         let vidro = match self
             .vidros

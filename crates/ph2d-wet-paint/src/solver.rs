@@ -634,6 +634,7 @@ pub use ladeira_do_oleo::{
     TAU0,
 };
 mod project;
+pub mod regua; // B13.11: os `static` de medição repõem-se no Drop
 mod sedimenta;
 pub use active_region::{SAIA_COLUNAS, rebuild_active_region, rebuild_active_region_rows};
 pub use advect::advect;

@@ -272,3 +272,111 @@ fn a_troca_com_a_tinta_viva_dobra_na_placa_so_o_relevo_ao_bit() {
         }
     }
 }
+
+/// n.º 10 F5c (B18.12) — **o «+» com a tinta viva do Wet dá na placa o mesmo bit que a tela inteira, e duas ferramentas
+/// Wet gémeas dão o mesmo bit uma à outra.** Três pistas com o mesmo documento e os mesmos gestos (papel aceso, relógio
+/// fixo): a nova, a antiga (`SEMPRE_INTEIRA`, o oráculo) e a gémea da nova. Gestos: o «+» com a tinta viva, um traço na
+/// camada nova, undo, redo, a troca para a de baixo e o «+» de novo. O «+» não envia nada à placa (a camada nova é
+/// transparente e a tinta que adormece não marca); controlo `TINTA_MARCA_COMO_ANTES=1`: a camada sobe inteira.
+#[test]
+fn o_mais_com_a_tinta_viva_da_na_placa_o_bit_da_tela_inteira_e_o_da_gemea() {
+    use crate::painter_preview_pipeline_tests::{assert_screen_equals, cp};
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool as _};
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        eprintln!("sem adaptador de placa: nada a afirmar");
+        return;
+    };
+    let lado = 160u32;
+    let traco = |t: &mut PainterTool, y: f32| {
+        t.set_brush_size_px(10.0);
+        t.set_brush_color_srgb8([40, 90, 220]);
+        t.on_canvas_pointer(cp([20.0, y], PointerPhase::Down));
+        for k in 1..=12 {
+            t.on_canvas_pointer(cp([20.0 + 10.0 * k as f32, y], PointerPhase::Move));
+            ph2d_editor_core::Tool::on_tick(t, 1000.0 / 60.0);
+        }
+        t.on_canvas_pointer(cp([140.0, y], PointerPhase::Up));
+        ph2d_editor_core::Tool::on_tick(t, 1000.0 / 60.0);
+    };
+    let pista = || {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
+        t.set_wet_relogio_fixo(true);
+        let a = t.add_raster_layer("A").expect("A");
+        t.set_substrate_depth(1.0);
+        t.set_paint_tool_mode("wetpaint");
+        t.select_layer(a);
+        traco(&mut t, 40.0);
+        let r = SpriteRenderer::new(
+            gpu.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(&gpu),
+            8,
+        );
+        ((t, a), r, None, None, ToastQueue::default())
+    };
+    use ph2d_tool_painter::tool::TINTA_MARCA_COMO_ANTES;
+    let antes = TINTA_MARCA_COMO_ANTES.load(std::sync::atomic::Ordering::Relaxed);
+    for controlo in [false, true] {
+        TINTA_MARCA_COMO_ANTES.store(u8::from(controlo), std::sync::atomic::Ordering::Relaxed);
+        let mut pistas = [pista(), pista(), pista()];
+        let mut enviados_mais = [0u64; 3];
+        // 0 = a semente; 1 = o «+» com a tinta viva; 2 = traço na nova; 3 = undo; 4 = redo; 5 = troca para A;
+        // 6 = traço em A e o «+» no mesmo quadro; 7 = traço na segunda nova.
+        for passo in 0u8..8 {
+            let mut telas = Vec::new();
+            for (i, ((t, a), r, s, g, toasts)) in pistas.iter_mut().enumerate() {
+                SEMPRE_INTEIRA.set(i == 1);
+                let b0 = s
+                    .as_ref()
+                    .map_or(0, |s: &PainterGpuPreview| s.compositor.bytes_enviados());
+                match passo {
+                    1 => assert!(t.add_raster_layer("nova").is_some()),
+                    2 => traco(t, 100.0),
+                    3 => assert!(t.undo_last()),
+                    4 => assert!(t.redo_last()),
+                    5 => t.select_layer(*a),
+                    6 => {
+                        traco(t, 70.0);
+                        assert!(t.add_raster_layer("nova 2").is_some());
+                    }
+                    7 => traco(t, 120.0),
+                    _ => {}
+                }
+                if passo == 0 {
+                    assert!(try_drive(s, r, t, Some(1), g, toasts), "a semente");
+                    t.pede_a_composicao_inteira();
+                }
+                assert!(try_drive(s, r, t, Some(1), g, toasts), "a placa é dona");
+                if passo == 1 {
+                    enviados_mais[i] = s.as_ref().map_or(0, |s| s.compositor.bytes_enviados()) - b0;
+                }
+                let id = g.expect("o slot da placa").texture_id;
+                telas.push(r.individual().readback(&gpu, id).expect("readback").2);
+            }
+            SEMPRE_INTEIRA.set(false);
+            let ctx = format!("controlo={controlo} · passo {passo}");
+            assert_screen_equals(
+                &telas[0],
+                &telas[1],
+                lado,
+                &format!("nova × inteira · {ctx}"),
+            );
+            assert_screen_equals(&telas[0], &telas[2], lado, &format!("nova × gémea · {ctx}"));
+        }
+        TINTA_MARCA_COMO_ANTES.store(antes, std::sync::atomic::Ordering::Relaxed);
+        eprintln!("marca={controlo}: bytes à placa no «+» {enviados_mais:?}");
+        let camada = u64::from(lado) * u64::from(lado) * 4;
+        if controlo {
+            assert!(
+                enviados_mais[0] >= camada,
+                "controlo: a tinta que marca enviou {enviados_mais:?} < {camada}"
+            );
+        } else {
+            assert_eq!(
+                enviados_mais, [0; 3],
+                "o «+» com a tinta viva enviou bytes à placa"
+            );
+        }
+    }
+}

@@ -1,7 +1,9 @@
 # HANDOFF de INTEGRAÇÃO — line/BarraDeMenus (12–13/11): a faixa única da maquete C, a busca e os menus
 
-Linha FECHADA (13/11), 35 commits sobre o merge-base `4f46a3573c`. Smokes do dono: ondas 1–8 aprovadas (a 6 refeita na 7).
-Plano: [`01_plano.md`](../01_plano.md) · decisões: `project-memory/project_menu_bar_version_c_2026_11_12.md` (itens 1–9).
+Linha FECHADA (13/11), 37 commits sobre o merge-base `4f46a3573c` (= o `main` em 13/11: rebase trivial). Smokes do
+dono: ondas 1–8 aprovadas (a 6 refeita na 7) e o do fecho (texto 550, `PH2D_GAME_SMOKE=2` ▸ Menu ▸ File) **OK 13/11**.
+Árvore limpa. **Não integrada** — o integrador entra só por ordem explícita do dono.
+Plano: [`01_plano.md`](../01_plano.md) · decisões: `project-memory/project_menu_bar_version_c_2026_11_12.md` (itens 1–10).
 
 ## O que a linha entrega (por onda; o detalhe está no handoff de cada uma)
 1. Arrumação dos menus (File 8 linhas, grupos, cascatas, Help ▸ Developer, Input Map em Window) — [ONDA1](HANDOFF_CONTINUACAO_line_BarraDeMenus_2026-11-12_ONDA1.md)

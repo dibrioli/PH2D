@@ -23,6 +23,7 @@ mod relogio {
     }
 
     pub(crate) fn comeca() {
+        ph2d_wet_paint::sonda_fases::liga();
         DESDE.with(|d| d.set(Some(Instant::now())));
     }
 
@@ -43,6 +44,9 @@ mod relogio {
 
     pub(crate) fn tira() -> Vec<(&'static str, Duration)> {
         DESDE.with(|d| d.set(None));
-        SOMA.with(|s| std::mem::take(&mut *s.borrow_mut()))
+        let mut v = SOMA.with(|s| std::mem::take(&mut *s.borrow_mut()));
+        // As sub-fases do motor (dentro de «volta: caixa + motor undo/redo»), a seguir às do Painter.
+        v.extend(ph2d_wet_paint::sonda_fases::tira());
+        v
     }
 }

@@ -3,10 +3,73 @@
 //! como o [`Registo::inverso`] + [`Registo::restaura_com`], que ficam como oráculo (`ANTIGO`; ADR-0204).
 
 use super::*;
+use crate::sonda_fases::marca;
+
+/// B18.11: a linha do tile que já é igual ao bit à da grade não se troca (trocar iguais não muda nenhum dos dois
+/// lados) — só se lê. `PH2D_TROCA_POUPA=0` (lida uma vez) troca tudo, como antes.
+trait PoupaIgual: Sized {
+    fn iguais(a: &[Self], b: &[Self]) -> bool;
+}
+
+impl PoupaIgual for f32 {
+    #[inline]
+    fn iguais(a: &[Self], b: &[Self]) -> bool {
+        a.iter().zip(b).all(|(x, y)| x.to_bits() == y.to_bits())
+    }
+}
+
+impl PoupaIgual for [f32; 3] {
+    #[inline]
+    fn iguais(a: &[Self], b: &[Self]) -> bool {
+        a.as_flattened()
+            .iter()
+            .zip(b.as_flattened())
+            .all(|(x, y)| x.to_bits() == y.to_bits())
+    }
+}
+
+impl PoupaIgual for u8 {
+    #[inline]
+    fn iguais(a: &[Self], b: &[Self]) -> bool {
+        a == b
+    }
+}
+
+/// As células compostas trocam sempre (sem igualdade ao bit barata).
+impl PoupaIgual for tinta::CelulaTinta {
+    fn iguais(_: &[Self], _: &[Self]) -> bool {
+        false
+    }
+}
+
+impl PoupaIgual for tinta::pigmento::LadoEspectral {
+    fn iguais(_: &[Self], _: &[Self]) -> bool {
+        false
+    }
+}
+
+fn poupa() -> bool {
+    #[cfg(test)]
+    if TROCA_CEGA.with(std::cell::Cell::get) {
+        return false;
+    }
+    static P: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *P.get_or_init(|| std::env::var("PH2D_TROCA_POUPA").map_or(true, |v| v != "0"))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// A troca cega de antes (troca também as linhas iguais), por fio: a régua A/B no MESMO processo.
+    pub(crate) static TROCA_CEGA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Linhas de tile poupadas (iguais ao bit), só em teste: o gate de que a poupança corre.
+#[cfg(test)]
+pub(crate) static POUPADAS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
 /// Troca os tiles `ts` de um plano denso com a grade (um job por faixa de tiles). O tile que não tem o plano (vazio)
 /// só tira a cópia: o restauro não lhe punha nada.
-fn troca_no_pool<'a, T: Clone + Send>(
+fn troca_no_pool<'a, T: Clone + Send + PoupaIgual>(
     v: &'a mut [T],
     s: usize,
     ts: Vec<(Ret, &'a mut Vec<T>)>,
@@ -20,6 +83,7 @@ fn troca_no_pool<'a, T: Clone + Send>(
     for (r, d) in ts {
         por_faixa[r.y0 / TILE].push((r, d));
     }
+    let poupa = poupa();
     for ((ty, faixa), tiles) in v.chunks_mut(TILE * s).enumerate().zip(por_faixa) {
         if tiles.is_empty() {
             continue;
@@ -31,7 +95,13 @@ fn troca_no_pool<'a, T: Clone + Send>(
                 if d.len() == w * (r.y1 - r.y0) {
                     for (i, y) in (r.y0..r.y1).enumerate() {
                         let a = y * s + r.x0 - o;
-                        faixa[a..a + w].swap_with_slice(&mut d[i * w..(i + 1) * w]);
+                        let (g, t) = (&mut faixa[a..a + w], &mut d[i * w..(i + 1) * w]);
+                        if poupa && T::iguais(g, t) {
+                            #[cfg(test)]
+                            POUPADAS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            continue;
+                        }
+                        g.swap_with_slice(t);
                     }
                 } else {
                     d.clear();
@@ -177,6 +247,14 @@ impl Registo {
         let (a5, a6, a7) = (amostra!(material), amostra!(aparencia), amostra!(oleo));
         let (a8, a9) = (amostra!(tinta), amostra!(pigmento));
         let ok = Trocam::de(g, &v);
+        marca("troca: tiles para a lista");
+        #[cfg(any(test, feature = "sonda-fases"))]
+        if crate::sonda_fases::ligado() {
+            for (r, t) in &tiles {
+                t.censo(g, *r);
+            }
+            marca("troca: (censo da sonda)");
+        }
         let por: Vec<TileFino> = {
             let g = &*g;
             tiles
@@ -184,6 +262,7 @@ impl Registo {
                 .map(|(r, t)| copia_os_outros(g, *r, t, ok))
                 .collect()
         };
+        marca("troca: copia_os_outros");
         ajusta(&mut g.altura, v[0], a0.as_ref());
         ajusta(&mut g.espessura, v[1], a1.as_ref());
         ajusta(&mut g.crista, v[2], a2.as_ref());
@@ -193,12 +272,17 @@ impl Registo {
         ajusta_campo(&mut g.oleo, v[6], a7.is_some());
         ajusta(&mut g.tinta, v[7], a8.as_ref());
         ajusta(&mut g.pigmento, v[8], a9.as_ref());
+        marca("troca: ajusta");
         troca_os_planos(g, &mut tiles, ok);
+        marca("troca: troca_os_planos");
         let ts: Vec<(Ret, &TileFino)> = tiles.iter().map(|(r, _)| *r).zip(&por).collect();
         TileFino::poe_no_pool(g, &ts);
         drop(ts);
+        drop(por);
+        marca("troca: poe_no_pool + larga");
         super::super::aparencia::reconta_teto(g);
         super::super::oleo_celula::reconta_real(g);
+        marca("troca: reconta");
         let (fs, frows) = (g.flow.s, g.flow.rows);
         out.fluxo = std::mem::take(&mut self.fluxo)
             .into_iter()
@@ -210,6 +294,7 @@ impl Registo {
                 (k, [vx, vy])
             })
             .collect();
+        marca("troca: fluxo");
         out.finos = ks.into_iter().zip(tiles.into_iter().map(|t| t.1)).collect();
         if zera_o_fluxo {
             g.flow_x.fill(0.0);
@@ -224,6 +309,7 @@ impl Registo {
         g.row_lo.copy_from_slice(&b.row_lo);
         g.row_hi.copy_from_slice(&b.row_hi);
         g.fill_tiles_all();
+        marca("troca: finos + escalares");
         let paper_changed = g.paper_preset != b.paper_preset || g.paper_sheet != b.paper_sheet;
         g.paper_preset = b.paper_preset;
         g.paper_sheet = b.paper_sheet;

@@ -9,6 +9,10 @@ authors.workspace = true
 
 [lib]
 
+[features]
+# O cronómetro das sub-fases do undo do motor (`sonda_fases`), só para a sonda do Painter (dev-dependency).
+sonda-fases = []
+
 # Wet Paint engine — the fourth paint mode's physics core (ADR-0134): a
 # shallow-water / capillary fluid simulation over paper tooth, two-layer
 # pigment (suspended rides the flow, settled sticks to the sheet), wet-on-wet

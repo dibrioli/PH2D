@@ -319,6 +319,15 @@ macro_rules! tile_fino {
             #[cfg(test)]
             fn poe(&self, g: &mut Grid, r: Ret) { $(Plano::poe_tile(&mut g.$f, g.s, r, &self.$f);)* }
             fn bytes(&self) -> usize { 0 $(+ std::mem::size_of_val(self.$f.as_slice()))* }
+            /// A sonda: que planos do tile são iguais aos da grade (a troca deles não muda nada).
+            #[cfg(any(test, feature = "sonda-fases"))]
+            fn censo(&self, g: &Grid, r: Ret) {
+                $( crate::sonda_fases::soma_censo(
+                    stringify!($f),
+                    Plano::tira_tile(&g.$f, g.s, r) == self.$f,
+                    !self.$f.is_empty(),
+                ); )*
+            }
             /// Põe os tiles `ts` (disjuntos) no pool: um job por plano esparso, um por faixa de tiles em cada plano denso.
             /// Cada célula é escrita por um tile só: o bit do laço por tile, em qualquer ordem.
             fn poe_no_pool(g: &mut Grid, ts: &[(Ret, &TileFino)]) {

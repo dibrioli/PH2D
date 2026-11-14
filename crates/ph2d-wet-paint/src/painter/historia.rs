@@ -272,6 +272,7 @@ impl Engine {
         if !self.can_undo() {
             return false;
         }
+        crate::sonda_fases::abre();
         // O «depois» que o redo devolve é o passo TERMINADO (o undo_vivo fotografa o resto no mesmo instante).
         self.drain_step();
         let agora = self.passo_em_voo();
@@ -281,13 +282,18 @@ impl Engine {
         let Some(mut reg) = layer.undo.pop() else {
             return false;
         };
+        crate::sonda_fases::marca("motor: drain + caixa + forma");
         // O registo estava aberto: o grid só difere da base dele nos tiles que ele guarda — trocam-se com ela.
         let (mut inv, paper_changed) = reg.troca(&mut layer.grid, None, zera_o_fluxo);
         inv.passo = agora;
         layer.redo.push(inv);
         layer.desde = Some(Registo::abre(&layer.grid));
         self.repoe_passo(&reg.passo);
+        crate::sonda_fases::marca("motor: desde + passo");
+        drop(reg);
+        crate::sonda_fases::marca("motor: larga o registo");
         self.depois_do_restauro(paper_changed, caixa, forma);
+        crate::sonda_fases::marca("motor: depois_do_restauro");
         true
     }
 
@@ -302,6 +308,7 @@ impl Engine {
     }
 
     fn redo_com(&mut self, zera_o_fluxo: bool) -> bool {
+        crate::sonda_fases::abre();
         let agora = self.passo_em_voo();
         let caixa = self.caixa_do_restauro(true);
         let forma = forma_global(&self.layers[self.active_layer].grid);
@@ -310,6 +317,7 @@ impl Engine {
         let Some(mut reg) = layer.redo.pop() else {
             return false;
         };
+        crate::sonda_fases::marca("motor: drain + caixa + forma");
         // Desde o último evento o grid andou nos tiles de `desde`; fora deles e dos do registo,
         // ele É a base do registo.
         let mut desde = layer.desde.take();
@@ -321,7 +329,11 @@ impl Engine {
         }
         layer.desde = (!layer.redo.is_empty()).then(|| Registo::abre(&layer.grid));
         self.repoe_passo(&reg.passo);
+        crate::sonda_fases::marca("motor: desde + passo");
+        drop((reg, desde));
+        crate::sonda_fases::marca("motor: larga o registo");
         self.depois_do_restauro(paper_changed, caixa, forma);
+        crate::sonda_fases::marca("motor: depois_do_restauro");
         true
     }
 

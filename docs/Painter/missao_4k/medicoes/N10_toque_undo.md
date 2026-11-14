@@ -49,3 +49,22 @@ O hook `prazo-do-agente` recusa a um subagente todo teste `--ignored` (as sondas
    `flow_jacobi.rs`) — pegada do F4; reportar.
 4. Filbert toque 75 ms: a matriz não separa o pen-down do 1.º dab; correr `mede_pen_up_4k.sh` com `PERF=1` (`STRIP=none`) só no
    Filbert antes de curar.
+
+## F1b (14/11) — a «caixa» é a troca do motor; decomposição + poupança das linhas iguais
+
+Fila n.º 6/7 (load 8–10): `volta: caixa + motor undo/redo` = 30,9 ms (Wet Flat 240) / 48,0 (Dabber 120). O código da fase
+é só `Engine::undo_com`/`redo_com`; `caixa_do_restauro`, `forma_global`, `Registo::abre` e `depois_do_restauro` são escalares
+⇒ é a `Registo::troca` de ~958 tiles × todos os planos (~47 B/célula no aquarela, mais os esparsos no óleo): **largura de
+banda**, não aritmética. A troca cega lê E escreve os dois lados mesmo nos planos que o passo não mudou.
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B18.11 sub-fases | feito (instrumento) | — | este commit | `ph2d_wet_paint::sonda_fases` (feature `sonda-fases`, só no dev-dependency do Painter; fora disso as marcas são vazias): a sonda s6 imprime `motor: …` e `troca: …` (lista, copia_os_outros, ajusta, troca_os_planos, poe_no_pool + larga, reconta, fluxo, finos + escalares) e o CENSO por plano (tiles iguais ao bit à grade / tiles com o plano). |
+| B18.11 cura 1 | **feita, por medir a 4K** | a medir (s6 com e sem a chave) | este commit | `troca_no_pool`: a linha de tile igual ao bit à grade não se troca (só se lê); `PH2D_TROCA_POUPA=0` = antes. Gate `a_troca_poupa_as_linhas_iguais_e_da_o_bit_da_troca_cega` (bit × troca cega × oráculo `ANTIGO`, 3 leis; vermelho com `PH2D_TROCA_POUPA=0`); `a_troca_da_o_bit_do_inverso_e_do_restauro` verde. tinta/pigmento trocam sempre. |
+
+Próximo passo exato: o coordenador corre a sonda s6 (`sonda_as_fases_do_ctrl_z_wet_a_4k`, o mesmo comando da fila n.º 6) duas
+vezes, com e sem `PH2D_TROCA_POUPA=0` (o hook recusa ao subagente até o `fila-pesada.sh pôr` com essa sonda). Ler o censo: se os
+planos iguais são poucos, a cura 1 vale ~0 e o caminho é o motor **não marcar** tiles que o passo não mudou (o solver marca a
+água viva das 3 pinceladas: pegada F4) ou guardar no `TileFino` só os PLANOS que mudaram (`Registo::marca`); se a sub-fase maior
+for `copia_os_outros`/`poe_no_pool` (os esparsos do óleo, Dabber 48 ms), levar os esparsos ao pool por pedaço (hoje
+`CampoEsparso::poe_no_pool` é UM job em série).

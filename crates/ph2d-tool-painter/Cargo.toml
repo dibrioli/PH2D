@@ -104,6 +104,8 @@ rayon = "1"
 zstd = { version = "0.14", default-features = false }
 
 [dev-dependencies]
+# As sub-fases do undo do motor na `sonda_as_fases_do_ctrl_z_wet_a_4k` (B18.11): só nos testes.
+ph2d-wet-paint = { path = "../ph2d-wet-paint", features = ["sonda-fases"] }
 # Os PNG dos render-and-look `wet_*_look_probe` (vieram da shell, 09/11).
 image = { version = "0.25", default-features = false, features = ["png"] }
 # dhat-rs: a medição do HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate que MEDE*.

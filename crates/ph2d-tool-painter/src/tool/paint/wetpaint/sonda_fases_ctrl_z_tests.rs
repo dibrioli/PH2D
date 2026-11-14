@@ -97,6 +97,8 @@ fn sonda_as_fases_do_ctrl_z_wet_a_4k() {
                 t.ticks_em_blocos(1);
             }
         }
+        // O censo do registo trocado (somado nas rodadas): o plano que já é igual à grade não precisava de troca.
+        let censo = ph2d_wet_paint::sonda_fases::censo();
         let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
         eprintln!(
             "== {W}×{H} {meio} tamanho {tam}: grade {}×{} · {rodadas} rodadas · mínimo / mediana (ms)",
@@ -120,6 +122,15 @@ fn sonda_as_fases_do_ctrl_z_wet_a_4k() {
                 min_med(&mut r)
             };
             eprintln!("{nome:<38} {um:>9.2} {ud:>9.2} {rm:>9.2} {rd:>9.2}");
+        }
+        eprintln!(
+            "censo (undo e redo somados): plano · tiles iguais ao bit à grade / tiles com o plano"
+        );
+        for (plano, iguais, tem) in censo {
+            eprintln!(
+                "  {plano:<10} {iguais:>7} / {tem:<7} ({:.0} %)",
+                100.0 * iguais as f64 / tem.max(1) as f64
+            );
         }
     }
     eprintln!("carga depois: {}", carga().trim());

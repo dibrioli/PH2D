@@ -426,3 +426,43 @@ fn a_troca_da_o_bit_do_inverso_e_do_restauro() {
         assert!(n >= 4, "a história inteira tinha só {n} passos");
     }
 }
+
+/// B18.11: a troca não reescreve a linha de tile que já é igual ao bit à grade (o papel `relevo`, o que a água não
+/// tocou) — e o bit é o da troca cega (o `TROCA_CEGA`, a de antes) e o do oráculo (`ANTIGO`).
+#[test]
+fn a_troca_poupa_as_linhas_iguais_e_da_o_bit_da_troca_cega() {
+    use super::troca::{POUPADAS, TROCA_CEGA};
+    use std::sync::atomic::Ordering;
+    for lei in [0, 1, 2] {
+        let mut e = [0, 1, 2].map(|_| monta_lei(700, 420, lei, 1.0));
+        let antes = POUPADAS.load(Ordering::Relaxed);
+        for passo in ["undo", "redo", "corre", "undo", "undo", "redo"] {
+            for (k, e) in e.iter_mut().enumerate() {
+                let faz = || match passo {
+                    "undo" => assert!(e.undo_sem_zerar_o_fluxo() || !e.can_undo()),
+                    "redo" => assert!(e.redo_sem_zerar_o_fluxo() || !e.can_redo()),
+                    _ => corre(e, 2),
+                };
+                TROCA_CEGA.with(|c| c.set(k == 1));
+                com(k == 2, faz);
+                TROCA_CEGA.with(|c| c.set(false));
+            }
+            let at = format!("{passo} (lei {lei})");
+            assert_eq!(
+                estado(e[0].active_grid()),
+                estado(e[1].active_grid()),
+                "{at}: × cega"
+            );
+            assert_eq!(
+                estado(e[0].active_grid()),
+                estado(e[2].active_grid()),
+                "{at}: × oráculo"
+            );
+            assert_eq!(pilha(&e[0]), pilha(&e[1]), "{at}: a pilha");
+        }
+        assert!(
+            POUPADAS.load(Ordering::Relaxed) > antes,
+            "lei {lei}: nenhuma linha igual poupada"
+        );
+    }
+}

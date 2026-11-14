@@ -55,6 +55,7 @@ pub mod render;
 pub mod rng;
 pub mod sim;
 pub mod solver;
+pub mod sonda_fases;
 pub mod stroke;
 pub mod tools;
 pub mod trail;

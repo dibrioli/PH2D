@@ -31,7 +31,7 @@ fn tool(side: u32, film: bool) -> PainterTool {
 
 /// **DE QUE O PEN-UP É FEITO** — as quatro células que separam o commit de undo do commit do relevo.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release what_a_pen_up_is_made_of -- --ignored --nocapture --test-threads=1`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke what_a_pen_up_is_made_of -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn what_a_pen_up_is_made_of() {

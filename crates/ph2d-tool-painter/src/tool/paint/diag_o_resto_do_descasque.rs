@@ -17,7 +17,7 @@
 //! zero*.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_o_resto -- --ignored --nocapture --test-threads=1
 //! ```
 

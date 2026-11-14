@@ -102,6 +102,7 @@ fn tela(m: Motor, quadro: bool) -> PainterTool {
 /// Um traço horizontal de `MOVES` movimentos: `(ms dos Move, dabs, depósito ms, composite ms)`.
 fn traco(t: &mut PainterTool, x0: f32, y: f32) -> (f64, u64, f64, f64) {
     let _ = wet_diag::take_stamp();
+    let _ = ph2d_tool_painter::band_diag::take();
     t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
     let t0 = Instant::now();
     let mut x = x0;
@@ -116,6 +117,13 @@ fn traco(t: &mut PainterTool, x0: f32, y: f32) -> (f64, u64, f64, f64) {
     let ms = t0.elapsed().as_secs_f64() * 1e3;
     t.on_canvas_pointer(cp([x, y], PointerPhase::Up));
     let (dabs, dep, comp, _) = wet_diag::take_stamp();
+    // B44.4: o `wet_diag` só conta o Wet; o Digital carimba pelo `band_diag` (CPU + dispositivo).
+    let banda = ph2d_tool_painter::band_diag::take();
+    let dabs = if dabs > 0 {
+        dabs
+    } else {
+        u64::from(banda.dabs) + u64::from(banda.dev_dabs)
+    };
     (ms, dabs, dep, comp)
 }
 
@@ -270,6 +278,7 @@ fn loadavg() -> String {
 }
 
 fn main() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let rondas: usize = std::env::args()
         .nth(1)
         .and_then(|s| s.parse().ok())

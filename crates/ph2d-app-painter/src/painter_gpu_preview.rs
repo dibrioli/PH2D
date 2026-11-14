@@ -16,7 +16,7 @@
 //! re-runs just the compute; the straight→premul handoff is [`ph2d_render::premul`].
 //! (história: docs/Painter/historia_comentarios_app_painter_2026-11-10.md)
 
-use ph2d_editor_core::toast::{Toast, ToastQueue};
+use ph2d_editor_core::toast::ToastQueue;
 use ph2d_gpu::GpuContext;
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_render::PreviewPremul;
@@ -411,10 +411,11 @@ pub(super) fn drive(
     ) {
         Ok(r) => r,
         Err(e) => {
-            toasts.push(Toast::error(ph2d_i18n::tr_with(
+            crate::painter_bridge_upload::avisa_uma_vez(
+                toasts,
                 "app.painter.painter_gpu_preview.gpu_preview_failed",
-                &[("e", &e)],
-            )));
+                &e,
+            );
             release_slot(renderer, painter_preview_gpu);
             return false;
         }
@@ -434,10 +435,11 @@ pub(super) fn drive(
         }
     });
     if let Err(e) = copy {
-        toasts.push(Toast::error(ph2d_i18n::tr_with(
+        crate::painter_bridge_upload::avisa_uma_vez(
+            toasts,
             "app.painter.painter_gpu_preview.gpu_preview_copy_failed",
-            &[("e", &e)],
-        )));
+            &e,
+        );
         release_slot(renderer, painter_preview_gpu);
         return false;
     }

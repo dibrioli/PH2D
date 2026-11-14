@@ -617,7 +617,7 @@ fn snap_to_45_projects_onto_the_eight_rays() {
 
 /// Timing: the FULL per-move tool cost of an Anchored size-drag (restore + save + stamp), plain vs
 /// textured, on a large canvas. Tells us where the per-move CPU goes. Run:
-/// `cargo test -p ph2d-tool-painter --release perf_anchored -- --ignored --nocapture`.
+/// `cargo test -p ph2d-tool-painter --profile smoke perf_anchored -- --ignored --nocapture`.
 #[test]
 #[ignore]
 fn perf_anchored_drag_per_move_cost() {

@@ -23,7 +23,7 @@ use ph2d_editor_core::tool::RasterEditTool;
 
 /// (15) O RELÓGIO de um re-carimbo com a pilha — o report *«performance ruim»* de 2026-09-21.
 /// ⚠️ Corre em `--release`; em debug o número é ~20× e não descreve o produto.
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_relogio_do_recarimbo -- --ignored
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_relogio_do_recarimbo -- --ignored
 /// --nocapture`
 #[test]
 #[ignore = "sonda de relógio"]
@@ -122,7 +122,7 @@ fn diag_o_relogio_do_recarimbo() {
 /// ⇒ *se o COMPOR ficar plano enquanto `k` anda `16×`, o custo não é o avental nem a convolução:
 /// são os SETE buffers de `[f32; 4]` que a passagem aloca de fresco e o tráfego deles.*
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_que_custa_no_borrao -- --ignored
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_que_custa_no_borrao -- --ignored
 /// --nocapture`
 #[test]
 #[ignore = "sonda de relógio"]
@@ -178,7 +178,7 @@ fn diag_o_que_custa_no_borrao() {
 /// 3 verticais) ⇒ `~250 MB` de `vec![…]` zerado por composição a `2048²`.
 ///
 /// Aqui mede-se, ao tamanho do PRODUTO: (a) a passagem inteira · (b) só as sete alocações.
-/// `cargo test -p ph2d-tool-painter --release --lib diag_quanto_do_borrao_e_alocar -- --ignored
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_quanto_do_borrao_e_alocar -- --ignored
 /// --nocapture`
 #[test]
 #[ignore = "sonda de relógio"]
@@ -240,7 +240,7 @@ fn diag_quanto_do_borrao_e_alocar() {
 /// com `pad = 25` um bloco de `16` é `77 %` avental. ⇒ *o tamanho do bloco é uma medição.*
 /// Esta sonda conta, sobre a LISTA DE DABS REAL do produto, o que cada tamanho pagaria.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_tecto_de_um_cover -- --ignored
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_tecto_de_um_cover -- --ignored
 /// --nocapture`
 #[test]
 #[ignore = "sonda de geometria"]
@@ -296,7 +296,7 @@ fn diag_o_tecto_de_um_cover() {
 /// ⚠️ Ela **não** implementa nada: ela diz se vale a pena o ADR que a `ph2d-painter-brush` exige
 /// para todo uso novo de `rayon` (a cerca do ADR-0109/0158).
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_tecto_de_um_borrao_paralelo --
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_tecto_de_um_borrao_paralelo --
 /// --ignored --nocapture`
 #[test]
 #[ignore = "sonda de relógio"]

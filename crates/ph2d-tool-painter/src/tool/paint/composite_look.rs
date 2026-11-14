@@ -11,7 +11,7 @@
 //! **STORED** (sem compressão) — um PNG grande, e é irrelevante, porque ninguém shipa isto.
 //!
 //! ```text
-//! PH2D_COMPOSITE_LOOK_DIR=/tmp/look cargo test -p ph2d-tool-painter --release \
+//! PH2D_COMPOSITE_LOOK_DIR=/tmp/look cargo test -p ph2d-tool-painter --profile smoke \
 //!     composite_look -- --ignored --nocapture
 //! ```
 

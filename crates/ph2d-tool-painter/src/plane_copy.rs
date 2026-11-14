@@ -285,7 +285,7 @@ mod tests {
 
     /// **COMO se materializa um plano de 117 MB** — a sonda que decide se o ramo do valor fica serial.
     ///
-    /// Rodar: `cargo test -p ph2d-tool-painter --release measure_how_a_plane_is_materialised -- --ignored --nocapture`
+    /// Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_how_a_plane_is_materialised -- --ignored --nocapture`
     #[test]
     #[ignore = "medição, não gate"]
     fn measure_how_a_plane_is_materialised() {

@@ -43,7 +43,7 @@
 //!   sem apertar os chamadores; fica aqui porque é o teto do que a frente poderia render.
 //!
 //! Rodar:
-//! `cargo test -p ph2d-tool-painter --release measure_dirty_overclaim -- --ignored --nocapture`
+//! `cargo test -p ph2d-tool-painter --profile smoke measure_dirty_overclaim -- --ignored --nocapture`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -454,7 +454,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
 /// | diagonal, mão rápida | | |
 /// | traço em L | | |
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_partial_drain_cost -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_partial_drain_cost -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_partial_drain_cost_is_measured_not_assumed() {
@@ -535,7 +535,7 @@ fn the_partial_drain_cost_is_measured_not_assumed() {
 /// braço parcial em estágios e mede cada um sobre a MESMA região, para o próximo passo da frente
 /// atacar o que de fato custa em vez do que a intuição diz.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_partial_drain_stages -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_partial_drain_stages -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_partial_drain_stages_are_measured_not_assumed() {

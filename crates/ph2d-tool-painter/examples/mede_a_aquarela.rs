@@ -22,9 +22,9 @@
 //! único leitor (o `take()` zera).
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_a_aquarela
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_a_aquarela -- ablacao [2048|4096]
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_a_aquarela -- perfil [2048|4096] [rewet0]
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_a_aquarela
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_a_aquarela -- ablacao [2048|4096]
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_a_aquarela -- perfil [2048|4096] [rewet0]
 //! ```
 //!
 //! Imprime `/proc/loadavg` ao lado: acima de `load ~5` nenhum relógio desta máquina vale nada em
@@ -442,6 +442,7 @@ fn ablacao_de(
 }
 
 fn main() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let args: Vec<String> = std::env::args().collect();
     // `-- foto [2048|4096]`: a célula da FOTO do dono (a aquarela com tudo ligado, 22/09).
     // `-- ablacao-foto [2048|4096]`: cada botão da foto de volta ao de fábrica, alternados.

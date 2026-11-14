@@ -240,7 +240,7 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
 /// ⚠️ **`#[ignore]`, e não por preguiça:** ele mede PARALELISMO, e a suíte roda os testes em paralelo —
 /// as outras threads disputam os mesmos 32 núcleos e a razão desaba. Reprovou exatamente assim na 1ª
 /// corrida da suíte cheia, verde isolado. Rodar:
-/// `cargo test -p ph2d-tool-painter --release the_banded_batch_is_materially -- --ignored --test-threads=1`
+/// `cargo test -p ph2d-tool-painter --profile smoke the_banded_batch_is_materially -- --ignored --test-threads=1`
 #[test]
 #[ignore = "mede PARALELISMO: precisa da máquina; --ignored --test-threads=1"]
 fn the_banded_batch_is_materially_faster_than_the_serial_one() {

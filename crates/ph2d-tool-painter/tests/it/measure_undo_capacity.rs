@@ -7,7 +7,7 @@
 //! *o que o processo de fato retém* — e reconcilia os dois números.
 //!
 //! ```text
-//! cargo test -p ph2d-tool-painter --release --test measure_undo_capacity -- --nocapture
+//! cargo test -p ph2d-tool-painter --profile smoke --test measure_undo_capacity -- --nocapture
 //! ```
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};

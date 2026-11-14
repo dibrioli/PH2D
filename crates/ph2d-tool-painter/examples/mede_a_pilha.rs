@@ -8,7 +8,7 @@
 //! `PH2D_COMPOSITE_SMOKE` usa.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_a_pilha
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_a_pilha
 //! ```
 //!
 //! Imprime `/proc/loadavg` ao lado: acima de `load ~5` nenhum relógio desta máquina vale nada.
@@ -79,6 +79,7 @@ fn traco(t: &mut PainterTool, passo: f32, drena: u32) -> (f64, u32) {
 }
 
 fn main() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     // `-- perfil`: só a pilha cheia, muitas vezes — a carga que se dá a um perfilador de amostras.
     if std::env::args().any(|a| a == "perfil") {
         for _ in 0..40 {

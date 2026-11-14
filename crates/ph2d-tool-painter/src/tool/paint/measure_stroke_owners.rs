@@ -312,7 +312,7 @@ fn the_journal_route_is_what_makes_the_elision_worth_anything() {
 /// cabeçalho de `undo_delta_journal.rs`).
 ///
 /// ⚠️ **Este bloco afirmava o oposto até 2026-08-02** (*"esta sonda não vê o caminho do produto: o
-/// journal do relevo é `cfg(any(test, debug_assertions))` e `cargo test --release` liga `cfg(test)`"*)
+/// journal do relevo é `cfg(any(test, debug_assertions))` e `cargo test --profile smoke` liga `cfg(test)`"*)
 /// — a segunda metade é verdadeira e **irrelevante aqui**, porque o `cfg(test)` cobre o INCREMENTO do
 /// contador e não a rota. Eu li dois doc-comments obsoletos do produto, não grepei o atributo, e
 /// publiquei o veredito errado (doc 28 §5.67). *Um `cfg` se confere no atributo, nunca na prosa.*

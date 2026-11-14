@@ -18,7 +18,7 @@
 //! # Rodar
 //!
 //! ```text
-//! env PH2D_WC_LOOK_DIR=/tmp/wc cargo test -p ph2d-tool-painter --release \
+//! env PH2D_WC_LOOK_DIR=/tmp/wc cargo test -p ph2d-tool-painter --profile smoke \
 //!     probe_watercolor_arc -- --ignored --nocapture
 //! ```
 //!

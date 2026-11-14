@@ -81,7 +81,7 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 /// traço pelo irmão [`the_height_walk_layers`] —, e é decisão de PRODUTO (a única cura restante é
 /// aproximação por gradiente). A tabela não o promete de graça.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release which_route -- --ignored --nocapture --test-threads=1`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke which_route -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly with --test-threads=1"]
 fn which_route_does_a_batch_take_and_what_does_the_route_cost() {
@@ -184,7 +184,7 @@ fn which_route_does_a_batch_take_and_what_does_the_route_cost() {
 /// **encolhe** abaixo do piso — e a razão dentro de cada raio é medida na mesma corrida, o que a torna
 /// imune à carga da máquina.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release does_the_cap_cost -- --ignored --nocapture --test-threads=1`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke does_the_cap_cost -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly with --test-threads=1"]
 fn does_the_cap_cost_arithmetic_or_parallelism() {
@@ -331,7 +331,7 @@ fn does_the_cap_cost_arithmetic_or_parallelism() {
 /// | 256 | 265 225 | 18 | 7,65× | **9,37×** |
 /// | 362 | 528 529 | 25 | 11,14× | **11,92×** |
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release what_the_banded_batch -- --ignored --nocapture --test-threads=1`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke what_the_banded_batch -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly with --test-threads=1"]
 #[allow(clippy::cast_precision_loss, clippy::too_many_lines)]

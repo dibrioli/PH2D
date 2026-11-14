@@ -9,7 +9,7 @@
 //! é o que o artista paga por movimento do dedo, e a lição de que uma sonda com laço próprio fica
 //! CEGA à porta já custou duas waves a este módulo (doc 28 §5.11, §5.46).
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_the_sketchy -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_the_sketchy -- --ignored --nocapture`
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;

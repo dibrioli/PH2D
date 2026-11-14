@@ -526,7 +526,7 @@ mod tests {
     /// RAZÃO contra o `box_blur` que o composite já roda várias vezes por janela — a mesma régua com
     /// que a EDT foi precificada (**1,69 borrões**, doc 36 §6).
     ///
-    /// `cargo test -p ph2d-tool-painter --release the_coverage_ruler_costs -- --ignored --nocapture`
+    /// `cargo test -p ph2d-tool-painter --profile smoke the_coverage_ruler_costs -- --ignored --nocapture`
     #[test]
     #[ignore = "sonda; roda com --ignored --nocapture"]
     fn the_coverage_ruler_costs_this_many_blurs() {

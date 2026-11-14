@@ -25,7 +25,7 @@
 //! hardness 1 (máscara binária) e uma costura com pincel macio"*. Lá o desvio entre as duas rotas
 //! media 48/255 em hardness 0,4.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release crossing_probe -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke crossing_probe -- --ignored --nocapture`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
@@ -266,7 +266,7 @@ fn the_first_stroke_of_the_session_turns_the_corner_too() {
 /// fixture dele num arquivo, para o A/B ser um diff de bytes entre duas corridas (com a cura e com
 /// [`super::watercolor_rim::straight_edge_cap`] devolvendo `1.0`).
 ///
-/// `env PH2D_RIM_DUMP=<arquivo> cargo test -p ph2d-tool-painter --release rim_dump -- --ignored`
+/// `env PH2D_RIM_DUMP=<arquivo> cargo test -p ph2d-tool-painter --profile smoke rim_dump -- --ignored`
 #[test]
 #[ignore = "sonda; roda com --ignored e PH2D_RIM_DUMP"]
 fn rim_dump_the_straight_stroke_the_pin_watches() {

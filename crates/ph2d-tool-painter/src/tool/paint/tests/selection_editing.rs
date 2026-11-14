@@ -6,7 +6,7 @@ use super::*;
 
 /// Perf harness (RELEASE): recompose N boolean selection shapes while dragging ONE — the per-shape raster
 /// cache should reuse the N−1 unchanged shapes (only the dragged one re-rasterizes).
-///   cargo test -p ph2d-tool-painter --release perf_selection_boolean -- --ignored --nocapture
+///   cargo test -p ph2d-tool-painter --profile smoke perf_selection_boolean -- --ignored --nocapture
 #[test]
 #[ignore]
 fn perf_selection_boolean_recompose_cache_vs_full() {
@@ -55,7 +55,7 @@ fn perf_selection_boolean_recompose_cache_vs_full() {
 /// P4 harness: the per-FRAME cost of the selection machinery at 2048² with 8 boolean shapes — the
 /// marching-ants overlay rebuild (animated `phase` ⇒ runs every frame, even idle) and one gizmo-drag
 /// Move (recompose). Run:
-///   cargo test -p ph2d-tool-painter --release perf_selection_overlay_frame -- --ignored --nocapture
+///   cargo test -p ph2d-tool-painter --profile smoke perf_selection_overlay_frame -- --ignored --nocapture
 #[test]
 #[ignore = "perf measurement — run explicitly in --release"]
 fn perf_selection_overlay_frame() {

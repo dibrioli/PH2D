@@ -183,7 +183,7 @@ fn the_rect_follows_the_puddle_in_and_nothing_wet_is_left_outside_it() {
 /// comum, e o estado é RESTAURADO antes de cada amostra (repetir o passe sobre o mesmo mapa o deixa
 /// mais seco e mais barato — a fixture envenenada da §5.41).
 ///
-/// Rode com `cargo test -p ph2d-tool-painter --release the_cost_of_the_drying_pass -- --ignored
+/// Rode com `cargo test -p ph2d-tool-painter --profile smoke the_cost_of_the_drying_pass -- --ignored
 /// --nocapture --test-threads=1`, e **só com a máquina calma** (`uptime` abaixo de ~5).
 #[test]
 #[ignore = "sonda de tempo: rode sozinha, com a maquina calma"]

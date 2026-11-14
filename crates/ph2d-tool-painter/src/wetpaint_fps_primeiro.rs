@@ -1,6 +1,7 @@
 //! `PH2D_WETPAINT_SMOKE=3 PH2D_FPS_PRIMEIRO=<0..4>` — **o 1.º traço no app real** (Bug #72): escolhe o pincel, espera, dá
 //! três traços iguais e imprime o período de cada quadro à volta de cada pen-down, com placa e apresentação dentro.
-//! Tela: `PH2D_FPS_TELA` (lado em px; 1440 = a área de 1920×1080, 3240 = a de 4096×2560).
+//! Tela: `PH2D_FPS_TELA` (lado em px de uma tela QUADRADA: `spawn_blank_canvas` só toma um lado). ⚠️ B44.4: o 4K do
+//! produto é 3840×2160 — 2880 é a mesma ÁREA, não a mesma forma (1440 = a área de 1920×1080).
 
 use crate::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};

@@ -37,7 +37,7 @@ const L: u32 = 700;
 ///
 /// O CONTROLO é a RECTA: mesmo comprimento, mesmo pincel, curvatura zero.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_fonte_ou_a_lei -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_fonte_ou_a_lei -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_fonte_ou_a_lei() {
@@ -116,7 +116,7 @@ guardado {:6.1} %",
 ///   · **estrutural** — a deriva não depende do passo ⇒ a lei tem de mudar, e isso muda toda
 ///     pincelada deste app.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_passo_e_a_deriva -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_passo_e_a_deriva -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_o_passo_e_a_deriva() {
@@ -195,7 +195,7 @@ fn diag_o_passo_e_a_deriva() {
 /// A dureza é o botão que controla `w`: a `1` o núcleo é chapado (cisalhamento só na orla), a `0`
 /// ele varia em todo o dab. Se a conservação subir com a dureza, o cisalhamento é o mecanismo.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_dureza_e_a_deriva -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_dureza_e_a_deriva -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_dureza_e_a_deriva() {
@@ -267,7 +267,7 @@ fn diag_a_dureza_e_a_deriva() {
 ///
 /// Corre-se DUAS vezes, com e sem o tecto na lei, e comparam-se os números.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_tecto_muda_a_recta -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_tecto_muda_a_recta -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_o_tecto_muda_a_recta() {
@@ -329,7 +329,7 @@ fn diag_o_tecto_muda_a_recta() {
 /// enquanto está coberto). A varredura põe isso ao lado do que ele COMPRA na curva e do que ele
 /// CUSTA na recta — que é o look aprovado.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_varredura_do_tecto -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_varredura_do_tecto -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_varredura_do_tecto() {
@@ -425,7 +425,7 @@ fn diag_a_varredura_do_tecto() {
 
 /// (A14) O ARCO CHEGA A ARMAR? — a pergunta que uma leitura de `84,4 %` não responde.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_arco_arma -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_arco_arma -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_o_arco_arma() {

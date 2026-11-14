@@ -71,7 +71,7 @@ pub(super) fn ms(f: &mut dyn FnMut()) -> f64 {
 /// depósito de altura separadamente (o envelope, a cápsula, o `settle`, o banco do Push) sobre a MESMA
 /// pegada. Sem ela, "otimizar o impasto" é a mesma frase que "coalescer os eventos" era ontem.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_per_texel -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_per_texel -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_per_texel_cost_of_a_dab_against_the_hardware_floor() {
@@ -155,7 +155,7 @@ fn the_per_texel_cost_of_a_dab_against_the_hardware_floor() {
 /// * **2o traço na mesma camada** -> `ground = Some`, e a familia do bow wave entra;
 /// * `impasto_smoothing = 0` -> mata o `settle` (o blur que assenta a tinta).
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_impasto_dab_decomposition -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_impasto_dab_decomposition -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_impasto_dab_decomposition() {
@@ -231,7 +231,7 @@ fn the_impasto_dab_decomposition() {
 /// ⚠️ É refatoração do kernel mais quente do módulo, com **byte-identidade** como gate. Wave própria,
 /// e só com ordem do Enio.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_impasto_draw_to_split -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_impasto_draw_to_split -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_impasto_draw_to_split() {
@@ -338,7 +338,7 @@ fn the_impasto_draw_to_split() {
 /// * `spacing` -> o comprimento da CAPSULA (cada dab varre de volta ao centro do anterior);
 /// * `texture` (Grain) desligado -> um ingrediente a menos por texel.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_height_walk_layers -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_height_walk_layers -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_height_walk_layers() {
@@ -394,7 +394,7 @@ fn the_height_walk_layers() {
 /// supersampling esta calculando a media de uma rampa que ja e suave -- que e exactamente o argumento
 /// que o proprio `height_film.rs` usou para estreitar a banda de 28 para 12,5 texels.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release does_the_film_aa_change_a_pixel -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke does_the_film_aa_change_a_pixel -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn does_the_film_aa_change_a_pixel() {
@@ -440,7 +440,7 @@ fn does_the_film_aa_change_a_pixel() {
 /// valor pre-calculado -- as 9 chamadas de `film_of` e o laco ficam, so a cadeia de silhueta sai. Se os
 /// dois custarem o mesmo, a cadeia nao e o custo e a LUT nao tem o que economizar.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release is_the_silhouette_chain_the_aa_cost -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke is_the_silhouette_chain_the_aa_cost -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn is_the_silhouette_chain_the_aa_cost() {
@@ -571,7 +571,7 @@ fn is_the_silhouette_chain_the_aa_cost() {
 /// 6. O `miolo` da coluna virgem cresce com a TELA e o das outras fica plano: é o primeiro-toque dos
 ///    planos recém-alocados. Custo real, de **uma vez por camada**, fora do regime permanente.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release what_the_height_walk_is_made_of -- --ignored --nocapture --test-threads=1`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke what_the_height_walk_is_made_of -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn what_the_height_walk_is_made_of() {

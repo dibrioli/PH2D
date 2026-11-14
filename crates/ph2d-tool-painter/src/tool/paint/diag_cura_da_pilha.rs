@@ -6,7 +6,7 @@
 //! ([`super::composite_acumulado`]) custa e o que ela muda.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_cura -- --ignored --nocapture --test-threads=1
 //! ```
 

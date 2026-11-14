@@ -10,7 +10,7 @@
 //! percorre caminho no TIQUE, e a cauda dela cai toda no **pen-up**. Uma sonda que medisse só o
 //! `Move` diria que a fita é de graça — e diria a verdade sobre o evento errado.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_the_ribbon -- --ignored --nocapture --test-threads=1`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_the_ribbon -- --ignored --nocapture --test-threads=1`
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
@@ -98,7 +98,7 @@ fn measure_the_ribbon_budget_per_event() {
 /// dedução falha cinco vezes, o que falta é **olhar o que o produto pinta**, que é o precedente do
 /// `push_look_probe`.
 ///
-/// `PH2D_RIBBON_LOOK_DIR=<dir> cargo test -p ph2d-tool-painter --release probe_ribbon_look -- --ignored --nocapture`
+/// `PH2D_RIBBON_LOOK_DIR=<dir> cargo test -p ph2d-tool-painter --profile smoke probe_ribbon_look -- --ignored --nocapture`
 #[test]
 #[ignore = "render-and-look, not a gate"]
 fn probe_ribbon_look() {
@@ -209,7 +209,7 @@ fn probe_ribbon_look() {
 /// fase. É o oráculo honesto: um "trecho reto" medido sobre dabs não distingue a inflexão de uma
 /// onda de uma espícula, e foi por isso que a sonda de fases apontou para o gesto inteiro.
 ///
-/// `PH2D_RIBBON_LOOK_DIR=<dir> cargo test -p ph2d-tool-painter --release probe_ribbon_spike -- --ignored --nocapture`
+/// `PH2D_RIBBON_LOOK_DIR=<dir> cargo test -p ph2d-tool-painter --profile smoke probe_ribbon_spike -- --ignored --nocapture`
 #[test]
 #[ignore = "render-and-look, not a gate"]
 fn probe_ribbon_spike() {

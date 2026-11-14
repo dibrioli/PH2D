@@ -48,7 +48,7 @@ fn ms(f: &mut dyn FnMut()) -> f64 {
 ///
 /// Não afirma nada; IMPRIME. O gate que sai desta medição é o irmão abaixo.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_input_cost -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_input_cost -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_input_cost_is_measured_not_assumed() {
@@ -78,7 +78,7 @@ fn the_input_cost_is_measured_not_assumed() {
 /// Se o pen-down encolher, o custo é dos cinco planos por-traço; se não encolher, ele é do carimbo, e
 /// a frente muda de alvo. Uma medição sem controle nomeia um suspeito, não uma causa.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_input_cost -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_input_cost -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_input_cost_without_impasto_is_the_control() {
@@ -303,7 +303,7 @@ fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
 /// dabs sobrepostos escurecem mais que um) ou **redundante** é a pergunta seguinte, e ela é sobre a
 /// LEI de emissão, não sobre lote. Não medida aqui: `painted px` conta cobertura, não valor.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release is_there_per_event -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke is_there_per_event -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn is_there_per_event_overhead_to_coalesce() {
@@ -350,7 +350,7 @@ fn is_there_per_event_overhead_to_coalesce() {
 /// É a metade que faltava à sonda acima, e ela é o motivo de a frente C ter sido revertida. O oráculo
 /// aqui não é tempo: é a **CONTAGEM**, que não flaka e não depende de perfil de build.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_dab_count -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_dab_count -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_dab_count_grows_with_the_event_count_over_the_same_path() {
@@ -395,7 +395,7 @@ fn the_dab_count_grows_with_the_event_count_over_the_same_path() {
 ///
 /// Não afirma nada; IMPRIME.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_worst_single_event -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_worst_single_event -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_worst_single_event_of_a_stroke_names_itself() {
@@ -485,7 +485,7 @@ fn the_worst_single_event_of_a_stroke_names_itself() {
 ///
 /// Não afirma nada; IMPRIME.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release what_the_pen_up -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke what_the_pen_up -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn what_the_pen_up_is_made_of() {
@@ -569,7 +569,7 @@ fn what_the_pen_up_is_made_of() {
 ///
 /// Não afirma nada; IMPRIME.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release the_relief_planes_arithmetic -- --ignored --nocapture`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_relief_planes_arithmetic -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_relief_planes_arithmetic_of_the_pen_up() {

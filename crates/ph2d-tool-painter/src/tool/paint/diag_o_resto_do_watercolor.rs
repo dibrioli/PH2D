@@ -47,7 +47,7 @@
 //! sobre tela vazia estes caminhos movem `0` pixels — *uma fixtura vazia lê `0` e não afirma nada*.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_o_resto_do_watercolor -- --ignored --nocapture --test-threads=1
 //! ```
 

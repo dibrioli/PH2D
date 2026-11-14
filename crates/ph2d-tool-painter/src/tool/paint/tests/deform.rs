@@ -165,7 +165,7 @@ fn deform_transform_distort_warps_a_free_corner() {
 /// Perf harness (RELEASE only — dev/opt-0 lies about perf): time one Transform gizmo move on a moderate
 /// selection over a large canvas. The dirty-rect composite touches only the patch's source + destination
 /// bbox, so an interactive drag should land well under one 60 Hz frame (16 ms). Ignored by default:
-///   cargo test -p ph2d-tool-painter --release deform_transform_perf -- --ignored --nocapture
+///   cargo test -p ph2d-tool-painter --profile smoke deform_transform_perf -- --ignored --nocapture
 #[test]
 #[ignore]
 fn deform_transform_perf_move_is_under_frame_budget() {
@@ -202,7 +202,7 @@ fn deform_transform_perf_move_is_under_frame_budget() {
 
 /// Perf harness (RELEASE only): time one Warp mesh drag — the Catmull-Rom subdivision + fine-cell raster is
 /// heavier than the affine composite, so confirm an interactive drag still fits a 60 Hz frame.
-///   cargo test -p ph2d-tool-painter --release deform_warp_perf -- --ignored --nocapture
+///   cargo test -p ph2d-tool-painter --profile smoke deform_warp_perf -- --ignored --nocapture
 #[test]
 #[ignore]
 fn deform_warp_perf_drag_is_under_frame_budget() {
@@ -241,7 +241,7 @@ fn deform_warp_perf_drag_is_under_frame_budget() {
 /// The retained Arc makes the tool's next `Arc::make_mut(canvas_rgba)` deep-copy the whole 16.8 MB
 /// canvas EVERY move — invisible to a bench that doesn't hold the Arc (BUGS_painter.md Bug #3, the
 /// bench-vs-live gap). The (whole+hold − whole) column split isolates the copy from the gather loop.
-///   cargo test -p ph2d-tool-painter --release perf_transform_whole_image_table -- --ignored --nocapture
+///   cargo test -p ph2d-tool-painter --profile smoke perf_transform_whole_image_table -- --ignored --nocapture
 #[test]
 #[ignore]
 fn perf_transform_whole_image_table() {

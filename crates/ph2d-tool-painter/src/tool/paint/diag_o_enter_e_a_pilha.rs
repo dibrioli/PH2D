@@ -8,7 +8,7 @@
 //! comum* — e é por isso que cada um leva a régua dele.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_o_enter -- --ignored --nocapture --test-threads=1
 //! ```
 

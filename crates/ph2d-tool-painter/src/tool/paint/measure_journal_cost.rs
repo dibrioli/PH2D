@@ -13,7 +13,7 @@
 //! Rodar:
 //!
 //! ```text
-//! cargo test -p ph2d-tool-painter --release what_a_region_journal_costs -- --ignored --nocapture
+//! cargo test -p ph2d-tool-painter --profile smoke what_a_region_journal_costs -- --ignored --nocapture
 //! ```
 
 use crate::undo::journal::TileJournal;

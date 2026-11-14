@@ -9,7 +9,7 @@
 //! ⚠️ **A ablação é por KNOB, nunca por instrumentação** — o que se liga e desliga é exatamente o que o
 //! artista liga e desliga, então uma linha da tabela não pode medir um caminho que o produto não toma.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_relief -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_relief -- --ignored --nocapture`
 //!
 //! # O VEREDITO (medido 2026-08-10, e a leitura INVERTEU duas vezes pelo caminho)
 //!
@@ -581,7 +581,7 @@ fn measure_the_nth_stroke_at_fixed_length() {
 /// `falloff_weight(t)`. A razão entre as duas colunas diz se o alvo da fusão é a AMOSTRA DA SHAPE (que
 /// **não depende de `t`**, logo é literalmente o mesmo número nos dois passes) ou a caminhada.
 ///
-/// Rodar: `cargo test -p ph2d-tool-painter --release what_a_film_move_is_made_of -- --ignored --nocapture --test-threads=1`
+/// Rodar: `cargo test -p ph2d-tool-painter --profile smoke what_a_film_move_is_made_of -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn what_a_film_move_is_made_of() {

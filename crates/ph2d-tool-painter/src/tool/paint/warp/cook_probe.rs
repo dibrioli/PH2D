@@ -20,7 +20,7 @@
 //!   cada um por sua conta. Se a forma não for essa, a tabela de passo não significa nada.
 //! * `measure_the_lattice_pitch_table` — a TABELA que o ADR pede, em nós por orçamento de quadro.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_ -- --ignored --nocapture --test-threads=1`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_ -- --ignored --nocapture --test-threads=1`
 //!
 //! ⚠️ **`--release` não é preferência** e `--test-threads=1` não é higiene: o perfil `test` mede o
 //! compilador, e duas sondas em paralelo disputam os mesmos núcleos e medem uma à outra.

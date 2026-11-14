@@ -19,7 +19,7 @@
 //! Um `#[test]` por binário, de propósito: os contadores do `dhat` são globais do processo.
 //!
 //! ```text
-//! cargo test -p ph2d-tool-painter --release --test measure_pendown_alloc -- --nocapture
+//! cargo test -p ph2d-tool-painter --profile smoke --test measure_pendown_alloc -- --nocapture
 //! ```
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};

@@ -29,7 +29,7 @@
 //! `cargo test` roda os testes de um binário em threads — dois profilers num processo se atropelam.
 //!
 //! ```text
-//! cargo test -p ph2d-tool-painter --release --test measure_undo_memory -- --nocapture
+//! cargo test -p ph2d-tool-painter --profile smoke --test measure_undo_memory -- --nocapture
 //! ```
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};

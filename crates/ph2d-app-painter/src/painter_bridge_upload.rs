@@ -89,6 +89,12 @@ pub(crate) fn janelas_do_upload(
     }
 }
 
+/// B20.9: o erro da prévia que se REPETE a cada quadro fica UM aviso à vista (`push_or_refresh`: a mesma frase
+/// recomeça a contar em vez de empilhar outra e expulsar as do artista).
+pub(crate) fn avisa_uma_vez(toasts: &mut ToastQueue, chave: &str, e: &dyn std::fmt::Display) {
+    toasts.push_or_refresh(Toast::error(ph2d_i18n::tr_with(chave, &[("e", e)])));
+}
+
 thread_local! {
     /// O buffer do envio INTEIRO (B20.6), reusado de quadro em quadro: o `clone` de 33 MB a 4K por quadro saiu.
     static ENVIO: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
@@ -195,10 +201,11 @@ pub(crate) fn upload_cpu_preview(
                     });
                 }
                 Some(Err(e)) => {
-                    toasts.push(Toast::error(ph2d_i18n::tr_with(
+                    avisa_uma_vez(
+                        toasts,
                         "app.painter.painter_bridge_upload.preview_upload_failed",
-                        &[("e", &e)],
-                    )));
+                        &e,
+                    );
                     release_preview_texture(renderer, painter_preview_gpu);
                 }
             }
@@ -331,3 +338,5 @@ pub(crate) fn release_preview_texture(
 
 #[cfg(test)]
 mod envio_tests;
+#[cfg(test)]
+mod aviso_tests;

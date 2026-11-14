@@ -498,7 +498,7 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
 // Tracker: docs/Painter/handoffs/HANDOFF_per_layer_color_perf_artifacts.md §1 (owed numbers).
 // Ignored by default. Run in RELEASE — dev (opt-0) lies about perf
 // (project_painter_composite_perf):
-//   cargo test -p ph2d-tool-painter --release per_layer_perf -- --ignored --nocapture
+//   cargo test -p ph2d-tool-painter --profile smoke per_layer_perf -- --ignored --nocapture
 //
 // Design: drive the real pointer API (no GUI needed for timing). A Curve in
 // DRAW mode re-fills the whole anchor->cursor line every Move, so K identical
@@ -672,7 +672,7 @@ mod per_layer_perf {
     /// DYNAMIC path (`stamp_dabs_per_layer_dynamic`), not the cached one the batch kernel accelerated.
     /// Times the EDIT phase (drag the Arc's mid control point — a whole-shape re-stamp per move) at
     /// 2048², dynamic (texture-colour default) vs cached (all colours picked), N 3/16:
-    ///   cargo test -p ph2d-tool-painter --release per_layer_perf_live -- --ignored --nocapture
+    ///   cargo test -p ph2d-tool-painter --profile smoke per_layer_perf_live -- --ignored --nocapture
     #[test]
     #[ignore = "perf measurement — run explicitly in --release"]
     fn per_layer_perf_live() {
@@ -777,7 +777,7 @@ mod per_layer_perf {
 
     /// Worst observed config (1024 r100 N16, diagonal) in isolation so `PH2D_PAINT_PROF=1` prints a
     /// clean accumulate-vs-recomposite split:
-    ///   PH2D_PAINT_PROF=1 cargo test -p ph2d-tool-painter --release per_layer_perf_worst -- --ignored --nocapture
+    ///   PH2D_PAINT_PROF=1 cargo test -p ph2d-tool-painter --profile smoke per_layer_perf_worst -- --ignored --nocapture
     #[test]
     #[ignore = "perf measurement — run explicitly in --release with PH2D_PAINT_PROF=1"]
     fn per_layer_perf_worst() {

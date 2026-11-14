@@ -20,7 +20,7 @@
 //! `measure_shape_cost`) é quem o mede. Aqui a fronteira é a porta do evento, e ela está declarada.
 //!
 //! Rodar:
-//! `cargo test -p ph2d-tool-painter --release measure_shape_system -- --ignored --nocapture --test-threads=1`
+//! `cargo test -p ph2d-tool-painter --profile smoke measure_shape_system -- --ignored --nocapture --test-threads=1`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};

@@ -12,7 +12,7 @@
 //! 3. **como as duas crescem ao longo do traço** — porque um custo por-evento que cresce com o
 //!    caminho é um traço `O(n²)`, e isso não aparece num evento isolado.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_what_a_solid_move -- --ignored
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_what_a_solid_move -- --ignored
 //! --nocapture --test-threads=1`
 
 use super::measure_shape_system::{cp, tool};

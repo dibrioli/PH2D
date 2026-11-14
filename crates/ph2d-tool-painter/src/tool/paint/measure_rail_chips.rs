@@ -8,7 +8,7 @@
 //! ⚠️ Esta sonda não afirma nada; ela IMPRIME, e passa pela porta do produto (`on_canvas_pointer`) —
 //! não por um kernel escolhido a dedo. Cada linha é *um artista pegando o chip e arrastando*.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release the_rail_chips -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke the_rail_chips -- --ignored --nocapture`
 //!
 //! [ADR-0157]: ../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 

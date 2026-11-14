@@ -32,7 +32,7 @@
 //!
 //! Rodar:
 //! ```text
-//! cargo test -p ph2d-tool-painter --release measure_the_carried_waters_edge -- --ignored --nocapture --test-threads=1
+//! cargo test -p ph2d-tool-painter --profile smoke measure_the_carried_waters_edge -- --ignored --nocapture --test-threads=1
 //! ```
 
 use super::measure_impasto_cost::cp;

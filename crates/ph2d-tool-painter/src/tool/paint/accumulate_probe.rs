@@ -9,7 +9,7 @@
 //! fica invisível no miolo e o OMBRO, que é onde ela vive, nem existe. Esta sonda usa o pincel
 //! MACIO (`Falloff::Smooth`, `hardness 0`), que é o do produto.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release accumulate_probe -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke accumulate_probe -- --ignored --nocapture`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{

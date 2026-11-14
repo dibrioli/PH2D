@@ -7,7 +7,7 @@
 //! livre acumula (`Space`): cada move carimba só o pedaço novo.
 //!
 //! Esta sonda não afirma nada; ela IMPRIME. Rodar:
-//! `cargo test -p ph2d-tool-painter --release the_shape_move -- --ignored --nocapture --test-threads=1`
+//! `cargo test -p ph2d-tool-painter --profile smoke the_shape_move -- --ignored --nocapture --test-threads=1`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};

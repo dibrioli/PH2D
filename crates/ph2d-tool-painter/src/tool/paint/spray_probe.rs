@@ -9,7 +9,7 @@
 //! tocam os MESMOS texels e o custo mente para baixo. Uma nuvem espalhada escreve em área maior, e é
 //! ela que o artista de facto pinta — um spray com spread zero é o estado degenerado, não o caso.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_the_spray -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_the_spray -- --ignored --nocapture`
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;

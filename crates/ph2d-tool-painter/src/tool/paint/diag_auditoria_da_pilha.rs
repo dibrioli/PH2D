@@ -13,7 +13,7 @@
 //!   **no TOPO** sobre um Brush, e a pilha do dono tem-no **no FUNDO** com dois Brushes por cima.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_auditoria -- --ignored --nocapture --test-threads=1
 //! ```
 //!

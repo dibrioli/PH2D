@@ -5,7 +5,7 @@
 //! de `edge_spread / raio`**, e para vê-lo é preciso varrer as duas grandezas — o que exige tela,
 //! pincel e réguas próprias (as consts do pai são da cena pequena e não servem aqui).
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release crossing_scale -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke crossing_scale -- --ignored --nocapture`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};

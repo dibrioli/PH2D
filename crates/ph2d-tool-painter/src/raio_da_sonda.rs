@@ -26,3 +26,25 @@ impl PainterTool {
         lido
     }
 }
+
+/// B44.4: o perfil que a sonda mede (a pasta do `target/<perfil>/` do executável), impresso; recusa o
+/// `dev` — um relógio sem otimização não descreve o produto. Portão: `as_sondas_dizem_o_perfil`.
+#[doc(hidden)]
+#[must_use]
+pub fn perfil_da_sonda() -> String {
+    let exe = std::env::current_exe().unwrap_or_default();
+    let perfil = exe
+        .ancestors()
+        .find(|p| p.parent().is_some_and(|q| q.ends_with("target")))
+        .and_then(|p| p.file_name())
+        .map_or_else(|| "?".to_owned(), |n| n.to_string_lossy().into_owned());
+    eprintln!(
+        "[sonda] perfil {perfil} (debug_assertions {})",
+        cfg!(debug_assertions)
+    );
+    assert!(
+        !cfg!(debug_assertions),
+        "sonda de relógio em `{perfil}` (sem otimização): corra em `--profile smoke`"
+    );
+    perfil
+}

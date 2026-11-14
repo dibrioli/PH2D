@@ -605,7 +605,7 @@ fn watercolor_editor_stamp_deposits_without_an_open_stroke() {
 
 /// Manual perf probe (not a gate): per-frame watercolor cost along a LONG stroke on a big canvas —
 /// the dirty-rect must keep it ~constant (the old cumulative recomposite grew it ~quadratically).
-/// Run: `cargo test -p ph2d-tool-painter --release -- --ignored watercolor_perf`
+/// Run: `cargo test -p ph2d-tool-painter --profile smoke -- --ignored watercolor_perf`
 #[test]
 #[ignore = "manual perf probe — run in --release and read the printed ms"]
 fn watercolor_perf_frame_cost_probe() {

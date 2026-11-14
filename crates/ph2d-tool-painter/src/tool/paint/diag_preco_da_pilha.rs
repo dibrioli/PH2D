@@ -5,7 +5,7 @@
 //! tem de estar escrito com o relógio ao lado.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_preco_da_pilha -- --ignored --nocapture --test-threads=1
 //! ```
 //!

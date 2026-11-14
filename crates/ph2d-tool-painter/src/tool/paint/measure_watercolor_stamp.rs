@@ -60,7 +60,7 @@
 //! `--test-threads=1`: um segundo leitor drenaria a janela deste e os dois publicariam pedaços do mesmo
 //! traço como se fossem traços.
 //!
-//! Rodar: `cargo test -p ph2d-tool-painter --release measure_whether_the_carimbo -- --ignored --nocapture --test-threads=1`
+//! Rodar: `cargo test -p ph2d-tool-painter --profile smoke measure_whether_the_carimbo -- --ignored --nocapture --test-threads=1`
 
 use super::*;
 use crate::tool::paint::media::PaintMedia;

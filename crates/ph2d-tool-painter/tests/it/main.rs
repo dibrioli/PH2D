@@ -22,6 +22,7 @@ mod a_ponta_de_pixel;
 mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
 mod as_sondas_passam_o_raio; // B44.1: set_brush_size_px toma o raio (censo, N10)
+mod as_sondas_dizem_o_perfil; // B44.4: perfil dito, smoke no cabeçalho, dabs do Digital (censo, N10)
 mod cerda_e_marca;
 mod curas_da_mistura; // as curas da mistura Wet blend de 08/11 (Bugs #73–#78)
 mod dente_do_papel_por_cima_do_grain; // o papel morde por cima do Grain do pincel (dono 08/11)

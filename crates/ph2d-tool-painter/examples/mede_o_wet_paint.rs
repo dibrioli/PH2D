@@ -17,9 +17,9 @@
 //! (`PH2D_FLUID_PROFILE`) imprime.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio]
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio] pousos [n] [papel]
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_o_wet_paint
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_o_wet_paint -- [tela] [raio]
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --profile smoke --example mede_o_wet_paint -- [tela] [raio] pousos [n] [papel]
 //! ```
 //!
 //! Imprime `/proc/loadavg` ao lado: acima de `load ~5` nenhum relógio desta máquina vale nada em
@@ -268,6 +268,7 @@ fn pousos(size: u32, raio: f32, n: usize, papel: Option<u8>) {
 }
 
 fn main() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let size: u32 = args.first().and_then(|s| s.parse().ok()).unwrap_or(4096);
     let raio: f32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(100.0);

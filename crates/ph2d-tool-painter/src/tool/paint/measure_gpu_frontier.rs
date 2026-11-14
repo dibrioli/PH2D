@@ -17,7 +17,7 @@
 //!
 //! Run:
 //! ```text
-//! cargo test -p ph2d-tool-painter --release measure_ -- --ignored --nocapture --test-threads=1
+//! cargo test -p ph2d-tool-painter --profile smoke measure_ -- --ignored --nocapture --test-threads=1
 //! ```
 
 use super::*;

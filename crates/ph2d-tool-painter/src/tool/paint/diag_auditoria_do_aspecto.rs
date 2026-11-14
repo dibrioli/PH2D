@@ -17,7 +17,7 @@ use ph2d_editor_core::tool::RasterEditTool;
 const L: u32 = 700;
 
 /// (A1) A MATRIZ do report: um círculo contra dois, com e sem boolean, em três pilhas.
-/// `PH2D_AUDIT_DIR=/tmp/aud cargo test -p ph2d-tool-painter --release --lib
+/// `PH2D_AUDIT_DIR=/tmp/aud cargo test -p ph2d-tool-painter --profile smoke --lib
 /// diag_o_aspecto_do_anel -- --ignored --nocapture`
 #[test]
 #[ignore = "render-and-look: escreve PNG"]
@@ -159,7 +159,7 @@ fn diag_o_rectangulo_do_arrasto() {
 /// ⚠️ A régua compara os dois recortes **byte a byte**, o que só é honesto porque as duas figuras
 /// são congruentes por construção (mesmo raio, mesmo pincel, mesma pilha) e a fixtura o afirma.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_semente_com_shape -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_semente_com_shape -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_semente_com_shape() {

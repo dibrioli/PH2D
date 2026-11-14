@@ -34,7 +34,7 @@ const L: u32 = 700;
 /// nenhuma delas. A auditoria de 2026-09-21 disse que a costura **segue o arco** (ela não é uma
 /// linha alinhada aos eixos), logo é o ÂNGULO que a tem de indexar.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_costura_do_esfregao -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_costura_do_esfregao -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_costura_do_esfregao() {
@@ -127,7 +127,7 @@ fn diag_a_costura_do_esfregao() {
 ///
 /// A experiência varre o raio e põe a LINHA ao lado — numa recta a curvatura é zero por construção.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_perda_e_a_curvatura -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_perda_e_a_curvatura -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_perda_e_a_curvatura() {
@@ -202,7 +202,7 @@ fn diag_a_perda_e_a_curvatura() {
 /// de corrente/cobertura) ou a um **ÂNGULO** fixo (um efeito da geometria da elipse). Elas só se
 /// separam variando o raio.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_arco_ou_angulo -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_arco_ou_angulo -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_arco_ou_angulo() {
@@ -277,7 +277,7 @@ fn diag_arco_ou_angulo() {
 /// (transporte ao longo do anel, que num anel uniforme não devia custar tinta nenhuma) e
 /// **RADIAL** (que o tira do anel e é onde a tinta morre).
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_o_campo_do_esfregao -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_o_campo_do_esfregao -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_o_campo_do_esfregao() {
@@ -347,7 +347,7 @@ fn diag_o_campo_do_esfregao() {
 /// simetria (os algoritmos clássicos de elipse cospem 4 pontos de cada vez), dois dabs
 /// consecutivos ficam em lados OPOSTOS da figura e o «passo» do esfregão é uma corda gigante.
 ///
-/// `cargo test -p ph2d-tool-painter --release --lib diag_a_caminhada_do_perimetro -- --ignored --nocapture`
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_caminhada_do_perimetro -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição: imprime uma tabela"]
 fn diag_a_caminhada_do_perimetro() {

@@ -10,7 +10,7 @@
 //! `1 kHz` pede mais CPU do que o segundo tem.
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+//! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib \
 //!     diag_passo_do_rato -- --ignored --nocapture --test-threads=1
 //! ```
 //!

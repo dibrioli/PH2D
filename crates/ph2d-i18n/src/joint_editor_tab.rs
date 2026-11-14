@@ -39,7 +39,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The {role} is already {name}. Remove the assembly to start again."
         }
         "joint_editor.placed" => {
-            "{role} of {assembly}: {n} part(s) in, {joints} joint(s) made. The objects stay where they are."
+            "{role} of {assembly}: {n} {n?part|parts} in, {joints} {joints?joint|joints} made. The objects stay where they are."
         }
         "joint_editor.shape_a11y" => "{role}: {name}",
         "joint_editor.handle.min" => "Drag to set the lowest point",

@@ -15,9 +15,10 @@
 use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "panel.wet_tuning.";
-/// A irmã `wet_tuning_avancado.rs` (25/10) leva os quatro grupos avançados e os 40 knobs deles.
+/// O `wet_tuning.rs` (cortado da `lib.rs` 13/11) leva o título e os básicos; a irmã
+/// `wet_tuning_avancado.rs` (25/10) leva os quatro grupos avançados e os 40 knobs deles.
 const TABLES: &[&str] = &[
-    "crates/ph2d-i18n/src/lib.rs",
+    "crates/ph2d-i18n/src/wet_tuning.rs",
     "crates/ph2d-i18n/src/wet_tuning_avancado.rs",
 ];
 

@@ -122,7 +122,7 @@ mod tests {
             "groups",
         ];
         // Só com dois ou mais, por construção: o caso de 1 tem outra frase ou outra chave.
-        const SEMPRE_VARIOS: [&str; 6] = [
+        const SEMPRE_VARIOS: [&str; 7] = [
             "panel.vector.bar.name.many",
             // `{n}` é o tecto de peças do traço (`MAX_PIECES`, centenas).
             "stay under {n} pieces",
@@ -130,6 +130,8 @@ mod tests {
             "{count} objects are named",
             "{n} objects selected",
             "Merged {n_sources} sprites",
+            // `joint_editor.drop.many` só com `n > 1`; o de 1 é `joint_editor.drop.one`.
+            "these {n} objects become",
         ];
         // `\u{2014} cards` é um travessão seguido de um substantivo: não conta nada.
         let conta_em = |l: &str, nome: &str| {

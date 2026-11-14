@@ -272,6 +272,7 @@ pub fn dispatch(
             }
             // Patch the dirty region into the shell's OWN buffer and drop `drained`: the tool
             // stays the sole owner of its canvas, so its next `Arc::make_mut` writes in place.
+            crate::painter_bridge_repeat::larga(); // B20.10: sole owner again ⇒ patch in place
             let mirror = crate::painter_bridge_upload::own_preview_buffer(
                 painter_preview.take(),
                 sel,

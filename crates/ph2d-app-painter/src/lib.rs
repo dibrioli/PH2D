@@ -94,6 +94,7 @@ pub mod painter_bridge_op_badges;
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub mod painter_bridge_overlays;
 pub mod painter_bridge_phases;
+pub(crate) mod painter_bridge_repeat;
 #[cfg(feature = "panel-painter-layers")]
 mod painter_bridge_presets; // W1: os presets do Wet Painter — o disco e a biblioteca
 #[cfg(feature = "panel-painter-layers")]

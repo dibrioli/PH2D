@@ -426,6 +426,12 @@ pub(super) fn draw_repeat_image(
     // would shear off a rotated/scaled sprite. The central image (`base`) already includes everything.
     let (iw, ih) = (f64::from(preview.width), f64::from(preview.height));
     let (win_w, win_h) = (f64::from(window_size.width), f64::from(window_size.height));
+    // B20.10: ONE stable image for the 8 tiles (one Vello id, zero uploads while idle).
+    let Some(imagem) =
+        crate::painter_bridge_repeat::imagem(&preview.rgba, preview.width, preview.height)
+    else {
+        return;
+    };
     for dy in [-1i32, 0, 1] {
         for dx in [-1i32, 0, 1] {
             if dx == 0 && dy == 0 {
@@ -440,10 +446,8 @@ pub(super) fn draw_repeat_image(
             if bb.x1 < 0.0 || bb.y1 < 0.0 || bb.x0 > win_w || bb.y0 > win_h {
                 continue;
             }
-            vector_scene.draw_image_rgba_transformed(
-                &preview.rgba,
-                preview.width,
-                preview.height,
+            vector_scene.draw_stable_image_transformed(
+                &imagem,
                 tile,
                 ph2d_vector::ImageQuality::Low,
             );

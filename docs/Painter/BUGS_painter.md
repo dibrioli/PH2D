@@ -1212,6 +1212,23 @@ bytes do main `4f46a3573c`.
 tecto, a `Area`), não de uma cópia por meio; e a porta tem de ser medida no meio que a adota — aqui o Wet nem passa pelo
 carimbo, o que só a escolha `None` revelou.
 
+**Rodada 2 (13/11, bissecção `4f46a3573c..line/PainterWatercolor`, 384 commits que tocam o motor, worktree própria):**
+- **B33.1** (52a5af249d, o papel em duas leituras 256 + 241) → «ragged 24 Paper Rough» de `watercolor_flow`. `GrainLaw::leitura_dupla`
+  (não se grava): `papel_na_escala` e `poe_o_papel_como_grain` (slot do papel e Grain do dab, incluso «Same as Paper») ligam-na só
+  no Wet Paint (24ff377cb6, 1df792fe47 — a 1.ª versão tirava-a do Wet pelo «Same as Paper»). Gates
+  `fora_do_wet_paint_o_papel_e_a_leitura_unica_de_antes` e `no_wet_paint_o_papel_do_traco_nao_se_repete_a_256_px` (caminho do
+  `stroke_spec`; mutação → vermelho).
+- **B31.2** (7833d14883, o realce linear entre entradas da tabela) → os DOIS vermelhos do Impasto (cerca e luz). Medido com a leitura
+  truncada no mesmo binário. CPU (`Rig::com_realce_linear`) e placa (`Globals.realce_linear` na vaga `pad0`) só no Wet (a75e48f06d).
+  O candidato bcc8b47405 não podia ser: só toca `ph2d-render`, que `ph2d-tool-painter` não usa.
+- **B16.2 cont3** (bc0f53f29b, o dono do halo + pen-up pelo traço com qualquer estilo) → a Watercolor da cerca e o «dois donos»
+  (verde em 92cb395c38, vermelho nele). Fora do Wet: `DonoDoHalo::vazio` e o guarda do estilo uniforme do main (4f791f1c1f).
+- Alarmes regravados (6af5927b22; [relatório](handoffs/relatorio-pinceis-integ-2026-11-13-so-wet/index.html)). ⚠️ 43 miniaturas
+  WetPainter mudaram junto, sem separar das curas Wet comitadas em paralelo.
+- **ABERTO:** `presets_dos_meios::os_exemplos_sao_os_que_o_motor_grava` (Sketch Pencil, Digital) continua vermelho: verde em
+  bc0f53f29b, vermelho em f6bc64fc6e (B43.1) na linha crua; nessa janela estão leis já restritas, logo a bissecção crua não o
+  isola. Próximo passo: na fila pesada, regenerar o exemplo e diffar os chunks do PNG (os ajustes gravados × os pixels).
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

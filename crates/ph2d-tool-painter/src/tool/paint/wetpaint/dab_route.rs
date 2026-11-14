@@ -62,6 +62,10 @@ impl PainterTool {
                 })
             } else if self.o_lote_pode_voar(&cauda, brush) {
                 // A sessão fica com o operário; quem a ler a seguir drena-a, e o tique compõe quando assentar (F2d).
+                // F2h: o operário compõe também a óptica do lote; o quadro só corre o laço de píxel.
+                let mut dep = dep;
+                let tela = (self.source_size.0 as usize, self.source_size.1 as usize);
+                dep.otica = Some((self.factos_da_otica(), tela, cauda.t_dep));
                 let deposit_ms = cauda.t_dep.elapsed().as_secs_f32() * 1e3;
                 let marca = dep.sess.marca;
                 self.paint
@@ -545,6 +549,8 @@ impl PainterTool {
             sub_dabs,
             rng: dab_rng,
             sess: taken,
+            otica: None,
+            saida: None,
         };
         (dep, cauda)
     }

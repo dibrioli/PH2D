@@ -46,6 +46,9 @@ impl PainterTool {
             let t0 = std::time::Instant::now();
             self.no_pool(Self::wetpaint_composite);
             super::sessao_do_wet::diag_espera("compoe", t0, std::panic::Location::caller());
+        } else if self.paint.wetpaint.session.tem_compostas() {
+            // F2h: a óptica do operário não está no sujo do motor — o tique que o trouxer não a veria.
+            self.paint.wetpaint.composite_pendente = true;
         }
     }
 
@@ -69,5 +72,41 @@ impl PainterTool {
             return f(self);
         }
         rayon::join(|| f(self), || ()).0
+    }
+}
+
+impl PainterTool {
+    /// **N10 F2h: as ópticas que o operário do depósito compôs** e que ainda valem (os factos da tela são os de
+    /// quando o lote voou). Uma que não vale devolve a caixa ao sujo do motor: a composição de agora refá-la com os
+    /// factos de agora (compor uma região maior dá os mesmos bytes — a composição é função das grades).
+    pub(super) fn wet_compostas_que_valem(
+        &mut self,
+        factos: super::otica_factos::FactosDaOtica,
+    ) -> Vec<super::composite_otica::SaidaDaOtica> {
+        let sess = &mut self.paint.wetpaint.session;
+        let todas = if sess.assentou() {
+            sess.tira_as_compostas()
+        } else {
+            Vec::new()
+        };
+        if todas.is_empty() {
+            return Vec::new();
+        }
+        let Some(s) = sess.as_mut() else {
+            return Vec::new();
+        };
+        let mut valem = Vec::with_capacity(todas.len());
+        for c in todas {
+            if c.factos == factos {
+                super::sessao_do_wet::diag_latencia(c.evento);
+                valem.push(c.saida);
+            } else if let Some(c) = c.saida.caixas.as_ref() {
+                s.bring_home();
+                let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+                let (x0, y0, x1, y1) = c.caixa_cel;
+                s.engine.merge_dirty(i(x0), i(y0), i(x1), i(y1));
+            }
+        }
+        valem
     }
 }

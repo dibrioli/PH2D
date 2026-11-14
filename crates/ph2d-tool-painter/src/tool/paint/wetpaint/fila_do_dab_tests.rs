@@ -190,6 +190,31 @@ fn o_traco_inteiro_em_voo_pinta_a_tela_do_sincrono_ao_bit() {
     }
 }
 
+/// F2h: o operário compõe a ÓPTICA do lote que voa logo depois do depósito e o quadro só corre o laço de píxel — o
+/// traço inteiro (conta-gotas a meio, undo, redo, troca A→B→A) pinta a tela do síncrono ao bit nos três fundos, e a
+/// prova de que o caminho correu é `COLADAS > 0` (a mutação «o quadro não cola as ópticas do operário» reprova a tela).
+#[test]
+fn a_otica_composta_no_operario_pinta_a_tela_do_sincrono_ao_bit() {
+    for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "Textured")] {
+        let (sincrono, gotas_s, _) = traco_inteiro(false, qual);
+        super::super::sessao_do_wet::COLADAS.set(0);
+        let (fila, gotas_f, _) = traco_inteiro(true, qual);
+        let coladas = super::super::sessao_do_wet::COLADAS.get();
+        assert!(
+            coladas > 0,
+            "{nome}: nenhuma óptica do operário chegou à tela (o gate não mediria nada)"
+        );
+        assert_eq!(
+            gotas_s, gotas_f,
+            "{nome}: o conta-gotas leu outra tela com a óptica no operário"
+        );
+        assert!(
+            sincrono == fila,
+            "{nome}: a óptica no operário mudou a tela"
+        );
+    }
+}
+
 /// A porta do operário é uma só no processo: os testes que a fecham correm um de cada vez.
 static PORTA_DE_UM: std::sync::Mutex<()> = std::sync::Mutex::new(());
 

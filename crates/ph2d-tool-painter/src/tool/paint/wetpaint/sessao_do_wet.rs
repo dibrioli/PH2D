@@ -8,7 +8,7 @@
 //! assinatura. Fora de voo o custo é um `get` atómico. Desenho e números: `docs/Painter/missao_4k/medicoes/N10_cerdas_mistura.md`.
 
 use super::WetSession;
-use super::dab_route::fila_do_dab::{self, EmVoo};
+use super::dab_route::fila_do_dab::{self, Composta, EmVoo};
 use super::session::LoteAdiado;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
@@ -18,6 +18,8 @@ thread_local! {
     pub(in crate::tool::paint) static VOOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     /// Quantos lotes ficaram ATRÁS de um voo neste fio (F2f: o gate prova que o encadeado correu).
     pub(in crate::tool::paint) static ATRAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Quantas ópticas do operário o fio da tela colou (F2h: o gate prova que o quadro não compôs a óptica delas).
+    pub(in crate::tool::paint) static COLADAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// A sessão viva: em casa, com o operário, ou nenhuma.
@@ -30,6 +32,9 @@ pub(in crate::tool::paint) struct SessaoDoWet {
     atras: Mutex<Vec<LoteAdiado>>,
     /// A `WetSession::marca` da sessão em voo (o operário não a muda): a rota lê-a sem drenar.
     marca_em_voo: Option<u64>,
+    /// N10 F2h: as ópticas que os voos compuseram no operário, por ordem; o próximo composite corre o laço de píxel
+    /// delas ([`super::por_quadro`]). Morrem com a sessão.
+    compostas: Mutex<Vec<Composta>>,
 }
 
 impl SessaoDoWet {
@@ -40,6 +45,7 @@ impl SessaoDoWet {
             voo: Mutex::new(None),
             atras: Mutex::new(Vec::new()),
             marca_em_voo: None,
+            compostas: Mutex::new(Vec::new()),
         }
     }
 
@@ -132,8 +138,15 @@ impl SessaoDoWet {
         let mut voo = self.voo.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(v) = voo.take() {
             let t0 = std::time::Instant::now();
-            let mut sess = fila_do_dab::drena_os_dabs(v).sess;
+            let dep = fila_do_dab::drena_os_dabs(v);
             diag_espera("dreno", t0, std::panic::Location::caller());
+            let mut sess = dep.sess;
+            if let Some(s) = dep.saida {
+                self.compostas
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .push(s);
+            }
             sess.adiados
                 .append(&mut self.atras.lock().unwrap_or_else(PoisonError::into_inner));
             if self.aqui.set(sess).is_err() {
@@ -163,7 +176,28 @@ impl SessaoDoWet {
         if self.aqui.get().is_none() {
             self.drena();
         }
+        self.compostas
+            .get_mut()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clear();
         self.aqui.take()
+    }
+
+    /// F2h: as ópticas compostas no operário por colar (a sessão já em casa: quem chama trouxe-a).
+    pub(in crate::tool::paint) fn tem_compostas(&self) -> bool {
+        !self
+            .compostas
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .is_empty()
+    }
+
+    pub(super) fn tira_as_compostas(&mut self) -> Vec<Composta> {
+        std::mem::take(
+            self.compostas
+                .get_mut()
+                .unwrap_or_else(PoisonError::into_inner),
+        )
     }
 
     pub(in crate::tool::paint) fn is_some(&self) -> bool {
@@ -189,6 +223,18 @@ pub(in crate::tool::paint) fn diag_espera(
     let ms = t0.elapsed().as_secs_f64() * 1e3;
     if ms > 5.0 {
         eprintln!("[wet-espera] {oque} ms={ms:.1} em {onde}");
+    }
+}
+
+/// ⚠️ Medição (F2h, a régua da latência caneta→tinta): com `PH2D_QUADRO_LENTO_MS` posto, cada óptica do operário
+/// colada na tela imprime `[wet-latencia] ms=<n>` — do evento da caneta que pousou o lote ao quadro que o mostra.
+pub(in crate::tool::paint) fn diag_latencia(evento: std::time::Instant) {
+    static ON: OnceLock<bool> = OnceLock::new();
+    if *ON.get_or_init(|| std::env::var_os("PH2D_QUADRO_LENTO_MS").is_some()) {
+        eprintln!(
+            "[wet-latencia] ms={:.1}",
+            evento.elapsed().as_secs_f64() * 1e3
+        );
     }
 }
 

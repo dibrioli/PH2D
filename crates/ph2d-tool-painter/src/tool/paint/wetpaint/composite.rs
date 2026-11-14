@@ -48,6 +48,7 @@ impl PainterTool {
             return;
         }
         let antes = self.wetpaint_antes_da_otica();
+        let compostas = self.wet_compostas_que_valem(antes.factos);
         let Some(entrada) = self.wetpaint_entrada_da_otica(antes.factos) else {
             return;
         };
@@ -70,6 +71,12 @@ impl PainterTool {
             .collect();
         let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
         drop(layers);
+        // F2h: o laço de píxel das ópticas que o operário compôs, sobre os planos já com a de agora.
+        for c in compostas {
+            #[cfg(test)]
+            super::sessao_do_wet::COLADAS.set(super::sessao_do_wet::COLADAS.get() + 1);
+            self.wetpaint_depois_da_otica(&antes, c, veil, super::veu::VeuDe::Motor, None);
+        }
         self.wetpaint_depois_da_otica(&antes, saida, veil, super::veu::VeuDe::Motor, None);
     }
 
@@ -128,37 +135,7 @@ impl PainterTool {
             sess.bring_home();
         }
         sess.bring_home();
-        // ⚠️ **Células e pixels deixaram de ser a mesma coisa** ([`grid_map`]):
-        // a grade tem `ratio` pixels de canvas por célula. O dirty do motor é
-        // em CÉLULAS e é clampado à GRADE; o retângulo que este composite
-        // escreve — e que o `mark_dirty` publica — é em PIXELS.
-        let ratio = sess.ratio;
-        let (gw, gh) = sess.grid;
-        // A tela fica a mostrar a água NESTE estado (W14: onde ela pára se a sessão acabar já).
-        let marca_da_agua = fita::MarcaDaAgua::de(&sess.engine);
-        let caixa = match sess.engine.take_dirty() {
-            Dirty::Clean => None,
-            Dirty::Full => Some((1, 1, gw, gh)),
-            Dirty::Rect { x0, y0, x1, y1 } => Some((
-                (x0.max(1) as usize).min(gw),
-                (y0.max(1) as usize).min(gh),
-                (x1.max(1) as usize).min(gw),
-                (y1.max(1) as usize).min(gh),
-            )),
-        };
-        let caixa = caixa.filter(|_| sess.base.len() == w * h * 4);
-        Some(super::composite_otica::EntradaDaOtica {
-            factos,
-            marca: marca_da_agua,
-            trabalho: caixa.map(|caixa| super::composite_otica::TrabalhoDaOtica {
-                caixa,
-                params: sess.engine.sim.gather_params(&sess.engine.tuning),
-            }),
-            ratio,
-            grade: (gw, gh),
-            tela: (w, h),
-            revisao: sess.engine.revisao(),
-        })
+        Some(entrada_da_sessao(sess, factos, (w, h)))
     }
 
     /// A metade de baixo: aplica a [`super::composite_otica::SaidaDaOtica`] na ferramenta e corre o laço de píxel
@@ -478,3 +455,43 @@ pub(in crate::tool::paint) mod split;
 
 /// O laço de píxel como função pura das entradas (B11.3).
 pub(in crate::tool::paint::wetpaint) mod pixel;
+
+/// A entrada da óptica tirada da sessão com o motor EM CASA (o sujo, os `Params`, a marca): a do composite e a do
+/// operário do depósito (N10 F2h, [`super::dab_route`]'s `fila_do_dab`), a mesma lei nos dois fios.
+pub(super) fn entrada_da_sessao(
+    sess: &mut WetSession,
+    factos: super::otica_factos::FactosDaOtica,
+    (w, h): (usize, usize),
+) -> super::composite_otica::EntradaDaOtica {
+    // ⚠️ **Células e pixels deixaram de ser a mesma coisa** ([`grid_map`]):
+    // a grade tem `ratio` pixels de canvas por célula. O dirty do motor é
+    // em CÉLULAS e é clampado à GRADE; o retângulo que este composite
+    // escreve — e que o `mark_dirty` publica — é em PIXELS.
+    let ratio = sess.ratio;
+    let (gw, gh) = sess.grid;
+    // A tela fica a mostrar a água NESTE estado (W14: onde ela pára se a sessão acabar já).
+    let marca_da_agua = fita::MarcaDaAgua::de(&sess.engine);
+    let caixa = match sess.engine.take_dirty() {
+        Dirty::Clean => None,
+        Dirty::Full => Some((1, 1, gw, gh)),
+        Dirty::Rect { x0, y0, x1, y1 } => Some((
+            (x0.max(1) as usize).min(gw),
+            (y0.max(1) as usize).min(gh),
+            (x1.max(1) as usize).min(gw),
+            (y1.max(1) as usize).min(gh),
+        )),
+    };
+    let caixa = caixa.filter(|_| sess.base.len() == w * h * 4);
+    super::composite_otica::EntradaDaOtica {
+        factos,
+        marca: marca_da_agua,
+        trabalho: caixa.map(|caixa| super::composite_otica::TrabalhoDaOtica {
+            caixa,
+            params: sess.engine.sim.gather_params(&sess.engine.tuning),
+        }),
+        ratio,
+        grade: (gw, gh),
+        tela: (w, h),
+        revisao: sess.engine.revisao(),
+    }
+}

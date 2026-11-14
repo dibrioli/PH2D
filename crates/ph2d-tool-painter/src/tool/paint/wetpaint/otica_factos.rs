@@ -11,7 +11,7 @@ use ph2d_wet_paint::render::{PigmentVisual, RenderLayer};
 /// thread). Os que a óptica lê no fio da tela ficam ASSADOS no valor: `grao_no_filme::sem_grao` no
 /// [`FactosDaOtica::tem_grao`].
 #[cfg(test)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(super) struct InterruptoresDaOtica {
     /// [`super::oleo_plano::curas_desligadas`]: `(sombra antiga, campo em série)`.
     pub(super) curas_desligadas: (bool, bool),
@@ -27,7 +27,7 @@ pub(super) struct InterruptoresDaOtica {
 }
 
 /// O que a óptica sabe da ferramenta — sem empréstimo nenhum.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(super) struct FactosDaOtica {
     pub(super) visual: PigmentVisual,
     /// O Óleo Real adiado (`wetpaint.oleo_adiado`): a óptica do óleo não corre.

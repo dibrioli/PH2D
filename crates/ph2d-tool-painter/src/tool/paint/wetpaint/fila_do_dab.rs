@@ -9,8 +9,13 @@
 //! oráculos da rota vivem em `thread_local`); um gate liga a fila com [`fila_no_teste`].
 
 use super::super::WetSession;
+use super::super::composite::entrada_da_sessao;
+use super::super::composite_otica::{SaidaDaOtica, compoe_a_otica};
+use super::super::offthread::EngineSlot;
+use super::super::otica_factos::FactosDaOtica;
 use super::pousa_o_dab::{self, LoteDoDab};
 use ph2d_painter_brush::Dab;
+use ph2d_wet_paint::render::RenderLayer;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Mutex, OnceLock};
 
@@ -23,6 +28,11 @@ pub(in crate::tool::paint::wetpaint) struct Deposito {
     pub(super) sub_dabs: Vec<SubDab>,
     pub(super) rng: super::super::tiling::DabRng,
     pub(in crate::tool::paint::wetpaint) sess: WetSession,
+    /// N10 F2h: compor a óptica no operário logo depois do depósito — os factos da tela e `(w, h)` do evento.
+    pub(in crate::tool::paint::wetpaint) otica:
+        Option<(FactosDaOtica, (usize, usize), std::time::Instant)>,
+    /// A óptica que o operário compôs (o sujo do motor saiu nela): o fio da tela só corre o laço de píxel.
+    pub(in crate::tool::paint::wetpaint) saida: Option<Composta>,
 }
 
 const _: () = {
@@ -37,10 +47,49 @@ pub(super) fn deposita(d: &mut Deposito) {
         sub_dabs,
         rng,
         sess,
+        ..
     } = d;
     for (didx, sub_k, passo, dab) in sub_dabs.iter() {
         pousa_o_dab::pousa_o_dab(lote, sess, rng, *didx, *sub_k, *passo, dab);
     }
+}
+
+/// **N10 F2h: a óptica do lote no operário** — a mesma [`compoe_a_otica`] do composite, sobre a sessão que acabou
+/// de receber o depósito (motor em casa: o depósito usou-o). O sujo do motor sai na entrada, como no composite; o
+/// fio da tela cola a saída no quadro ([`super::super::por_quadro`]). Fora disso (sem pedido, motor do roteiro de
+/// uma macro), nada: o sujo fica no motor e o quadro compõe-o como antes.
+fn compoe_no_operario(d: &mut Deposito) {
+    let Some((factos, tela, evento)) = d.otica.take() else {
+        return;
+    };
+    let sess = &mut d.sess;
+    if !matches!(sess.engine, EngineSlot::Here(_)) {
+        return;
+    }
+    let e = entrada_da_sessao(sess, factos, tela);
+    let layers: Vec<RenderLayer<'_>> = sess
+        .engine
+        .layers
+        .iter()
+        .map(|l| RenderLayer {
+            grid: &l.grid,
+            opacity: l.opacity,
+            visible: l.visible,
+        })
+        .collect();
+    d.saida = Some(Composta {
+        factos,
+        saida: compoe_a_otica(&e, &layers, &mut sess.planos),
+        evento,
+    });
+}
+
+/// A óptica de um lote composta no operário, com os factos com que foi feita e o instante do evento da caneta
+/// (a régua da latência caneta→tinta, `[wet-latencia]`).
+pub(in crate::tool::paint::wetpaint) struct Composta {
+    pub(in crate::tool::paint::wetpaint) factos: FactosDaOtica,
+    pub(in crate::tool::paint::wetpaint) saida: SaidaDaOtica,
+    pub(in crate::tool::paint::wetpaint) evento: std::time::Instant,
 }
 
 type Volta = std::thread::Result<Box<Deposito>>;
@@ -62,6 +111,7 @@ fn operario() -> &'static Mutex<Operario> {
                     espera_a_porta();
                     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                         deposita(&mut d);
+                        compoe_no_operario(&mut d);
                         d
                     }));
                     // Volta largada = sessão substituída antes de assentar: o lote morre com ela.
@@ -91,13 +141,19 @@ static PORTA: (Mutex<bool>, std::sync::Condvar) = (Mutex::new(false), std::sync:
 
 #[cfg(test)]
 pub(in crate::tool::paint) fn segura_o_operario(fechada: bool) {
-    *PORTA.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = fechada;
+    *PORTA
+        .0
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = fechada;
     PORTA.1.notify_all();
 }
 
 #[cfg(test)]
 fn espera_a_porta() {
-    let g = PORTA.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let g = PORTA
+        .0
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _ = PORTA
         .1
         .wait_timeout_while(g, std::time::Duration::from_secs(2), |f| *f);

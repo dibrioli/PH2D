@@ -76,7 +76,7 @@ const MOTOR: [&str; 11] = [
 ///   posam a mesma malha com OUTRA pose). Esses ou continuam na CPU, ou pedem leitura da GPU.
 const COSTURAS: [(&str, &str); 11] = [
     (
-        "crates/ph2d-app-painter/src/canvas_map.rs",
+        "crates/ph2d-painter-canvas-map/src/lib.rs",
         "UM PONTO: o mapa de canvas resolve o texel sob um ponto",
     ),
     (

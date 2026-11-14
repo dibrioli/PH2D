@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-painter-canvas-map"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O `CanvasMap` (imagem-px → ecrã pela malha posada ou pelo afim do quad): folha porque a
+# `ph2d-app-painter` estava 177 linhas acima do tecto da catraca (integ 13/11). A app-painter
+# re-exporta-o como `canvas_map`, logo os consumidores continuam a escrever `crate::canvas_map::`.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

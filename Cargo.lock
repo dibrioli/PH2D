@@ -6158,6 +6158,7 @@ dependencies = [
  "ph2d-macro",
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
+ "ph2d-painter-canvas-map",
  "ph2d-painter-effects",
  "ph2d-panel-painter-layers",
  "ph2d-panel-wet-tuning",
@@ -10053,6 +10054,17 @@ dependencies = [
  "ph2d-pigment",
  "ph2d-wet-paint",
  "rayon",
+]
+
+[[package]]
+name = "ph2d-painter-canvas-map"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-host",
+ "ph2d-render",
+ "ph2d-vector",
 ]
 
 [[package]]

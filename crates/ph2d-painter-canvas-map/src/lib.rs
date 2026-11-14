@@ -4,7 +4,7 @@
 //! # ⏸️ **DORMENTE desde 2026-09-15 — e a decisão é do dono, não um acidente**
 //!
 //! ⛔⛔ **Enquanto a ferramenta ACHATAR a arte, esta porta não tem sujeito.** Por ordem do dono
-//! (2026-09-15, [`crate::skin_suspend`]) a sprite que o Painter edita não recebe malha, e **todo o
+//! (2026-09-15, `ph2d_app_painter::skin_suspend`) a sprite que o Painter edita não recebe malha, e **todo o
 //! chrome deste módulo volta ao afim do quad — byte a byte** (é o caminho medido e gateado por
 //! `a_segment_over_a_flat_quad_is_still_one_straight_line`).
 //!

@@ -10,9 +10,9 @@
 //! afirmam que os desenhadores *consultam* a porta; este afirma que a porta *responde certo*. As
 //! duas metades são precisas — citar uma porta não é consultá-la, e consultá-la não é tê-la certa.
 
-use ph2d_app_painter::canvas_map::CanvasMap;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, GlobalTransform, PresentWorld, SimRef, SimWorld};
+use ph2d_painter_canvas_map::CanvasMap;
 use ph2d_render::{Camera2d, RenderInstance, SpriteMesh};
 use ph2d_vector::{Affine, Point};
 

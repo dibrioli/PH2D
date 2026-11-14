@@ -49,6 +49,8 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 ph2d-panel-wet-tuning = { path = "../ph2d-panel-wet-tuning" }
 # ⭐ A ranhura de GPU da pré-visualização (a folha que saiu do `app_state.rs` nesta wave).
 ph2d-preview-slot = { path = "../ph2d-preview-slot" }
+# ⭐ O `CanvasMap` (folha desde a integ 13/11; re-exportado como `canvas_map`).
+ph2d-painter-canvas-map = { path = "../ph2d-painter-canvas-map" }
 # ⭐ O afim `imagem-px → ecrã-px` (a outra folha desta wave).
 ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
 ph2d-text = { path = "../ph2d-text" }

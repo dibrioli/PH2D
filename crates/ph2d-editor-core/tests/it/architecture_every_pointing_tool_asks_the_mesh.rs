@@ -144,12 +144,12 @@ fn the_background_remover_resolves_its_pointer_through_one_door() {
 /// que nenhuma sonda deste repo apanha. *As duas direcções viajam juntas ou nenhuma viaja.*
 ///
 /// ⚠️ Este gate afirma que os desenhadores **consultam** a porta; que a porta **responde certo** é
-/// medido noutro sítio (`ph2d-app-painter/tests/the_canvas_map_lands_on_the_posed_art.rs`) — *citar
+/// medido noutro sítio (`ph2d-painter-canvas-map/tests/the_canvas_map_lands_on_the_posed_art.rs`) — *citar
 /// uma porta não é consultá-la, e consultá-la não é tê-la certa.*
 #[test]
 fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
     // A porta.
-    const MAPA: &str = "crates/ph2d-app-painter/src/canvas_map.rs";
+    const MAPA: &str = "crates/ph2d-painter-canvas-map/src/lib.rs";
     let mapa = fonte(MAPA);
     assert!(
         mapa.contains("fn point(&self, p: [f32; 2]) -> Point")
@@ -836,7 +836,7 @@ fn painting_flattens_the_art_and_the_frame_passes_it_through() {
 #[test]
 fn the_dormant_door_says_so_and_the_note_dies_with_the_flattening() {
     const MARCA: &str = "DORMENTE";
-    const PORTA: &str = "crates/ph2d-app-painter/src/canvas_map.rs";
+    const PORTA: &str = "crates/ph2d-painter-canvas-map/src/lib.rs";
     let achata = fonte("shells/desktop/src/render_loop/fase_sim_extract.rs")
         .contains("skin_suspend::achata_e_avisa(");
 

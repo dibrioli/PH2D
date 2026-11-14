@@ -20,6 +20,16 @@ pub(crate) fn publica(store: &mut WidgetStore, snap: &TimelineViewSnapshot) {
     };
     if let Some(marcas) = linhas_acesas(kind, snap) {
         store.set_menu_marks(kind, &marcas, &titulo(kind, snap));
+        store.set_ease_sampler(amostra_ease);
+    }
+}
+
+/// A régua que os botões do cartão da chave desenham: a forma `item` no modo `mode`, pela MESMA
+/// conta do documento (`Easing::eval`). `None` para o que não é forma.
+pub(crate) fn amostra_ease(item: NodeId, mode: u8, u: f32) -> Option<f32> {
+    match preset_for(item, mode)? {
+        Preset::Eased(e) => Some(e.eval(f64::from(u)) as f32),
+        _ => None,
     }
 }
 

@@ -29,7 +29,6 @@ pub(super) fn icone(id: NodeId) -> Option<IconId> {
         (c::CTX_MENU_TL_CURVE_IN, IconId::CardInterpCubic),
         (c::CTX_MENU_TL_CURVE_INOUT, IconId::CardInterpCubic),
         (c::CTX_MENU_TL_CURVE_OUT, IconId::CardInterpCubic),
-        (c::CTX_MENU_TL_SHAPE, IconId::ChevronDown),
         (c::CTX_MENU_TL_KEY_DONE, IconId::Check),
         // Faixa.
         (c::CTX_MENU_TL_EXTRAP_PRE, IconId::SkipBack),

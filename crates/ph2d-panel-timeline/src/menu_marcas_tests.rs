@@ -79,3 +79,40 @@ fn the_lit_row_is_the_interpolation_and_extrapolation_under_the_click() {
     // Uma chave que não existe não acende nada (o cartão abre só com o título).
     assert_eq!(linhas_acesas(seg(77), &s), Some(vec![]));
 }
+
+/// O botão do cartão desenha a conta do documento: cada forma × modo é o `Easing::eval` dela, e o
+/// que não é forma (Hold, Straight) não tem régua.
+#[test]
+fn the_card_buttons_draw_the_documents_own_easing() {
+    use ph2d_anim::EasingMode;
+    let modos = [
+        (c::TL_EASE_MODE_IN, EasingMode::In),
+        (c::TL_EASE_MODE_OUT, EasingMode::Out),
+        (c::TL_EASE_MODE_INOUT, EasingMode::InOut),
+    ];
+    for row in c::TIMELINE_EASE_MENU {
+        for (fio, modo) in modos {
+            let Some(Preset::Eased(e)) = preset_for(row.0, fio) else {
+                panic!("toda forma do cartão resolve para um easing");
+            };
+            assert_eq!(e.mode, modo);
+            for i in 0..=8 {
+                let u = i as f32 / 8.0;
+                let got = amostra_ease(row.0, fio, u).expect("forma tem régua");
+                assert!((f64::from(got) - e.eval(f64::from(u))).abs() < 1e-6);
+            }
+        }
+    }
+    assert_eq!(
+        amostra_ease(
+            c::CTX_MENU_TL_HOLD,
+            ph2d_editor_core::interaction::TL_NO_EASE_MODE,
+            0.5
+        ),
+        None
+    );
+    assert_eq!(
+        amostra_ease(c::CTX_MENU_TL_LINEAR, c::TL_EASE_MODE_IN, 0.5),
+        None
+    );
+}

@@ -8,7 +8,7 @@ const KIND: K = K::TimelineSegment {
 };
 
 /// Sem nada aceso, Curve pede Cubic In-Out; aceso Quad Out, Curve mantém Quad Out e o Ease in
-/// troca só o modo; a forma abre a lista no modo aceso; o fade NÃO é cartão.
+/// troca só o modo; um botão de forma pede a forma no modo aceso; o fade NÃO é cartão.
 #[test]
 fn each_card_click_asks_the_same_pick_the_list_menu_would() {
     let mut store = WidgetStore::default();
@@ -38,9 +38,11 @@ fn each_card_click_asks_the_same_pick_the_list_menu_would() {
             mode: c::TL_EASE_MODE_IN
         })
     );
+    // Um botão de forma pede ELA no modo aceso — sem lista no meio.
     assert_eq!(
-        acao(c::CTX_MENU_TL_SHAPE, KIND, &store),
-        Some(Acao::AbreFormas {
+        acao(c::CTX_MENU_TL_FAM_BOUNCE, KIND, &store),
+        Some(Acao::Escolhe {
+            item: c::CTX_MENU_TL_FAM_BOUNCE,
             mode: c::TL_EASE_MODE_OUT
         })
     );
@@ -65,7 +67,11 @@ fn each_card_click_asks_the_same_pick_the_list_menu_would() {
 #[test]
 fn every_card_target_fits_and_none_overlaps() {
     let g = geo(10.0, 20.0);
-    let alvos = [g.cabeca, g.interp, g.ease, g.forma, g.rove, g.done];
+    assert_eq!(g.interp.len(), INTERP.len());
+    assert_eq!(g.ease.len(), EASES.len());
+    assert_eq!(g.formas.len(), c::TIMELINE_EASE_MENU.len());
+    let mut alvos = vec![g.cabeca, g.rove, g.done];
+    alvos.extend(g.interp.iter().chain(&g.ease).chain(&g.formas));
     let dentro = |r: &Rect| {
         r.x >= g.cartao.x
             && r.y >= g.cartao.y
@@ -102,9 +108,42 @@ fn done_closes_and_the_title_does_nothing() {
         c::CTX_MENU_TL_CURVE_IN,
         c::CTX_MENU_TL_LINEAR,
         c::CTX_MENU_TL_ROVE,
-        c::CTX_MENU_TL_SHAPE,
+        c::CTX_MENU_TL_FAM_ELASTIC,
     ] {
         assert!(e_alvo_do_cartao(id));
     }
     assert!(!e_alvo_do_cartao(c::CTX_MENU_TL_DELETE_TRACK));
+}
+
+/// Régua de teste: só Quad tem curva (`u²` no In), o resto não é forma.
+fn quad(item: NodeId, mode: u8, u: f32) -> Option<f32> {
+    (item == c::CTX_MENU_TL_FAM_QUAD && mode == c::TL_EASE_MODE_IN).then_some(u * u)
+}
+
+/// Cada botão desenha o que a escolha FAZ: Straight a diagonal, Hold o salto no fim, Nearest o
+/// salto a meio, a forma a régua publicada (e nada sem régua — nunca uma curva inventada).
+#[test]
+fn each_button_draws_what_its_choice_does() {
+    assert_eq!(pontos(Desenho::Reta, None), vec![(0.0, 0.0), (1.0, 1.0)]);
+    assert_eq!(
+        pontos(Desenho::Segura, None),
+        vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+    );
+    let prox = pontos(Desenho::Proxima, None);
+    assert!(prox.contains(&(0.5, 0.0)) && prox.contains(&(0.5, 1.0)));
+    let bez = pontos(Desenho::Bezier, None);
+    assert_eq!((bez[0], *bez.last().unwrap()), ((0.0, 0.0), (1.0, 1.0)));
+    let d = Desenho::Ease {
+        item: c::CTX_MENU_TL_FAM_QUAD,
+        mode: c::TL_EASE_MODE_IN,
+    };
+    assert!(pontos(d, None).is_empty(), "sem régua não há curva");
+    let q = pontos(d, Some(quad));
+    assert_eq!(q.len(), SAMPLES + 1);
+    assert!(q.iter().all(|&(u, y)| (y - u * u).abs() < 1e-6));
+    let outra = Desenho::Ease {
+        item: c::CTX_MENU_TL_FAM_BACK,
+        mode: c::TL_EASE_MODE_IN,
+    };
+    assert!(pontos(outra, Some(quad)).is_empty());
 }

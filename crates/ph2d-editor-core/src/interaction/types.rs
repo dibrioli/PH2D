@@ -111,6 +111,11 @@ pub struct TimelineInterpPick {
 /// `mode` value for a pick that carries no easing mode (Hold / Linear / Custom).
 pub const TL_NO_EASE_MODE: u8 = u8::MAX;
 
+/// The easing a card button draws: `(family row id, ids::TL_EASE_MODE_*, u) -> eased fraction`, or
+/// `None` for a row that is not a family. Published by the timeline panel (it owns `ph2d-anim`), so
+/// the drawn curve is the document's own arithmetic, never a second copy of it.
+pub type EaseSampler = fn(NodeId, u8, f32) -> Option<f32>;
+
 // ───────────────────────────── Motion Nodes M0.T2 ─────────────────────────────
 // Foundational graph-surface dispatch types. Editor-core carries these through
 // the pointer/key dispatch WITHOUT interpreting them: the motion-graph panel

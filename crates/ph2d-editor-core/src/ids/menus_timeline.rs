@@ -411,16 +411,13 @@ pub const CTX_MENU_TL_CURVE_IN: NodeId = hash_node_id("ctx_menu_tl_curve_in");
 pub const CTX_MENU_TL_CURVE_INOUT: NodeId = hash_node_id("ctx_menu_tl_curve_inout");
 /// Botão **Ease out**.
 pub const CTX_MENU_TL_CURVE_OUT: NodeId = hash_node_id("ctx_menu_tl_curve_out");
-/// O botão com o nome da forma («Cubic ▾»): abre a lista das dez formas.
-pub const CTX_MENU_TL_SHAPE: NodeId = hash_node_id("ctx_menu_tl_shape");
 
 /// Os ids que só o cartão da chave tem — registados pelo `pre_populate` como toda tabela.
-pub const TIMELINE_KEY_CARD: [MenuRow; 6] = [
+pub const TIMELINE_KEY_CARD: [MenuRow; 5] = [
     menu_row(CTX_MENU_TL_CURVE, "chrome.timeline_menu.curve"),
     menu_row(CTX_MENU_TL_CURVE_IN, "chrome.timeline_menu.seg_in"),
     menu_row(CTX_MENU_TL_CURVE_INOUT, "chrome.timeline_menu.seg_in_out"),
     menu_row(CTX_MENU_TL_CURVE_OUT, "chrome.timeline_menu.seg_out"),
-    menu_row(CTX_MENU_TL_SHAPE, "chrome.timeline_menu.shape"),
     menu_row(CTX_MENU_TL_KEY_DONE, "chrome.timeline_menu.done"),
 ];
 

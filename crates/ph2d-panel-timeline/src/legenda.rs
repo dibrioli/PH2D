@@ -1,5 +1,5 @@
 //! ⭐ **A legenda das barras no pé da fita** (doc 15 onda 2, maquete B1): curva · reta · segura, cada
-//! uma com a amostra da barra que [`crate::linhas::paint_barras`] pinta. Só nos cartões e só pintura:
+//! uma com a amostra da barra (a curva) que [`crate::linhas::paint_barras`] pinta. Só nos cartões e só pintura:
 //! uma pílula no canto de baixo à direita da área das faixas, sem alvo (o clique passa às faixas).
 
 use ph2d_anim::Interp;
@@ -8,7 +8,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{Radius, Spacing, Theme, TypeToken};
 
-use crate::linhas::{BARRA_TH, cor_da_barra, pinta_barra};
+use crate::linhas::{BARRA_TH, Faixa, cor_da_barra, pinta_curva};
 
 /// O comprimento da amostra de cada barra: três tracejados da segura.
 const AMOSTRA_W: f32 = crate::linhas::BARRA_DASH * 5.0; // LITERAL-PX-OK: three hold dashes
@@ -61,10 +61,16 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect, evita: Option
     );
     let cy = pilula.y + h * 0.5;
     let mut x = pilula.x + pad;
+    // A amostra é a barra que a fita pinta: a mesma curva, numa faixa da altura do texto.
+    let faixa = Faixa {
+        cy,
+        amp: (font - BARRA_TH) * 0.5,
+        lim: (pilula.y, pilula.y + h),
+    };
     for ((interp, chave), tw) in ENTRADAS.iter().zip(larguras) {
-        let tracejada = matches!(interp, Interp::Hold);
         let cor = crate::folha_tinta::tinta(cor_da_barra(*interp), theme);
-        pinta_barra(ctx, cor, tracejada, (x, x + AMOSTRA_W), cy - BARRA_TH * 0.5);
+        let ab = (x, x + AMOSTRA_W);
+        pinta_curva(ctx, cor, *interp, (0.0, 1.0), ab, ab, faixa);
         x += AMOSTRA_W + gap;
         paint_text_elided(
             ctx.text_system,

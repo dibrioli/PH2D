@@ -675,6 +675,7 @@ pub struct WidgetStore {
         Vec<NodeId>,
         String,
     ),
-    /// O cartão da chave: a pega do arrasto pelo título e o cartão a que a lista das formas volta.
-    pub(in crate::interaction) key_card: (Option<(f32, f32)>, Option<ContextMenuRequest>),
+    /// O cartão da chave: a pega do arrasto pelo título e a régua dos eases que os botões desenham.
+    pub(in crate::interaction) key_card:
+        (Option<(f32, f32)>, Option<crate::interaction::EaseSampler>),
 }

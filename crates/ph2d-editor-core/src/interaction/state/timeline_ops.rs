@@ -31,14 +31,16 @@ impl WidgetStore {
         self.menu_marks.2.push_str(titulo);
     }
 
-    /// Lembra o cartão da chave aberto (`req`) para a lista das formas voltar a ele.
-    pub fn set_key_card_volta(&mut self, req: Option<crate::interaction::ContextMenuRequest>) {
-        self.key_card.1 = req;
+    /// A régua dos eases do cartão da chave, publicada por quem os conhece (a timeline): os botões
+    /// desenham a curva que a chave vai ganhar, a mesma conta que o documento usa.
+    pub fn set_ease_sampler(&mut self, sampler: crate::interaction::EaseSampler) {
+        self.key_card.1 = Some(sampler);
     }
 
-    /// O cartão a que a lista das formas volta (uma vez).
-    pub fn take_key_card_volta(&mut self) -> Option<crate::interaction::ContextMenuRequest> {
-        self.key_card.1.take()
+    /// A régua publicada por [`Self::set_ease_sampler`] (`None` = ninguém publicou: sem curva).
+    #[must_use]
+    pub fn ease_sampler(&self) -> Option<crate::interaction::EaseSampler> {
+        self.key_card.1
     }
 
     /// A pega do arrasto do cartão da chave: `(dx, dy)` do cursor ao canto do cartão.

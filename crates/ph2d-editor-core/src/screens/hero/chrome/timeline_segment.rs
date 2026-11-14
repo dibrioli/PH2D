@@ -55,20 +55,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 hero.store.close_context_menu();
                 hero.store.consume_last_context_menu();
             }
-            Acao::AbreFormas { mode } => {
-                // A lista das formas troca o cartão; escolher nela VOLTA ao cartão, no mesmo sítio.
-                hero.store.set_key_card_volta(req);
-                // Abre DEBAIXO do campo, como toda lista do app.
-                let (x, y) = hero
-                    .hit_index
-                    .rect_for(id)
-                    .map_or_else(|| super::cascade_anchor(hero, id), |r| (r.x, r.y + r.h));
-                hero.store.open_context_menu(ContextMenuRequest {
-                    x,
-                    y,
-                    kind: ContextMenuKind::TimelineSegmentEase { scope, mode },
-                });
-            }
         }
         return true;
     }
@@ -117,13 +103,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         .is_some_and(|r| crate::screens::hero::key_card::e_cartao(r.kind))
     {
         // Uma linha do cartão (Straight, Hold, Nearest, Custom, Rove): o cartão fica aberto.
-        return true;
-    }
-    if is_family
-        && let Some(volta) = hero.store.take_key_card_volta()
-        && volta.kind == (ContextMenuKind::TimelineSegment { scope })
-    {
-        hero.store.open_context_menu(volta);
         return true;
     }
     hero.store.close_context_menu();

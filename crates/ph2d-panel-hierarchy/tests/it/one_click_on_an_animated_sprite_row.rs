@@ -363,3 +363,50 @@ fn duplo_clique_no_icone_ainda_enquadra() {
         );
     }
 }
+
+/// ⭐ Smoke do dono 13/11: largar uma linha FORA do painel (no Target do Inspector) deixava-a premida e
+/// acesa com os ícones — a soltura (`dispatch_up`) voltava antes de largar o activo. Agora ela solta, e o
+/// clique seguinte noutra linha selecciona-a.
+#[test]
+fn largar_fora_do_painel_solta_a_linha() {
+    for cards_on in [true, false] {
+        let mut m = Mesa::nova(cards_on, None);
+        let r = m.rect(id_de(1)).expect("linha 1");
+        let p = (r.x + r.w * 0.35, r.y + r.h * 0.5);
+        let l = m.host.store().panel_rect(PAINEL).expect("lista");
+        let fora = (l.x + l.w + 40.0, p.1);
+        let _ = m.ponteiro(PointerKind::Move, p);
+        m.quadro();
+        let _ = m.ponteiro(PointerKind::Down, p);
+        for i in 1..=6 {
+            let x = p.0 + (fora.0 - p.0) * i as f32 / 6.0;
+            let _ = m.ponteiro(PointerKind::Move, (x, p.1));
+            m.quadro();
+        }
+        let ev = m.ponteiro(PointerKind::Up, fora);
+        assert!(
+            !ev.iter()
+                .any(|e| matches!(e, WidgetEvent::HierReparent { .. })),
+            "cards {cards_on}: largar fora do painel reparentou: {ev:?}"
+        );
+        let _ = m.ponteiro(PointerKind::Move, (fora.0 + 4.0, fora.1));
+        m.quadro();
+        let store = m.host.store();
+        assert_eq!(
+            store.active_id(),
+            None,
+            "cards {cards_on}: a linha ficou premida"
+        );
+        assert!(
+            store.hot_id().is_none_or(|h| h != id_de(1)),
+            "cards {cards_on}: a linha ficou acesa sob um rato que já saiu: {:?}",
+            store.hot_id()
+        );
+        let r3 = m.rect(id_de(3)).expect("linha 3");
+        let (ev, acts) = m.clique((r3.x + r3.w * 0.35, r3.y + r3.h * 0.5), 3, 120_000_000);
+        assert!(
+            acts.contains(&seleciona(id_de(3))),
+            "cards {cards_on}: o clique depois da queda não seleccionou: {ev:?} · {acts:?}"
+        );
+    }
+}

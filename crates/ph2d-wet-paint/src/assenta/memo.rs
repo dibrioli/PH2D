@@ -36,8 +36,11 @@ pub static MEMO_BITS: AtomicU8 = AtomicU8::new(15);
 
 const BITS_MAX: u8 = 16;
 const N: usize = 1 << BITS_MAX;
-/// Leis de célula distintas que uma tabela guarda (o Glaze, o óleo e a opaca variam por célula); acima, sem memo.
-const LEIS: usize = 64;
+/// Os bits da tabela de leis (endereço directo): o Glaze, o óleo e a opaca variam por célula, e uma lei nova toma o
+/// lugar de outra em vez de desligar o memo (B13.8: com uma lista de 64 a 65.ª lei do fio deixava-o morto para sempre).
+const LEI_BITS: u32 = 10;
+/// As vias de cada balde da tabela de leis (associativa: leis cujo endereço colide não se expulsam umas às outras).
+const VIAS: usize = 4;
 
 #[derive(Clone, Copy)]
 #[repr(C, align(64))]
@@ -65,8 +68,59 @@ struct Tabela {
     l: Vec<Linha>,
     e: Vec<Entrada>,
     val: Vec<[f64; 3]>,
-    leis: Vec<[u64; 6]>,
+    /// `(lei, id)` por endereço directo; `id = 0` é o lugar vazio. Os ids nunca se repetem na tabela ([`Tabela::proxima`]),
+    /// por isso uma entrada guardada com a lei expulsa nunca casa.
+    leis: Vec<([u64; 6], u32)>,
+    proxima: u32,
     geracao: u32,
+}
+
+impl Tabela {
+    fn nova(g: u32) -> Self {
+        Self {
+            l: Vec::new(),
+            e: Vec::new(),
+            val: Vec::new(),
+            leis: Vec::new(),
+            proxima: 1,
+            geracao: g,
+        }
+    }
+
+    /// O id da lei `k` nesta tabela (dá-lhe um novo se não estiver). Uma geração nova esquece leis e entradas.
+    fn id_da_lei(&mut self, k: [u64; 6], g: u32) -> u32 {
+        if self.proxima == u32::MAX {
+            // Os ids voltariam a repetir-se: as entradas guardadas com eles saem também.
+            self.l.clear();
+            self.e.clear();
+            self.val.clear();
+            self.geracao = g.wrapping_sub(1);
+        }
+        if self.geracao != g {
+            // As entradas da geração velha já não casam (`ok == g`); os ids podem recomeçar.
+            self.leis.clear();
+            self.proxima = 1;
+            self.geracao = g;
+        }
+        if self.leis.is_empty() {
+            self.leis = vec![([0; 6], 0); 1 << LEI_BITS];
+        }
+        let mut h = 0u64;
+        for (j, &v) in k.iter().enumerate() {
+            h = h.wrapping_add((v ^ (v >> 29)).wrapping_mul(MULT[j]));
+        }
+        let i = ((h ^ (h >> 32)).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> (64 - LEI_BITS)) as usize
+            & !(VIAS - 1);
+        let balde = &mut self.leis[i..i + VIAS];
+        if let Some(l) = balde.iter().find(|l| l.1 != 0 && l.0 == k) {
+            return l.1;
+        }
+        // Expulsa a mais velha do balde (o id mais baixo; o vazio tem 0).
+        let velha = balde.iter_mut().min_by_key(|l| l.1).expect("VIAS > 0");
+        *velha = (k, self.proxima);
+        self.proxima += 1;
+        velha.1
+    }
 }
 
 thread_local! {
@@ -165,13 +219,8 @@ pub fn assenta_memo_f32(
     let bits = u32::from(MEMO_BITS.load(Relaxed).min(BITS_MAX));
     TABELAS.with(|t| {
         let mut t = t.borrow_mut();
-        let t = t[0].get_or_insert_with(|| Tabela {
-            l: Vec::new(),
-            e: Vec::new(),
-            val: Vec::new(),
-            leis: Vec::with_capacity(LEIS),
-            geracao: g,
-        });
+        let t = t[0].get_or_insert_with(|| Tabela::nova(g));
+        let lei = t.id_da_lei(lei_k, g);
         if t.l.is_empty() {
             t.l = vec![
                 Linha {
@@ -184,18 +233,6 @@ pub fn assenta_memo_f32(
                 N
             ];
         }
-        if t.geracao != g {
-            t.leis.clear();
-            t.geracao = g;
-        }
-        let lei = match t.leis.iter().position(|l| *l == lei_k) {
-            Some(p) => p,
-            None if t.leis.len() < LEIS => {
-                t.leis.push(lei_k);
-                t.leis.len() - 1
-            }
-            None => return conta(),
-        } as u32;
         let mut h = u64::from(lei).wrapping_mul(0x9E37_79B9_7F4A_7C15);
         for (k, &v) in cor.iter().chain(a.iter()).enumerate() {
             h = h.wrapping_add(u64::from(v).wrapping_mul(MULT[k]));
@@ -303,13 +340,8 @@ fn pela_tabela(
     let bits = u32::from(MEMO_BITS.load(Relaxed).min(BITS_MAX));
     TABELAS.with(|t| {
         let mut t = t.borrow_mut();
-        let t = t[qual].get_or_insert_with(|| Tabela {
-            l: Vec::new(),
-            e: Vec::new(),
-            val: Vec::new(),
-            leis: Vec::with_capacity(LEIS),
-            geracao: g,
-        });
+        let t = t[qual].get_or_insert_with(|| Tabela::nova(g));
+        let lei = t.id_da_lei(lei_k, g);
         if t.e.is_empty() {
             t.e = vec![
                 Entrada {
@@ -322,18 +354,6 @@ fn pela_tabela(
             ];
             t.val = vec![[0.0; 3]; N];
         }
-        if t.geracao != g {
-            t.leis.clear();
-            t.geracao = g;
-        }
-        let lei = match t.leis.iter().position(|l| *l == lei_k) {
-            Some(p) => p,
-            None if t.leis.len() < LEIS => {
-                t.leis.push(lei_k);
-                t.leis.len() - 1
-            }
-            None => return conta(),
-        } as u32;
         // Multiplicações independentes e uma mistura final.
         let mut h = u64::from(lei).wrapping_mul(0x9E37_79B9_7F4A_7C15);
         for (k, &v) in cor.iter().enumerate() {
@@ -401,5 +421,61 @@ mod potencia_tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod leis_tests {
+    use super::*;
+
+    /// B13.8 (T1-45): mais de 64 leis de célula no mesmo fio (o Glaze de duas camadas varia por célula) — a segunda
+    /// passagem pelas MESMAS contas acerta ≥ 97 % no memo (296 de 300), e o resultado é o `assenta` ao bit. Com a lista de 64 leis
+    /// a 65.ª desligava o memo do fio para sempre (192 acertos em 600).
+    #[test]
+    fn o_memo_acerta_com_mais_de_64_leis() {
+        let leis: Vec<Ecra> = (0..100)
+            .map(|k| Ecra::Cobre {
+                filme: 0.3,
+                esconde: 2.5,
+                molhada: 1.0,
+                vela: f64::from(k as f32 / 100.0),
+                oleo: 0.0,
+                opaca: 0.0,
+            })
+            .collect();
+        let cores: [([f32; 3], [f32; 3]); 3] = [
+            ([0.2, 0.4, 0.6], [0.9, 0.1, 0.3]),
+            ([0.5, 0.5, 0.5], [0.1, 0.8, 0.2]),
+            ([0.7, 0.3, 0.1], [0.3, 0.3, 0.9]),
+        ];
+        let al = |m: f64| crate::opacity::alpha_of_mass(m);
+        let (a_s, a_f, a_s2, a_f2) = (al(0.4), al(0.2), al(0.6), al(0.05));
+        MEMO_ASSENTA.store(2, Relaxed);
+        let mut acertos = 0;
+        for volta in 0..2 {
+            let antes = MEMO_CONTA[0].load(Relaxed);
+            for &e in &leis {
+                for (sc, uc) in cores {
+                    let m = assenta_memo_f32(e, sc, uc, a_s, a_f, a_s2, a_f2);
+                    let r = assenta(
+                        e,
+                        sc.map(f64::from),
+                        uc.map(f64::from),
+                        a_s,
+                        a_f,
+                        a_s2,
+                        a_f2,
+                    );
+                    assert_eq!(m.map(f32::to_bits), r.map(|v| (v as f32).to_bits()));
+                }
+            }
+            if volta == 1 {
+                acertos = MEMO_CONTA[0].load(Relaxed) - antes;
+            }
+        }
+        MEMO_ASSENTA.store(1, Relaxed);
+        let total = (leis.len() * cores.len()) as u64;
+        // O resto são colisões da tabela de contas (300 chaves em 32 Ki lugares), não leis expulsas.
+        assert!(acertos * 100 >= total * 97, "acertos {acertos} de {total}");
     }
 }

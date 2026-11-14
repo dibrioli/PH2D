@@ -95,10 +95,15 @@ impl PainterTool {
         } else {
             None
         };
-        let desfez = if let Some(model) = self.undo.undo_na_tela(&mut live, &mut self.canvas_rgba) {
+        let mut relevo = self.tira_o_relevo_para_o_undo();
+        let desfez = if let Some(model) =
+            self.undo
+                .undo_na_tela(&mut live, &mut self.canvas_rgba, &mut relevo)
+        {
             self.restore_model_confined(*model, confined);
             true
         } else {
+            self.devolve_o_relevo_do_undo(relevo);
             false
         };
         if let Some(v) = viva {
@@ -157,10 +162,15 @@ impl PainterTool {
         } else {
             None
         };
-        let refez = if let Some(model) = self.undo.redo_na_tela(&mut live, &mut self.canvas_rgba) {
+        let mut relevo = self.tira_o_relevo_para_o_undo();
+        let refez = if let Some(model) =
+            self.undo
+                .redo_na_tela(&mut live, &mut self.canvas_rgba, &mut relevo)
+        {
             self.restore_model_confined(*model, confined);
             true
         } else {
+            self.devolve_o_relevo_do_undo(relevo);
             false
         };
         if let Some(v) = viva {
@@ -170,6 +180,22 @@ impl PainterTool {
             self.wet_volta_do_restauro(p, true);
         }
         refez
+    }
+
+    /// O relevo de impasto ENTREGUE ao Ctrl+Z (B17.5): sem este dono, os tiles do passo vão no lugar.
+    fn tira_o_relevo_para_o_undo(&mut self) -> crate::undo_planes::Relevo {
+        crate::undo_planes::Relevo {
+            heights: std::mem::take(&mut self.heights),
+            covers: std::mem::take(&mut self.covers),
+            mats: std::mem::take(&mut self.mats),
+        }
+    }
+
+    /// A recusa do Ctrl+Z devolve o relevo intacto (no sucesso o restauro instala o do modelo).
+    fn devolve_o_relevo_do_undo(&mut self, r: crate::undo_planes::Relevo) {
+        self.heights = r.heights;
+        self.covers = r.covers;
+        self.mats = r.mats;
     }
 
     /// **Reconcilia a história com escritas estrangeiras, AGORA** — a porta única dos dois consumidores

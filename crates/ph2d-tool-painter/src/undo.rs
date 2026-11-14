@@ -324,25 +324,29 @@ impl UndoEntry {
         live: &ModelSnapshot,
         want_before: bool,
     ) -> Option<Box<ModelSnapshot>> {
-        self.materialize_tomando(cursor, live, want_before, Arc::clone(&cursor.canvas_rgba))
+        let base = crate::undo_planes::Base {
+            tela: Arc::clone(&cursor.canvas_rgba),
+            relevo: crate::undo_planes::Relevo::de(live),
+        };
+        self.materialize_tomando(cursor, live, want_before, base)
             .ok()
     }
 
-    /// [`Self::materialize`] com a tela de base TOMADA (B17.5): com um dono só, os tiles vão no lugar.
+    /// [`Self::materialize`] com as bases TOMADAS (B17.5): com um dono só, os tiles vão no lugar.
     fn materialize_tomando(
         &self,
         cursor: &ModelSnapshot,
         live: &ModelSnapshot,
         want_before: bool,
-        tela: Arc<Vec<u8>>,
-    ) -> Result<Box<ModelSnapshot>, Arc<Vec<u8>>> {
+        base: crate::undo_planes::Base,
+    ) -> Result<Box<ModelSnapshot>, crate::undo_planes::Base> {
         let mut out = Box::new(if want_before {
             self.before.as_ref().clone()
         } else {
             self.after.as_ref().clone()
         });
         self.planes
-            .side(cursor, live, &mut out, want_before, tela)?;
+            .side(cursor, live, &mut out, want_before, base)?;
         Ok(out)
     }
 
@@ -499,7 +503,7 @@ impl UndoController {
     /// 28 §5.58.2). O chamador já o constrói uma linha acima (`absorb_foreign_writes_now`), então
     /// recebê-lo não acrescenta trabalho.
     pub fn undo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
-        self.anda(live, None, true).ok()
+        self.anda(live, anda::Dono::default(), true).ok()
     }
 
     /// Redo the most recently undone structural edit: roll forward to its `after`
@@ -507,7 +511,7 @@ impl UndoController {
     /// reinstall, or `None` if the redo stack is empty.
     /// Ver [`Self::undo`] quanto ao `live`.
     pub fn redo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
-        self.anda(live, None, false).ok()
+        self.anda(live, anda::Dono::default(), false).ok()
     }
 
     /// [`Self::undo`] / [`Self::redo`] com o **cursor** por base do relevo.

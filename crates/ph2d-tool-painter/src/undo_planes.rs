@@ -69,6 +69,41 @@ thread_local! {
     pub(crate) static VIDRO_FROM_JOURNAL: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
+/// O relevo de impasto (os três mapas por camada) que é a base do Ctrl+Z: o do VIVO (degrau 3).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Relevo {
+    pub(crate) heights: std::collections::BTreeMap<RtLayerId, Arc<Vec<f32>>>,
+    pub(crate) covers: std::collections::BTreeMap<RtLayerId, Arc<Vec<u8>>>,
+    pub(crate) mats: std::collections::BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
+}
+
+impl Relevo {
+    /// Clones de `Arc` do relevo de `m` (a base que não é tomada: com outro dono, `side_tomando` copia).
+    pub(crate) fn de(m: &crate::undo::ModelSnapshot) -> Self {
+        Self {
+            heights: m.heights.clone(),
+            covers: m.covers.clone(),
+            mats: m.mats.clone(),
+        }
+    }
+
+    /// Tira o relevo de `m` (B17.5): quem o entrega deixa de ser dono.
+    pub(crate) fn tira(m: &mut crate::undo::ModelSnapshot) -> Self {
+        Self {
+            heights: std::mem::take(&mut m.heights),
+            covers: std::mem::take(&mut m.covers),
+            mats: std::mem::take(&mut m.mats),
+        }
+    }
+}
+
+/// As bases que [`PlaneDeltas::side`] TOMA (B17.5): a tela e o relevo; a recusa devolve-as intactas.
+#[derive(Debug)]
+pub(crate) struct Base {
+    pub(crate) tela: Arc<Vec<u8>>,
+    pub(crate) relevo: Relevo,
+}
+
 /// **Os DEZENOVE planos canvas-shaped de um `ModelSnapshot`, guardados como delta.**
 ///
 /// ⚠️ A lista é uma só, e os dois lados dela ([`Self::split`] e [`Self::side`]) andam juntos por
@@ -594,21 +629,29 @@ impl PlaneDeltas {
         live: &crate::undo::ModelSnapshot,
         out: &mut crate::undo::ModelSnapshot,
         want_before: bool,
-        tela: Arc<Vec<u8>>,
-    ) -> Result<(), Arc<Vec<u8>>> {
+        base: Base,
+    ) -> Result<(), Base> {
         let b = want_before;
         #[cfg(debug_assertions)]
-        Self::debug_relief_base_is_the_cursor(cursor, live);
-        // A tela por último, no lugar com um dono (B17.5): a recusa dela (o tamanho) vem antes de toda escrita.
-        if !self.canvas_rgba.cabe(tela.len())
+        Self::debug_relief_base_is_the_cursor(cursor, &base.relevo);
+        // Tela e relevo por último, no lugar com um dono (B17.5): toda recusa (tamanho, chave) vem antes de escrever.
+        let r = &base.relevo;
+        if !self.canvas_rgba.cabe(base.tela.len())
+            || !self.heights.cabe(&r.heights)
+            || !self.covers.cabe(&r.covers)
+            || !self.mats.cabe(&r.mats)
             || self.side_sem_a_tela(cursor, live, out, b).is_none()
         {
-            return Err(tela);
+            return Err(base);
         }
+        let Base { tela, relevo } = base;
+        out.heights = self.heights.side_tomando(relevo.heights, b);
+        out.covers = self.covers.side_tomando(relevo.covers, b);
+        out.mats = self.mats.side_tomando(relevo.mats, b);
         out.canvas_rgba = self
             .canvas_rgba
             .side_tomando(tela, b)
-            .ok_or_else(Arc::default)?;
+            .expect("cabe: o tamanho");
         Ok(())
     }
 
@@ -620,9 +663,6 @@ impl PlaneDeltas {
         b: bool,
     ) -> Option<()> {
         out.images = self.images.side(&cursor.images, b)?;
-        out.heights = self.heights.side(&live.heights, b)?;
-        out.covers = self.covers.side(&live.covers, b)?;
-        out.mats = self.mats.side(&live.mats, b)?;
         // O vidro do VIVO, como o relevo: o cursor descreve-o sem o segurar (ADR-0205 D2).
         let vbase = if cursor.relief_elided.vidros.is_empty() {
             &cursor.vidros
@@ -654,9 +694,9 @@ impl PlaneDeltas {
     /// mapa VAZIO no cursor é o próprio degrau 4 e sai calado: aí não há com que comparar, e a
     /// correção passa a se apoiar na cadeia (`absorb_foreign_writes`).
     #[cfg(debug_assertions)]
-    fn debug_relief_base_is_the_cursor(
+    pub(crate) fn debug_relief_base_is_the_cursor(
         cursor: &crate::undo::ModelSnapshot,
-        live: &crate::undo::ModelSnapshot,
+        live: &Relevo,
     ) {
         fn same<T: PartialEq>(
             c: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,

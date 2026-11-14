@@ -126,7 +126,10 @@ fn relief_side(
         cursor,
         &mut out,
         want_before,
-        std::sync::Arc::clone(&cursor.canvas_rgba),
+        crate::undo_planes::Base {
+            tela: std::sync::Arc::clone(&cursor.canvas_rgba),
+            relevo: crate::undo_planes::Relevo::de(cursor),
+        },
     )
     .ok()
     .expect("o cursor descreve o delta que acabamos de partir");

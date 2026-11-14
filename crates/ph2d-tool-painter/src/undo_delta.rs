@@ -435,24 +435,26 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
                     let c = cursor.get(k)?;
                     out.insert(*k, p.side(c, want_before)?);
                 }
-                StoredEntry::OnlyBefore(v) => {
-                    if want_before {
-                        out.insert(*k, Arc::clone(v));
-                    }
-                }
-                StoredEntry::OnlyAfter(v) => {
-                    if !want_before {
-                        out.insert(*k, Arc::clone(v));
-                    }
-                }
-                StoredEntry::Aparece { len, win, after } => {
-                    if !want_before {
-                        out.insert(*k, Arc::new(aparece::recria(*len, *win, after)));
+                borda => {
+                    if let Some(v) = Self::borda(borda, want_before) {
+                        out.insert(*k, v);
                     }
                 }
             }
         }
         Some(out)
+    }
+
+    /// O lado de uma chave que existe num lado só (não lê a base); `None` = a chave não existe nesse lado.
+    pub(super) fn borda(e: &StoredEntry<T>, want_before: bool) -> Option<Arc<Vec<T>>> {
+        match e {
+            StoredEntry::Both(_) => None,
+            StoredEntry::OnlyBefore(v) => want_before.then(|| Arc::clone(v)),
+            StoredEntry::OnlyAfter(v) => (!want_before).then(|| Arc::clone(v)),
+            StoredEntry::Aparece { len, win, after } => {
+                (!want_before).then(|| Arc::new(aparece::recria(*len, *win, after)))
+            }
+        }
     }
 
     pub(crate) fn heap_bytes(&self) -> usize {

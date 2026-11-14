@@ -459,37 +459,56 @@ fn what_a_diagonal_ctrl_z_copies_at_4k() {
         let _ = t.take_preview_arc();
         let donos = std::sync::Arc::strong_count(&t.canvas_rgba);
         eprintln!("  variantes do topo: {:?}", t.undo.probe_top_variants());
-        let (mut un, mut re, mut cu, mut cr) = (f64::MAX, f64::MAX, 0, 0);
+        // Cura × ablação `COPIA_SEMPRE` (o mundo de antes do B17.5) no MESMO processo, intercaladas, o mínimo.
+        let mut m = [(f64::MAX, f64::MAX, 0usize, 0usize); 2];
         let (mut su, mut sr) = (Vec::new(), Vec::new());
-        for _ in 0..5 {
-            let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
-            let c0 = crate::plane_copy::par_clones_nesta_thread();
-            let t0 = Instant::now();
-            assert!(
-                t.undo_last(),
-                "a fixture nao contem o fenomeno: nada a desfazer"
-            );
-            un = un.min(t0.elapsed().as_secs_f64() * 1e3);
-            let c1 = crate::plane_copy::par_clones_nesta_thread();
-            let t1 = Instant::now();
-            assert!(
-                t.redo_last(),
-                "a fixture nao contem o fenomeno: nada a refazer"
-            );
-            re = re.min(t1.elapsed().as_secs_f64() * 1e3);
-            let c2 = crate::plane_copy::par_clones_nesta_thread();
-            let sites = crate::plane_copy::par_clone_sites_desde_a_ultima();
-            let (a, b) = sites.split_at(c1 - c0);
-            (su, sr) = (a.to_vec(), b.to_vec());
-            (cu, cr) = (c1 - c0, c2 - c1);
-            assert!(
-                cu >= 1,
-                "controle: o undo nao copiou plano nenhum — a sonda mede outra coisa"
+        for rodada in 0..10 {
+            for k in [rodada % 2, 1 - rodada % 2] {
+                crate::undo_delta::tiles::COPIA_SEMPRE.with(|c| c.set(k == 1));
+                let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
+                let c0 = crate::plane_copy::par_clones_nesta_thread();
+                let t0 = Instant::now();
+                assert!(
+                    t.undo_last(),
+                    "a fixture nao contem o fenomeno: nada a desfazer"
+                );
+                let un = t0.elapsed().as_secs_f64() * 1e3;
+                let c1 = crate::plane_copy::par_clones_nesta_thread();
+                let t1 = Instant::now();
+                assert!(
+                    t.redo_last(),
+                    "a fixture nao contem o fenomeno: nada a refazer"
+                );
+                let re = t1.elapsed().as_secs_f64() * 1e3;
+                let c2 = crate::plane_copy::par_clones_nesta_thread();
+                let sites = crate::plane_copy::par_clone_sites_desde_a_ultima();
+                crate::undo_delta::tiles::COPIA_SEMPRE.with(|c| c.set(false));
+                let (a, b) = sites.split_at(c1 - c0);
+                if k == 0 {
+                    (su, sr) = (a.to_vec(), b.to_vec());
+                } else {
+                    assert!(
+                        c1 > c0,
+                        "controle: a ablacao COPIA_SEMPRE nao copiou — a sonda mede outra coisa"
+                    );
+                }
+                let e = &mut m[k];
+                *e = (e.0.min(un), e.1.min(re), c1 - c0, c2 - c1);
+            }
+        }
+        for (k, nome) in [(0, "cura"), (1, "ablacao COPIA_SEMPRE")] {
+            let (un, re, cu, cr) = m[k];
+            eprintln!(
+                "impasto={impasto} {nome}: donos da tela {donos} · undo {un:.2} ms ({cu} copias) · redo {re:.2} ms ({cr} copias)"
             );
         }
-        eprintln!(
-            "impasto={impasto} donos da tela {donos} · undo {un:.2} ms ({cu} copias) · redo {re:.2} ms ({cr} copias)"
+        eprintln!("  sitios do undo (cura): {su:?}\n  sitios do redo (cura): {sr:?}");
+        let do_delta =
+            |s: &[(&'static str, u32)]| s.iter().filter(|s| s.0.ends_with("undo_delta.rs")).count();
+        assert_eq!(
+            (do_delta(&su), do_delta(&sr)),
+            (0, 0),
+            "impasto={impasto}: a cura copia um plano no lado do delta"
         );
-        eprintln!("  sitios do undo: {su:?}\n  sitios do redo: {sr:?}");
     }
 }

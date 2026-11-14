@@ -10,7 +10,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use super::{PlaneWindow, StoredPlane};
+use super::{PlaneWindow, StoredEntry, StoredMap, StoredPlane};
 
 #[cfg(test)]
 thread_local! {
@@ -220,6 +220,37 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             r.blit(&side[at..at + n], dst);
             at += n;
         }
+    }
+}
+
+type Mapa<T> = std::collections::BTreeMap<crate::layers::LayerId, Arc<Vec<T>>>;
+
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
+    /// `side` parte de `base`? (Cada `Both` acha a chave, do tamanho do delta: as únicas recusas.)
+    pub(crate) fn cabe(&self, base: &Mapa<T>) -> bool {
+        self.entries.iter().all(|(k, e)| match e {
+            StoredEntry::Both(p) => base.get(k).is_some_and(|c| p.cabe(c.len())),
+            _ => true,
+        })
+    }
+
+    /// [`Self::side`] TOMANDO a base (B17.5, o relevo do Impasto): cada plano com um dono só recebe os tiles no
+    /// lugar. Pré-condição: [`Self::cabe`] — então não recusa, e nada é escrito antes de uma recusa possível.
+    pub(crate) fn side_tomando(&self, mut base: Mapa<T>, want_before: bool) -> Mapa<T> {
+        let mut out = Mapa::new();
+        for (k, e) in &self.entries {
+            let v = match e {
+                StoredEntry::Both(p) => {
+                    let c = base.remove(k).expect("cabe: a chave existe");
+                    Some(p.side_tomando(c, want_before).expect("cabe: o tamanho"))
+                }
+                borda => Self::borda(borda, want_before),
+            };
+            if let Some(v) = v {
+                out.insert(*k, v);
+            }
+        }
+        out
     }
 }
 

@@ -573,24 +573,26 @@ fn um_ctrl_z_copia_so_os_planos_que_o_passo_mudou() {
         t.paint.brush.impasto = impasto;
         let b = t.paint.brush;
         t.paint.brush_by_mode.fill(b);
+        // O 1.º traço do Impasto CRIA o relevo (a chave nasce: sem base a copiar); o 2.º muda-o (`Both`).
+        if impasto {
+            stroke(&mut t, 200.0);
+        }
         stroke(&mut t, 300.0);
         let _ = t.take_preview_arc();
         for desfaz in [true, false] {
             let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
             assert!(if desfaz { t.undo_last() } else { t.redo_last() });
             let sitios = crate::plane_copy::par_clone_sites_desde_a_ultima();
-            // B17.5: a tela (um dono só) vai no lugar, sem cópia. CONTROLO: a ablação `COPIA_SEMPRE` (o mundo de
-            // antes) copia-a no lado do delta, logo o contador vê a cópia quando ela existe.
+            // B17.5: a tela e o relevo do Impasto (um dono só) vão no lugar, sem cópia. CONTROLO: a ablação
+            // `COPIA_SEMPRE` (o mundo de antes) copia-os no lado do delta, logo o contador vê a cópia quando ela existe.
             let do_delta = |s: &[(&'static str, u32)]| {
                 s.iter().filter(|s| s.0.ends_with("undo_delta.rs")).count()
             };
-            if !impasto {
-                assert_eq!(
-                    do_delta(&sitios),
-                    0,
-                    "desfaz={desfaz}: a tela copiou — {sitios:?}"
-                );
-            }
+            assert_eq!(
+                do_delta(&sitios),
+                0,
+                "impasto={impasto}, desfaz={desfaz}: um plano copiou — {sitios:?}"
+            );
             crate::undo_delta::tiles::COPIA_SEMPRE.with(|c| c.set(true));
             assert!(if desfaz { t.redo_last() } else { t.undo_last() });
             let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
@@ -598,7 +600,7 @@ fn um_ctrl_z_copia_so_os_planos_que_o_passo_mudou() {
             let controlo = crate::plane_copy::par_clone_sites_desde_a_ultima();
             crate::undo_delta::tiles::COPIA_SEMPRE.with(|c| c.set(false));
             assert!(
-                do_delta(&controlo) >= 1,
+                do_delta(&controlo) >= if impasto { 3 } else { 1 },
                 "CONTROLO (impasto={impasto}, desfaz={desfaz}): {controlo:?}"
             );
             let alheias: Vec<_> = sitios

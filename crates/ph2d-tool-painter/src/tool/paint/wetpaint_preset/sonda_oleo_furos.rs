@@ -178,8 +178,7 @@ fn sonda_oleo_furos() {
     for pincel in pinceis.split(',') {
         for &n in &ns {
             for &rota in &rotas {
-                ph2d_wet_paint::solver::LADEIRA_ROTA
-                    .store(rota, std::sync::atomic::Ordering::Relaxed);
+                let _r = ph2d_wet_paint::solver::regua::Regua::poe(&ph2d_wet_paint::solver::LADEIRA_ROTA, rota);
                 let rot = format!(
                     "{}_n{n}_r{rota}",
                     pincel.replace(['/', ' '], "_").to_lowercase()
@@ -200,7 +199,6 @@ fn sonda_oleo_furos() {
             }
         }
     }
-    ph2d_wet_paint::solver::LADEIRA_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// ⭐ **O óleo sobre o óleo ASSENTADO não encaroça** (dono 31/10, `dono_4.png`): 8 passadas em vaivém a raio 32 com a

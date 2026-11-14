@@ -273,8 +273,8 @@ fn diag_a_queda_pela_diluicao() {
 #[test]
 #[ignore = "sonda J8"]
 fn diag_o_que_trava_a_queda() {
+    use ph2d_wet_paint::solver::regua::Regua;
     use ph2d_wet_paint::solver::{LADEIRA_ROTA, PAPEL_BINGHAM, PAPEL_CORPO};
-    use std::sync::atomic::Ordering::Relaxed;
     let corre = |nome: &str| {
         for e in [0.15, 1.0] {
             let f = queda_j11(e, &[0, 240]).fora;
@@ -301,37 +301,34 @@ fn diag_o_que_trava_a_queda() {
         ));
     }
     corre("produto");
-    ph2d_wet_paint::solver::MEIO_PARADO.store(true, Relaxed);
+    // B13.11: cada `static` de medição numa régua — o valor de antes volta no fim, também se o teste rebentar.
+    let parado = Regua::poe(&ph2d_wet_paint::solver::MEIO_PARADO, true);
     corre("o meio parado na célula (antes da J9)");
-    PAPEL_BINGHAM.store((-1.0f32).to_bits(), Relaxed);
+    let bingham = Regua::poe(&PAPEL_BINGHAM, (-1.0f32).to_bits());
     corre("meio parado e sem Bingham");
-    ph2d_wet_paint::solver::MEIO_PARADO.store(false, Relaxed);
+    parado.muda(false);
     corre("meio anda e sem Bingham");
-    PAPEL_BINGHAM.store(0, Relaxed);
-    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(1.0f32.to_bits(), Relaxed);
-    ph2d_wet_paint::meio::PAPEL_ETA.store(1.0f32.to_bits(), Relaxed);
-    PAPEL_BINGHAM.store((-1.0f32).to_bits(), Relaxed);
+    let endurece = Regua::poe(&ph2d_wet_paint::meio::PAPEL_ENDURECE, 1.0f32.to_bits());
+    let eta = Regua::poe(&ph2d_wet_paint::meio::PAPEL_ETA, 1.0f32.to_bits());
     corre("meio anda, o meio sem efeito (ETA 1, sem endurecer, sem Bingham)");
-    ph2d_wet_paint::solver::MEIO_PARADO.store(true, Relaxed);
+    parado.muda(true);
     corre("meio parado, o meio sem efeito (ETA 1, sem endurecer, sem Bingham)");
-    ph2d_wet_paint::solver::MEIO_PARADO.store(false, Relaxed);
-    PAPEL_BINGHAM.store(0, Relaxed);
-    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(0, Relaxed);
-    ph2d_wet_paint::meio::PAPEL_ETA.store(1.0f32.to_bits(), Relaxed);
+    parado.muda(false);
+    bingham.muda(0);
+    endurece.muda(0);
     corre("sem a viscosidade do óleo (ETA 1)");
-    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(1.0f32.to_bits(), Relaxed);
+    endurece.muda(1.0f32.to_bits());
     corre("ETA 1 e sem endurecer");
-    ph2d_wet_paint::meio::PAPEL_ETA.store(0, Relaxed);
-    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(0, Relaxed);
-    PAPEL_BINGHAM.store((-1.0f32).to_bits(), Relaxed);
+    eta.muda(0);
+    endurece.muda(0);
+    bingham.muda((-1.0f32).to_bits());
     corre("sem Bingham");
-    PAPEL_BINGHAM.store(0, Relaxed);
-    PAPEL_CORPO.store((1e-9f32).to_bits(), Relaxed);
+    bingham.muda(0);
+    let corpo = Regua::poe(&PAPEL_CORPO, (1e-9f32).to_bits());
     corre("sem Body");
-    PAPEL_CORPO.store(0, Relaxed);
-    LADEIRA_ROTA.store(2, Relaxed);
+    corpo.muda(0);
+    let ladeira = Regua::poe(&LADEIRA_ROTA, 2);
     corre("sem ladeira");
-    LADEIRA_ROTA.store(1, Relaxed);
+    ladeira.muda(1);
     corre("ladeira de 30/10");
-    LADEIRA_ROTA.store(0, Relaxed);
 }

@@ -252,7 +252,7 @@ fn sonda_oleo_derrete() {
             continue;
         }
         for (tag, rota, cruza) in rotas {
-            ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, std::sync::atomic::Ordering::Relaxed);
+            let _r = ph2d_wet_paint::solver::regua::Regua::poe(&ph2d_wet_paint::solver::LADEIRA_ROTA, rota);
             let rot = format!("{nome}_{tag}");
             let d = cena(&b, rel, passos, dir.as_deref(), &rot, cruza);
             println!(
@@ -271,7 +271,6 @@ fn sonda_oleo_derrete() {
             );
         }
     }
-    ph2d_wet_paint::solver::LADEIRA_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// A LEI (queixa do dono 31/10, Thick Impasto sobre Thick Impasto): o traço LONGE do cruzamento não derrete — a ladeira

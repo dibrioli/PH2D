@@ -171,9 +171,9 @@ fn a_aguada_re_molha_o_oleo_soluvel() {
 fn diag_a_queda_por_lei() {
     use ph2d_wet_paint::solver::PAPEL_BINGHAM;
     for bingham in [true, false] {
-        PAPEL_BINGHAM.store(
+        let _r = ph2d_wet_paint::solver::regua::Regua::poe(
+            &PAPEL_BINGHAM,
             if bingham { 0 } else { (-1.0f32).to_bits() },
-            std::sync::atomic::Ordering::Relaxed,
         );
         for km in [None, Some(false), Some(true)] {
             let corre = |s: f64, d: f64| {
@@ -198,7 +198,6 @@ fn diag_a_queda_por_lei() {
             ));
         }
     }
-    PAPEL_BINGHAM.store(0, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// A [`aguada`] sem reaplicar o preset (Drag 0), para a sonda mexer no K–M entre o preset e o traço.

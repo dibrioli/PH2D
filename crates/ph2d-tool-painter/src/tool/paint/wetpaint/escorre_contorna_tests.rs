@@ -344,7 +344,7 @@ fn nome_b(m_b: f64) -> &'static str {
 }
 
 fn bloco(rota: u8) {
-    ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, Relaxed);
+    let _r = ph2d_wet_paint::solver::regua::Regua::poe(&ph2d_wet_paint::solver::LADEIRA_ROTA, rota);
     let mut casos = Vec::new();
     for a in [
         ObstaculoA::Dabber,
@@ -387,5 +387,4 @@ fn bloco(rota: u8) {
 fn diag_o_escorrer_contorna_o_relevo() {
     bloco(0);
     bloco(2);
-    ph2d_wet_paint::solver::LADEIRA_ROTA.store(0, Relaxed);
 }

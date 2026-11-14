@@ -254,12 +254,16 @@ fn diag_j11_agua_no_oleo() {
     // (atrito, taxa da água parada): `< 0` = desligado, `0` = o produto — a varredura da J11 em `J11_agua_no_oleo.md`.
     REAL.store(std::env::var("PH2D_J11_REAL").is_ok(), Relaxed);
     let (a, tx) = (0.0f32, 0.0f32);
-    ph2d_wet_paint::solver::CHAO_ATRITO.store(a.to_bits(), Relaxed);
-    ph2d_wet_paint::solver::REMOLHA_TAXA.store(tx.to_bits(), Relaxed);
+    let _a = ph2d_wet_paint::solver::regua::Regua::poe(
+        &ph2d_wet_paint::solver::CHAO_ATRITO,
+        a.to_bits(),
+    );
+    let _t = ph2d_wet_paint::solver::regua::Regua::poe(
+        &ph2d_wet_paint::solver::REMOLHA_TAXA,
+        tx.to_bits(),
+    );
     *SUFIXO.lock().expect("o sufixo") = format!("_a{a}t{tx}");
     bloco();
-    ph2d_wet_paint::solver::CHAO_ATRITO.store(0, Relaxed);
-    ph2d_wet_paint::solver::REMOLHA_TAXA.store(0, Relaxed);
 }
 
 static SUFIXO: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());

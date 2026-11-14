@@ -1,7 +1,7 @@
 //! B13.11 (DF-27): os `static` de MEDIÇÃO do solver (`LADEIRA_ROTA`, `PAPEL_BINGHAM`, `REMOLHA_TAXA`, `CHAO_*`…) mudam o
 //! PROCESSO inteiro. Quem os mexe pede uma [`Regua`]: o valor de antes volta no `Drop`, também quando o teste reprova
 //! (um `store(0)` no fim não corria depois do pânico e o teste seguinte do mesmo processo pintava com a rota errada).
-use std::sync::atomic::{AtomicU8, AtomicU32, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, Ordering::Relaxed};
 
 /// Um atómico de régua: troca e repõe.
 pub trait Atomo: Sync {
@@ -11,6 +11,16 @@ pub trait Atomo: Sync {
     fn troca(&self, v: Self::V) -> Self::V;
     /// Repõe `v`.
     fn repoe(&self, v: Self::V);
+}
+
+impl Atomo for AtomicBool {
+    type V = bool;
+    fn troca(&self, v: bool) -> bool {
+        self.swap(v, Relaxed)
+    }
+    fn repoe(&self, v: bool) {
+        self.store(v, Relaxed);
+    }
 }
 
 impl Atomo for AtomicU8 {

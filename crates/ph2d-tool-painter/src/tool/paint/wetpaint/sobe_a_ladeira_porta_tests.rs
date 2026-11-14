@@ -155,11 +155,10 @@ fn diag_a_pegada_do_wet_flat() {
 #[ignore = "sonda J9"]
 fn diag_por_que_porta_a_agua_sobe() {
     use ph2d_wet_paint::solver::LADEIRA_ROTA;
-    use std::sync::atomic::Ordering::Relaxed;
+    use ph2d_wet_paint::solver::regua::Regua;
     cena(4.0, 20.0, "produto 4 px");
     cena(8.0, 20.0, "folga 8 px");
     cena(4.0, 12.0, "pincel 12 px");
-    LADEIRA_ROTA.store(2, Relaxed);
+    let _r = Regua::poe(&LADEIRA_ROTA, 2);
     cena(4.0, 20.0, "sem ladeira 4 px");
-    LADEIRA_ROTA.store(0, Relaxed);
 }

@@ -235,7 +235,8 @@ fn falsa_cor(dir: &std::path::Path, nome: &str, h: &[f64], gw: usize, gh: usize,
 fn cena(b: &Biblioteca, q: Pedido, var: &str, out: Option<(&std::path::Path, &str)>) -> Relevo {
     var_globais(var);
     let rota = if var == "sem_ladeira" { 2 } else { 0 };
-    ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, std::sync::atomic::Ordering::Relaxed);
+    let _rota =
+        ph2d_wet_paint::solver::regua::Regua::poe(&ph2d_wet_paint::solver::LADEIRA_ROTA, rota);
     // `sem_bingham` = a lei de antes da E7 (sem tensão de cedência); `b<τ₀>_<φ_c>` = outras constantes; o resto = o produto.
     let (tau, phic): (f32, f32) = if var.starts_with("sem_bingham") {
         (-1.0, 0.0)
@@ -245,13 +246,17 @@ fn cena(b: &Biblioteca, q: Pedido, var: &str, out: Option<(&std::path::Path, &st
     } else {
         (0.0, 0.0)
     };
-    ph2d_wet_paint::solver::PAPEL_BINGHAM
-        .store(tau.to_bits(), std::sync::atomic::Ordering::Relaxed);
-    ph2d_wet_paint::solver::BINGHAM_PHI_C
-        .store(phic.to_bits(), std::sync::atomic::Ordering::Relaxed);
-    ph2d_wet_paint::solver::BINGHAM_COM_SETT.store(
+    let _tau = ph2d_wet_paint::solver::regua::Regua::poe(
+        &ph2d_wet_paint::solver::PAPEL_BINGHAM,
+        tau.to_bits(),
+    );
+    let _phic = ph2d_wet_paint::solver::regua::Regua::poe(
+        &ph2d_wet_paint::solver::BINGHAM_PHI_C,
+        phic.to_bits(),
+    );
+    let _sett = ph2d_wet_paint::solver::regua::Regua::poe(
+        &ph2d_wet_paint::solver::BINGHAM_COM_SETT,
         u8::from(var.ends_with("sett")),
-        std::sync::atomic::Ordering::Relaxed,
     );
     let p = preset(b, q.pincel);
     let (a2, z2) = traco2(q);
@@ -299,10 +304,7 @@ fn cena(b: &Biblioteca, q: Pedido, var: &str, out: Option<(&std::path::Path, &st
         tique(&mut t, var);
     }
     let (h2, m2, ..) = alturas(&mut t);
-    ph2d_wet_paint::solver::LADEIRA_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
-    ph2d_wet_paint::solver::PAPEL_BINGHAM.store(0, std::sync::atomic::Ordering::Relaxed);
-    ph2d_wet_paint::solver::BINGHAM_PHI_C.store(0, std::sync::atomic::Ordering::Relaxed);
-    ph2d_wet_paint::solver::BINGHAM_COM_SETT.store(0, std::sync::atomic::Ordering::Relaxed);
+    drop((_rota, _tau, _phic, _sett));
     var_globais("prod");
     let m1max = m1.iter().copied().fold(0.0, f64::max);
     let banda: Vec<usize> = (0..gw * gh).filter(|i| m1[*i] > 0.05 * m1max).collect();

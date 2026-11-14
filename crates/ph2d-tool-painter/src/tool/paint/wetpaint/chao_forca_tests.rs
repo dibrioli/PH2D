@@ -4,8 +4,8 @@
 
 use super::agua_sobre_oleo_tests::relato;
 use super::escorre_contorna_tests::{ObstaculoA, SUFIXO, linha};
+use ph2d_wet_paint::solver::regua::Regua;
 use ph2d_wet_paint::solver::{CHAO_FORCA, CHAO_MEDE, CHAO_ROTA, CHAO_SECO, LADEIRA_ROTA};
-use std::sync::atomic::Ordering::Relaxed;
 
 /// `(nome, ganho, rota do chão, film seco)`; ganho `< 0` = sem a força (o produto de antes).
 const VARIANTES: [(&str, f32, u8, f32); 6] = [
@@ -18,9 +18,9 @@ const VARIANTES: [(&str, f32, u8, f32); 6] = [
 ];
 
 fn bloco(v: (&str, f32, u8, f32), casos: &[(ObstaculoA, u32, f64)], vezes: u32) {
-    CHAO_FORCA.store(v.1.to_bits(), Relaxed);
-    CHAO_ROTA.store(v.2, Relaxed);
-    CHAO_SECO.store(v.3.to_bits(), Relaxed);
+    let _f = Regua::poe(&CHAO_FORCA, v.1.to_bits());
+    let _r = Regua::poe(&CHAO_ROTA, v.2);
+    let _s = Regua::poe(&CHAO_SECO, v.3.to_bits());
     *SUFIXO.lock().expect("o sufixo") = format!("_{}", v.0);
     let linhas: Vec<String> = std::thread::scope(|s| {
         let h: Vec<_> = casos
@@ -45,7 +45,7 @@ fn bloco(v: (&str, f32, u8, f32), casos: &[(ObstaculoA, u32, f64)], vezes: u32) 
 #[test]
 #[ignore = "sonda J10"]
 fn diag_o_volume_transborda() {
-    CHAO_MEDE.store(1, Relaxed);
+    let _m = Regua::poe(&CHAO_MEDE, 1);
     for v in [VARIANTES[0], VARIANTES[2]] {
         for n in [1u32, 3, 6] {
             bloco(
@@ -63,15 +63,13 @@ fn diag_o_volume_transborda() {
             );
         }
     }
-    CHAO_MEDE.store(0, Relaxed);
-    CHAO_FORCA.store(0, Relaxed);
-    CHAO_SECO.store(0, Relaxed);
 }
 
 #[test]
 #[ignore = "sonda J10"]
 fn diag_o_chao_como_forca() {
-    CHAO_MEDE.store(1, Relaxed);
+    let _m = Regua::poe(&CHAO_MEDE, 1);
+    let _l = Regua::poe(&LADEIRA_ROTA, 0);
     let casos = [
         (ObstaculoA::Dabber, 1200, 0.0),
         (ObstaculoA::Dabber, 1200, 1.0),
@@ -90,9 +88,4 @@ fn diag_o_chao_como_forca() {
             bloco(v, &casos, 1);
         }
     }
-    CHAO_MEDE.store(0, Relaxed);
-    CHAO_FORCA.store(0, Relaxed);
-    CHAO_ROTA.store(0, Relaxed);
-    CHAO_SECO.store(0, Relaxed);
-    LADEIRA_ROTA.store(0, Relaxed);
 }

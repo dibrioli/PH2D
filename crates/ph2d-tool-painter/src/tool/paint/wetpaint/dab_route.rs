@@ -47,7 +47,8 @@ impl PainterTool {
         // O depósito vai à fila ([`fila_do_dab`]) entre as duas metades do pool; a espera dele fica FORA do pool (Bug #66).
         if let Some(preparo) = self.wet_lote_com_o_motor_em_casa(dabs, brush) {
             let (dep, cauda) = self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush, preparo));
-            let dep = if fila_do_dab::sincrono() {
+            // Dentro de um job do rayon (a miniatura viva, os alarmes de pincel) a espera seria o Bug #66: síncrono.
+            let dep = if fila_do_dab::sincrono() || rayon::current_thread_index().is_some() {
                 self.no_pool(move |_| {
                     let mut dep = dep;
                     fila_do_dab::deposita(&mut dep);

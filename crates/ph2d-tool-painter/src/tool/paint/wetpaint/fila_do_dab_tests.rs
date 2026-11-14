@@ -162,3 +162,78 @@ fn o_traco_inteiro_em_voo_pinta_a_tela_do_sincrono_ao_bit() {
         assert!(sincrono == fila, "{nome}: a sessão em voo mudou a tela");
     }
 }
+
+/// F2e: o TIQUE não espera o lote em voo — o operário fica preso pela porta e o tique tem de voltar com a sessão
+/// ainda fora (o guarda e a sim drenariam: a mutação «sem o `assentou` no tique» espera os 2 s da porta e reprova).
+#[test]
+fn o_tique_nao_espera_o_lote_em_voo() {
+    let (w, h) = (320u32, 160u32);
+    super::fila_no_teste(true);
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(fundo(w, h, false), w, h);
+    t.set_compor_por_quadro(true);
+    t.set_paint_tool_mode("wetpaint");
+    t.preset_aplicar(&preset("Oil/Flat/Flat Bristle.ph2d-brush.png"))
+        .expect("o pincel");
+    t.set_brush_size_px(60.0);
+    t.on_canvas_pointer(cp([60.0, 50.0], 0.6, PointerPhase::Down));
+    for k in 1..=5 {
+        let p = [60.0 + 18.0 * k as f32, 50.0 + 2.0 * k as f32];
+        t.on_canvas_pointer(cp(p, 0.6 + 0.03 * k as f32, PointerPhase::Move));
+    }
+    t.ticks_em_blocos(1);
+    super::segura_o_operario(true);
+    t.on_canvas_pointer(cp([168.0, 62.0], 0.8, PointerPhase::Move));
+    let voou = t.paint.wetpaint.session.em_voo();
+    let antes = std::time::Instant::now();
+    t.wetpaint_tick(1.0 / 60.0);
+    let esperou = antes.elapsed();
+    let ainda = t.paint.wetpaint.session.em_voo();
+    super::segura_o_operario(false);
+    t.on_canvas_pointer(cp([200.0, 60.0], 1.0, PointerPhase::Up));
+    t.ticks_em_blocos(2);
+    super::fila_no_teste(false);
+    assert!(voou, "o lote não voou (o gate não mediria nada)");
+    assert!(
+        ainda && esperou < std::time::Duration::from_secs(1),
+        "o tique esperou o lote em voo ({esperou:?})"
+    );
+}
+
+/// F2e: um traço pintado DENTRO de um job do rayon (a miniatura viva, os alarmes de pincel) com a fila ligada não
+/// voa nem espera o operário no job (Bug #66: `drena_os_dabs` entraria em pânico) e pinta a tela do síncrono.
+#[test]
+fn dentro_de_um_job_do_rayon_o_lote_pousa_sincrono() {
+    let pinta = |fila: bool| {
+        super::fila_no_teste(fila);
+        let (w, h) = (200u32, 100u32);
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(fundo(w, h, false), w, h);
+        t.set_compor_por_quadro(true);
+        t.set_paint_tool_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        t.preset_aplicar(&preset("Oil/Flat/Flat Bristle.ph2d-brush.png"))
+            .expect("o pincel");
+        t.set_brush_size_px(40.0);
+        t.on_canvas_pointer(cp([30.0, 50.0], 0.6, PointerPhase::Down));
+        for k in 1..=8 {
+            t.on_canvas_pointer(cp([30.0 + 18.0 * k as f32, 50.0], 0.7, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([180.0, 50.0], 1.0, PointerPhase::Up));
+        t.ticks_em_blocos(2);
+        let voos = super::super::sessao_do_wet::VOOS.get();
+        super::fila_no_teste(false);
+        (mostrada(&mut t), voos)
+    };
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .expect("o pool");
+    let (sincrono, _) = pinta(false);
+    let (no_job, voos) = pool.install(|| {
+        super::super::sessao_do_wet::VOOS.set(0);
+        pinta(true)
+    });
+    assert_eq!(voos, 0, "um lote voou dentro do job do rayon");
+    assert!(sincrono == no_job, "a tela pintada no job difere da síncrona");
+}

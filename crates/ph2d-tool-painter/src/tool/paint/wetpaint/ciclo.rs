@@ -122,6 +122,12 @@ impl PainterTool {
     pub(in crate::tool::paint) fn wetpaint_tick(&mut self, dt_s: f32) {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
+        // N10 F2e: o lote ainda com o operário do depósito — o guarda e a sim leriam a sessão e ESPERARIAM por
+        // ela; o quadro não espera (`quer_quadro` conta o voo), o tique seguinte corre com ela em casa.
+        // O relógio fixo (os oráculos ao bit) mantém a ordem síncrona «lote → passos» e espera.
+        if self.paint.wetpaint.relogio_fixo.is_none() && !self.paint.wetpaint.session.assentou() {
+            return;
+        }
         if self.paint.wetpaint.session.is_none()
             && !(matches!(self.paint.paint_mode, PaintMode::WetPaint)
                 && self.wet_acorda_sem_esperar())

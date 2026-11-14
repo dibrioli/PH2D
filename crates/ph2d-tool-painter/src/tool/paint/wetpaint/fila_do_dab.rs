@@ -58,6 +58,8 @@ fn operario() -> &'static Mutex<Operario> {
             .spawn(move || {
                 // Cada lote leva a SUA volta: dois tools em dois fios nunca trocam sessões.
                 while let Ok((mut d, tx)) = rx.recv() {
+                    #[cfg(test)]
+                    espera_a_porta();
                     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                         deposita(&mut d);
                         d
@@ -80,6 +82,25 @@ thread_local! {
 #[cfg(test)]
 pub(in crate::tool::paint) fn fila_no_teste(ligada: bool) {
     FILA_NO_TESTE.set(ligada);
+}
+
+/// Porta de TESTE (F2e): o operário espera antes de pousar enquanto estiver fechada (no máximo 2 s, para que um
+/// leitor que espere o voo REPROVE em vez de pendurar o teste).
+#[cfg(test)]
+static PORTA: (Mutex<bool>, std::sync::Condvar) = (Mutex::new(false), std::sync::Condvar::new());
+
+#[cfg(test)]
+pub(in crate::tool::paint) fn segura_o_operario(fechada: bool) {
+    *PORTA.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = fechada;
+    PORTA.1.notify_all();
+}
+
+#[cfg(test)]
+fn espera_a_porta() {
+    let g = PORTA.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _ = PORTA
+        .1
+        .wait_timeout_while(g, std::time::Duration::from_secs(2), |f| *f);
 }
 
 /// `true` = o depósito pousa no fio do evento (`PH2D_DAB_SINCRONO=1`, ou um teste sem [`fila_no_teste`]).

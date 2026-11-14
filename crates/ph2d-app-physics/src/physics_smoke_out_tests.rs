@@ -145,7 +145,9 @@ fn the_course_fires_every_name_the_script_promises() {
             PlayerInput {
                 drive: 1.0,
                 jump: i % 25 == 0,
-                dash: i == 400,
+                // Nunca num tique de pulo (múltiplo de 25): a lei cancela o arranque com um pulo de
+                // qualquer tipo («O ARRANQUE», `ph2d_platformer`); em 400 o pulo de parede comia-o.
+                dash: i == 410,
                 ..PlayerInput::default()
             },
         );
@@ -201,7 +203,9 @@ fn the_course_names_what_it_fires() {
                 // direita (o vão e o degrau) — é o roteiro, na ordem dele.
                 drive: 1.0,
                 jump: i % 25 == 0,
-                dash: i == 400,
+                // Nunca num tique de pulo (múltiplo de 25): a lei cancela o arranque com um pulo de
+                // qualquer tipo («O ARRANQUE», `ph2d_platformer`); em 400 o pulo de parede comia-o.
+                dash: i == 410,
                 ..PlayerInput::default()
             },
         );

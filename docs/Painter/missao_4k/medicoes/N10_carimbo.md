@@ -17,3 +17,13 @@ Uma linha por id. A janela principal dobra-as no `BACKLOG.md`.
 | B26.1 | parcial (como estava) | — | bf60d6c801 | Invariantes içadas já feitas; RLE da máscara (libmypaint ISC) não feito: não coube no prazo |
 | B26.2 | aberto | — | — | Plano do lote + bandas por trabalho (ADR-0200: o fork-join por carimbo é o tecto); não coube |
 | B26.3 | aberto | — | — | Piso por custo `t = a·d²`: precisa da medição por rota antes (`band_count`, `PB/dab/bands.rs:33,50`); não coube |
+
+## 2.ª vaga (W2c, 14/11)
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B26.1 (RLE) | feito (o corte por linha, ao bit); relógio por medir na janela | silhuetas avaliadas: caixa inteira → < 60 % da caixa (gate, raio 20 em 58 × 64, liso e ponta reta); relógio: `sonda_o_carimbo_com_invariantes_icadas_custa_menos` imprime agora antiga · sem corte · com corte (`--ignored`, à janela) | este commit | O RLE do `libmypaint` (ISC) no nosso idioma: numa pegada plana, sem cápsula, sem película com AA e sem Shape, com `queda.peso(1) == 0`, a silhueta é `0` fora do intervalo da linha onde o `t` exacto < 1 (`FootprintDeform::falloff_t_abaixo_na_linha`, a mesma do corte do Wet B14.3; folga `1,002` e 1 px de cada lado); a pegada é convexa, logo o RLE só tem as duas pontas. `PB/dab/bands/corte.rs`; `stamp_band` = `stamp_band_com(…, PH2D_CORTE_DO_DAB≠0)`. Gates: `o_corte_do_carimbo_pinta_os_mesmos_bytes_que_a_banda_antiga` (o oráculo verbatim, 240 casos) e `o_corte_da_linha_salta_so_o_que_nao_pinta` (bytes com = sem corte; contagem < 60 % no liso e na quina; a película com AA não corta): verdes. Mutações: `LIMIAR = 0,97` ⇒ VERMELHO (os dois); tirar a guarda `film_aa` ⇒ VERMELHO (só a contagem: a película não pinta além de `t ≈ 1` neste fixture); restauradas. Alarmes de pincel (largura, miniatura) VERDES |
+| B26.2 | aberto (não coube) | — | — | Plano do lote + bandas por trabalho (ADR-0200) |
+| B26.3 | aberto (não coube) | — | — | Piso `t = a·d²`: o corte do B26.1 muda o `d²` efectivo (só a orla convexa); medir com a sonda nova antes |
+| B25.8 cura | não feita (como estava) | — | — | Muda aparência / exige paridade ao bit da placa (RTX proibida) |
+| B17.6 (2 casos) | aberto (não coube) | — | — | Color Fill/Cut sem prova de captura (não abrem passo); `selection.rs:230` sem efeito (o chamador corre com o scratch da máscara) |

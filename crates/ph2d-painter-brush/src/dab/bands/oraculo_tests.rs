@@ -318,6 +318,35 @@ fn compara(
     com_liso: bool,
     caso: &str,
 ) -> bool {
+    compara_entre(
+        spec,
+        capsula,
+        flow,
+        preserve_alpha,
+        com_mascara,
+        com_forca,
+        com_liso,
+        caso,
+        stamp_band,
+        stamp_band_antiga,
+    )
+    .0
+}
+
+/// [`compara`] entre dois passes quaisquer; devolve também quantas silhuetas cada um avaliou.
+#[allow(clippy::too_many_arguments)]
+fn compara_entre(
+    spec: &BrushSpec,
+    capsula: Option<crate::capsula::Capsula>,
+    flow: f32,
+    preserve_alpha: bool,
+    com_mascara: bool,
+    com_forca: bool,
+    com_liso: bool,
+    caso: &str,
+    passe_novo: PasseDaBanda,
+    passe_antigo: PasseDaBanda,
+) -> (bool, usize, usize) {
     let radius = spec.radius_px;
     let center = [30.3f32, 33.7];
     let footprint = spec.dab_footprint([0.8, 0.6]);
@@ -380,14 +409,19 @@ fn compara(
         }
         (d, m, fo, l, tocou)
     };
-    let novo = corre(stamp_band);
-    let antigo = corre(stamp_band_antiga);
+    let conta = |f: PasseDaBanda| {
+        super::corte::AVALIADOS.with(|c| c.set(0));
+        let r = corre(f);
+        (r, super::corte::AVALIADOS.with(std::cell::Cell::get))
+    };
+    let (novo, n_novo) = conta(passe_novo);
+    let (antigo, n_antigo) = conta(passe_antigo);
     assert!(novo.0 == antigo.0, "{caso}: o dst diverge");
     assert!(novo.1 == antigo.1, "{caso}: a máscara diverge");
     assert!(novo.2 == antigo.2, "{caso}: a força diverge");
     assert!(novo.3 == antigo.3, "{caso}: o liso diverge");
     assert_eq!(novo.4, antigo.4, "{caso}: o que tocou diverge");
-    novo.0 != dst0
+    (novo.0 != dst0, n_novo, n_antigo)
 }
 
 /// **O corte de `stamp_band` em silhueta · tinta · depósito, com as invariantes do dab içadas, pinta os MESMOS
@@ -525,20 +559,95 @@ fn sonda_o_carimbo_com_invariantes_icadas_custa_menos() {
             }
             t.elapsed().as_secs_f64() * 1e3 / 8.0
         };
-        let (mut novo, mut antigo) = (f64::MAX, f64::MAX);
+        let (mut novo, mut antigo, mut sem) = (f64::MAX, f64::MAX, f64::MAX);
         for bloco in 0..12 {
             if bloco % 2 == 0 {
-                novo = novo.min(mede(stamp_band));
+                novo = novo.min(mede(com_corte));
+                sem = sem.min(mede(sem_corte));
                 antigo = antigo.min(mede(stamp_band_antiga));
             } else {
                 antigo = antigo.min(mede(stamp_band_antiga));
-                novo = novo.min(mede(stamp_band));
+                sem = sem.min(mede(sem_corte));
+                novo = novo.min(mede(com_corte));
             }
         }
         println!(
-            "[B26.1] {nome}: antiga {antigo:.3} ms/dab · nova {novo:.3} ms/dab · {:.2}×",
+            "[B26.1] {nome}: antiga {antigo:.3} · sem corte {sem:.3} · com corte {novo:.3} ms/dab · corte {:.2}× · total {:.2}×",
+            sem / novo,
             antigo / novo
         );
+    }
+}
+
+fn com_corte(
+    ctx: &DabCtx,
+    dst: &mut [u8],
+    liso: Option<&mut [u8]>,
+    mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
+    y0: i64,
+) -> (bool, bool) {
+    stamp_band_com(ctx, dst, liso, mask, forca, y0, true)
+}
+
+fn sem_corte(
+    ctx: &DabCtx,
+    dst: &mut [u8],
+    liso: Option<&mut [u8]>,
+    mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
+    y0: i64,
+) -> (bool, bool) {
+    stamp_band_com(ctx, dst, liso, mask, forca, y0, false)
+}
+
+/// **B26.1: o corte por linha salta texéis, e só os que não pintam.** Na pegada inclinada e na ponta reta (raio 20 numa
+/// caixa 58 × 64) a banda com o corte avalia a silhueta em menos de 60 % dos texéis da caixa e pinta os mesmos bytes
+/// que sem ele (dst, máscara, força, liso); a película com AA (que pode pintar além de `t = 1`) não corta.
+#[test]
+fn o_corte_da_linha_salta_so_o_que_nao_pinta() {
+    let base = BrushSpec {
+        radius_px: 20.0,
+        ..Default::default()
+    };
+    for (nome, spec, corta) in [
+        ("liso", base, true),
+        (
+            "quina",
+            BrushSpec {
+                dab_quina: 0.6,
+                ..base
+            },
+            true,
+        ),
+        (
+            "pelicula_aa",
+            BrushSpec {
+                impasto: true,
+                impasto_depth: 0.5,
+                impasto_smooth_edges: true,
+                ..base
+            },
+            false,
+        ),
+    ] {
+        let (pintou, com, sem) = compara_entre(
+            &spec, None, 0.35, false, true, true, false, nome, com_corte, sem_corte,
+        );
+        assert!(pintou, "{nome}: o fixture tem de pintar");
+        let caixa = 58 * LADO * 2; // 58 colunas × 64 linhas × 2 dabs
+        assert_eq!(
+            sem, caixa,
+            "{nome}: sem o corte o laço percorre a caixa inteira"
+        );
+        if corta {
+            assert!(
+                com * 10 < caixa * 6,
+                "{nome}: o corte avaliou {com} de {caixa} texéis (≥ 60 %)"
+            );
+        } else {
+            assert_eq!(com, caixa, "{nome}: a película com AA não pode cortar");
+        }
     }
 }
 

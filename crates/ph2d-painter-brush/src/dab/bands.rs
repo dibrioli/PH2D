@@ -372,6 +372,7 @@ pub(super) struct DabCtx<'a> {
     pub(super) dente: Option<std::sync::Arc<crate::texture::grao_cache::GraoCache>>,
 }
 
+mod corte;
 mod deposito;
 mod silhueta;
 mod tinta;
@@ -472,12 +473,26 @@ impl Invariantes {
 pub(super) fn stamp_band<M: crate::Tecto>(
     ctx: &DabCtx,
     dst: &mut [u8],
+    liso: Option<&mut [u8]>,
+    mask: Option<&mut [M]>,
+    forca: Option<&mut [u16]>,
+    band_y0: i64,
+) -> (bool, bool) {
+    stamp_band_com(ctx, dst, liso, mask, forca, band_y0, corte::ligado())
+}
+
+/// [`stamp_band`] com o corte por linha ([`corte`], B26.1) pedido ou não — o A×B e o oráculo chamam as duas faces.
+pub(super) fn stamp_band_com<M: crate::Tecto>(
+    ctx: &DabCtx,
+    dst: &mut [u8],
     mut liso: Option<&mut [u8]>,
     mut mask: Option<&mut [M]>,
     mut forca: Option<&mut [u16]>,
     band_y0: i64,
+    com_corte: bool,
 ) -> (bool, bool) {
     let inv = Invariantes::do_dab(ctx, mask.is_some());
+    let corte = corte::do_dab(ctx, &inv, com_corte);
     let mrow = ctx.stride / 4;
     let mut touched = false;
     let mut liso_tocou = false;
@@ -485,8 +500,11 @@ pub(super) fn stamp_band<M: crate::Tecto>(
         let py = band_y0 + r as i64;
         let dy = (py as f32 + 0.5) - ctx.cy;
         let row = r * ctx.stride;
-        for px in ctx.x0..ctx.x1 {
+        let (xa, xb) = corte.map_or((ctx.x0, ctx.x1), |c| c.linha(ctx, dy));
+        for px in xa..xb {
             let dx = (px as f32 + 0.5) - ctx.cx;
+            #[cfg(test)]
+            corte::AVALIADOS.with(|c| c.set(c.get() + 1));
             let s = silhueta::em(ctx, &inv, px, py, dx, dy);
             let (w, maior_sub) = (s.w, s.maior_sub);
             // Skip pixels the silhouette already zeroes BEFORE the grain sample — the grain only

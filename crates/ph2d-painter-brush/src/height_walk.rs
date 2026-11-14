@@ -87,8 +87,19 @@ pub(super) fn walk_dab_rows(
     if threads <= 1 {
         return walk_band(w, whole(fields, lo, hi), y0, None);
     }
-    let span = rows.div_ceil(threads) * w.width;
-    let bands: Vec<_> = fields.height[lo..hi]
+    // ⭐ **B26.4 Q12 — peças por trabalho, não uma banda igual por fio.** A caixa é quadrada e a
+    // pegada não: medido num Flat 0,7 deitado (raio 100, 8 fios), as duas bandas do meio levavam
+    // 171-182 µs e as seis de fora 36-46 µs (máx/média 2,4×; o redondo 1,5×) — o dab esperava pela
+    // banda do meio. As linhas partem-se em `PECAS_POR_FIO × threads` peças e cada fio tira a
+    // seguinte de uma fila: o fio que caiu em linhas vazias vai buscar outra. Linhas disjuntas, um
+    // escritor por texel ⇒ quem avalia a linha muda, o que ela diz não (o gate da banda). O dab
+    // inteiro (mínimo de 41, intercalado): Flat deitado 227 → 149 µs, redondo 211 → 184, Flat de pé
+    // 172 → 156. Medição: `docs/Painter/missao_4k/medicoes/N10_carimbo.md` (B26.4).
+    let pecas = threads * PECAS_POR_FIO;
+    let span = rows.div_ceil(pecas).max(1) * w.width;
+    #[cfg(test)]
+    tests::fios_usados(threads);
+    let fila: Vec<_> = fields.height[lo..hi]
         .chunks_mut(span)
         .zip(fields.paint[lo..hi].chunks_mut(span))
         .zip(fields.grain[lo..hi].chunks_mut(span))
@@ -108,10 +119,11 @@ pub(super) fn walk_dab_rows(
             )
         })
         .collect();
+    let fila = std::sync::Mutex::new(fila.into_iter());
+    let fila = &fila;
     std::thread::scope(|s| {
-        bands
-            .into_iter()
-            .map(|(planes, band_y0)| {
+        (0..threads.min(rows))
+            .map(|_| {
                 s.spawn(move || {
                     #[cfg(test)]
                     assert_eq!(
@@ -119,7 +131,31 @@ pub(super) fn walk_dab_rows(
                         0,
                         "pânico injectado na banda"
                     );
-                    band_out(walk_band(w, planes, band_y0, None))
+                    let mut tocou = false;
+                    #[cfg(test)]
+                    let mut pecas = Vec::new();
+                    #[cfg(not(test))]
+                    let pecas = ();
+                    // ⚠️ A trava só guarda o `next()`, num `let` à parte: no escrutínio de um
+                    // `while let` o guarda temporário vive o corpo inteiro e um fio só pinta tudo
+                    // (medido: 61 peças num fio, 0 nos outros 7). Trava envenenada (vizinho em
+                    // pânico) não esconde peça: o pânico chega pelo `join`.
+                    loop {
+                        let proxima = fila
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
+                            .next();
+                        let Some((planes, band_y0)) = proxima else {
+                            break;
+                        };
+                        tocou |= walk_band(w, planes, band_y0, None);
+                        #[cfg(test)]
+                        pecas.push(tests::Visitas {
+                            y0: band_y0,
+                            ..tests::toma_visitas()
+                        });
+                    }
+                    band_out(tocou, pecas)
                 })
             })
             // Coletado ANTES do fold para que TODA banda seja joinada (um `fold` preguiçoso com
@@ -135,27 +171,32 @@ pub(super) fn walk_dab_rows(
     })
 }
 
+/// Peças da fila por fio (B26.4 Q12). Com 8 a peça mais pesada do Flat deitado fica abaixo da fatia
+/// justa de um fio (o gate `a_peca_mais_pesada_cabe_na_fatia_de_um_fio`); com 1 é a banda igual de antes.
+const PECAS_POR_FIO: usize = 8;
+
 /// O que UMA banda devolve. Em produção é só *"tocou?"*; sob teste ela carrega junto os contadores da
 /// LUT que acumulou na PRÓPRIA thread, porque um contador por-thread não atravessa uma thread — ver
 /// [`crate::height_film_lut::add_lut_counts`], que é onde a premissa está escrita.
 #[cfg(test)]
-type BandOut = (bool, (usize, usize));
+type BandOut = (bool, (usize, usize), Vec<tests::Visitas>);
 /// Ver [`BandOut`] sob `cfg(test)`.
 #[cfg(not(test))]
 type BandOut = bool;
 
 #[cfg(test)]
-fn band_out(touched: bool) -> BandOut {
-    (touched, crate::height_film_lut::take_lut_counts())
+fn band_out(touched: bool, pecas: Vec<tests::Visitas>) -> BandOut {
+    (touched, crate::height_film_lut::take_lut_counts(), pecas)
 }
 #[cfg(not(test))]
-fn band_out(touched: bool) -> BandOut {
+fn band_out(touched: bool, _: ()) -> BandOut {
     touched
 }
 
 #[cfg(test)]
 fn band_join(acc: bool, out: BandOut) -> bool {
     crate::height_film_lut::add_lut_counts(out.1);
+    tests::junta_visitas(out.2);
     acc | out.0
 }
 #[cfg(not(test))]
@@ -197,9 +238,15 @@ fn walk_band(
     let (cx, cy, sweep, ablate) = (wk.cx, wk.cy, wk.sweep, wk.ablate);
     let y1 = band_y0 + (planes.height.len() / wk.width) as i64;
     let mut touched = false;
+    #[cfg(test)]
+    let mut vis = tests::Visitas::default();
     for py in band_y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
         for px in wk.x0..wk.x1 {
+            #[cfg(test)]
+            {
+                vis.todas += 1;
+            }
             let dx = (px as f32 + 0.5) - cx;
             let (rx, ry) = sweep_residual(dx, dy, sweep);
             // `wv` is the DEFORMED residual and `t` its length — byte-identical to `falloff_t`, which
@@ -245,6 +292,10 @@ fn walk_band(
             // fractional film while its CENTRE silhouette is already 0 — it must not be skipped).
             if w <= 0.0 && film <= 0.0 {
                 continue;
+            }
+            #[cfg(test)]
+            {
+                vis.dentro += 1;
             }
             // ⚠️ **DOIS índices, e a distinção é o que torna a banda correta:** os cinco planos que
             // esta banda POSSUI começam na linha `band_y0`, então o índice deles é local; o gate e a
@@ -327,6 +378,10 @@ fn walk_band(
                     }
                 }
             }
+            #[cfg(test)]
+            {
+                vis.escritas += 1;
+            }
             planes.paint[i] = m;
             planes.grain[i] = gq;
             planes.radius[i] = raio_w;
@@ -341,6 +396,8 @@ fn walk_band(
             touched = true;
         }
     }
+    #[cfg(test)]
+    tests::guarda_visitas(vis);
     touched
 }
 

@@ -199,3 +199,97 @@ pub(super) const PANICO_NA_BANDA: u32 = 1 << 31;
 fn walk_dab_rows_propaga_o_panico_da_banda() {
     let _ = deposit(PANICO_NA_BANDA, 100.0, 320);
 }
+
+/// O que UMA peça percorreu (B26.4 Q12): texels da caixa, os que passam o salto da silhueta, os que
+/// escrevem os cinco planos. Só sob teste; viaja no [`super::BandOut`].
+#[derive(Clone, Copy, Default, Debug)]
+pub(super) struct Visitas {
+    pub(super) y0: i64,
+    pub(super) todas: usize,
+    pub(super) dentro: usize,
+    pub(super) escritas: usize,
+}
+
+const NADA: Visitas = Visitas {
+    y0: 0,
+    todas: 0,
+    dentro: 0,
+    escritas: 0,
+};
+
+thread_local! {
+    static DA_PECA: std::cell::Cell<Visitas> = const { std::cell::Cell::new(NADA) };
+    static POR_PECA: std::cell::RefCell<Vec<Visitas>> = const { std::cell::RefCell::new(Vec::new()) };
+    static FIOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+pub(super) fn guarda_visitas(v: Visitas) {
+    DA_PECA.with(|c| c.set(v));
+}
+pub(super) fn toma_visitas() -> Visitas {
+    DA_PECA.with(|c| c.replace(NADA))
+}
+pub(super) fn junta_visitas(v: Vec<Visitas>) {
+    POR_PECA.with(|c| c.borrow_mut().extend(v));
+}
+pub(super) fn fios_usados(n: usize) {
+    FIOS.with(|c| c.set(n));
+}
+/// As peças do último dab, por ordem de linha, e quantos fios as tiraram da fila.
+fn tira_por_peca() -> (Vec<Visitas>, usize) {
+    let mut v = POR_PECA.with(|c| std::mem::take(&mut *c.borrow_mut()));
+    v.sort_by_key(|b| b.y0);
+    (v, FIOS.with(|c| c.replace(0)))
+}
+
+/// Um dab Flat (achatado `flatten`, ângulo `angulo`) varrido, raio 100: as peças e os fios.
+fn visitas_flat(flatten: f32, angulo: u16) -> (Vec<Visitas>, usize) {
+    const SIDE: u32 = 320;
+    const RADIUS: f32 = 100.0;
+    let mut s = loaded(RADIUS);
+    s.dab_flatten = flatten;
+    s.dab_angle_deg = angulo;
+    let mut planes = Planes::new((SIDE as usize) * (SIDE as usize));
+    let _ = tira_por_peca();
+    let dab = swept(&s, RADIUS, [SIDE as f32 * 0.5, SIDE as f32 * 0.5]);
+    let _ = accumulate_dab_height(&mut planes.fields(), SIDE, SIDE, &s, &dab, None);
+    tira_por_peca()
+}
+
+/// **B26.4 Q12 — a peça mais pesada da fila cabe na fatia justa de um fio.** Com a caixa partida em
+/// uma banda igual por fio, o Flat deitado punha 4,0× a média das visitas `dentro` numa banda (o relógio
+/// 2,4×): o dab esperava pela banda do meio. Partida em peças tiradas de uma fila, nenhuma peça leva
+/// mais de 1,2× a fatia justa (`dentro` total / fios) — o fio que pegou linhas vazias vai buscar outra.
+///
+/// A contagem é determinista (quem tira cada peça não muda o que ela tem), então o gate não lê o relógio.
+/// Controlos: a rota é a em banda (> 1 fio); a fixture deposita; as peças cobrem a caixa (soma das
+/// `todas` = linhas × colunas, nenhuma linha perdida nem repetida).
+///
+/// **Mutação que tem de sangrar:** `PECAS_POR_FIO = 1` (a banda igual por fio de antes) ⇒ 4,0 > 1,2.
+#[test]
+fn a_peca_mais_pesada_cabe_na_fatia_de_um_fio() {
+    for (nome, f, a) in [
+        ("redondo", 0.0, 0),
+        ("flat 0°", 0.7, 0),
+        ("flat 90°", 0.7, 90),
+    ] {
+        let (v, fios) = visitas_flat(f, a);
+        assert!(fios > 1, "{nome}: a fixture não cruza o piso ({fios} fio)");
+        let dentro: usize = v.iter().map(|b| b.dentro).sum();
+        assert!(dentro > 5_000, "{nome}: a fixture não depositou ({dentro})");
+        let todas: usize = v.iter().map(|b| b.todas).sum();
+        let linhas = v.windows(2).all(|p| p[0].y0 < p[1].y0);
+        assert!(linhas, "{nome}: duas peças na mesma linha");
+        let max = v.iter().map(|b| b.dentro).max().unwrap_or(0);
+        let quociente = max as f64 * fios as f64 / dentro as f64;
+        eprintln!(
+            "B26.4 {nome}: {} peças, {fios} fios, caixa {todas}; dentro máx {max} / fatia {} = {quociente:.3}",
+            v.len(),
+            dentro / fios,
+        );
+        assert!(
+            quociente <= 1.2,
+            "{nome}: a peça mais pesada leva {quociente:.3}× a fatia de um fio"
+        );
+    }
+}

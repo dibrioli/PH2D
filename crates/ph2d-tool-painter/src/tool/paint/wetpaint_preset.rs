@@ -63,6 +63,8 @@ mod sonda_relevo_oleo;
 #[cfg(test)]
 mod sonda_varredura_oleo;
 #[cfg(test)]
+mod larguras_do_pool_tests;
+#[cfg(test)]
 mod tests;
 mod texturas;
 #[cfg(test)]

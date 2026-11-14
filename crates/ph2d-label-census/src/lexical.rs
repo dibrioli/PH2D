@@ -329,9 +329,16 @@ pub fn cegueira(text: &str) -> Option<Cegueira> {
     if !has_word {
         return Some(Cegueira::SemDuasLetras);
     }
-    let key_like = u.contains('.')
-        && u.chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.');
+    // Uma chave com um segmento camelCase (`panel.wet_tuning.knob.bristlePressure`, as do Tuning
+    // geradas do nome do knob) continua chave: começa minúscula, dois pontos ou mais, segmentos não vazios.
+    let camel_key = u.starts_with(|c: char| c.is_ascii_lowercase())
+        && u.matches('.').count() >= 2
+        && u.split('.')
+            .all(|s| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
+    let key_like = camel_key
+        || u.contains('.')
+            && u.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.');
     if key_like {
         return Some(Cegueira::ParecemChave);
     }

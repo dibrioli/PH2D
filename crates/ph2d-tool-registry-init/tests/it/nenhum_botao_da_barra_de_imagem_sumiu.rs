@@ -130,11 +130,8 @@ fn nada_some_em_janela_menor() {
         for id in &todos {
             assert!(vistos.contains(id), "a {area} px um botão sumiu: {id:#x}");
         }
-        let linhas = ph2d_editor_core::widget::horizontal_lines(
-            &fila,
-            (area - ph2d_tokens::Spacing::Xs.px() * 2.0).max(0.0),
-            hero.store.rail_button_size(),
-        );
+        // A régua da barra: a da fila fina quando ela é fina (BarraDeMenus onda 6), a do trilho largo senão.
+        let linhas = tool_bar::bar_lines(&fila, area, hero.store.rail_button_size());
         assert!(
             linhas <= 1,
             "a {area} px a fila parte: {linhas} linhas, o resto cortado"

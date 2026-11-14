@@ -27,6 +27,7 @@ fn cada_recusa_da_regua_diz_qual_cerca_a_produziu() {
         ("9-Slice", Some(Cegueira::TokenNu)),
         ("EQ", Some(Cegueira::TokenNu)),
         ("chrome.fill.title", Some(Cegueira::ParecemChave)),
+        ("panel.wet_tuning.knob.bristlePressure", Some(Cegueira::ParecemChave)),
         // ⚠️ **A ORDEM das cercas é observável, e esta linha existe por eu a ter errado:**
         // `assets/brush.png` é recusado pelo CAMINHO (a barra vem primeiro) e nunca pela
         // extensão — para ver a última é preciso um nome sem barra e com maiúscula (senão o

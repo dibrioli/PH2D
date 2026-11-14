@@ -21,11 +21,13 @@ use ph2d_tool_painter::{BrushSettings, PaintMedia};
 use ph2d_ui_testkit::MockPanelHost;
 use std::collections::BTreeSet;
 
+/// A coluna mostra o painel INTEIRO sem rolar: no Wet Paint ele passou de 6000 px (B35.13 pôs as 17 cerdas no Shape e
+/// o n.º 8 o cartão Performance; o Tiling caía em y 5972), por isso 9000.
 const COLUNA: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 6000.0,
+    h: 9000.0,
 };
 
 pub(super) const PAINEL: NodeId = core_ids::PAINTER_LAYERS_PANEL;

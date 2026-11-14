@@ -682,7 +682,8 @@ fn diag_as_linhas_da_abertura() {
     set_current_dock_shows_layers(false);
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
-    let j = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 6000.0);
+    // O painel inteiro sem rolar (no Wet Paint passou de 6000 px: ver `h1_os_cartoes::COLUNA`).
+    let j = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 9000.0);
     for _ in 0..30 {
         let _ = host.paint::<PainterLayersPanel>(&mut st, j);
     }

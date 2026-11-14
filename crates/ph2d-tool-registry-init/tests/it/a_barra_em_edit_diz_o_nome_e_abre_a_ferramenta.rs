@@ -106,12 +106,16 @@ fn remove_background_esta_na_fila_com_o_nome_inteiro_e_abre_a_ferramenta() {
     let (nome, legenda) = nome_e_legenda(entrada);
     assert_eq!(nome, "Remove Background");
     assert_eq!(legenda, "Remove Background");
-    let passo = entry_advance(entrada, chip.h, RailAxis::Horizontal) + entry_gap_px();
-    let w = ts.prefix_width(&legenda, ph2d_card_stack::metrics::LABEL_PX);
-    assert!(
-        w <= passo,
-        "a legenda ({w}) não cabe no passo do chip ({passo})"
-    );
+    // Na fila FINA (maquete C, BarraDeMenus onda 6) não há legenda: o nome inteiro vai na dica (o `label`
+    // acima). Só a fila larga pinta a legenda, e aí ela tem de caber no passo do chip.
+    if !tool_bar::fila_fina(&rail) {
+        let passo = entry_advance(entrada, chip.h, RailAxis::Horizontal) + entry_gap_px();
+        let w = ts.prefix_width(&legenda, ph2d_card_stack::metrics::LABEL_PX);
+        assert!(
+            w <= passo,
+            "a legenda ({w}) não cabe no passo do chip ({passo})"
+        );
+    }
 
     assert!(
         abriu_a_remocao(&clica(&mut hero, chip)),
@@ -125,9 +129,14 @@ fn remove_background_esta_na_fila_com_o_nome_inteiro_e_abre_a_ferramenta() {
 fn numa_janela_estreita_o_botao_mora_no_transbordo_e_abre_a_ferramenta() {
     force_cromo_on_this_thread(Some(true));
     let mut ts = TextSystem::without_system_fonts();
-    let (w, h) = (560.0, 744.0);
-    let mut hero = em_edit(&mut ts, w, h);
     let id = ids::IMAGE_ACTION_BGREMOVAL;
+    // A fila fina cabe mais botões que a larga: a janela estreita é a primeira em que o botão transborda.
+    let h = 744.0;
+    let (w, mut hero) = [560.0_f32, 480.0, 420.0, 380.0, 340.0]
+        .into_iter()
+        .map(|w| (w, em_edit(&mut ts, w, h)))
+        .find(|(_, hero)| hero.store.tool_overflow().iter().any(|e| e.node_id() == Some(id)))
+        .expect("controlo: numa janela estreita o botão tem de estar no transbordo");
     let over: Vec<_> = hero.store.tool_overflow().to_vec();
     let entrada = over
         .iter()

@@ -157,6 +157,8 @@ pub struct Engine {
     espelho_passo: Dirty,
     /// O sujo do `dirty` partido para a óptica fora ([`caixa_do_passo`], B14.1): o do passo da sim × o das outras portas.
     sujo_da_otica: caixa_do_passo::SujoDaOtica,
+    /// B44.9 (GT-08): quantas vezes a camada activa foi marcada INTEIRA no histórico (`marca_tudo`) — só diagnóstico.
+    marcas_da_tela_inteira: u64,
     /// A razao da grade de FLUXO desta engine (plano 30). `1` = a grade de
     /// fluxo E a fina, que e o motor que sempre shipou.
     pub flow_ratio: usize,
@@ -211,6 +213,7 @@ impl Engine {
             #[cfg(test)]
             espelho_passo: Dirty::Clean,
             sujo_da_otica: caixa_do_passo::SujoDaOtica::default(),
+            marcas_da_tela_inteira: 0,
         };
         engine.layers.push(Layer {
             grid: Grid::with_flow_ratio(width, height, engine.flow_ratio),

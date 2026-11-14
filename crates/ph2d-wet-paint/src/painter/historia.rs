@@ -125,9 +125,18 @@ impl Engine {
 
     /// Marca a camada activa INTEIRA (escrita sem retângulo conhecido).
     pub(crate) fn marca_tudo(&mut self) {
+        self.marcas_da_tela_inteira += 1;
         let g = &self.layers[self.active_layer].grid;
         let (s, rows) = (g.s as i64, g.rows as i64);
         self.marca_ret(0, 0, s, rows);
+    }
+
+    /// B44.9 (GT-08): as escritas de tela inteira marcadas até agora (o marcador do censo «nenhum quadro de
+    /// movimento anda a tela inteira»).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn marcas_da_tela_inteira(&self) -> u64 {
+        self.marcas_da_tela_inteira
     }
 
     /// Marca o alcance de um dab em `(x, y)` px de raio `r`.

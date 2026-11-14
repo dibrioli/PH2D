@@ -45,6 +45,7 @@ impl Clone for Engine {
             #[cfg(test)]
                 espelho_passo: _,
             sujo_da_otica,
+            marcas_da_tela_inteira: _,
             flow_ratio,
         } = self;
         Engine {
@@ -87,6 +88,8 @@ impl Clone for Engine {
             #[cfg(test)]
             espelho_passo: super::Dirty::Clean,
             sujo_da_otica: sujo_da_otica.clone(),
+            // O marcador do B44.9 é diagnóstico desta instância: a cópia conta do zero.
+            marcas_da_tela_inteira: 0,
             flow_ratio: *flow_ratio,
         }
     }

@@ -539,3 +539,41 @@ fn historia_o_passo_marca_a_faixa_viva_e_nao_o_casco() {
 
 #[path = "historia_restauro_tests.rs"]
 mod restauro; // B12.1, B12.2 e o undo sem zerar o fluxo: o que o restauro escreve e suja
+
+/// **B44.9 (GT-08) — nenhum quadro de MOVIMENTO marca a tela inteira.** O marcador conta cada `marca_tudo`; um
+/// traço de 12 quadros com a água a correr (o pousar e o soltar à parte) não o mexe nem nos `pointer_frame`,
+/// nem nos `release_frame`, nem no passo da sim. Controlo: «Dry canvas» (escrita de tela inteira) conta ≥ 1.
+#[test]
+fn nenhum_quadro_de_movimento_marca_a_tela_inteira() {
+    let mut e = Engine::new(640, 360);
+    e.sliders.water = 1.0;
+    e.pointer_down(60.0, 60.0, None);
+    let (mut movimento, mut x) = (0u64, 60.0);
+    for _ in 0..12 {
+        x += 20.0;
+        let antes = e.marcas_da_tela_inteira();
+        e.pointer_frame(x, 80.0);
+        e.step_simulation();
+        movimento += e.marcas_da_tela_inteira() - antes;
+    }
+    e.pointer_up();
+    loop {
+        let antes = e.marcas_da_tela_inteira();
+        let mais = e.release_frame(x, 80.0);
+        e.step_simulation();
+        movimento += e.marcas_da_tela_inteira() - antes;
+        if !mais {
+            break;
+        }
+    }
+    assert_eq!(
+        movimento, 0,
+        "{movimento} quadros de movimento marcaram a tela INTEIRA no histórico (GT-08)"
+    );
+    let antes = e.marcas_da_tela_inteira();
+    e.action_dry_canvas();
+    assert!(
+        e.marcas_da_tela_inteira() > antes,
+        "o marcador não viu a escrita de tela inteira do Dry canvas: a régua está morta"
+    );
+}

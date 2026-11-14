@@ -16,7 +16,6 @@ use ph2d_physics_ecs::PhysicsBridge;
 /// O nome de tipo do componente, como o registry o conhece.
 const WHEEL: &str = "ph2d::physics::PulleyWheel";
 
-
 /// **Acrescentar uma roldana a uma corda** — o pedido (4) do artista, *"escolher
 /// o número de roldanas, em tempo real"*.
 ///

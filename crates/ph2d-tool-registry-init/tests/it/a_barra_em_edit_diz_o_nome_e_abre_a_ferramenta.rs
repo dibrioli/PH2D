@@ -135,7 +135,12 @@ fn numa_janela_estreita_o_botao_mora_no_transbordo_e_abre_a_ferramenta() {
     let (w, mut hero) = [560.0_f32, 480.0, 420.0, 380.0, 340.0]
         .into_iter()
         .map(|w| (w, em_edit(&mut ts, w, h)))
-        .find(|(_, hero)| hero.store.tool_overflow().iter().any(|e| e.node_id() == Some(id)))
+        .find(|(_, hero)| {
+            hero.store
+                .tool_overflow()
+                .iter()
+                .any(|e| e.node_id() == Some(id))
+        })
         .expect("controlo: numa janela estreita o botão tem de estar no transbordo");
     let over: Vec<_> = hero.store.tool_overflow().to_vec();
     let entrada = over

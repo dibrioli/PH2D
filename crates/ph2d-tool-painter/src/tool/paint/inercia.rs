@@ -343,7 +343,9 @@ impl Dependente {
             Dependente::PenteadoForaDoMolhado => "panel.painter_ponta.inerte.combing_wet_only",
             Dependente::PenteadoSemFios => "panel.painter_ponta.inerte.combing_needs_bristles",
             Dependente::PenteadoSemLuz => "panel.painter_ponta.inerte.combing_needs_light",
-            Dependente::RuidoDosFiosSemLeitor => "panel.painter_ponta.inerte.bristle_noise_needs_a_reader",
+            Dependente::RuidoDosFiosSemLeitor => {
+                "panel.painter_ponta.inerte.bristle_noise_needs_a_reader"
+            }
             Dependente::MisturaDesligada => "panel.painter_layers.brush.inerte.mix_off",
             Dependente::PontoFixoSemEspalhar => {
                 "panel.painter_layers.inerte.fixed_dab_needs_scatter"

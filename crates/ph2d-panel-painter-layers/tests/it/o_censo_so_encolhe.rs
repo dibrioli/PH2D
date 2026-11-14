@@ -118,9 +118,7 @@ fn inertes_com_motivo() -> Vec<Inerte> {
         painter_pen_rotation_option_id(2),
         "o Pen tilt roda pela inclinação da caneta, e o censo risca sem inclinação",
     ));
-    for m in [Digital] {
-        v.push((m, PAINTER_PEN_ROTATION, rodar));
-    }
+    v.push((Digital, PAINTER_PEN_ROTATION, rodar));
     for m in [Digital, Watercolor, Impasto, WetPaint] {
         v.push((
             m,

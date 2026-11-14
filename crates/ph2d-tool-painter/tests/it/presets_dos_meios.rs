@@ -386,7 +386,8 @@ fn os_exemplos_sao_os_que_o_motor_grava() {
         let hoje = grava(r, grupo, nome);
         if guardado != hoje {
             // O que o motor grava hoje fica ao lado, para diffar antes de regenerar.
-            let novo = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("{nome}.ph2d-brush.png.novo"));
+            let novo = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+                .join(format!("{nome}.ph2d-brush.png.novo"));
             std::fs::write(&novo, &hoje).unwrap();
             panic!("{f:?} mudou — regenere (o de hoje: {novo:?})");
         }

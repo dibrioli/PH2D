@@ -182,6 +182,7 @@ fn measure_what_a_solid_move_costs_under_symmetry_and_tiling() {
 #[test]
 #[ignore = "medição, não gate — rode com --test-threads=1 na máquina calma"]
 fn measure_what_a_solid_move_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let side = 1024u32;
     let steps = 96usize;
     println!(

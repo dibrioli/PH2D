@@ -108,6 +108,7 @@ fn what_a_pen_up_costs_as_the_stroke_crosses_the_canvas() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn which_half_of_a_long_pen_up_is_the_expensive_one() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     fn halves(side: u32, span: f32, diagonal: bool) -> (f64, f64) {
         let mut both = Vec::new();
         let mut fold = Vec::new();
@@ -171,6 +172,7 @@ fn which_half_of_a_long_pen_up_is_the_expensive_one() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_fold_of_a_canvas_wide_stroke_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     fn fold_ms(side: u32, smoothing: Option<f32>, push: Option<f32>) -> f64 {
         let span = f64::from(side) as f32 - 200.0;
         let mut t = armed(side);
@@ -244,6 +246,7 @@ fn what_the_fold_of_a_canvas_wide_stroke_is_made_of() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --test-threads=1"]
 fn what_the_commit_half_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     fn pen_up_ms(side: u32, cursor: bool, relief: bool, history: bool) -> f64 {
         let span = f64::from(side) as f32 - 200.0;
         let mut t = armed(side);

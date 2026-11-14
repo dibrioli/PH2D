@@ -51,6 +51,7 @@ fn pintados(a: &[u8]) -> usize {
 #[test]
 #[ignore = "sonda W14: corre-se por nome (--ignored --nocapture)"]
 fn sonda_o_salto_no_fim_do_clipe() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     for (lado, n) in [(1024u32, 2usize), (1024, 4)] {
         let (mut t, bytes, dur) = grava_no_papel_ligado(lado, 1, n).expect("grava");
         // A espera de uma etapa editada (W8 2b): o fio da imagem do fim nova.

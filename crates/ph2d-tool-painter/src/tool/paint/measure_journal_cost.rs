@@ -45,6 +45,7 @@ fn dab_area(px: f32, py: f32, r: f32, side: usize) -> (usize, usize, usize, usiz
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_a_region_journal_costs_against_the_fork_it_replaces() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     eprintln!("\n[journal] captura por REGIAO x fork do PLANO (o que o S3 troca por que)");
     for side in [2048usize, 4096] {
         let n = side * side * 4;

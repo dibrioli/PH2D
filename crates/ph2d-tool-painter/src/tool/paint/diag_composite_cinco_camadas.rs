@@ -299,6 +299,7 @@ fn diag_um_segundo_brush_na_pilha_chega_a_depositar() {
 #[test]
 #[ignore = "diagnóstico de relógio: roda sob demanda, em --release e com a máquina calma"]
 fn diag_o_preco_de_reusar_a_lista_de_dabs_num_carimbo_maior() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     eprintln!("loadavg {} · canvas {SIZE}² · traço 720 px", carga());
     eprintln!("  A camada GRANDE (raio 96) sobre a lista de um pincel de raio 24:");
     eprintln!("   op    | percurso PROPRIO (sp 0,100) | lista REUSADA (sp 0,025) |  razao");
@@ -328,6 +329,7 @@ fn diag_o_preco_de_reusar_a_lista_de_dabs_num_carimbo_maior() {
 #[test]
 #[ignore = "diagnóstico de relógio: roda sob demanda, em --release e com a máquina calma"]
 fn diag_o_custo_segue_a_tela_ou_o_traco() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     eprintln!("loadavg {} · raio {RAIO} · traço 720 px", carga());
     eprintln!("  tela | [Brush] | [Smear] |  [Blur] | pilha de HOJE");
     for lado in [512u32, 1024, 2048] {
@@ -412,6 +414,7 @@ fn diag_o_preco_do_tamanho_por_camada() {
 #[test]
 #[ignore = "diagnóstico de relógio: roda sob demanda, em --release e com a máquina calma"]
 fn diag_o_nucleo_de_caixa_contra_o_binomial() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     eprintln!("loadavg {} · canvas {SIZE}² · traço 720 px", carga());
     eprintln!("  raio | binomial |   caixa | ganho p50 (p10..p90) | pior byte |  media");
     for raio in [12.0f32, 24.0, 48.0, 96.0] {

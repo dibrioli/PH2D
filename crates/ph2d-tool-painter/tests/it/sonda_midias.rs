@@ -419,6 +419,7 @@ fn as_midias_com_os_knobs_de_hoje() {
 #[test]
 #[ignore = "sonda: a lei densa raio → largura dos presets de fábrica (W2); corre-se à mão"]
 fn a_lei_densa_dos_presets_de_fabrica() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let out = saida();
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let bib = Biblioteca::carregar(&raiz, None);
@@ -650,6 +651,7 @@ fn sonda_o_perfil_do_cruzamento() {
 #[test]
 #[ignore = "sonda: o custo do Glaze (prompt 42); corre-se à mão"]
 fn sonda_o_custo_do_glaze() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     use super::sonda_gestos::{AZUL, VERMELHO, gesto};
     let base = super::midias_de_fabrica::de_fabrica("Wet Liner");
     let mut minimos = [(f64::MAX, f64::MAX); 2];

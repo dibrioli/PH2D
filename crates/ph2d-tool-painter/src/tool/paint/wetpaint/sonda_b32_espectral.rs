@@ -190,6 +190,7 @@ fn sonda_b32_prancha_km_x_espectral() {
 #[test]
 #[ignore = "sonda de custo B32.1 (--profile smoke): ms por passo do Wet 4K, K–M × espectral"]
 fn sonda_b32_custo_do_passo_km_x_espectral() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const RODADAS: usize = 9;
     let b = biblioteca();
     for nome in PINCEIS {

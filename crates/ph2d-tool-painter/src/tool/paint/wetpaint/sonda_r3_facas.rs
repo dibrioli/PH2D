@@ -22,6 +22,7 @@ const FACAS: [&str; 6] = [
 #[test]
 #[ignore = "sonda R3: o preço da composição nas facas 4K"]
 fn sonda_r3_facas() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let (w, h) = (3840u32, 2160u32);
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../assets/brushes/WetPainter/Oil/Knife");

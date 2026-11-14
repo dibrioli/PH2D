@@ -155,6 +155,7 @@ fn measure_what_the_drying_pass_visits() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_a_drying_pass_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 7;
     let (mut t, p, evap, rewet) = puddle();
     let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
@@ -190,6 +191,7 @@ fn measure_what_a_drying_pass_is_made_of() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_opacity_lookup_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use ph2d_wet_paint::opacity::alpha_of_mass;
     const N: usize = 2_600_000; // ~2 chamadas por celula trabalhada da poca
     let masses: Vec<f64> = (0..N).map(|k| (k % 2900) as f64 + 0.5).collect();
@@ -238,6 +240,7 @@ fn measure_what_the_opacity_lookup_costs() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_an_advect_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 7;
     println!("\n  DE QUE O `advect` E FEITO (mediana de {REPS}, poca do produto)\n");
     for flow in [1u8, 4] {
@@ -441,6 +444,7 @@ fn measure_how_far_the_gather_advect_drifts_from_the_reference() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_gather_advect_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use ph2d_wet_paint::par::Rows;
     const REPS: usize = 7;
     println!("\n  O CUSTO DO `advect` PELAS TRES ROTAS (mediana de {REPS})\n");

@@ -20,7 +20,7 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 /// gates de razão do módulo, e ela é imune à deriva da máquina porque compara duas medições da mesma
 /// corrida.
 #[test]
-#[ignore]
+#[ignore = "sonda de relógio do pen-down: imprime, não afirma (B44.6)"]
 fn is_the_relief_pen_down_the_planes_or_the_dab() {
     use ph2d_painter_brush::height::DrawTo;
     println!("[relief-pd] pen-down do RELEVO por raio — plano = os PLANOS, r² = o DAB");
@@ -71,7 +71,7 @@ fn is_the_relief_pen_down_the_planes_or_the_dab() {
 /// dói: o **1º** pen-down de uma camada virgem (que aloca o que for lazy), o **2º** (tudo já alocado) e o
 /// **move** que vem depois. A diferença entre o 1º e o 2º é, por definição, o custo de *estrear*.
 #[test]
-#[ignore]
+#[ignore = "sonda de relógio do pen-down: imprime, não afirma (B44.6)"]
 fn the_first_stroke_latency() {
     use ph2d_painter_brush::height::DrawTo;
     println!("[pendown] ms — 1o pen-down (camada virgem) | 2o pen-down | move seguinte");
@@ -146,7 +146,7 @@ fn the_first_stroke_latency() {
 /// então a diferença entre dois grupos é a configuração e nada mais. É o mesmo raciocínio dos gates de
 /// RAZÃO do módulo: comparar duas medições da MESMA corrida é imune à deriva que separa duas corridas.
 #[test]
-#[ignore]
+#[ignore = "sonda de relógio do pen-down: imprime, não afirma (B44.6)"]
 fn where_the_relief_dab_spends_its_time() {
     use ph2d_painter_brush::height::DrawTo;
     const SIZE: u32 = 4096;
@@ -241,7 +241,7 @@ fn where_the_relief_dab_spends_its_time() {
 /// traço — a lição que o [`where_the_relief_dab_spends_its_time`] pagou: dois tools são duas telas,
 /// dois alocadores e duas vizinhanças, e a deriva entre eles já mediu ±40% neste repo.
 #[test]
-#[ignore]
+#[ignore = "sonda de relógio do pen-down: imprime, não afirma (B44.6)"]
 fn is_the_film_pen_down_the_planes_or_the_dab() {
     use ph2d_painter_brush::TextureKind;
     println!("[film-pd] pen-down do FILME por raio — plano = SETUP por gesto, r^2 = o 1o DAB");

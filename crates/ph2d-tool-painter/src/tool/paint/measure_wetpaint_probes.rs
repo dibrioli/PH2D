@@ -16,6 +16,7 @@ use super::*;
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_what_a_frame_of_live_water_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const FRAME_MS: f32 = 16.6;
     println!(
         "\n{:<8} {:>7} {:>12} {:>12} {:>12}",
@@ -83,6 +84,7 @@ fn measure_what_a_frame_of_live_water_costs() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_whether_the_tick_feeds_back_on_a_slow_frame() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "\n{:<8} {:>8} {:>12} {:>12}",
         "tela", "dt ms", "tick p50 ms", "tick max ms"
@@ -130,6 +132,7 @@ fn measure_whether_the_tick_feeds_back_on_a_slow_frame() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_how_the_tick_scales_with_the_wet_area() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "\n{:<10} {:>10} {:>12} {:>12} {:>12}",
         "traco px", "dabs", "tick p50 ms", "tick max ms", "sujo/tela"
@@ -190,6 +193,7 @@ fn measure_how_the_tick_scales_with_the_wet_area() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_whether_the_sim_pays_for_the_water_or_for_its_bounding_box() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     /// O passo por eixo que mantém o COMPRIMENTO do caminho igual ao do horizontal.
     const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
     let side = 4096u32;
@@ -291,6 +295,7 @@ fn measure_whether_the_sim_pays_for_the_water_or_for_its_bounding_box() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_how_the_tick_scales_with_the_brush_radius() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "\n{:<10} {:>10} {:>12} {:>12} {:>12} {:>10}",
         "raio px", "passos", "sim p50 ms", "comp p50 ms", "TICK p50 ms", "sujo/tela"
@@ -372,6 +377,7 @@ fn measure_how_the_tick_scales_with_the_brush_radius() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_what_the_sim_time_budget_buys() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
     const FRAMES: usize = 120;
     let side = 4096u32;
@@ -458,6 +464,7 @@ fn measure_what_the_sim_time_budget_buys() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_two_halves_of_a_wet_tick() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
     let side = 4096u32;
     println!(
@@ -532,6 +539,7 @@ fn measure_the_two_halves_of_a_wet_tick() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_the_heavy_puddle_regime() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let mut t = heavy_puddle();
     for _ in 0..10 {
         ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
@@ -567,6 +575,7 @@ fn measure_the_heavy_puddle_regime() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture"]
 fn measure_what_a_wet_stamp_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
     println!(
         "\n{:<10} {:>8} {:>10} {:>10} {:>10} {:>10}",

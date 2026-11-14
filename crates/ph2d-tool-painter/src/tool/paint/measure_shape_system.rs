@@ -352,6 +352,7 @@ fn measure_shape_system_with_parked_shapes() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_sparse_batch_penalty() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!("[shape-sys] o MESMO lote, COLADO x ESPALHADO — Ellipse ativa r=400, Digital, 4096");
     println!(
         "{:>10} {:>7}  {:>9} {:>9} {:>9} {:>9}  {:>10} {:>8}",
@@ -434,6 +435,7 @@ fn measure_sparse_batch_penalty() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_idle_frame_of_a_live_shape() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "[shape-sys] o que um quadro OCIOSO pergunta ao tool (µs) — 4096, raio 48, figura 400 px"
     );

@@ -257,6 +257,7 @@ fn resumo(v: &mut [f32]) -> (f32, f32) {
 #[test]
 #[ignore = "medicao — rode com --profile smoke --ignored --nocapture --test-threads=1"]
 fn sonda_macro_a_custo() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!("[macro a] load antes {}", carga());
     let tamanhos = [1024u32, 2048, 4096];
     let mut ts: Vec<PainterTool> = tamanhos

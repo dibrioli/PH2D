@@ -213,6 +213,7 @@ fn ppm(p: &[u8], destino: &str) {
 #[test]
 #[ignore = "sonda: corre à mão"]
 fn sonda_mescla_espacial_do_watercolor() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let dir = std::env::var("PH2D_MESCLA_DIR").expect("PH2D_MESCLA_DIR");
     let base = azul_seco();
     ppm(&base, &format!("{dir}/00_base.ppm"));

@@ -244,6 +244,7 @@ fn sonda_w12_assar_no_primeiro_toque() {
 #[test]
 #[ignore = "SONDA W12: o custo da água marcada"]
 fn sonda_w12_o_custo_da_agua_marcada() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use super::marca::MarcaDoArtista;
     const LADO: u32 = 1024;
     let nova = |marcada: bool| {

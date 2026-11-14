@@ -35,6 +35,7 @@ use super::*;
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_a_step_of_the_products_puddle_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use ph2d_wet_paint::grid::{Grid, restore_grid, snapshot_grid};
     use ph2d_wet_paint::solver;
     use ph2d_wet_paint::tuning::Knob;
@@ -282,6 +283,7 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_grid_ratio_buys() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 9;
     println!("\n  A MESMA CENA EM RAZOES DE GRADE DIFERENTES (mediana de {REPS})\n");
     println!("    O slider 'Grid Size (px)' e a porta; a figura em PIXELS e sempre a mesma.\n");
@@ -361,6 +363,7 @@ fn measure_what_the_grid_ratio_buys() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_km_costs_at_each_grid_ratio() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 7;
     println!("\n  O K-M POR RAZAO DE GRADE (mediana de {REPS}, 4096x4096, pincel r=100)\n");
     println!(
@@ -471,6 +474,7 @@ fn measure_what_km_costs_at_each_grid_ratio() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_the_composite_with_the_rect_it_actually_writes() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 7;
     const SIDE: u32 = 4096;
 

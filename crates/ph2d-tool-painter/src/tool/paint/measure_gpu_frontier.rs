@@ -163,6 +163,7 @@ fn measure_the_brush_radius_sweep() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_stack_depth() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!("\n{:<10} {:>8} {:>14}", "layers", "canvas", "composite ms");
     for layers in [1usize, 4, 8, 16] {
         for size in [2048u32, 4096] {
@@ -208,6 +209,7 @@ fn measure_the_stack_depth() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_impasto_fold() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     /// A canvas with `layers` sculpted layers, each carrying a stroke of its own — the fold has to have
     /// something to fold, and a single layer would report the walk while hiding the composite modes.
     fn sculpted(size: u32, layers: usize) -> PainterTool {
@@ -276,6 +278,7 @@ fn measure_the_impasto_fold() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_what_the_fold_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     fn sculpted(size: u32) -> PainterTool {
         let mut t = armed(size, PaintMedia::Impasto, 100.0);
         let mid = (size / 2) as f32;
@@ -360,6 +363,7 @@ fn measure_what_the_fold_is_made_of() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_fold_the_product_runs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     fn sculpted(size: u32) -> PainterTool {
         let mut t = armed(size, PaintMedia::Impasto, 100.0);
         let mid = (size / 2) as f32;
@@ -433,6 +437,7 @@ fn measure_the_fold_the_product_runs() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_stroke_the_shell_actually_drives() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     fn stroke(size: u32, radius: f32, hold: bool) -> f64 {
         let mut t = armed(size, PaintMedia::Digital, radius);
         let mid = (size / 2) as f32;
@@ -501,6 +506,7 @@ fn measure_the_stroke_the_shell_actually_drives() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_idle_tick() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!("\n{:<12} {:>8} {:>12}", "medium", "canvas", "tick ms");
     for media in [
         PaintMedia::Digital,
@@ -547,6 +553,7 @@ fn measure_the_idle_tick() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_cost_of_falling_off_the_gpu() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "\n{:<28} {:>8} {:>14}",
         "stack", "canvas", "cpu composite ms"
@@ -602,6 +609,7 @@ fn measure_the_cost_of_falling_off_the_gpu() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_adjustment_drag() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use ph2d_painter_effects::adjustments::AdjustmentKind;
     println!("\n{:<26} {:>8} {:>16}", "stack", "canvas", "cpu drag ms");
     for size in [1024u32, 2048, 4096] {
@@ -639,6 +647,7 @@ fn measure_the_adjustment_drag() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn mede_o_caminho_da_cpu_alem_do_orcamento() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use crate::compositor::{LayerImage, MapPixelSource, composite};
     let (w, h) = (3840u32, 2160u32);
     println!("\n{:<8} {:>12}", "camadas", "cpu mín ms");

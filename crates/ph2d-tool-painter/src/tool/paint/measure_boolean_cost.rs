@@ -29,6 +29,7 @@ use ph2d_painter_brush::StrokeMethod;
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_the_boolean_of_shapes() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "[shape-sys] o custo de um MOVE com a Operation em ADD — Ellipse 400 px, Digital, raio 48"
     );
@@ -229,6 +230,7 @@ fn measure_what_the_boolean_is_made_of() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_the_scene_the_report_describes() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use super::stroke_boolean::diag as bdiag;
     println!("[shape-sys] a cena do report: 4 circulos Add, 4096, pincel GROSSO");
     println!(

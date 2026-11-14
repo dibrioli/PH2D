@@ -47,6 +47,7 @@ fn traca(t: &mut PainterTool, s: &[[f32; 2]], rampa: bool) {
 #[test]
 #[ignore = "sonda"]
 fn sonda_csp_v3_revisao() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let d = PathBuf::from(std::env::var("PH2D_CSP_CENA").expect("PH2D_CSP_CENA"));
     let o = d.join("out_ph2d");
     std::fs::create_dir_all(&o).expect("out_ph2d");

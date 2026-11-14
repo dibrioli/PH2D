@@ -43,6 +43,7 @@ fn traco_curto(t: &mut PainterTool, y: f32) -> [f64; 4] {
 #[test]
 #[ignore = "sonda de custo"]
 fn sonda_pen_up_4k() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let spec = std::env::var("PH2D_SONDA_PRESETS")
         .unwrap_or_else(|_| "Wet Wash Mix|Round Mixing|Hard Round|Filbert|Wet Round".into());
     let telas = [(1024u32, 1024u32), (3840, 2160)];

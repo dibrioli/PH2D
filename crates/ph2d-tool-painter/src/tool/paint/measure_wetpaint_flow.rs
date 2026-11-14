@@ -23,6 +23,7 @@ use super::measure_wetpaint_tick::*;
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_flow_ratio_buys_in_the_product() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     /// Amostras (mediana).
     const REPS: usize = 7;
     /// Passos por amostra: um CICLO de cadência completo.
@@ -200,6 +201,7 @@ fn measure_what_the_flow_ratio_buys_in_the_product() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_gather_advect_buys_in_the_product() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 7;
     const CYCLE: usize = 12;
     println!("\n  O QUE O GATHER COMPRA NO PASSO (mediana de {REPS} ciclos de {CYCLE})\n");

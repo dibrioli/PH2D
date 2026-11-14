@@ -382,6 +382,7 @@ fn regiao(px: &[u8], x0: usize, x1: usize, yc: f32, r: f32) -> Reg {
 #[test]
 #[ignore = "sonda"]
 fn sonda_auditoria_papel_grao() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let o = PathBuf::from(std::env::var("PH2D_AUD_OUT").expect("PH2D_AUD_OUT"));
     std::fs::create_dir_all(&o).expect("pasta");
     let b = base();

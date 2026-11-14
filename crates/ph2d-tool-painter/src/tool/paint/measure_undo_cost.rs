@@ -44,6 +44,7 @@ use super::*;
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_a_ctrl_z_costs_with_and_without_the_elision() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     fn owners(t: &PainterTool) -> usize {
@@ -155,6 +156,7 @@ fn what_a_ctrl_z_costs_with_and_without_the_elision() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_frame_after_a_ctrl_z_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     /// `(quadro pos-undo, quadro no MEIO de um traco)` em ms.
@@ -234,6 +236,7 @@ fn what_the_frame_after_a_ctrl_z_is_made_of() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn does_a_stroke_get_more_expensive_as_the_history_grows() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     for side in [4096u32] {
@@ -282,6 +285,7 @@ fn does_a_stroke_get_more_expensive_as_the_history_grows() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn does_the_frame_cadence_or_a_big_brush_reproduce_the_slow_stroke() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     for radius in [40.0f32, 100.0, 200.0, 300.0] {
@@ -326,6 +330,7 @@ fn does_the_frame_cadence_or_a_big_brush_reproduce_the_slow_stroke() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn is_it_the_brush_or_the_drain() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     println!(
@@ -432,6 +437,7 @@ fn what_a_diagonal_step_retains_at_4k() {
 #[test]
 #[ignore = "medicao — rode com --profile smoke --ignored"]
 fn what_a_diagonal_ctrl_z_copies_at_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
     const W: u32 = 3840;
     const H: u32 = 2160;

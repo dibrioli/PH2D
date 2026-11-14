@@ -397,6 +397,7 @@ fn sonda_wet_blend_vs_csp() {
 #[test]
 #[ignore = "medida: corre à mão"]
 fn custo_do_wet_blend_por_tamanho() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let (w, h) = (640usize, 400usize);
     let mut base = vec![255u8; w * h * 4];
     for y in 0..h {

@@ -139,6 +139,7 @@ pub(super) fn corre(t: &mut PainterTool, pts: &[[f32; 2]]) {
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_auditoria_o_preco() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  O PREÇO DA PILHA   (load {})", carga.trim());
     println!("  canvas {SIZE}² · pilha do dono (Blur·Brush·Brush·Smear) · passo 2 px\n");
@@ -618,6 +619,7 @@ fn diag_auditoria_atribuicao_do_smear() {
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_auditoria_a_fase_dominante() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  A FASE DOMINANTE  (load {})\n", carga.trim());
     println!(
@@ -660,6 +662,7 @@ fn diag_auditoria_a_fase_dominante() {
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_auditoria_o_tecto_da_cura() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  O TECTO DA CURA  (load {})\n", carga.trim());
     println!("  caminho  | passos | com replay | sem replay | ganho");

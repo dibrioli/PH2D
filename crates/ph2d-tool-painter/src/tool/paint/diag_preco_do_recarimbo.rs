@@ -183,6 +183,7 @@ fn diag_o_que_custa_no_borrao() {
 #[test]
 #[ignore = "sonda de relógio"]
 fn diag_quanto_do_borrao_e_alocar() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const W: u32 = 2048;
     const LADO: usize = 1484; // a caixa que o produto compõe (54,1 % da tela)
     let k = 24usize;
@@ -301,6 +302,7 @@ fn diag_o_tecto_de_um_cover() {
 #[test]
 #[ignore = "sonda de relógio"]
 fn diag_o_tecto_de_um_borrao_paralelo() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const W: u32 = 2048;
     const LADO: usize = 1484;
     let k = 24usize;

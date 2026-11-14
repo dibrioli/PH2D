@@ -27,6 +27,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_agua_quieta_depois_de_soltar() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
     for (w, h) in [(1920usize, 1080usize), (3840, 2160)] {
@@ -194,6 +195,7 @@ fn tela_pintada(lib: &Biblioteca, w: usize, h: usize) -> PainterTool {
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_sono_ligado_e_desligado() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
     let eps: f32 = std::env::var("PH2D_SONO_EPS")
@@ -285,6 +287,7 @@ fn sonda_sono_ligado_e_desligado() {
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_b13_6_saida_por_bloco() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::sync::atomic::Ordering::SeqCst;
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
@@ -404,6 +407,7 @@ fn tela_n(lib: &Biblioteca, w: usize, h: usize, preset: &str, n: usize) -> Paint
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_n_tracos_em_tempo_real() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
     let env = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<usize>().ok());
@@ -541,6 +545,7 @@ fn bits(g: &ph2d_wet_paint::grid::Grid) -> (Vec<[u32; 6]>, Vec<[u32; 4]>) {
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_quem_mexe_e_a_banda() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
     let env = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<usize>().ok());

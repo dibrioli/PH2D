@@ -76,6 +76,7 @@ fn traco_de(t: &mut PainterTool, y: f32, x0: f32, passo: f32, n: usize) -> Vec<f
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_primeiro_traco() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
     let (w, h): (usize, usize) = std::env::var("PH2D_SONDA_TELA")

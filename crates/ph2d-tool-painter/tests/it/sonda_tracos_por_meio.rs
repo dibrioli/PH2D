@@ -41,6 +41,7 @@ fn escreve_ppm(path: &std::path::Path, rgba: &[u8], w: u32, h: u32) {
 #[test]
 #[ignore = "sonda: grava PPMs para a comparação com o oráculo; corre-se à mão"]
 fn os_mesmos_gestos_nos_quatro_meios() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| {
         std::env::temp_dir()
             .join("ph2d_sonda_tracos")
@@ -74,6 +75,7 @@ fn os_mesmos_gestos_nos_quatro_meios() {
 #[test]
 #[ignore = "sonda: grava um PPM por preset do Wet Painter; corre-se à mão"]
 fn os_presets_do_wet_painter() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let Ok(qual) = std::env::var("PH2D_SONDA_PRESET") else {
         println!("[sonda] PH2D_SONDA_PRESET=<nome>|todos");
         return;

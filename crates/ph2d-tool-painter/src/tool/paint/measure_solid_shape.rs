@@ -358,6 +358,7 @@ fn measure_that_every_line_kind_does_something_under_solid() {
 #[test]
 #[ignore = "medição, não gate — auditoria de 2026-08-15"]
 fn measure_whether_decimating_the_ink_path_is_free() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     /// Douglas-Peucker, iterativo — só para medir; se pagar, vai para o produto.
     fn dp(pts: &[[f32; 2]], tol: f32) -> Vec<[f32; 2]> {
         if pts.len() < 3 {

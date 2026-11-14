@@ -42,6 +42,7 @@ fn tela(n: u32, prepara: impl FnOnce(&mut PainterTool)) -> PainterTool {
 #[test]
 #[ignore = "medida: o custo do Smooth Edges; corre-se à mão"]
 fn medida_do_smooth_edges() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const N: u32 = 4096;
     let y = (N / 2) as f32;
     let mut cenas: Vec<(&str, PainterTool)> = vec![

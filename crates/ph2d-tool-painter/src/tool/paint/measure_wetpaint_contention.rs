@@ -54,6 +54,7 @@ use super::*;
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_the_step_under_the_load_the_frame_puts_on_the_machine() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::sync::Arc as StdArc;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
@@ -201,6 +202,7 @@ fn measure_the_step_under_the_load_the_frame_puts_on_the_machine() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_how_many_cores_the_solver_wants() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::sync::Arc as StdArc;
     use std::sync::atomic::{AtomicBool, Ordering};
 

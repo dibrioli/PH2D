@@ -207,6 +207,7 @@ fn measure_how_the_watercolor_scales_with_the_brush() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_whether_the_frame_cost_grows_along_the_stroke() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const SIZE: u32 = 4096;
     const RADIUS: f32 = 100.0;
     const EV: u32 = 4;
@@ -332,6 +333,7 @@ fn measure_whether_the_wash_depends_on_the_polling_rate() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_whether_the_watercolor_charges_per_dab_or_per_event() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const SIZE: u32 = 4096;
     const RADIUS: f32 = 100.0;
     const PATH_PX: f32 = 1200.0;

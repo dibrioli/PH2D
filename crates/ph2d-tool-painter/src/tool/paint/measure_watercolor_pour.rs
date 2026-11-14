@@ -68,6 +68,7 @@ const PATH: f32 = 1500.0;
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_why_a_watercolor_frame_grows_with_the_canvas() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const RADIUS: f32 = 250.0;
     println!("\nraio {RADIUS:.0}, knobs do Enio — donos do Arc do canvas por quadro\n");
     println!(
@@ -127,6 +128,7 @@ fn measure_why_a_watercolor_frame_grows_with_the_canvas() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_which_half_of_the_frame_grows() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const RADIUS: f32 = 250.0;
     println!("\nraio {RADIUS:.0}, knobs do Enio — as duas metades do quadro\n");
     println!(
@@ -191,6 +193,7 @@ fn measure_which_half_of_the_frame_grows() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_which_knob_pays_the_tick() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const RADIUS: f32 = 250.0;
     println!("\nraio {RADIUS:.0} — TICK por quadro (o composite), ablação por entrada\n");
     println!(
@@ -257,6 +260,7 @@ fn measure_which_knob_pays_the_tick() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_what_starting_a_watercolor_stroke_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const RADIUS: f32 = 250.0;
     println!("\nraio {RADIUS:.0}, knobs do Enio — o PEN-DOWN\n");
     println!("{:<8} {:>12} {:>12}", "canvas", "pen-down ms", "cresce");
@@ -298,6 +302,7 @@ fn measure_what_starting_a_watercolor_stroke_costs() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_whether_the_default_watercolor_already_blows_the_frame() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!("\nas duas metades do quadro — DEFAULT contra os knobs do Enio\n");
     println!(
         "{:<22} {:<7} {:>7} {:>11} {:>11} {:>11} {:>9}",

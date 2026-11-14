@@ -81,6 +81,7 @@ fn sonda_custo_aquarela_de_fabrica() {
 #[test]
 #[ignore = "sonda de velocidade"]
 fn sonda_rewet_cresce_com_a_sessao() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     for rewet in [0.0f32, 0.5] {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);

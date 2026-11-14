@@ -102,6 +102,7 @@ fn wash(size: u32, radius: f32) -> PainterTool {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly with --test-threads=1"]
 fn measure_whether_the_carimbo_follows_the_canvas_or_the_footprint() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const SIZE: u32 = 4096;
     const RADIUS: f32 = 100.0;
     const STROKES: u32 = 10;

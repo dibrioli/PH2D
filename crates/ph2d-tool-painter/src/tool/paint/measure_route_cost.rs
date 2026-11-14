@@ -336,6 +336,7 @@ fn does_the_cap_cost_arithmetic_or_parallelism() {
 #[ignore = "measurement, not a gate — run explicitly with --test-threads=1"]
 #[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
 fn what_the_banded_batch_buys_when_the_cap_is_on() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use super::stamp_banded::{
         BATCH_MIN_AREA, batch_bounds, batch_work, diag, stamp_plain_dabs_banded_with, wants_bands,
     };

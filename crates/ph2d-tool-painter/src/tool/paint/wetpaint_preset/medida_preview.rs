@@ -21,6 +21,7 @@ fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_o_preview_ate_a_agua_parar() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     for nome in ["Wet Round", "Wet Wash"] {
@@ -228,6 +229,7 @@ fn sonda_a_tela_escorre() {
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_o_relogio_do_preview() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     for nome in ["Wet Round", "Wet Wash", "Wet Dry Brush", "Wet Drip"] {

@@ -43,8 +43,8 @@ pub fn perfil_da_sonda() -> String {
         cfg!(debug_assertions)
     );
     assert!(
-        !cfg!(debug_assertions),
-        "sonda de relógio em `{perfil}` (sem otimização): corra em `--profile smoke`"
+        !cfg!(debug_assertions) || std::env::var_os("PH2D_SONDA_DEV").is_some(),
+        "sonda de relógio em `{perfil}` (sem otimização): corra em `--profile smoke` (`PH2D_SONDA_DEV=1` força, para a lógica)"
     );
     perfil
 }

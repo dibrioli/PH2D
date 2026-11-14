@@ -341,6 +341,7 @@ where
 #[test]
 #[ignore = "sonda — corre-se à mão no perfil smoke"]
 fn sonda_varredura_oleo() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let b = Biblioteca::carregar(
         &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
         None,

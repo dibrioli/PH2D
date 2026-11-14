@@ -41,6 +41,7 @@ fn documento() -> (PainterTool, RtLayerId, RtLayerId) {
 #[test]
 #[ignore = "sonda de tempo"]
 fn sonda_trocar_duplicar_e_salvar_camada_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let (mut t, a, b) = documento();
     let (mut troca, mut quadro, mut dup, mut salva) = (vec![], vec![], vec![], vec![]);
     for i in 0..9 {
@@ -81,6 +82,7 @@ fn sonda_trocar_duplicar_e_salvar_camada_a_4k() {
 #[test]
 #[ignore = "sonda de tempo"]
 fn sonda_troca_recompoe_contra_mantem_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use super::cache::TROCA_RECOMPOE_SEMPRE;
     let (mut t, a, b) = documento();
     let mut m = [[vec![], vec![]], [vec![], vec![]]];
@@ -109,6 +111,7 @@ fn sonda_troca_recompoe_contra_mantem_a_4k() {
 #[test]
 #[ignore = "sonda de tempo"]
 fn sonda_fases_da_troca_de_camada_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let (mut t, a, b) = documento();
     let mut f = [vec![], vec![], vec![], vec![], vec![], vec![], vec![]];
     for i in 0..10 {
@@ -158,6 +161,7 @@ fn sonda_fases_da_troca_de_camada_a_4k() {
 #[test]
 #[ignore = "sonda de tempo"]
 fn sonda_copia_serial_contra_blocos_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     for (w, h) in [(W, H), (4096, 4096)] {
         let img = Arc::new(crate::compositor::LayerImage {
             width: w,
@@ -189,6 +193,7 @@ fn sonda_copia_serial_contra_blocos_a_4k() {
 #[test]
 #[ignore = "sonda de tempo"]
 fn sonda_colher_documento_copia_contra_partilha_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use crate::plane_copy::par_clone;
     let (mut t, a, b) = documento();
     let n = (W * H) as usize;

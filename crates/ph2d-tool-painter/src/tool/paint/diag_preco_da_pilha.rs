@@ -59,6 +59,7 @@ fn traco(t: &mut PainterTool) -> std::time::Duration {
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_preco_da_pilha() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  O PREÇO DA ORDEM POR TRAÇO   (load {})", carga.trim());
     println!("  canvas {SIZE}² · traço de {} px · passo 2 px", X1 - X0);
@@ -533,6 +534,7 @@ fn diag_preco_da_pilha() {
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_onde_vai_o_quadro_do_rabisco() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use super::composite_acumulado::fases;
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  ONDE VAI O QUADRO DO RABISCO   (load {})", carga.trim());

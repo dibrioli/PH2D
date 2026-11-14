@@ -279,6 +279,7 @@ const RONDAS_W5C: usize = 5;
 #[test]
 #[ignore = "sonda de medição (W5c): imprime, não reprova"]
 fn sonda_instantaneos() {
+    let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     use ph2d_core::razao::Razao;
     use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
     use ph2d_tool_painter::macro_track::etapas;

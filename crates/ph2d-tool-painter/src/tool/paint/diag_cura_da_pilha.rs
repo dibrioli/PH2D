@@ -358,6 +358,7 @@ fn diag_cura_o_residuo() {
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_cura_o_custo_marginal_de_uma_camada() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     // ⚠️ **As duas últimas tabelas precisam de posições que a pilha de hoje não tem.** Elas
     // RECUSAM em voz alta em vez de medir menos e parecer que mediram — *uma sonda que mede um

@@ -236,6 +236,7 @@ fn o_wet_paint_nao_sente_o_pigmento_e_por_isso_nao_o_oferece() {
 #[test]
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn diag_o_preco_do_pigmento_no_digital() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
     const N: u32 = 96;
 

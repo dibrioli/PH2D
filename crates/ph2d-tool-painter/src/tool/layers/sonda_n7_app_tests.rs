@@ -78,6 +78,7 @@ fn gesto(t: &mut PainterTool, nome: &str, f: impl FnOnce(&mut PainterTool)) {
 #[test]
 #[ignore = "sonda de tempo"]
 fn sonda_gestos_de_camada_na_cena_do_app_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     for modo in ["brush", "wetpaint"] {
         for pendente in [false, true] {
             let (mut t, base, nova) = cena(modo);

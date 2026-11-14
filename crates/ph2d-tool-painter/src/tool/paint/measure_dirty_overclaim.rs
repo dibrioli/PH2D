@@ -458,6 +458,7 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_partial_drain_cost_is_measured_not_assumed() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     /// Mede a MEDIANA de `take_preview_arc` sobre um gesto repetido — mediana, não média, porque um
     /// outlier de agendador não descreve o produto.
     ///
@@ -539,6 +540,7 @@ fn the_partial_drain_cost_is_measured_not_assumed() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_partial_drain_stages_are_measured_not_assumed() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use crate::compositor::{Region, composite_region};
 
     let mut t = fresh(StrokeMethod::Space, 12.0);

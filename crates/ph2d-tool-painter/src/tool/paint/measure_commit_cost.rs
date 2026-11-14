@@ -27,6 +27,7 @@ use super::*;
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_pen_up_is_made_of_by_ablation() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     // Um traço FIXO em px (o mesmo desenho nas duas telas), 8 traços no MESMO tool, o 1º descartado,
@@ -94,6 +95,7 @@ fn what_the_pen_up_is_made_of_by_ablation() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_undo_commit_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     println!(
@@ -163,6 +165,7 @@ fn what_the_undo_commit_costs() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_a_plane_fork_costs_through_the_products_own_door() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::sync::Arc;
     use std::time::Instant;
 
@@ -262,6 +265,7 @@ fn what_a_plane_fork_costs_through_the_products_own_door() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_single_door_bought_a_non_pigment_gesture() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     fn blur_down_ms(side: u32) -> f64 {
@@ -308,6 +312,7 @@ fn what_the_single_door_bought_a_non_pigment_gesture() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_hinted_commit_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     // O pen-up com o fold JÁ PAGO (`commit_stroke_height` chamado antes), então o que se cronometra é o
@@ -421,6 +426,7 @@ fn what_the_hinted_commit_is_made_of() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_two_halves_of_the_pen_up_cost() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     fn halves(side: u32) -> (f64, f64) {
@@ -476,6 +482,7 @@ fn what_the_two_halves_of_the_pen_up_cost() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_the_record_structural_is_made_of() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     println!(
@@ -539,6 +546,7 @@ fn what_the_record_structural_is_made_of() {
 #[test]
 #[ignore = "medicao — rode com --release --ignored"]
 fn what_an_undo_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     fn undo_ms(side: u32) -> f64 {
@@ -605,6 +613,7 @@ fn what_an_undo_costs() {
 #[test]
 #[ignore = "medicao — rode com --release"]
 fn what_the_elision_buys_at_the_pen_down_and_the_pen_up() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use std::time::Instant;
 
     fn owners(t: &PainterTool) -> usize {

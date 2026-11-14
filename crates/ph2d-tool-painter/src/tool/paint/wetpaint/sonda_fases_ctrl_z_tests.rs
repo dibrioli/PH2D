@@ -57,6 +57,7 @@ fn min_med(v: &mut [f64]) -> (f64, f64) {
 #[test]
 #[ignore = "sonda: --profile smoke --ignored --nocapture --test-threads=1"]
 fn sonda_as_fases_do_ctrl_z_wet_a_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let rodadas: usize = std::env::var("PH2D_SONDA_RODADAS")
         .ok()
         .and_then(|v| v.parse().ok())

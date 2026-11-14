@@ -137,6 +137,7 @@ fn sim_frame(t: &mut PainterTool) -> u64 {
 #[test]
 #[ignore = "sonda de medicao (wall-clock); rode com --ignored --nocapture"]
 fn measure_what_the_off_thread_sim_buys() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const FRAMES: usize = 120;
     const PERIOD: f32 = 1.0 / 60.0;
     println!("\n  A SIM FORA DA THREAD DO FRAME (4096², 120 frames a 60 Hz)");
@@ -268,6 +269,7 @@ mod measure_wetpaint_step; // a DECOMPOSIÇÃO do passo — irmã desta, por LOC
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_deposit_aa_costs() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 9;
     println!(
         "\n  O CARIMBO (move) POR RAZAO — o AA de entrada e {n}x{n} taps/celula\n",

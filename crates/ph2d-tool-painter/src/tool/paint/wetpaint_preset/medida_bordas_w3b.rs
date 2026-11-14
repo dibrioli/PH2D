@@ -45,6 +45,7 @@ pub(super) const PINCEIS_W3B: [(&str, &str); 3] = [
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_oleo_real_bordas_horizontais() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let d = std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>");
     let so = std::env::var("PH2D_OLEO_SO").unwrap_or_default();
     for (nome, rel) in PINCEIS_W3B {

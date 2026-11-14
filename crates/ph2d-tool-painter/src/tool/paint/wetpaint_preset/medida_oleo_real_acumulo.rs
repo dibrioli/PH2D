@@ -223,6 +223,7 @@ fn medida_oleo_real_acumulo() {
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_oleo_real_custo() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use ph2d_wet_paint::oleo_real::{Ambiente, CampoAltura, OleoReal, termos_com};
     let mut t = pinta_folha();
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");

@@ -423,6 +423,7 @@ pub(super) fn tela_da_borda(rel: &str, texturizado: bool, suave: f32) -> Vec<u8>
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_oleo_real_bordas() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let d = std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>");
     for (nome, rel) in [
         (
@@ -544,5 +545,8 @@ fn a_regua_le_o_que_o_ecra_mostra() {
             h: OH,
         },
     );
-    assert!(dobrada != ecra, "o controlo não vê a luz: a cena não tem relevo aceso");
+    assert!(
+        dobrada != ecra,
+        "o controlo não vê a luz: a cena não tem relevo aceso"
+    );
 }

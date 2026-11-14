@@ -36,6 +36,7 @@ fn env(n: &str, d: usize) -> usize {
 #[test]
 #[ignore = "sonda: corre à mão, no perfil smoke"]
 fn sonda_agua_oleo_4k() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let lib = Biblioteca::carregar(&raiz, None);
     let (w, h) = (3840usize, 2160usize);

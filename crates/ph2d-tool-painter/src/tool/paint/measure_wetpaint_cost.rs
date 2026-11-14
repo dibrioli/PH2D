@@ -133,6 +133,7 @@ fn measure_what_a_wet_move_marks() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_who_else_holds_the_canvas_during_a_wet_move() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const RADIUS: f32 = 100.0;
     println!(
         "\n{:<10} {:>8} {:>10} {:>16}",
@@ -194,6 +195,7 @@ fn measure_who_else_holds_the_canvas_during_a_wet_move() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_two_cures_for_the_identity_token() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     println!(
         "\n{:<8} {:>14} {:>14} {:>14}",
         "canvas", "dono único ms", "com Weak ms", "com Arc ms"

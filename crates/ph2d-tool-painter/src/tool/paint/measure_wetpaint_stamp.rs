@@ -40,6 +40,7 @@ use super::*;
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const SIDE: u32 = 4096;
     const PATH_PX: f32 = 640.0;
 
@@ -132,6 +133,7 @@ fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_that_the_ruler_costs_nothing_against_the_step_it_divides() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const REPS: usize = 9;
 
     let mut t = heavy_puddle();
@@ -199,6 +201,7 @@ fn measure_that_the_ruler_costs_nothing_against_the_step_it_divides() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_the_stamp_while_the_sim_is_actually_running() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const SIDE: u32 = 4096;
     const MOVES: u32 = 60;
     const STEP_PX: f32 = 12.0;
@@ -294,6 +297,7 @@ fn measure_the_stamp_while_the_sim_is_actually_running() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_the_stamp_landing_on_a_puddle_that_is_already_there() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const MOVES: u32 = 40;
     const STEP_PX: f32 = 24.0;
 
@@ -446,6 +450,7 @@ fn measure_what_the_artist_asks_for_against_what_the_stroke_lays() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_whether_the_grid_slider_pays_for_a_big_brush() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const SIDE: u32 = 4096;
     const MOVES: u32 = 24;
     const STEP_PX: f32 = 20.0;

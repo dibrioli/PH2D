@@ -13,6 +13,7 @@ use ph2d_painter_brush::texture::TextureKind;
 #[test]
 #[ignore = "sonda: a régua do prompt 41"]
 fn sonda_shape_color_no_wet_paint() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     let camadas: [(&str, Option<(bool, bool)>); 4] = [
         ("desligada", None),
         ("Texture", Some((true, false))),

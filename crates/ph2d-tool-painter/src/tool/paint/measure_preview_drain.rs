@@ -34,6 +34,7 @@ use super::*;
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_the_preview_drain_costs_with_the_water_running() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     const FRAMES: u32 = 90;
 
     println!("\n  O DRENO DO PREVIEW POR QUADRO, AGUA CORRENDO E MAO PARADA (4096x4096)\n");
@@ -207,6 +208,7 @@ fn the_upload_bbox_is_a_rect_and_a_corner_reading_gives_nonsense() {
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
 fn measure_what_hoisting_the_row_saves_in_the_upsampler() {
+    let _ = crate::raio_da_sonda::perfil_da_sonda();
     use super::wetpaint::grid_map::SampleU;
     const GW: usize = 512;
     const GH: usize = 288;

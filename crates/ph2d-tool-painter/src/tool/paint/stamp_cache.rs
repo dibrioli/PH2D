@@ -68,7 +68,7 @@ pub(super) struct StampKey {
 /// texture is bilinearly upscaled (softer) — Blender caps its brush image likewise.
 pub(super) fn mask_size_for(radius: f32) -> u32 {
     const MIN: u32 = 32;
-    const MAX: u32 = 1024;
+    const MAX: u32 = (2.0 * super::brush_ranges::BRUSH_SIZE_MAX_DIGITAL_PX) as u32;
     ((2.0 * radius.ceil()).max(1.0) as u32)
         .next_power_of_two()
         .clamp(MIN, MAX)

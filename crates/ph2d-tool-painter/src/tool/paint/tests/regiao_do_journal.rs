@@ -155,3 +155,57 @@ fn o_carimbo_de_cor_assado_captura_so_a_regiao_do_lote() {
     );
     exige_a_regiao("carimbo de cor assado", t);
 }
+
+/// O Sculpt (B17.6, F1m): o Inflate e o restauro da sessão escrevem a cor só na caixa do lote
+/// (`kr`/`rect`), logo o fork da tela captura essa caixa, não a tela. Corpo primeiro, depois o verbo.
+#[test]
+fn o_sculpt_captura_so_a_regiao_do_lote() {
+    for (nome, modo) in [("sculpt inflate", 7u8), ("sculpt smooth", 0u8)] {
+        let mut t = tela();
+        t.paint.tiling = [false, false];
+        pincel(&mut t);
+        t.toggle_brush_impasto();
+        t.paint.brush.radius_px = 24.0;
+        t.paint.brush.impasto_depth = 1.0;
+        let seed = t.paint.brush;
+        t.paint.brush_by_mode.fill(seed);
+        t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([260.0, 230.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([260.0, 230.0], PointerPhase::Up));
+        t.set_paint_tool_mode("sculpt");
+        t.set_sculpt_mode(modo);
+        let before: Vec<u8> = t.canvas_rgba.to_vec();
+        t.on_canvas_pointer(cp([210.0, 210.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([250.0, 225.0], PointerPhase::Move));
+        // O knob a meio do traço: o restauro da sessão (`restore_sculpt_window`) re-escreve a caixa.
+        t.set_sculpt_mode(modo);
+        let (mut changed, mut undescribed) = (0usize, 0usize);
+        for (i, (&a, &b)) in before.iter().zip(t.canvas_rgba.iter()).enumerate() {
+            if a != b {
+                changed += 1;
+                if t.undo.write_state.canvas_before(i) != Some(a) {
+                    undescribed += 1;
+                }
+            }
+        }
+        assert_eq!(
+            undescribed, 0,
+            "{nome}: {undescribed}/{changed} texels fora do journal"
+        );
+        let retido = t.undo.write_state.canvas_journal().heap_bytes();
+        assert!(
+            retido * 2 < before.len(),
+            "{nome}: o journal reteve {retido} B de uma tela de {} B (a tela inteira)",
+            before.len()
+        );
+        t.on_canvas_pointer(cp([250.0, 225.0], PointerPhase::Up));
+        if changed > 0 {
+            assert!(t.undo_last(), "{nome}: sem passo de undo");
+            assert!(
+                t.canvas_rgba[..] == before[..],
+                "{nome}: o undo não devolveu a tela ao byte"
+            );
+        }
+        println!("[{nome}] mudou {changed} B, journal {retido} B");
+    }
+}

@@ -133,7 +133,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
-                None,
+                Some(rect),
             );
             super::impasto_settle::for_each_in(rect, w, |i| {
                 dst[i * 4..i * 4 + 4].copy_from_slice(&rgba[i * 4..i * 4 + 4]);

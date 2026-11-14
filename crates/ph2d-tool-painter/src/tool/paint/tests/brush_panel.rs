@@ -958,3 +958,20 @@ fn enabled_color_ramp_paints_the_ramp_colours_through_the_tool() {
         "the brush's own green must not appear — the ramp drives the colour"
     );
 }
+
+/// B42.5 (F1m): o tecto do raio é POR MOTOR. Digital chega a 1024 (medido a 4K: 62 µs/evento, ~0,5 ms por
+/// quadro de 8 eventos, `N10_memoria.md`) e a máscara acompanha 1:1 (2048); o Wet fica em 512.
+#[test]
+fn o_tecto_do_raio_e_do_motor() {
+    let mut t = PainterTool::default();
+    t.set_brush_size_px(5000.0);
+    assert_eq!(
+        t.brush_size_px(),
+        super::super::brush_ranges::BRUSH_SIZE_MAX_DIGITAL_PX
+    );
+    assert_eq!(super::super::stamp_cache::mask_size_for(1024.0), 2048);
+    assert_eq!(super::super::stamp_cache::mask_size_for(512.0), 1024);
+    t.set_paint_media(crate::PaintMedia::WetPaint);
+    t.set_brush_size_px(5000.0);
+    assert_eq!(t.brush_size_px(), BRUSH_SIZE_MAX_PX);
+}

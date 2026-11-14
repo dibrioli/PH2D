@@ -161,9 +161,14 @@ impl PainterTool {
     pub fn raio_maximo(&self) -> f32 {
         let crua = self.paint_media() == crate::PaintMedia::WetPaint
             && self.paint.wetpaint.largura.is_none();
+        let tecto = if self.paint_media() == crate::PaintMedia::Digital {
+            super::brush_ranges::BRUSH_SIZE_MAX_DIGITAL_PX
+        } else {
+            BRUSH_SIZE_MAX_PX
+        };
         match self.paint.brush.size_max_px {
-            Some(d) if !crua => (0.5 * d).min(BRUSH_SIZE_MAX_PX),
-            _ => BRUSH_SIZE_MAX_PX,
+            Some(d) if !crua => (0.5 * d).min(tecto),
+            _ => tecto,
         }
     }
 

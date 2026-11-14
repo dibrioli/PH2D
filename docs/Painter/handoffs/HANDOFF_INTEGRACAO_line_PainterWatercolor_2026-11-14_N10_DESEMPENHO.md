@@ -149,6 +149,11 @@ Fecho 14/11 12:02–12:30 sobre `90b2643db2` + 3 commits de cura (`5819afb965` f
 Os alarmes de pincel ficam VERMELHOS de propósito: mudaram **11–12 pincéis do Wet** (Blender Dots, Hard, Soft, Textured, Oil Wash, Smear Flat, Shattered, Soft, Spikey, Wet, Water Brush)
 por B13.10 (a água já não prende na borda do quadro) e B13.4 (a secagem de cada poça é só dela). Só a aprovação do dono regrava.
 
+**Atribuição da integração n.º 10 (bissecção de binários em `36a312482a..HEAD` + réguas em execução no mesmo binário):**
+- `sem_glaze_…` **Ink Brush** mudava em `1535559a91` (B13.7, difusão Jacobi: a mensagem dizia «Diffusion é 0 na fábrica», o Ink Brush difunde) — **curado ao bit**: o produto volta ao Gauss-Seidel (`DIFUSAO_GS = 1`); Jacobi (3,1× a 4K) fica atrás da chave até o dono aprovar o Ink Brush que ela muda.
+- `sem_glaze_…` **Wet Drip**, `shape_color_tests::a_secao_desligada_e_o_traco_de_hoje_ao_byte` (cenas 1, 2, 4 por B13.4; 0, 3, 6 por B13.10) e `opcoes_tests::…_ao_byte` (S anel 8, por B13.4): com `FREIO_LINEAR` + `CADENCIA_GLOBAL` ligados no mesmo binário voltam os hashes de antes **ao byte** — vão com a aprovação do B13.10/B13.4; regravar só com ela (não regravados). Os três, mais os alarmes, estavam VERDES no merge-base.
+- `preview::censo_tests` (campos novos `lote`, `plano_marcado`, `fecho_adiado`): curado no censo.
+
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && ./target/smoke/ph2d-host-desktop`
 2. **Os pincéis que mudaram.** Abra [`target/relatorio-pinceis/index.html`](../../../target/relatorio-pinceis/index.html) no navegador e veja as miniaturas
    dos 11 pincéis acima; depois as pranchas [antes/depois da borda](../missao_4k/pranchas/B13.10/4k_papel_antes_depois.png) e

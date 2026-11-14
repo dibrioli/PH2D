@@ -19,8 +19,8 @@ use ph2d_light2d_gpu::{Config, ErroSolver, PassList, Solver};
 use crate::comum::{gpu, renderer};
 use crate::medida_luz2d_w5e::fabrica;
 
-/// O lado de textura que o dispositivo da casa pede (o padrão do wgpu; o adaptador da RTX 5060 Ti
-/// daria 32 768, mas subi-lo é da `ph2d-gpu` — ver o handoff W5e).
+/// O lado de textura do padrão do wgpu: a régua das leis CPU abaixo (a placa que só dá isto). O
+/// dispositivo da casa pede desde a B42.2 do Painter o lado do adaptador (32 768 na RTX 5060 Ti).
 const LADO: u32 = 8192;
 const UHD: (u32, u32) = (3840, 2160);
 
@@ -302,14 +302,45 @@ fn quadro(gpu: &GpuContext, luz: &mut LuzDoQuadro, w: &World, alvo: (u32, u32)) 
     pollster::block_on(escopo.pop()).map(|e| format!("{e}"))
 }
 
-/// ⭐ A 2160p a luz ACENDE (Baixo e Médio), sem erro do dispositivo, com a sombra engrossada e o aviso
-/// que o diz. Controlo na mesma corrida: o solver do degrau da W5d recusa limpo (a recusa, não o erro
-/// de validação de antes).
+/// ⭐ A 2160p a luz ACENDE (Baixo e Médio), sem erro do dispositivo. O tecto é o da PLACA (§0.0): onde
+/// a fina cabe no lado do dispositivo ela acende sem engrossar e sem aviso; onde não cabe (o lado de
+/// [`LADO`]) acende com a sombra engrossada e o aviso que o diz, e o solver do degrau da W5d recusa
+/// limpo (a recusa, não o erro de validação de antes).
 #[test]
 fn a_luz_acende_a_2160p_com_a_sombra_engrossada() {
     let Some(gpu) = gpu() else { return };
-    assert_eq!(gpu.device.limits().max_texture_dimension_2d, LADO);
+    let lado = gpu.device.limits().max_texture_dimension_2d;
+    assert!(
+        lado >= LADO,
+        "o dispositivo pede menos que o padrão: {lado}"
+    );
     let w = cena_3();
+    if [N::Baixa, N::Media]
+        .iter()
+        .all(|&n| config(UHD, n, 0).cabe_na_placa(lado).is_ok())
+    {
+        for n in [N::Baixa, N::Media] {
+            let mut luz = LuzDoQuadro::com_degrau(degrau_do(n));
+            assert_eq!(
+                quadro(&gpu, &mut luz, &w, UHD),
+                None,
+                "{n:?}: o dispositivo deu erro"
+            );
+            assert!(luz.acesa(), "{n:?}: a luz apagou: {:?}", luz.erro());
+            assert_eq!(
+                luz.fina_engrossada().0,
+                0,
+                "{n:?}: engrossou com o lado {lado}"
+            );
+            assert!(
+                !luz.avisos_de(Entity::PLACEHOLDER)
+                    .iter()
+                    .any(|a| matches!(a, AvisoDaLuz::SombraEngrossada { .. })),
+                "{n:?}: avisou de uma sombra que não engrossou"
+            );
+        }
+        return;
+    }
     let escopo = gpu.device.push_error_scope(wgpu::ErrorFilter::Validation);
     let antigo = Solver::novo(&gpu, config(UHD, N::Baixa, 0));
     assert!(

@@ -235,6 +235,13 @@ impl LuzDoQuadro {
         self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
         self.alvo_px = alvo_px;
+        self.montar_o_quadro()
+    }
+
+    /// O degrau que cabe nos tetos e a grade da vista do [`Self::preparar`]; o [`Self::gravar_com`] refá-lo
+    /// quando o dispositivo revela outro lado (o 1.º quadro supunha o do padrão do wgpu e engrossava à toa).
+    fn montar_o_quadro(&mut self) -> bool {
+        let (mundo_para_tela, alvo_px) = (self.mundo_para_tela, self.alvo_px);
         if self.cena.luzes > 0 {
             self.caber(mundo_para_tela, alvo_px);
         }
@@ -394,7 +401,11 @@ impl LuzDoQuadro {
         renderer: &SpriteRenderer,
         familias: &mut [&mut dyn ph2d_light2d_gpu::CamadaDeOclusao],
     ) {
-        self.lado_max = gpu.device.limits().max_texture_dimension_2d;
+        let lado = gpu.device.limits().max_texture_dimension_2d;
+        if lado != self.lado_max {
+            self.lado_max = lado;
+            self.montar_o_quadro();
+        }
         if std::env::var_os("PH2D_LIGHT2D_TEMPO").is_some() {
             self.tempo.get_or_insert((std::time::Instant::now(), false));
         }

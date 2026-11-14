@@ -232,20 +232,23 @@ fn the_delta_history_costs_this_much_to_undo() {
     }
 }
 
-/// **O defeito do pen-down SEGUE ABERTO no Digital com Impasto, e este é o número dele.**
+/// **O defeito do pen-down SEGUE ABERTO no Digital, e este é o número dele.**
 ///
 /// Quando a captura por região chegar a este caminho, é este teste que vira vermelho: apague-o e escreva
-/// o irmão que afirma o contrário. O oráculo é a RAZÃO contra a cópia do canvas no mesmo processo, cada
-/// lado o MÍNIMO de 5 amostras intercaladas QUENTES (`docs/DevOps/MEDIR_VELOCIDADE.md`). ⛔ A 1.ª versão
-/// comparava o 1.º pen-down com uma cópia FRIA (falhas de página da alocação de 16 MB): na integração de
-/// 13/11 leu 0,55 × 2,49 ms (0,22×) e parecia a cura; quentes, leram 0,83 × 0,79 ms (dev) e 1,33 × 0,87
-/// (smoke) — o pen-down continua do tamanho de uma cópia.
+/// o irmão que afirma o contrário. O oráculo é a RAZÃO contra o memcpy QUENTE do canvas (buffer já mapeado:
+/// o piso de QUALQUER cópia inteira) no mesmo processo, cada lado o MÍNIMO de 5 amostras intercaladas
+/// (`docs/DevOps/MEDIR_VELOCIDADE.md`). ⛔ Contra a cópia ALOCADA (`src.clone()`, falhas de página dos 16 MB)
+/// a régua mente duas vezes: a 13/11 leu 0,55 × 2,49 ms (0,22×) e parecia a cura; a 14/11 (N10, depois de o
+/// Ctrl+Z escrever no lugar, `bd78b026b1`/`957ced81ff`, a cópia do pen-down deixou de alocar) leu 0,42 × 2,5 ms
+/// (0,17×) e reprovou. Contra o memcpy quente: 0,61–0,64 × 0,79–1,08 ms (0,60–0,77×, smoke, 3/3) — ainda uma
+/// cópia. O limiar 0,3 separa-a de um pen-down pela pegada (um dab de 24 px numa tela de 2048² é ≪ 0,1×).
 #[test]
 fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
     const SIDE: u32 = 2048;
     let n = (SIDE as usize) * (SIDE as usize) * 4;
     let mut t = tool(SIDE);
     let src: Vec<u8> = vec![7u8; n];
+    let mut warm: Vec<u8> = vec![0u8; n];
     let (mut down, mut copy) = (f64::MAX, f64::MAX);
     for k in 0..6 {
         #[allow(clippy::cast_precision_loss)]
@@ -255,9 +258,8 @@ fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
         });
         t.on_canvas_pointer(cp([160.0, y], PointerPhase::Move));
         t.on_canvas_pointer(cp([160.0, y], PointerPhase::Up));
-        let mut dst = Vec::new();
-        let c = ms(&mut || dst = src.clone());
-        std::hint::black_box(dst.len());
+        let c = ms(&mut || warm.copy_from_slice(&src));
+        std::hint::black_box(warm.len());
         if k > 0 {
             down = down.min(d);
             copy = copy.min(c);
@@ -265,13 +267,13 @@ fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
     }
     let ratio = down / copy.max(f64::MIN_POSITIVE);
     println!(
-        "[pen-down] {SIDE}: pen-down {down:.2} ms · copiar o canvas {copy:.2} ms · {ratio:.2}x"
+        "[pen-down] {SIDE}: pen-down {down:.2} ms · memcpy quente do canvas {copy:.2} ms · {ratio:.2}x"
     );
     assert!(
-        ratio > 0.5,
+        ratio > 0.3,
         "o pen-down ({down:.2} ms) deixou de ter a ordem de grandeza de uma cópia do canvas \
-         ({copy:.2} ms) — se isto foi a captura por REGIÃO, apague este gate e escreva o irmão \
-         que afirma o contrário"
+         (memcpy quente {copy:.2} ms, {ratio:.2}×) — se isto foi a captura por REGIÃO, apague este gate \
+         e escreva o irmão que afirma o contrário"
     );
 }
 

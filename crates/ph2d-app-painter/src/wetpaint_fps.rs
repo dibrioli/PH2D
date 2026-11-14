@@ -3,7 +3,7 @@
 //! PROCESSO: a grade que já viu óleo fica com a óptica dele), a espera, o Wet Drip por cima, a água a correr. O período é o tempo entre duas chamadas
 //! seguidas de [`conduz`] (uma por quadro, de dentro da ponte); o ponteiro chega a `HZ` eventos por
 //! segundo como um rato real. As faixas acumulam (a água das anteriores ainda corre): o relato é POR RODADA.
-//! Tamanho da tela: `PH2D_FPS_TELA` (lado em px, omissão 1024).
+//! Tamanho da tela: `PH2D_FPS_TELA` = `<lado>` ou `<w>x<h>` (`3840x2160` = o 4K do produto), omissão 1024².
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use ph2d_tool_painter::PainterTool;
@@ -27,7 +27,7 @@ const FASES: [(&str, f64, Option<&str>); 4] = [
     ("corre", 5.0, None),
 ];
 
-use crate::wetpaint_smoke::lado_do_fps as lado;
+use crate::wetpaint_smoke::tela_do_fps;
 
 #[derive(Default)]
 struct Estado {
@@ -120,10 +120,10 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
         }
     }
     let t = (agora - e.inicio_fase.unwrap_or(agora)).as_secs_f64();
-    let lado = lado() as f32;
+    let [w, h] = tela_do_fps().map(|v| v as f32);
     // As faixas sobem de baixo para cima: a água de uma faixa nova escorre para as já medidas.
-    let y = lado * (0.9 - 0.8 * (passo / FASES.len()) as f32 / RODADAS as f32);
-    let x = |k: usize| lado * 0.1 + lado * 0.8 * ((k as f64 / HZ) / dur).min(1.0) as f32;
+    let y = h * (0.9 - 0.8 * (passo / FASES.len()) as f32 / RODADAS as f32);
+    let x = |k: usize| w * 0.1 + w * 0.8 * ((k as f64 / HZ) / dur).min(1.0) as f32;
     let t0 = Instant::now();
     let mut n = 0;
     if pincel.is_some() {
@@ -201,8 +201,9 @@ fn oleo() -> bool {
 fn relatorio(e: &Estado) {
     let nome = ["sem real", "real oil"][usize::from(oleo())];
     eprintln!(
-        "[fps] === tela {0}x{0}, {nome}: período p50 (ms) por rodada ===",
-        lado()
+        "[fps] === tela {}x{}, {nome}: período p50 (ms) por rodada ===",
+        tela_do_fps()[0],
+        tela_do_fps()[1]
     );
     for (f, (fase, ..)) in FASES.iter().enumerate() {
         let r: Vec<String> = e.tabela[f].iter().map(|x| format!("{:.1}", x[0])).collect();

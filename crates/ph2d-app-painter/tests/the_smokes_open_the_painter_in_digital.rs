@@ -76,7 +76,8 @@ fn the_smokes_still_prepare_a_canvas() {
         assert!(
             src.contains("fn spawn_if_enabled")
                 && src.contains("fn arm_brush_once")
-                && src.contains("spawn_blank_canvas"),
+                // `spawn_blank_rect` = a mesma tela com os dois lados (a cena do FPS a 3840×2160, B44.4).
+                && (src.contains("spawn_blank_canvas") || src.contains("spawn_blank_rect")),
             "o smoke `{name}` perdeu o preparo do canvas — este gate ficaria verde por vacuidade se o \
              arquivo fosse esvaziado; se o smoke foi renomeado/removido, atualize-o de propósito"
         );

@@ -50,13 +50,8 @@ pub fn e_a_cena_do_fps() -> bool {
     *CENA
 }
 
-/// O lado da tela da cena do FPS: `PH2D_FPS_TELA` (px), omissão 1024.
-pub fn lado_do_fps() -> u32 {
-    std::env::var("PH2D_FPS_TELA")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(1024)
-}
+/// A tela da cena do FPS: `PH2D_FPS_TELA` = `<lado>` ou `<w>x<h>` (B44.4), omissão `1024²`.
+pub use ph2d_tool_painter::wetpaint_fps_primeiro::tela_do_fps;
 
 /// Whether the smoke is armed. Cheap enough to call per frame.
 pub fn enabled() -> bool {
@@ -121,12 +116,16 @@ pub fn spawn_if_enabled(
         .map_err(|e| eprintln!("PH2D_WETPAINT_SMOKE=4: could not spawn the canvas: {e}"))
         .ok();
     }
-    match ph2d_image_import::spawn_blank_canvas(
+    match ph2d_image_import::spawn_blank_rect(
         sim,
         renderer,
         asset_db,
         cell_idx,
-        if nivel() == 3 { lado_do_fps() } else { 1024 },
+        if nivel() == 3 {
+            tela_do_fps()
+        } else {
+            [1024, 1024]
+        },
         2, // opaque white — a watercolor ground
         Vec2::new(0.0, 0.0),
         pixels_per_meter,

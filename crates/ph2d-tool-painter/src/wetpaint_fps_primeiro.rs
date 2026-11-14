@@ -1,7 +1,7 @@
 //! `PH2D_WETPAINT_SMOKE=3 PH2D_FPS_PRIMEIRO=<0..4>` — **o 1.º traço no app real** (Bug #72): escolhe o pincel, espera, dá
 //! três traços iguais e imprime o período de cada quadro à volta de cada pen-down, com placa e apresentação dentro.
-//! Tela: `PH2D_FPS_TELA` (lado em px de uma tela QUADRADA: `spawn_blank_canvas` só toma um lado). ⚠️ B44.4: o 4K do
-//! produto é 3840×2160 — 2880 é a mesma ÁREA, não a mesma forma (1440 = a área de 1920×1080).
+//! Tela: `PH2D_FPS_TELA` = `<lado>` (quadrada, a de sempre) ou `<w>x<h>` (B44.4: o 4K do produto é `3840x2160`),
+//! lida por [`tela_do_fps`] — a mesma para esta cena e para a do `=3`.
 
 use crate::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
@@ -46,6 +46,22 @@ pub fn pedido() -> Option<&'static str> {
     PINCEIS.get((*I)?).copied()
 }
 
+/// A tela das cenas do FPS (`PH2D_FPS_TELA`): `[w, h]` em px; omissão `1024²`.
+pub fn tela_do_fps() -> [u32; 2] {
+    tela_de(std::env::var("PH2D_FPS_TELA").ok().as_deref())
+}
+
+/// `"<lado>"` → quadrada; `"<w>x<h>"` → retângulo; ausente ou ilegível → `1024²`.
+fn tela_de(v: Option<&str>) -> [u32; 2] {
+    let v = v.map(str::trim).filter(|s| !s.is_empty());
+    let par = v.and_then(|s| match s.split_once('x') {
+        Some((w, h)) => Some([w.parse().ok()?, h.parse().ok()?]),
+        None => s.parse().ok().map(|l| [l, l]),
+    });
+    par.filter(|[w, h]: &[u32; 2]| *w > 0 && *h > 0)
+        .unwrap_or([1024, 1024])
+}
+
 fn ponto(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos: [x, y],
@@ -82,12 +98,9 @@ fn um_quadro(e: &mut Estado, rel: &str, painter: &mut PainterTool) {
             None => eprintln!("[primeiro] preset {rel} não encontrado"),
         }
     }
-    let lado = std::env::var("PH2D_FPS_TELA")
-        .ok()
-        .and_then(|s| s.parse::<f32>().ok())
-        .unwrap_or(1024.0);
-    let x = |k: usize| lado * 0.1 + lado * 0.8 * (k as f64 / (HZ * DUR)) as f32;
-    let y = |n: usize| lado * (0.25 + 0.25 * n as f32);
+    let [w, h] = tela_do_fps().map(|v| v as f32);
+    let x = |k: usize| w * 0.1 + w * 0.8 * (k as f64 / (HZ * DUR)) as f32;
+    let y = |n: usize| h * (0.25 + 0.25 * n as f32);
     let t_p = Instant::now();
     if e.aberto.is_none()
         && let Some(&inicio) = T_TRACOS.get(e.feitos)
@@ -130,5 +143,18 @@ fn um_quadro(e: &mut Estado, rel: &str, painter: &mut PainterTool) {
     let ponteiro = t_p.elapsed().as_secs_f64() * 1e3;
     if e.feitos < T_TRACOS.len() {
         e.quadros.push((periodo, ponteiro));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// B44.4: o `3840x2160` abre o retângulo do produto (antes caía no `1024²`), e o lado só continua quadrado.
+    #[test]
+    fn a_tela_do_fps_le_o_retangulo_e_o_lado_continua_quadrado() {
+        assert_eq!(super::tela_de(Some("3840x2160")), [3840, 2160]);
+        assert_eq!(super::tela_de(Some("2880")), [2880, 2880]);
+        assert_eq!(super::tela_de(None), [1024, 1024]);
+        assert_eq!(super::tela_de(Some("0x5")), [1024, 1024]);
+        assert_eq!(super::tela_de(Some("lixo")), [1024, 1024]);
     }
 }

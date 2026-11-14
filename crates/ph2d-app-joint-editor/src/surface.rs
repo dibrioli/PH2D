@@ -5,8 +5,7 @@ use ph2d_editor_core::doc_surface::{
     Compose, DocCommand, DocMenu, DocTab, DocumentSurface, DropAt, Dropping, KeyInput, KeyOutcome,
     PointerInput, PointerLook,
 };
-use ph2d_editor_core::registry::hash_node_id;
-use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{registry::hash_node_id, zones::Rect};
 use ph2d_host::{PointerButton, PointerKind};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -16,7 +15,7 @@ use ph2d_vector::VectorScene;
 use crate::doc::{Hit, JointEditorDoc};
 
 pub const TAB_ID: u64 = 1;
-/// File ▸ Joint Editor… (e na paleta `Ctrl+K`).
+/// File ▸ New ▸ Joint Editor… (e na paleta `Ctrl+K`).
 pub const CMD_OPEN: NodeId = hash_node_id("joint_editor.cmd.open");
 const DOC_NODE: NodeId = hash_node_id("joint_editor.document");
 

@@ -30,21 +30,6 @@ const NOT_LANGUAGE: &[Excecao] = &[
          como a ponte reencontra a junta depois do respawn do undo",
     ),
     (
-        "joint.rs",
-        "Body",
-        "o nome por omissão de um corpo sem `Name`, na porta que baptiza — identidade durável",
-    ),
-    (
-        "joint_create.rs",
-        "Body",
-        "o mesmo nome por omissão, no caminho que cria a junta — identidade durável",
-    ),
-    (
-        "joint_create.rs",
-        "{label} Wheel {}",
-        "o nome DERIVADO de uma roda nova (`<corpo> Wheel 2`) — identidade, não frase",
-    ),
-    (
         "joint_wheel.rs",
         "{name} Wheel {}",
         "o mesmo nome derivado de roda, no construtor do conjunto — identidade",
@@ -58,16 +43,6 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "joint_wheel.rs",
         "Rope {}",
         "o nome derivado de uma corda numerada do conjunto — identidade",
-    ),
-    (
-        "joint_world.rs",
-        "Body",
-        "o mesmo nome por omissão, no pino de mundo — identidade durável",
-    ),
-    (
-        "joint_world.rs",
-        "{name_a} : World",
-        "o nome DERIVADO de um pino de mundo (`<corpo> : World`) — identidade",
     ),
 ];
 

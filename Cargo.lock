@@ -8308,6 +8308,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-i18n",
  "ph2d-joint-templates",
+ "ph2d-label-census",
  "ph2d-physics-ecs",
  "ph2d-unique-name",
 ]

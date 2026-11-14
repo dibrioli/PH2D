@@ -24,5 +24,8 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 # `libm`: HR-5, a trigonometria bit-idêntica entre OS (a pose das peças).
 libm = { version = "=0.2.16", default-features = false }
 
+[dev-dependencies]
+ph2d-label-census = { path = "../ph2d-label-census" }
+
 [lints]
 workspace = true

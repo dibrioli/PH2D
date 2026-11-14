@@ -441,6 +441,49 @@ fn ablacao_de(
     println!("  load {}", carga());
 }
 
+/// Quadros de secagem entre os dois traços do `segundo`: 12 s (> Drying 10 s) ⇒ o 2.º abre sessão nova.
+const QUADROS_SECA: u32 = 720;
+
+fn segundo(size: u32) {
+    println!("  load {}", carga());
+    let mut linhas: [Vec<(f64, f64, f64, f64)>; 2] = [Vec::new(), Vec::new()];
+    for _ in 0..CORRIDAS {
+        let mut t = aquarela(size, 0.400);
+        for (k, linha) in linhas.iter_mut().enumerate() {
+            if k == 1 {
+                for _ in 0..QUADROS_SECA {
+                    t.on_tick(DT_MS);
+                    let _ = t.take_preview_arc();
+                }
+            }
+            let c = traco(&mut t, size, 1.0);
+            let q0 = c.quadros.first().map_or(0.0, |q| q.0 + q.1 + q.2);
+            linha.push((
+                c.pen_down,
+                q0,
+                c.d_gesto.stamp.max_ms,
+                c.d_gesto.composite.max_ms,
+            ));
+        }
+    }
+    let mn = |v: &[(f64, f64, f64, f64)], f: fn(&(f64, f64, f64, f64)) -> f64| {
+        v.iter().map(f).fold(f64::INFINITY, f64::min)
+    };
+    for (nome, v) in ["1.º (frio)", "2.º (mesma ferramenta, seco)"]
+        .iter()
+        .zip(&linhas)
+    {
+        println!(
+            "  {size}² {nome:<30} pen-down {:7.2} | 1.º quadro {:7.2} | carimbo máx {:6.2} | composite máx {:6.2}",
+            mn(v, |r| r.0),
+            mn(v, |r| r.1),
+            mn(v, |r| r.2),
+            mn(v, |r| r.3),
+        );
+    }
+    println!("  load {}", carga());
+}
+
 fn main() {
     let _ = ph2d_tool_painter::raio_da_sonda::perfil_da_sonda();
     let args: Vec<String> = std::env::args().collect();
@@ -486,6 +529,17 @@ fn main() {
         println!("  load {}", carga());
         celula(size, 0.400, 1.0);
         println!("  load {}", carga());
+        return;
+    }
+    // `-- segundo [2048|4096]`: B17.7 — o 1.º traço (ferramenta fria) × o 2.º na MESMA ferramenta,
+    // depois de secar (sessão NOVA), intercalados por corrida; o mínimo de cada.
+    if args.iter().any(|a| a == "segundo") {
+        let size = if args.iter().any(|a| a == "2048") {
+            2048
+        } else {
+            4096
+        };
+        segundo(size);
         return;
     }
     // `-- impressao`: a IMPRESSÃO DIGITAL de cada quadro que a ponte drena, numa sessão de dois

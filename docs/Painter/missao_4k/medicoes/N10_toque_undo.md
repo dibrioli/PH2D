@@ -250,3 +250,10 @@ sua região — o sujo do undo só decide o trabalho do 2.º quadro, não pixels
 | id | estado | antes → depois | sha | porquê |
 |---|---|---|---|---|
 | Ctrl+Z Wet 45 ms (W2a2) | **feito** | sujo `Full` (8,3 M células) → a caixa do restauro (~6 %) | este commit | o `Full` era a forma (planos preguiçosos + `oleo_real`), não o papel |
+
+**No app** (matriz `NOVA=1 CURTO=1 PH2D_QUADRO_A_PEDIDO=1`, 3840×2160 papel, `:93`, uma rodada base → cura → oráculo
+no MESMO binário do HEAD, load 4,7 → 12,9 — indicativo; `target/n10/w2a/matriz/w2a2*`), «Ctrl+Z ms» (o maior intervalo
+no segundo depois): base `36a312` Filbert 63,6 · Wet Liner 53,9 · omissão 38,0 → HEAD cura 28,7 · 29,1 · 28,7; HEAD com
+o `Full` (`PH2D_UNDO_SUJO_DOS_PLANOS=1`) 29,7 · 21,5 · 23,3. ⚠️ Esta régua não separa cura × oráculo: o maior intervalo
+é hoje o 1.º quadro (~26 ms, o undo do motor no fio da UI), e o binário tem o W2b. **Próximo:** medir o 2.º quadro pelo
+`[quadro-lento]`/perf (`dispatch`/`dobra` e a óptica do operário) cura × oráculo, intercalado, load < 5.

@@ -318,7 +318,12 @@ impl PlaneDeltas {
             crate::undo_delta::confine::vidro_neutro,
         );
         if crate::undo::window::vidro_pelo_journal() {
-            vidros.larga_os_planos_que_aparecem();
+            vidros.larga_os_planos_que_aparecem(Default::default());
+        }
+        if crate::undo_delta::aparece::relevo_aparece() {
+            heights.larga_os_planos_que_aparecem(0.0);
+            covers.larga_os_planos_que_aparecem(0);
+            mats.larga_os_planos_que_aparecem(neutro);
         }
         crate::sonda_partes::parte("split.janelas");
         let images = StoredImages::split(&mut before.images, &mut after.images);

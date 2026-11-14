@@ -30,14 +30,9 @@ const NOMES: [&str; 6] = [
 ];
 
 /// `(meio, contador, 1024², 4K)` medidos 14/11 que reprovam a lei e esperam a cura de outra pegada.
-const A_ESPERA: &[(PaintMedia, usize, u64, u64, &str)] = &[(
-    PaintMedia::Impasto,
-    2,
-    13_457_984,
-    100_407_872,
-    "o 1.º traço de Impasto grava o relevo da TELA INTEIRA no undo (~12 B/px, o nascimento dos planos); o 2.º \
-     traço já é confinado (3 017 600 nos dois) — cura no undo (F1n)",
-)];
+// O 1.º traço de Impasto (13 457 984 → 100 407 872, o relevo que nascia gravava a tela) saiu no F1p: 1 528 256
+// nas duas telas (`undo_delta_aparece`).
+const A_ESPERA: &[(PaintMedia, usize, u64, u64, &str)] = &[];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Contas([u64; 6]);

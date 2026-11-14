@@ -47,11 +47,35 @@ impl<T> StoredMap<T> {
     }
 }
 
-impl<T: Copy + Default + PartialEq> StoredMap<T> {
-    /// **O plano que aparece deixa de ser segurado** (ADR-0205, o 2.º traço): cada `OnlyAfter` com a janela
-    /// já achada ([`Self::guarda_janelas_que_aparecem`]) troca o `Arc` vivo por essa janela. Só vale onde o
-    /// neutro é `T::default()` (o vidro: `[0; 7]`); senão o refazer recriaria outro plano.
-    pub(crate) fn larga_os_planos_que_aparecem(&mut self) {
+thread_local! {
+    /// **A chave do A×B do relevo que nasce** (F1p, B44.8): `true` = os três planos do 1.º traço Impasto
+    /// guardam só a janela ([`StoredEntry::Aparece`]); `false` = o caminho de antes, que segura o plano
+    /// inteiro (o oráculo).
+    static RELEVO_APARECE: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
+/// A chave [`RELEVO_APARECE`] deste fio.
+#[must_use]
+pub(crate) fn relevo_aparece() -> bool {
+    RELEVO_APARECE.with(std::cell::Cell::get)
+}
+
+/// Liga/desliga [`RELEVO_APARECE`] neste fio (o gate intercala as duas rotas).
+#[cfg(test)]
+pub(crate) fn set_relevo_aparece(on: bool) {
+    RELEVO_APARECE.with(|c| c.set(on));
+}
+
+#[cfg(test)]
+#[path = "undo_delta_aparece_tests.rs"]
+mod tests;
+
+impl<T: Copy + PartialEq> StoredMap<T> {
+    /// **O plano que aparece deixa de ser segurado** (ADR-0205, o 2.º traço; o relevo no F1p): cada
+    /// `OnlyAfter` com a janela já achada ([`Self::guarda_janelas_que_aparecem`]) troca o `Arc` vivo por essa
+    /// janela. `neutro` é o valor do plano fora dela (o vidro e a altura/cobertura: zeros; o material: o
+    /// neutro) — o mesmo que a busca da janela usou, senão o refazer recriaria outro plano.
+    pub(crate) fn larga_os_planos_que_aparecem(&mut self, neutro: T) {
         for (k, e) in &mut self.entries {
             let StoredEntry::OnlyAfter(p) = e else {
                 continue;
@@ -63,25 +87,27 @@ impl<T: Copy + Default + PartialEq> StoredMap<T> {
             };
             let after = win.map_or_else(Box::default, |w| w.extract(p));
             debug_assert!(
-                recria(p.len(), win, &after) == **p,
+                recria(p.len(), win, &after, neutro) == **p,
                 "o plano que aparece não é o neutro fora da janela — o refazer recriaria outro (ADR-0205)"
             );
             *e = StoredEntry::Aparece {
                 len: p.len(),
                 win,
                 after,
+                neutro,
             };
         }
     }
 }
 
 /// O plano de [`StoredEntry::Aparece`]: o neutro com a janela escrita.
-pub(super) fn recria<T: Copy + Default>(
+pub(super) fn recria<T: Copy>(
     len: usize,
     win: Option<PlaneWindow>,
     after: &[T],
+    neutro: T,
 ) -> Vec<T> {
-    let mut v = vec![T::default(); len];
+    let mut v = vec![neutro; len];
     if let Some(w) = win {
         w.blit(after, &mut v);
     }

@@ -369,12 +369,13 @@ pub(crate) enum StoredEntry<T> {
     Both(StoredPlane<T>),
     OnlyBefore(Arc<Vec<T>>),
     OnlyAfter(Arc<Vec<T>>),
-    /// Um `OnlyAfter` que guarda só a janela fora do neutro (`T::default()`), sem segurar o plano vivo:
-    /// o refazer recria-o ([`aparece`], ADR-0205). `win = None` = nasceu todo neutro.
+    /// Um `OnlyAfter` que guarda só a janela fora do `neutro`, sem segurar o plano vivo: o refazer recria-o
+    /// ([`aparece`], ADR-0205; o relevo no F1p). `win = None` = nasceu todo neutro.
     Aparece {
         len: usize,
         win: Option<PlaneWindow>,
         after: Box<[T]>,
+        neutro: T,
     },
 }
 
@@ -451,9 +452,12 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
             StoredEntry::Both(_) => None,
             StoredEntry::OnlyBefore(v) => want_before.then(|| Arc::clone(v)),
             StoredEntry::OnlyAfter(v) => (!want_before).then(|| Arc::clone(v)),
-            StoredEntry::Aparece { len, win, after } => {
-                (!want_before).then(|| Arc::new(aparece::recria(*len, *win, after)))
-            }
+            StoredEntry::Aparece {
+                len,
+                win,
+                after,
+                neutro,
+            } => (!want_before).then(|| Arc::new(aparece::recria(*len, *win, after, *neutro))),
         }
     }
 

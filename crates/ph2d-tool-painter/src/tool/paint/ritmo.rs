@@ -15,6 +15,10 @@ pub(super) const PASSOS_POR_QUADRO_MAX: u32 = 8;
 pub(super) enum Ramo {
     Seca,
     Traco,
+    /// O traço de um meio que não integra no tempo (Digital, Impasto): um passo com o `dt` do quadro, os
+    /// bytes de antes do B22.1 (a lei J3 — a velocidade desde o 1.º dab — mede-se por quadro, e o banco de
+    /// pincéis tica a 8 ms; integrador 13/11: a lei nova só nos meios molhados).
+    Quadro,
 }
 
 /// Medição A×B (`PH2D_RITMO_FIXO`, lida uma vez): `0` = os dois ramos no `dt` do quadro (antes do B22.1),
@@ -34,7 +38,7 @@ fn ritmo_antigo(ramo: Ramo) -> bool {
 
 /// Os `dt` a correr neste quadro: `relogio` (em passos) recebe `dt_s` e devolve os passos inteiros.
 pub(super) fn passos_fixos(relogio: &mut f64, dt_s: f32, ramo: Ramo) -> impl Iterator<Item = f32> {
-    let (m, ultimo) = if ritmo_antigo(ramo) {
+    let (m, ultimo) = if ramo == Ramo::Quadro || ritmo_antigo(ramo) {
         (1, dt_s)
     } else {
         *relogio += f64::from(dt_s.max(0.0)) / f64::from(PASSO_FIXO_S);
@@ -66,7 +70,10 @@ impl super::PainterTool {
     ) -> bool {
         let mut stamped = false;
         let mut relogio = self.paint.traco_relogio;
-        for dt in passos_fixos(&mut relogio, dt_s, Ramo::Traco) {
+        // Só os meios molhados (aguada, Wet Paint) integram no tempo e andam no passo fixo.
+        let molhado = wet || self.paint_media() == super::media::PaintMedia::WetPaint;
+        let ramo = if molhado { Ramo::Traco } else { Ramo::Quadro };
+        for dt in passos_fixos(&mut relogio, dt_s, ramo) {
             let parked = !std::mem::take(&mut self.paint.movido_desde_o_passo);
             stroke.tick(dt, dabs);
             self.dual_passo(|m, o| m.tick(dt, o));

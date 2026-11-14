@@ -113,7 +113,7 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let cx = x as f32 + rw as f32 * 0.5;
         let cy = y as f32 + rh as f32 * 0.5;
         // rx/ry = half-extent · √2 so the corner-phase 4-gon's corners land exactly on the box corners.
@@ -141,7 +141,7 @@ impl PainterTool {
         if !self.paint.selection_active {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         self.paint.selection_edit_mode = false;
         self.paint.selection_grab = None;
         self.paint.selection_active = false;

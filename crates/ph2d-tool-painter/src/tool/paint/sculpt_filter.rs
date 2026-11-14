@@ -103,7 +103,7 @@ impl PainterTool {
                 None => return false,
             },
         };
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         // A live gesture would have its OWN frozen `pre`; filtering mid-stroke would render the gesture and
         // the filter from one `amount` and commit both under one undo step that says "filter".
         self.end_sculpt_session();

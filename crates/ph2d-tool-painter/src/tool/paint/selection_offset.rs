@@ -108,7 +108,7 @@ impl PainterTool {
         if self.paint.selection_offset_source.is_empty() || !self.paint.selection_active {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let live = self.selection_slider_offset_px();
         if !self.paint.selection_offset_active {
             // Plain mode → bake the grown selection as the base (a Raster shape), then enter ring mode so the
@@ -142,7 +142,7 @@ impl PainterTool {
         if self.paint.selection_offset_source.is_empty() || !self.paint.selection_active {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         self.bake_offset_into_shapes();
         self.reset_selection_offset();
         self.recompose_selection_mask();

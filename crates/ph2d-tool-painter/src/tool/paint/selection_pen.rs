@@ -131,7 +131,7 @@ impl PainterTool {
                 // A base booleana é a seleção que existe AGORA, e ela vale pela sessão inteira (lei 2).
                 self.ensure_selection_mask();
                 self.paint.selection_base = Arc::clone(&self.paint.selection_crisp);
-                self.paint.stroke_undo = Some(self.snapshot_model());
+                self.paint.stroke_undo = Some(self.abre_edicao_estrutural());
                 self.paint.selection_pen = Some(SelectionPen {
                     model: CurveModel::from_curve(
                         vec![pos],

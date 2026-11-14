@@ -38,6 +38,7 @@ impl PainterTool {
         if ev.phase == PointerPhase::Hover {
             return false; // hover is cursor/preview only
         }
+        self.conclui_o_fecho_adiado(); // N10 F2k: toda porta do ponteiro (pick, seleção, conta-gotas) depois do fecho
         super::wetpaint::adormecida::marca_gesto();
         // While a Symmetry pick mode is armed, the canvas sets the mirror line / radial centre instead
         // of painting (works on any layer, so it precedes the paintable-target gate).

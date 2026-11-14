@@ -237,7 +237,7 @@ impl PainterTool {
         let mantem = rgba.is_none() && self.a_nova_transparente_mantem_a_figura();
         let adormece = self.layers.active().filter(|_| mantem && self.tinta_viva());
         crate::sonda_partes::parte("mais.antes");
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         crate::sonda_partes::parte("mais.snapshot_model");
         self.flush_active_to_images();
         crate::sonda_partes::parte("mais.flush");
@@ -325,7 +325,7 @@ impl PainterTool {
             return None; // not a group / mask / adjustment
         }
         self.fecha_a_forma_aberta();
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         let (w, h) = self.source_size;
         let mask = self.layers.add_mask_for(active, w, h)?;
         // The parent (still active) flushes to images; the mask becomes the active edit target with a
@@ -404,7 +404,7 @@ impl PainterTool {
         let saida = self.layers.active().filter(|_| self.tinta_viva());
         self.fecha_a_forma_aberta();
         crate::sonda_partes::parte("troca.perguntas");
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         crate::sonda_partes::parte("troca.snapshot_model");
         self.flush_active_to_images();
         crate::sonda_partes::parte("troca.flush");

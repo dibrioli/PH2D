@@ -77,6 +77,7 @@ impl PainterTool {
     }
 
     fn on_deactivate_corpo(&mut self) {
+        self.conclui_o_fecho_adiado(); // N10 F2k: o traço solto fecha o passo antes do bake
         self.params.takeover_active = false;
         // BAKE any live Deform Transform float (commit it as one undo entry) — switching tools must persist
         // the transform AND keep it undoable, like the open-shape bake below. No-op outside Transform.
@@ -97,6 +98,7 @@ impl PainterTool {
     }
 
     fn handle_panel_event_corpo(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
+        self.conclui_o_fecho_adiado(); // N10 F2k: o clique no painel vem depois do fecho do traço solto
         // The frozen generic channel (ADR-0040 TG-B): the layers panel emits PanelEvent::{Click,
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids as core_ids;

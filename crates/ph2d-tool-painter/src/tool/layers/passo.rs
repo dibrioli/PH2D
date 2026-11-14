@@ -39,7 +39,7 @@ impl PainterTool {
         gesto: Option<CoalesceKind>,
         muda: impl FnOnce(&mut Self) -> R,
     ) -> R {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let r = muda(self);
         if self.layers == antes.layers {
             return r;

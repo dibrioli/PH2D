@@ -100,7 +100,7 @@ impl PainterTool {
         // The first surviving curve becomes the base op (New) so the recomposed mask isn't a no-op when the
         // original base was consumed; the rest keep Add/Remove.
         converted[0].op = 0;
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         self.paint.selection_shapes = converted;
         self.paint.selection_ring_stack = false; // boolean curves, not a ring stack
         self.paint.selection_edit_mode = true; // keep the gizmos shown on the new curves
@@ -181,7 +181,7 @@ impl PainterTool {
         if merged.is_empty() {
             return; // nothing traced (empty / sub-3-point mask)
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         self.paint.selection_shapes = merged;
         self.paint.selection_ring_stack = false; // boolean curves, not a ring stack
         self.paint.selection_edit_mode = true; // keep the gizmos shown on the merged curve
@@ -197,7 +197,7 @@ impl PainterTool {
         if self.paint.selection_shapes.is_empty() {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let mut changed = false;
         for e in &mut self.paint.selection_shapes {
             if let SelectionShape::Freehand { model, u } = &e.shape {

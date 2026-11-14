@@ -23,7 +23,7 @@ impl PainterTool {
         &mut self,
         kind: ph2d_painter_effects::adjustments::AdjustmentKind,
     ) -> Option<RtLayerId> {
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         let prev_active = self.layers.active();
         let id = self.layers.add_adjustment(kind)?; // LayerStack sets active = adj
         if let Some(adj) = self.layers.adjustment_mut(id) {
@@ -47,7 +47,7 @@ impl PainterTool {
     /// …). No-op mid-stroke or if `id` is not an adjustment. Invalidates the
     /// composite so the live preview re-renders.
     pub fn set_adjustment_param(&mut self, id: RtLayerId, slot: usize, slider01: f32) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -74,7 +74,7 @@ impl PainterTool {
     /// adjustment. Routes the preview through the same cut-cache fast lane as a
     /// slider edit ([`Self::set_adjustment_param`]).
     pub fn flip_adjustment_toggle(&mut self, id: RtLayerId, slot: usize) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -101,7 +101,7 @@ impl PainterTool {
         slot: usize,
         value01: f32,
     ) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -118,7 +118,7 @@ impl PainterTool {
     /// cut-cache fast lane as a slider edit. No-op mid-stroke or for a non-Gradient
     /// layer / out-of-range stop (delegated to the brush helpers).
     pub fn set_gradient_stop_offset(&mut self, id: RtLayerId, stop: usize, offset: f32) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         if let Some(g) = self.gradient_params_mut(id) {
             ph2d_painter_effects::adjustments::move_gradient_stop(g, stop, offset);
             self.ajuste_mudou(id, antes, arrasto(id, prop::GRADIENTE_POS, stop));
@@ -128,7 +128,7 @@ impl PainterTool {
     /// Insert a stop on Gradient-Map `id` (midpoint of the widest gap, color on the
     /// current gradient). Returns the inserted index, or `None` (cap / non-Gradient).
     pub fn add_gradient_stop(&mut self, id: RtLayerId) -> Option<usize> {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let g = self.gradient_params_mut(id)?;
         let idx = ph2d_painter_effects::adjustments::add_gradient_stop(g);
         if idx.is_some() {
@@ -139,7 +139,7 @@ impl PainterTool {
 
     /// Remove stop `stop` from Gradient-Map `id` (keeps ≥2 stops).
     pub fn remove_gradient_stop(&mut self, id: RtLayerId, stop: usize) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         if let Some(g) = self.gradient_params_mut(id) {
             ph2d_painter_effects::adjustments::remove_gradient_stop(g, stop);
             self.ajuste_mudou(id, antes, None);
@@ -148,7 +148,7 @@ impl PainterTool {
 
     /// Set RGB slider `slot` of Gradient-Map `id`'s `stop` from a `0..1` value.
     pub fn set_gradient_stop_color(&mut self, id: RtLayerId, stop: usize, slot: usize, value: f32) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         if let Some(g) = self.gradient_params_mut(id) {
             ph2d_painter_effects::adjustments::set_gradient_stop_color_param(g, stop, slot, value);
             self.ajuste_mudou(id, antes, arrasto(id, prop::GRADIENTE_COR, stop * 4 + slot));
@@ -180,7 +180,7 @@ impl PainterTool {
         slot: usize,
         value01: f32,
     ) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -199,7 +199,7 @@ impl PainterTool {
     /// mid-stroke or if `id` is not an adjustment. Routes the preview through the
     /// same cut-cache fast lane as a slider edit ([`Self::set_adjustment_param`]).
     pub fn set_adjustment_segment(&mut self, id: RtLayerId, option: usize) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -231,7 +231,7 @@ impl PainterTool {
         x01: f32,
         y01: f32,
     ) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         if let Some(adj) = self.layers.adjustment_mut(id)
             && set_curve_point_in(&mut adj.params, channel, point_index, x01, y01)
         {
@@ -249,7 +249,7 @@ impl PainterTool {
     /// inserted index, or `None` (no-op) mid-stroke, for a non-Curves layer, an
     /// out-of-range channel, a degenerate (<2-point) curve, or at the ≤8-point cap.
     pub fn add_curve_point(&mut self, id: RtLayerId, channel: u8) -> Option<usize> {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         let adj = self.layers.adjustment_mut(id)?;
         let at = add_curve_point_in(&mut adj.params, channel)?;
         self.ajuste_mudou(id, antes, None);
@@ -260,7 +260,7 @@ impl PainterTool {
     /// mid-stroke, for a non-Curves layer, an out-of-range channel/index, or when
     /// only the two endpoints remain (a curve needs ≥2 points).
     pub fn remove_curve_point(&mut self, id: RtLayerId, channel: u8, index: usize) {
-        let antes = self.snapshot_model();
+        let antes = self.abre_edicao_estrutural();
         if let Some(adj) = self.layers.adjustment_mut(id)
             && remove_curve_point_in(&mut adj.params, channel, index)
         {

@@ -286,7 +286,7 @@ impl PainterTool {
     fn selection_gizmo_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
         let n = self.paint.selection_shapes.len();
-        let before = self.snapshot_model(); // pre-mutation (hit_point sets `selected`; insert changes geometry)
+        let before = self.abre_edicao_estrutural(); // pre-mutation (hit_point sets `selected`; insert changes geometry)
         let mut grab = None;
         // PASS 1 — HANDLES ONLY, topmost first, across EVERY shape (point/tangent or transform-box). No
         // insert here, so clicking one curve's gizmo NEVER drops a point on a DIFFERENT curve (Enio 2026-07-04).

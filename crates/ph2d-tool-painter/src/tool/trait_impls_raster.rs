@@ -224,6 +224,7 @@ impl PainterTool {
     }
 
     fn deactivate_corpo(&mut self) {
+        self.conclui_o_fecho_adiado(); // N10 F2k: nunca larga a tela com um fecho por fazer
         self.replace_canvas(Arc::new(Vec::new()));
         self.source_size = (0, 0);
         self.preview_dirty = false;

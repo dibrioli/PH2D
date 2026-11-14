@@ -252,7 +252,7 @@ impl PainterTool {
             return false;
         };
         self.restore_paste_pristine();
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let (w, h) = self.source_size;
         if let Some(rect) = patch.footprint(w, h) {
             self.composite_patch(&patch, rect);

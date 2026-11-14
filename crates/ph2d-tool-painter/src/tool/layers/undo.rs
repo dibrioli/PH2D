@@ -8,6 +8,14 @@
 use super::super::*;
 
 impl PainterTool {
+    /// **O ponto de entrada de TODA edição estrutural** (N10 F2k): conclui o pen-up adiado do Wet e DEPOIS
+    /// fotografa o `before` — o passo do traço fica antes da edição na história, como no síncrono. O
+    /// [`Self::snapshot_model`] `&self` fica para o `after` e as leituras.
+    pub(crate) fn abre_edicao_estrutural(&mut self) -> crate::undo::ModelSnapshot {
+        self.conclui_o_fecho_adiado();
+        self.snapshot_model()
+    }
+
     /// Capture the full editable model for transactional (structural) undo —
     /// see [`crate::undo::ModelSnapshot`]. `canvas_rgba` is `Arc`-shared (cheap);
     /// `images` deep-copies the non-active layers (a rare, user-paced cost).

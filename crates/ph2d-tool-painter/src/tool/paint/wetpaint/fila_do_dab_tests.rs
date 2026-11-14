@@ -365,7 +365,8 @@ fn dentro_de_um_job_do_rayon_o_lote_pousa_sincrono() {
 }
 
 /// F2j: o traço solta com o lote ainda no operário (a porta fechada até ao Up) e a PORTA seguinte vem logo — `0`
-/// Ctrl+Z (conta-gotas, Ctrl+Shift+Z) · `1` troca de camada · `2` traço novo · `3` o tique. `fila = false` é o oráculo
+/// Ctrl+Z (conta-gotas, Ctrl+Shift+Z) · `1` troca de camada · `2` traço novo · `3` o tique · `4` camada nova + Ctrl+Z
+/// (edição estrutural, F2k) · `5` o conta-gotas armado e lido sem tique (F2k). `fila = false` é o oráculo
 /// síncrono (nenhum voo, nenhum adiado).
 fn pen_up_e_a_porta(fila: bool, qual: u8, porta: u8) -> (Vec<u8>, Vec<Option<[u8; 4]>>, usize) {
     let (w, h) = (320u32, 160u32);
@@ -416,7 +417,16 @@ fn pen_up_e_a_porta(fila: bool, qual: u8, porta: u8) -> (Vec<u8>, Vec<Option<[u8
         }
         1 => t.select_layer(b),
         2 => traco(&mut t, 90.0),
-        _ => t.ticks_em_blocos(1),
+        3 => t.ticks_em_blocos(1),
+        4 => {
+            assert!(t.add_raster_layer("C").is_some(), "a camada nova");
+            assert!(t.undo_last(), "o undo da camada nova"); // tem de desfazer a camada, não o traço
+        }
+        _ => {
+            t.set_paint_tool_mode("eyedropper"); // armar o conta-gotas conclui o fecho; a amostra `&self` sem tique
+            gotas.push(t.eyedropper_amostra([150.0, 60.0]));
+            t.set_paint_tool_mode("wetpaint");
+        }
     }
     // ⚠️ o `eyedropper_amostra` é `&self` (não é porta): lê depois de um tique, que conclui o fecho de um traço novo.
     t.ticks_em_blocos(1);
@@ -442,7 +452,7 @@ fn o_pen_up_adiado_fecha_o_passo_de_undo_do_sincrono_ao_bit() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "Textured")] {
-        for porta in 0..4u8 {
+        for porta in 0..6u8 {
             let (sincrono, gotas_s, adiados_s) = pen_up_e_a_porta(false, qual, porta);
             let (fila, gotas_f, adiados_f) = pen_up_e_a_porta(true, qual, porta);
             assert_eq!(adiados_s, 0, "{nome}/{porta}: o síncrono não adia");

@@ -272,7 +272,7 @@ impl PainterTool {
     fn fill_begin_drop(&mut self, pos: [f32; 2]) {
         // One structural-undo entry for the whole drop + modal adjust (pre-fill → committed fill).
         self.begin_undo_step(); // doc 28 §5.26 — o journal passa a descrever ESTE passo
-        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.paint.stroke_undo = Some(self.abre_edicao_estrutural());
         self.paint.fill_snapshot = (*self.canvas_rgba).clone();
         self.paint.fill_seed = Some(pos);
         self.paint.fill_last_rect = None;

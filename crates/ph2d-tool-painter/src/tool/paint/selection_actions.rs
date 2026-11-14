@@ -53,7 +53,7 @@ impl PainterTool {
         if w == 0 || h == 0 || self.canvas_rgba.len() != w * h * 4 {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let mut crisp = vec![0u8; w * h];
         for (i, c) in crisp.iter_mut().enumerate() {
             if self.canvas_rgba[i * 4 + 3] > 0 {
@@ -80,7 +80,7 @@ impl PainterTool {
         if w == 0 || h == 0 || self.canvas_rgba.len() != w * h * 4 {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let color = [
             (self.paint.brush.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             (self.paint.brush.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -157,7 +157,7 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let crisp = vec![255u8; w * h];
         self.paint.selection_shapes = vec![SelectionEntry {
             shape: SelectionShape::Raster {
@@ -191,7 +191,7 @@ impl PainterTool {
         if w == 0 || h == 0 || self.canvas_rgba.len() != w * h * 4 {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let mask = Arc::clone(&self.paint.selection_mask);
         let guarda = self.guarda_da_escrita_direta();
         let caixa = super::warp::transform_lift::mask_bbox(&mask, w as u32, h as u32);

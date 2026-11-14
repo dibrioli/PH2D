@@ -350,7 +350,7 @@ impl PainterTool {
         if self.papel.is_some() {
             self.papel = Some(nova);
         } else {
-            let before = self.snapshot_model();
+            let before = self.abre_edicao_estrutural();
             self.tira_o_branco_do_fundo();
             self.papel = Some(nova);
             self.commit_structural_edit(before);

@@ -151,7 +151,7 @@ impl PainterTool {
         if self.paint.mask_scratch_rgba.len() < n * 4 {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let scratch = self.paint.mask_scratch_rgba.as_ref().clone();
         // Store the scratch as the mask's pixels. The mask is owner-attached (NOT the active layer), so
         // its pixels live in `images[mask_id]` — exactly where the compositor reads a mask from
@@ -276,7 +276,7 @@ impl PainterTool {
         }
         // One structural undo step (pre-op scratch → post-op), so a canvas Modifier rolls back like a
         // mask stroke does.
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let radius = self.raio_do_pincel();
         {
             let buf = Arc::make_mut(&mut self.paint.mask_scratch_rgba);

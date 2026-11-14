@@ -119,7 +119,7 @@ impl PainterTool {
         let Some(i) = self.selection_curve_active_index() else {
             return false;
         };
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let changed = match &mut self.paint.selection_shapes[i].shape {
             SelectionShape::Freehand { model, .. } => model.set_kind(wire),
             _ => false,
@@ -138,7 +138,7 @@ impl PainterTool {
         let Some(i) = self.selection_curve_active_index() else {
             return false;
         };
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let removed = match &mut self.paint.selection_shapes[i].shape {
             SelectionShape::Freehand { model, .. } => model.delete_selected(),
             _ => false,

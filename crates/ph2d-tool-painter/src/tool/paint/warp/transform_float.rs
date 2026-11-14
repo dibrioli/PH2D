@@ -101,7 +101,7 @@ impl PainterTool {
         if n == 0 || self.canvas_rgba.len() != n * 4 {
             return false;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let restrict = self.deform_restricts_to_selection();
         let cur = Arc::clone(&self.canvas_rgba);
         // Split the source alpha: the patch takes the `m` fraction, the base keeps `1 − m` (a clean

@@ -25,7 +25,7 @@ impl PainterTool {
         if w == 0 || h == 0 || self.layers.len() >= HARD_CAP_LAYERS {
             return None;
         }
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         self.flush_active_to_images();
         let spec = TextureLayer::default();
         let buf = render_texture_buffer(&spec, w, h);

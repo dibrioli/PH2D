@@ -155,7 +155,7 @@ impl PainterTool {
             return;
         }
         let n = (w as usize) * (h as usize);
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         let mut crisp = if self.paint.selection_crisp.len() == n {
             (*self.paint.selection_crisp).clone()
         } else {
@@ -234,7 +234,7 @@ impl PainterTool {
     /// Begin a selection gesture: snapshot for undo, capture the base selection this gesture combines
     /// against, and start the sub-mode's drag. Automatic floods immediately.
     fn selection_down(&mut self, pos: [f32; 2]) -> bool {
-        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.paint.stroke_undo = Some(self.abre_edicao_estrutural());
         self.ensure_selection_mask();
         // Add/Remove combine against the CRISP base (not the Feathered mask), so feathered edges never
         // re-seed the accumulator.

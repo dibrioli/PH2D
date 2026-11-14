@@ -411,9 +411,9 @@ fn adia_no_relogio_fixo() -> bool {
     }
 }
 
-/// `PH2D_PEN_UP_ADIADO=1` liga o pen-up adiado (lida uma vez). DESLIGADO por omissão até a porta das edições
-/// estruturais existir (o `before` do `snapshot_model` é `&self` e é tirado ANTES do `commit_structural_edit`:
-/// N10 F2j). Nos testes, ligado (o relógio fixo decide pela [`adia_no_teste`]).
+/// O pen-up adiado, LIGADO por omissão (N10 F2k); `PH2D_PEN_UP_ADIADO=0` desliga (lida uma vez). Toda edição estrutural
+/// entra por `abre_edicao_estrutural` (conclui e só depois fotografa o `before`). Nos testes, ligado (o relógio fixo
+/// decide pela [`adia_no_teste`]).
 fn adia_o_pen_up() -> bool {
     #[cfg(test)]
     {
@@ -422,6 +422,6 @@ fn adia_o_pen_up() -> bool {
     #[cfg(not(test))]
     {
         static S: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-        *S.get_or_init(|| std::env::var("PH2D_PEN_UP_ADIADO").is_ok_and(|v| v == "1"))
+        *S.get_or_init(|| !std::env::var("PH2D_PEN_UP_ADIADO").is_ok_and(|v| v == "0"))
     }
 }

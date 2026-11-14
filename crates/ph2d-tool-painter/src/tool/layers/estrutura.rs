@@ -72,7 +72,7 @@ impl PainterTool {
         }
         self.fecha_a_forma_aberta();
         let alcance = self.mede_a_estrutura(id);
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         let activa = self.layers.active();
         self.layers.remove(id); // drops subtree + mask
         let trocou = self.layers.active() != activa;
@@ -104,7 +104,7 @@ impl PainterTool {
         }
         self.fecha_a_forma_aberta();
         let alcance = self.mede_a_estrutura(id);
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         self.flush_active_to_images();
         let (w, h) = self.source_size;
         let src_pixels = self
@@ -178,7 +178,7 @@ impl PainterTool {
             return false;
         }
         self.fecha_a_forma_aberta();
-        let undo_before = self.snapshot_model();
+        let undo_before = self.abre_edicao_estrutural();
         self.flush_active_to_images();
         let Some(mask_px) = self.images.get(&mask_id).map(|img| img.rgba8.clone()) else {
             return false;

@@ -205,7 +205,7 @@ impl PainterTool {
         if !self.paint.warp.active {
             return;
         }
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         self.replace_canvas(Arc::clone(&self.paint.warp.pre));
         // The body goes back with the pixels — unconditionally (not gated on the toggle: it may have
         // been flipped mid-session, and a restore that asks the current knob asks the wrong question).
@@ -374,7 +374,7 @@ impl PainterTool {
     }
 
     fn warp_begin(&mut self, ev: CanvasPointer) {
-        let before = self.snapshot_model();
+        let before = self.abre_edicao_estrutural();
         self.paint.stroke_undo = Some(before);
         self.ensure_deform_session();
         self.paint.deform.seed = self.paint.deform.seed.wrapping_add(1);

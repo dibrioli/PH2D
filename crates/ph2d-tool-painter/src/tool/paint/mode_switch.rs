@@ -179,6 +179,7 @@ impl PainterTool {
             "smear" | "blur" | "clone" | "sculpt" => {}
             "eyedropper" => {
                 self.paint.eraser &= conta_gotas_no_wet;
+                self.conclui_o_fecho_adiado(); // N10 F2k: a amostra `&self` lê a tela já com o fecho
                 self.paint.eyedropper_armed = true;
             }
             "eraser" => self.paint.eraser = true,

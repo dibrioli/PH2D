@@ -41,7 +41,7 @@ fn the_wgsl_globals_measures_exactly_the_rust_globals() {
         "oy",
         "rw",
         "rh",
-        "pad0",
+        "realce_linear",
         "pad1",
         "paper_body",
     ];
@@ -172,6 +172,7 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         lut_width: 4,
         rough_levels: 2,
         paper_body: 0.0,
+        realce_linear: true,
         papel: &[],
     };
     assert_eq!(base().check(), Ok(()), "a well-formed request passes");
@@ -260,6 +261,7 @@ fn o_plano_do_papel_e_o_binding_8_e_a_inclinacao_e_a_da_cpu() {
         lut_width: 4,
         rough_levels: 1,
         paper_body: 1.0,
+        realce_linear: true,
         papel: &[],
     };
     assert_eq!(e.check(), Err(ImpastoLightError::PlaneSize));

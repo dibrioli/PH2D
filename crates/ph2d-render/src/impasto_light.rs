@@ -123,6 +123,9 @@ pub struct ImpastoLightInput<'a> {
     /// 1"*: sem ela o dente que o `relief` já carrega seria multiplicado pela cobertura da TINTA, que
     /// num documento digital é zero. Escalar e não plano porque a presença é uniforme na tela.
     pub paper_body: f32,
+    /// B31.2: o realce LINEAR entre entradas da tabela (o Wet Paint); `false` = o truncado do main ao bit, o dos
+    /// outros meios (BUGS_painter #115) — o mesmo que o `Rig` da CPU decide.
+    pub realce_linear: bool,
     /// B31.1: o plano do PAPEL (a parte de `relief` que é do dente), do tamanho de `relief`; vazio sem papel.
     pub papel: &'a [f32],
 }
@@ -224,7 +227,8 @@ struct Globals {
     rw: u32,
     rh: u32,
     /// Vagas livres — um bit novo come uma delas (o WGSL tem as mesmas), e nenhum offset se move.
-    pad0: u32,
+    /// `1` = o realce linear do B31.2 (só o Wet Paint); `0` = o truncado do main. Comeu a vaga `pad0`.
+    realce_linear: u32,
     pad1: u32,
     /// `1` quando há SUBSTRATO (o dente do papel) neste frame.
     ///
@@ -575,7 +579,7 @@ impl ImpastoLightPass {
             oy: input.region.y,
             rw: input.region.w,
             rh: input.region.h,
-            pad0: 0,
+            realce_linear: u32::from(input.realce_linear),
             pad1: 0,
             paper_body: u32::from(input.paper_body > 0.5),
         };

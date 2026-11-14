@@ -190,6 +190,7 @@ fn gpu_lit(gpu: &GpuContext, planes: &ImpastoPlanes, base: &[u8]) -> Vec<u8> {
         lut_width: planes.lut_width,
         rough_levels: planes.rough_levels,
         paper_body: 0.0,
+        realce_linear: true,
         papel: &[],
     };
     let out = pass.run(gpu, &src, &input).expect("a well-formed dispatch");
@@ -512,6 +513,7 @@ fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
                 lut_width: p.lut_width,
                 rough_levels: p.rough_levels,
                 paper_body: 0.0,
+                realce_linear: true,
                 papel: &[],
             }
         }
@@ -581,6 +583,7 @@ fn o_envio_sem_copia_desenha_o_que_o_write_texture_desenhava() {
             lut_width: p.lut_width,
             rough_levels: p.rough_levels,
             paper_body: p.paper_body,
+            realce_linear: p.realce_linear,
             papel: &p.papel,
         };
         readback(&gpu, pass.run(&gpu, &src, &input).expect("antigo"))
@@ -609,6 +612,7 @@ fn o_envio_sem_copia_desenha_o_que_o_write_texture_desenhava() {
             lut_width: dobra.lut_width,
             rough_levels: dobra.rough_levels,
             paper_body: dobra.paper_body,
+            realce_linear: dobra.realce_linear,
             papel: &[],
         };
         let out = readback(

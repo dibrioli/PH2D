@@ -204,7 +204,9 @@ impl PainterTool {
         if !self.impasto_visible() {
             return true;
         }
-        let Some(light) = Rig::new(&self.paint.impasto_rig) else {
+        let Some(light) = Rig::new(&self.paint.impasto_rig)
+            .map(|r| r.com_realce_linear(self.paint_media() == crate::PaintMedia::WetPaint))
+        else {
             return true; // every lamp switched off: the canvas comes back unlit, to the byte
         };
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);

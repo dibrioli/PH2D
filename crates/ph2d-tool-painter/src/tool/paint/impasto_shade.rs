@@ -102,6 +102,9 @@ pub(super) struct Rig {
     /// 256-entry row became a 2-D table with a second axis; it is baked ONCE for the process, which is
     /// what keeps the pass transcendental-free (HR-5) despite the extra freedom.
     spec: &'static ph2d_painter_brush::material::SpecLut,
+    /// B31.2 (o realce LINEAR entre entradas da tabela) — só no Wet Paint ([`Self::com_realce_linear`]); desligado =
+    /// a leitura truncada do main ao bit (BUGS_painter #115).
+    realce_linear: bool,
     /// Every lamp is GREY (`r = g = b`). Then every channel's ratio is the same number, and the shade
     /// computes it **once** instead of three times.
     ///
@@ -132,7 +135,7 @@ impl Rig {
                 flat_base[c] += l.tint[c] * lz;
                 flat_wax[c] += l.tint[c] * wrapped;
             }
-            flat_spec[i] = self.spec.spec(level, l.half[2]);
+            flat_spec[i] = self.realce(level, l.half[2]);
         }
         MatShade {
             key,
@@ -176,8 +179,31 @@ impl Rig {
             lamps,
             n: resolved.lamps().len(),
             spec: ph2d_painter_brush::material::SpecLut::get(),
+            realce_linear: false,
             achromatic: resolved.achromatic(),
         })
+    }
+
+    /// Liga o realce LINEAR do B31.2 (o Wet Paint); fora dele o realce é o truncado do main.
+    #[must_use]
+    pub(super) fn com_realce_linear(mut self, on: bool) -> Self {
+        self.realce_linear = on;
+        self
+    }
+
+    /// O realce da tabela pela lei deste rig.
+    fn realce(&self, level: usize, ndh: f32) -> f32 {
+        if self.realce_linear {
+            self.spec.spec(level, ndh)
+        } else {
+            self.spec.spec_truncado(level, ndh)
+        }
+    }
+
+    /// O realce é o linear do B31.2 (o Wet Paint)? — o que a placa recebe em `realce_linear`.
+    #[must_use]
+    pub(super) fn realce_linear(&self) -> bool {
+        self.realce_linear
     }
 
     /// The lit lamps, in the form the GPU light pass consumes
@@ -277,7 +303,7 @@ impl Rig {
             let direct = raw.max(0.0);
             let scattered = ph2d_painter_brush::material::wrapped_ndl(raw, mat.wax) - direct;
             let ndh = n[0] * l.half[0] + n[1] * l.half[1] + n[2] * l.half[2];
-            let s = self.spec.spec(mat.level, ndh);
+            let s = self.realce(mat.level, ndh);
             // Each lamp's highlight is relative to ITS OWN flat response, and clamped at zero there:
             // summing the raw speculars and subtracting the flat total would let a lamp facing away
             // borrow headroom from one facing the paint, and the pass would glint on flat ground.

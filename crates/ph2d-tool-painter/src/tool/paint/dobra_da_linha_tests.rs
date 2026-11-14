@@ -145,6 +145,7 @@ impl PainterTool {
             mat0,
             mat1,
             paper_body: fields.paper_body(),
+            realce_linear: false,
             papel,
             lamps,
             spec_lut: lut.table(),

@@ -432,6 +432,7 @@ fn main() {
             lut_width: 256,
             rough_levels: 8,
             paper_body: 1.0,
+            realce_linear: true,
             // B31.1: o plano do papel = o relevo inteiro (a inclinação de sempre: `pap + c·(alt − pap) = alt`).
             papel: &t.altura,
         }

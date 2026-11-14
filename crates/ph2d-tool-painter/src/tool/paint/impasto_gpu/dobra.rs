@@ -61,13 +61,17 @@ impl PainterTool {
             w: rw,
             h: rh,
         })?;
-        let lamps = super::super::impasto_shade::Rig::new(&self.paint.impasto_rig)?.export_lamps();
+        let rig = super::super::impasto_shade::Rig::new(&self.paint.impasto_rig)?
+            .com_realce_linear(self.paint_media() == crate::PaintMedia::WetPaint);
+        let realce_linear = rig.realce_linear();
+        let lamps = rig.export_lamps();
         let lut = ph2d_painter_brush::material::SpecLut::get();
         Some(ImpastoDobra {
             width: w,
             height: h,
             region: (rx, ry, rw, rh),
             paper_body: fields.paper_body(),
+            realce_linear,
             lamps,
             spec_lut: lut.table(),
             lut_width: ph2d_painter_brush::material::SPEC_LUT as u32,
@@ -94,6 +98,8 @@ pub struct ImpastoDobra<'a> {
     /// `(x, y, w, h)`, já recortada à tela — o que [`ImpastoPlanes::region`](super::ImpastoPlanes::region) diria.
     pub region: (u32, u32, u32, u32),
     pub paper_body: f32,
+    /// B31.2 só no Wet Paint: o realce linear entre entradas da tabela (`false` = o truncado do main).
+    pub realce_linear: bool,
     pub lamps: Vec<ImpastoLamp>,
     pub spec_lut: &'static [f32],
     pub lut_width: u32,

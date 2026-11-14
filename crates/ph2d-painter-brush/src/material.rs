@@ -204,6 +204,14 @@ impl SpecLut {
         row[i] + (row[i + 1] - row[i]) * f
     }
 
+    /// [`Self::spec`] lida por TRUNCAÇÃO — a de `main` 4f46a3573c ao bit, a dos meios fora do Wet Paint (o B31.2 só
+    /// no Wet Paint, BUGS_painter #115; o `spec_at` do shader faz a mesma conta com `realce_linear = 0`).
+    #[must_use]
+    pub fn spec_truncado(&self, level: usize, ndh: f32) -> f32 {
+        let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
+        self.table[level.min(ROUGH_LEVELS - 1) * SPEC_LUT + i]
+    }
+
     /// The whole table, row-major `ROUGH_LEVELS x SPEC_LUT` — the shape the GPU port uploads.
     ///
     /// The GPU takes these EXACT floats rather than baking its own: `powf` is the one transcendental in

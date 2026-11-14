@@ -68,7 +68,7 @@ impl<'a> GraoNoFilme<'a> {
             return None;
         }
         let papel = papel?;
-        let luz = Rig::new(rig)?;
+        let luz = Rig::new(rig)?.com_realce_linear(true); // o grão sob o filme é do Wet Paint (B31.2)
         let mat = luz.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());
         Some(Self {
             papel,

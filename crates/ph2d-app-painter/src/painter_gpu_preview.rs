@@ -600,6 +600,7 @@ fn compose_light_premul(
             lut_width: planes.lut_width,
             rough_levels: planes.rough_levels,
             paper_body: planes.paper_body,
+            realce_linear: planes.realce_linear,
             papel: &[],
         };
         // Falling through UNLIT would silently drop the shading.

@@ -68,7 +68,8 @@ struct Globals {
     rh: u32,
     // ⚠️ Vagas livres: um bit novo COME uma delas (o `Globals` do Rust tem as mesmas),
     // nunca se soma a elas.
-    pad0: u32,
+    // 1 = o realce LINEAR do B31.2 (so o Wet Paint); 0 = o truncado do main. Comeu a vaga `pad0`.
+    realce_linear: u32,
     pad1: u32,
     // 1 quando ha SUBSTRATO (o dente do papel) neste frame.
     //
@@ -111,9 +112,12 @@ fn wrapped_ndl(ndl: f32, wax: f32) -> f32 {
 // around ndh (B31.2) -- the CPU's `SpecLut::spec`, op for op.
 fn spec_at(level: i32, ndh: f32) -> f32 {
     let t = clamp(ndh, 0.0, 1.0) * SPEC_LUT_LAST;
+    let l = min(level, ROUGH_LAST);
+    if (u.realce_linear == 0u) {
+        return textureLoad(spec_lut, vec2<i32>(i32(t), l), 0).r;
+    }
     let i = min(i32(t), i32(SPEC_LUT_LAST) - 1);
     let f = t - f32(i);
-    let l = min(level, ROUGH_LAST);
     let a = textureLoad(spec_lut, vec2<i32>(i, l), 0).r;
     let b = textureLoad(spec_lut, vec2<i32>(i + 1, l), 0).r;
     return a + (b - a) * f;

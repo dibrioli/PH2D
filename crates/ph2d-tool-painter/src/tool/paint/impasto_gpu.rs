@@ -93,6 +93,8 @@ pub struct ImpastoPlanes {
     /// com o dente somado, e sem esta presença o shader o multiplica pela cobertura da TINTA, que num
     /// documento digital é zero. Plano certo, apagado no device.
     pub paper_body: f32,
+    /// B31.2: o realce LINEAR entre entradas da tabela — só no Wet Paint (BUGS_painter #115); `false` = o truncado do main.
+    pub realce_linear: bool,
     /// B31.1: o PLANO DO PAPEL (a parte da altura que é do dente, `ReliefFields::altura_e_papel_at`), `relief`-shaped;
     /// VAZIO sem substrato (o shader não o lê: `paper_body` 0).
     pub papel: Vec<f32>,
@@ -223,6 +225,7 @@ impl PainterTool {
             mat0,
             mat1,
             paper_body: dobra.paper_body,
+            realce_linear: dobra.realce_linear,
             papel,
             lamps: dobra.lamps,
             spec_lut: dobra.spec_lut,

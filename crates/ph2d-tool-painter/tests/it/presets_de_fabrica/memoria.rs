@@ -346,7 +346,20 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 /// (`bytes_do_historico` depois do gesto; a grade tem 1 000 × 1 880 células × ~63 B = 118 MiB). É o preço de o desfazer do
 /// 1.º traço não matar a tinta. O recurso é a RAM do processo (`VmHWM`). O tecto é o medido + 5 % (515 e 2 175); se o custo
 /// se cura (marcar só a caixa do que o traço escreve) o tecto desce — decisão do dono.
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 515.0), (1000.0, 2175.0)];
+///
+/// 14/11 (integração 13/11, missão 4K do Painter): o rascunho do campo do Real Oil (B14.A1, `2f22e2dd1e` +
+/// `2f580f0225`, `RascunhoCampo` nos `PlanosDaOtica`) RETÉM os planos `f64` do campo entre imagens em vez de os
+/// devolver ao SO — é o ganho medido da linha (campo 1440², faixas do rayon: 44,0–47,4 → 22,2–28,9 ms por imagem).
+/// Sem a caixa Real Oil (`PH2D_SONDA_OLEO=0`) a integração não paga nada (400 × 405 MiB no main). O recurso é a RAM
+/// do processo (`VmHWM`). Medido intercalado com o binário do main `4f46a3573c`, smoke, `MALLOC_ARENA_MAX=1`, load 20–40:
+///
+/// | raio | main com óleo | integ com óleo | main sem óleo | integ sem óleo | tecto |
+/// |---|---|---|---|---|---|
+/// | 300  | 478–482 | 532–573 | 405–406 | 400 | 605 |
+/// | 1000 | 2 045–2 048 | 2 232–2 233 | — | — | 2 345 |
+///
+/// O tecto é o maior medido + 5 %; o pico varia com a janela do campo retida no fim do gesto (532 × 573).
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 605.0), (1000.0, 2345.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

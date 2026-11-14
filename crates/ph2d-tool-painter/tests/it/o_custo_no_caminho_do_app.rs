@@ -13,6 +13,16 @@
 //! aproximar-se do limiar com a máquina cheia — família `FLAKES_DE_CARGA`.
 //!
 //! Red-first (o piso do produto posto a `u64::MAX`, a rota de antes): Filbert `52,87` contra `23,53` ms (`2,25×`).
+//!
+//! A 2.ª metade pede `série > 1,2 × produto` (era `1,5×`): ela separa o roteador partido (produto = série, razão
+//! `~1,0`) do são — não mede quanto o pool ganha, que é o custo por célula do pincel. A missão 4K (cerdas por
+//! referência, sem `map` no desvio) baixou esse custo e as DUAS rotas ganharam. Medido 14/11 (integ 13/11, smoke,
+//! binários do main `4f46a3573c` e da integ intercalados, 2 rodadas, load 22–36, ms/quadro do Filbert):
+//!
+//! | árvore | produto | paralelo | série | série ÷ produto |
+//! |---|---|---|---|---|
+//! | main | 57,7 · 58,1 | 82,7 · 53,3 | 93,2 · 99,2 | 1,62 · 1,71 |
+//! | integ | 39,1 · 38,6 | 39,6 · 37,1 | 53,5 · 53,3 | 1,37 · 1,38 |
 
 use crate::exame_bancada::pinceis;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -75,7 +85,7 @@ fn o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga() {
             p.nome
         );
         assert!(
-            produto < 1.6 * paralelo && serie > 1.5 * produto,
+            produto < 1.6 * paralelo && serie > 1.2 * produto,
             "{}: o traço do app custa {produto:.2} ms por quadro pela rota do produto, {paralelo:.2} pela paralela e \
              {serie:.2} pela de antes (em série) — o depósito de um pincel pesado voltou a correr em série",
             p.nome

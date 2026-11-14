@@ -641,7 +641,8 @@ const TELA_MINIMA_PELO_MMAP: usize = 1024 * 1024;
 /// `vec![0u8; n]` seguinte sai do heap com `memset` (medido: 18–29 ms e 33,2 MB tocados no fio do «+»). Pedir a
 /// capacidade acima do tecto leva-o sempre ao `mmap`; a folga é só endereço, nunca escrita. Os clones do plano
 /// (`Arc::make_mut`) copiam o `len`, não a capacidade.
-pub(crate) fn tela_transparente(n: usize) -> Vec<u8> {
+pub(crate) fn tela_transparente(n: usize) -> Vec<u8> /* COLOR-RAW-OK: zeros de um plano RGBA8 novo, bytes de alocação */
+{
     if !TELA_NOVA_PELO_MMAP.get() || !(TELA_MINIMA_PELO_MMAP..PISO_DO_MMAP).contains(&n) {
         return vec![0u8; n];
     }

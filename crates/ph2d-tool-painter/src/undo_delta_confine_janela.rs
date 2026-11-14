@@ -9,7 +9,8 @@ use super::{PlaneReach, PlaneWindow, janela_fora_do_neutro};
 /// a marca do Wet de uma camada muda a luz do papel: alfa 0 deixa-o inteiro nas duas leis
 /// (`relief_fields::papel_a_vista`), então fora dela a figura é a mesma (B10c). Com 1 texel de moldura: a altura
 /// do papel muda nesses texels e a normal dos vizinhos lê-a (diferença central).
-pub(crate) fn janela_da_tinta(rgba: &[u8], w: usize) -> PlaneReach {
+pub(crate) fn janela_da_tinta(rgba: &[u8], w: usize) -> PlaneReach /* COLOR-RAW-OK: o plano RGBA8 cru da camada, lido só no alfa */
+{
     let (px, resto) = rgba.as_chunks::<4>();
     if !resto.is_empty() {
         return PlaneReach::Whole;

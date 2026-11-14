@@ -170,6 +170,19 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
 /// here naming the specific verb.
 const RECONCILES_VIA: &[(&str, &str, &str)] = &[
     (
+        "set_texture_layer_ramp_mode",
+        "edita_textura",
+        "Painter TEXTURE LAYER ramp colour space: `edita_textura` writes the field inside \
+         `passo_de_camada` and calls `rerender_texture_layer(id)` — the layer's pixels re-bake from \
+         the new ramp in the same step (undoable)",
+    ),
+    (
+        "set_texture_layer_ramp_alpha_mode",
+        "edita_textura",
+        "Painter TEXTURE LAYER ramp alpha mode: same reconcile as `set_texture_layer_ramp_mode` — \
+         `edita_textura` → `rerender_texture_layer(id)` re-bakes the layer with the new alpha rule",
+    ),
+    (
         "set_present_mode",
         "configure",
         "wgpu: surface.configure() rebuilds the swapchain — the actual reconciliation",

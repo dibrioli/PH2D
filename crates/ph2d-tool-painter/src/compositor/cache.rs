@@ -84,7 +84,8 @@ impl CompositorCache {
     }
 
     /// The recycled output buffer (empty when there is none).
-    pub fn toma_a_saida(&mut self) -> Vec<u8> {
+    pub fn toma_a_saida(&mut self) -> Vec<u8> /* COLOR-RAW-OK: o buffer reciclado da saída do `compose` (sRGB8 cru para a placa) */
+    {
         std::mem::take(&mut self.saida)
     }
 

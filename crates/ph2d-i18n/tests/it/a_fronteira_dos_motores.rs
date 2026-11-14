@@ -150,7 +150,7 @@ controlo com texto de amostra. Pertence a' familia de isencoes que o dono ja' de
     ),
     (
         "ph2d-tool-painter",
-        "undo_window.rs",
+        "undo_window_relief.rs",
         "sao as tres palavras do `relief_state()`, lidas por um `eprintln!(\"[S3-AUDIT] …\")`: \
 diagnostico de TERMINAL, e o terminal e' do dono (`CLAUDE.md` §0.8 — o que o ARTISTA le' no ecra \
 e' ingles; o que o DONO le' no terminal e' a lingua dele).",

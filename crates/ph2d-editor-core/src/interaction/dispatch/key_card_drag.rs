@@ -20,7 +20,7 @@ pub(super) fn pega(
     let Some(req) = store.context_menu() else {
         return false;
     };
-    if !crate::screens::hero::key_card::e_cartao(req.kind) {
+    if !crate::interaction::key_card_alvo::e_cartao(req.kind) {
         return false;
     }
     let Some((id, r)) = hit else {
@@ -45,7 +45,7 @@ pub(super) fn pega(
 /// O Down no editor da curva Custom (consome-o): num ponto ou alça agarra-o; em cima da curva
 /// cria um ponto ali e agarra-o; o botão direito num ponto apaga-o.
 fn editor(store: &mut WidgetStore, kind: ContextMenuKind, id: NodeId, ev: PointerEvent) -> bool {
-    use crate::screens::hero::key_card::editor as ed;
+    use crate::interaction::key_card_alvo as ed;
     let ContextMenuKind::TimelineSegment { scope } = kind else {
         return false;
     };

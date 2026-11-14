@@ -80,9 +80,9 @@ fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> usize {
     shown_grid(&names, ts, w).1
 }
 
-/// A pílula de uma caixa: a caixa, o nome e o recuo dos dois lados.
+/// A pílula de uma caixa: a moldura com ✓ e o nome dentro, e o losango ao lado.
 fn chip_w(ts: &mut TextSystem, name: &str) -> f32 {
-    ts.prefix_width(name, m::VALUE_PX) + ROW + m::SEG_INSET * 4.0
+    ph2d_editor_core::widget::card_check_in_row_w(ts, name)
 }
 
 fn changed_text(n: usize) -> String {
@@ -251,22 +251,12 @@ fn shown(
     for (i, (id, name)) in actions.into_iter().enumerate() {
         let cx = x + (cw + SHOWN_GAP) * (i % cols) as f32;
         let y = y + (ROW + SHOWN_GAP) * (i / cols) as f32;
+        // A pílula É a moldura da caixa em fila (à Godot, dono 13/11): o alvo é o que se pinta.
         let pill = Rect::new(cx, y, cw, ROW);
-        let bg = ink.color(ColorToken::CardField);
-        fill_rounded_rect(scene, pill, m::FIELD_RADIUS, bg);
-        let (px, pw) = (cx + m::SEG_INSET, cw - m::SEG_INSET * 2.0);
-        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, px, pw);
+        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, cx, cw);
         let hid = TryHit::Shown(id).id();
-        c.full(
-            None,
-            Widget::Check {
-                id: hid,
-                label: Rotulo::vista_de(name.as_str()),
-                value: check(controls.shown_in_game(id)),
-                off: false,
-            },
-            y,
-        );
+        let valor = check(controls.shown_in_game(id));
+        c.marca_em_fila_em(pill, (hid, Rotulo::vista_de(name.as_str())), valor);
         card_target(doc, TryHit::Shown(id), name.as_str(), scene, ink);
     }
     y + (ROW + SHOWN_GAP) * rows.max(1) as f32 - SHOWN_GAP + GAP

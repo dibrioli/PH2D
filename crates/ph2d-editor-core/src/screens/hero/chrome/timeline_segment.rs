@@ -100,7 +100,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if hero
         .store
         .context_menu()
-        .is_some_and(|r| crate::screens::hero::key_card::e_cartao(r.kind))
+        .is_some_and(|r| crate::interaction::key_card_alvo::e_cartao(r.kind))
     {
         // Uma linha do cartão (Straight, Hold, Nearest, Custom, Rove): o cartão fica aberto.
         return true;

@@ -10,12 +10,13 @@
 mod campos;
 #[path = "cards_corpo_marca.rs"]
 mod marca;
+pub(crate) use crate::widget::card_check_in_row_w as pede_em_fila;
+pub(crate) use crate::widget::card_check_w as pede_marca;
 pub use campos::{
     LABEL_PX, ROW_GAP, bar_field, check_in, colunas_iguais, facts, fields_in, swatch_grid,
     swatch_in, swatch_strip, text_in,
 };
-pub(crate) use marca::pede as pede_marca;
-pub(super) use marca::{FAIXA as FAIXA_DA_MARCA, check_em, check_em_fila, pede_em_fila};
+pub(super) use marca::{FAIXA as FAIXA_DA_MARCA, check_em, check_em_fila};
 
 use super::{CardCtx, Cell, Seg, Widget, censo, compacta};
 use crate::interaction::{HitIndex, WidgetStore};

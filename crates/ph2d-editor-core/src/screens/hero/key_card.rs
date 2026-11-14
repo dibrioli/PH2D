@@ -10,7 +10,8 @@
 //! arrasto vive em `interaction::dispatch::key_card_drag`.
 
 use crate::ids as c;
-use crate::interaction::{ContextMenuKind, HitIndex, TimelineInterpScope, WidgetStore};
+use crate::interaction::key_card_alvo::e_cartao;
+use crate::interaction::{ContextMenuKind, HitIndex, WidgetStore};
 use crate::paint::{fill_circle, fill_rounded_rect, paint_text, stroke_polyline};
 use crate::widget::card_ink::CardInk;
 use crate::widget::lista_flutuante::Superficie;
@@ -40,8 +41,6 @@ const CURVE_A: f32 = 0.72; // LITERAL-PX-OK: opacidade da curva apagada (não é
 const VEU_A: f32 = 0.6; // LITERAL-PX-OK: opacidade do véu (não é medida de UI)
 /// O Done sob o ponteiro: o acento um pouco recuado.
 const DONE_QUENTE_A: f32 = 0.85; // LITERAL-PX-OK: opacidade do hover (não é medida de UI)
-/// As alças da curva Linear: o editor Custom de uma chave sem Bézier normalizável parte daqui.
-pub(crate) const BEZ_LINEAR: [f32; 4] = [1.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0]; // LITERAL-PX-OK: terços do tempo da Bézier linear (matemática)
 /// Amostras por curva desenhada (o Elastic tem três ondas num botão de ~50 px).
 const SAMPLES: usize = 48;
 /// O Custom desenha uma Bézier em S com as duas alças à vista (P1, P2 no quadrado unitário).
@@ -80,30 +79,6 @@ const EASES: [(NodeId, NodeId, u8, &str); 3] = [
         "chrome.timeline_menu.seg_out",
     ),
 ];
-
-/// O escopo pinta-se como cartão (uma chave ou uma coluna do Summary; o fade continua em lista).
-#[must_use]
-pub fn e_cartao(kind: ContextMenuKind) -> bool {
-    matches!(
-        kind,
-        ContextMenuKind::TimelineSegment {
-            scope: TimelineInterpScope::Key { .. } | TimelineInterpScope::Column { .. }
-        }
-    )
-}
-
-/// `id` é um alvo do cartão (o fundo, o título, um botão, o Rove, o Done): um aperto nele NÃO fecha
-/// o cartão.
-#[must_use]
-pub fn e_alvo_do_cartao(id: NodeId) -> bool {
-    id == c::CTX_MENU_TL_KEY_CARD
-        || id == c::CTX_MENU_TL_KEY_CARD_HEAD
-        || c::TIMELINE_KEY_CARD.iter().any(|r| r.0 == id)
-        || c::TIMELINE_SEGMENT_MENU.iter().any(|r| r.0 == id)
-        || c::TIMELINE_EASE_MENU.iter().any(|r| r.0 == id)
-        || id == c::CTX_MENU_TL_KEY_BEZ_AREA
-        || editor::TIPOS.iter().any(|t| t.0 == id)
-}
 
 /// O que um clique no cartão pede.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

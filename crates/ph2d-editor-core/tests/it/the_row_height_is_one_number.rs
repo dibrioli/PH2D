@@ -26,6 +26,11 @@ use std::path::{Path, PathBuf};
 /// `(caminho relativo à raiz do repo, nome da constante, porquê NÃO é o token)`.
 const OWN_RULER: &[(&str, &str, &str)] = &[
     (
+        "crates/ph2d-app-joint-editor/src/widgets.rs",
+        "MENU_ROW_H",
+        "a opcao da lista de gabaritos do Joint Editor leva a MINIATURA (THUMB 76x38) ao lado do nome e dos papeis: a regua e' a miniatura, nao a linha de formulario",
+    ),
+    (
         "crates/ph2d-editor-core/src/progress.rs",
         "ROW_H",
         "a barra de progresso e' um ALVO DE TOQUE (44 px), nao uma linha de formulario",

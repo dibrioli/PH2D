@@ -484,14 +484,27 @@ impl CardCtx<'_> {
         } else {
             crate::widget::CheckboxValue::Unchecked
         };
+        let r = Rect::new(x, y, w, m::FIELD_H);
+        self.marca_em_fila_em(r, (id, Rotulo::vista_de(nome)), valor);
+    }
+
+    /// A caixa em moldura EM FILA num rect já arrumado (uma grelha de caixas, como o «Shown in the game»
+    /// do Input Map): o alvo é a moldura pintada, na altura de `r` — nunca uma faixa de nome por cima.
+    /// A largura natural é [`crate::widget::card_check_in_row_w`].
+    pub fn marca_em_fila_em(
+        &mut self,
+        r: Rect,
+        (id, label): (NodeId, Rotulo<'_>),
+        valor: crate::widget::CheckboxValue,
+    ) {
         corpo::check_em_fila(
             self.scene,
             self.text_system,
             self.store,
             self.hit_index,
             self.ink,
-            Rect::new(x, y, w, m::FIELD_H),
-            (id, Rotulo::vista_de(nome)),
+            r,
+            (id, label),
             (valor, false),
         );
     }

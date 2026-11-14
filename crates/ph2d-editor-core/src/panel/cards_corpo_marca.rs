@@ -16,24 +16,15 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
-/// A palavra da moldura: nomeia o que a marca liga; quem diz o estado é o ✓.
 fn palavra() -> &'static str {
-    ph2d_i18n::tr("chrome.checkbox.on")
+    crate::widget::card_check_word()
 }
 
 /// A altura da faixa do rótulo por cima da moldura (`LABEL_TOP` fica a cargo de quem arruma a linha).
 pub(in crate::panel) const FAIXA: f32 = m::LABEL_PX + m::LABEL_BOTTOM;
 
-/// A largura em que a linha mostra tudo: o maior entre o nome com o losango e a moldura com ✓ e «On».
-pub(crate) fn pede(text_system: &mut TextSystem, label: Rotulo<'_>) -> f32 {
-    let nome = text_system.prefix_width(label.texto, m::LABEL_PX).ceil() + m::KEY_MARK_BOX;
-    nome.max(dentro(text_system))
-}
-
-/// A moldura com ✓ e «On» inteiros.
 fn dentro(text_system: &mut TextSystem) -> f32 {
-    let on = text_system.prefix_width(palavra(), m::VALUE_PX).ceil();
-    m::FIELD_PAD_R + m::CHECK_BOX + m::CHECK_GAP + on + m::FIELD_PAD_R
+    crate::widget::card_check_frame_w(text_system)
 }
 
 /// ⭐ A linha de marcar com a MOLDURA no rect `r` (o do controlo, à altura de `FIELD_H`); o nome e o
@@ -83,12 +74,6 @@ pub(in crate::panel) fn check_em(
     {
         hit_index.register(alvo, linha.dot);
     }
-}
-
-/// A largura de [`check_em_fila`]: a moldura com ✓ e o nome dentro, e o losango ao lado.
-pub(crate) fn pede_em_fila(text_system: &mut TextSystem, nome: &str) -> f32 {
-    let tw = text_system.prefix_width(nome, m::VALUE_PX).ceil();
-    m::FIELD_PAD_R + m::CHECK_BOX + m::CHECK_GAP + tw + m::FIELD_PAD_R + m::KEY_MARK_BOX
 }
 
 /// ⭐ A linha de marcar numa BARRA de uma linha só (a banda do Flip, da Timeline): a mesma moldura de

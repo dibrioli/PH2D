@@ -196,7 +196,7 @@ fn paint_nivel(
         .any(|r| matches!(r, MenuRow::Item(id, ..) if look::icone(*id).is_some()));
 
     // ⭐ A chave da timeline abre o CARTÃO da maquete do dono (13/11), não a lista.
-    if super::key_card::e_cartao(req.kind) {
+    if crate::interaction::key_card_alvo::e_cartao(req.kind) {
         super::key_card::paint(scene, text_system, theme, hit_index, store, req, viewport);
         return;
     }

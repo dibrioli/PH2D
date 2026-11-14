@@ -521,16 +521,23 @@ fn paint_ticks(
         fill_rounded_rect(ctx.scene, tick, Radius::Xs.px(), cor);
         if rotulo {
             let font = TypeToken::Sm.px();
-            paint_text(
-                ctx.text_system,
-                ctx.scene,
-                &degraus::texto(t),
-                x + Spacing::Xxs.px(),
-                crate::ruler_trecho::y_do_texto(region, font),
-                font,
-                region.x + region.w - x,
-                cor,
-            );
+            let texto = degraus::texto(t);
+            let tx = x + Spacing::Xxs.px();
+            let livre = region.x + region.w - tx;
+            // O número que não cabe INTEIRO até à borda não se pinta (o risco fica): um «8» cortado
+            // em reticência não diz tempo nenhum — é o que as réguas do Blender e do Resolve fazem.
+            if ctx.text_system.prefix_width(&texto, font) <= livre {
+                paint_text(
+                    ctx.text_system,
+                    ctx.scene,
+                    &texto,
+                    tx,
+                    crate::ruler_trecho::y_do_texto(region, font),
+                    font,
+                    livre,
+                    cor,
+                );
+            }
         }
         i += 1.0;
     }

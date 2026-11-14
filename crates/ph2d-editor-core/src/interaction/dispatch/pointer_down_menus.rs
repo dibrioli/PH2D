@@ -348,9 +348,9 @@ pub(super) fn click_belongs_to_the_open_menu(
         // O fundo do cartão da chave (título, folgas): clicar ali não fecha o cartão.
         // O CARTÃO da chave fica aberto enquanto se ajusta (dono 13/11): todo alvo dele é «dele».
         kind @ ContextMenuKind::TimelineSegment { .. }
-            if crate::screens::hero::key_card::e_cartao(kind) =>
+            if crate::interaction::key_card_alvo::e_cartao(kind) =>
         {
-            crate::screens::hero::key_card::e_alvo_do_cartao(id)
+            crate::interaction::key_card_alvo::e_alvo_do_cartao(id)
         }
         ContextMenuKind::SceneList => {
             id == crate::ids::CTX_SCENE_SEARCH || crate::ids::CTX_SCENE_ROWS.contains(&id)

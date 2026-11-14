@@ -6,28 +6,9 @@
 //! Curve shape, que a Custom não usa.
 
 use super::*;
+use crate::interaction::key_card_alvo::{TIPOS, alvos, linear};
 use crate::interaction::state::{BezAlvo, BezArea};
-use ph2d_anim::{EaseSpline, HandleKind, SplineSide};
-
-/// Os tipos de alça do ponto escolhido, na ordem e com os nomes do cartão de ponto do Vector
-/// (`ph2d-panel-vector cards_ponto`; as mesmas chaves de texto).
-pub(crate) const TIPOS: [(NodeId, HandleKind, &str); 3] = [
-    (
-        c::CTX_MENU_TL_KEY_HANDLE_CORNER,
-        HandleKind::Corner,
-        "panel.vector.vertex.corner",
-    ),
-    (
-        c::CTX_MENU_TL_KEY_HANDLE_SMOOTH,
-        HandleKind::Smooth,
-        "panel.vector.vertex.smooth",
-    ),
-    (
-        c::CTX_MENU_TL_KEY_HANDLE_SYMM,
-        HandleKind::Symmetric,
-        "panel.vector.vertex.symm",
-    ),
-];
+use ph2d_anim::HandleKind;
 
 /// A faixa de `y` que o editor mostra: o quadrado 0–1 no meio, folga para passar (overshoot).
 const Y_MIN: f32 = -0.5; // LITERAL-PX-OK: faixa do gráfico em unidades da curva, não px
@@ -36,9 +17,6 @@ const Y_MAX: f32 = 1.5; // LITERAL-PX-OK: faixa do gráfico em unidades da curva
 const ALCA_R: f32 = 5.0; // LITERAL-PX-OK: raio da alça do editor
 const PONTO_R: f32 = 6.0; // LITERAL-PX-OK: raio do ponto da curva
 const AGARRADO_R: f32 = 7.5; // LITERAL-PX-OK: raio do que está agarrado
-const ALVO_R: f32 = 10.0; // LITERAL-PX-OK: raio do alvo de um ponto ou alça
-/// A distância (px, na vertical) até à curva em que um clique cria um ponto.
-const CURVA_HIT: f32 = 8.0; // LITERAL-PX-OK: alcance do clique que cria um ponto
 /// O miolo vazado da alça (o anel tem esta espessura).
 const ALCA_ANEL: f32 = 2.5; // LITERAL-PX-OK: espessura do anel da alça
 /// A espessura da curva e a dos braços das alças.
@@ -49,53 +27,6 @@ const BRACO_A: f32 = 0.55; // LITERAL-PX-OK: opacidade do braço (não é medida
 const LINHA_A: f32 = 0.3; // LITERAL-PX-OK: opacidade das linhas 0/1 (não é medida de UI)
 /// Amostras da curva do editor.
 const AMOSTRAS: usize = 64;
-
-/// A curva de partida de uma chave sem forma normalizável: a Linear.
-#[must_use]
-pub(crate) fn linear() -> EaseSpline {
-    let [x1, y1, x2, y2] = BEZ_LINEAR;
-    EaseSpline::from_bezier(x1, y1, x2, y2)
-}
-
-/// Os alvos que se desenham, na ordem em que se procuram: primeiro os pontos, depois as alças.
-fn alvos(c: &EaseSpline) -> Vec<(BezAlvo, [f32; 2])> {
-    let n = c.node_count();
-    let mut v: Vec<(BezAlvo, [f32; 2])> = (1..n - 1)
-        .map(|i| (BezAlvo::Ponto(i), c.node(i).p))
-        .collect();
-    for i in 0..n {
-        let no = c.node(i);
-        if i > 0 {
-            v.push((BezAlvo::Alca(i, SplineSide::In), no.h_in));
-        }
-        if i < n - 1 {
-            v.push((BezAlvo::Alca(i, SplineSide::Out), no.h_out));
-        }
-    }
-    v
-}
-
-/// O que está sob `(x, y)` no editor: o ponto ou a alça mais perto, dentro de [`ALVO_R`].
-#[must_use]
-pub(crate) fn alvo_em(c: &EaseSpline, area: &BezArea, x: f32, y: f32) -> Option<BezAlvo> {
-    alvos(c)
-        .into_iter()
-        .map(|(a, q)| {
-            let (px, py) = area.tela(q[0], q[1]);
-            (a, (px - x).powi(2) + (py - y).powi(2))
-        })
-        .filter(|(_, d)| *d <= ALVO_R * ALVO_R)
-        .min_by(|a, b| a.1.total_cmp(&b.1))
-        .map(|(a, _)| a)
-}
-
-/// `Some(u)` se `(x, y)` está em cima da curva (na vertical, a [`CURVA_HIT`]): onde criar um ponto.
-#[must_use]
-pub(crate) fn na_curva(c: &EaseSpline, area: &BezArea, x: f32, y: f32) -> Option<f64> {
-    let (u, _) = area.unidade(x, y);
-    let (_, cy) = area.tela(u, c.eval(f64::from(u)) as f32);
-    ((cy - y).abs() <= CURVA_HIT).then_some(f64::from(u))
-}
 
 /// Pinta o editor em `r` (o rótulo e a caixa do gráfico) e regista a área.
 pub(super) fn paint(

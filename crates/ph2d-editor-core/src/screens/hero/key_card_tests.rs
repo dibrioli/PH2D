@@ -2,6 +2,8 @@
 
 use super::*;
 use crate::interaction::ContextMenuKind as K;
+use crate::interaction::TimelineInterpScope;
+use crate::interaction::key_card_alvo::e_alvo_do_cartao;
 
 const KIND: K = K::TimelineSegment {
     scope: TimelineInterpScope::Key { target: 9, key: 2 },
@@ -171,15 +173,19 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
     // Fora da área prende-se à borda (uma alça nunca sai do gráfico).
     assert_eq!(area.unidade(0.0, 1000.0), (0.0, -0.5));
     // Um clique em cima da curva cria um ponto ali; perto de um ponto/alça agarra-o; longe, nada.
-    let mut curva = editor::linear();
+    let mut curva = crate::interaction::key_card_alvo::linear();
     let (x, y) = area.tela(0.5, 0.5);
-    let u = editor::na_curva(&curva, &area, x, y + 3.0).expect("em cima da curva");
+    let u = crate::interaction::key_card_alvo::na_curva(&curva, &area, x, y + 3.0)
+        .expect("em cima da curva");
     assert!((u - 0.5).abs() < 1e-3);
-    assert_eq!(editor::na_curva(&curva, &area, x, y - 40.0), None);
+    assert_eq!(
+        crate::interaction::key_card_alvo::na_curva(&curva, &area, x, y - 40.0),
+        None
+    );
     let i = curva.insert(u).unwrap();
     use crate::interaction::state::BezAlvo;
     assert_eq!(
-        editor::alvo_em(&curva, &area, x + 2.0, y),
+        crate::interaction::key_card_alvo::alvo_em(&curva, &area, x + 2.0, y),
         Some(BezAlvo::Ponto(i))
     );
     let (hx, hy) = {
@@ -187,8 +193,11 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
         area.tela(q[0], q[1])
     };
     assert_eq!(
-        editor::alvo_em(&curva, &area, hx, hy),
+        crate::interaction::key_card_alvo::alvo_em(&curva, &area, hx, hy),
         Some(BezAlvo::Alca(0, ph2d_anim::SplineSide::Out))
     );
-    assert_eq!(editor::alvo_em(&curva, &area, 290.0, 60.0), None);
+    assert_eq!(
+        crate::interaction::key_card_alvo::alvo_em(&curva, &area, 290.0, 60.0),
+        None
+    );
 }

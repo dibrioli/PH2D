@@ -402,7 +402,7 @@ pub const CTX_MENU_TL_KEY_CARD: NodeId = hash_node_id("ctx_menu_tl_key_card");
 /// O título do cartão: a pega para o ARRASTAR (dono 13/11).
 pub const CTX_MENU_TL_KEY_CARD_HEAD: NodeId = hash_node_id("ctx_menu_tl_key_card_head");
 /// O editor da curva **Custom** no cartão (dono 13/11): a área do gráfico — pontos e alças acham-se
-/// por geometria dentro dela (`key_card::editor::alvo_em`), não por id.
+/// por geometria dentro dela (`interaction::key_card_alvo::alvo_em`), não por id.
 pub const CTX_MENU_TL_KEY_BEZ_AREA: NodeId = hash_node_id("ctx_menu_tl_key_bez_area");
 /// Os tipos de alça do ponto escolhido no editor da Custom (dono 13/11: «os tipos de alça como no
 /// módulo vector»): Corner · Smooth · Symmetric, os do cartão de ponto do Vector.

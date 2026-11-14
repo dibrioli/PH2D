@@ -157,7 +157,7 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
     // medida da linha de marcar — o nome com o losango, ou ✓ e «On» — cabe na metade.
     let cabe = |ts: &mut TextSystem, meia: f32, quer: f32, a: Rotulo<'_>, b: Rotulo<'_>| {
         if cartao {
-            let pede = crate::panel::cards::corpo::pede_marca;
+            let pede = crate::widget::card_check_w;
             pede(ts, a).max(pede(ts, b)) <= meia
         } else {
             property_row_fits(meia, quer)

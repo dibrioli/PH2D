@@ -41,6 +41,7 @@ pub mod field_scrub;
 pub mod fling;
 pub mod flip_strip;
 pub mod hit;
+pub(crate) mod key_card_alvo;
 pub mod pixel_timeline_surface;
 pub mod press_slop;
 pub mod roda_lateral;

@@ -109,7 +109,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.tip.go_start" => "Go to start",
         "panel.timeline.tip.stop" => "Stop and go back to the start",
         "panel.timeline.tip.autokey" => "Auto Key: record a key whenever you change something",
-        "panel.timeline.tip.length" => "Clip length, in seconds",
+        "panel.timeline.tip.length" => "Clip length (seconds)",
         "panel.timeline.tip.prev_frame" => "Previous frame",
         "panel.timeline.tip.play" => "Play or pause",
         "panel.timeline.tip.next_frame" => "Next frame",

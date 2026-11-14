@@ -66,8 +66,8 @@ fn drena(store: &mut WidgetStore) -> Option<crate::interaction::TimelineBezierEd
 #[test]
 fn the_handle_kind_buttons_change_the_chosen_point_in_one_undo_step() {
     let (mut store, curva) = cartao();
-    for (id, ..) in crate::screens::hero::key_card::editor::TIPOS {
-        assert!(crate::screens::hero::key_card::e_alvo_do_cartao(id));
+    for (id, ..) in crate::interaction::key_card_alvo::TIPOS {
+        assert!(crate::interaction::key_card_alvo::e_alvo_do_cartao(id));
     }
     // Sem ponto escolhido: o botão consome o clique e não muda nada.
     assert!(down(

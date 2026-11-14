@@ -179,7 +179,8 @@ mod card_box;
 mod label;
 mod mark;
 pub use card_box::{
-    card_check_rect, paint_card_check, paint_card_check_com_borda, paint_card_check_value,
+    card_check_frame_w, card_check_in_row_w, card_check_rect, card_check_w, card_check_word,
+    paint_card_check, paint_card_check_com_borda, paint_card_check_value,
 };
 pub use label::paint_checkbox;
 // ⚠️ `pub(crate)`: o pintor da marca é a porta do **interruptor**, não da casa. Um `pub` aqui

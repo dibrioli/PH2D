@@ -183,7 +183,11 @@ pub fn fila_fina(rail: &ToolRail) -> bool {
 #[must_use]
 pub fn bar_lines(rail: &ToolRail, area_w: f32, size: crate::widget::RailButtonSize) -> usize {
     if fila_fina(rail) {
-        return if crate::widget::fila_fina_cabe(rail, area_w) { 1 } else { 2 };
+        return if crate::widget::fila_fina_cabe(rail, area_w) {
+            1
+        } else {
+            2
+        };
     }
     crate::widget::horizontal_lines(rail, (area_w - Spacing::Xs.px() * 2.0).max(0.0), size)
 }

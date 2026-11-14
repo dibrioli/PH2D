@@ -566,8 +566,8 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
     let rate_knob = p.k(Knob::ExtDiffusion);
     let pigmento = tinta_transporte::liga(p, g);
     if !pigmento && difusao::DIFUSAO_GS.load(std::sync::atomic::Ordering::Relaxed) == 0 {
-        // B13.7: a lei do produto difunde em Jacobi (`solver/difusao.rs`); o Gauss-Seidel fica só na lei do pigmento
-        // (arquivada, dono 05/11: as somas da `tinta` não têm o gather).
+        // B13.7: a rota Jacobi (`solver/difusao.rs`), só com `DIFUSAO_GS = 0` até o dono aprovar o Ink Brush que
+        // ela muda; a lei do pigmento (arquivada) fica sempre no Gauss-Seidel.
         return difusao::diffusion_pass_jacobi(g, p);
     }
     for y in g.by0..=g.by1 {

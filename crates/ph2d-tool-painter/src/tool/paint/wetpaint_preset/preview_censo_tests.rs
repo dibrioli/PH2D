@@ -18,6 +18,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("hover_heading", UI),
     ("hover_pos", UI),
     ("dabs", TRACO),
+    ("lote", TRACO),
     ("solid_path", TRACO),
     ("solid_fill_owed", TRACO),
     ("solid_passagem", TRACO),
@@ -97,6 +98,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("rng_camada", TRACO),
     ("pilha_por_replay", "porta de bissecção"),
     ("acumulando_no_plano", TRACO),
+    ("plano_marcado", TRACO),
     ("po_do_papel", TRACO),
     ("clone_source", OUTRA),
     ("clone_offset", OUTRA),
@@ -275,6 +277,10 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ),
     ("tuning_open", UI),
     ("relogio_fixo", "o preview corre no relógio fixo dele"),
+    (
+        "fecho_adiado",
+        "o pen-up adiado da OBRA (N10 F2j): o preview corre no relógio fixo, onde o fecho é síncrono",
+    ),
     (
         "suave_da_macro_antiga",
         "só a tocar uma macro antiga: o preview lê o `Knob::SmoothEdges` dos knobs",

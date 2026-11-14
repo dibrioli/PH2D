@@ -10,10 +10,11 @@ use crate::par::{self, Rows};
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// `0` = Jacobi (o produto) · `1` = o Gauss-Seidel de antes também na lei do produto — SÓ a régua de velocidade
-/// (`examples/sonda_difusao_4k.rs`): dá outra resposta, nunca é ligada pelo produto.
+/// `1` = o Gauss-Seidel de antes (o PRODUTO) · `0` = Jacobi — dá outra resposta: o Ink Brush de fábrica difunde
+/// (a cena de `a_lei_da_tinta` muda), por isso só entra com a aprovação do dono (integ N10, handoff N10 §7). A régua
+/// de velocidade (`examples/sonda_difusao_4k.rs`) liga cada rota em execução.
 #[doc(hidden)]
-pub static DIFUSAO_GS: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+pub static DIFUSAO_GS: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(1);
 
 /// A difusão Jacobi com a rota forçada (os gates de identidade); o produto chama [`super::diffusion_pass`].
 pub fn diffusion_pass_jacobi_rows(g: &mut Grid, p: &Params, mode: Rows) {

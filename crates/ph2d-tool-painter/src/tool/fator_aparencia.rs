@@ -152,4 +152,51 @@ mod tests {
             );
         }
     }
+
+    /// ⭐ Pelo caminho do APP (o `stroke_spec` com que o motor pinta cada dab, papel Rough e o Grain «Same as Paper»):
+    /// no Wet Paint o papel NÃO se repete a 256 px (B33.1, a lei adotada); nos outros meios repete-se, como no main.
+    /// O slot do papel e o Grain que é o papel, os dois (BUGS_painter #115).
+    #[test]
+    fn no_wet_paint_o_papel_do_traco_nao_se_repete_a_256_px() {
+        use crate::PaintMedia;
+        use ph2d_painter_brush::{TextureKind, texture::sample_tiled};
+        for meio in [
+            PaintMedia::Digital,
+            PaintMedia::Watercolor,
+            PaintMedia::Impasto,
+            PaintMedia::WetPaint,
+        ] {
+            let mut t = PainterTool::default();
+            t.set_paint_media(meio);
+            t.set_brush_paper_kind(TextureKind::PaperRough.to_u8());
+            t.toggle_brush_grain_same_as_paper();
+            let spec = t.stroke_spec();
+            let mut slots = vec![("paper", spec.paper)];
+            if meio != PaintMedia::Watercolor {
+                slots.push(("grain", spec.texture));
+            }
+            for (nome, s) in slots {
+                assert!(
+                    matches!(s.kind, TextureKind::PaperRough),
+                    "{meio:?} {nome}: o papel Rough"
+                );
+                let difere = (0..64i64)
+                    .filter(|&x| {
+                        sample_tiled(&s, x, 17, None) != sample_tiled(&s, x + 256, 17, None)
+                    })
+                    .count();
+                if meio == PaintMedia::WetPaint {
+                    assert!(
+                        difere > 32,
+                        "{meio:?} {nome}: repete-se a 256 px ({difere}/64 diferem)"
+                    );
+                } else {
+                    assert_eq!(
+                        difere, 0,
+                        "{meio:?} {nome}: a leitura única do main repete-se a 256 px"
+                    );
+                }
+            }
+        }
+    }
 }

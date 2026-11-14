@@ -46,6 +46,11 @@ impl PainterTool {
                 self.mordida_do_papel(brush),
             );
         }
+        // B33.1 (o papel em duas leituras) só no Wet Paint, em TODA leitura de papel do dab: o slot do papel e o Grain
+        // do pincel quando ele é um papel ou o «Same as Paper» (cuja lei acima é a do pincel). BUGS_painter #115.
+        let wet = self.paint_media() == super::super::media::PaintMedia::WetPaint;
+        brush.texture.lei.leitura_dupla = wet;
+        brush.paper.lei.leitura_dupla = wet;
     }
 
     /// ⭐ **Quanto o papel morde a tinta** (dono 08/11): `Relief × Tooth / PAPER_TOOTH_MAX` — o Relief do papel é a

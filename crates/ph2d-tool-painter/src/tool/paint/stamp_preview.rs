@@ -55,6 +55,11 @@ impl PainterTool {
         #[cfg(test)]
         self.marks.push(rect);
         self.dirty_caixas.clear();
+        // B17.8: o depósito num plano da pilha marca AQUI o que escreveu nele (a reserva repõe-no).
+        if self.paint.acumulando_no_plano {
+            let pos = self.paint.plano_marcado;
+            self.paint.pilha.suja[pos].une(rect);
+        }
         let antes = self.dirty_rect;
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
         // A marca de sempre pode mudar o relevo: entra na parte dele (n.º 9 item 3).

@@ -642,3 +642,49 @@ fn a_pilha_do_composite_abre_pelos_fios() {
         "o plano de cobertura não nasceu pelo `par_fill` ({fills})"
     );
 }
+
+/// **B17.8: a reserva dos planos dá o MESMO bit que o plano novo** — dois traços que se cruzam (o 2.º
+/// passa por onde o 1.º sujou o plano), Tinta e Borracha a meia força (a outra fraca: uma camada só não
+/// abre a pilha), Tiling ligado. Controlo: a reserva foi usada; a mutação `NAO_REPOE` diverge.
+#[test]
+fn a_reserva_dos_planos_da_o_mesmo_bit_que_o_plano_novo() {
+    use super::composite_reserva::{NAO_REPOE, SEM_RESERVA};
+    let corre = |op: CompositeOp, sem: bool, nao_repoe: bool| {
+        SEM_RESERVA.with(|c| c.set(sem));
+        NAO_REPOE.with(|c| c.set(nao_repoe));
+        let mut t = tela();
+        t.paint.tiling = [true, true];
+        com(&mut t, 0, CompositeOp::Brush, 0.5, Some([0.9, 0.1, 0.1]));
+        com(&mut t, 1, CompositeOp::Erase, 0.5, None);
+        t.paint.composite[usize::from(op == CompositeOp::Brush)].strength = 0.15;
+        let mut usou = 0;
+        for (a, b) in [
+            ([20.0, 240.0], [500.0, 240.0]),
+            ([250.0, 150.0], [260.0, 330.0]),
+        ] {
+            t.on_canvas_pointer(cp(a, PointerPhase::Down));
+            for i in 1..=40 {
+                let f = i as f32 / 40.0;
+                let p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+                t.on_canvas_pointer(cp(p, PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp(b, PointerPhase::Up));
+            usou = usou.max(t.paint.pilha.reserva.quantos());
+        }
+        SEM_RESERVA.with(|c| c.set(false));
+        NAO_REPOE.with(|c| c.set(false));
+        (t.canvas_rgba.clone(), usou)
+    };
+    for op in [CompositeOp::Brush, CompositeOp::Erase] {
+        let (novo, sem_uso) = corre(op, true, false);
+        let (reserva, usou) = corre(op, false, false);
+        let (mutante, _) = corre(op, false, true);
+        assert_eq!(sem_uso, 0, "CONTROLO: a ablação não guarda planos");
+        assert!(usou >= 2, "a reserva não guardou os planos ({usou})");
+        assert!(novo == reserva, "a reserva mudou a imagem");
+        assert!(
+            novo != mutante,
+            "MUTAÇÃO: sem repor a caixa suja a imagem muda"
+        );
+    }
+}

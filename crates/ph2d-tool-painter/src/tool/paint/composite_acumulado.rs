@@ -103,9 +103,7 @@ impl PainterTool {
             // B17.8: a tela inteira em blocos pelos fios (33 MB a 4K; o `clone` serial falta página a página).
             self.paint.pilha.pre = crate::plane_copy::par_clone(&self.canvas_rgba);
             self.paint.pilha.lotes.clear();
-            for p in &mut self.paint.pilha.planos {
-                *p = Arc::new(Vec::new());
-            }
+            self.paint.pilha.larga_os_planos();
             self.paint.pilha.relevo = Default::default();
         }
         #[cfg(test)]
@@ -290,15 +288,23 @@ impl PainterTool {
         if self.paint.pilha.planos[pos].len() != len {
             // ⚠️ O estado inicial é a lei do acumulador: a tinta compõe-se sobre o TRANSPARENTE, a
             // cobertura MEDE-SE num plano opaco a que o depósito come o alfa.
-            // B17.8: o zero vem do alocador; o 255 pelos fios (`par_fill`), não um memset serial de 33 MB a 4K.
-            let mut semente = Vec::new();
+            // B17.8: da reserva (repõe só a caixa suja); senão o zero do alocador, o 255 pelos fios.
             let chao = if matches!(modo, Acumulo::Tinta) {
                 0
             } else {
                 255
             };
-            crate::plane_copy::size_to(&mut semente, len, chao);
-            self.paint.pilha.planos[pos] = Arc::new(semente);
+            let pilha = &mut self.paint.pilha;
+            let semente = pilha
+                .reserva
+                .tira(len, chao, self.source_size.0)
+                .unwrap_or_else(|| {
+                    let mut v = Vec::new();
+                    crate::plane_copy::size_to(&mut v, len, chao);
+                    v
+                });
+            pilha.planos[pos] = Arc::new(semente);
+            pilha.suja[pos] = super::composite_reserva::SujoDoPlano { chao, caixa: None };
         }
         let saved_strength = self.paint.brush.strength;
         let saved_blend = self.paint.brush.blend;
@@ -329,6 +335,7 @@ impl PainterTool {
             &mut self.paint.mistura_camada[pos],
         );
         self.paint.acumulando_no_plano = true;
+        self.paint.plano_marcado = pos;
         let mut plano = std::mem::take(&mut self.paint.pilha.planos[pos]);
         super::plane_fork::swap_canvas_plane(
             &mut self.canvas_rgba,

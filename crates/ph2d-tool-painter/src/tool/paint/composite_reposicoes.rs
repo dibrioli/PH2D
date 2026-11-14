@@ -74,9 +74,7 @@ impl PainterTool {
         if self.paint.pilha.pre.is_empty() {
             return;
         }
-        for p in &mut self.paint.pilha.planos {
-            *p = Arc::new(Vec::new());
-        }
+        self.paint.pilha.larga_os_planos();
         // A rota de bissecção (`PH2D_COMPOSITE_REPLAY=1`) guarda a história em `lotes` e tem a
         // MESMA doença — uma cura que só tratasse a rota de omissão deixaria a bissecção a medir
         // outro programa.

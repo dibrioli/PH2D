@@ -197,6 +197,10 @@ pub(super) struct PilhaDoTraco {
     /// O campo do esfregão deste quadro, já calculado em PARALELO com o acúmulo das outras camadas
     /// ([`super::composite_por_quadro`]) — a composição aplica-o em vez de o calcular.
     pub(super) campo_adiantado: Option<super::smear_warp::CampoFeito>,
+    /// B17.8: o chão de cada plano e o que o depósito marcou nele ([`super::composite_reserva`]).
+    pub(super) suja: [super::composite_reserva::SujoDoPlano; N_CAMADAS],
+    /// Os planos dos traços passados, à espera do próximo — ⚠️ NÃO é do traço: o `fecha` enche-a.
+    pub(super) reserva: super::composite_reserva::ReservaDePlanos,
 }
 
 impl PilhaDoTraco {
@@ -212,10 +216,15 @@ impl PilhaDoTraco {
         self.pre = Vec::new();
         self.lotes.clear();
         self.escudo = Arc::new(Vec::new());
-        for p in &mut self.planos {
-            *p = Arc::new(Vec::new());
-        }
+        self.larga_os_planos();
         self.relevo = Default::default();
+    }
+
+    /// Os planos voltam à reserva (B17.8) com a caixa que sujaram; a camada seguinte tira-os de lá.
+    pub(super) fn larga_os_planos(&mut self) {
+        for (p, sujo) in self.planos.iter_mut().zip(&mut self.suja) {
+            self.reserva.guarda(std::mem::take(p), std::mem::take(sujo));
+        }
     }
 }
 

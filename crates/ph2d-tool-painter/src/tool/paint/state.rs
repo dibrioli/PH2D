@@ -358,6 +358,8 @@ pub(crate) struct PaintState {
     pub(super) pilha_por_replay: bool,
     /// **Uma camada do Composite deposita num plano de MEDIÇÃO?** Então o trinco de alfa e o RELEVO ([`super::composite_relevo`]) não se aplicam ali.
     pub(super) acumulando_no_plano: bool,
+    /// A camada cujo plano está no lugar da tela enquanto `acumulando_no_plano` (B17.8).
+    pub(super) plano_marcado: usize,
     pub(super) stroke_mask: super::stamp_cache::MascaraDoTraco,
     pub(super) tecto_largo: super::stamp_cache::TectoDoTraco, // B29.1: o tecto u16 + pré-traço do carimbo por dab
     /// **O plano do traço** (L8/L5/L6, só no Digital, [`super::traco_plano`]); `None` fora de um traço que o pede.

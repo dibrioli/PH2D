@@ -329,6 +329,11 @@ impl WriteState {
     }
 
     /// A sessão molhada passa a vigiar `tela` (`None` = não vigia nada); o que estava retido larga-se.
+    /// A sessão molhada vigia `tela` pelo ponteiro? (Então um restauro tem de lhe dar outro: B17.5.)
+    pub(crate) fn vigia(&self, tela: &std::sync::Arc<Vec<u8>>) -> bool {
+        std::sync::Arc::as_ptr(tela) as usize == self.tela_vigiada.get()
+    }
+
     pub(crate) fn vigia_a_tela(&self, tela: Option<&std::sync::Arc<Vec<u8>>>) {
         self.tela_vigiada
             .set(tela.map_or(0, |t| std::sync::Arc::as_ptr(t) as usize));

@@ -324,13 +324,26 @@ impl UndoEntry {
         live: &ModelSnapshot,
         want_before: bool,
     ) -> Option<Box<ModelSnapshot>> {
+        self.materialize_tomando(cursor, live, want_before, Arc::clone(&cursor.canvas_rgba))
+            .ok()
+    }
+
+    /// [`Self::materialize`] com a tela de base TOMADA (B17.5): com um dono só, os tiles vão no lugar.
+    fn materialize_tomando(
+        &self,
+        cursor: &ModelSnapshot,
+        live: &ModelSnapshot,
+        want_before: bool,
+        tela: Arc<Vec<u8>>,
+    ) -> Result<Box<ModelSnapshot>, Arc<Vec<u8>>> {
         let mut out = Box::new(if want_before {
             self.before.as_ref().clone()
         } else {
             self.after.as_ref().clone()
         });
-        self.planes.side(cursor, live, &mut out, want_before)?;
-        Some(out)
+        self.planes
+            .side(cursor, live, &mut out, want_before, tela)?;
+        Ok(out)
     }
 
     /// **Esta entrada não descreve o relevo que ela deveria descrever** — ver
@@ -486,27 +499,7 @@ impl UndoController {
     /// 28 §5.58.2). O chamador já o constrói uma linha acima (`absorb_foreign_writes_now`), então
     /// recebê-lo não acrescenta trabalho.
     pub fn undo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
-        let entry = self.undo.last()?;
-        // A tela elidida do cursor volta pelo journal sobre o vivo (B17.4).
-        let cursor = self.cursor.as_deref()?;
-        let held = self.with_canvas_held(cursor, &live.canvas_rgba);
-        let Some(restore) = held.and_then(|c| entry.materialize(&c, live, true)) else {
-            // O cursor não descreve mais o plano que a entrada deltou (o canvas mudou de forma sob o
-            // histórico). Um undo que devolve pixels quase-certos é pior que um que se recusa: descarta.
-            eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado");
-            debug_assert!(
-                false,
-                "cursor incoerente com o delta — ver undo_delta::StoredPlane::side"
-            );
-            self.clear();
-            return None;
-        };
-        let entry = self.undo.pop().expect("o topo que acabamos de ler");
-        self.marca_anda(&entry, false);
-        self.redo.push(entry);
-        // O cursor ANDA com a história: o estado que acabamos de instalar é o adjacente do novo topo.
-        self.set_cursor((*restore).clone());
-        Some(restore)
+        self.anda(live, None, true).ok()
     }
 
     /// Redo the most recently undone structural edit: roll forward to its `after`
@@ -514,24 +507,7 @@ impl UndoController {
     /// reinstall, or `None` if the redo stack is empty.
     /// Ver [`Self::undo`] quanto ao `live`.
     pub fn redo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
-        let entry = self.redo.last()?;
-        // A tela elidida do cursor volta pelo journal sobre o vivo (B17.4).
-        let cursor = self.cursor.as_deref()?;
-        let held = self.with_canvas_held(cursor, &live.canvas_rgba);
-        let Some(restore) = held.and_then(|c| entry.materialize(&c, live, false)) else {
-            eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado (redo)");
-            debug_assert!(
-                false,
-                "cursor incoerente com o delta — ver undo_delta::StoredPlane::side"
-            );
-            self.clear();
-            return None;
-        };
-        let entry = self.redo.pop().expect("o topo que acabamos de ler");
-        self.marca_anda(&entry, true);
-        self.undo.push(entry);
-        self.set_cursor((*restore).clone());
-        Some(restore)
+        self.anda(live, None, false).ok()
     }
 
     /// [`Self::undo`] / [`Self::redo`] com o **cursor** por base do relevo.
@@ -641,6 +617,8 @@ pub(crate) mod journal;
 mod shape_state; // o que um SHAPE aberto e', dentro de um snapshot
 pub use shape_state::*;
 
+#[path = "undo_anda.rs"]
+mod anda; // o passo de undo/redo, e a tela entregue no lugar (B17.5)
 #[path = "undo_elide.rs"]
 pub mod elide; // o TERCEIRO estado do relevo: descrito sem ser segurado
 

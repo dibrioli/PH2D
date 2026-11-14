@@ -171,3 +171,14 @@ Comandos (`--ignored`, para a fila da janela principal): s6 A×B intercalado A B
 `sonda_as_fases_do_ctrl_z_wet_a_4k` (features `ph2d-wet-paint/sonda-fases`, `PH2D_SONDA_RODADAS=7`); a troca com as partes
 finas = `sonda_primeiro_traco` com `PH2D_SONDA_TELA=3840x2160 PH2D_SONDA_PAPEL=1 PH2D_SONDA_NOVA=1 PH2D_SONDA_TROCA=1
 PH2D_SONDA_PARTES=1` (ambos `--profile smoke -- --ignored --nocapture --test-threads=1`, por `scripts/ph2d-run.sh`).
+
+## F1h (14/11) — B17.5: o Ctrl+Z escreve a tela no lugar
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B17.5 (a tela) | **feita ao bit; o número a 4K é `--ignored`** | undo Digital 3,33 ms / 1 cópia · Impasto 10,48 ms / 4 cópias (`undo_delta.rs:334`) → esperado Digital 0 cópias, Impasto 3 (o relevo) | este commit | `UndoController::undo_na_tela`/`redo_na_tela` (chamados em `tool/runtime.rs`): o tool entrega o `Arc` da tela (e o do `live`), a história larga o do cursor e o do `held` ⇒ um dono ⇒ `StoredPlane::side_tomando` (`undo_delta_tiles.rs`) faz `Arc::get_mut` + blit dos tiles/janela no lugar. `get_mut`, não `make_mut`: um `Weak` vivo (testemunha da elisão) ⇒ cópia. Tela vigiada pela sessão molhada pelo ponteiro (`WriteState::vigia`) ⇒ cópia. A tela vai por ÚLTIMO em `PlaneDeltas::side` e a recusa de tamanho é perguntada antes: a recusa devolve a tela intacta ao tool (`Err(tela)`). Gate `o_side_tomando_escreve_no_lugar_com_um_dono_e_da_o_bit_da_copia` (oráculo `side` verbatim; ponteiro igual com um dono; outro forte e `Weak` ⇒ cópia, base intacta; tamanho errado recusa); ablação `COPIA_SEMPRE` (thread-local de teste). Ponta a ponta: `um_ctrl_z_copia_so_os_planos_que_o_passo_mudou` (1536², Digital: 0 cópias do lado do delta no undo e no redo; CONTROLO no mesmo teste: com `COPIA_SEMPRE` a cópia volta e o contador vê-a = a mutação «sem a cura» fica vermelha). |
+| B17.5 (o relevo, Impasto) | aberto | 3 cópias (heights/covers/mats, base = `live`) | — | a mesma cura por plano do mapa: o tool entrega `heights`/`covers`/`mats` e um `StoredMap::side_tomando`; a recusa devolve os mapas. |
+| troca.commit | sem número novo | `target/n10/lote2/troca.txt` só tinha a compilação (08:38, load 12–14) | — | ler quando a sonda acabar. |
+
+Comando da medição (fila): a s8 `what_a_diagonal_ctrl_z_copies_at_4k` (`--profile smoke -- --ignored --nocapture
+--test-threads=1`); esperado «sitios do undo: []» em `impasto=false`.

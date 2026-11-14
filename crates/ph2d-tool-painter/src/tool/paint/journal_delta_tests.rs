@@ -121,8 +121,15 @@ fn relief_side(
     let mut out = cursor.clone();
     // A base do RELEVO é o VIVO (degrau 3) — e aqui o cursor É o vivo, que é a premissa que o
     // `debug_assert` de `side` confere a cada chamada.
-    d.side(cursor, cursor, &mut out, want_before)
-        .expect("o cursor descreve o delta que acabamos de partir");
+    d.side(
+        cursor,
+        cursor,
+        &mut out,
+        want_before,
+        std::sync::Arc::clone(&cursor.canvas_rgba),
+    )
+    .ok()
+    .expect("o cursor descreve o delta que acabamos de partir");
     let l = cursor.layers.active().expect("a camada ativa do fixture");
     (
         plane(&out.heights, l),

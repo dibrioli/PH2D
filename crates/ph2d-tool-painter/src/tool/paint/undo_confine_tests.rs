@@ -579,9 +579,27 @@ fn um_ctrl_z_copia_so_os_planos_que_o_passo_mudou() {
             let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
             assert!(if desfaz { t.undo_last() } else { t.redo_last() });
             let sitios = crate::plane_copy::par_clone_sites_desde_a_ultima();
+            // B17.5: a tela (um dono só) vai no lugar, sem cópia. CONTROLO: a ablação `COPIA_SEMPRE` (o mundo de
+            // antes) copia-a no lado do delta, logo o contador vê a cópia quando ela existe.
+            let do_delta = |s: &[(&'static str, u32)]| {
+                s.iter().filter(|s| s.0.ends_with("undo_delta.rs")).count()
+            };
+            if !impasto {
+                assert_eq!(
+                    do_delta(&sitios),
+                    0,
+                    "desfaz={desfaz}: a tela copiou — {sitios:?}"
+                );
+            }
+            crate::undo_delta::tiles::COPIA_SEMPRE.with(|c| c.set(true));
+            assert!(if desfaz { t.redo_last() } else { t.undo_last() });
+            let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
+            assert!(if desfaz { t.undo_last() } else { t.redo_last() });
+            let controlo = crate::plane_copy::par_clone_sites_desde_a_ultima();
+            crate::undo_delta::tiles::COPIA_SEMPRE.with(|c| c.set(false));
             assert!(
-                sitios.iter().any(|s| s.0.ends_with("undo_delta.rs")),
-                "CONTROLO (impasto={impasto}, desfaz={desfaz}): o lado do delta copia o plano — {sitios:?}"
+                do_delta(&controlo) >= 1,
+                "CONTROLO (impasto={impasto}, desfaz={desfaz}): {controlo:?}"
             );
             let alheias: Vec<_> = sitios
                 .iter()

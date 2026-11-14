@@ -594,11 +594,31 @@ impl PlaneDeltas {
         live: &crate::undo::ModelSnapshot,
         out: &mut crate::undo::ModelSnapshot,
         want_before: bool,
-    ) -> Option<()> {
+        tela: Arc<Vec<u8>>,
+    ) -> Result<(), Arc<Vec<u8>>> {
         let b = want_before;
         #[cfg(debug_assertions)]
         Self::debug_relief_base_is_the_cursor(cursor, live);
-        out.canvas_rgba = self.canvas_rgba.side(&cursor.canvas_rgba, b)?;
+        // A tela por último, no lugar com um dono (B17.5): a recusa dela (o tamanho) vem antes de toda escrita.
+        if !self.canvas_rgba.cabe(tela.len())
+            || self.side_sem_a_tela(cursor, live, out, b).is_none()
+        {
+            return Err(tela);
+        }
+        out.canvas_rgba = self
+            .canvas_rgba
+            .side_tomando(tela, b)
+            .ok_or_else(Arc::default)?;
+        Ok(())
+    }
+
+    fn side_sem_a_tela(
+        &self,
+        cursor: &crate::undo::ModelSnapshot,
+        live: &crate::undo::ModelSnapshot,
+        out: &mut crate::undo::ModelSnapshot,
+        b: bool,
+    ) -> Option<()> {
         out.images = self.images.side(&cursor.images, b)?;
         out.heights = self.heights.side(&live.heights, b)?;
         out.covers = self.covers.side(&live.covers, b)?;

@@ -84,7 +84,7 @@ impl PainterTool {
         self.audit_live_is_the_cursor("undo");
         // O VIVO é a base de que o relevo é materializado (degrau 3) — e ele é o MESMO snapshot que a
         // absorção acabou de construir, então recebê-lo não acrescenta trabalho.
-        let live = self.snapshot_model();
+        let mut live = self.snapshot_model();
         // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
         let confined = self.sujo_do_proximo_passo(false);
@@ -95,7 +95,7 @@ impl PainterTool {
         } else {
             None
         };
-        let desfez = if let Some(model) = self.undo.undo(&live) {
+        let desfez = if let Some(model) = self.undo.undo_na_tela(&mut live, &mut self.canvas_rgba) {
             self.restore_model_confined(*model, confined);
             true
         } else {
@@ -147,7 +147,7 @@ impl PainterTool {
         // que começa por `Arc::ptr_eq` em cada plano ⇒ sem escrita estrangeira ele não lê um byte.
         self.absorb_foreign_writes_now();
         self.audit_live_is_the_cursor("redo");
-        let live = self.snapshot_model();
+        let mut live = self.snapshot_model();
         // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
         let confined = self.sujo_do_proximo_passo(true);
@@ -157,7 +157,7 @@ impl PainterTool {
         } else {
             None
         };
-        let refez = if let Some(model) = self.undo.redo(&live) {
+        let refez = if let Some(model) = self.undo.redo_na_tela(&mut live, &mut self.canvas_rgba) {
             self.restore_model_confined(*model, confined);
             true
         } else {

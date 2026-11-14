@@ -8,8 +8,15 @@
 //! tile é a caixa de um `mark`, recortada à janela.
 
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use super::{PlaneWindow, StoredPlane};
+
+#[cfg(test)]
+thread_local! {
+    /// A ablação do B17.5: `true` = [`StoredPlane::side_tomando`] copia sempre (o oráculo, o mundo de antes).
+    pub(crate) static COPIA_SEMPRE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
 use crate::compositor::Region;
 use crate::undo::journal::TILE;
 
@@ -165,6 +172,46 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
         })
     }
 
+    /// `side` pode partir de um plano de `len` elementos? (A única recusa de `Patch`/`Tiles`.)
+    pub(crate) fn cabe(&self, len: usize) -> bool {
+        match self {
+            Self::Patch { win, .. } | Self::Tiles { win, .. } => len == win.plane_len,
+            _ => true,
+        }
+    }
+
+    /// [`Self::side`] TOMANDO a base (B17.5): com um dono só — nem `Weak`, cuja testemunha lê «mesmo `Arc` ⇒ mesmos
+    /// bytes» — os tiles vão para o plano NO LUGAR; com outro dono, a cópia de sempre. O resultado é o mesmo bit.
+    pub(crate) fn side_tomando(
+        &self,
+        mut base: Arc<Vec<T>>,
+        want_before: bool,
+    ) -> Option<Arc<Vec<T>>> {
+        if !self.cabe(base.len()) {
+            return None;
+        }
+        #[cfg(test)]
+        let unico = !COPIA_SEMPRE.with(std::cell::Cell::get);
+        #[cfg(not(test))]
+        let unico = true;
+        let Some(v) = Arc::get_mut(&mut base).filter(|_| unico) else {
+            return self.side(&base, want_before);
+        };
+        match self {
+            Self::Patch { win, before, after } => {
+                win.blit(if want_before { before } else { after }, v);
+            }
+            Self::Tiles {
+                rects,
+                before,
+                after,
+                ..
+            } => Self::blit_tiles(rects, if want_before { before } else { after }, v),
+            _ => return self.side(&base, want_before),
+        }
+        Some(base)
+    }
+
     /// Escreve um dos lados das caixas sobre um plano completo.
     pub(super) fn blit_tiles(rects: &[PlaneWindow], side: &[T], dst: &mut [T]) {
         let mut at = 0;
@@ -209,5 +256,62 @@ mod tests {
         let (mut b, mut d) = (Arc::clone(&before), Arc::new((*before).clone()));
         let igual = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
         assert_eq!(igual.variant(), "-", "nada mudou: zero bytes");
+    }
+
+    /// **Com um dono só, o Ctrl+Z escreve os tiles NO LUGAR e dá o bit da cópia** (B17.5). Oráculo: `side` sobre o
+    /// mesmo plano (a cópia de antes). Controlo: com outro dono forte ou um `Weak` vivo, copia e não toca a base.
+    #[test]
+    fn o_side_tomando_escreve_no_lugar_com_um_dono_e_da_o_bit_da_copia() {
+        let (w, h) = (512u32, 384u32);
+        let t = TILE as u32;
+        let before = Arc::new(vec![7u8; (w * h) as usize]);
+        let mut a = (*before).clone();
+        a[(t + 5) as usize * w as usize + 2 * t as usize + 9] = 200;
+        a[(2 * t + 1) as usize * w as usize + 3] = 9;
+        let after = Arc::new(a);
+        let tudo = Region { x: 0, y: 0, w, h };
+        let mut marks = TileMarks::default();
+        marks.mark(tudo);
+        let px = marks.for_hint(Some(tudo), 1).expect("janela");
+        let hint = PlaneWindow::from_region(tudo, w, w as usize);
+        let (mut b, mut d) = (Arc::clone(&before), Arc::clone(&after));
+        let out = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
+        assert_eq!(out.variant(), "tiles");
+        for (base, want, lado) in [(&after, true, &before), (&before, false, &after)] {
+            let oraculo = out.side(base, want).expect("oráculo");
+            assert_eq!(*oraculo, **lado);
+            // Um dono só: no lugar (o mesmo ponteiro), o mesmo bit.
+            let unico = Arc::new((**base).clone());
+            let ptr = Arc::as_ptr(&unico);
+            let r = out.side_tomando(unico, want).expect("cabe");
+            assert_eq!(*r, *oraculo, "no lugar ≠ cópia (want_before={want})");
+            assert_eq!(
+                Arc::as_ptr(&r),
+                ptr,
+                "um dono só tem de escrever no lugar, sem copiar"
+            );
+            // Outro dono forte: copia, a base fica intacta.
+            let partilhado = Arc::new((**base).clone());
+            let outro = Arc::clone(&partilhado);
+            let r = out.side_tomando(partilhado, want).expect("cabe");
+            assert_eq!(*r, *oraculo);
+            assert!(
+                !Arc::ptr_eq(&r, &outro) && *outro == **base,
+                "o outro dono viu a escrita"
+            );
+            // Um `Weak` vivo (a testemunha da elisão): copia, a testemunha continua a ler os bytes de antes.
+            let fraco_base = Arc::new((**base).clone());
+            let fraco = Arc::downgrade(&fraco_base);
+            let r = out.side_tomando(fraco_base, want).expect("cabe");
+            assert_eq!(*r, *oraculo);
+            assert!(
+                fraco.upgrade().is_none_or(|p| !Arc::ptr_eq(&p, &r)),
+                "testemunha enganada"
+            );
+        }
+        assert!(
+            out.side_tomando(Arc::new(vec![0u8; 3]), true).is_none(),
+            "tamanho errado recusa"
+        );
     }
 }

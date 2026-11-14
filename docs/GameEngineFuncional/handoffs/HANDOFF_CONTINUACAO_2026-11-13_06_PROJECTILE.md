@@ -1,5 +1,7 @@
 # HANDOFF de continuação — GEF 06 Projectile Motion (13/11/2026)
 
+> **SUBSTITUÍDO** pelo handoff de integração [HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-13_PROJECTILE_E_CHECKBOX.md](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-13_PROJECTILE_E_CHECKBOX.md); este fica como mecanismo da onda.
+
 Linha `line/GameEngineFuncional`, worktree `Worktrees/line-GameEngineFuncional`. Onda fechada: versão B do dono, smoke do dono OK em 13/11. Ficha: [06_projectile.md](../componentes/06_projectile.md). Plano: [23_refundacao_plano.md](../23_refundacao_plano.md). Não integrada (a integração é do integrador, por ordem do Enio).
 
 ## O que a onda fez

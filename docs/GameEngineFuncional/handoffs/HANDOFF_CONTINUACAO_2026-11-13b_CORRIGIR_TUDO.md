@@ -1,5 +1,7 @@
 # HANDOFF de continuação — GEF «corrigir tudo» (13/11/2026, onda b)
 
+> **SUBSTITUÍDO** pelo handoff de integração [HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-13_PROJECTILE_E_CHECKBOX.md](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-13_PROJECTILE_E_CHECKBOX.md); este fica como mecanismo da onda.
+
 Linha `line/GameEngineFuncional`, worktree `Worktrees/line-GameEngineFuncional`. Fecha os 5 ABERTOS do [handoff anterior](HANDOFF_CONTINUACAO_2026-11-13_06_PROJECTILE.md) (ordem do dono, 13/11). Ficha: [06_projectile.md](../componentes/06_projectile.md). Plano: [23_refundacao_plano.md](../23_refundacao_plano.md). Não integrada (a integração é do integrador, por ordem do Enio).
 
 Commits: `52aed2545e`, `0c7245ae80` (fmt), `249611a86a`, `353455239c`, `fd82251aa1`, `89a6def873` (foto).

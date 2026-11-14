@@ -1,11 +1,7 @@
 //! **A família do KANBAN** (TrelloClone W2, [ADR-0195]) — um Kanban do projecto aberto numa ABA e
 //! usado como no Trello: listas e cartões, criar e escrever no lugar, arrastar com mola, inclinação
-//! e rolagem nas bordas, cores e recolher listas (recolher é da VISTA), arquivo, atalhos, e o
-//! desfazer de cada Kanban.
-//!
-//! A aba é uma VISTA ([`ph2d_kanban_model::KanbanView`]) sobre o documento que o projecto guarda —
-//! o mesmo `Rc` do `Documents` ([`ph2d_editor_core::documents::SharedKanbans`]): não há cópia nem
-//! sincronização (o elemento do canvas do Quadro, na W4, é outra vista do mesmo registo).
+//! e rolagem nas bordas, cores, recolher listas, arquivo, atalhos e desfazer. A aba é uma VISTA
+//! ([`ph2d_kanban_model::KanbanView`]) do documento do projecto: [`ph2d_editor_core::documents::SharedKanbans`].
 //!
 //! [ADR-0195]: ../../../docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
 

@@ -1,6 +1,4 @@
-//! ⭐ O `DocumentSurface` da família: o hero dá a área central à aba activa e entrega-lhe rato, roda,
-//! teclado e composição. Os comandos da família («New Kanban», «Kanbans») entram no menu File com
-//! qualquer aba activa.
+//! ⭐ O `DocumentSurface` da família: o hero dá a área central à aba activa (rato, roda, teclado, composição).
 
 use crate::docs::{HOME, KanbanDocs};
 use crate::home::Tile;

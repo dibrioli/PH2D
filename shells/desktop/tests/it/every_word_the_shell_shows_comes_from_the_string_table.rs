@@ -110,6 +110,12 @@ const NOT_LANGUAGE: &[Excecao] = &[
          (a tecla Command, no macOS) — nome de tecla, não frase, e nunca pintado",
     ),
     (
+        "faixa_unica.rs",
+        "fundo livre x={livre:.0} largura={largura:.0} pedido={pedido:?}",
+        "a sonda `PH2D_FAIXA_LOG` (faixa única): pares `chave=valor` no terminal, só com a env ligada — \
+         o diagnóstico de quem segue um report da faixa, nunca pintado",
+    ),
+    (
         "render_loop/autokey_pass.rs",
         "[autokey] painel={panel_open} armado={armed} populacao={pop:x?}",
         "a sonda `PH2D_AUTOKEY_LOG` (plano 34): pares `chave=valor` no terminal, só com a env \

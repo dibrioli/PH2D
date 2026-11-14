@@ -956,10 +956,8 @@ impl ApplicationHandler for App {
     }
 }
 
-// ⭐ Os dois pisos da matemática de importação mudaram-se para a folha
-// [`ph2d_image_import`] com a lei que os lê (W2/L4 Fase B, 2.ª volta). A re-exportação mantém os
-// 21 ficheiros que escrevem `crate::EPS_PIXELS_PER_METER` byte a byte iguais — ⛔ declará-los aqui
-// OUTRA vez seriam duas respostas à mesma pergunta, e a que envelhece é a que o artista vê.
+// ⭐ Os pisos da matemática de importação moram em [`ph2d_image_import`]; a re-exportação mantém os 21
+// ficheiros que escrevem `crate::EPS_PIXELS_PER_METER` — ⛔ declará-los aqui OUTRA vez seriam duas respostas.
 pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 
 fn main() {

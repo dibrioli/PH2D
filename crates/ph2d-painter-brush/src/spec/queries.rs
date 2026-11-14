@@ -583,6 +583,13 @@ impl BrushSpec {
         !self.watercolor && !self.impasto && !self.fora_do_digital
     }
 
+    /// O traço corre no Wet Paint (fora do Digital, sem os flags da aguada e do relevo): o único meio onde as leis
+    /// da missão 4K valem (BUGS_painter #115).
+    #[must_use]
+    pub fn no_wet_paint(&self) -> bool {
+        self.fora_do_digital && !self.watercolor && !self.impasto
+    }
+
     /// ⭐ **O sub-passo da cápsula** deste pincel a raio `raio`: [`crate::capsula::sub_passo_px`], ou o FINO
     /// ([`Self::sub_passo_fino`]) — o mesmo [`crate::capsula::SUB_SPACING`] do diâmetro com o piso
     /// [`crate::capsula::SUB_PASSO_FINO_MIN_PX`] em vez de um texel.

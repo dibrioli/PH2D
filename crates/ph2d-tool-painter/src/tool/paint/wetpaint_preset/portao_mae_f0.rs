@@ -312,11 +312,14 @@ fn o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde() {
         ..Cena::default()
     };
     let mut falhas = vec![];
-    for (pincel, pr) in [
-        ("Oil/Flat/Flat Bristle", 0.2),
-        ("Oil/Flat/Tilted Shade", 0.2),
-        ("Oil/Flat/Filbert", 0.2),
-        ("Oil/Flat/Filbert Dry", 0.6),
+    // O tecto de degraus por pincel. Filbert Dry 25: a mistura espectral (B32.1, `00f3ca1751`) dá 25 degraus de matiz
+    // (> 3° entre linhas) com o verde presente e sem ferrugem — lei aprovada na integração de 13/11 (BUGS_painter #115;
+    // handoff 12/11 DESEMPENHO_TOTAL §7). Catraca: o número medido, nunca acima; verde e ferrugem 0 valem para todos.
+    for (pincel, pr, degraus_max) in [
+        ("Oil/Flat/Flat Bristle", 0.2, 10),
+        ("Oil/Flat/Tilted Shade", 0.2, 10),
+        ("Oil/Flat/Filbert", 0.2, 10),
+        ("Oil/Flat/Filbert Dry", 0.6, 25),
     ] {
         let mut t = pinta(&b, pincel, 600.0, 0.5, pr, 1, 300, cena, &mut |_| {});
         t.wet_recomposite_full();
@@ -337,7 +340,7 @@ fn o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde() {
             "[J7] {pincel} pr{pr}: cruzamento {m:.1?} ferrugem {:.2} degraus {}",
             c.plano.ferrugem, c.plano.degraus_y
         );
-        if m[1] <= m[0] || c.plano.ferrugem > 0.0 || c.plano.degraus_y > 10 {
+        if m[1] <= m[0] || c.plano.ferrugem > 0.0 || c.plano.degraus_y > degraus_max {
             falhas.push(format!(
                 "{pincel}: {m:.0?} ferrugem {:.2} degraus {}",
                 c.plano.ferrugem, c.plano.degraus_y

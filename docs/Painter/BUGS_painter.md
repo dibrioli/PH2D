@@ -1179,6 +1179,39 @@ prévia toda preta). O que já se sabe (janela n.º 9, sem cura):
 - Reproduzir: app em cartões, Painter, um pincel, cartão Grain → Dots; fotografar; depois o gate por nome em
   `ph2d-panel-painter-layers` que chama `previa_do_padrao` com o estado do pincel do dono e afirma píxeis não pretos.
 
+## Bug #115 (DECISÃO DE INTEGRAÇÃO 13/11) — as leis da missão 4K valem SÓ no Wet Paint; Digital, Impasto e Watercolor voltam ao main
+
+Duas ordens do dono em conflito: 07/10 «só o Wet Paint evolui: Digital/Impasto/Watercolor ficam»
+([memória](../../project-memory/project_wet_paint_is_the_only_painter_mode_to_evolve_2026_10_07.md); cerca
+`os_outros_meios_nao_mudam`: «a cura é desfazer, nunca regravar») × 10/11 adoção das leis da missão 4K. Decisão do
+integrador (13/11, ordem «em dúvida, estado da arte»): **a lei da missão só entra no Wet Paint**; nos outros três meios, os
+bytes do main `4f46a3573c`.
+
+- **B29.1** (tecto largo `u16` da cor do traço): a porta `quer_o_tecto_largo` pede `paint_media() == WetPaint`. Medido: o
+  traço do Wet não passa pelo carimbo por dab (`escolha = None`), logo o largo fica **sem consumidor no produto** até ser adotado
+  noutro meio; os gates da lei correm com `sem_a_porta_do_meio` (só em teste) e o gate novo
+  `fora_do_wet_paint_o_traco_fica_no_tecto_u8` prova Digital/Impasto/Watercolor no `u8` ao bit do veto (controlo: sem a porta o
+  Digital escolhe o largo e muda bytes). Digital da cerca: volta ao hash esperado.
+- **B29.3** (grão = tecto sob a película): `Area::do_pincel` — só com `BrushSpec::no_wet_paint()` a película é `Filme`; no
+  Impasto lê-se como a orla (`w·tecto`, a lei de antes). Gate `so_no_wet_paint_o_grao_e_tecto_sob_a_pelicula`. Ficam verdes
+  `the_impasto_deposit_is_pinned_plane_by_plane`, `impasto_shine_glints_on_the_wall_without_bleaching_the_rim`,
+  `wax_bleeds_the_paints_own_colour_into_the_shadow`.
+- **B33.1** (papel em duas leituras): **pendente**. A 2.ª leitura mora em `paper_tile::sample_t`, cego ao meio, e o papel da
+  tela é um só para todos os meios (o Wet lê o papel da camada, `fb5cb04fca`). Medido (2.ª leitura desligada por instantes):
+  a cerca da bancada **não** volta — o B33.1 não é o causador dela; o `o_classic_e_o_paper_edge_zero` muda de hash mas também
+  não volta (tem outro causador além do papel).
+- **Ainda vermelhos fora do Wet** (outro causador, não B29/B33, nem o ritmo fixo B22.1 — `PH2D_RITMO_FIXO=0` não os devolve):
+  `os_outros_meios_nao_mudam` (watercolor `0x9648afcc23109073`, impasto `0xf2d1ded05f744e73`) e
+  `a_luz_do_impasto_com_relevo_e_a_de_antes_da_poda`. Falta bissectar `4f46a3573c..HEAD` por estes três testes.
+- **Filbert Dry** (`portao_mae_f0::o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde`): lei B32.1 (mistura espectral,
+  `00f3ca1751`) aprovada — 25 degraus de matiz, verde presente (G 140 > R 92), ferrugem 0
+  ([handoff 12/11 §7](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-12_DESEMPENHO_TOTAL.md)). O tecto passa a ser
+  por pincel: Filbert Dry 25 (o número medido, catraca), os outros 10; verde e ferrugem 0 para os quatro.
+
+**Lição:** uma lei nova num motor partilhado por quatro meios precisa de UMA porta de meio no ponto de decisão (a escolha do
+tecto, a `Area`), não de uma cópia por meio; e a porta tem de ser medida no meio que a adota — aqui o Wet nem passa pelo
+carimbo, o que só a escolha `None` revelou.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

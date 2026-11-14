@@ -24,8 +24,15 @@ impl PainterTool {
             self.paint.tecto_largo.so_byte || tests::VETO_DA_SONDA.with(std::cell::Cell::get);
         #[cfg(not(test))]
         let veto = false;
+        #[cfg(test)]
+        let sem_porta = self.paint.tecto_largo.sem_a_porta_do_meio;
+        #[cfg(not(test))]
+        let sem_porta = false;
         let pig = brush.pigmento();
+        // Só o Wet Paint evolui (dono 07/10; decisão do integrador 13/11, BUGS_painter #115): Digital, Impasto e
+        // Watercolor ficam no `u8`, os bytes do main 4f46a3573c (`os_outros_meios_nao_mudam`).
         let e = !veto
+            && (sem_porta || self.paint_media() == crate::PaintMedia::WetPaint)
             && !alpha_locked
             && brush.blend == BrushBlend::Mix
             && pig.mix <= 0.0

@@ -50,6 +50,14 @@ impl Area {
             (false, false) => Self::Nao,
         }
     }
+
+    /// A [`Area`] do dab deste pincel: o grão é tecto sob a película SÓ no Wet Paint ([`crate::BrushSpec::no_wet_paint`]);
+    /// no Impasto a película lê-se como a orla, a lei do main 4f46a3573c (dono 07/10 «só o Wet Paint evolui»,
+    /// BUGS_painter #115).
+    #[must_use]
+    pub(crate) fn do_pincel(spec: &crate::BrushSpec, filme: bool, orla: bool) -> Self {
+        Self::de(filme && spec.no_wet_paint(), filme || orla)
+    }
 }
 
 /// How much of the stroke's paint this dab adds at one texel, given the texel's coverage so far `m`, the

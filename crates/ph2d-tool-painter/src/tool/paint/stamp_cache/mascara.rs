@@ -153,6 +153,10 @@ pub(crate) struct TectoDoTraco {
     /// Veto de TESTE: o mesmo traço no `u8` (o red do gate, no mesmo processo).
     #[cfg(test)]
     pub(crate) so_byte: bool,
+    /// TESTE: a lei do largo medida fora do Wet Paint (a porta do meio é só do produto, BUGS_painter #115); o traço
+    /// do Wet não passa pelo carimbo por dab, e sem isto a lei ficava sem prova até ser adotada noutro meio.
+    #[cfg(test)]
+    pub(crate) sem_a_porta_do_meio: bool,
 }
 
 impl TectoDoTraco {

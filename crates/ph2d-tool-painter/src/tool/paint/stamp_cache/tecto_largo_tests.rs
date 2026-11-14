@@ -21,6 +21,9 @@ fn cpx(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 fn ferramenta(ajusta: impl Fn(&mut BrushSpec)) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (L * L * 4) as usize], L, L);
+    // A lei do largo medida sem a porta do meio (só o Wet Paint a adota, BUGS_painter #115): ver
+    // `fora_do_wet_paint_o_traco_fica_no_tecto_u8` para a porta.
+    t.paint.tecto_largo.sem_a_porta_do_meio = true;
     t.set_brush_size_px(24.0);
     ajusta(&mut t.paint.brush);
     for s in &mut t.paint.brush_by_mode {
@@ -113,6 +116,45 @@ fn o_pincel_liso_da_banda_leva_o_tecto_largo() {
     assert_eq!((e_largo, e_byte), (Some(true), Some(false)), "{leitura}");
     assert!(v_largo <= 1, "o largo devia chegar ao alvo: {leitura}");
     assert!(v_byte > 10, "o u8 não estancou: {leitura}");
+}
+
+/// ⛔ **A porta do meio** (BUGS_painter #115; dono 07/10 «só o Wet Paint evolui»): no Digital, no Impasto e na
+/// Watercolor o traço que o largo levaria fica no `u8`, ao bit do veto — os bytes do main 4f46a3573c. Controlo: o
+/// MESMO traço sem a porta escolhe o largo e pinta outros bytes (a fixture contém o fenómeno).
+#[test]
+fn fora_do_wet_paint_o_traco_fica_no_tecto_u8() {
+    use crate::PaintMedia;
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::Watercolor,
+    ] {
+        let corre = |sem_porta: bool, so_byte: bool| {
+            let mut t = ferramenta(flow_baixo);
+            t.set_paint_media(meio);
+            t.paint.tecto_largo.sem_a_porta_do_meio = sem_porta;
+            t.paint.tecto_largo.so_byte = so_byte;
+            let (_, e) = passadas(&mut t, 80);
+            (e, t.canvas_rgba)
+        };
+        let (e, px) = corre(false, false);
+        let (_, veto) = corre(false, true);
+        assert_ne!(
+            e,
+            Some(true),
+            "{meio:?}: fora do Wet o traço não leva o largo"
+        );
+        assert!(px == veto, "{meio:?}: fora do Wet o traço é o u8 ao bit");
+        if meio == PaintMedia::Digital {
+            let (e_sem, px_sem) = corre(true, false);
+            assert_eq!(
+                e_sem,
+                Some(true),
+                "controlo: sem a porta o Digital leva o largo"
+            );
+            assert!(px_sem != veto, "controlo: o largo muda bytes nesta fixture");
+        }
+    }
 }
 
 /// Um traço que NÃO pode recompor (Randomize Color: a cor muda por dab) fica no `u8`, ao bit com o veto.

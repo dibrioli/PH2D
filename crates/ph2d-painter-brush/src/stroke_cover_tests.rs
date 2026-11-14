@@ -112,3 +112,21 @@ fn com_o_filme_o_grao_e_tecto_ao_repassar() {
         }
     }
 }
+
+/// ⛔ A porta do meio do B29.3 (BUGS_painter #115; dono 07/10 «só o Wet Paint evolui»): só o Wet Paint faz do grão
+/// tecto sob a película; no Impasto a película lê-se como a orla (`w·tecto`, a lei do main 4f46a3573c).
+#[test]
+fn so_no_wet_paint_o_grao_e_tecto_sob_a_pelicula() {
+    let mut impasto = crate::BrushSpec {
+        impasto: true,
+        fora_do_digital: true,
+        ..Default::default()
+    };
+    assert_eq!(Area::do_pincel(&impasto, true, false), Area::Orla);
+    impasto.impasto = false; // o Wet Paint: fora do Digital, sem os flags da aguada e do relevo
+    assert_eq!(Area::do_pincel(&impasto, true, false), Area::Filme);
+    let digital = crate::BrushSpec::default();
+    assert_eq!(Area::do_pincel(&digital, true, false), Area::Orla);
+    assert_eq!(Area::do_pincel(&digital, false, true), Area::Orla);
+    assert_eq!(Area::do_pincel(&digital, false, false), Area::Nao);
+}

@@ -448,7 +448,7 @@ impl Invariantes {
             } else {
                 ctx.flow
             },
-            area: crate::stroke_cover::Area::de(ctx.film_aa.is_some(), orla_area),
+            area: crate::stroke_cover::Area::do_pincel(ctx.spec, ctx.film_aa.is_some(), orla_area),
             recompoe: com_mascara
                 && ctx.spec.blend == crate::BrushBlend::Mix
                 && ctx.spec.pigmento().mix <= 0.0

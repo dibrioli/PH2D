@@ -57,7 +57,8 @@ pub(super) fn pinta(
     if t.fundo != superficie.fundo() {
         // O fundo que o tema escolheu para o texto ler (ver `menu_tons`), dentro do filete.
         let dentro = Rect::new(rect.x + 1.0, rect.y + 1.0, rect.w - 2.0, rect.h - 2.0);
-        fill_rounded_rect(scene, dentro, Radius::Md.px() - 1.0, t.fundo);
+        let raio = (crate::paint::frame_radius(theme, Radius::Md.px()) - 1.0).max(0.0);
+        fill_rounded_rect(scene, dentro, raio, t.fundo);
     }
     let row_x = rect.x + Spacing::Xs.px();
     let row_w = rect.w - Spacing::Xs.px() * 2.0;
@@ -111,7 +112,7 @@ pub(super) fn pinta(
 
 /// A amostra de uma cor escolhida pelo utilizador, com o filete que a deixa ver sobre qualquer fundo.
 fn amostra(scene: &mut VectorScene, caixa: Rect, c: [u8; 4], theme: Theme) {
-    let raio = Radius::Xs.px();
+    let raio = crate::paint::frame_radius(theme, Radius::Xs.px());
     fill_rounded_rect(
         scene,
         caixa,

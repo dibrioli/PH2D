@@ -12,7 +12,7 @@ pub fn numero_da_alca(metros: f32, unidade: DisplayUnit, ppm: f32) -> String {
     let v = unidade.from_meters_f64(f64::from(metros), ppm);
     let escala = match unidade {
         DisplayUnit::Pixels => 1.0,
-        DisplayUnit::Meters => 100.0,
+        DisplayUnit::Meters => 100.0, // LITERAL-PX-OK: centímetros por metro (unidade)
     };
     format!(
         "{} {}",

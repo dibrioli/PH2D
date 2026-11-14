@@ -107,7 +107,7 @@ pub fn faixa(bar: Rect, text_system: &mut TextSystem, frame: Option<bool>) -> Fa
 /// nem o fundo. TODO controlo da faixa tem esta altura (onda 7: eram quatro — 22, 24, 28 e 22).
 pub(super) fn caixa(r: Rect) -> Rect {
     let d = m::FIELD_BORDER;
-    let h = (r.h - d * 2.0).clamp(0.0, MENU_BAR_CTL_H_PX);
+    let h = crate::math::safe_clamp(r.h - d * 2.0, 0.0, MENU_BAR_CTL_H_PX);
     Rect::new(r.x, r.y + (r.h - h) * 0.5, r.w, h)
 }
 
@@ -237,6 +237,7 @@ pub fn paint(
     fill_rounded_rect(scene, cx, raio, tons.campo);
     let meio = fino * 0.5;
     let traco = Rect::new(cx.x + meio, cx.y + meio, cx.w - fino, cx.h - fino);
+    // FRAME-RAW-OK: o filete É o que identifica o campo de busca contra a faixa (`faixa_tons`, CONTROLO_MIN).
     crate::paint::stroke_rounded_rect(
         scene,
         traco,
@@ -268,7 +269,8 @@ pub fn paint(
         pw,
         ph,
     );
-    fill_rounded_rect(scene, placa, Radius::Sm.px().min(ph * 0.5), tons.tecla);
+    let raio_placa = crate::paint::frame_radius(theme, Radius::Sm.px()).min(ph * 0.5);
+    fill_rounded_rect(scene, placa, raio_placa, tons.tecla);
     let tecla_y = placa.y + folga_do_texto(placa.h, xs);
     paint_text(
         text_system,

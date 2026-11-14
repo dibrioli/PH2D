@@ -116,14 +116,17 @@ fn a_fila_fina_tem_as_medidas_da_maquete() {
         (vao(0, 1) - TOOL_ROW_GROUP_GAP_PX).abs() < 0.01,
         "dentro do grupo"
     );
-    assert!((vao(3, 4) - TOOL_ROW_GAP_PX).abs() < 0.01, "glifo → Global");
+    assert!(
+        (vao(3, 4) - TOOL_ROW_GAP_PX).abs() < 0.01,
+        "glifo -> Global"
+    );
     assert!(
         (vao(4, 5) - TOOL_ROW_GAP_PX).abs() < 0.01,
-        "Global → Selected"
+        "Global -> Selected"
     );
     assert!(
         (vao(6, 7) - TOOL_ROW_GROUP_GAP_PX).abs() < 0.01,
-        "undo → redo"
+        "undo -> redo"
     );
     assert!(fila_fina_cabe(&rail, 1600.0));
     assert!(!fila_fina_cabe(&rail, 100.0));

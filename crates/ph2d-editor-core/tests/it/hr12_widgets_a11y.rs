@@ -127,6 +127,14 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "cara do chip DENTRO de um cartao (T29): o no' e' do Dropdown, que vive no mod.rs ao lado",
     ),
     (
+        "dropdown/estado.rs",
+        "o estado do chip e a cor da borda que ele dá: lei pura, sem pintura nem nó; o nó é o do `dropdown`",
+    ),
+    (
+        "command_palette/lista/legivel.rs",
+        "o contraste da lista (a tinta pousada, a cor que ainda lê): lei pura, sem pintura nem nó",
+    ),
+    (
         "dropdown/geometria.rs",
         "geometria de chip: o no' e' do Dropdown, que vive no mod.rs ao lado",
     ),
@@ -348,6 +356,12 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
         "tool_rail/paint_cartao.rs",
         "paint only, the same entries in the card tones; parent owns the Toolbar a11y tree",
+    ),
+    // A fila FINA (barra de menus, 12/11): as mesmas entradas numa linha de glifos; só tinta e
+    // aritmética de onde cada uma cai — a árvore `Role::Toolbar` é a do pai.
+    (
+        "tool_rail/fila_fina.rs",
+        "paint only, the same entries in the thin row; parent owns the Toolbar a11y tree",
     ),
     (
         "tool_rail/geometry.rs",

@@ -6,7 +6,7 @@
 
 use super::faixa_tons::{CONTROLO_MIN, PLACA_MIN, TEXTO_MIN, ate_ler, pilula, pousa, razao};
 use crate::widget::lista_flutuante::Superficie;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Theme};
 use ph2d_vector::Color;
 
 /// Os tons de um menu da barra.
@@ -24,6 +24,8 @@ pub struct TonsDoMenu {
     pub aceso_texto: Color,
     /// A linha cinzenta (indisponível): apagada de propósito, nunca some.
     pub cinza: Color,
+    /// A quina da linha acesa, pela porta do tema.
+    pub raio: f32,
 }
 
 /// Os tons do menu no tema, na UI de cartões ou na de antes (a mesma [`Superficie`] que o pinta).
@@ -76,13 +78,14 @@ pub fn tons_do_menu(theme: Theme) -> TonsDoMenu {
         aceso,
         aceso_texto,
         cinza: s.cor(ColorToken::Text3),
+        raio: crate::paint::frame_radius(theme, Radius::Sm.px()),
     }
 }
 
 /// O atalho dentro da linha acesa: a tinta dela, um pouco recuada, ainda ≥ 4,5:1.
 #[must_use]
 pub fn atalho_aceso(t: &TonsDoMenu) -> Color {
-    let recuado = t.aceso_texto.lerp_rect(t.aceso, 0.28);
+    let recuado = t.aceso_texto.lerp_rect(t.aceso, 0.28); // LITERAL-PX-OK: fração da mistura de duas cores do tema
     if razao(recuado, t.aceso) >= TEXTO_MIN {
         recuado
     } else {

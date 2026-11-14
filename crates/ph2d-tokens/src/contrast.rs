@@ -33,6 +33,10 @@ use crate::theme::Theme;
 /// O mínimo de TEXTO da WCAG 2.2 AA (SC 1.4.3), para quem escolhe uma tinta em runtime.
 pub const TEXT_MIN_RATIO: f64 = 4.5;
 
+/// O mínimo de um COMPONENTE não-textual da WCAG 2.2 AA (SC 1.4.11): a borda ou o fundo que
+/// identifica um controlo.
+pub const GRAPHIC_MIN_RATIO: f64 = 3.0;
+
 /// Um par que a WCAG obriga a ter contraste: **o que se vê SOBRE o quê, e quanto no mínimo**.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ContrastPair {

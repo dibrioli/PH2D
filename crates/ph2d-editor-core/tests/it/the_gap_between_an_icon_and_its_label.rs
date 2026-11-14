@@ -53,10 +53,14 @@ const NOT_THIS_QUESTION: &[(&str, &str)] = &[
         "ICONE SEM LEGENDA: a seta do palco ao lado do Play e' so' o glifo e o respiro do botao \
          (`largura_da_seta`); o nome do Play mede-se por `rect_for_label`, que ja' leva o vao",
     ),
+    // ⛔ `widget/tool_rail/fila_fina.rs` saiu (integração 13/11): a fila fina deixou de somar um vão
+    // depois do glifo (`lado_do_glifo` é o chip inteiro) — a isenção já não descrevia nada.
     (
-        "crates/ph2d-editor-core/src/widget/tool_rail/fila_fina.rs",
-        "ICONE SEM LEGENDA: a fila fina da maquete C (onda 6) nao tem legenda; `lado_do_glifo` e' \
-         o glifo e o respiro do chip dele, metade de cada lado — o nome mora na dica",
+        "crates/ph2d-editor-core/src/screens/hero/menu_barra_linha.rs",
+        "COLUNA DO GLIFO DE UM MENU: a grelha medida nos oraculos da barra versao C (dono 12/11, \
+         `docs/BarraDeMenus/fotos/oraculos/LEIA-ME.md`: `16 | rotulo | atalho | 10`, vao 7 -> \
+         `Spacing::Md`); a coluna existe em TODA linha, haja glifo ou nao — e' o alinhamento dos \
+         rotulos do menu, nao a legenda de um icone",
     ),
     (
         "crates/ph2d-panel-painter-layers/src/paint.rs",

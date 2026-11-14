@@ -81,7 +81,7 @@ pub(super) fn pinta(
         brilho(ctx, ink.color(ColorToken::Success), celula(r, 3), pulso);
     }
     // O gravar é uma bola CHEIA (o glifo do ponto é pequeno demais para ler-se como «gravar»).
-    let d = m::ICON_GLYPH * 0.6;
+    let d = m::ICON_GLYPH * 0.6; // LITERAL-PX-OK: a bola é uma razão do glifo, não uma medida nova
     let cx = r.x + m::FIELD_H * 0.5;
     let bola = Rect::new(cx - d * 0.5, r.y + (r.h - d) * 0.5, d, d);
     ph2d_editor_core::paint::fill_rounded_rect(

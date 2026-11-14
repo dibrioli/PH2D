@@ -219,14 +219,22 @@ pub(crate) fn pontos_da_curva(
         _ => interp.value(0.0, 1.0, u),
     };
     let desce = dv < 0.0;
-    let n = ((x1 - x0) / PASSO_PX).ceil().clamp(1.0, MAX_AMOSTRAS) as usize;
+    let n = ph2d_editor_core::math::safe_clamp(((x1 - x0) / PASSO_PX).ceil(), 1.0, MAX_AMOSTRAS)
+        as usize;
     (0..=n)
         .map(|i| {
             let x = x0 + (x1 - x0) * i as f32 / n as f32;
             let u = f64::from(((x - a) / span).clamp(0.0, 1.0));
             let fr = fracao(u) as f32;
             let fr = if desce { 1.0 - fr } else { fr };
-            (x, (f.cy + f.amp - 2.0 * f.amp * fr).clamp(f.lim.0, f.lim.1))
+            (
+                x,
+                ph2d_editor_core::math::safe_clamp(
+                    f.cy + f.amp - 2.0 * f.amp * fr,
+                    f.lim.0,
+                    f.lim.1,
+                ),
+            )
         })
         .collect()
 }

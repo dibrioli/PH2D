@@ -38,8 +38,10 @@ const GUIDE_A: f32 = 0.14; // LITERAL-PX-OK: opacidade das guias 0/1 (não é me
 const CURVE_A: f32 = 0.72; // LITERAL-PX-OK: opacidade da curva apagada (não é medida de UI)
 /// A opacidade do véu sobre Ease e Curve shape quando a chave não é curva (Straight, Hold, Nearest).
 const VEU_A: f32 = 0.6; // LITERAL-PX-OK: opacidade do véu (não é medida de UI)
+/// O Done sob o ponteiro: o acento um pouco recuado.
+const DONE_QUENTE_A: f32 = 0.85; // LITERAL-PX-OK: opacidade do hover (não é medida de UI)
 /// As alças da curva Linear: o editor Custom de uma chave sem Bézier normalizável parte daqui.
-pub(crate) const BEZ_LINEAR: [f32; 4] = [1.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0];
+pub(crate) const BEZ_LINEAR: [f32; 4] = [1.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0]; // LITERAL-PX-OK: terços do tempo da Bézier linear (matemática)
 /// Amostras por curva desenhada (o Elastic tem três ondas num botão de ~50 px).
 const SAMPLES: usize = 48;
 /// O Custom desenha uma Bézier em S com as duas alças à vista (P1, P2 no quadrado unitário).
@@ -263,7 +265,7 @@ pub(super) fn pontos(
             .map(|t| {
                 let s = 1.0 - t;
                 let b = |p0: f32, p1: f32, p2: f32, p3: f32| {
-                    s * s * s * p0 + 3.0 * s * s * t * p1 + 3.0 * s * t * t * p2 + t * t * t * p3
+                    s * s * s * p0 + 3.0 * s * s * t * p1 + 3.0 * s * t * t * p2 + t * t * t * p3 // LITERAL-PX-OK: coeficientes de Bernstein da cúbica
                 };
                 (
                     b(0.0, BEZ_P1.0, BEZ_P2.0, 1.0),
@@ -563,7 +565,7 @@ fn corpo(
     // Done: o botão primário do cartão (o acento), no canto de baixo.
     let fundo = ink.color(ColorToken::KanbanBlueBold);
     let fundo = if quente(c::CTX_MENU_TL_KEY_DONE) {
-        fundo.with_alpha(0.85)
+        fundo.with_alpha(DONE_QUENTE_A)
     } else {
         fundo
     };

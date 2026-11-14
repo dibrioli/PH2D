@@ -13,7 +13,7 @@ use crate::paint::{fill_rounded_rect, folga_do_texto, paint_icon_nitido, paint_t
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::{FontWeight, TextSystem};
-use ph2d_tokens::{BAR_ICON_PX, MENU_W_PX, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{BAR_ICON_PX, MENU_W_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
 
 /// **Este menu veste a cara da barra?** Os menus da barra, a seta do Play, e todo submenu aberto a
@@ -59,7 +59,7 @@ pub fn icone_da_linha(
 /// O peso do texto dos menus da barra, EXATO (sem o acréscimo da preferência do app). Dono 13/11: «mais leve,
 /// sem perder definição em 1920×1080». Medido (`ferramentas/regua_texto.py`, traço que cai cheio num pixel): antes
 /// 25–33 %, 400 → 6–7 % (cinza, fraco), 500 → 13–15 %, 550 → 16–17 %, 600 → 13–16 %; VS Code 20 %, Godot 14 %.
-pub const PESO: FontWeight = FontWeight::new(550.0);
+pub const PESO: FontWeight = FontWeight::new(550.0); // LITERAL-PX-OK: eixo `wght` da fonte, medido (acima)
 
 /// O que vai na coluna do glifo.
 #[derive(Clone, Copy, Debug)]
@@ -128,7 +128,7 @@ pub fn pinta(
 ) {
     let acesa = l.acesa && !l.cinzenta;
     if acesa {
-        fill_rounded_rect(scene, l.r, Radius::Sm.px(), t.aceso);
+        fill_rounded_rect(scene, l.r, t.raio, t.aceso);
     }
     let (rotulo, atalho, icone) = match (l.cinzenta, acesa) {
         (true, _) => (t.cinza, t.cinza, t.cinza),

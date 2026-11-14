@@ -183,7 +183,7 @@ fn andamento(t: Troca, agora_ns: u128, reduzido: bool) -> f32 {
     let dur = f64::from(ph2d_tokens::Duration::Default.ms()) * 1e6;
     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
     let x = ((agora_ns.saturating_sub(t.t0)) as f64 / dur).clamp(0.0, 1.0) as f32;
-    x * x * (3.0 - 2.0 * x)
+    x * x * (3.0 - 2.0 * x) // LITERAL-PX-OK: smoothstep (matemática)
 }
 
 /// ⭐ Onde a opção `op` está a meio da troca, em fendas (`-1` esquerda · `0` centro · `+1` direita), e
@@ -212,7 +212,7 @@ fn nome_w(ctx: &mut PaintCtx) -> f32 {
 
 /// A largura do centro: ícone, o nome mais largo e a seta (não muda ao trocar).
 fn centro_w(ctx: &mut PaintCtx) -> f32 {
-    m::FIELD_PAD_R * 3.0 + m::ICON_GLYPH * 2.0 + m::SEG_ICON_GAP + nome_w(ctx)
+    m::FIELD_PAD_R * 3.0 + m::ICON_GLYPH * 2.0 + m::SEG_ICON_GAP + nome_w(ctx) // LITERAL-PX-OK: CONTAGEM de folgas e ícones
 }
 
 /// A largura do widget inteiro.
@@ -278,6 +278,7 @@ pub(crate) fn pinta(
     fill_rounded_rect(scene, por_dentro(centro), m::SEG_RADIUS, fundo);
     if aceso {
         // Sob o rato ou aberta, a cor continua: o contorno do escolhido por cima do degrau acima.
+        // FRAME-RAW-OK: o contorno é a MENSAGEM do escolhido (estado), não a moldura de repouso.
         let fio = StrokeToken::Thin.px();
         ph2d_editor_core::paint::stroke_rounded_rect(
             scene,

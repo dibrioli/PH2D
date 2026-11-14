@@ -144,7 +144,8 @@ pub(super) fn paint(
         );
     };
     // A grelha: quartos do tempo, o meio do valor; o 0 e o 1 mais fortes; a diagonal (a Linear).
-    for u in [0.0, 0.25, 0.5, 0.75, 1.0] {
+    const QUARTOS: [f32; 5] = [0.0, 0.25, 0.5, 0.75, 1.0]; // LITERAL-PX-OK: quartos do tempo normalizado
+    for u in QUARTOS {
         linha(scene, [u, Y_MIN], [u, Y_MAX], 1.0, fg.with_alpha(GUIDE_A));
     }
     linha(scene, [0.0, 0.5], [1.0, 0.5], 1.0, fg.with_alpha(GUIDE_A));
@@ -174,7 +175,7 @@ pub(super) fn paint(
     stroke_polyline(scene, &tela, CURVA_W, acento);
     for q in [[0.0, 0.0], [1.0, 1.0]] {
         let (x, y) = area.tela(q[0], q[1]);
-        fill_circle(scene, x, y, DOT_R * 1.5, fg);
+        fill_circle(scene, x, y, DOT_R * 1.5, fg); // LITERAL-PX-OK: a alça é o ponto vezes uma razão, não uma medida nova
     }
     let agarrado = store.key_card_bez_alvo();
     let escolhido = store.key_card_bez_escolhido();

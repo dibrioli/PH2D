@@ -347,6 +347,7 @@ pub fn paint(
                     caixa.w - fino,
                     caixa.h - fino,
                 );
+                // FRAME-RAW-OK: o anel diz o ESTADO da pílula do Play (sob o rato ou a tocar).
                 crate::paint::stroke_rounded_rect(scene, traco, raio - meio, fino, t.play_texto);
             }
             t.play_texto

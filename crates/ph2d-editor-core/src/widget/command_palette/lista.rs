@@ -21,6 +21,11 @@ use ph2d_vector::Color;
 use ph2d_vector::VectorScene;
 use std::borrow::Cow;
 
+mod legivel;
+use legivel::legivel;
+#[cfg(test)]
+use legivel::{TEXTO_MIN, pousa};
+
 /// Como a paleta arruma os itens.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum PaletteLayout {
@@ -290,42 +295,6 @@ pub fn tons(theme: Theme) -> Tons {
         chip: s.cor(ColorToken::Border),
         chip_texto: s.cor(ColorToken::Text2),
     }
-}
-
-/// O contraste mínimo de um texto (WCAG AA, corpo normal) — lei do dono 12/11.
-pub const TEXTO_MIN: f64 = 4.5;
-
-/// `fg` pousada sobre `bg` (o translúcido mede-se sobre o que tem por baixo), em 8 bits opacos.
-#[must_use]
-pub fn pousa(fg: Color, bg: Color) -> ph2d_tokens::Color {
-    let (f, b) = (fg.to_rgba8(), bg.to_rgba8());
-    let a = f32::from(f.a) / 255.0;
-    let mix = |x: u8, y: u8| (f32::from(x) * a + f32::from(y) * (1.0 - a)).round() as u8;
-    ph2d_tokens::Color {
-        r: mix(f.r, b.r),
-        g: mix(f.g, b.g),
-        b: mix(f.b, b.b),
-        a: u8::MAX,
-    }
-}
-
-/// ⭐ **A cor apagada que ainda se LÊ**: `c` puxada para `nome` só o bastante para ter
-/// [`TEXTO_MIN`] contra cada um dos `fundos` (pousados sobre o primeiro). O tom do tema fica onde
-/// ele já lê; onde não lê, aproxima-se do texto — nunca um hex novo.
-fn legivel(c: Color, nome: Color, fundos: [Color; 2]) -> Color {
-    let base = fundos[0];
-    let lê = |x: Color| {
-        fundos.iter().all(|f| {
-            let bg = pousa(*f, base);
-            let bg_v = Color::from_rgba8(bg.r, bg.g, bg.b, u8::MAX);
-            pousa(x, bg_v).contrast_ratio(&bg) >= TEXTO_MIN
-        })
-    };
-    const PASSOS: u8 = 32; // LITERAL-PX-OK: CONTAGEM de passos da mistura, não medida
-    (0..=PASSOS)
-        .map(|k| c.lerp_rect(nome, f32::from(k) / f32::from(PASSOS)))
-        .find(|x| lê(*x))
-        .unwrap_or(nome)
 }
 
 /// O nome com os trechos que casaram com a busca a negrito (`key`); devolve a largura pintada.

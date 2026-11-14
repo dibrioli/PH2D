@@ -12,7 +12,19 @@ const MEIO_MIN_PX: f64 = 24.0; // LITERAL-PX-OK: o meio só se distingue do miú
 
 /// Os passos com número, em segundos, do mais fino ao mais largo.
 const ROTULOS: [f64; 13] = [
-    0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 30.0, 60.0, 120.0, 300.0, 600.0,
+    0.1,   // LITERAL-PX-OK: segundos (tempo), não medida
+    0.25,  // LITERAL-PX-OK: segundos
+    0.5,   // LITERAL-PX-OK: segundos
+    1.0,   // LITERAL-PX-OK: segundos
+    2.0,   // LITERAL-PX-OK: segundos
+    5.0,   // LITERAL-PX-OK: segundos
+    10.0,  // LITERAL-PX-OK: segundos
+    15.0,  // LITERAL-PX-OK: segundos
+    30.0,  // LITERAL-PX-OK: segundos
+    60.0,  // LITERAL-PX-OK: segundos
+    120.0, // LITERAL-PX-OK: segundos
+    300.0, // LITERAL-PX-OK: segundos
+    600.0, // LITERAL-PX-OK: segundos
 ];
 
 /// Os passos dos riscos, em segundos.
@@ -40,7 +52,7 @@ pub(crate) fn degraus(px_por_s: f64, fps: f64) -> Degraus {
     // O miúdo: o quadro se cabe e divide o rotulado; senão a fração mais fina que cabe.
     let miudo = quadro
         .into_iter()
-        .chain([10.0, 5.0, 4.0, 2.0].map(|n| rotulo / n))
+        .chain([10.0, 5.0, 4.0, 2.0].map(|n| rotulo / n)) // LITERAL-PX-OK: divisores do passo (contagem)
         .find(|&s| px(s) >= MIUDO_MIN_PX && divide(rotulo, s));
     let meio = Some(rotulo / 2.0)
         .filter(|&s| px(s) >= MEIO_MIN_PX && miudo.is_none_or(|m| m < s && divide(s, m)));

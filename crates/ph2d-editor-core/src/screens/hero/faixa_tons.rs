@@ -9,12 +9,12 @@ use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::Color;
 
 /// O contraste mínimo de um texto.
-pub const TEXTO_MIN: f64 = 4.5;
+pub const TEXTO_MIN: f64 = ph2d_tokens::contrast::TEXT_MIN_RATIO;
 /// O contraste mínimo de um controlo (a borda ou o fundo que o identifica).
-pub const CONTROLO_MIN: f64 = 3.0;
+pub const CONTROLO_MIN: f64 = ph2d_tokens::contrast::GRAPHIC_MIN_RATIO;
 
 /// Uma plaquinha (a tecla dentro do campo) tem de se ver contra o campo, sem pesar como um botão.
-pub const PLACA_MIN: f64 = 1.5;
+pub const PLACA_MIN: f64 = 1.5; // LITERAL-PX-OK: razão de contraste (adimensional), abaixo do piso WCAG de propósito
 
 /// Os tons de um quadro da faixa.
 #[derive(Clone, Copy, Debug)]
@@ -44,7 +44,7 @@ pub fn pousa(fg: Color, bg: Color) -> Color {
     let (f, b) = (fg.to_rgba8(), bg.to_rgba8());
     let a = f32::from(f.a) / f32::from(u8::MAX);
     let mix = |x: u8, y: u8| (f32::from(x) * a + f32::from(y) * (1.0 - a)).round() as u8;
-    Color::from_rgba8(mix(f.r, b.r), mix(f.g, b.g), mix(f.b, b.b), u8::MAX)
+    Color::from_rgba8(mix(f.r, b.r), mix(f.g, b.g), mix(f.b, b.b), u8::MAX) // LITERAL-COLOR-OK: a mistura opaca de duas cores do tema, nenhum valor novo
 }
 
 /// O contraste WCAG de `fg` pousada sobre `bg` (opaca).

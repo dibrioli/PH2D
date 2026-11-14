@@ -514,6 +514,7 @@ pub use instantaneo::SemInstantaneo;
 mod internal;
 pub(crate) use internal::*;
 mod layers;
+pub use layers::TINTA_MARCA_COMO_ANTES;
 pub(crate) mod paint;
 pub use paint::impasto_gpu::{ImpastoDobra, ImpastoLamp, ImpastoPlanes, LinhaDobrada};
 pub mod persist;

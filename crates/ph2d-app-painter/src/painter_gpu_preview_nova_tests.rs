@@ -170,6 +170,9 @@ fn apagar_duplicar_e_agrupar_compoem_na_placa_so_o_sujo_ao_bit() {
 /// refazer, o da antiga (`SEMPRE_INTEIRA`, a tela inteira em todo quadro), com o papel aceso. Controlo: a nova dobrou só
 /// a parte do relevo; com `DOBRA_A_REGIAO` (a mutação), não — e o slot continua o mesmo. Os passos 6 (pinta e troca) e 8
 /// (troca e pinta) não drenam no meio: a parte do relevo é a do traço.
+///
+/// n.º 10 F5: corre com `TINTA_MARCA_COMO_ANTES` a 1 (a tinta que adormece marca a janela: o caminho do item 3, controlo
+/// `≥ 1`) e a 0 (a troca pura não marca nada: nenhuma dobra pela figura, `n == 0`, e as telas ao bit na mesma).
 #[test]
 fn a_troca_com_a_tinta_viva_dobra_na_placa_so_o_relevo_ao_bit() {
     use crate::painter_preview_pipeline_tests::{assert_screen_equals, cp};
@@ -190,7 +193,16 @@ fn a_troca_com_a_tinta_viva_dobra_na_placa_so_o_relevo_ao_bit() {
         t.on_canvas_pointer(cp([140.0, y], PointerPhase::Up));
         ph2d_editor_core::Tool::on_tick(t, 1000.0 / 60.0);
     };
-    for controlo in [false, true] {
+    struct Repoe(u8);
+    impl Drop for Repoe {
+        fn drop(&mut self) {
+            TINTA_MARCA_COMO_ANTES.store(self.0, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+    use ph2d_tool_painter::tool::TINTA_MARCA_COMO_ANTES;
+    let _repoe = Repoe(TINTA_MARCA_COMO_ANTES.load(std::sync::atomic::Ordering::Relaxed));
+    for (marca, controlo) in [(1u8, false), (1, true), (0, false), (0, true)] {
+        TINTA_MARCA_COMO_ANTES.store(marca, std::sync::atomic::Ordering::Relaxed);
         DOBRA_A_REGIAO.set(controlo);
         DOBRAS_PELA_FIGURA.set(0);
         let pista = || {
@@ -244,13 +256,17 @@ fn a_troca_com_a_tinta_viva_dobra_na_placa_so_o_relevo_ao_bit() {
                 telas.push(r.individual().readback(&gpu, id).expect("readback").2);
             }
             SEMPRE_INTEIRA.set(false);
-            let ctx = format!("controlo={controlo} · passo {passo}");
+            let ctx = format!("marca={marca} · controlo={controlo} · passo {passo}");
             assert_screen_equals(&telas[0], &telas[1], lado, &ctx);
         }
         DOBRA_A_REGIAO.set(false);
         let n = DOBRAS_PELA_FIGURA.get();
-        if controlo {
-            assert_eq!(n, 0, "o controlo dobrou pela figura {n} vezes");
+        eprintln!("marca={marca} controlo={controlo}: {n} dobras pela figura");
+        if controlo || marca == 0 {
+            assert_eq!(
+                n, 0,
+                "marca={marca} controlo={controlo}: dobrou pela figura {n} vezes"
+            );
         } else {
             assert!(n >= 1, "a placa não dobrou só o relevo em nenhuma troca");
         }

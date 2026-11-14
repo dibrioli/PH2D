@@ -62,7 +62,10 @@ fn a_troca_pura_com_a_tinta_viva_nao_marca_nada_e_a_figura_fica() {
             TINTA_MARCA_SEMPRE.with(|x| x.set(false));
             assert!(t.composited_is_some(), "{caso}: o cache fica");
             if antes {
-                assert!(t.dirty_rect.is_some(), "{caso}: controlo, o de antes marca a janela");
+                assert!(
+                    t.dirty_rect.is_some(),
+                    "{caso}: controlo, o de antes marca a janela"
+                );
             } else {
                 assert_eq!(t.dirty_rect, None, "{caso}: nada a marcar");
             }
@@ -71,14 +74,20 @@ fn a_troca_pura_com_a_tinta_viva_nao_marca_nada_e_a_figura_fica() {
                 None => t.composited.as_ref().expect("figura").as_ref().clone(),
             };
             assert!(mostrada == figura, "{caso}: a figura mostrada mudou");
-            assert!(mostrada == inteira(&mut t), "{caso}: a figura difere da recomposição inteira");
+            assert!(
+                mostrada == inteira(&mut t),
+                "{caso}: a figura difere da recomposição inteira"
+            );
             for (rotulo, ok) in [("undo", t.undo_last()), ("redo", t.redo_last())] {
                 assert!(ok, "{caso}: {rotulo}");
                 let m = match t.take_preview_arc() {
                     Some((x, _, _)) => x.as_ref().clone(),
                     None => t.composited.as_ref().expect("figura").as_ref().clone(),
                 };
-                assert!(m == inteira(&mut t), "{caso} · {rotulo}: a figura difere da recomposição inteira");
+                assert!(
+                    m == inteira(&mut t),
+                    "{caso} · {rotulo}: a figura difere da recomposição inteira"
+                );
             }
         }
     }

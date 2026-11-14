@@ -49,7 +49,8 @@ thread_local! {
 
 /// n.º 10 F5 (A×B em execução): `true` = a tinta viva que adormece/acorda marca a janela da tinta, como antes.
 /// `PH2D_TINTA_MARCA_A_JANELA=1` no arranque.
-pub static TINTA_MARCA_COMO_ANTES: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
+pub static TINTA_MARCA_COMO_ANTES: std::sync::atomic::AtomicU8 =
+    std::sync::atomic::AtomicU8::new(2);
 
 fn tinta_marca_como_antes() -> bool {
     use std::sync::atomic::Ordering::Relaxed;

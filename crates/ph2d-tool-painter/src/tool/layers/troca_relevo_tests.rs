@@ -96,7 +96,10 @@ fn a_troca_com_a_tinta_viva_muda_o_relevo_so_onde_a_placa_o_redobra() {
         }
         if antes.is_none() && depois.is_none() {
             // n.º 10 F5: a troca pura não muda píxel nem relevo — nada a drenar (`troca_pura_tests`).
-            assert!(!t.take_preview_dirty(), "passo {k}: a troca pura não marca nada");
+            assert!(
+                !t.take_preview_dirty(),
+                "passo {k}: a troca pura não marca nada"
+            );
             assert_eq!(planos(&t), velhos, "passo {k}: o relevo ficou");
             vazias += 1;
             continue;

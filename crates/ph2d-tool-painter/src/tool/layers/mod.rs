@@ -17,6 +17,7 @@ mod adjustments;
 #[cfg(test)]
 mod aplica_mascara_tests;
 mod cache;
+pub use cache::TINTA_MARCA_COMO_ANTES;
 #[cfg(test)]
 pub(crate) use cache::TROCA_RECOMPOE_SEMPRE;
 #[cfg(test)]
@@ -42,9 +43,9 @@ mod texture;
 #[cfg(test)]
 mod troca_figura_tests;
 #[cfg(test)]
-mod troca_relevo_tests;
-#[cfg(test)]
 mod troca_pura_tests;
+#[cfg(test)]
+mod troca_relevo_tests;
 mod undo;
 
 // Preserve the historic public path `tool::layers::MAX_CURVE_POINTS_PER_CHANNEL`

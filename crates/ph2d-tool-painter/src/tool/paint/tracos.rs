@@ -63,6 +63,7 @@ campos_do_traco!(
     plano_do_traco,
     pixel_trilhos,
     po_do_papel, // o pó é o da tela DESTE pen-down (`stroke_lifecycle` zera-o)
+    lote, // B27.2: os dabs à espera do carimbo são de UM traço, e carimbam-se com o pincel dele
 );
 
 /// Os campos do `PaintState` partilhados pelos traços abertos (a tela, as sessões, o relevo, a aguada,
@@ -186,6 +187,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "ramp_lut_owner",
     "pilha_por_replay",
     "acumulando_no_plano",
+    "plano_marcado", // B17.8: vive dentro de UM carimbo, como `acumulando_no_plano` (nunca atravessa a troca)
     "relief",
     "stroke_coverage",
     "stroke_color",

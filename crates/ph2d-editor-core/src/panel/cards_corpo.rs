@@ -28,7 +28,6 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
-use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
 /// O glifo da pega de um número: a letra da caixa numa linha de vários ([`Eixos`]: X · Y · Z · W,

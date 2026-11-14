@@ -519,6 +519,7 @@ fn arma_a_junta() {
         soft: false,
         collide_connected: false,
         paste_targets: 1,
+        ..Default::default()
     }));
     insp::set_current_inspector_wheel(Some(InspectorWheelInfo {
         entity_bits: BITS,

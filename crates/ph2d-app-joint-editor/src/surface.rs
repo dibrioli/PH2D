@@ -220,7 +220,8 @@ impl DocumentSurface for JointEditorTab {
         vec![DocCommand {
             id: CMD_OPEN,
             label: tr("joint_editor.cmd.open").to_owned(),
-            menu: DocMenu::File,
+            menu: DocMenu::New,
+            icon: ph2d_editor_core::icons::IconId::Joint,
         }]
     }
 

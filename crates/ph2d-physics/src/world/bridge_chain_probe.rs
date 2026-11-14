@@ -197,7 +197,14 @@ fn sonda_da_ponte() {
     );
     for sub in [4_u32, 8] {
         for d in [0.1_f32, 1.0, 10.0] {
-            for way in [Way::Rope, Way::Pin, Way::TwoTrees, Way::Product] {
+            for way in [
+                Way::Rope,
+                Way::Pin,
+                Way::TreePin,
+                Way::TreeRope,
+                Way::TwoTrees,
+                Way::Product,
+            ] {
                 let o = run(way, d, sub);
                 println!(
                     "{:<10} {d:>6} {sub:>4} | {:+.3}     {:+.3}  {:+.3}  {:+.3}  {:.3}   {:.3}",

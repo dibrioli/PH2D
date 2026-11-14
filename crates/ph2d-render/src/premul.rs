@@ -123,7 +123,44 @@ impl SpriteImage {
 ///
 /// Rounded (`+ 127` before the divide) so the round-trip back through
 /// [`unpremultiply_rgba8`] stays within ±1 per channel.
+///
+/// B20.8 (n.º 10 F5k): blocos de 8 píxeis todos opacos saltam (premul de α = 255 é a identidade) e a divisão é a
+/// exacta sem divisão; o mesmo bit que [`premultiply_rgba8_escalar`] (gate exaustivo). 4K, 1 fio: opaca 10,0 → 2,1 ms,
+/// translúcida 10,0 → 9,7 ([N10_camadas](../../../docs/Painter/missao_4k/medicoes/N10_camadas.md)).
+/// `PH2D_PREMUL_ESCALAR=1` (lida uma vez) = o de antes.
 pub fn premultiply_rgba8(rgba: &mut [u8]) {
+    if premul_escalar() {
+        return premultiply_rgba8_escalar(rgba);
+    }
+    for bloco in rgba.as_chunks_mut::<4>().0.chunks_mut(8) {
+        if bloco.iter().all(|px| px[3] == 255) {
+            continue;
+        }
+        for px in bloco {
+            let a = px[3] as u32;
+            px[0] = mul_div_255_sem_divisao(px[0] as u32, a) as u8;
+            px[1] = mul_div_255_sem_divisao(px[1] as u32, a) as u8;
+            px[2] = mul_div_255_sem_divisao(px[2] as u32, a) as u8;
+        }
+    }
+}
+
+fn premul_escalar() -> bool {
+    #[cfg(test)]
+    if let Some(v) = PREMUL_ESCALAR_NO_TESTE.get() {
+        return v;
+    }
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("PH2D_PREMUL_ESCALAR").is_ok_and(|v| v == "1"))
+}
+
+#[cfg(test)]
+thread_local! {
+    static PREMUL_ESCALAR_NO_TESTE: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+/// A referência por píxel (o premul de antes do B20.8).
+pub fn premultiply_rgba8_escalar(rgba: &mut [u8]) {
     for px in rgba.as_chunks_mut::<4>().0 {
         let a = px[3] as u32;
         px[0] = mul_div_255(px[0] as u32, a) as u8;
@@ -211,6 +248,13 @@ fn mul_div_255(c: u32, a: u32) -> u32 {
     (c * a + 127) / 255
 }
 
+/// `round(c·a/255)` sem divisão: igual a [`mul_div_255`] para `c, a ≤ 255` (o gate varre os 65 536).
+#[inline]
+fn mul_div_255_sem_divisao(c: u32, a: u32) -> u32 {
+    let t = c * a + 128;
+    (t + (t >> 8)) >> 8
+}
+
 #[inline]
 fn unmul(c: u32, a: u32) -> u8 {
     (((c * 255) + a / 2) / a).min(255) as u8
@@ -219,6 +263,58 @@ fn unmul(c: u32, a: u32) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// B20.8: o premul com o salto dos blocos opacos dá o bit da referência por píxel — os 65 536 (c, α) e telas com
+    /// blocos opacos, salpicados e um resto que não fecha 8 píxeis; o controlo (`PREMUL_ESCALAR`) é a referência.
+    #[test]
+    fn o_premul_que_salta_os_opacos_da_o_bit_do_escalar() {
+        for c in 0..256u32 {
+            for a in 0..256u32 {
+                assert_eq!(
+                    mul_div_255(c, a),
+                    mul_div_255_sem_divisao(c, a),
+                    "c={c} a={a}"
+                );
+            }
+        }
+        let mut s = 0x9e37_79b9u32;
+        let mut tela = vec![0u8; 4 * (64 * 64 + 5)];
+        for (i, px) in tela.chunks_mut(4).enumerate() {
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            let b = s.to_le_bytes();
+            let alfa = match (i / 8) % 4 {
+                0 => 255,
+                1 => b[3],
+                2 => {
+                    if i % 7 == 0 {
+                        254
+                    } else {
+                        255
+                    }
+                }
+                _ => {
+                    if i % 8 == 7 {
+                        0
+                    } else {
+                        255
+                    }
+                }
+            };
+            px.copy_from_slice(&[b[0], b[1], b[2], alfa]);
+        }
+        let mut referencia = tela.clone();
+        premultiply_rgba8_escalar(&mut referencia);
+        for escalar in [false, true] {
+            PREMUL_ESCALAR_NO_TESTE.set(Some(escalar));
+            let mut t = tela.clone();
+            premultiply_rgba8(&mut t);
+            assert!(t == referencia, "escalar={escalar}: o premul mudou o bit");
+        }
+        PREMUL_ESCALAR_NO_TESTE.set(None);
+        assert_ne!(tela, referencia, "a tela tem de ter píxeis não opacos");
+    }
 
     #[test]
     fn opaque_is_identity() {

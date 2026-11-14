@@ -562,7 +562,16 @@ pub fn sample(
         em([0.0, 0.0])
     };
     let fw = pela_area::largura_no_dab(s, b, radius);
-    patterns::sample_kind_px(s.kind, tex, s.params, image, [0, 0], fw, s.lei.leitura_dupla).clamp(0.0, 1.0)
+    patterns::sample_kind_px(
+        s.kind,
+        tex,
+        s.params,
+        image,
+        [0, 0],
+        fw,
+        s.lei.leitura_dupla,
+    )
+    .clamp(0.0, 1.0)
 }
 
 /// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the
@@ -631,7 +640,16 @@ fn sample_unit_com_largura(
         (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0],
         (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1],
     ];
-    patterns::sample_kind_px(s.kind, tex, s.params, image, [0, 0], fw, s.lei.leitura_dupla).clamp(0.0, 1.0)
+    patterns::sample_kind_px(
+        s.kind,
+        tex,
+        s.params,
+        image,
+        [0, 0],
+        fw,
+        s.lei.leitura_dupla,
+    )
+    .clamp(0.0, 1.0)
 }
 
 // ── Rotation / RNG helpers (transcendental-free) ────────────────────────────────────────────

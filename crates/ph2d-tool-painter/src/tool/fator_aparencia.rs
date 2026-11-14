@@ -125,13 +125,31 @@ mod tests {
     #[test]
     fn fora_do_wet_paint_o_papel_e_a_leitura_unica_de_antes() {
         use crate::PaintMedia;
-        for meio in [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto, PaintMedia::WetPaint] {
+        for meio in [
+            PaintMedia::Digital,
+            PaintMedia::Watercolor,
+            PaintMedia::Impasto,
+            PaintMedia::WetPaint,
+        ] {
             let mut t = PainterTool::default();
             t.set_paint_media(meio);
             assert_eq!(t.paint_media(), meio);
             let wet = meio == PaintMedia::WetPaint;
-            assert_eq!(t.papel_na_escala(TextureSettings::default()).lei.leitura_dupla, wet, "{meio:?}: o motor");
-            assert_eq!(t.brush_settings().papel_como_o_motor_o_le().lei.leitura_dupla, wet, "{meio:?}: a prévia");
+            assert_eq!(
+                t.papel_na_escala(TextureSettings::default())
+                    .lei
+                    .leitura_dupla,
+                wet,
+                "{meio:?}: o motor"
+            );
+            assert_eq!(
+                t.brush_settings()
+                    .papel_como_o_motor_o_le()
+                    .lei
+                    .leitura_dupla,
+                wet,
+                "{meio:?}: a prévia"
+            );
         }
     }
 }

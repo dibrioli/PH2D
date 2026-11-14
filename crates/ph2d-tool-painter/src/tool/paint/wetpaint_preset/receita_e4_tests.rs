@@ -76,8 +76,8 @@ fn cada_preset_de_fabrica_pousa_o_mesmo_pigmento_e_agua_por_dab() {
     }
     assert_eq!(
         (n, agua_fora, borrachas_fora),
-        (45, 10, 1),
-        "os 56 presets Wet Paint de fábrica: 45 de tinta, 10 ferramentas da água, 1 Borracha"
+        (46, 10, 1),
+        "os 57 presets Wet Paint de fábrica (B36.1 somou o Oil Wash): 46 de tinta, 10 ferramentas da água, 1 Borracha"
     );
     assert!(falhas.is_empty(), "{} mudaram: {falhas:?}", falhas.len());
 }

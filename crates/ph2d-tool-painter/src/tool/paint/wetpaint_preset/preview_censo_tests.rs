@@ -178,6 +178,11 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("wet_reserve_cache", CACHE),
     ("wet_rewet_cache", CACHE),
     ("canvas_wet", SESSAO),
+    ("canvas_wet_relogio", SESSAO), // B22.1: o tempo por secar da sessão, em passos fixos
+    ("traco_relogio", TRACO),       // B22.1: a zero no pen-down
+    ("movido_desde_o_passo", TRACO),
+    // n.º 6: o fundo de baixo composto da obra; o preview compõe o seu.
+    ("fundo_em_cache", CACHE),
     ("canvas_wet_rect", SESSAO),
     ("canvas_wet_snapshot", SESSAO),
     ("canvas_wet_carry", SESSAO),

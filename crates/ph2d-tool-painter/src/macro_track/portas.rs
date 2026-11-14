@@ -55,6 +55,7 @@ const FORMA_OU_SELECAO: &str =
 const CAMADAS_COMO_PINCEL: &str =
     "lê as camadas como textura do pincel ou do papel: a macro não as guarda";
 const ACESSOR: &str = "acessor do contrato: não muda nada";
+const COMPOSICAO_DA_PLACA: &str = "o aperto de mão do preview da placa com a composição (o que recompor): mostra a obra, não a muda";
 const TROCA_DE_MODO: &str = "sair do Paint (outro modo, outra ferramenta) larga a tela, não muda a obra; voltar à MESMA imagem também não (W19)";
 const ETAPA_EDITADA: &str =
     "a edição de uma etapa chega à imagem: obra da própria macro, nunca um passo de outra";
@@ -89,6 +90,9 @@ pub const PORTAS: &[Porta] = &[
     a("macro_passos", GRAVACAO),
     a("macro_para", GRAVACAO),
     a("agua_parada", ACESSOR),
+    a("pede_a_composicao_inteira", COMPOSICAO_DA_PLACA),
+    a("take_estrutura_confinada", COMPOSICAO_DA_PLACA),
+    a("take_camada_nova_limpa", COMPOSICAO_DA_PLACA),
     // — inerentes, gravadas —
     g("on_canvas_hover"),
     g("undo_last"),

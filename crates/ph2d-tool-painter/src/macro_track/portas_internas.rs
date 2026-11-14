@@ -402,4 +402,6 @@ pub const INTERNAS: &[&str] = &[
     // comparam variantes no MESMO processo (`MEDIR_VELOCIDADE.md`) — nunca se gravam.
     "set_mistura_meia_definicao",
     "set_mistura_salta_a_copia_do_veu",
+    // A sonda da prancha B34 (`tests/it/prancha_b34.rs`) fixa o fator de aparência: nunca se grava.
+    "fixa_fator_aparencia_para_sonda",
 ];

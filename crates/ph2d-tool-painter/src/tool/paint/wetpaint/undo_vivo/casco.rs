@@ -81,11 +81,14 @@ impl PainterTool {
         if !difere {
             return;
         }
-        let tela = Arc::make_mut(&mut self.canvas_rgba);
+        // Dentro do undo/redo (o journal reseta no fim): a cópia é paralela e a tela entra pela porta do restauro.
+        let mut nova = Arc::clone(&self.canvas_rgba);
+        let tela = crate::tool::paint::plane_fork::fork_plano_de_trabalho(&mut nova);
         for y in 0..h {
             for s in fora(y) {
                 tela[faixa(y, s)].copy_from_slice(&velha[faixa(y, s)]);
             }
         }
+        self.instala_a_tela_do_restauro(nova);
     }
 }

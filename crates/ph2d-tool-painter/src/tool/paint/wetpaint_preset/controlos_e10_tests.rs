@@ -208,8 +208,8 @@ fn cada_preset_de_fabrica_mapeia_por_funcao() {
     );
     assert_eq!(
         (n, n_tinta),
-        (56, 45),
-        "contados: 56 Wet Paint, 45 de tinta"
+        (57, 46),
+        "contados: 57 Wet Paint, 46 de tinta (B36.1 somou o Oil Wash)"
     );
     assert!(falhas.is_empty(), "{} mudaram: {falhas:?}", falhas.len());
     assert!(presos.is_empty(), "presos pela faixa: {presos:?}");

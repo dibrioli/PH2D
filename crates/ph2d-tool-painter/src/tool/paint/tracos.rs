@@ -192,6 +192,8 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "wet_mistura",
     "watercolor_base",
     "wet_backdrop",
+    "fundo_em_cache", // o fundo de baixo composto: da pilha de camadas, não do traço
+    "aquecimento",    // o aquecimento desse fundo num fio: idem
     "paper_color",
     "impasto_show",
     "substrate_depth",

@@ -42,9 +42,10 @@ impl RowComponents {
             .collect();
         let authored = ComponentSet::authored()
             .filter_map(|(bit, d)| {
+                // `desc_for` resolve pelo próprio nome: o nome do descritor É o da entrada (N10 F6c).
                 let entry = registry
-                    .iter()
-                    .find(|e| e.desc.is_some_and(|x| x.canonical_name == d.canonical_name))?;
+                    .get_by_name(d.canonical_name)
+                    .filter(|e| e.desc.is_some())?;
                 Some(((entry.bevy_component_id)(world)?, bit))
             })
             .collect();
@@ -52,7 +53,7 @@ impl RowComponents {
             .into_iter()
             .filter_map(|t| {
                 let name = t.marker()?;
-                let entry = registry.iter().find(|e| e.canonical_name == name)?;
+                let entry = registry.get_by_name(name)?;
                 Some(((entry.bevy_component_id)(world)?, name))
             })
             .collect();
@@ -142,6 +143,43 @@ mod tests {
         assert_eq!(rows.object_type(&world, caixa), ObjectType::Collider);
         assert_eq!(rows.object_type(&world, camera), ObjectType::Camera);
         assert_eq!(rows.object_type(&world, vazio), ObjectType::Empty);
+    }
+
+    /// N10 F6c: a busca por nome dá as MESMAS sondas que a varredura linear de antes (o perfil
+    /// achou-a por quadro). Controlo: o oráculo é a varredura, sobre o registo inteiro.
+    #[test]
+    fn a_busca_por_nome_da_as_mesmas_sondas_que_a_varredura() {
+        let registry = crate::component_registry_for_tests::registo();
+        let mut world = ph2d_ecs::World::new();
+        for e in registry.iter() {
+            if let Some(f) = e.insert_default {
+                let id = world.spawn_empty().id();
+                f(&mut world, id).expect("default");
+            }
+        }
+        let rows = RowComponents::of(&world, &registry);
+        let authored: Vec<_> = ComponentSet::authored()
+            .filter_map(|(bit, d)| {
+                let entry = registry
+                    .iter()
+                    .find(|e| e.desc.is_some_and(|x| x.canonical_name == d.canonical_name))?;
+                Some(((entry.bevy_component_id)(&world)?, bit))
+            })
+            .collect();
+        let markers: Vec<_> = ObjectType::ALL
+            .into_iter()
+            .filter_map(|t| {
+                let name = t.marker()?;
+                let entry = registry.iter().find(|e| e.canonical_name == name)?;
+                Some(((entry.bevy_component_id)(&world)?, name))
+            })
+            .collect();
+        assert!(
+            !authored.is_empty() && !markers.is_empty(),
+            "o controlo tem população"
+        );
+        assert_eq!(rows.authored, authored);
+        assert_eq!(rows.markers, markers);
     }
 
     /// ⭐ O conjunto de um objecto diz os autorados que ele TEM — e dois objectos com os mesmos

@@ -297,22 +297,26 @@ impl PainterTool {
     /// dropped: the moving preview's OLD position must be recomposited (base restored where coverage is
     /// now zero), which a dirty rect of only the NEW dabs would miss (the moving-overlay union).
     pub(super) fn clear_wet_coverage(&mut self) {
-        if let Some(c) = self.paint.wet_cum_dirty.take() {
+        let cum = self.paint.wet_cum_dirty.take();
+        if let Some(c) = cum {
             self.paint.wet_frame_dirty = Some(match self.paint.wet_frame_dirty {
                 Some(f) => union_region(f, c),
                 None => c,
             });
         }
-        self.paint.stroke_coverage.iter_mut().for_each(|c| *c = 0);
-        self.paint.stroke_density.iter_mut().for_each(|c| *c = 0);
-        // A reserva recomeça com a cobertura: o campo dela lê VIZINHANÇA, logo um nível velho fora
-        // da figura de agora (invisível enquanto era só multiplicado por cobertura zero) passaria a
-        // difundir para dentro dela. A cadeia do Smudge dos níveis recomeça pelo mesmo motivo.
-        self.paint.stroke_deplete.iter_mut().for_each(|c| *c = 0);
-        self.paint
-            .stroke_deplete_prox
-            .iter_mut()
-            .for_each(|c| *c = 0);
+        // B44.14: os planos só têm bytes ≠ 0 dentro da `wet_cum_dirty` (todo escritor a alarga) — zera-se a
+        // janela, não a tela. A reserva recomeça com a cobertura: o campo dela lê VIZINHANÇA, logo um nível
+        // velho fora da figura de agora passaria a difundir para dentro dela (o Smudge dos níveis idem).
+        let fw = self.source_size.0 as usize;
+        let p = &mut self.paint;
+        for plano in [
+            &mut p.stroke_coverage,
+            &mut p.stroke_density,
+            &mut p.stroke_deplete,
+            &mut p.stroke_deplete_prox,
+        ] {
+            zera_os_planos(plano, fw, 1, cum);
+        }
         self.paint.wet_reserve_cache = None; // escrita em MASSA: o campo guardado envelheceu
         self.paint.wet_rewet_cache = None; // B16.5: idem
         self.paint.wet_level_smear_pos = None;
@@ -331,7 +335,13 @@ impl PainterTool {
 
     /// Zero the per-stroke deposited-colour buffer (retain capacity); twin of [`Self::clear_wet_coverage`].
     pub(super) fn clear_wet_color(&mut self) {
-        self.paint.stroke_color.iter_mut().for_each(|c| *c = 0);
+        // Depois do `clear_wet_coverage` a `wet_cum_dirty` já foi dobrada no quadro (⊇ a velha); sozinho, é ela.
+        let p = &mut self.paint;
+        let janela = match (p.wet_cum_dirty, p.wet_frame_dirty) {
+            (Some(a), Some(b)) => Some(union_region(a, b)),
+            (a, b) => a.or(b),
+        };
+        zera_os_planos(&mut p.stroke_color, self.source_size.0 as usize, 4, janela);
         self.paint.wet_mistura.novo_traco();
     }
 
@@ -611,4 +621,54 @@ impl PainterTool {
         }
         self.paint.wet_level_smear_pos = smear_from;
     }
+}
+
+/// B44.14: zera o plano (`bpp` bytes por texel, `fw` de largura) só na `janela`; `None` = nada a zerar (o plano já
+/// é zero fora da caixa cumulativa). `PH2D_WET_ZERA_JANELA=0` (lida uma vez) = a tela inteira de antes, para A×B.
+fn zera_os_planos(plano: &mut [u8], fw: usize, bpp: usize, janela: Option<Region>) {
+    let linha = fw * bpp;
+    if plano.is_empty() || linha == 0 {
+        return;
+    }
+    if !zera_so_a_janela() {
+        plano.fill(0);
+        BYTES_ZERADOS.with(|b| b.set(b.get() + plano.len() as u64));
+        return;
+    }
+    let Some(r) = janela else { return };
+    let linhas = plano.len() / linha;
+    let (x0, x1) = ((r.x as usize).min(fw), ((r.x + r.w) as usize).min(fw));
+    let (y0, y1) = (
+        (r.y as usize).min(linhas),
+        ((r.y + r.h) as usize).min(linhas),
+    );
+    for y in y0..y1 {
+        plano[y * linha + x0 * bpp..y * linha + x1 * bpp].fill(0);
+    }
+    BYTES_ZERADOS.with(|b| b.set(b.get() + ((x1 - x0) * (y1 - y0) * bpp) as u64));
+}
+
+thread_local! {
+    static BYTES_ZERADOS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// A×B no MESMO processo (testes/sondas): `Some(false)` força a tela inteira neste fio.
+    static ZERA_JANELA: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+fn zera_so_a_janela() -> bool {
+    static K: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    ZERA_JANELA.with(std::cell::Cell::get).unwrap_or_else(|| {
+        *K.get_or_init(|| std::env::var("PH2D_WET_ZERA_JANELA").map_or(true, |v| v.trim() != "0"))
+    })
+}
+
+/// B44.14: bytes zerados pelos dois `clear_wet_*` neste fio (o contador do portão «a figura zera a janela»).
+#[doc(hidden)]
+pub(crate) fn bytes_zerados() -> u64 {
+    BYTES_ZERADOS.with(std::cell::Cell::get)
+}
+
+/// B44.14: A×B — `Some(false)` = tela inteira (o caminho de antes), `None` = a chave do processo.
+#[doc(hidden)]
+pub(crate) fn forca_zerar_a_janela(v: Option<bool>) {
+    ZERA_JANELA.with(|z| z.set(v));
 }

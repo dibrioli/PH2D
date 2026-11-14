@@ -4,9 +4,9 @@
 //! `stamp_cache`.
 
 use super::PaintMode;
-use super::ramp_lut::RampLutOwner;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
+use rota::RotaDeCor;
 
 #[cfg(test)]
 mod aguada_tests; // B25.3: o mapa das cópias da aguada não vaza para o lote seguinte
@@ -15,7 +15,8 @@ mod mascara; // a rota do pincel Mask — filho por LOC
 mod mascara_selecao_tests; // B40.A5: o Mask com seleção recorta só a caixa dos dabs
 pub(super) mod mistura;
 #[cfg(test)]
-mod mistura_memoria_tests; // B28.4: as pegadas locais não guardam a máscara da tela // a mistura opaca do Digital (só com o modo ligado)
+mod mistura_memoria_tests;
+pub(super) mod rota; // B25.6: a porta única da rota de cor do lote // B28.4: as pegadas locais não guardam a máscara da tela // a mistura opaca do Digital (só com o modo ligado)
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
@@ -524,145 +525,36 @@ impl PainterTool {
                 .active()
                 .and_then(|id| self.layers.get(id))
                 .is_some_and(|l| l.alpha_locked);
-        // A MISTURA OPACA (só ligada, só a pintar): a tela sob o dab entra na cor (`stamp_route::mistura`).
-        // ⛔ Pergunta ao BLEND, não à ferramenta: a camada Erase e a Blur do Composite medem a cobertura apagando
-        // (`composite_acumulado::acumula_camada`), e a mistura não apaga — pintava a camada Erase e enchia a
-        // película da Blur, que travava a Strength da Brush (Bugs #73, #75). A cor por texel (#77) é da rota.
-        if brush.mistura_opaca.ligada()
-            && matches!(self.paint.paint_mode, PaintMode::Paint)
-            && !matches!(brush.blend, ph2d_painter_brush::BrushBlend::EraseAlpha)
-        {
-            self.stamp_dabs_mistura_opaca(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
-        // A ponta de PÍXEL (L18, só no Digital): o carimbo binário dos dabs que o trilho já ancorou.
-        if self.pixel_vivo(&brush) {
-            self.stamp_dabs_pixel(dabs, &brush, alpha_locked);
-            return;
-        }
-        let has_shape_image = self.paint.shape_image.is_some();
-        // Per-layer-colour Shape (multi-layer, mode on): the z-ordered tinted layers recomposite onto the
-        // canvas. Guarded by an ACTIVE Image silhouette so a stale `per_layer_color` flag (e.g. after the
-        // Shape was reset to None) can never route a non-Image Shape into the coloured path (Enio).
-        // ⚠️ Esta rama NÃO consulta a porta da cobertura acima, então um traço com Per-Layer Color armado
-        // ignora o cap de Accumulate. Pré-existente, e **de propósito nesta wave**: a máscara voltou a
-        // pintar pela lei do brush (ordem do Enio, doc 25 §13.10), então o guard que a desviava daqui
-        // saiu com a lei que o justificava — desviar a máscara agora seria fazê-la pintar DIFERENTE do
-        // brush digital, que é exactamente o que a ordem proíbe. Fica NOMEADO em vez de contrabandeado.
-        if self.paint.shape_layers.is_color_mode() && brush.shape_silhouette_active(has_shape_image)
-        {
-            // Per-dab dynamics the constant-orientation cached path can't express → the per-pixel dynamic
-            // path: Shape Rake / Random rotation, Randomize Color, or Grain Jitter Rotate. Randomize Color
-            // is `has_colour_jitter_amount()` (Hue/Sat/Val > 0) — the engine's actual gate; the legacy
-            // `color_jitter_enabled` flag is dead (the panel drives it by amount), so checking it here
-            // meant Randomize Color alone never reached the dynamic path (it only worked WITH Rake/Random).
-            // A canvas-fixed Grain (Tiled / Stencil) cannot be baked into the dab-LOCAL coloured stamp
-            // (`render_color_stamp_mask` samples in stamp-local coords) — doing so ignored the Stencil
-            // rect entirely, so the colour leaked OUTSIDE it (worst with a big Anchored dab). The per-pixel
-            // dynamic path samples the Grain at each canvas pixel through its canvas-fixed basis, so it
-            // masks the rect correctly (Enio 2026-06-27).
-            // The Grain half is `!texture.is_cacheable()` — the SAME predicate the grayscale routes use.
-            // Hand-rolling the disjunction here (Rake / Random-Angle / canvas-fixed) left a hole: Grain
-            // **Mapping = Random Offset** randomises the OFFSET, not the angle, so it matched none of the
-            // clauses and was served by the constant-orientation coloured stamp — every dab got the SAME
-            // texture offset and the knob did nothing (sweep 2026-07-12). `is_cacheable()` covers Rake,
-            // Random-Angle, Random-Offset, Tiled and Stencil in one place, so the hole cannot re-open.
-            // …e a orla em PÍXEIS (J3): o carimbo colorido em cache é de um raio, ela é de cada dab.
-            let per_dab_dynamic = brush.shape_has_per_dab_rotation(has_shape_image)
-                || brush.borda_px > 0.0
-                // A imagem pela área (J4) mede o píxel da tela: a máscara assada é de outro raio.
-                || brush.shape.lei.area
-                || ph2d_painter_brush::pen::any_tilted(dabs)
-                || brush.has_colour_jitter_amount()
-                || brush.has_per_dab_rotation()
-                || (brush.texture.is_active() && !brush.texture.is_cacheable())
-                // O dente do papel é preso à tela: o carimbo colorido em cache não o leva.
-                || brush.dente.is_some();
-            if per_dab_dynamic {
+        // A rota de cor sai da porta única (B25.6, `stamp_route::rota`); aqui só se executa.
+        let rota = self.rota_de_cor(dabs, &brush);
+        #[cfg(test)]
+        rota::ULTIMA_PORTA.set(Some((rota, super::stamp_device::eligible(&brush))));
+        match rota {
+            RotaDeCor::MisturaOpaca => {
+                self.stamp_dabs_mistura_opaca(dabs, &brush, alpha_locked, w, h)
+            }
+            RotaDeCor::Pixel => self.stamp_dabs_pixel(dabs, &brush, alpha_locked),
+            RotaDeCor::PorCamadaDinamica => {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
-            } else if self.paint.shape_layers.any_texture_color() {
-                // Texture colour (the capture default) with a CONSTANT orientation: the per-pixel RGB is
-                // pre-baked into each layer's premul-RGBA stamp → the batched 4-channel scale-blit path
-                // (was the dynamic per-pixel resample = the live "FPS 60→10" cliff).
+            }
+            RotaDeCor::PorCamadaRgba => {
                 self.stamp_dabs_cached_color_rgba(dabs, &brush, alpha_locked, w, h);
-            } else {
-                self.stamp_dabs_cached_color(dabs, &brush, alpha_locked, w, h);
             }
-            return;
-        }
-        // Grain Jitter-Rotate OR a per-dab Shape rotation (Rake / Random) → each dab needs its own
-        // basis, so the constant-orientation caches are skipped (the per-pixel path resolves per dab).
-        let per_dab_rotation = brush.has_per_dab_rotation()
-            || brush.shape_has_per_dab_rotation(has_shape_image)
-            || ph2d_painter_brush::pen::any_tilted(dabs);
-        // A stroke that TRACKS its own coverage ([`Self::stroke_cover_wanted`] — the Accumulate-OFF cap)
-        // cannot be served by the constant-orientation caches: they scale-blit a baked stamp and have no
-        // per-stroke buffer to thread, so they would silently ignore the cap. Same door the threading
-        // routes ask, so the two cannot disagree.
-        let accumulate_cap = self.stroke_cover_wanted(&brush);
-        // …e a carga que se ESGOTA (o fall-off da L5) é um tecto que desce: a mesma porta (`traco_plano`).
-        let accumulate_cap = accumulate_cap || self.cobertura_tapada(&brush);
-        // A Colour Ramp owns the painted COLOUR (baked LUT): the **Shape** ramp (its B&W filter off →
-        // colourise the silhouette) or the **Grain** ramp (indexed by the Grain pattern). With NO Grain
-        // the COVERAGE (the Shape silhouette, OR the bare falloff when there's no Shape image) indexes the
-        // ramp, and the StampMask already caches that coverage → blit the cached mask applying
-        // `ramp[coverage]` (as cheap as a plain cached stamp, NOT a per-pixel coverage recompute per dab —
-        // critical for the Line/Curve/Ellipse/Polygon fills, which re-stamp the WHOLE shape every move).
-        // Per-pixel otherwise: a Grain to index, per-dab rotation, or the Accumulate cap (Enio 2026-06-26).
-        let grain_active = brush.texture.is_active();
-        // The dab-capsule (Continuous Spacing) is per dab: no baked or canvas cache carries its step, nor
-        // its colour under a Shape ramp (composed per sub-dab, lista 26 A9) — only the per-pixel
-        // `stamp_dabs_ramped` honours it.
-        let capsulas = brush.lays_capsules();
-        let owner = self.color_ramp_owner(grain_active);
-        if owner != RampLutOwner::None {
-            // `dab_mask_cacheable` already covers the no-Shape falloff case (a static View silhouette);
-            // requiring `shape_silhouette_active` here needlessly forced a colour ramp on a plain brush
-            // onto the per-pixel path — the cause of the slow ramped fills (Enio 2026-06-26).
-            let static_ok = brush.dab_mask_cacheable(has_shape_image)
-                && !per_dab_rotation
-                && !accumulate_cap
-                && !capsulas;
-            // The Shape's Texture Color over a PROCEDURAL pattern reads a value the coverage mask does
-            // not hold (the pattern turned colour, prompt 38) → the baked colour stamp, like a Grain.
-            let padrao = self.padrao_do_shape_vira_cor(owner, has_shape_image);
-            if static_ok && !grain_active && !padrao {
-                // No Grain: the silhouette/falloff coverage indexes the ramp → the cached grayscale
-                // StampMask + `ramp[coverage]` at blit (cheap as a plain cached stamp).
-                self.stamp_dabs_cached_ramped(dabs, &brush, alpha_locked, w, h);
-            } else if static_ok && (grain_active || padrao) {
-                // Grain + ramp (or the Shape pattern as colour): a VALUE that is not the coverage
-                // indexes the ramp → bake the colour ONCE into a coloured stamp + scale-blit (vs the
-                // per-pixel recompute — the slow fills).
+            RotaDeCor::PorCamadaCor => {
+                self.stamp_dabs_cached_color(dabs, &brush, alpha_locked, w, h)
+            }
+            RotaDeCor::RampaEmCache => {
+                self.stamp_dabs_cached_ramped(dabs, &brush, alpha_locked, w, h)
+            }
+            RotaDeCor::RampaCorEmCache => {
                 self.stamp_dabs_cached_ramp_color(dabs, &brush, alpha_locked, w, h);
-            } else {
-                self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
             }
-            return;
+            RotaDeCor::RampaPorPixel => self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h),
+            RotaDeCor::EmCache => self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h),
+            RotaDeCor::TelaEmCache => {
+                self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h)
+            }
+            RotaDeCor::PorPixel => self.stamp_dabs_per_pixel(dabs, &brush, alpha_locked, w, h),
         }
-        // Whether either slot genuinely shapes the dab beyond the falloff: a Shape image (silhouette) or
-        // an active Grain. A bare falloff brush (neither) stays on the per-pixel path, as before.
-        let want_cache =
-            brush.shape_silhouette_active(has_shape_image) || brush.texture.is_active();
-        // Both slots static & View ⇒ bake silhouette × Grain once into the scale-invariant stamp (Blender).
-        if want_cache
-            && brush.dab_mask_cacheable(has_shape_image)
-            && !per_dab_rotation
-            && !accumulate_cap
-            && !capsulas
-        {
-            self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
-        // Grain Tiled / Stencil is canvas-fixed but dab-independent — cache each canvas pixel's Grain
-        // once per stroke + look it up per dab; the silhouette (Shape or falloff) stays per-pixel.
-        if brush.texture.is_canvas_cacheable() && !per_dab_rotation && !accumulate_cap && !capsulas
-        {
-            self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
-        // Per-pixel path (no cache applies, or the Accumulate cap): resolves the texture frame +
-        // Randomize-Color colour per dab and threads the per-stroke coverage mask.
-        self.stamp_dabs_per_pixel(dabs, &brush, alpha_locked, w, h);
     }
 }

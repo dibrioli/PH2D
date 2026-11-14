@@ -3,8 +3,12 @@
 //! Uma ponte espiã que DECLINA (a CPU pinta o mesmo byte, `a_bridge_that_declines_…`) conta quem lá chega; o predicado
 //! estático (`eligible`) diz porquê os outros ficam. A lista sai em `--nocapture`; o número vive em
 //! `docs/Painter/missao_4k/medicoes/N10_carimbo.md`.
+//!
+//! B25.6: a lei «subiu ⇒ o spec do LOTE é elegível e a porta única (`rota_de_cor`) o manda à rota por píxel» é um
+//! assert, aqui e no gate barato `quem_sobe_a_placa_e_elegivel_pelo_spec_do_lote`.
 
-use super::{DeviceStamp, eligible};
+use super::super::stamp_route::rota::{RotaDeCor, ULTIMA_PORTA};
+use super::DeviceStamp;
 use ph2d_editor_core::Tool as _;
 use ph2d_editor_core::tool::{
     CanvasPaintTool as _, CanvasPointer, PointerPhase, RasterEditTool as _,
@@ -43,7 +47,10 @@ fn traco(t: &mut crate::tool::PainterTool, passo: Option<f32>) {
     t.on_tick(16.0);
 }
 
-/// Pinta `traco` com o pincel que `prepara` deixa; devolve (lotes na placa, o `eligible` do pincel, pintou?).
+/// Pinta `traco` com o pincel que `prepara` deixa; devolve (lotes na placa, todo lote que subiu passou a porta, pintou?).
+/// A porta é a do LOTE (`ULTIMA_PORTA`): rota por píxel e `eligible` do spec que o lote carimba — nem o pincel VIVO
+/// nem o `stroke_spec`: no plano do traço o lote carimba `Mix` e o modo do pincel compõe-se uma vez
+/// (`traco_plano::dentro_do_plano`), que é como o Color Glaze (blend Color) sobe à placa.
 fn conta(
     prepara: impl FnOnce(&mut crate::tool::PainterTool),
     passo: Option<f32>,
@@ -54,14 +61,20 @@ fn conta(
     t.set_brush_size_px(18.0);
     let chamadas = Arc::new(AtomicUsize::new(0));
     let c = Arc::clone(&chamadas);
+    let fora = Arc::new(AtomicUsize::new(0));
+    let f = Arc::clone(&fora);
     let ponte: DeviceStamp = Box::new(move |_| {
         c.fetch_add(1, Ordering::Relaxed);
+        // A porta do lote que acabou de despachar: rota por píxel e `eligible` do spec DESTE lote.
+        if ULTIMA_PORTA.get() != Some((RotaDeCor::PorPixel, true)) {
+            f.fetch_add(1, Ordering::Relaxed);
+        }
         None
     });
     t.set_device_stamp(Some(ponte));
-    let elegivel = eligible(&t.paint.brush);
     traco(&mut t, passo);
     let pintou = t.canvas_rgba.iter().any(|&b| b != 255);
+    let elegivel = fora.load(Ordering::Relaxed) == 0;
     (chamadas.load(Ordering::Relaxed), elegivel, pintou)
 }
 
@@ -103,14 +116,12 @@ fn quantos_pinceis_de_fabrica_sobem_a_placa() {
             "B25.8\t{}\t{}\telegivel={elegivel}\tfigura={fig}\tmao={mao:?}",
             p.parametros.media, p.parametros.name
         );
-        // `elegivel` é o do pincel VIVO; o lote sobe com o spec do meio (`authored_spec`), que pode diferir.
         let subiu = fig > 0 || mao.iter().any(|&l| l > 0);
-        if subiu && !elegivel {
-            println!(
-                "B25.8 ⚠ {} sobe com o pincel vivo fora do predicado",
-                p.parametros.name
-            );
-        }
+        assert!(
+            !subiu || elegivel,
+            "{} sobe à placa fora da porta do lote",
+            p.parametros.name
+        );
     }
     for (meio, [n, el, fig, mao]) in &por_meio {
         println!(
@@ -118,4 +129,39 @@ fn quantos_pinceis_de_fabrica_sobem_a_placa() {
         );
     }
     assert!(!por_meio.is_empty(), "a biblioteca de fábrica veio vazia");
+}
+
+/// Pinta com o preset de fábrica `relativo` (sob `assets/brushes/Digital`): a contagem do [`conta`] por passo.
+fn conta_preset(relativo: &str, passo: Option<f32>) -> (usize, bool, bool) {
+    let raiz =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes/Digital");
+    let bytes = std::fs::read(raiz.join(relativo)).expect("preset de fábrica");
+    let p = ph2d_brush_presets::ler(&bytes).expect("preset legível");
+    conta(
+        |t| {
+            t.set_semente_dos_tracos(0);
+            t.set_wet_relogio_fixo(true);
+            let falhas = t.preset_aplicar(&p).expect("meio conhecido");
+            assert!(falhas.is_empty(), "{relativo}: {falhas:?}");
+        },
+        passo,
+    )
+}
+
+/// B25.6: os pincéis de fábrica que sobem à placa à mão (a contagem do B25.8) sobem pela porta do LOTE. O Color
+/// Glaze era o «fora do `eligible`» da sonda: o vivo tem blend Color, o lote carimba `Mix` no plano do traço.
+/// Controlo: o lote sobe mesmo (`lotes > 0`) — sem isso a implicação seria vácua.
+#[test]
+fn quem_sobe_a_placa_e_elegivel_pelo_spec_do_lote() {
+    for rel in [
+        "Effects/Effects/Color Glaze.ph2d-brush.png",
+        "Pencil/Charcoal/Charcoal Stick.ph2d-brush.png",
+    ] {
+        let (lotes, porta, pintou) = conta_preset(rel, Some(24.0));
+        println!("B25.6 {rel}: {lotes} lotes, porta do lote {porta}");
+        // O Color Glaze (blend Color) sobre o branco não muda a tela: só o Charcoal mede que pintou.
+        assert!(pintou || rel.starts_with("Effects"), "{rel}: não pintou");
+        assert!(lotes > 0, "{rel}: o controlo — devia subir à placa (B25.8)");
+        assert!(porta, "{rel}: sobe à placa fora da porta do lote");
+    }
 }

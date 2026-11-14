@@ -3,9 +3,7 @@
 //! conceito confere-se na documentação pública, o desenho é nosso e fala a lei do cartão.
 
 use crate::controlos::rive::{INPUT_ROWS, INPUT_TYPES, STOP_ROWS, STOP_SWATCH};
-use crate::controlos::{
-    CAMPO_MIN, caixa_para, card, dropdown, field, head, letra, marca, num, segs,
-};
+use crate::controlos::{CAMPO_MIN, caixa_para, card, dropdown, field, head, letra, num, segs};
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, WidgetGalleryState};
 use ph2d_card_stack::metrics as m;

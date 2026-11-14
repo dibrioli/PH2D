@@ -315,12 +315,13 @@ fn campo_v(g: vec3<u32>) -> CampoV {
         ey = 0.2 * ey + 0.2 * (vel_y[i - 1] + vel_y[i + 1] + vel_y[i - u.fs] + vel_y[i + u.fs]);
     }
     // Freio de absorvência por look-ahead.
-    let s_len = k.brake_reach * k.dif / (sqrt(ex * ex + ey * ey) + 0.01);
-    let dxs = i32(trunc(ex * s_len));
-    let dys = i32(trunc(ey * s_len));
-    let probe = i + dxs + dys * u.fs;
-    let probe_f = fi + dxs * u.rf + dys * u.rf * u.s;
-    if probe >= 0 && probe < i32(arrayLength(&flow_x)) && probe_f >= 0 && probe_f < i32(arrayLength(&act)) {
+    // B13.10 (`flow::sonda_do_freio`): o passo na grade FINA a partir da amostra `(px, fy)`, limites 2D.
+    let s_len = k.brake_reach / (sqrt(ex * ex + ey * ey) + 0.01);
+    let qx = px + i32(trunc(ex * s_len));
+    let qy = flow_probe(c.y, u.h) + i32(trunc(ey * s_len));
+    let rows = i32(arrayLength(&act)) / u.s;
+    let probe_f = qy * u.s + qx;
+    if qx >= 0 && qx < u.s && qy >= 0 && qy < rows {
         let br = clamp(st[probe_f].x + (3.0 / 255.0) * f32(wet[probe_f]) - k.brake_bias, 0.05, 1.0);
         ex *= br;
         ey *= br;

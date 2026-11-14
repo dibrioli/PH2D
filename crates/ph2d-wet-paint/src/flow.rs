@@ -218,6 +218,57 @@ pub fn diff_scale(rf: usize) -> f64 {
     1.0 / clamp_ratio(rf) as f64
 }
 
+/// `true` = o freio de antes do B13.10 (passo em células de FLUXO, índice linear) — SÓ a régua da prancha.
+#[doc(hidden)]
+pub static FREIO_LINEAR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// **B13.10 — a célula FINA que o freio de absorvência sonda**, ou `None` (fora da folha: sem freio).
+///
+/// `e` e `reach` estão os dois em células FINAS (por passo / de distância), então o passo trunca-se na grade
+/// FINA a partir da célula amostrada `(px, py)` — antes truncava-se em células de fluxo (`reach·dif`) e, com
+/// `rf > 1`, um alcance `< rf` virava a própria célula. Limites 2D (o anel de pad incluído): a sonda que passa a
+/// borda esquerda/direita não cai na linha vizinha. `rf = 1` ⇒ o passo de antes ao bit (`dif = 1`); só muda a
+/// borda. `s` = largura da grade fina com o pad, `cells` = o tamanho dela.
+#[inline]
+#[must_use]
+pub fn sonda_do_freio(
+    ex: f64,
+    ey: f64,
+    reach: f64,
+    px: i64,
+    py: i64,
+    s: usize,
+    cells: usize,
+) -> Option<usize> {
+    let s_len = reach / ((ex * ex + ey * ey).sqrt() + 0.01);
+    let (x, y) = (
+        px + (ex * s_len).trunc() as i64,
+        py + (ey * s_len).trunc() as i64,
+    );
+    let (s, rows) = (s as i64, (cells / s.max(1)) as i64);
+    ((0..s).contains(&x) && (0..rows).contains(&y)).then(|| (y * s + x) as usize)
+}
+
+/// O freio de antes do B13.10 ([`FREIO_LINEAR`]): `(flow_probe, fine_probe)` lineares, `None` fora dos vetores.
+#[doc(hidden)]
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn sonda_do_freio_linear(
+    e: (f64, f64),
+    reach_dif: f64,
+    i: usize,
+    fi: usize,
+    (s, cells): (usize, usize),
+    (fine_s, fine_cells): (usize, usize),
+    rf: i64,
+) -> Option<usize> {
+    let s_len = reach_dif / ((e.0 * e.0 + e.1 * e.1).sqrt() + 0.01);
+    let (dxs, dys) = ((e.0 * s_len).trunc() as i64, (e.1 * s_len).trunc() as i64);
+    let probe = i as i64 + dxs + dys * s as i64;
+    let pf = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
+    (probe >= 0 && probe < cells as i64 && pf >= 0 && pf < fine_cells as i64).then_some(pf as usize)
+}
+
 /// **O fluxo numa posição FINA fracionária** — a amostragem bilinear que o
 /// `advect` percorre ao back-traçar.
 ///

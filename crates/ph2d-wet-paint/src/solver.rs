@@ -298,20 +298,32 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
 
                 // Look-ahead absorbency brake: probe a few px downstream; wet or
                 // flooded ground ahead lets flow keep running, dry ground stalls
-                // it. Linear index arithmetic, no 2-D clamp: a probe past the
-                // array end skips the brake entirely (flow at the sheet edge runs
-                // off it).
-                //
-                // ⚠️ O alcance é uma DISTÂNCIA na folha, então em passos de índice
-                // ele leva o `dif`: sondar `brake_reach` células FINAS custa
-                // `brake_reach / rf` passos de fluxo.
-                let s_len = brake_reach * dif / ((ex * ex + ey * ey).sqrt() + 0.01);
-                let dxs = (ex * s_len).trunc() as i64;
-                let dys = (ey * s_len).trunc() as i64;
-                let probe = i as i64 + dxs + dys * s as i64;
-                let probe_f = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
-                if probe >= 0 && probe < cells && probe_f >= 0 && probe_f < fine_cells {
-                    let pu = probe_f as usize;
+                // it. B13.10: the probe walks the FINE grid with 2-D bounds; past
+                // the sheet (pad included) it skips the brake (flow runs off it).
+                let sonda = if crate::flow::FREIO_LINEAR.load(std::sync::atomic::Ordering::Relaxed)
+                {
+                    crate::flow::sonda_do_freio_linear(
+                        (ex, ey),
+                        brake_reach * dif,
+                        i,
+                        fi,
+                        (s, cells as usize),
+                        (fine_s, fine_cells as usize),
+                        rf,
+                    )
+                } else {
+                    let (px, py) = (i64::from(px), fy_m as i64);
+                    crate::flow::sonda_do_freio(
+                        ex,
+                        ey,
+                        brake_reach,
+                        px,
+                        py,
+                        fine_s,
+                        fine_cells as usize,
+                    )
+                };
+                if let Some(pu) = sonda {
                     let mut brake =
                         film_full[pu] as f64 + (3.0 / 255.0) * wet[pu] as f64 - brake_bias;
                     if brake < 0.05 {

@@ -222,3 +222,85 @@ fn the_row_sampler_is_the_point_sampler_bit_for_bit() {
         }
     }
 }
+
+/// **B13.10 — o freio sonda o MESMO ponto da folha em `rf` 1 e 2** e nunca a linha vizinha. A sonda de antes
+/// truncava em células de FLUXO (`reach·dif`): alcance 4 e velocidade (1, 0) davam 3 finas em `rf = 1` e 2 em
+/// `rf = 2` (`trunc(1,98)·2`); e da última coluna o índice linear caía no começo da linha de baixo.
+#[test]
+fn o_freio_sonda_o_mesmo_ponto_em_rf_1_e_2_e_respeita_a_borda() {
+    let (gw, gh) = (40usize, 30usize);
+    let (s, cells) = (gw + 2, (gw + 2) * (gh + 2));
+    let (px, py) = (17i64, 11i64);
+    for (ex, ey, reach) in [
+        (1.0, 0.0, 4.0),
+        (0.3, -0.7, 4.0),
+        (-2.0, 0.5, 6.5),
+        (0.05, 0.02, 12.0),
+    ] {
+        let fino = sonda_do_freio(ex, ey, reach, px, py, s, cells);
+        let fi = py as usize * s + px as usize;
+        // rf = 1: o passo de antes ao bit (só a borda muda).
+        let antes1 = sonda_do_freio_linear(
+            (ex, ey),
+            reach * diff_scale(1),
+            fi,
+            fi,
+            (s, cells),
+            (s, cells),
+            1,
+        );
+        assert_eq!(
+            fino, antes1,
+            "rf 1 mudou no interior: e=({ex},{ey}) reach {reach}"
+        );
+        // rf = 2: a sonda nova é a mesma função do ponto e da velocidade (finas por passo).
+        let novo2 = sonda_do_freio(ex, ey, reach, px, py, s, cells);
+        assert_eq!(novo2, fino, "rf 2 ≠ rf 1: e=({ex},{ey})");
+    }
+    // O de antes em rf = 2 (bloco 9×6 de fluxo da amostra (17, 11)): 2 finas, não 3 — o defeito que fecha.
+    let (fs, fcells) = (gw / 2 + 2, (gw / 2 + 2) * (gh / 2 + 2));
+    let (fx, fy) = (9usize, 6usize);
+    let fi = py as usize * s + px as usize;
+    let antes2 = sonda_do_freio_linear(
+        (1.0, 0.0),
+        4.0 * diff_scale(2),
+        fy * fs + fx,
+        fi,
+        (fs, fcells),
+        (s, cells),
+        2,
+    );
+    assert_eq!(antes2, Some(fi + 2), "a régua do defeito");
+    assert_eq!(
+        sonda_do_freio(1.0, 0.0, 4.0, px, py, s, cells),
+        Some(fi + 3)
+    );
+    // A borda: da última coluna para a direita, e da primeira para a esquerda, a sonda sai da folha.
+    let ult = gw as i64;
+    assert_eq!(
+        sonda_do_freio(1.0, 0.0, 4.0, ult, py, s, cells),
+        None,
+        "a direita não embrulha"
+    );
+    assert_eq!(
+        sonda_do_freio(-1.0, 0.0, 4.0, 1, py, s, cells),
+        None,
+        "a esquerda não embrulha"
+    );
+    let fi_ult = py as usize * s + ult as usize;
+    assert_eq!(
+        sonda_do_freio_linear((1.0, 0.0), 4.0, fi_ult, fi_ult, (s, cells), (s, cells), 1),
+        Some(fi_ult + 3),
+        "o de antes caía na linha de baixo"
+    );
+    // O anel de pad continua sondável (seco ⇒ o fluxo pára na borda, como antes).
+    assert_eq!(
+        sonda_do_freio(1.0, 0.0, 2.0, ult, py, s, cells),
+        Some(fi_ult + 1)
+    );
+    assert_eq!(
+        sonda_do_freio(0.0, 1.0, 4.0, px, gh as i64, s, cells),
+        None,
+        "o fundo"
+    );
+}

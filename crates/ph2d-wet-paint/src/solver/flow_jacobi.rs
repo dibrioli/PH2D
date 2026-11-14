@@ -405,13 +405,31 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     // ⚠️ **`wet_full` é o `wet` do INÍCIO do passo** — é aqui que a
                     // independência de ordem é ganha, e é a única diferença de
                     // desenho entre este passe e o Gauss-Seidel.
-                    let s_len = c.brake_reach * c.dif / ((ex * ex + ey * ey).sqrt() + 0.01);
-                    let dxs = (ex * s_len).trunc() as i64;
-                    let dys = (ey * s_len).trunc() as i64;
-                    let probe = i as i64 + dxs + dys * s as i64;
-                    let probe_f = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
-                    if probe >= 0 && probe < cells && probe_f >= 0 && probe_f < fine_cells {
-                        let pu = probe_f as usize;
+                    // B13.10: a sonda anda na grade FINA, com limites 2D ([`crate::flow::sonda_do_freio`]).
+                    let sonda =
+                        if crate::flow::FREIO_LINEAR.load(std::sync::atomic::Ordering::Relaxed) {
+                            crate::flow::sonda_do_freio_linear(
+                                (ex, ey),
+                                c.brake_reach * c.dif,
+                                i,
+                                fi,
+                                (s, cells as usize),
+                                (fine_s, fine_cells as usize),
+                                rf,
+                            )
+                        } else {
+                            let (px, py) = (i64::from(px), fy_m as i64);
+                            crate::flow::sonda_do_freio(
+                                ex,
+                                ey,
+                                c.brake_reach,
+                                px,
+                                py,
+                                fine_s,
+                                fine_cells as usize,
+                            )
+                        };
+                    if let Some(pu) = sonda {
                         let mut brake = film_full[pu] as f64 + (3.0 / 255.0) * wet_full[pu] as f64
                             - c.brake_bias;
                         if brake < 0.05 {
@@ -462,8 +480,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     }
                     if com_tensao {
                         let par = (susp_full, sett_full);
-                        (ex, ey) =
-                            super::ladeira_do_oleo::cede(oleo, par, fi, f, (ex, ey));
+                        (ex, ey) = super::ladeira_do_oleo::cede(oleo, par, fi, f, (ex, ey));
                         let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
                         let k = crate::meio::mobilidade(f64::from(cel.meio));
                         (ex, ey) = (ex * k, ey * k);

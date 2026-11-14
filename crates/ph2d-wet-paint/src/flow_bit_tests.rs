@@ -105,7 +105,9 @@ fn flow_step_bits_are_the_recorded_ones() {
 /// `painter/receita.rs` (φ·h) em vez de `PigmentPerDab`/`water²÷pressão` — iguais à pressão de referência até ao
 /// arredondamento (`receita_tests`, < 1e-6 por dab); o passo da água não mudou (as rotas 1 e 2 dão o mesmo par).
 /// Antes (a umidade de hoje, 03/11): `[0x0abe_64da_e119_8a5b, 0xabd1_73df_e10f_26da]`. Doc: `docs/Painter/Arquitetura/FECHO_31_10.md`.
-const GRAVADO: [u64; 2] = [0x43ec_b6d1_707d_bdb8, 0x8410_5e51_a74c_3aa6];
+/// Regravado 14/11 (B13.10): o freio da água nas bordas esquerda/direita deixa de sondar a linha vizinha. Com
+/// `flow::FREIO_LINEAR` ligado a cena dá ao bit o par de antes, `[0x43ec_b6d1_707d_bdb8, 0x8410_5e51_a74c_3aa6]`.
+const GRAVADO: [u64; 2] = [0x2215_5309_2cd2_0899, 0xfde6_3aec_bd3d_86be];
 
 /// Duas faixas largas separadas por linhas SECAS dentro da bbox: as linhas sem faixa viva (`row_lo > row_hi`,
 /// sentinelas `i32::MAX`/`MIN`) são contadas pelo `commit_rows` — `hi − lo + 1` transbordava (30/10, o

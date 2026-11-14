@@ -70,73 +70,73 @@ impl WidgetStore {
 
     fn hover_target_of(st: &InteractiveState) -> Option<f32> {
         let lit = match st {
-                InteractiveState::Button { state } | InteractiveState::Radio { state, .. } => {
-                    matches!(
-                        state,
-                        ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused
-                    )
-                }
-                InteractiveState::Toggle { state, .. } => {
-                    matches!(state, ToggleState::Hovered | ToggleState::Pressed)
-                }
-                InteractiveState::Checkbox { state, .. } => {
-                    matches!(state, CheckboxState::Hovered | CheckboxState::Pressed)
-                }
-                // ⚠️ **Sem este braço a tag COMPILA, PINTA e nunca se MOVE.** O campo, a lei do
-                // anel e a pele podem estar todos certos e o `t` fica no neutro para sempre —
-                // porque o alvo nunca é publicado. É o degrau que o doc abaixo nomeia (*"um tipo
-                // que não aparece aqui não ganha entrada nenhuma"*) lido ao contrário.
-                InteractiveState::Tag { state } => {
-                    matches!(state, TagState::Hovered | TagState::Pressed)
-                }
-                // ⚠️ **A FAMÍLIA DO TEXTO E DO CHIP — os dois extremos da corrente existiam e só
-                // o elo do MEIO faltava.** O `hover.rs` promove os três (entrada e saída), os
-                // pintores já misturam `Border → BorderEmph` pelo eixo, os painéis já passam
-                // `(estado, hover_live(id))` e o `dropdown_visual` já devolve o par — e o alvo
-                // nunca era publicado, então o `hover_live` devolvia [`crate::motion::SETTLED`]
-                // para sempre e cada uma dessas chamadas entregava o NEUTRO. Quatro famílias de
-                // widget (campo, área de texto, chip numérico, dropdown) reagiam e SALTAVAM.
-                //
-                // ⚠️ **Aceso é `Hovered` e SÓ ele, e a lei é DERIVADA, não escolhida:** é
-                // exactamente o extremo quente que o `soft` de cada pintor já declara
-                // (`text_input::border_color`, `dropdown::chip_border_color`). `Focused` ali é
-                // estado DURO — a borda vira `Accent` e nasce um caret —, e contá-lo faria o
-                // relógio conduzir um id cujo `t` o pintor ignora enquanto o foco dura.
-                InteractiveState::TextInput { state, .. }
-                | InteractiveState::NumberInput { state, .. } => {
-                    matches!(state, TextInputState::Hovered)
-                }
-                InteractiveState::Dropdown { state, .. } => {
-                    matches!(state, DropdownState::Hovered)
-                }
-                // ⚠️ **O `Dragging` conta, e é o que separa um slider de um botão.** Um botão é
-                // premido e solto; uma trilha é AGARRADA e o dedo fica lá — se o arrasto não
-                // acendesse, a superfície apagaria debaixo da mão que a comanda.
-                InteractiveState::Slider { state, .. } => matches!(
+            InteractiveState::Button { state } | InteractiveState::Radio { state, .. } => {
+                matches!(
                     state,
-                    crate::widget::SliderState::Hovered
-                        | crate::widget::SliderState::Dragging
-                        | crate::widget::SliderState::Focused
-                ),
-                // Os restantes tipos não têm eixo de hover HOJE. ⚠️ Um tipo que não aparece aqui
-                // não ganha entrada nenhuma — é o que mantém o mapa do tamanho do que se move.
-                //
-                // ⚠️ **E "os restantes" inclui `Plain`, que é outra classe: nenhuma OPINIÃO.** Um
-                // polegar de scrollbar cai aqui, e derivar o *aceso* dele deste `match` é
-                // impossível — quem sabe se um polegar está quente é o PONTEIRO. Ele é conduzido
-                // pelo [`Self::scrollbar_hover_targets`], que existe precisamente por isso.
-                //
-                // ⚠️ **E este comentário JÁ MENTIU duas vezes, o que é a razão de estar reescrito
-                // com o número ao lado.** Ele dizia *"vivem só no `hit_index`"* — medido em
-                // 2026-08-15, **3 dos 22** polegares estão registados (`Plain`) e 19 não; e dizia
-                // que conduzi-los *"exige uma lista de quem está a APAGAR-SE, que é estado novo"* —
-                // **não é**: o `hover_live` já é o registo de todo id a que o tique publicou um
-                // `t`, e foi essa medição que fez a wave caber num censo irmão em vez de num campo.
-                //
-                // ⛔ E **não** puxe os outros `Plain` para cá: as rows da Hierarquia também o são,
-                // e amaciá-las revive a cerca do estudo §6.2 (*o realce de uma lista OBEDECE ao
-                // cursor; oito rows meio-acesas ao mesmo tempo é rasto, não vida*).
-                _ => return None,
+                    ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused
+                )
+            }
+            InteractiveState::Toggle { state, .. } => {
+                matches!(state, ToggleState::Hovered | ToggleState::Pressed)
+            }
+            InteractiveState::Checkbox { state, .. } => {
+                matches!(state, CheckboxState::Hovered | CheckboxState::Pressed)
+            }
+            // ⚠️ **Sem este braço a tag COMPILA, PINTA e nunca se MOVE.** O campo, a lei do
+            // anel e a pele podem estar todos certos e o `t` fica no neutro para sempre —
+            // porque o alvo nunca é publicado. É o degrau que o doc abaixo nomeia (*"um tipo
+            // que não aparece aqui não ganha entrada nenhuma"*) lido ao contrário.
+            InteractiveState::Tag { state } => {
+                matches!(state, TagState::Hovered | TagState::Pressed)
+            }
+            // ⚠️ **A FAMÍLIA DO TEXTO E DO CHIP — os dois extremos da corrente existiam e só
+            // o elo do MEIO faltava.** O `hover.rs` promove os três (entrada e saída), os
+            // pintores já misturam `Border → BorderEmph` pelo eixo, os painéis já passam
+            // `(estado, hover_live(id))` e o `dropdown_visual` já devolve o par — e o alvo
+            // nunca era publicado, então o `hover_live` devolvia [`crate::motion::SETTLED`]
+            // para sempre e cada uma dessas chamadas entregava o NEUTRO. Quatro famílias de
+            // widget (campo, área de texto, chip numérico, dropdown) reagiam e SALTAVAM.
+            //
+            // ⚠️ **Aceso é `Hovered` e SÓ ele, e a lei é DERIVADA, não escolhida:** é
+            // exactamente o extremo quente que o `soft` de cada pintor já declara
+            // (`text_input::border_color`, `dropdown::chip_border_color`). `Focused` ali é
+            // estado DURO — a borda vira `Accent` e nasce um caret —, e contá-lo faria o
+            // relógio conduzir um id cujo `t` o pintor ignora enquanto o foco dura.
+            InteractiveState::TextInput { state, .. }
+            | InteractiveState::NumberInput { state, .. } => {
+                matches!(state, TextInputState::Hovered)
+            }
+            InteractiveState::Dropdown { state, .. } => {
+                matches!(state, DropdownState::Hovered)
+            }
+            // ⚠️ **O `Dragging` conta, e é o que separa um slider de um botão.** Um botão é
+            // premido e solto; uma trilha é AGARRADA e o dedo fica lá — se o arrasto não
+            // acendesse, a superfície apagaria debaixo da mão que a comanda.
+            InteractiveState::Slider { state, .. } => matches!(
+                state,
+                crate::widget::SliderState::Hovered
+                    | crate::widget::SliderState::Dragging
+                    | crate::widget::SliderState::Focused
+            ),
+            // Os restantes tipos não têm eixo de hover HOJE. ⚠️ Um tipo que não aparece aqui
+            // não ganha entrada nenhuma — é o que mantém o mapa do tamanho do que se move.
+            //
+            // ⚠️ **E "os restantes" inclui `Plain`, que é outra classe: nenhuma OPINIÃO.** Um
+            // polegar de scrollbar cai aqui, e derivar o *aceso* dele deste `match` é
+            // impossível — quem sabe se um polegar está quente é o PONTEIRO. Ele é conduzido
+            // pelo [`Self::scrollbar_hover_targets`], que existe precisamente por isso.
+            //
+            // ⚠️ **E este comentário JÁ MENTIU duas vezes, o que é a razão de estar reescrito
+            // com o número ao lado.** Ele dizia *"vivem só no `hit_index`"* — medido em
+            // 2026-08-15, **3 dos 22** polegares estão registados (`Plain`) e 19 não; e dizia
+            // que conduzi-los *"exige uma lista de quem está a APAGAR-SE, que é estado novo"* —
+            // **não é**: o `hover_live` já é o registo de todo id a que o tique publicou um
+            // `t`, e foi essa medição que fez a wave caber num censo irmão em vez de num campo.
+            //
+            // ⛔ E **não** puxe os outros `Plain` para cá: as rows da Hierarquia também o são,
+            // e amaciá-las revive a cerca do estudo §6.2 (*o realce de uma lista OBEDECE ao
+            // cursor; oito rows meio-acesas ao mesmo tempo é rasto, não vida*).
+            _ => return None,
         };
         Some(if lit { 1.0 } else { 0.0 })
     }

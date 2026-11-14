@@ -252,7 +252,10 @@ fn sonda_oleo_derrete() {
             continue;
         }
         for (tag, rota, cruza) in rotas {
-            let _r = ph2d_wet_paint::solver::regua::Regua::poe(&ph2d_wet_paint::solver::LADEIRA_ROTA, rota);
+            let _r = ph2d_wet_paint::solver::regua::Regua::poe(
+                &ph2d_wet_paint::solver::LADEIRA_ROTA,
+                rota,
+            );
             let rot = format!("{nome}_{tag}");
             let d = cena(&b, rel, passos, dir.as_deref(), &rot, cruza);
             println!(

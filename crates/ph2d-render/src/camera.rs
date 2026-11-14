@@ -151,7 +151,8 @@ impl Camera2d {
         if !factor.is_finite() || factor <= 0.0 {
             return 0.0;
         }
-        ph2d_det_math::DetMath::det_ln(factor) / ph2d_det_math::DetMath::det_ln(Self::WHEEL_ZOOM_PER_NOTCH)
+        ph2d_det_math::DetMath::det_ln(factor)
+            / ph2d_det_math::DetMath::det_ln(Self::WHEEL_ZOOM_PER_NOTCH)
             * Self::WHEEL_NOTCH_PX
     }
 

@@ -29,11 +29,11 @@ pub mod layers;
 pub mod macro_track;
 pub mod paint_perf; // o agregador PH2D_PAINT_PERF (uma linha por janela), reexportado pela ph2d-app-painter
 pub mod params;
-#[doc(hidden)]
-pub mod raio_da_sonda; // B44.1: a porta das sondas que imprime o raio lido
 /// Copiar um plano canvas-shaped, em paralelo — o primitivo que a porta de fork e o motor de delta
 /// compartilham.
 mod plane_copy;
+#[doc(hidden)]
+pub mod raio_da_sonda; // B44.1: a porta das sondas que imprime o raio lido
 /// As partes de um gesto para a sonda (só em teste).
 pub(crate) mod sonda_partes;
 pub mod tool;

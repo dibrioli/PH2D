@@ -320,8 +320,8 @@ mod preparo_tests;
 #[cfg(test)]
 mod regua_do_fecho_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
-mod session;
-mod sessao_do_wet; // a sessão que pode estar com o operário do depósito (N10 F2d)
+mod sessao_do_wet;
+mod session; // a sessão que pode estar com o operário do depósito (N10 F2d)
 pub(in crate::tool::paint) use sessao_do_wet::SessaoDoWet;
 #[cfg(test)]
 mod sonda_borracha_morta;

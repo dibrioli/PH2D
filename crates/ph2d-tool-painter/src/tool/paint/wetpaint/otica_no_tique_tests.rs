@@ -642,9 +642,11 @@ fn os_rgba_do_compositor_com_smooth_edges_sao_a_casa_ao_byte() {
         usadas += sess(&t).otica.rgba_usadas;
         confere_com_casa(&mut t, &format!("Smooth Edges 1, dab de casa a {folga} px"));
     }
-    assert!(usadas > 0, "premissa: a tela copiou RGBA do compositor com Smooth Edges");
+    assert!(
+        usadas > 0,
+        "premissa: a tela copiou RGBA do compositor com Smooth Edges"
+    );
 }
-
 
 #[path = "otica_sonda_b11_3_tests.rs"]
 mod sonda_b11_3;

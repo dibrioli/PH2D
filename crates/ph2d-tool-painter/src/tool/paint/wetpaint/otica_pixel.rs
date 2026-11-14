@@ -138,7 +138,8 @@ impl Lido {
     ) -> Self {
         let (gw, gh) = forma.grade;
         let rr = usize::from(forma.ratio).max(1);
-        let a = super::super::super::smooth_edges::alcance(super::super::super::smooth_edges::RAIO_MAX);
+        let a =
+            super::super::super::smooth_edges::alcance(super::super::super::smooth_edges::RAIO_MAX);
         let lo = |p: usize| (p.saturating_sub(a) / rr).saturating_sub(2) + 1;
         let hi = |p: usize, n: usize| ((p + a) / rr + 2).min(n - 1) + 1;
         let janela = (lo(px0), lo(py0), hi(px1, gw), hi(py1, gh));
@@ -153,13 +154,19 @@ impl Lido {
     }
 
     /// Os planos da tela na janela são os que o compositor leu, ao byte (o vazio também)?
-    pub(in crate::tool::paint::wetpaint) fn confere(&self, planos: &PlanosDaOtica, (gw, gh): (usize, usize)) -> bool {
-        planos_de(planos).into_iter().zip(BPP).zip(&self.planos).all(|((p, bpp), lido)| {
-            match lido {
+    pub(in crate::tool::paint::wetpaint) fn confere(
+        &self,
+        planos: &PlanosDaOtica,
+        (gw, gh): (usize, usize),
+    ) -> bool {
+        planos_de(planos)
+            .into_iter()
+            .zip(BPP)
+            .zip(&self.planos)
+            .all(|((p, bpp), lido)| match lido {
                 None => p.len() != gw * gh * bpp,
                 Some(b) => p.len() == gw * gh * bpp && igual(p, bpp, gw, self.janela, b),
-            }
-        })
+            })
     }
 }
 

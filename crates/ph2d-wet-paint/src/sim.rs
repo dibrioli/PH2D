@@ -370,7 +370,8 @@ impl Sim {
         n: u64,
     ) -> Option<crate::drying::SecaPorTile<'_>> {
         let (nx, ny) = crate::drying::por_tile::tiles_da_grade(g);
-        let global = crate::drying::por_tile::CADENCIA_GLOBAL.load(std::sync::atomic::Ordering::Relaxed);
+        let global =
+            crate::drying::por_tile::CADENCIA_GLOBAL.load(std::sync::atomic::Ordering::Relaxed);
         (!global && !self.corre_tile.is_empty() && self.corre_tile.len() == nx * ny).then(|| {
             crate::drying::SecaPorTile {
                 corre: &self.corre_tile,

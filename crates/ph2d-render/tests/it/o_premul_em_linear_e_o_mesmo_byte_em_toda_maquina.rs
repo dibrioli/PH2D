@@ -20,7 +20,11 @@ fn hash_de_todos_os_pares() -> u64 {
 
 #[test]
 fn o_premul_em_linear_e_o_mesmo_byte_em_toda_maquina() {
-    assert_eq!(hash_de_todos_os_pares(), HASH, "o premul em linear mudou de byte");
+    assert_eq!(
+        hash_de_todos_os_pares(),
+        HASH,
+        "o premul em linear mudou de byte"
+    );
 }
 
 const HASH: u64 = 4_612_054_009_264_338_934;

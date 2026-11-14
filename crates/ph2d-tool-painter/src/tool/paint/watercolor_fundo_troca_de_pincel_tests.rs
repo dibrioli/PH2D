@@ -47,7 +47,8 @@ fn aquecido(t: &PainterTool) -> bool {
 /// `(fotos, (colhidos, descartados), aquecido antes do preset, aquecido depois)`.
 fn corre(em_fundo: bool, pincel: &str, descarta: bool) -> (Vec<Vec<u8>>, (u32, u32), bool, bool) {
     corre_com(em_fundo, descarta, &|t| {
-        t.preset_aplicar(&de_fabrica_ou_candidato(pincel)).expect("meio");
+        t.preset_aplicar(&de_fabrica_ou_candidato(pincel))
+            .expect("meio");
     })
 }
 
@@ -138,12 +139,22 @@ fn o_fundo_do_toque_aquece_no_chip_do_meio_e_e_o_mesmo_bit() {
         let (com, contas, antes, depois) = corre_com(true, descarta, &chip);
         let (sem, contas_sem, _, depois_sem) = corre_com(false, descarta, &chip);
         assert!(!antes, "CONTROLO: o «+» com o pincel seco não aquece nada");
-        assert!(depois && depois_sem, "descarta={descarta}: o chip da aguada aquece");
-        assert_eq!(contas, if descarta { (0, 1) } else { (1, 0) }, "descarta={descarta}");
+        assert!(
+            depois && depois_sem,
+            "descarta={descarta}: o chip da aguada aquece"
+        );
+        assert_eq!(
+            contas,
+            if descarta { (0, 1) } else { (1, 0) },
+            "descarta={descarta}"
+        );
         assert_eq!(contas_sem, (0, 0));
         assert_eq!(com.len(), sem.len());
         for (i, (a, b)) in com.iter().zip(&sem).enumerate() {
-            assert!(!a.is_empty() && a == b, "descarta={descarta}: a foto {i} ao bit");
+            assert!(
+                !a.is_empty() && a == b,
+                "descarta={descarta}: a foto {i} ao bit"
+            );
         }
     }
 }
@@ -162,18 +173,31 @@ fn o_fundo_do_toque_aquece_na_troca_de_ferramenta_e_e_o_mesmo_bit() {
         super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(true);
         assert!(!aquecido(t), "CONTROLO: a borracha na mão com o fundo frio");
         t.set_paint_tool_mode("brush");
-        assert!(t.paint.brush.watercolor && !t.paint.eraser, "o pincel volta com a aguada armada");
+        assert!(
+            t.paint.brush.watercolor && !t.paint.eraser,
+            "o pincel volta com a aguada armada"
+        );
     };
     for descarta in [false, true] {
         let (com, contas, antes, depois) = corre_com(true, descarta, &borracha_e_volta);
         let (sem, contas_sem, _, depois_sem) = corre_com(false, descarta, &borracha_e_volta);
         assert!(!antes, "CONTROLO: o «+» com o pincel seco não aquece nada");
-        assert!(depois && depois_sem, "descarta={descarta}: a volta ao pincel aquece");
-        assert_eq!(contas, if descarta { (0, 1) } else { (1, 0) }, "descarta={descarta}");
+        assert!(
+            depois && depois_sem,
+            "descarta={descarta}: a volta ao pincel aquece"
+        );
+        assert_eq!(
+            contas,
+            if descarta { (0, 1) } else { (1, 0) },
+            "descarta={descarta}"
+        );
         assert_eq!(contas_sem, (0, 0));
         assert_eq!(com.len(), sem.len());
         for (i, (a, b)) in com.iter().zip(&sem).enumerate() {
-            assert!(!a.is_empty() && a == b, "descarta={descarta}: a foto {i} ao bit");
+            assert!(
+                !a.is_empty() && a == b,
+                "descarta={descarta}: a foto {i} ao bit"
+            );
         }
     }
 }

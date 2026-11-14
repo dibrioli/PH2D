@@ -77,15 +77,22 @@ fn cena(w: u32, h: u32, qual: u8, pingo: bool) -> (Vec<u8>, usize) {
         correndo += usize::from(e.sim.dry_every == 3);
     }
     t.invalidate_composite();
-    (t.take_preview_arc().expect("o preview").0.to_vec(), correndo)
+    (
+        t.take_preview_arc().expect("o preview").0.to_vec(),
+        correndo,
+    )
 }
 
 /// A caixa `lado × lado` de cada poça (ampliada 2×): antes | depois | diferença, uma linha por poça.
 fn caixas(w: u32, h: u32) -> [(u32, u32); 2] {
     let lado = h / 8;
     POCAS.map(|[cx, cy]| {
-        let x0 = ((cx * w as f32) as u32).saturating_sub(lado / 2).min(w - lado);
-        let y0 = ((cy * h as f32) as u32).saturating_sub(lado / 2).min(h - lado);
+        let x0 = ((cx * w as f32) as u32)
+            .saturating_sub(lado / 2)
+            .min(w - lado);
+        let y0 = ((cy * h as f32) as u32)
+            .saturating_sub(lado / 2)
+            .min(h - lado);
         (x0, y0)
     })
 }
@@ -148,8 +155,14 @@ fn prancha_b13_4_a_secagem_por_tile() {
             );
             // A contagem de passos a correr não distingue (a gravidade também corre as poças a cada passo): o que
             // importa é a lei antiga mudar as poças com o pingo e a nova não.
-            assert!(antes > 0, "a cadência global não mudou as poças: a prancha não mostra nada");
-            assert_eq!(regua, 0, "o pingo longe ainda muda as poças ({regua} píxeis)");
+            assert!(
+                antes > 0,
+                "a cadência global não mudou as poças: a prancha não mostra nada"
+            );
+            assert_eq!(
+                regua, 0,
+                "o pingo longe ainda muda as poças ({regua} píxeis)"
+            );
             monta(&a, &d, w, h)
                 .save(format!("{dir}/{res}_{nome}_antes_depois.png"))
                 .expect("png");

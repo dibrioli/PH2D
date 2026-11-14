@@ -5,7 +5,14 @@ use crate::tool::PainterTool;
 
 fn relogio(t: &mut PainterTool) -> (Vec<bool>, u64, u64, u64) {
     t.wet_bring_home();
-    let s = &t.paint.wetpaint.session.as_ref().expect("a sessão viva").engine.sim;
+    let s = &t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessão viva")
+        .engine
+        .sim;
     (
         s.corre_tile.clone(),
         s.dry_every,
@@ -37,5 +44,9 @@ fn o_undo_depois_de_agua_a_correr_devolve_o_mapa_por_tile_ao_bit() {
         depois.0.len()
     );
     assert!(t.undo_last(), "o undo");
-    assert_eq!(relogio(&mut t), antes, "o undo não devolveu o relógio por tile");
+    assert_eq!(
+        relogio(&mut t),
+        antes,
+        "o undo não devolveu o relógio por tile"
+    );
 }

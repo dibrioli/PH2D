@@ -305,9 +305,17 @@ fn a_porta_alheia_sai_em_pedacos_e_nao_na_envolvente() {
     e.merge_dirty_otica(3, 3, 6, 6);
     e.merge_dirty_otica(150, 150, 154, 154);
     e.merge_dirty_otica(5, 5, 151, 151);
-    assert_eq!(e.take_dirty_partido().1.pedacos(), &[uniao], "quem toca funde-se");
+    assert_eq!(
+        e.take_dirty_partido().1.pedacos(),
+        &[uniao],
+        "quem toca funde-se"
+    );
     e.merge_dirty_otica(3, 3, 6, 6);
     e.mark_dirty_full();
     e.merge_dirty_otica(150, 150, 154, 154);
-    assert_eq!(e.take_dirty_partido().1.pedacos(), &[Dirty::Full], "cheio fica cheio");
+    assert_eq!(
+        e.take_dirty_partido().1.pedacos(),
+        &[Dirty::Full],
+        "cheio fica cheio"
+    );
 }

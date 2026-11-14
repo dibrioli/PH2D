@@ -279,7 +279,9 @@ impl PainterTool {
         };
         if sess.otica.no_ar.is_some()
             || sess.base.len() != w * h * 4
-            || (done == sess.seen_steps && sess.otica.divida.is_empty() && sess.otica.agua.is_none())
+            || (done == sess.seen_steps
+                && sess.otica.divida.is_empty()
+                && sess.otica.agua.is_none())
         {
             return;
         }
@@ -302,7 +304,10 @@ impl PainterTool {
             o.epoca = epoca;
             o.no_ar = Some(epoca);
             o.uniao_local = None;
-            o.divida = antigo.as_ref().map(|a| a.divida.clone()).unwrap_or_default();
+            o.divida = antigo
+                .as_ref()
+                .map(|a| a.divida.clone())
+                .unwrap_or_default();
             o.agua = antigo.and_then(|a| a.agua);
         }
     }

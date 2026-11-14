@@ -40,12 +40,8 @@ pub(super) fn anda_a_lane(l: &LoteDoDab, sess: &mut WetSession, li: usize, d: &D
 }
 
 /// Pousa o dab pela porta da ferramenta.
-pub(super) fn despacha<G, C>(
-    l: &LoteDoDab,
-    sess: &mut WetSession,
-    d: &Dab,
-    x: Despacho<'_, G, C>,
-) where
+pub(super) fn despacha<G, C>(l: &LoteDoDab, sess: &mut WetSession, d: &Dab, x: Despacho<'_, G, C>)
+where
     G: Fn(i32, i32) -> f64 + Sync,
     C: Fn(i32, i32) -> f64 + Sync,
 {

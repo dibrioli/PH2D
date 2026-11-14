@@ -45,7 +45,9 @@ fn mexe(hero: &mut HeroScreen, quadro: u64, semente: &mut u64) {
         }
     }
     for i in ids.clone() {
-        *semente = semente.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        *semente = semente
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         if (*semente >> 60) == 0 {
             if let Some(InteractiveState::Button { state }) = hero.store.get_mut(NodeId(i)) {
                 *state = if *state == ButtonState::Normal {
@@ -87,7 +89,10 @@ fn o_hover_vivo_pelos_mudados_e_o_da_varredura() {
         mexe(&mut velho, quadro, &mut sb);
         tick_hover(&mut novo, 1.0 / 60.0);
         tick_hover_varredura(&mut velho, 1.0 / 60.0);
-        let (a, b) = (novo.store.hover_live_retrato(), velho.store.hover_live_retrato());
+        let (a, b) = (
+            novo.store.hover_live_retrato(),
+            velho.store.hover_live_retrato(),
+        );
         assert_eq!(a, b, "quadro {quadro}: hover_live");
         assert_eq!(
             novo.motion.track_ids().collect::<Vec<_>>(),

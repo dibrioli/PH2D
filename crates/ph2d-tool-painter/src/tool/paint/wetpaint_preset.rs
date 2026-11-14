@@ -34,6 +34,8 @@ pub(in crate::tool::paint) mod json;
 #[cfg(test)]
 mod km_no_preset_tests;
 #[cfg(test)]
+mod larguras_do_pool_tests;
+#[cfg(test)]
 mod material_tests;
 #[cfg(test)]
 mod medida_oleo_real;
@@ -62,8 +64,6 @@ mod sonda_oleo_grumos;
 mod sonda_relevo_oleo;
 #[cfg(test)]
 mod sonda_varredura_oleo;
-#[cfg(test)]
-mod larguras_do_pool_tests;
 #[cfg(test)]
 mod tests;
 mod texturas;

@@ -291,9 +291,7 @@ pub(super) fn pinta_cena_smooth2() -> PainterTool {
         let erros = t.wet_preset_aplicar(&p);
         assert!(erros.is_empty(), "{erros:?}");
         t.paint.wetpaint.knobs.set(Knob::KnifeLevel, nivel);
-        t.sonda_raio(
-            std::env::var("PH2D_OLEO_S2_RAIO").map_or(20.0, |v| v.parse().expect("raio")),
-        );
+        t.sonda_raio(std::env::var("PH2D_OLEO_S2_RAIO").map_or(20.0, |v| v.parse().expect("raio")));
         t.set_brush_color_srgb8([23, 101, 179]);
         let ticks = arrasta(&mut t, [60.0, y], [560.0, y]);
         println!("[oraculo] Knife Smooth 2 knifeLevel {nivel} (água {ticks})");

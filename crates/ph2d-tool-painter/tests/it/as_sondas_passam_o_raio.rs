@@ -13,7 +13,13 @@ const PERMITIDOS: &[&str] = &[
     "src/tool/paint/dual_ferramenta_tests.rs",
 ];
 
-fn varre(dir: &Path, raiz: &Path, out: &mut Vec<String>, mudas: &mut Vec<String>, vistos: &mut usize) {
+fn varre(
+    dir: &Path,
+    raiz: &Path,
+    out: &mut Vec<String>,
+    mudas: &mut Vec<String>,
+    vistos: &mut usize,
+) {
     for e in std::fs::read_dir(dir).unwrap().flatten() {
         let p = e.path();
         if p.is_dir() {

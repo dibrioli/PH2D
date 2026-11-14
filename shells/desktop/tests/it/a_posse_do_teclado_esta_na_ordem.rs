@@ -36,7 +36,8 @@ fn a_tecla_pergunta_a_posse_antes_de_todo_atalho() {
 }
 
 /// Depois do blur (um campo com o foco não rouba o 1.º clique na cena), antes do primeiro ramo do editor que devolve.
-/// O único `return` antes dela é o da janela modal da recuperação, que toma o clique como a paleta toma a tecla.
+/// Os únicos `return` antes dela são o da janela modal da recuperação, que toma o clique como a paleta toma a tecla, e
+/// o da faixa única (arrastar/redimensionar a janela: cromo do SO, nunca ramo do editor), que vem logo a seguir.
 #[test]
 fn o_clique_pergunta_a_posse_antes_do_primeiro_ramo_do_editor() {
     // O `on_mouse_input` traduz o winit e entra na porta ÚNICA do clique (`pointer_button`).
@@ -47,7 +48,14 @@ fn o_clique_pergunta_a_posse_antes_do_primeiro_ramo_do_editor() {
     assert!(rato[..em(&rato, "\n    }\n")].contains("self.pointer_button("));
     let c = corpo("src/input_dispatch.rs", "pub(crate) fn pointer_button(");
     let modal = "if self.ramo_aperto_solta_teclado(state, evt) {\n            return;\n        }";
+    let faixa = "if self.ramo_faixa_unica(evt, button) {\n            return;\n        }";
     let apos_modal = em(&c, modal) + modal.len();
+    assert_eq!(
+        em(&c[apos_modal..], "if "),
+        em(&c[apos_modal..], faixa),
+        "a faixa única logo depois do modal"
+    );
+    let apos_modal = apos_modal + em(&c[apos_modal..], faixa) + faixa.len();
     let porta = em(&c, "self.rato_do_jogo(");
     assert!(apos_modal < porta, "o modal da recuperação primeiro");
     let editor = apos_modal + em(&c[apos_modal..], "return;");

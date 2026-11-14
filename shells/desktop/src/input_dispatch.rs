@@ -373,7 +373,10 @@ impl App {
             self.end_anchor_gizmo_drag();
         }
         // A faixa única (arrastar, redimensionar a janela) só depois das portas: desarmar, soltar, a pressão.
-        if self.ramo_aperto_solta_teclado(state, evt) || self.ramo_faixa_unica(evt, button) {
+        if self.ramo_aperto_solta_teclado(state, evt) {
+            return;
+        }
+        if self.ramo_faixa_unica(evt, button) {
             return;
         }
         self.ramo_arrasto_biblioteca(state, button);

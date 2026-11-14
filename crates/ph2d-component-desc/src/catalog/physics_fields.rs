@@ -85,10 +85,12 @@ pub(super) const JOINT: &[FieldDesc] = &[
     f(23, "component.field.joint.23", K::Toggle).named_as("collide", "collide_connected"),
     // «Weld: Rigid | Soft» — o rótulo é a linha da solda, o valor é `soft`.
     f(24, "component.field.joint.24", K::Toggle).named_as("weld", "soft"),
-    // A montagem a que a junta pertence (`0` = avulsa); o `role` (27) fica oculto em `hiding`.
-    r(26, "component.field.joint.26").named("assembly"),
-    // Pin: resolvido como UMA corrente com os vizinhos marcados (a ponte sob carga).
-    f(28, "component.field.joint.28", K::Toggle).named("one_chain"),
+    // A montagem a que a junta pertence (`0` = avulsa): escreve-a o Joint Editor, como o `role` (27);
+    // o cartão só a mostra no título, por isso a chave fica oculta em `hiding`.
+    r(26, "component.field.joint.26").keyed("assembly"),
+    // Pin: resolvido como UMA corrente com os vizinhos marcados (a ponte sob carga). O nome segue o
+    // rótulo «Solve as one chain»; a chave serde continua `one_chain`.
+    f(28, "component.field.joint.28", K::Toggle).named_as("solve_as_one_chain", "one_chain"),
 ];
 
 /// **`PlatformPlayer`** — as linhas da §14, na ordem da struct (`components/player.rs`).
@@ -253,12 +255,12 @@ pub(super) const COLLIDER: &[FieldDesc] = &[
 /// O Look da forma de colisão (GEF02 onda 8): os canais do pivô (fração da meia-extensão), da cor e da opacidade.
 pub(super) const SHAPE_LOOK: &[FieldDesc] = &[
     f(0, "component.field.shape_look.0", K::Vec2).named("pivot"),
-    f(1, "component.field.shape_look.1", K::Color).named("tint"),
+    f(1, "component.field.shape_look.1", K::Color).named_as("color", "tint"),
     f(2, "component.field.shape_look.2", K::Scalar).named("opacity"),
     f(3, "component.field.shape_look.3", K::Toggle).named("own_color"),
     f(4, "component.field.shape_look.4", K::Scalar).named("stroke_width"),
     f(5, "component.field.shape_look.5", K::Toggle).named("dashed"),
-    f(6, "component.field.shape_look.6", K::Vec2).named("dash"),
+    f(6, "component.field.shape_look.6", K::Vec2).named_as("dash_and_gap", "dash"),
     f(7, "component.field.shape_look.7", K::Toggle).named("own_stroke"),
 ];
 pub(super) const GRAVITY_SCALE: &[FieldDesc] =
@@ -389,8 +391,9 @@ pub(super) const PROJECTILE_MOTION: &[FieldDesc] = &[
     f(4, "component.field.projectile_motion.4", K::Scalar).named("bounciness"),
     f(5, "component.field.projectile_motion.5", K::Int).named("max_bounces"),
     f(6, "component.field.projectile_motion.6", K::Scalar).named("range"),
-    f(7, "component.field.projectile_motion.7", K::Toggle).named("face_velocity"),
-    f(8, "component.field.projectile_motion.8", K::Scalar).named_as("homing", "homing_accel"),
+    // O nome segue o rótulo «Faces path»; a chave serde continua `face_velocity`.
+    f(7, "component.field.projectile_motion.7", K::Toggle).named_as("faces_path", "face_velocity"),
+    f(8, "component.field.projectile_motion.8", K::Scalar).named_as("pull", "homing_accel"),
     f(9, "component.field.projectile_motion.9", K::Text)
         .named_as("target", "homing_target")
         .viewed(View::Named(crate::Target::NameHash)),
@@ -399,8 +402,8 @@ pub(super) const PROJECTILE_MOTION: &[FieldDesc] = &[
 /// script escreve o NOME da opção do cartão. Os ângulos guardam graus (e graus/s): o script, radianos.
 pub(super) const TOP_DOWN_PLAYER: &[FieldDesc] = &[
     f(0, "component.field.top_down_player.0", K::Scalar).named("speed"),
-    f(1, "component.field.top_down_player.1", K::Scalar).named("acceleration"),
-    f(2, "component.field.top_down_player.2", K::Scalar).named("deceleration"),
+    f(1, "component.field.top_down_player.1", K::Scalar).named_as("speed_up", "acceleration"),
+    f(2, "component.field.top_down_player.2", K::Scalar).named_as("slow_down", "deceleration"),
     f(3, "component.field.top_down_player.3", K::Int)
         .named_as("directions", "direction_mode")
         .viewed(
@@ -421,7 +424,7 @@ pub(super) const TOP_DOWN_PLAYER: &[FieldDesc] = &[
         .named_as("facing", "rotation_mode")
         .viewed(crate::options!["don_t_turn" => 0 @ "panel.topdown.don_t_turn", "face_move" => 1 @ "panel.topdown.face_move", "face_4" => 2 @ "panel.topdown.face_4", "face_8" => 3 @ "panel.topdown.face_8"]),
     f(7, "component.field.top_down_player.7", K::Scalar)
-        .named_as("turn_speed", "rotation_speed_deg")
+        .named_as("turn", "rotation_speed_deg")
         .viewed(View::Degrees),
     f(8, "component.field.top_down_player.8", K::Angle)
         .named_as("min_slide_angle", "min_slide_angle_deg")
@@ -429,5 +432,5 @@ pub(super) const TOP_DOWN_PLAYER: &[FieldDesc] = &[
     f(9, "component.field.top_down_player.9", K::Int).named("max_slides"),
     f(10, "component.field.top_down_player.10", K::Toggle).named("default_controls"),
     f(11, "component.field.top_down_player.11", K::Scalar)
-        .named_as("push_recovery", "knockback_recovery"),
+        .named_as("hit_recovery", "knockback_recovery"),
 ];

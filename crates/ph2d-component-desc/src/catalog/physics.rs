@@ -393,6 +393,8 @@ pub const DESCS: &[D] = &[
         ("custom", H::OwnSection),
         // O papel no gabarito: escreve-o a montagem (Joint Editor), nunca o cartão.
         ("role", H::OtherEditor),
+        // A montagem: escreve-a o Joint Editor; o cartão mostra-a só no título.
+        ("assembly", H::OtherEditor),
     ]),
     // ⭐⭐ **O comportamento — e ele também chega com o corpo** (ordem do dono, 2026-09-14). A §14
     // volta a pintar-se sobre **todo corpo Dynamic**, com ou sem o componente, e a face vazia dela é

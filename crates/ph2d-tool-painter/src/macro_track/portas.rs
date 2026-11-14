@@ -63,6 +63,9 @@ const IMAGENS_DA_PONTA: &str = "a silhueta cinzenta da ponta (L19) é a porta do
 const GRAVACAO: &str =
     "arma, drena ou pára a gravação (o painel MACROS): controla a macro, não é um passo da obra";
 
+const LOTE_DE_MOVES: &str =
+    "agrupa o carimbo dos Moves do quadro, que se gravam um a um: não muda a obra";
+
 /// As portas de FORA, uma decisão cada.
 pub const PORTAS: &[Porta] = &[
     // — os contratos —
@@ -93,6 +96,11 @@ pub const PORTAS: &[Porta] = &[
     a("pede_a_composicao_inteira", COMPOSICAO_DA_PLACA),
     a("take_estrutura_confinada", COMPOSICAO_DA_PLACA),
     a("take_camada_nova_limpa", COMPOSICAO_DA_PLACA),
+    // O lote de Moves do quadro (B27.2): a shell abre-o e fecha-o à volta dos `on_canvas_pointer`, que se gravam um
+    // a um; a gravar, o lote é barreira (`junta_no_lote` carimba já) e o traço é o mesmo
+    // (`a_particao_em_lotes_nao_muda_o_traco`).
+    a("abre_lote", LOTE_DE_MOVES),
+    a("fecha_lote", LOTE_DE_MOVES),
     // — inerentes, gravadas —
     g("on_canvas_hover"),
     g("undo_last"),

@@ -144,6 +144,27 @@ Fecho 14/11 12:02–12:30 sobre `90b2643db2` + 3 commits de cura (`5819afb965` f
 ```
 (1.ª corrida: 59,3 s, a partir do incremental apagado.)
 
+### 6.1 2.ª vaga (15–17h) — base `810c8247d8`
+
+| item | commits | número |
+|---|---|---|
+| CPU parado Wet (sessão sem água não desenha 70 q/s) | `8cb0527da1` | Filbert 55,6 → **3,3 %** · Wet Liner 58,6 → **4,3 %** |
+| Ctrl+Z Wet 4K suja só a caixa do restauro (B18.11) | `8fd69f4885` medida · `a357307c04` · `9c04c41412` | 54–64 → **~29 ms**; `PH2D_UNDO_SUJO_DOS_PLANOS=1` = oráculo Full |
+| sim da poça pequena num pool próprio de 4 fios | `b488c32b04` | com água a correr: CPU 255 → **195 %**, sim 1,6 → **1,4 ms/passo**; `PH2D_SIM_POOL_PEQUENO=0` desliga |
+| B26.1 corte do dab por linha (RLE) | `5911f84b27` · `95827e994a` | dab simples **1,17×** (0,295 → 0,253 ms), cápsula igual; `PH2D_CORTE_DO_DAB=0` desliga |
+
+Gates novos: `o_ctrl_z_vivo_suja_a_caixa_e_pinta_o_mesmo_que_a_tela_inteira`, `o_corte_da_linha_salta_so_o_que_nao_pinta` (+ oráculo `dab::bands`);
+W2b2 fica no `o_mesmo_pincel_pinta_o_mesmo_bit_em_qualquer_largura_do_pool`. **Fecho da vaga:** fmt ✓ · clippy `-D warnings --all-targets`
+(app-painter, painter-brush, tool-painter, wet-paint) ✓ · editor-core shell/LOC ✓ 4 · app-painter string table ✓ 3 · painter-brush `dab::bands` ✓ 4 ·
+tool-painter lib (larguras do pool, paint_state, preview, Ctrl+Z vivo, offthread) ✓ 25 · portas ✓ 2 · alarmes de pincel + `sem_glaze_…` (`--profile smoke`) ✓ 3. `rm -rf target/*/incremental`; binário smoke 1.ª 1 min 00 s, **2.ª:**
+```
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.22s
+```
+
+**Aberto:** latência do Flat Bristle 240 145–240 ms (= custo do dab) · os ~195 % restantes são o composite da UI no pool global ·
+B26.2/B26.3 · B25.8 cura (muda aparência) · B17.6 2 casos.
+
 ## 7. Smoke do dono (UI de cartões)
 
 **As duas mudanças de aparência desta rodada vêm DESLIGADAS** (`d79e9f7cdd`): B13.10 (a água já não prende na borda do

@@ -793,6 +793,88 @@ fn the_impasto_planes_cost_twelve_bytes_per_pixel() {
     );
 }
 
+/// **GT-09 / B44.10 — um documento 4K cabe no orçamento de bytes por píxel.**
+///
+/// Mede, nos planos VIVOS de uma tela de impasto sobre papel com dente (os `Arc` distintos, para um plano
+/// partilhado não contar duas vezes), os B/px de cada família e multiplica por 3840×2160. Orçamento declarado:
+/// tela 4 + composição 4 + relevo 12 + dente 4 = **24 B/px** ⇒ 199 MB a 4K; o passo de undo de um traço (o
+/// pico) não passa de um documento. Plano novo canvas-shaped que não entra na tabela ⇒ VERMELHO.
+#[test]
+fn um_documento_4k_cabe_no_orcamento_de_bytes_por_pixel() {
+    const PX_4K: usize = 3840 * 2160;
+    const ORCAMENTO_B_PX: usize = 4 + 4 + 12 + 4;
+    let size = 128u32;
+    let n = (size * size) as usize;
+    let mut t = impasto_canvas(size);
+    t.set_substrate_depth(1.0);
+    t.set_substrate_roughness(0.5);
+    let mut b = t.paint.brush;
+    b.impasto_depth = 0.7;
+    t.paint.brush = b;
+    t.paint.brush_by_mode.fill(b);
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    // O dreno do quadro monta a composição e reconcilia o plano do dente (o que o ecrã paga).
+    let _ = t.take_preview_arc();
+
+    let mut vistos = std::collections::BTreeSet::new();
+    let mut conta = |ptr: *const u8, bytes: usize| -> usize {
+        if bytes >= n && vistos.insert(ptr as usize) {
+            bytes
+        } else {
+            0
+        }
+    };
+    let tela: usize = t
+        .images
+        .values()
+        .map(|i| conta(i.rgba8.as_ptr(), i.rgba8.len()))
+        .sum::<usize>()
+        + conta(t.canvas_rgba.as_ptr(), t.canvas_rgba.len());
+    let composicao = t
+        .composited
+        .as_ref()
+        .map_or(0, |c| conta(c.as_ptr(), c.len()));
+    let mut relevo = 0;
+    for h in t.heights.values() {
+        relevo += conta(h.as_ptr().cast(), std::mem::size_of_val(h.as_slice()));
+    }
+    for c in t.covers.values() {
+        relevo += conta(c.as_ptr(), c.len());
+    }
+    for m in t.mats.values() {
+        relevo += conta(m.as_ptr().cast(), std::mem::size_of_val(m.as_slice()));
+    }
+    let dente = t.plano_do_dente.as_ref().map_or(0, |p| {
+        conta(p.2.as_ptr().cast(), std::mem::size_of_val(p.2.as_slice()))
+    });
+    let (tela, composicao, relevo, dente) = (tela / n, composicao / n, relevo / n, dente / n);
+    let b_px = tela + composicao + relevo + dente;
+    let pico = t.undo.retained_bytes();
+    println!(
+        "B/px: tela {tela} + composição {composicao} + relevo {relevo} + dente {dente} = {b_px} \
+         ⇒ 4K {:.1} MB; passo de undo do traço {pico} B ({:.2} B/px)",
+        (b_px * PX_4K) as f64 / 1e6,
+        pico as f64 / n as f64
+    );
+    assert!(
+        relevo == 12 && dente == 4,
+        "relevo {relevo} B/px (12) e dente {dente} B/px (4): a fixture não montou os planos que mede"
+    );
+    assert!(
+        b_px <= ORCAMENTO_B_PX,
+        "um documento custa {b_px} B/px > {ORCAMENTO_B_PX} (tela {tela} · composição {composicao} · relevo \
+         {relevo} · dente {dente}) ⇒ {:.1} MB a 4K: plano novo sem linha na tabela do orçamento",
+        (b_px * PX_4K) as f64 / 1e6
+    );
+    assert!(
+        pico <= b_px * n,
+        "o passo de undo de UM traço ({pico} B) passa do documento inteiro ({} B)",
+        b_px * n
+    );
+}
+
 /// **Undoing a stroke gives back the material of the paint UNDERNEATH it.**
 ///
 /// The relief, the coverage and the material are three facts about one stroke, and they must roll back

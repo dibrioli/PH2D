@@ -312,7 +312,7 @@ impl PainterTool {
         match alcance {
             PlaneReach::Untouched => {}
             PlaneReach::Window(j) => match j.to_region(w) {
-                Some(r) => self.mark_dirty(r),
+                Some(r) => self.mark_dirty_so_a_figura(r),
                 None => self.invalidate_composite(),
             },
             PlaneReach::Whole => self.invalidate_composite(),
@@ -332,7 +332,7 @@ impl PainterTool {
         match alcance {
             PlaneReach::Untouched => {}
             PlaneReach::Window(j) => match j.to_region(w) {
-                Some(r) => self.mark_dirty(r),
+                Some(r) => self.mark_dirty_so_a_figura(r),
                 None => self.invalidate_composite(),
             },
             PlaneReach::Whole => self.invalidate_composite(),

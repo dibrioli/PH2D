@@ -32,11 +32,38 @@ impl PainterTool {
     /// deliberado que ele passe por AQUI — esta é a porta única de *"a figura mudou neste retângulo"*,
     /// e ela acumula por união. Um segundo escritor de `dirty_rect` seria a segunda resposta à mesma
     /// pergunta, e a que esquecesse a união publicaria um retângulo menor que o que mudou.
+    /// **A figura muda em `rect` e o RELEVO não** (n.º 9 item 3): a ótica da tinta viva que adormece ou acorda na
+    /// troca — nenhum píxel é escrito (os do último quadro vêm pelo [`Self::mark_dirty`] de quem os escreve). A pista
+    /// GPU recompõe `rect` e dobra o relevo só na parte das outras marcas. Com o traço aberto (o relevo vivo é da
+    /// activa) é a marca de sempre.
+    pub(crate) fn mark_dirty_so_a_figura(&mut self, rect: Region) {
+        if !self.paint.relief.stroke_height.is_empty() || !self.paint.relief.stroke_film.is_empty()
+        {
+            self.mark_dirty(rect);
+            return;
+        }
+        let antes = self.dirty_rect;
+        let rel = match self.sujo_da_figura {
+            Some((acc, rel)) if Some(acc) == antes => rel,
+            _ => antes,
+        };
+        self.mark_dirty(rect);
+        self.sujo_da_figura = self.dirty_rect.map(|acc| (acc, rel));
+    }
+
     pub(crate) fn mark_dirty(&mut self, rect: Region) {
         #[cfg(test)]
         self.marks.push(rect);
         self.dirty_caixas.clear();
+        let antes = self.dirty_rect;
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
+        // A marca de sempre pode mudar o relevo: entra na parte dele (n.º 9 item 3).
+        self.sujo_da_figura = match self.sujo_da_figura.take() {
+            Some((acc, rel)) if Some(acc) == antes => self
+                .dirty_rect
+                .map(|novo| (novo, Some(rel.map_or(rect, |r| union_region(r, rect))))),
+            _ => None,
+        };
         self.larga_a_luz_guardada();
         self.undo_writes = self.undo_writes.wrapping_add(1);
         self.preview_dirty = true;

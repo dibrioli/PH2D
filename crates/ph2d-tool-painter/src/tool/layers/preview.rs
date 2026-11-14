@@ -152,12 +152,17 @@ impl PainterTool {
             // Ver `gpu_lane_stale`: `None` significa *não confinado*, e todo consumidor lê isso como
             // *faça inteiro*. Consome-se o rect nos DOIS ramos — deixá-lo acumular faria a próxima
             // reivindicação incluir área que este frame já refez.
+            let figura = self.sujo_da_figura.take();
             let (rect, caixas) = self.toma_o_sujo();
             // B15.3: só a lâmpada mudou ⇒ o relevo é o dos planos que a placa guarda: a janela de 1 texel
             // (uma reivindicação generosa, logo sólida) reacende a tela inteira sem redobrá-la.
             let so_luz = self.a_placa_so_reacende();
             let confinado = !self.gpu_lane_stale && !so_luz;
             self.preview_dirty_caixas = if confinado { caixas } else { Vec::new() };
+            self.preview_relevo_region = match (confinado, rect, figura) {
+                (true, Some(r), Some((acc, rel))) if acc == r => Some(rel),
+                _ => None,
+            };
             self.preview_dirty_region = if std::mem::take(&mut self.gpu_lane_stale) {
                 None
             } else if so_luz {
@@ -192,6 +197,16 @@ impl PainterTool {
     #[must_use]
     pub fn preview_gpu_region(&self) -> Option<(u32, u32, u32, u32)> {
         self.preview_dirty_region.map(|r| (r.x, r.y, r.w, r.h))
+    }
+
+    /// **Onde o relevo pode ter mudado**, dentro do [`Self::preview_gpu_region`] (n.º 9 item 3): `Some(None)` = em
+    /// nenhum texel (só a figura mudou: a troca com a tinta viva), `Some(Some(r))` = só em `r`, `None` = em toda a
+    /// região. Uma espiada, como ela.
+    #[must_use]
+    pub fn preview_gpu_relevo(&self) -> Option<Option<(u32, u32, u32, u32)>> {
+        self.preview_dirty_region?;
+        self.preview_relevo_region
+            .map(|r| r.map(|r| (r.x, r.y, r.w, r.h)))
     }
 
     /// **As caixas do [`Self::preview_gpu_region`]** (B17.5): a união delas é ele; vazia = ele sozinho.

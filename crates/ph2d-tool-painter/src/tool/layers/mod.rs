@@ -41,6 +41,8 @@ mod sonda_n7_app_tests;
 mod texture;
 #[cfg(test)]
 mod troca_figura_tests;
+#[cfg(test)]
+mod troca_relevo_tests;
 mod undo;
 
 // Preserve the historic public path `tool::layers::MAX_CURVE_POINTS_PER_CHANNEL`

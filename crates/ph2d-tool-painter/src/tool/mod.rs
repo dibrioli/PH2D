@@ -296,6 +296,9 @@ pub struct PainterTool {
     /// B17.5: as caixas que cobrem o `dirty_rect` sem os buracos entre elas (a união delas é ele);
     /// vazia = o `dirty_rect` sozinho. Escrita só por `mark_dirty_caixas`; `mark_dirty` esvazia-a.
     dirty_caixas: Vec<Region>,
+    /// n.º 9 item 3: `(o dirty_rect, a parte dele que pode mudar o relevo)` depois de uma marca SÓ da figura
+    /// ([`Self::mark_dirty_so_a_figura`]); vale enquanto o `dirty_rect` for o primeiro (senão é todo do relevo).
+    sujo_da_figura: Option<(Region, Option<Region>)>,
     /// **Só em teste:** os rects que o [`Self::mark_dirty`] recebeu, na ordem, sem união.
     ///
     /// A sonda do over-claim (`measure_dirty_overclaim.rs`) precisa da reivindicação REAL — o que os
@@ -313,6 +316,8 @@ pub struct PainterTool {
     preview_dirty_region: Option<Region>,
     /// As caixas do `preview_dirty_region` (B17.5), tomadas com ele pela pista GPU; vazia = só ele.
     preview_dirty_caixas: Vec<Region>,
+    /// A parte do `preview_dirty_region` que pode mudar o relevo, tomada com ele: `None` = ele todo.
+    preview_relevo_region: Option<Option<Region>>,
     /// **A pista GPU perdeu edições que nunca viu** — o bit que obriga a próxima drenagem dela a
     /// declarar *não-confinado*.
     ///
@@ -469,10 +474,12 @@ impl Default for PainterTool {
             undo_writes: 0,
             dirty_rect: None,
             dirty_caixas: Vec::new(),
+            sujo_da_figura: None,
             #[cfg(test)]
             marks: Vec::new(),
             preview_dirty_region: None,
             preview_dirty_caixas: Vec::new(),
+            preview_relevo_region: None,
             gpu_lane_stale: false,
             lit_substrate: None,
             plano_do_dente: None,

@@ -164,3 +164,95 @@ fn apagar_duplicar_e_agrupar_compoem_na_placa_so_o_sujo_ao_bit() {
         }
     }
 }
+
+/// n.º 9 item 3 — **a troca com a tinta viva do Wet dobra na placa só a parte do relevo, ao bit.** A tinta que adormece
+/// (e a que acorda) muda a figura na janela dela e não o relevo: o slot da pista nova é, em cada troca, desfazer e
+/// refazer, o da antiga (`SEMPRE_INTEIRA`, a tela inteira em todo quadro), com o papel aceso. Controlo: a nova dobrou só
+/// a parte do relevo; com `DOBRA_A_REGIAO` (a mutação), não — e o slot continua o mesmo. Os passos 6 (pinta e troca) e 8
+/// (troca e pinta) não drenam no meio: a parte do relevo é a do traço.
+#[test]
+fn a_troca_com_a_tinta_viva_dobra_na_placa_so_o_relevo_ao_bit() {
+    use crate::painter_preview_pipeline_tests::{assert_screen_equals, cp};
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool as _};
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        eprintln!("sem adaptador de placa: nada a afirmar");
+        return;
+    };
+    let lado = 160u32;
+    let traco = |t: &mut PainterTool, y: f32| {
+        t.set_brush_size_px(10.0);
+        t.set_brush_color_srgb8([40, 90, 220]);
+        t.on_canvas_pointer(cp([20.0, y], PointerPhase::Down));
+        for k in 1..=12 {
+            t.on_canvas_pointer(cp([20.0 + 10.0 * k as f32, y], PointerPhase::Move));
+            ph2d_editor_core::Tool::on_tick(t, 1000.0 / 60.0);
+        }
+        t.on_canvas_pointer(cp([140.0, y], PointerPhase::Up));
+        ph2d_editor_core::Tool::on_tick(t, 1000.0 / 60.0);
+    };
+    for controlo in [false, true] {
+        DOBRA_A_REGIAO.set(controlo);
+        DOBRAS_PELA_FIGURA.set(0);
+        let pista = || {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
+            t.set_wet_relogio_fixo(true);
+            let a = t.add_raster_layer("A").expect("A");
+            let b = t.add_raster_layer("B").expect("B");
+            t.set_substrate_depth(1.0);
+            t.set_paint_tool_mode("wetpaint");
+            t.select_layer(a);
+            traco(&mut t, 40.0);
+            t.select_layer(b);
+            traco(&mut t, 110.0);
+            let r = SpriteRenderer::new(
+                gpu.clone(),
+                ph2d_render::GameRt::FORMAT,
+                ph2d_render::TextureAtlas::dummy(&gpu),
+                8,
+            );
+            ((t, a, b), r, None, None, ToastQueue::default())
+        };
+        let mut pistas = [pista(), pista()];
+        // 0 = a semente; depois trocas, um undo, um redo e um traço no meio.
+        for passo in 0u8..9 {
+            let mut telas = Vec::new();
+            for (antigo, ((t, a, b), r, s, g, toasts)) in pistas.iter_mut().enumerate() {
+                SEMPRE_INTEIRA.set(antigo == 1);
+                match passo {
+                    1 | 3 => t.select_layer(*a),
+                    2 | 7 => t.select_layer(*b),
+                    4 => assert!(t.undo_last()),
+                    5 => assert!(t.redo_last()),
+                    // A tinta nova e a troca no MESMO quadro: o relevo do traço dobra-se, o resto não.
+                    _ => {
+                        if passo == 6 {
+                            traco(t, 75.0);
+                            t.select_layer(*b);
+                        } else if passo == 8 {
+                            t.select_layer(*a);
+                            traco(t, 60.0);
+                        }
+                    }
+                }
+                if passo == 0 {
+                    assert!(try_drive(s, r, t, Some(1), g, toasts), "a semente");
+                    t.pede_a_composicao_inteira();
+                }
+                assert!(try_drive(s, r, t, Some(1), g, toasts), "a placa é dona");
+                let id = g.expect("o slot da placa").texture_id;
+                telas.push(r.individual().readback(&gpu, id).expect("readback").2);
+            }
+            SEMPRE_INTEIRA.set(false);
+            let ctx = format!("controlo={controlo} · passo {passo}");
+            assert_screen_equals(&telas[0], &telas[1], lado, &ctx);
+        }
+        DOBRA_A_REGIAO.set(false);
+        let n = DOBRAS_PELA_FIGURA.get();
+        if controlo {
+            assert_eq!(n, 0, "o controlo dobrou pela figura {n} vezes");
+        } else {
+            assert!(n >= 1, "a placa não dobrou só o relevo em nenhuma troca");
+        }
+    }
+}

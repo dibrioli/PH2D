@@ -55,17 +55,14 @@ pub struct PainterGpuPreview {
     luz: Option<(Vec<ImpastoLamp>, f32)>,
 }
 
+#[path = "painter_gpu_preview_chaves.rs"]
+mod chaves;
 #[cfg(test)]
-thread_local! {
-    /// O caminho antigo (semente inteira em todo quadro), o oráculo de `a_regiao_suja_e_a_tela_inteira_ao_bit`.
-    pub(crate) static SEMPRE_INTEIRA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    /// B18.4: o caminho de antes da cura (a camada nova sobe inteira no 1.º toque), o controlo do gate.
-    pub(crate) static NOVA_SEM_LIMPAR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    /// N7 onda 5: a lista nova de um gesto de estrutura confinado não confina a placa (a mutação/o controlo).
-    pub(crate) static ESTRUTURA_RECOMPOE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    /// Quantas drenagens confinaram com a lista nova de um gesto de estrutura (o controlo do gate).
-    pub(crate) static CONFINADAS_POR_ESTRUTURA: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
-}
+pub(crate) use chaves::{
+    CONFINADAS_POR_ESTRUTURA, DOBRA_A_REGIAO, DOBRAS_PELA_FIGURA, ESTRUTURA_RECOMPOE,
+    NOVA_SEM_LIMPAR, SEMPRE_INTEIRA,
+};
+use chaves::{dobra_a_regiao_como_antes, estrutura_recompoe_como_antes};
 
 /// B20.1: o retângulo sujo + 1 px, ou `None` = semente inteira (1.º quadro, renasce, a CPU foi dona,
 /// slot de outro tamanho, ou mudou uma entrada global). N7 onda 5: a lista que mudou por um gesto de estrutura
@@ -103,17 +100,6 @@ fn regiao_suja(
         CONFINADAS_POR_ESTRUTURA.set(CONFINADAS_POR_ESTRUTURA.get() + 1);
     }
     (s.dona && mesmas && mesmo_slot).then(|| halo(r, w, h))
-}
-
-/// N7 onda 5, a chave A×B em execução: `PH2D_ESTRUTURA_RECOMPOE=1` = a placa compõe a tela inteira depois de
-/// apagar, duplicar ou agrupar (o caminho de antes). Lida uma vez.
-fn estrutura_recompoe_como_antes() -> bool {
-    #[cfg(test)]
-    if ESTRUTURA_RECOMPOE.get() {
-        return true;
-    }
-    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *V.get_or_init(|| std::env::var_os("PH2D_ESTRUTURA_RECOMPOE").is_some_and(|v| v == "1"))
 }
 
 /// B18.4: a camada nascida transparente entra na pilha guardada sem recompor (α = 0 deixa a figura) e a sua
@@ -522,8 +508,21 @@ fn compose_light_premul(
     let inteira = Region::full(width, height);
     let tela = (0, 0, width, height);
     let confinado = session.planos_em_dia && session.light.planes_seeded(width, height);
+    // O oráculo dos gates (a tela inteira em todo quadro) dobra também o relevo inteiro: senão partilharia a dobra.
+    #[cfg(test)]
+    let confinado = confinado && !SEMPRE_INTEIRA.get();
+    let relevo = tool
+        .preview_gpu_relevo()
+        .filter(|_| regioes.len() == 1 && !dobra_a_regiao_como_antes());
     let janelas: Vec<(u32, u32, u32, u32)> = match tool.preview_gpu_region().filter(|_| confinado) {
         None => vec![tela],
+        // n.º 9 item 3: só a figura mudou fora de `rel` (a troca com a tinta viva) — os planos da placa estão em dia
+        // lá; sem parte do relevo, um texel redobrado (os mesmos bytes) acende a região.
+        Some((x, y, _, _)) if relevo.is_some() => {
+            #[cfg(test)]
+            DOBRAS_PELA_FIGURA.set(DOBRAS_PELA_FIGURA.get() + 1);
+            vec![relevo.flatten().unwrap_or((x, y, 1, 1))]
+        }
         Some(_) if !caixas.is_empty() && regioes.len() == caixas.len() => caixas.to_vec(),
         Some(r) => vec![r],
     };

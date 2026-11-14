@@ -172,14 +172,15 @@ pub fn composite_cheia_into(
     cache.cheio = acc;
 }
 
-/// A chave A×B em execução: `PH2D_CHEIA_ALOCA=1` = o acumulador novo por composição cheia (antes do B19.12).
+/// Por omissão o acumulador é NOVO por composição cheia: reusá-lo (tira a tira ou zerado antes) não ganhou no app
+/// 4K (F5d e F5f, `docs/Painter/missao_4k/medicoes/N10_camadas.md`). `PH2D_CHEIA_ALOCA=0` = reusar (a chave A×B).
 fn cheia_aloca() -> bool {
     static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     #[cfg(test)]
-    if CHEIA_ALOCA.with(std::cell::Cell::get) {
-        return true;
+    if let Some(v) = CHEIA_ALOCA.with(std::cell::Cell::get) {
+        return v;
     }
-    *V.get_or_init(|| std::env::var_os("PH2D_CHEIA_ALOCA").is_some_and(|v| v == "1"))
+    *V.get_or_init(|| std::env::var_os("PH2D_CHEIA_ALOCA").is_none_or(|v| v != "0"))
 }
 
 /// Prepara `acc` com `n` píxeis. Vazio/outro tamanho: `alloc_zeroed` (páginas zero), `false`. Reusado: `true` =
@@ -210,8 +211,8 @@ fn zera_antes() -> bool {
 
 #[cfg(test)]
 thread_local! {
-    /// B19.12: o controlo do gate da composição cheia (um acumulador novo por composição).
-    pub(crate) static CHEIA_ALOCA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// B19.12: o gate força alocar (`Some(true)`) ou reusar (`Some(false)`); `None` = a omissão.
+    pub(crate) static CHEIA_ALOCA: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
     /// B19.12 (F5e): o controlo do zerar fundido (o acumulador reusado zerado inteiro antes de compor).
     pub(crate) static ZERA_ANTES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// B19.12: full composites that reused BOTH the accumulator and the output (no allocation).

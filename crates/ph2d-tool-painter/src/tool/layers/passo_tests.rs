@@ -426,7 +426,7 @@ fn o_arrasto_de_um_ajuste_reusa_a_saida_com_os_mesmos_bytes() {
 fn a_composicao_cheia_reusa_o_acumulador_e_a_saida_com_os_mesmos_bytes() {
     use crate::compositor::{CHEIA_ALOCA, CHEIAS_REUSADAS, ZERA_ANTES};
     let corre = |aloca: bool, antes: bool| {
-        CHEIA_ALOCA.set(aloca);
+        CHEIA_ALOCA.set(Some(aloca));
         ZERA_ANTES.set(antes);
         CHEIAS_REUSADAS.set(0);
         let (mut t, ids) = doc(K::HueSaturationBrightness);
@@ -458,7 +458,7 @@ fn a_composicao_cheia_reusa_o_acumulador_e_a_saida_com_os_mesmos_bytes() {
             );
             quadros.push(q.to_vec());
         }
-        CHEIA_ALOCA.set(false);
+        CHEIA_ALOCA.set(None);
         ZERA_ANTES.set(false);
         (quadros, CHEIAS_REUSADAS.get())
     };

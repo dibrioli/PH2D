@@ -19,19 +19,23 @@ fn the_build_only_sees_the_visible_region() {
     // ⚠️ **A âncora é a ATRIBUIÇÃO inteira, não a chamada.** A 1ª versão procurava a chamada e depois
     // exigia a atribuição na fatia `call..build` — mas o `let` vem ANTES da chamada, na mesma linha,
     // então a fatia nunca podia contê-lo e o gate reprovava o código correto. Uma âncora só é oráculo
-    // se descrever a forma que o produto de fato tem.
-    let call = SRC
-        .find("let (rx0, ry0, rx1, ry1) = clip_to_viewport(base, window_size,")
+    // se descrever a forma que o produto de fato tem. O espaço em branco normaliza-se: o `rustfmt`
+    // parte a atribuição em linhas (integ 13/11), e a quebra não é a lei.
+    let src: String = SRC.split_whitespace().collect::<Vec<_>>().join(" ");
+    let call = src
+        .find(
+            "let (rx0, ry0, rx1, ry1) = clip_to_viewport(base, window_size, (rx0, ry0, rx1, ry1),",
+        )
         .expect(
             "`draw_wetness_overlay` recorta o rect à janela E escreve o resultado de volta — um \
              recorte cujo resultado ninguém lê é um recorte que não recorta",
         );
-    // ⚠️ Âncora na ATRIBUIÇÃO (`= build_veil(`) e não nos argumentos: a 1ª versão citava `build_veil(wet,`
-    // e expirou no minuto em que o `rustfmt` quebrou a chamada em linhas — a definição da função tem a
-    // mesma cara dos argumentos, e o `=` é o que distingue a CHAMADA dela.
-    let build = SRC
-        .find("= build_veil(")
-        .expect("`draw_wetness_overlay` constrói o véu");
+    // ⚠️ Âncora no build que CONSOME o rect recortado: desde B16.10 o véu é construído (e guardado)
+    // pela tool, `painter.wetness_veil([rx0, ry0, rx1, ry1], …)`; o `build_veil` mora em
+    // `ph2d-tool-painter/…/watercolor_backdrop/veu.rs`.
+    let build = src
+        .find("= painter.wetness_veil([rx0, ry0, rx1, ry1],")
+        .expect("`draw_wetness_overlay` constrói o véu sobre o rect recortado");
     assert!(
         call < build,
         "o recorte à janela acontece DEPOIS do build — o véu volta a ser construído sobre a pintura \

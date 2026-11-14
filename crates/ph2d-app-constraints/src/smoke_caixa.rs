@@ -116,7 +116,10 @@ pub fn chaves_do_angulo(e: u64, lei: &Lei, regra: RegraId, fps: f64) -> Vec<Escr
             p: PropKind::Field(k),
             t: f64::from(q) / fps,
             v,
-            interp: Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
+            interp: Box::new(Interp::Eased(Easing::new(
+                EasingFamily::Cubic,
+                EasingMode::InOut,
+            ))),
         })
         .collect()
 }

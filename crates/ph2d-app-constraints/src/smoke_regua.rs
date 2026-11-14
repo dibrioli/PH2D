@@ -104,7 +104,10 @@ pub fn chaves_da_medida(e: u64, regra: RegraId, fps: f64) -> Vec<Escrita> {
             p: PropKind::Field(chave(CAMPO, regra.0)),
             t: f64::from(q) / fps,
             v,
-            interp: Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
+            interp: Box::new(Interp::Eased(Easing::new(
+                EasingFamily::Cubic,
+                EasingMode::InOut,
+            ))),
         })
         .collect()
 }

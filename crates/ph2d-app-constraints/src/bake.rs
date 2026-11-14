@@ -204,7 +204,7 @@ pub fn bake(
                     p,
                     t,
                     v,
-                    interp: Interp::Linear,
+                    interp: Box::new(Interp::Linear),
                 });
             }
         }
@@ -220,7 +220,7 @@ pub fn bake(
                 p,
                 t,
                 v,
-                interp,
+                interp: Box::new(interp),
             });
         }
         for p in POSE.iter().filter(|_| autorada.is_some()) {
@@ -230,7 +230,7 @@ pub fn bake(
                 p: *p,
                 t,
                 v,
-                interp: Interp::Hold,
+                interp: Box::new(Interp::Hold),
             });
         }
     }
@@ -241,7 +241,7 @@ pub fn bake(
             .rev()
             .find(|w| matches!(w, Escrita::Chave { p: q, t, .. } if *q == p && *t == t1))
         {
-            *interp = Interp::Hold;
+            **interp = Interp::Hold;
         }
     }
     for it in &itens {
@@ -252,7 +252,7 @@ pub fn bake(
                 p,
                 t,
                 v: 0.0,
-                interp: Interp::Hold,
+                interp: Box::new(Interp::Hold),
             });
         }
         if let Some(b) = doc.binding_for(dono, p) {

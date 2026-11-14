@@ -11,7 +11,7 @@ use ph2d_preview_drive::PreviewDrive;
 use ph2d_timeline::{AnimValue, Instante, Interp, PropKind, TimelineState};
 
 /// Uma escrita no documento.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Escrita {
     /// Uma chave de `p` em `e` no tempo `t` da CENA (segundos), com o valor que a cena deve mostrar.
     Chave {
@@ -19,7 +19,9 @@ pub enum Escrita {
         p: PropKind,
         t: f64,
         v: f32,
-        interp: Interp,
+        /// Em caixa: a [`Interp`] é `Copy` e tem 216 B (a curva Custom com pontos, `Interp::Spline`);
+        /// inline, cada `Valor` do lote pagaria o tamanho dela.
+        interp: Box<Interp>,
     },
     /// O valor de uma chave que já existe.
     Valor {
@@ -49,9 +51,15 @@ pub fn gravar(
     }
     let raiz = tl.container_open;
     let fps = tl.doc.fps_display;
-    for &w in escritas {
-        match w {
-            Escrita::Chave { e, p, t, v, interp } => {
+    for w in escritas {
+        match *w {
+            Escrita::Chave {
+                e,
+                p,
+                t,
+                v,
+                ref interp,
+            } => {
                 let doc = &mut tl.doc;
                 let fonte = ph2d_timeline::remapped_time(doc, e, t);
                 if !solo {
@@ -75,7 +83,7 @@ pub fn gravar(
                     continue;
                 };
                 let t = ph2d_timeline::snap_time(RationalTime::from_seconds(casa), fps, true);
-                doc.upsert_key(e, p, t, AnimValue::Float(valor), interp);
+                doc.upsert_key(e, p, t, AnimValue::Float(valor), **interp);
             }
             Escrita::Valor { target, key, v } => {
                 if let Some(track) = tl.doc.active_clip_mut().track_mut(target) {

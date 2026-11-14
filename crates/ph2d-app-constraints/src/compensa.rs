@@ -90,14 +90,14 @@ pub fn compensar(
             p,
             t: antes,
             v: v_antes,
-            interp: Interp::Hold,
+            interp: Box::new(Interp::Hold),
         });
         out.push(Escrita::Chave {
             e,
             p,
             t: f,
             v,
-            interp,
+            interp: Box::new(interp),
         });
     };
     for g in pegas.0 {

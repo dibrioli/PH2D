@@ -131,6 +131,12 @@ impl Engine {
         self.marca_ret(0, 0, s, rows);
     }
 
+    /// B44.9: marca as linhas finas `y0..=y1` (largura inteira) antes de uma escrita que só as toca (a descida da placa).
+    pub fn marca_linhas(&mut self, y0: usize, y1: usize) {
+        let s = self.layers[self.active_layer].grid.s as i64;
+        self.marca_ret(0, y0 as i64, s, y1 as i64 + 1);
+    }
+
     /// B44.9 (GT-08): as escritas de tela inteira marcadas até agora (o marcador do censo «nenhum quadro de
     /// movimento anda a tela inteira»).
     #[doc(hidden)]

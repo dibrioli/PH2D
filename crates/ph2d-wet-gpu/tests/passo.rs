@@ -500,3 +500,99 @@ fn a_placa_aceita_a_lei_pigmento_e_recusa_o_que_nao_sabe() {
     e.set_knob(Knob::Opaque, 0.0);
     assert!(sabe(&e));
 }
+
+/// O estado restaurável da camada, ao bit (o `Debug` de um `f32` é o round-trip exacto, com `-0.0`).
+fn estado(g: &Grid) -> Vec<String> {
+    let s = ph2d_wet_paint::grid::snapshot_grid(g);
+    let caixa = (s.bx0, s.by0, s.bx1, s.by1, s.has_fluid);
+    vec![
+        format!("{:?}", s.film),
+        format!("{:?}", s.susp),
+        format!("{:?}", s.susp_rgb),
+        format!("{:?}", s.sett),
+        format!("{:?}", s.sett_rgb),
+        format!("{:?}", s.tinta),
+        format!("{:?}", (&s.vel_x, &s.vel_y)),
+        format!("{:?}", (&s.wet, &s.active, &s.bloom)),
+        format!("{:?}", (&s.row_lo, &s.row_hi, caixa)),
+    ]
+}
+
+/// **B44.9 — a história da placa marca só as linhas que a descida escreve.** O ciclo do worker (`offthread/placa.rs`):
+/// passos na placa, `desce_suja` a cada 7 (a devolução), `marca_linhas(linhas_da_descida)` antes de cada descida e
+/// `marca_tudo` só quando `cura_neste_passo`. Oráculo: a MESMA corrida com o `marca_tudo` de antes ao receber — o
+/// undo dá o mesmo bit nas duas leis da tinta; e fora da cura nenhuma marca de tela inteira.
+#[test]
+#[ignore = "placa — corra com --ignored --nocapture"]
+fn a_historia_da_placa_marca_so_as_linhas_da_descida_e_o_undo_e_o_mesmo() {
+    use ph2d_wet_paint::sim::LeiDaTinta;
+    let Some(gpu) = contexto() else { return };
+    for lei in [LeiDaTinta::Velha, LeiDaTinta::Pigmento] {
+        let (w, h) = (320usize, 200usize);
+        let mut e = Engine::new(w, h);
+        e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+        e.sim.set_tinta(lei);
+        e.sliders.water = 1.0;
+        e.sliders.size = 1.0;
+        traco(&mut e, 0.1 * w as f64, 0.9 * w as f64, 0.4 * h as f64);
+        e.color = [0.8, 0.2, 0.1];
+        traco(&mut e, 0.2 * w as f64, 0.6 * w as f64, 0.45 * h as f64);
+        let idx = e.active_layer;
+        assert!(placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning));
+        // O oráculo: o registo aberto com a grade inteira marcada ao receber (o de antes).
+        let mut a = e.clone();
+        let _ = a.active_grid_mut();
+        let mut p = PassoPlaca::new(&gpu, &e.layers[idx].grid, &e.sim, &e.tuning);
+        let (mut curas, mut fora) = (0u64, 0u64);
+        let marca = |p: &PassoPlaca, e: &mut Engine| {
+            for (y0, y1) in p.linhas_da_descida(e.active_grid()) {
+                e.marca_linhas(y0, y1);
+            }
+        };
+        for k in 1..=95usize {
+            let antes = e.marcas_da_tela_inteira();
+            let cura = p.cura_neste_passo(&e.sim);
+            if cura {
+                let _ = e.active_grid_mut();
+                curas += 1;
+            }
+            let Engine {
+                sim,
+                layers,
+                tuning,
+                ..
+            } = &mut e;
+            p.passo(&gpu, sim, &mut layers[idx].grid, tuning);
+            if !cura {
+                fora += e.marcas_da_tela_inteira() - antes;
+            }
+            if k % 7 == 0 {
+                marca(&p, &mut e);
+                p.desce_suja(&gpu, &mut e.layers[idx].grid);
+            }
+        }
+        marca(&p, &mut e);
+        p.desce_suja(&gpu, &mut e.layers[idx].grid);
+        assert_eq!(
+            fora, 0,
+            "{lei:?}: {fora} passos fora da cura marcaram a tela inteira"
+        );
+        if lei == LeiDaTinta::Pigmento {
+            assert!(
+                curas >= 2,
+                "controlo: a corrida não passou pela cura ({curas})"
+            );
+        }
+        a.layers[idx].grid = e.layers[idx].grid.clone();
+        a.sim = e.sim.clone();
+        assert!(e.undo() && a.undo(), "{lei:?}: nada a desfazer");
+        let (eb, ea) = (estado(e.active_grid()), estado(a.active_grid()));
+        for (i, (x, y)) in eb.iter().zip(&ea).enumerate() {
+            assert!(
+                x == y,
+                "{lei:?}: o undo difere do de marca_tudo no plano {i}"
+            );
+        }
+        eprintln!("B44.9 {lei:?}: undo ao bit, {curas} curas, 0 marcas de tela inteira fora delas");
+    }
+}

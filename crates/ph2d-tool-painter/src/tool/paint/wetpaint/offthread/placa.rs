@@ -54,8 +54,7 @@ impl Placa {
             if !ph2d_wet_gpu::passo::placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning) {
                 return;
             }
-            // A história: o passo da placa não sabe a caixa de antemão — marca a grade inteira.
-            let _ = e.active_grid_mut();
+            // A história (B44.9): marca-se antes de cada descida só as linhas que ela escreve (`marca_descida`).
             let g = &e.layers[idx].grid;
             match &mut self.passo {
                 Some(p) if p.serve(g, &e.sim) => {
@@ -83,6 +82,10 @@ impl Placa {
             let idx = e.active_layer;
             let g0 = &e.layers[idx].grid;
             let pre = g0.has_fluid.then_some((g0.bx0, g0.by0, g0.bx1, g0.by1));
+            // A cura com fecho desce, cura e sobe a grade INTEIRA dentro do passo.
+            if p.cura_neste_passo(&e.sim) {
+                let _ = e.active_grid_mut();
+            }
             let Engine {
                 sim,
                 layers,
@@ -96,7 +99,8 @@ impl Placa {
                     ph2d_wet_gpu::passo::TETO_MS
                 );
                 ESTOUROU.store(true, std::sync::atomic::Ordering::Relaxed);
-                p.desce_suja(gpu, &mut layers[idx].grid);
+                marca_descida(p, e);
+                p.desce_suja(gpu, &mut e.layers[idx].grid);
                 self.viva = false;
             }
             if let Some((x0, y0, x1, y1)) = pre {
@@ -122,7 +126,16 @@ impl Placa {
         #[cfg(feature = "gpu")]
         if let (Some(gpu), Some(p)) = (CONTEXTO.get(), &mut self.passo) {
             let idx = e.active_layer;
+            marca_descida(p, e);
             p.desce_suja(gpu, &mut e.layers[idx].grid);
         }
+    }
+}
+
+/// B44.9: marca na história as linhas que o `desce_suja` seguinte escreve na CPU, antes de as escrever.
+#[cfg(feature = "gpu")]
+fn marca_descida(p: &ph2d_wet_gpu::passo::PassoPlaca, e: &mut Engine) {
+    for (y0, y1) in p.linhas_da_descida(e.active_grid()) {
+        e.marca_linhas(y0, y1);
     }
 }

@@ -316,11 +316,7 @@ impl PassoPlaca {
             self.desce(gpu, g);
             return;
         }
-        let ult = g.rows - 1;
-        let mut faixas = vec![(0, 1), (ult - 1, ult)];
-        if let Some((a, b)) = self.suja {
-            faixas.push(((a.max(0) as usize).min(ult), (b.max(0) as usize).min(ult)));
-        }
+        let faixas = self.faixas_suja(g);
         self.desce_faixas(gpu, g, &faixas);
         if let Some(t) = &self.tinta {
             t.desce_faixas(gpu, g, &faixas);
@@ -568,7 +564,12 @@ impl PassoPlaca {
 
     /// A espera: mapeia o que o submit copiou para `stage` (caixa 10..14, `vmax` 15, o leque se `com_leque`) e os
     /// `nq` carimbos.
-    fn le_stage(&self, gpu: &GpuContext, nq: u32, com_leque: bool) -> ([i32; 16], Vec<u64>, Vec<i32>) {
+    fn le_stage(
+        &self,
+        gpu: &GpuContext,
+        nq: u32,
+        com_leque: bool,
+    ) -> ([i32; 16], Vec<u64>, Vec<i32>) {
         let sl = self.stage.slice(..);
         sl.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

@@ -6,6 +6,37 @@ use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::grid::Grid;
 
 impl PassoPlaca {
+    /// As faixas de linhas finas que o `desce_suja` desce inteiras: as duas de borda de cada lado e a `suja`.
+    pub(super) fn faixas_suja(&self, g: &Grid) -> Vec<(usize, usize)> {
+        let ult = g.rows - 1;
+        let mut faixas = vec![(0, 1), (ult - 1, ult)];
+        if let Some((a, b)) = self.suja {
+            faixas.push(((a.max(0) as usize).min(ult), (b.max(0) as usize).min(ult)));
+        }
+        faixas
+    }
+
+    /// B44.9: as linhas finas que o próximo `desce_suja` pode escrever na CPU (as faixas, e as curadas na lei
+    /// `Pigmento`); sem espelho, a grade inteira. Quem guarda a história marca-as ANTES de descer.
+    #[must_use]
+    pub fn linhas_da_descida(&self, g: &Grid) -> Vec<(usize, usize)> {
+        if self.hash_fina.len() != g.rows {
+            return vec![(0, g.rows - 1)];
+        }
+        let mut faixas = self.faixas_suja(g);
+        if let (Some((a, b)), Some(_)) = (self.curada, &self.tinta) {
+            faixas.push((a.min(g.rows - 1), b.min(g.rows - 1)));
+        }
+        faixas
+    }
+
+    /// B44.9: o próximo [`Self::passo`] cura (e pode fechar: `desce` + `cura` + `sobe` da grade INTEIRA na CPU).
+    #[must_use]
+    pub fn cura_neste_passo(&self, sim: &ph2d_wet_paint::sim::Sim) -> bool {
+        self.tinta.is_some()
+            && (sim.frame + 1).is_multiple_of(ph2d_wet_paint::drying::PASSOS_DA_CURA)
+    }
+
     /// Desce a abertura das linhas curadas que `faixas` não trouxe, sem isto o `sobe_sujo` seguinte devolvia à placa o `o` velho.
     /// A água não tem meio e não cura: não paga nada. Devolve essas linhas.
     pub(super) fn desce_o_curado(

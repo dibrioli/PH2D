@@ -577,3 +577,47 @@ fn nenhum_quadro_de_movimento_marca_a_tela_inteira() {
         "o marcador não viu a escrita de tela inteira do Dry canvas: a régua está morta"
     );
 }
+
+/// **B44.9 — `marca_linhas` cobre as linhas que a descida da placa escreve (largura inteira, os planos finos e o
+/// fluxo que as cobre) sem contar como marca de tela inteira.** Escreve as linhas 40..=64 (a última INCLUÍDA, a 1.ª do tile seguinte) como
+/// o `desce_suja`, desfaz e exige o grid ao byte; o marcador de tela inteira não se mexe.
+#[test]
+fn marca_linhas_cobre_a_descida_da_placa_sem_marcar_a_tela_inteira() {
+    let mut e = Engine::new(320, 200);
+    e.sliders.water = 1.0;
+    e.pointer_down(60.0, 60.0, None);
+    e.pointer_frame(200.0, 70.0);
+    e.pointer_up();
+    while e.release_frame(200.0, 70.0) {}
+    e.capture_history();
+    let antes = hash_grid(e.active_grid());
+    let marcas = e.marcas_da_tela_inteira();
+    let (y0, y1) = (40usize, crate::grid::TILE);
+    e.marca_linhas(y0, y1);
+    let g = &mut e.layers[e.active_layer].grid;
+    let (s, rf) = (g.s, g.flow.rf.max(1));
+    for i in y0 * s..(y1 + 1) * s {
+        g.film[i] += 0.25;
+        g.sett[i] += 0.125;
+        g.wet[i] = 1;
+    }
+    for f in (y0 / rf) * g.flow.s..(y1 / rf + 1) * g.flow.s {
+        g.vel_x[f] += 0.5;
+    }
+    assert_eq!(
+        e.marcas_da_tela_inteira(),
+        marcas,
+        "marca_linhas contou como tela inteira"
+    );
+    assert_ne!(
+        hash_grid(e.active_grid()),
+        antes,
+        "controlo: a escrita não mudou nada"
+    );
+    assert!(e.undo());
+    assert_eq!(
+        hash_grid(e.active_grid()),
+        antes,
+        "o undo não devolveu as linhas marcadas ao byte"
+    );
+}

@@ -53,20 +53,26 @@ impl PainterTool {
         let shape_active = brush.shape_silhouette_active(self.paint.shape_image.is_some());
         let textured = brush.texture.is_active();
         // A COR da pegada (Bug #77): as rotas que dão cor por texel — a ponta de píxel, o Shape de várias camadas,
-        // a rampa do Grain ou do Shape — pintam-na na máscara, e a mistura lê o RGB como a cor do pincel. Mesma
-        // ordem do despacho (`stamp_dabs_inner`).
-        let pixel = self.pixel_vivo(brush);
-        let por_camada = !pixel
-            && self.paint.shape_layers.is_color_mode()
-            && brush.shape_silhouette_active(self.paint.shape_image.is_some());
+        // a rampa do Grain ou do Shape — pintam-na na máscara, e a mistura lê o RGB como a cor do pincel. A
+        // porta do despacho (B25.6, [`super::super::rota`]): a rota que a pegada tomaria fora da mistura.
+        use super::super::rota::RotaDeCor;
+        let rota = self.rota_da_pegada(dabs, brush);
+        let pixel = rota == RotaDeCor::Pixel;
+        let por_camada = matches!(
+            rota,
+            RotaDeCor::PorCamadaDinamica | RotaDeCor::PorCamadaRgba | RotaDeCor::PorCamadaCor
+        );
         let rampa_px = pixel
             && self.paint.shape_color_ramp_enabled
             && !self.shape_tom_ativo()
             && self.paint.shape_camadas.alguma(false);
-        let dono = if pixel || por_camada {
-            super::super::super::ramp_lut::RampLutOwner::None
-        } else {
+        let dono = if matches!(
+            rota,
+            RotaDeCor::RampaEmCache | RotaDeCor::RampaCorEmCache | RotaDeCor::RampaPorPixel
+        ) {
             self.color_ramp_owner(textured)
+        } else {
+            super::super::super::ramp_lut::RampLutOwner::None
         };
         if rampa_px {
             self.ensure_ramp_lut(super::super::super::ramp_lut::RampLutOwner::Shape);

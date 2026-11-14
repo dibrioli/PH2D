@@ -108,24 +108,12 @@ impl PainterTool {
         let (base, _) = self.grao_que_pinta();
         let papel = self.papel_como_grain();
         let has_shape_image = self.paint.shape_image.is_some();
-        let deitados = ph2d_painter_brush::pen::any_tilted(dabs);
-        let textured = base.shape_silhouette_active(has_shape_image)
-            || base.texture.is_active()
-            || base.pegada_anisotropica()
-            || deitados;
-        let per_dab_rotation = base.has_per_dab_rotation()
-            || base.shape_has_per_dab_rotation(has_shape_image)
-            || deitados;
-        // Shape / Grain Colour Ramps act as B&W coverage TONES here (no colour painted); the cached mask
-        // can't carry them, so an active ramp tone forces the per-pixel Grain path.
-        self.ensure_shape_ramp_lut();
-        let grain_tone = self.grain_tone_lut();
-        let ramp_tone_active = self.shape_tone_lut_slice().is_some() || grain_tone.is_some();
-        let want_mask = textured
-            && base.dab_mask_cacheable(has_shape_image)
-            && !per_dab_rotation
-            && !ramp_tone_active;
-        let want_grain = textured && !want_mask;
+        // A pegada do lote pela porta comum do Blur e do Clone (`blur_route::pegada_que_levanta`).
+        let super::blur_route::PegadaQueLevanta {
+            want_mask,
+            want_grain,
+            grain_tone,
+        } = self.pegada_que_levanta(&base, dabs);
         let grain_active = base.texture.is_active();
         let shape_active = base.shape_silhouette_active(has_shape_image);
         let tiling = self.paint.tiling;

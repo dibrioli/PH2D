@@ -103,3 +103,63 @@ fn a_ponta_deitada_chega_ao_carimbo_nos_cinco_meios() {
         );
     }
 }
+
+/// B25.6: o Blur e o Clone decidem a pegada pela MESMA porta (`pegada_que_levanta`), e a caneta deitada conta
+/// como textura nas duas. Um Blur redondo SEM Shape nem Grain, sobre listras, com a caneta deitada ao longo e
+/// através do traço tem de borrar diferente; o rato fica o de sempre. Mutação que sangra: tirar `deitados` do
+/// `textured` da porta (o redondo não lê a pegada: as duas canetas dão a mesma imagem — era o Blur até 14/11).
+#[test]
+fn o_blur_redondo_deita_com_a_caneta_como_o_clone() {
+    let borra = |lei: bool, tilt: [f32; 2]| -> Vec<u8> {
+        let mut t = white_canvas(120, 9.0);
+        let listras: Vec<u8> = (0..120u32 * 120)
+            .flat_map(|i| {
+                let v = if (i % 120 / 3 + i / 120 / 3) % 2 == 0 {
+                    20u8
+                } else {
+                    235
+                };
+                [v, v, v, 255]
+            })
+            .collect();
+        t.set_source(listras, 120, 120);
+        t.paint.paint_mode = PaintMode::Blur;
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        if lei {
+            t.paint.brush.pen_tilt = PenTilt {
+                rotation: DabRotation::PenTilt,
+                start_deg: 0.0,
+                full_deg: 45.0,
+                length: 2.0,
+                ..PenTilt::default()
+            };
+        }
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 60.0],
+            pressure: 1.0,
+            tilt,
+            phase,
+        };
+        t.on_canvas_pointer(cp(30.0, PointerPhase::Down));
+        let mut x = 30.0;
+        while x < 90.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp(x, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(x, PointerPhase::Up));
+        t.canvas_rgba.to_vec()
+    };
+    let rato = borra(false, [0.0, 0.0]);
+    assert!(
+        rato == borra(true, [0.0, 0.0]),
+        "o rato mudou com a lei ligada"
+    );
+    let ao_longo = borra(true, [0.5, 0.0]);
+    let atraves = borra(true, [0.0, 0.5]);
+    assert!(ao_longo != rato, "a caneta deitada não chegou ao Blur");
+    assert!(
+        ao_longo != atraves,
+        "o Blur não roda nem estica a ponta com o azimute"
+    );
+}

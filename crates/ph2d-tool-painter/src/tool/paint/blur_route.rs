@@ -64,7 +64,50 @@ pub(super) fn lote_bounds(
     acc
 }
 
+/// A pegada de um lote que LEVANTA a tela (Blur, Clone) — uma decisão só para os dois (B25.6): a máscara em
+/// cache, o grão por píxel ou o redondo.
+pub(super) struct PegadaQueLevanta {
+    pub(super) want_mask: bool,
+    pub(super) want_grain: bool,
+    /// A rampa do Grain como TOM de cobertura (sem cor pintada).
+    pub(super) grain_tone: Option<Vec<f32>>,
+}
+
 impl PainterTool {
+    /// A rota da pegada de um lote de Blur ou Clone sob o spec `base` (o grão que pinta). Per-dab-rotating
+    /// Shape/Grain (Rake / Random), Jitter Rotate ou a caneta DEITADA não são invariantes à escala → o
+    /// caminho do grão por píxel; View-static → a máscara em cache; sem textura → o redondo. A ponta deitada
+    /// conta como textura: o redondo (`blur_dab`/`clone_dab`) não lê a pegada do dab, e o Blur pintava-a
+    /// redonda onde o Clone a deitava (W6). As rampas de Shape/Grain são TONS aqui; a máscara em cache não
+    /// os leva ⇒ por píxel.
+    pub(super) fn pegada_que_levanta(
+        &mut self,
+        base: &BrushSpec,
+        dabs: &[Dab],
+    ) -> PegadaQueLevanta {
+        let has_shape_image = self.paint.shape_image.is_some();
+        let deitados = ph2d_painter_brush::pen::any_tilted(dabs);
+        let textured = base.shape_silhouette_active(has_shape_image)
+            || base.texture.is_active()
+            || base.pegada_anisotropica()
+            || deitados;
+        let per_dab_rotation = base.has_per_dab_rotation()
+            || base.shape_has_per_dab_rotation(has_shape_image)
+            || deitados;
+        self.ensure_shape_ramp_lut();
+        let grain_tone = self.grain_tone_lut();
+        let ramp_tone_active = self.shape_tone_lut_slice().is_some() || grain_tone.is_some();
+        let want_mask = textured
+            && base.dab_mask_cacheable(has_shape_image)
+            && !per_dab_rotation
+            && !ramp_tone_active;
+        PegadaQueLevanta {
+            want_mask,
+            want_grain: textured && !want_mask,
+            grain_tone,
+        }
+    }
+
     /// Blur every dab's footprint into `canvas_rgba`, routed like the paint path (see the module doc).
     /// Blur amount = brush Strength × per-dab coverage (pressure). The engine snapshots each dab's
     /// neighbourhood before writing, so overlapping read/write never feeds back within a dab.
@@ -87,25 +130,12 @@ impl PainterTool {
         let (base, _) = self.grao_que_pinta();
         let papel = self.papel_como_grain();
         let has_shape_image = self.paint.shape_image.is_some();
-        let textured = base.shape_silhouette_active(has_shape_image)
-            || base.texture.is_active()
-            || base.pegada_anisotropica();
-        // Per-dab-rotating Shape/Grain (Rake / Random) or Jitter Rotate isn't scale-invariant → route it
-        // (with any canvas-fixed Grain Mapping) through the per-pixel Grain path. View-static → the fast
-        // cached mask; untextured → the plain round falloff.
-        let per_dab_rotation = base.has_per_dab_rotation()
-            || base.shape_has_per_dab_rotation(has_shape_image)
-            || ph2d_painter_brush::pen::any_tilted(dabs);
-        // Shape / Grain Colour Ramps act as B&W coverage TONES here (no colour painted); the cached mask
-        // can't carry them, so an active ramp tone forces the per-pixel Grain path.
-        self.ensure_shape_ramp_lut();
-        let grain_tone = self.grain_tone_lut();
-        let ramp_tone_active = self.shape_tone_lut_slice().is_some() || grain_tone.is_some();
-        let want_mask = textured
-            && base.dab_mask_cacheable(has_shape_image)
-            && !per_dab_rotation
-            && !ramp_tone_active;
-        let want_grain = textured && !want_mask;
+        // A pegada do lote pela porta comum do Blur e do Clone ([`Self::pegada_que_levanta`]).
+        let PegadaQueLevanta {
+            want_mask,
+            want_grain,
+            grain_tone,
+        } = self.pegada_que_levanta(&base, dabs);
         let grain_active = base.texture.is_active();
         let shape_active = base.shape_silhouette_active(has_shape_image);
         let tiling = self.paint.tiling;

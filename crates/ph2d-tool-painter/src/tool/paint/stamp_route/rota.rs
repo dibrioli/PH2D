@@ -56,6 +56,16 @@ impl PainterTool {
         {
             return RotaDeCor::MisturaOpaca;
         }
+        self.rota_da_pegada(dabs, brush)
+    }
+
+    /// A rota que a PEGADA do lote toma fora da mistura opaca — nunca [`RotaDeCor::MisturaOpaca`]. A mistura
+    /// pergunta-lhe de que rota vem a cor por texel da pegada (Bug #77), e a resposta é a do despacho.
+    pub(in crate::tool::paint) fn rota_da_pegada(
+        &self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+    ) -> RotaDeCor {
         // A ponta de PÍXEL (L18, só no Digital): o carimbo binário dos dabs que o trilho já ancorou.
         if self.pixel_vivo(brush) {
             return RotaDeCor::Pixel;

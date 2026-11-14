@@ -151,7 +151,7 @@ fn facas(presets: &[ph2d_brush_presets::Preset], quadro: bool) -> (f64, u64, u64
         for (k, p) in presets.iter().enumerate() {
             let falhas = t.wet_preset_aplicar(p);
             assert!(falhas.is_empty(), "texturas por ler: {falhas:?}");
-            t.set_brush_size_px(45.0);
+            t.sonda_raio(45.0);
             t.set_brush_color_srgb8([20, 150, 230]);
             let (x0, y) = (
                 if k < 5 { 70.0 } else { 650.0 },
@@ -199,7 +199,7 @@ fn preset(rondas: usize) {
     let mut t = tela(Motor::Wet, true);
     let falhas = t.wet_preset_aplicar(&p);
     assert!(falhas.is_empty(), "texturas por ler: {falhas:?}");
-    t.set_brush_size_px(size);
+    t.sonda_raio(size);
     t.set_brush_color_srgb8([20, 150, 230]);
     // `CONTA_SIL=1`: as leituras da silhueta por dab (motor · ponta · base · sub-pontos do AA) — o relógio fica sem valor.
     let conta = std::env::var("CONTA_SIL").is_ok_and(|v| v == "1");
@@ -313,7 +313,7 @@ fn main() {
                 if std::env::var("RAIO").is_ok_and(|e| e != format!("{r}")) {
                     continue;
                 }
-                t.set_brush_size_px(r);
+                t.sonda_raio(r);
                 let _ = traco(t, 40.0 + 900.0 * ri as f32, 2100.0 - 10.0 * (ti / 2) as f32);
             }
         }
@@ -325,7 +325,7 @@ fn main() {
                     continue;
                 }
                 let t = &mut telas[ti];
-                t.set_brush_size_px(raios_v[ri]);
+                t.sonda_raio(raios_v[ri]);
                 // Cada (raio, ronda) pinta tela FRESCA: faixas de 300 px, colunas por raio.
                 let (x0, y) = (
                     40.0 + 900.0 * ri as f32,
@@ -375,11 +375,11 @@ fn main() {
     if so == "janela" {
         // O pincel de 10 px numa tela onde só ele passou × numa onde antes passou um de 120 px (a janela do rasto).
         let mut telas = [tela(Motor::Wet, true), tela(Motor::Wet, true)];
-        telas[1].set_brush_size_px(120.0);
+        telas[1].sonda_raio(120.0);
         let _ = traco(&mut telas[1], 40.0, 2000.0);
         let mut am: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
         for t in &mut telas {
-            t.set_brush_size_px(10.0);
+            t.sonda_raio(10.0);
             let _ = traco(t, 40.0, 1800.0);
         }
         for ronda in 0..rondas {

@@ -9,7 +9,7 @@ fn traco_ms(liga: &str, raio: f32) -> f64 {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
     t.set_paint_media(PaintMedia::Watercolor);
-    t.set_brush_size_px(raio);
+    t.sonda_raio(raio);
     if neutro {
         let d = BrushSpec::default();
         let b = &mut t.paint.brush;
@@ -85,7 +85,7 @@ fn sonda_rewet_cresce_com_a_sessao() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
         t.set_paint_media(PaintMedia::Watercolor);
-        t.set_brush_size_px(120.0);
+        t.sonda_raio(120.0);
         let d = BrushSpec::default();
         let b = &mut t.paint.brush;
         (b.wet_charge, b.wet_dilution, b.wet_pull, b.wet_smudge) = (d.wet_charge, 0.0, 0.0, 0.0);
@@ -120,7 +120,7 @@ fn sonda_automatic_desligado() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
         t.set_paint_media(PaintMedia::Watercolor);
-        t.set_brush_size_px(40.0);
+        t.sonda_raio(40.0);
         t.set_brush_color_srgb8([40, 90, 200]);
         let d = BrushSpec::default();
         let b = &mut t.paint.brush;

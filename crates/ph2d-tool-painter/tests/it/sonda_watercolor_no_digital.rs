@@ -50,7 +50,7 @@ fn novo(preset: &str) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     pinceis(preset).remove(0).aplica(&mut t, true);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t
 }
 
@@ -141,7 +141,7 @@ fn corre(v: Var, cor: [u8; 3], pig: f32) -> (Vec<u8>, f64) {
         Var::AguadaOpacaMacia => aguada_opaca(&mut t, 0.0),
         Var::BasicSobreOpaco => {
             pinceis("Watercolor Basic").remove(0).aplica(&mut t, true);
-            t.set_brush_size_px(40.0);
+            t.sonda_raio(40.0);
         }
     }
     t.set_brush_pigment_mixing(pig);

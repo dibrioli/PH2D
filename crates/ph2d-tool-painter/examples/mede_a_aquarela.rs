@@ -50,7 +50,7 @@ fn aquarela(size: u32, rewet: f32) -> PainterTool {
         size,
     );
     t.set_paint_media(PaintMedia::Watercolor);
-    t.set_brush_size_px(250.0);
+    t.sonda_raio(250.0);
     t.set_brush_color_srgb8([204, 51, 26]);
     t.set_brush_wet_charge(0.755);
     t.set_brush_wet_dilution(0.168);
@@ -220,7 +220,7 @@ fn impressao_com(size: u32, rewet: f32, passo: f32, toque: fn(&mut PainterTool))
         if k == 1 {
             t.set_brush_color_srgb8([40, 90, 200]);
             t.set_brush_wet_rewet((rewet * 0.5 + 0.2).min(1.0));
-            t.set_brush_size_px(140.0);
+            t.sonda_raio(140.0);
         }
         t.on_canvas_pointer(cp(a, PointerPhase::Down));
         let len = ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt();

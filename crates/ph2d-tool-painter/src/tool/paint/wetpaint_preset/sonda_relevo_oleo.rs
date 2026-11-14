@@ -152,7 +152,7 @@ fn camada(
             crate::ids::PAINTER_WETPAINT_WATER,
             q.agua
         )));
-        t.set_brush_size_px(32.0);
+        t.sonda_raio(32.0);
         t.set_brush_color_srgb8(cor);
         var_aplica(t, var);
         if k % 2 == 0 {

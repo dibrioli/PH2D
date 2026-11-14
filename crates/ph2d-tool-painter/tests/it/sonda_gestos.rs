@@ -65,7 +65,7 @@ fn curva_s(x0: f32, x1: f32, cy: f32, amp: f32) -> Vec<[f32; 2]> {
 pub fn pinta(meio: PaintMedia, size: f32) -> (Vec<u8>, u32, u32) {
     let mut t = tela();
     t.set_paint_media(meio);
-    t.set_brush_size_px(size);
+    t.sonda_raio(size);
     t.set_brush_strength(1.0);
     pinta_cena(&mut t)
 }
@@ -228,7 +228,7 @@ fn traco_entre(
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * h * 4) as usize], W, h);
     prepara(&mut t);
-    t.set_brush_size_px(size);
+    t.sonda_raio(size);
     t.set_brush_color_srgb8(AZUL);
     gesto(
         &mut t,

@@ -55,7 +55,7 @@ fn novo(base: Vec<u8>, preset: Option<&str>, tam: f32) -> PainterTool {
     if let Some(n) = preset {
         pinceis(n).remove(0).aplica(&mut t, true);
     }
-    t.set_brush_size_px(tam);
+    t.sonda_raio(tam);
     t
 }
 
@@ -192,7 +192,7 @@ fn novo2(base: Vec<u8>, w: usize, h: usize, preset: Option<&str>, r: f32) -> Pai
     if let Some(n) = preset {
         pinceis(n).remove(0).aplica(&mut t, true);
     }
-    t.set_brush_size_px(r);
+    t.sonda_raio(r);
     t
 }
 

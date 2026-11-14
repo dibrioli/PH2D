@@ -216,7 +216,7 @@ fn medida_oleo_real_faca_candidatas() {
         let p = &preset_rel(&b, preset);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(60.0);
+        t.sonda_raio(60.0);
         t.set_brush_color_srgb8(AZ);
         ajuste(&mut t);
         let n = ((FX1 - FX0) / 3.0).ceil() as u32;

@@ -123,7 +123,7 @@ pub(super) fn cena(
         for k in 0..n {
             let erros = t.wet_preset_aplicar(&p);
             assert!(erros.is_empty(), "{erros:?}");
-            t.set_brush_size_px(32.0);
+            t.sonda_raio(32.0);
             t.set_brush_color_srgb8(*cor);
             let y = 140.0 + [-12.0, 4.0, 12.0, -4.0][k % 4];
             let (a, z) = ([50.0, y], [310.0, y + 6.0]);

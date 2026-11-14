@@ -395,7 +395,7 @@ pub(super) fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
         let p = &preset_rel(b, &tr.preset);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(tr.diametro / 2.0);
+        t.sonda_raio(tr.diametro / 2.0);
         t.set_brush_color_srgb8(tr.cor);
         // `PH2D_OLEO_FACA_H3=1`: as facas com a lâmina H3 (W0b), o fio ATRAVÉS da marcha de cada traço.
         if tr.rotulo.starts_with("faca")

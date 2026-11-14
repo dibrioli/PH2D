@@ -62,7 +62,7 @@ fn sonda_csp_lote_a() {
         t.set_source(base.clone(), W as u32, H as u32);
         assert_eq!(t.preset_aplicar(&p), Ok(Vec::new()));
         let diam = 30.0f32; // o tamanho da cena do CSP
-        t.set_brush_size_px(diam / 2.0);
+        t.sonda_raio(diam / 2.0);
         for (nome, cor) in [
             ("zz_y", [240u8, 200, 0]),
             ("zz_b", [0, 70, 190]),

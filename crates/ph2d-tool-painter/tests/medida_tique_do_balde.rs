@@ -48,7 +48,7 @@ fn mede(s: u32) -> (u64, u64) {
         "fill".to_string(),
     ));
     t.set_brush_color_srgb8([25, 180, 50]);
-    t.set_brush_size_px(24.0);
+    t.sonda_raio(24.0);
     t.set_brush_impasto(true);
     t.set_brush_impasto_depth(1.0);
     t.on_canvas_pointer(cp([c, c], PointerPhase::Down));

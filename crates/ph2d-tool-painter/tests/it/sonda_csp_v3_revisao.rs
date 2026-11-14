@@ -175,7 +175,7 @@ fn sonda_csp_v3_revisao() {
         let mut t = PainterTool::default();
         t.set_source(base.clone(), W as u32, H as u32);
         assert_eq!(t.preset_aplicar(&p), Ok(Vec::new()));
-        t.set_brush_size_px(diam / 2.0); // raio; o diâmetro de fábrica do CSP
+        t.sonda_raio(diam / 2.0); // raio; o diâmetro de fábrica do CSP
         t.set_brush_color_srgb8([0, 160, 60]);
         for _ in 0..passadas {
             for s in &tracos {

@@ -37,7 +37,7 @@ fn tool(nome: &str) -> PainterTool {
     t.set_paint_media(PaintMedia::Digital);
     t.set_brush_color_srgb8([0, 0, 0]);
     t.preset_aplicar(&p).expect("aplica");
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t
 }
 
@@ -162,7 +162,7 @@ fn sonda_toque_parado() {
                 t.set_paint_media(PaintMedia::Digital);
                 t.set_brush_color_srgb8([0, 0, 0]);
                 t.preset_aplicar(&p).expect("aplica");
-                t.set_brush_size_px(40.0);
+                t.sonda_raio(40.0);
                 t.set_brush_strength(1.0);
                 t.set_brush_flow(flow);
                 t.on_canvas_pointer(cp([200.0, Y], PointerPhase::Down));
@@ -232,16 +232,16 @@ fn sonda_toque_depois_de_trocas() {
     let mut t = novo();
     t.preset_aplicar(&preset("Soft Round", Some("Smooth")))
         .unwrap();
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     toque(&mut t, 60.0);
     mostra("novo · Soft Smooth", &corte(&mut t, 60));
     let mut t = novo();
     t.preset_aplicar(&preset("Hard Round", None)).unwrap();
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     toque(&mut t, 50.0);
     t.preset_aplicar(&preset("Soft Round", Some("Smooth")))
         .unwrap();
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     toque(&mut t, 140.0);
     t.set_brush_flow(0.5);
     toque(&mut t, 240.0);
@@ -285,7 +285,7 @@ fn sonda_toque_por_tamanho() {
             t.set_paint_media(PaintMedia::Digital);
             t.set_brush_color_srgb8([0, 0, 0]);
             t.preset_aplicar(&p).expect("aplica");
-            t.set_brush_size_px(tam);
+            t.sonda_raio(tam);
             t.set_brush_strength(1.0);
             t.set_brush_flow(flow);
             let c = [400.0, 400.0];
@@ -336,7 +336,7 @@ fn sonda_toque_com_dureza_da_mao() {
         t.set_paint_media(PaintMedia::Digital);
         t.set_brush_color_srgb8([0, 0, 0]);
         t.preset_aplicar(&p).expect("aplica");
-        t.set_brush_size_px(150.0);
+        t.sonda_raio(150.0);
         t.set_brush_strength(1.0);
         let c = [400.0, 400.0];
         t.on_canvas_pointer(cp(c, PointerPhase::Down));

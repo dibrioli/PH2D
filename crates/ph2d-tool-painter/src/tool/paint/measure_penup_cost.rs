@@ -22,7 +22,7 @@ fn tool(side: u32, film: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
     t.set_brush_shape_kind(TextureKind::Stripes as u8);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     if film {
         t.set_shape_relief(1.0);
     }
@@ -97,7 +97,7 @@ fn is_the_relief_commit_proportional_to_its_window() {
     );
     for r in [20.0f32, 40.0, 80.0] {
         let mut t = tool(SIDE, true);
-        t.set_brush_size_px(r);
+        t.sonda_raio(r);
         let cy = f32::from(u16::try_from(SIDE / 2).unwrap_or(512));
         let mut ups = Vec::new();
         for k in 0..7u8 {

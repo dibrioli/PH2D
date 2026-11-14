@@ -16,7 +16,7 @@ fn tela(rel: &str, press: f64) -> Vec<u8> {
     t.set_substrate_depth(1.0);
     t.set_wet_oleo_real_ligado(true);
     t.paint.wetpaint.knobs.set(Knob::PaperPress, press);
-    t.set_brush_size_px(70.0);
+    t.sonda_raio(70.0);
     t.set_brush_color_srgb8([30, 70, 210]);
     for y in [130.0f32, 320.0] {
         arrasta(&mut t, [60.0, y], [640.0, y + 12.0]);

@@ -22,7 +22,7 @@ fn grava(n: u32) -> (ph2d_macro::MacroDoc, Vec<f32>) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (n * n * 4) as usize], n, n);
     t.set_paint_media(PaintMedia::WetPaint);
-    t.set_brush_size_px(30.0 * n as f32 / 1024.0);
+    t.sonda_raio(30.0 * n as f32 / 1024.0);
     let mut g = Gravador::arma(&mut t);
     let mut tempos = Vec::new();
     let s = n as f32;

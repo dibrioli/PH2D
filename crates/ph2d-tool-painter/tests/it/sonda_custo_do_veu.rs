@@ -38,7 +38,7 @@ fn cena(nome: &str, tamanho: f32, v: Variante) -> PainterTool {
         Ok(Vec::new()),
         "{nome}"
     );
-    t.set_brush_size_px(tamanho);
+    t.sonda_raio(tamanho);
     t.set_brush_color_srgb8([0, 40, 220]);
     // Como o app: a ponte drena a pré-visualização uma vez por quadro (`traco`).
     t.set_compor_por_quadro(true);

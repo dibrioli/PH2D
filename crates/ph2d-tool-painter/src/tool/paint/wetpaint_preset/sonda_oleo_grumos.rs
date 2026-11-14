@@ -153,7 +153,7 @@ pub(super) fn cena(
     for k in 0..10usize {
         let erros = t.wet_preset_aplicar(&ps[k % ps.len()]);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(32.0); // o Size 64 do painel (diâmetro) que o dono usa
+        t.sonda_raio(32.0); // o Size 64 do painel (diâmetro) que o dono usa
         t.set_brush_color_srgb8(cores[k % cores.len()]);
         let (a, z) = if cruza && k % 2 == 1 {
             ([180.0, 50.0], [180.0, 230.0])

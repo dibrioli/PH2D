@@ -22,7 +22,7 @@ fn cp(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
 }
 
 fn traco(t: &mut PainterTool, y: f32) {
-    t.set_brush_size_px(24.0);
+    t.sonda_raio(24.0);
     t.set_brush_color_srgb8([40, 90, 220]);
     t.on_canvas_pointer(cp(600.0, y, PointerPhase::Down));
     for k in 1..=30 {

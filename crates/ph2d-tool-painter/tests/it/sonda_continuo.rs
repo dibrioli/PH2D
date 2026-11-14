@@ -24,7 +24,7 @@ fn tool(nome: &str) -> PainterTool {
     t.set_paint_media(PaintMedia::Digital);
     t.set_brush_color_srgb8([0, 0, 0]);
     t.preset_aplicar(&p).expect("aplica");
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t
 }
 

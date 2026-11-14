@@ -34,7 +34,7 @@ fn is_the_relief_pen_down_the_planes_or_the_dab() {
             for slot in &mut t.paint.brush_by_mode {
                 slot.impasto_draw_to = DrawTo::Depth;
             }
-            t.set_brush_size_px(radius);
+            t.sonda_raio(radius);
             let c = size as f32 * 0.5;
             // Aquece: o 1º traço da camada é o único que aloca; medimos os SEGUINTES, que é o regime.
             t.on_canvas_pointer(cp([c - 300.0, c], PointerPhase::Down));
@@ -91,7 +91,7 @@ fn the_first_stroke_latency() {
                     slot.impasto_draw_to = draw_to;
                 }
             }
-            t.set_brush_size_px(200.0);
+            t.sonda_raio(200.0);
             let c = size as f32 * 0.5;
             // 1º pen-down: a camada nunca foi tocada.
             let first = ms(&mut || {
@@ -166,7 +166,7 @@ fn where_the_relief_dab_spends_its_time() {
     for slot in &mut t.paint.brush_by_mode {
         slot.impasto_draw_to = DrawTo::Depth;
     }
-    t.set_brush_size_px(200.0);
+    t.sonda_raio(200.0);
     let c = SIZE as f32 * 0.5;
     let step = t.paint.brush.dab_spacing_px().max(4.0) * 2.0;
     // ⚠️ SOMA por grupo, não mediana por-move: nem todo move produz um dab (o espaçamento decide), e a
@@ -255,7 +255,7 @@ fn is_the_film_pen_down_the_planes_or_the_dab() {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
             t.set_brush_shape_kind(TextureKind::Stripes as u8);
-            t.set_brush_size_px(radius);
+            t.sonda_raio(radius);
             let c = size as f32 * 0.5;
             let (mut off, mut on) = (Vec::new(), Vec::new());
             // 8 traços ALTERNADOS; os dois primeiros aquecem (o 1º de cada grupo aloca).

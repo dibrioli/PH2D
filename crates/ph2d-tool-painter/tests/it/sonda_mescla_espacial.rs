@@ -40,7 +40,7 @@ fn azul_seco() -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     pinceis("Watercolor Basic").remove(0).aplica(&mut t, true);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     mancha(&mut t, AZUL);
     t.run_full().0
 }
@@ -100,7 +100,7 @@ fn prepara(v: Var, base: &[u8]) -> PainterTool {
         _ => "Watercolor Basic",
     };
     pinceis(preset).remove(0).aplica(&mut t, true);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     match v {
         Var::Fabrica => {}
         Var::SemSmudge => t.set_brush_wet_smudge(0.0),
@@ -237,7 +237,7 @@ fn sonda_mescla_espacial_do_watercolor() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
         pinceis("Watercolor Basic").remove(0).aplica(&mut t, true);
-        t.set_brush_size_px(40.0);
+        t.sonda_raio(40.0);
         mancha(&mut t, AZUL);
         t.set_brush_color_srgb8(AMARELO);
         amarelos(&mut t, false);

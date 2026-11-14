@@ -67,7 +67,7 @@ fn painel(fila: usize, p: usize, nome_lei: &str, lei: LeiDaTinta) -> String {
             t.set_wet_oleo_real_ligado(false);
             t.paint.wetpaint.knobs.set(Knob::Emboss, 0.0);
         }
-        t.set_brush_size_px(16.0);
+        t.sonda_raio(16.0);
     };
     arma(&mut t, base);
     t.set_brush_color_srgb8(AZUL);
@@ -156,7 +156,7 @@ fn sonda_fotos_knife_stain_pequeno() {
             if crua {
                 t.set_wet_largura_crua(1.0);
             }
-            t.set_brush_size_px(r);
+            t.sonda_raio(r);
             t.set_brush_color_srgb8(AZUL);
             t.on_canvas_pointer(ponteiro(40.0, 80.0, PointerPhase::Down));
             for k in 1..=60 {

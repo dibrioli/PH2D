@@ -56,7 +56,7 @@ fn sonda_shape_color_no_wet_paint() {
             assert!(t.wet_preset_aplicar(&e.preset).is_empty());
             t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
             t.paint.wetpaint.tilt_on = false;
-            t.set_brush_size_px(14.0);
+            t.sonda_raio(14.0);
             t.set_brush_color_srgb8([30, 60, 220]);
             t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
             if c.is_some() {

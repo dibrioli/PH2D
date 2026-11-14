@@ -249,7 +249,7 @@ pub(super) fn cena_papel_texturizado(
     t.set_brush_paper_kind(1);
     t.set_substrate_depth(relief);
     t.set_wet_oleo_real_ligado(oleo);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t.set_brush_color_srgb8([30, 70, 210]);
     for k in 0..if pinta { 3 } else { 0 } {
         let y = 200.0 + 6.0 * k as f32;
@@ -406,7 +406,7 @@ pub(super) fn tela_da_borda(rel: &str, texturizado: bool, suave: f32) -> Vec<u8>
     }
     t.set_wet_oleo_real_ligado(true);
     t.set_wet_smooth_edges(suave);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t.set_brush_color_srgb8([30, 70, 210]);
     arrasta(&mut t, [60.0, 100.0], [640.0, 150.0]);
     // O S: uma senóide de amplitude 50 px e período 330 px, de x 60 a 640 (como o S da bateria).

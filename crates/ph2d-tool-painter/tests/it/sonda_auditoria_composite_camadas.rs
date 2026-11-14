@@ -73,7 +73,7 @@ fn aplica(t: &mut PainterTool, nome: &str) {
         .unwrap_or_else(|| panic!("receita {nome}"));
     let p = preset_do_meio(r);
     assert_eq!(t.preset_aplicar(&p), Ok(Vec::new()), "{nome}");
-    t.set_brush_size_px(15.0);
+    t.sonda_raio(15.0);
 }
 
 /// A cena pronta, com o pincel `nome` aplicado e a cor azul; o traço ainda por dar.
@@ -82,7 +82,7 @@ fn cena(nome: &str, f: Fundo) -> PainterTool {
     let fundo = if f == Fundo::Vazio { 0u8 } else { 255 };
     t.set_source(vec![fundo; W * H * 4], W as u32, H as u32);
     if matches!(f, Fundo::Bloco | Fundo::BlocoOutraCamada) {
-        t.set_brush_size_px(20.0);
+        t.sonda_raio(20.0);
         t.set_brush_mistura_modo(ModoMisturaOpaca::Off);
         t.set_brush_color_srgb8([200, 0, 0]);
         for k in 0..9 {
@@ -325,7 +325,7 @@ fn sonda_auditoria_per_layer_color() {
     for nome in ["Round Mixing", "Oil Paint", "Finger Tip"] {
         let corre = |modo: Option<ModoMisturaOpaca>, por_camada: bool, f: Fundo| {
             let mut t = cena(nome, f);
-            t.set_brush_size_px(30.0);
+            t.sonda_raio(30.0);
             t.set_brush_shape_layers(vec![metade(false), metade(true)]);
             if por_camada {
                 t.toggle_brush_shape_per_layer_color();

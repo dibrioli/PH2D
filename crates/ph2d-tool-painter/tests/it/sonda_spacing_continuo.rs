@@ -254,7 +254,7 @@ fn conta_dabs(p: &Preset, raio: f32, passo: f32) -> usize {
     t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
-    t.set_brush_size_px(raio);
+    t.sonda_raio(raio);
     let cp = |x: f32, phase| CanvasPointer {
         pos: [x, 500.0 - 0.14 * (x - 100.0)],
         pressure: 1.0,

@@ -46,7 +46,7 @@ fn sonda_checkbox_paper() {
             t.set_wet_relogio_fixo(true);
             assert!(t.wet_preset_aplicar(p).is_empty());
             t.wet_preset_aplicar_volumes(&p.parametros.volumes);
-            t.set_brush_size_px(30.0);
+            t.sonda_raio(30.0);
             t.set_brush_color_srgb8([23, 101, 179]);
             t.paint.wetpaint.tilt_on = false;
             t.set_brush_paper_kind(1);
@@ -116,7 +116,7 @@ fn sonda_papel_seco() {
             t.set_wet_relogio_fixo(true);
             assert!(t.wet_preset_aplicar(p).is_empty());
             t.wet_preset_aplicar_volumes(&p.parametros.volumes);
-            t.set_brush_size_px(30.0);
+            t.sonda_raio(30.0);
             t.set_brush_color_srgb8([23, 101, 179]);
             t.paint.wetpaint.tilt_on = false;
             if armado {

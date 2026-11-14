@@ -298,7 +298,7 @@ fn pinta(nome: &str, v: V, base: &[u8]) -> (Vec<u8>, bool, f32) {
     t.set_source(base.to_vec(), W as u32, H as u32);
     assert_eq!(t.preset_aplicar(&p), Ok(Vec::new()), "{nome}");
     let raio = v.raio.unwrap_or(15.0);
-    t.set_brush_size_px(raio);
+    t.sonda_raio(raio);
     t.set_brush_color_srgb8([0, 160, 60]);
     if v.papel {
         t.set_substrate_depth(0.8);

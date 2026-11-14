@@ -187,7 +187,7 @@ fn sonda_primeiro_traco() {
         }
         t.set_paint_tool_mode("wetpaint");
         t.preset_aplicar(por_nome(&lib, n)).expect("preset");
-        t.set_brush_size_px(60.0);
+        t.sonda_raio(60.0);
         for _ in 0..3 {
             t.on_tick(1000.0 / 60.0);
             let _ = t.take_preview_arc();

@@ -267,7 +267,7 @@ pub(super) fn arco(
     t.set_semente_dos_tracos(0);
     let erros = t.wet_preset_aplicar(p);
     assert!(erros.is_empty(), "{erros:?}");
-    t.set_brush_size_px(raio);
+    t.sonda_raio(raio);
     t.set_brush_color_srgb8([0x2f, 0x8f, 0xd8]);
     t.handle_panel_event(PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_WATER,
@@ -368,7 +368,7 @@ fn arco_com_brilho(
     t.set_semente_dos_tracos(0);
     assert!(t.wet_preset_aplicar(p).is_empty());
     t.set_wet_oleo_real_ligado(true);
-    t.set_brush_size_px(48.0);
+    t.sonda_raio(48.0);
     t.set_brush_color_srgb8([0x8a, 0x16, 0x1c]);
     traco(&mut t, &|s| no_arco(-ABRE + 2.0 * ABRE * s), 2.0 * ABRE * R);
     espera(&mut t, 60);

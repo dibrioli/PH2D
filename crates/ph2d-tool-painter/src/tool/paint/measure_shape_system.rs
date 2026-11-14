@@ -51,7 +51,7 @@ pub(super) fn tool(side: u32, media: PaintMedia, radius: f32) -> PainterTool {
     t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
     t.set_paint_media(media);
     super::aquarela_neutra(&mut t);
-    t.set_brush_size_px(radius);
+    t.sonda_raio(radius);
     t
 }
 

@@ -347,7 +347,7 @@ fn sonda_spacing_por_meio() {
     ] {
         for sp in [0.05f32, 0.25, 0.5, 1.0, 1.5] {
             let mut t = tela(media);
-            t.set_brush_size_px(20.0);
+            t.sonda_raio(20.0);
             t.set_brush_spacing(sp);
             let dabs: Arc<Mutex<usize>> = Arc::default();
             if media == PaintMedia::WetPaint {
@@ -406,7 +406,7 @@ fn sonda_pontilhado_das_cerdas() {
         for kind in [TextureKind::None, TextureKind::Bristles] {
             for sp in [0.025f32, 0.1, 0.25, 0.5] {
                 let mut t = tela(media);
-                t.set_brush_size_px(tam);
+                t.sonda_raio(tam);
                 t.set_brush_spacing(sp);
                 // `PH2D_SONDA_CONTINUO=1` liga o Continuous Spacing.
                 t.paint.brush.continuous_spacing = std::env::var("PH2D_SONDA_CONTINUO").is_ok();

@@ -27,7 +27,7 @@ fn assenta(t: &mut PainterTool) {
 
 fn acerta(t: &mut PainterTool) {
     t.set_paint_media(PaintMedia::WetPaint);
-    t.set_brush_size_px(14.0);
+    t.sonda_raio(14.0);
     t.set_brush_color_srgb8([0, 0, 0]);
 }
 
@@ -253,7 +253,7 @@ fn sonda_w12_o_custo_da_agua_marcada() {
             t.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
         }
         t.set_paint_media(PaintMedia::WetPaint);
-        t.set_brush_size_px(24.0);
+        t.sonda_raio(24.0);
         for i in 0..=8u16 {
             let phase = match i {
                 0 => PointerPhase::Down,

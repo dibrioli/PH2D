@@ -104,7 +104,7 @@ fn cena(
     assert!(t.wet_preset_aplicar(&preset(b, nome)).is_empty());
     assert!(t.paint.wetpaint.km_mixing, "{nome}: sem pigment mixing");
     let s = h as f32 / 1080.0;
-    t.set_brush_size_px(36.0 * s);
+    t.sonda_raio(36.0 * s);
     assert!(t.ensure_wet_session());
     let (fw, fh) = (w as f32, h as f32);
     let (a, z, m0, m1) = (0.2 * fw, 0.8 * fw, 0.42 * fw, 0.58 * fw);

@@ -73,7 +73,7 @@ fn sonda_mistura() {
         assert!(t.wet_preset_aplicar(p).is_empty());
         t.wet_preset_aplicar_volumes(&p.parametros.volumes);
         t.paint.wetpaint.tilt_on = false;
-        t.set_brush_size_px(30.0);
+        t.sonda_raio(30.0);
         // As VARIANTES (W1e): `PH2D_SONDA_VELATURA=<γ>` e `PH2D_SONDA_NO_TRACO=0|1` sobrepõem-se ao produto.
         assert!(t.ensure_wet_session());
         if let Some(s) = t.paint.wetpaint.session.as_mut() {

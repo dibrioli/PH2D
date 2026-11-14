@@ -19,7 +19,7 @@ pub(super) fn tela_horizontal(rel: &str, texturizado: bool, suave: f32) -> Vec<u
     }
     t.set_wet_oleo_real_ligado(true);
     t.set_wet_smooth_edges(suave);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t.set_brush_color_srgb8([30, 70, 210]);
     for y in [90.0f32, 220.0, 350.0] {
         arrasta(&mut t, [60.0, y], [640.0, y + 12.0]);

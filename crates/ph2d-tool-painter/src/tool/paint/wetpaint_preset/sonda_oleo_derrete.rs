@@ -173,7 +173,7 @@ pub(super) fn cena(
     t.set_semente_dos_tracos(0);
     let erros = t.wet_preset_aplicar(&p);
     assert!(erros.is_empty(), "{erros:?}");
-    t.set_brush_size_px(32.0); // o Size 64 do painel (diâmetro) que o dono usa
+    t.sonda_raio(32.0); // o Size 64 do painel (diâmetro) que o dono usa
     t.set_brush_color_srgb8([20, 90, 200]);
     traco(&mut t, [30.0, 140.0], [390.0, 140.0]);
     espera(&mut t, 60);
@@ -340,7 +340,7 @@ fn sonda_oleo_pretos() {
         if let Some(a) = agua {
             t.paint.wetpaint.knobs.water = a;
         }
-        t.set_brush_size_px(32.0); // o Size 64 do painel (diâmetro)
+        t.sonda_raio(32.0); // o Size 64 do painel (diâmetro)
         t.set_brush_color_srgb8([20, 90, 200]);
         traco(&mut t, [30.0, 140.0], [390.0, 140.0]);
         espera(&mut t, 60);

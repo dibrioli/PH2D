@@ -34,7 +34,7 @@ fn tool(side: u32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
     t.toggle_brush_impasto();
-    t.set_brush_size_px(24.0);
+    t.sonda_raio(24.0);
     t
 }
 
@@ -90,7 +90,7 @@ fn the_input_cost_without_impasto_is_the_control() {
             if impasto {
                 t.toggle_brush_impasto();
             }
-            t.set_brush_size_px(24.0);
+            t.sonda_raio(24.0);
             // ⚠️ O traço tem comprimento FIXO em px, NÃO escalado com a tela. A 1ª versão desta sonda
             // escalava (`100*m → 300*m`) e mediu razões de ~4× para 16× de área — que eu quase li como
             // *"o move é canvas-shaped"*. Não é: 4× é exatamente o fator de COMPRIMENTO que a própria
@@ -208,7 +208,7 @@ fn the_delta_history_costs_this_much_to_undo() {
     for side in [1024u32, 2048, 4096] {
         let mut t = tool(side);
         t.toggle_brush_impasto();
-        t.set_brush_size_px(24.0);
+        t.sonda_raio(24.0);
         #[allow(clippy::cast_precision_loss)]
         let x1 = (side as f32) - 100.0;
         for k in 0..4 {
@@ -319,7 +319,7 @@ fn is_there_per_event_overhead_to_coalesce() {
     for side in [1024u32, 2048, 4096] {
         for n in [1usize, 4, 16, 64] {
             let mut t = tool(side);
-            t.set_brush_size_px(100.0); // raio grande: o regime em que a orla seria MAXIMA
+            t.sonda_raio(100.0); // raio grande: o regime em que a orla seria MAXIMA
             #[allow(clippy::cast_precision_loss)]
             let step = DIST / (n as f32);
             t.on_canvas_pointer(cp([200.0, 300.0], PointerPhase::Down));
@@ -358,7 +358,7 @@ fn the_dab_count_grows_with_the_event_count_over_the_same_path() {
     println!("[dabs] mesma distancia ({DIST} px), pincel raio 100:");
     for n in [1usize, 4, 16, 64] {
         let mut t = tool(1024);
-        t.set_brush_size_px(100.0);
+        t.sonda_raio(100.0);
         #[allow(clippy::cast_precision_loss)]
         let step = DIST / (n as f32);
         t.on_canvas_pointer(cp([100.0, 300.0], PointerPhase::Down));

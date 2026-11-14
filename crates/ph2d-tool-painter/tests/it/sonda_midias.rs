@@ -377,7 +377,7 @@ fn as_midias_com_os_knobs_de_hoje() {
                             let mut t = tela();
                             t.set_wet_relogio_fixo(true);
                             assert!(t.wet_preset_aplicar(&p).is_empty());
-                            t.set_brush_size_px(r.unwrap_or(c.alvo * 0.5));
+                            t.sonda_raio(r.unwrap_or(c.alvo * 0.5));
                             // `PH2D_SONDA_KM=1`: as duas caixas K–M da tela (Pigment mixing + Glaze layering)
                             // ligadas — as opções da OBRA que nenhum preset guarda.
                             if std::env::var("PH2D_SONDA_KM").as_deref() == Ok("1") {
@@ -491,7 +491,7 @@ fn sonda_a_celula_do_cruzamento() {
             let mut t = tela();
             t.set_wet_relogio_fixo(true);
             assert!(t.wet_preset_aplicar(&p).is_empty());
-            t.set_brush_size_px(c.raio.unwrap_or(c.alvo * 0.5));
+            t.sonda_raio(c.raio.unwrap_or(c.alvo * 0.5));
             aplica_variante(&mut t, v);
             let le = |t: &mut PainterTool, quando: &str| {
                 t.wet_sonda_motor(|e| {
@@ -574,7 +574,7 @@ fn sonda_o_perfil_do_cruzamento() {
             let mut t = tela();
             t.set_wet_relogio_fixo(true);
             assert!(t.wet_preset_aplicar(&p).is_empty());
-            t.set_brush_size_px(c.raio.unwrap_or(c.alvo * 0.5));
+            t.sonda_raio(c.raio.unwrap_or(c.alvo * 0.5));
             aplica_variante(&mut t, v);
             let (xs, ys) = (&xs, &ys);
             let le = |t: &mut PainterTool, quando: &str| {
@@ -660,7 +660,7 @@ fn sonda_o_custo_do_glaze() {
         let mut t = tela();
         t.set_wet_relogio_fixo(true);
         assert!(t.wet_preset_aplicar(&p).is_empty());
-        t.set_brush_size_px(18.0);
+        t.sonda_raio(18.0);
         t.set_brush_color_srgb8(AZUL);
         gesto(&mut t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, |_| 1.0);
         // `PH2D_SONDA_MESMA=1`: o traço que cruza é da MESMA tinta (o primeiro toque assenta a de baixo, doc 42 §7).

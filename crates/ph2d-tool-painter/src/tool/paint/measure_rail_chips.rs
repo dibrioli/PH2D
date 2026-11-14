@@ -42,7 +42,7 @@ fn striped_tool() -> PainterTool {
     }
     let mut t = PainterTool::default();
     t.set_source(px, SIDE, SIDE);
-    t.set_brush_size_px(24.0);
+    t.sonda_raio(24.0);
     t
 }
 

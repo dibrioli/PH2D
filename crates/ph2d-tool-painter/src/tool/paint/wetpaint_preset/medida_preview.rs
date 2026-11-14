@@ -43,7 +43,7 @@ fn medida_o_preview_ate_a_agua_parar() {
                 t.set_paint_media(PaintMedia::WetPaint);
                 t.set_wet_relogio_fixo(true);
                 assert!(t.wet_preset_aplicar(p).is_empty());
-                t.set_brush_size_px(30.0); // 60 px de diâmetro, a captura do dono
+                t.sonda_raio(30.0); // 60 px de diâmetro, a captura do dono
                 t.paint.wetpaint.knobs.water = 1.0;
                 t.paint.wetpaint.tilt_ring = anel;
                 let (x0, x1) = (60.0, w as f32 - 60.0);
@@ -128,7 +128,7 @@ fn sonda_o_preview_e_a_tela_com_e_sem_papel() {
             t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
             t.set_paint_media(PaintMedia::WetPaint);
             assert!(t.wet_preset_aplicar(p).is_empty());
-            t.set_brush_size_px(30.0);
+            t.sonda_raio(30.0);
             t.paint.wetpaint.knobs.water = 1.0;
             t.paint.wetpaint.tilt_on = true;
             t.paint.wetpaint.tilt_ring = 8;
@@ -177,7 +177,7 @@ fn sonda_a_tela_escorre() {
                 t.set_paint_media(PaintMedia::WetPaint);
                 t.set_wet_relogio_fixo(true);
                 assert!(t.wet_preset_aplicar(p).is_empty());
-                t.set_brush_size_px(d * 0.5);
+                t.sonda_raio(d * 0.5);
                 t.paint.wetpaint.knobs.water = 1.0;
                 t.paint.wetpaint.tilt_on = true;
                 t.paint.wetpaint.tilt_ring = 8;
@@ -242,7 +242,7 @@ fn medida_o_relogio_do_preview() {
             t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
             t.set_paint_media(PaintMedia::WetPaint);
             assert!(t.wet_preset_aplicar(p).is_empty());
-            t.set_brush_size_px(d * 0.5);
+            t.sonda_raio(d * 0.5);
             let cena = t.wet_preview_cena();
             let t0 = Instant::now();
             let mut marcas: Vec<f64> = Vec::new();

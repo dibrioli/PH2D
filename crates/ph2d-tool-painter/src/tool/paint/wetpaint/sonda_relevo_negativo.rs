@@ -31,7 +31,7 @@ fn tela(b: Option<&Preset>, relevo: f32, ajuste: &dyn Fn(&mut PainterTool)) -> V
         t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
         t.set_substrate_depth(relevo);
         ajuste(&mut t);
-        t.set_brush_size_px(40.0);
+        t.sonda_raio(40.0);
         t.set_brush_color_srgb8(COR);
         traco(&mut t, 70.0, false);
     }

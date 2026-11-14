@@ -66,7 +66,7 @@ fn com_a_mancha(nome: Option<&str>) -> PainterTool {
     if let Some(n) = nome {
         pinceis(n).remove(0).aplica(&mut t, true);
     }
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t.set_brush_mistura_modo(ModoMisturaOpaca::Off);
     t.set_brush_color_srgb8([200, 0, 0]);
     for _ in 0..4 {

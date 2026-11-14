@@ -142,7 +142,7 @@ pub(super) fn corrida(lib: &Biblioteca, c: &Cfg, b: Option<&Preset>) -> Fotos {
         t.set_substrate_depth(0.7);
     }
     t.preset_aplicar(por_nome(lib, &c.a)).expect("preset A");
-    t.set_brush_size_px(34.0);
+    t.sonda_raio(34.0);
     t.set_brush_color_srgb8([120, 120, 125]);
     if let Some(v) = std::env::var("PH2D_SONDA_SE")
         .ok()
@@ -160,7 +160,7 @@ pub(super) fn corrida(lib: &Biblioteca, c: &Cfg, b: Option<&Preset>) -> Fotos {
     let mut tela = vec![t.canvas_rgba.to_vec()];
     if let Some(b) = b {
         t.preset_aplicar(b).expect("preset B");
-        t.set_brush_size_px(30.0);
+        t.sonda_raio(30.0);
         t.set_brush_color_srgb8([18, 18, 20]);
     }
     tiques(&mut t, 4, c.fora);
@@ -499,7 +499,7 @@ fn sonda_bordas_qual_knob() {
         t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
         t.set_substrate_depth(0.7);
         t.preset_aplicar(por_nome(&lib, &c.a)).expect("preset A");
-        t.set_brush_size_px(34.0);
+        t.sonda_raio(34.0);
         t.set_brush_color_srgb8([120, 120, 125]);
         traco(&mut t, 70.0, false);
         tiques(&mut t, c.espera, false);

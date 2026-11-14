@@ -55,7 +55,7 @@ pub(super) fn monta(c: Combo) -> PainterTool {
     if c.round {
         wet_round(&mut t);
     }
-    t.set_brush_size_px(c.tamanho);
+    t.sonda_raio(c.tamanho);
     t.set_brush_color_srgb8([30, 60, 220]);
     if c.voronoi {
         t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
@@ -198,7 +198,7 @@ fn sonda_corte_nos_pinceis_de_fabrica() {
                     t.set_wet_relogio_fixo(true);
                     assert!(t.wet_preset_aplicar(&e.preset).is_empty());
                     t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
-                    t.set_brush_size_px(tamanho);
+                    t.sonda_raio(tamanho);
                     if voronoi {
                         t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
                         t.set_brush_shape_size(0, 4.0);
@@ -348,7 +348,7 @@ fn sonda_corte_ablacao_da_janela() {
                     };
                     let mut t = monta(c);
                     if larga {
-                        t.set_brush_size_px(400.0);
+                        t.sonda_raio(400.0);
                         let seed = t.paint.brush;
                         t.paint.brush_by_mode.fill(seed);
                         t.on_canvas_pointer(ponteiro([-3000.0, -3000.0], 1.0, PointerPhase::Down));
@@ -356,7 +356,7 @@ fn sonda_corte_ablacao_da_janela() {
                         t.on_canvas_pointer(ponteiro([-2800.0, -3000.0], 1.0, PointerPhase::Move));
                         t.on_canvas_pointer(ponteiro([-2800.0, -3000.0], 1.0, PointerPhase::Up));
                         t.on_tick(1000.0 / 60.0);
-                        t.set_brush_size_px(tamanho);
+                        t.sonda_raio(tamanho);
                         let seed = t.paint.brush;
                         t.paint.brush_by_mode.fill(seed);
                     }

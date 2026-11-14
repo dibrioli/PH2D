@@ -93,7 +93,7 @@ fn corre(preset: &ph2d_brush_presets::Preset, oleo: bool, curas: bool) -> ([Fase
         .filter(|o| o["op"] == "traco");
     for op in tracos.take(n_tracos) {
         let pts = op["pts"].as_array().unwrap();
-        t.set_brush_size_px(op["size_px"].as_f64().unwrap() as f32 * 0.5);
+        t.sonda_raio(op["size_px"].as_f64().unwrap() as f32 * 0.5);
         t.on_canvas_pointer(cp(&pts[0], PointerPhase::Down));
         for p in &pts[1..] {
             t.on_canvas_pointer(cp(p, PointerPhase::Move));
@@ -173,7 +173,7 @@ fn o_papel_liso_da_sombra_e_bit_identico_a_conta_por_celula() {
         t.set_semente_dos_tracos(0);
         t.set_wet_relogio_fixo(true);
         assert!(t.preset_aplicar(&preset).unwrap().is_empty());
-        t.set_brush_size_px(14.0);
+        t.sonda_raio(14.0);
         let mut fotos = Vec::new();
         let traco = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2], cor: [u8; 3]| {
             t.set_brush_color_srgb8(cor);
@@ -234,7 +234,7 @@ fn pinta_oleo(
     assert!(t.preset_aplicar(preset).unwrap().is_empty());
     t.set_wet_oleo_real(Some(o));
     t.set_wet_oleo_real_ligado(true);
-    t.set_brush_size_px(14.0);
+    t.sonda_raio(14.0);
     let traco = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2], cor: [u8; 3]| {
         t.set_brush_color_srgb8(cor);
         let p = |k: f32, phase| CanvasPointer {
@@ -343,7 +343,7 @@ fn a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira() {
     t.paint.wetpaint.knobs.set(Knob::SubsurfaceRadius, 12.0);
     t.set_wet_oleo_real(Some(ph2d_wet_paint::oleo_real::OleoReal::default()));
     t.set_wet_oleo_real_ligado(true);
-    t.set_brush_size_px(10.0);
+    t.sonda_raio(10.0);
     let traco = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2], cor: [u8; 3]| {
         t.set_brush_color_srgb8(cor);
         let p = |k: f32, phase| CanvasPointer {

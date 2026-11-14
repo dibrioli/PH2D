@@ -48,7 +48,7 @@ fn sonda_agua_oleo_4k() {
     // `PH2D_SONDA_OLEO=1`: um traço de Dabber (óleo) por baixo, que a água cruza — a óptica do óleo trabalha.
     if env("PH2D_SONDA_OLEO", 0) == 1 {
         t.preset_aplicar(por_nome(&lib, "Dabber")).expect("Dabber");
-        t.set_brush_size_px(160.0);
+        t.sonda_raio(160.0);
         t.on_canvas_pointer(cp([1800.0, 300.0], PointerPhase::Down));
         for s in 1..=40 {
             t.on_canvas_pointer(cp([1800.0, 300.0 + 40.0 * s as f32], PointerPhase::Move));
@@ -61,7 +61,7 @@ fn sonda_agua_oleo_4k() {
     }
     t.preset_aplicar(por_nome(&lib, "Wet Wash"))
         .expect("preset");
-    t.set_brush_size_px(240.0);
+    t.sonda_raio(240.0);
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!(
         "\nAGUA4K cab rayon={} carga={}",

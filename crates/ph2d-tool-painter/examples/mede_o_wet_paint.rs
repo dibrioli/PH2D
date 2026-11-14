@@ -46,7 +46,7 @@ fn wet(size: u32, raio: f32) -> PainterTool {
         size,
     );
     t.set_paint_media(PaintMedia::WetPaint);
-    t.set_brush_size_px(raio);
+    t.sonda_raio(raio);
     t.set_brush_color_srgb8([204, 51, 26]);
     assert_eq!(
         t.paint_media(),

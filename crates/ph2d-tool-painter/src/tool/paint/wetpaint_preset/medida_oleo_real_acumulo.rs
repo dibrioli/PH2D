@@ -198,7 +198,7 @@ fn medida_oleo_real_acumulo() {
             t.set_wet_relogio_fixo(true);
             let erros = t.wet_preset_aplicar(p);
             assert!(erros.is_empty(), "{erros:?}");
-            t.set_brush_size_px(50.0);
+            t.sonda_raio(50.0);
             t.set_brush_color_srgb8(AZ);
             let nome = preset
                 .rsplit('/')

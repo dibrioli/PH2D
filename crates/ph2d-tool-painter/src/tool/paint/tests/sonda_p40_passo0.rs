@@ -40,7 +40,7 @@ fn corre(c: &Caso, sp: f32, cont: bool) -> (Vec<u8>, Vec<f32>) {
     t.set_paint_media(PaintMedia::Impasto);
     t.set_brush_color_srgb8([20, 30, 120]);
     t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
-    t.set_brush_size_px(c.tam);
+    t.sonda_raio(c.tam);
     t.set_shape_color_ramp(verde_laranja());
     t.set_shape_ramp_enabled(true);
     (c.extra)(&mut t.paint.brush);
@@ -394,7 +394,7 @@ fn sonda_p40_modos() {
         t.set_paint_media(PaintMedia::Impasto);
         t.set_brush_color_srgb8([20, 30, 120]);
         t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
-        t.set_brush_size_px(40.0);
+        t.sonda_raio(40.0);
         t.set_brush_spacing(0.25);
         let seed = t.paint.brush;
         t.paint.brush_by_mode.fill(seed);

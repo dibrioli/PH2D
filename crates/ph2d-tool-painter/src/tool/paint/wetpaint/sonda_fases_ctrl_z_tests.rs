@@ -24,7 +24,7 @@ fn tela(meio: &str, tamanho: f32) -> PainterTool {
         format!("{},{},{}", PAPEL[0], PAPEL[1], PAPEL[2]),
     ));
     t.preset_aplicar(&preset(meio)).expect("o meio");
-    t.set_brush_size_px(tamanho);
+    t.sonda_raio(tamanho);
     t.set_brush_color_srgb8([40, 90, 220]);
     t
 }

@@ -36,7 +36,7 @@ fn sonda_agua_quieta_depois_de_soltar() {
         t.set_paint_tool_mode("wetpaint");
         t.preset_aplicar(por_nome(&lib, "Wet Wash"))
             .expect("preset");
-        t.set_brush_size_px(120.0 * k);
+        t.sonda_raio(120.0 * k);
         for lane in 0..3 {
             let y = (300.0 + 200.0 * lane as f32) * k;
             t.on_canvas_pointer(cp([200.0 * k, y], PointerPhase::Down));
@@ -174,7 +174,7 @@ fn tela_pintada(lib: &Biblioteca, w: usize, h: usize) -> PainterTool {
     t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
     t.set_paint_tool_mode("wetpaint");
     t.preset_aplicar(por_nome(lib, "Wet Wash")).expect("preset");
-    t.set_brush_size_px(120.0 * k);
+    t.sonda_raio(120.0 * k);
     for lane in 0..3 {
         let y = (300.0 + 200.0 * lane as f32) * k;
         t.on_canvas_pointer(cp([200.0 * k, y], PointerPhase::Down));
@@ -380,7 +380,7 @@ fn tela_n(lib: &Biblioteca, w: usize, h: usize, preset: &str, n: usize) -> Paint
     t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
     t.set_paint_tool_mode("wetpaint");
     t.preset_aplicar(por_nome(lib, preset)).expect("preset");
-    t.set_brush_size_px(120.0 * k);
+    t.sonda_raio(120.0 * k);
     for lane in 0..n {
         let y = (250.0 + 140.0 * lane as f32) * k;
         t.on_canvas_pointer(cp([200.0 * k, y], PointerPhase::Down));

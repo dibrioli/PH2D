@@ -65,7 +65,7 @@ fn a_film_stroke_no_longer_asks_for_five_canvas_planes() {
     t.set_source(vec![255u8; (N * N * 4) as usize], N, N);
     t.set_brush_shape_kind(TextureKind::Stripes as u8);
     t.set_shape_relief(1.0);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
 
     // ⚠️ **POR FASE, e não por traço:** um número por traço não distingue quem PEDE. As três fases de
     // um gesto fazem coisas diferentes (o Down arma, o Move carimba, o Up COMITA), e o total esconde

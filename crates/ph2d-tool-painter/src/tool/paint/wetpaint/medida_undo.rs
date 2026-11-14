@@ -30,7 +30,7 @@ fn ferramenta(borda: f64, viva: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
     t.set_paint_media(PaintMedia::WetPaint);
-    t.set_brush_size_px(60.0);
+    t.sonda_raio(60.0);
     t.set_wet_borda_que_pesa(borda);
     t.set_wet_agua_viva(viva);
     t

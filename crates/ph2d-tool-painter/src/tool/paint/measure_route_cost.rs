@@ -128,7 +128,7 @@ fn which_route_does_a_batch_take_and_what_does_the_route_cost() {
                 if impasto {
                     t.toggle_brush_impasto();
                 }
-                t.set_brush_size_px(RADIUS);
+                t.sonda_raio(RADIUS);
                 t.paint.brush.strength = strength;
                 t.paint.brush.impasto_smooth_edges = smooth_edges;
                 for slot in &mut t.paint.brush_by_mode {
@@ -221,7 +221,7 @@ fn does_the_cap_cost_arithmetic_or_parallelism() {
             for _ in 0..3u32 {
                 let mut t = PainterTool::default();
                 t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
-                t.set_brush_size_px(radius);
+                t.sonda_raio(radius);
                 t.paint.brush.strength = strength;
                 for slot in &mut t.paint.brush_by_mode {
                     slot.strength = strength;
@@ -354,7 +354,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
     // ─── (A) a porta do PRODUTO ──────────────────────────────────────────────────────────────
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
-    t.set_brush_size_px(DAB_R);
+    t.sonda_raio(DAB_R);
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     t.paint.brush.strength = 0.5; // o cap, pela porta que o artista mexe
     for slot in &mut t.paint.brush_by_mode {

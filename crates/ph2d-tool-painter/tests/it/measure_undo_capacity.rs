@@ -50,7 +50,7 @@ fn the_byte_cap_buys_this_many_steps() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
         t.toggle_brush_impasto();
-        t.set_brush_size_px(24.0);
+        t.sonda_raio(24.0);
         for k in 0..8 {
             stroke(&mut t, side, k);
         }
@@ -115,7 +115,7 @@ fn mede_o_passo_de_undo_a_4k() {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 3840 * 2160 * 4], 3840, 2160);
     t.toggle_brush_impasto();
-    t.set_brush_size_px(24.0);
+    t.sonda_raio(24.0);
     for k in 0..8 {
         #[allow(clippy::cast_precision_loss)]
         let y = 100.0 + (k as f32) * 24.0;

@@ -208,7 +208,7 @@ const CFGS: [Cfg; 4] = [
 fn tool(side: u32, c: Cfg) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
-    t.set_brush_size_px(40.0);
+    t.sonda_raio(40.0);
     t.set_brush_color_srgb8([200, 30, 30]);
     t.set_brush_shape_kind(TextureKind::Stripes as u8);
     if c.paper {
@@ -478,7 +478,7 @@ fn measure_what_the_deposit_costs() {
         for side in [1024u32, 2048, 4096] {
             for r in [20.0f32, 80.0] {
                 let mut t = tool(side, c);
-                t.set_brush_size_px(r);
+                t.sonda_raio(r);
                 let (_d, mv, up) = fast_stroke(&mut t, side);
                 println!("{:<10} {r:>7.0} {side:>6} {mv:>9.2} {up:>9.2}", c.name);
             }
@@ -523,7 +523,7 @@ fn measure_the_nth_stroke_at_fixed_length() {
     for c in CFGS {
         for side in [2048u32, 4096] {
             let mut t = tool(side, c);
-            t.set_brush_size_px(40.0);
+            t.sonda_raio(40.0);
             let cy = f32::from(u16::try_from(side / 2).unwrap_or(512));
             let (mut downs, mut movs, mut ups) = (Vec::new(), Vec::new(), Vec::new());
             for k in 0..7u8 {
@@ -592,7 +592,7 @@ fn what_a_film_move_is_made_of() {
         const SIDE: u32 = 2048;
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
-        t.set_brush_size_px(radius);
+        t.sonda_raio(radius);
         t.set_brush_color_srgb8([200, 30, 30]);
         if shape {
             t.set_brush_shape_kind(TextureKind::Stripes as u8);

@@ -211,7 +211,7 @@ fn sonda_custo_no_app() {
             t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
             p.aplica(&mut t, false);
             if tam > 0.0 {
-                t.set_brush_size_px(tam * 0.5);
+                t.sonda_raio(tam * 0.5);
             }
             let diam = t.brush_size_px() * 2.0;
             let _ = traco(&mut t, lado, 6.0, por_quadro, 10, 60.0);

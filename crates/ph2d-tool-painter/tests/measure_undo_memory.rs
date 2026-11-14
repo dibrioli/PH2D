@@ -88,7 +88,7 @@ fn a_stroke_costs_the_window_it_touched_not_a_document() {
     // QUATRO planos em vez de um, e é o caso do produto desde 2026-07-13. Sem impasto a medição
     // descreveria um Painter que não existe.
     t.toggle_brush_impasto();
-    t.set_brush_size_px(BRUSH_PX);
+    t.sonda_raio(BRUSH_PX);
     for k in 0..STROKES / 2 {
         stroke(&mut t, k);
     }

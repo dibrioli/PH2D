@@ -211,7 +211,7 @@ pub(super) fn pinta_cena_do_dono() -> PainterTool {
         let p = &preset_rel(&b, preset);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(raio);
+        t.sonda_raio(raio);
         t.set_brush_color_srgb8(cor);
         // Quatro passagens, a 2.ª e a 4.ª de volta e deslocadas: as cristas da captura do dono.
         for k in 0..4 {
@@ -249,7 +249,7 @@ pub(super) fn pinta_cena_lisa() -> PainterTool {
         let p = &preset_rel(&b, &rel);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(20.0);
+        t.sonda_raio(20.0);
         t.set_brush_color_srgb8(AZ);
         let ticks = arrasta(&mut t, a, z);
         println!("[oraculo] {preset} (água {ticks})");
@@ -291,7 +291,7 @@ pub(super) fn pinta_cena_smooth2() -> PainterTool {
         let erros = t.wet_preset_aplicar(&p);
         assert!(erros.is_empty(), "{erros:?}");
         t.paint.wetpaint.knobs.set(Knob::KnifeLevel, nivel);
-        t.set_brush_size_px(
+        t.sonda_raio(
             std::env::var("PH2D_OLEO_S2_RAIO").map_or(20.0, |v| v.parse().expect("raio")),
         );
         t.set_brush_color_srgb8([23, 101, 179]);
@@ -325,7 +325,7 @@ fn pinta_cena_dabber3() -> PainterTool {
     for (diametro, y) in [(40.0f32, 90.0), (200.0, 290.0)] {
         let erros = t.wet_preset_aplicar(&p);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(diametro * 0.673 / 2.0);
+        t.sonda_raio(diametro * 0.673 / 2.0);
         t.set_brush_color_srgb8([23, 101, 179]);
         let ticks = arrasta(&mut t, [60.0, y], [640.0, y]);
         println!("[oraculo] Dabber 3 a {diametro} px (água {ticks})");
@@ -349,7 +349,7 @@ pub(super) fn pinta_cena_retangulo() -> PainterTool {
         let p = preset_rel(&b, &rel);
         let erros = t.wet_preset_aplicar(&p);
         assert!(erros.is_empty(), "{erros:?}");
-        t.set_brush_size_px(30.0);
+        t.sonda_raio(30.0);
         t.set_brush_color_srgb8([30, 70, 210]);
         let (y0, y1) = (80.0f32, 380.0f32);
         let lados = [

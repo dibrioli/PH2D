@@ -62,7 +62,7 @@ fn sonda_csp_lote_b() {
         t.set_source(base.clone(), W as u32, H as u32);
         assert_eq!(t.preset_aplicar(&p), Ok(Vec::new()));
         let diam = r.size_px.unwrap_or(30.0).min(120.0) as f32;
-        t.set_brush_size_px(diam / 2.0);
+        t.sonda_raio(diam / 2.0);
         for (nome, cor) in [
             ("zz_y", [240u8, 200, 0]),
             ("zz_b", [0, 70, 190]),

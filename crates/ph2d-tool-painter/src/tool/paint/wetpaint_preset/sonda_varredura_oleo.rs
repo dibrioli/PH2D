@@ -299,7 +299,7 @@ pub(super) fn pinta(
                     .knobs
                     .set(d.knob, v.parse().expect("valor"));
             }
-            t.set_brush_size_px(32.0);
+            t.sonda_raio(32.0);
             t.set_brush_color_srgb8(cor);
             let y = y0 + [0.0, 6.0, -6.0][k % 3];
             let (a, z) = ([50.0, y], [310.0, y + 4.0]);

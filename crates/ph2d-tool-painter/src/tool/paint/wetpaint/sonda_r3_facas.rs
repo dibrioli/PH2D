@@ -46,7 +46,7 @@ fn sonda_r3_facas() {
     let mut acum = (0u64, 0u64);
     for k in 0..20 {
         assert!(t.wet_preset_aplicar(&presets[k % FACAS.len()]).is_empty());
-        t.set_brush_size_px(45.0);
+        t.sonda_raio(45.0);
         t.set_brush_color_srgb8([20, 150, 230]);
         let (x0, y) = (
             if k % 10 < 5 { 70.0 } else { 650.0 },

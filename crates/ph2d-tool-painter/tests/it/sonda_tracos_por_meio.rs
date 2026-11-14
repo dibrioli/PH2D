@@ -114,7 +114,7 @@ fn os_presets_do_wet_painter() {
             .is_none()
             .then_some(BRUSH_PX))
         {
-            t.set_brush_size_px(r);
+            t.sonda_raio(r);
         }
         let t0 = std::time::Instant::now();
         let (px, w, h) = pinta_cena(&mut t);

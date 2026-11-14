@@ -115,7 +115,61 @@ fn troca_no_pool<'a, T: Clone + Send + PoupaIgual>(
     }
 }
 
-/// O mesmo para um plano de fluxo, em série (poucos tiles).
+/// Os tiles de fluxo (`vel_x`/`vel_y`) trocam com a grade no pool, um job por faixa de tiles em cada plano, com a
+/// mesma poupança das linhas iguais (B18.11: 6–7 ms em série a 4K). Plano vazio na grade ⇒ o tile fica vazio (o
+/// `tira` de um plano vazio). `PH2D_FLUXO_SERIE=1` (lida uma vez) = o [`troca_ou_copia`] em série, como antes.
+fn troca_o_fluxo(
+    g: &mut Grid,
+    tiles: impl Iterator<Item = (u32, [Vec<f32>; 2])>,
+) -> std::collections::BTreeMap<u32, [Vec<f32>; 2]> {
+    let (fs, frows) = (g.flow.s, g.flow.rows);
+    let mut tiles: Vec<(u32, [Vec<f32>; 2])> = tiles.collect();
+    if fluxo_em_serie() {
+        for (k, [vx, vy]) in &mut tiles {
+            let r = ret_do_tile(*k, fs, frows);
+            troca_ou_copia(&mut g.vel_x, fs, r, vx);
+            troca_ou_copia(&mut g.vel_y, fs, r, vy);
+        }
+        return tiles.into_iter().collect();
+    }
+    let (mut lx, mut ly) = (
+        Vec::with_capacity(tiles.len()),
+        Vec::with_capacity(tiles.len()),
+    );
+    for (k, [vx, vy]) in &mut tiles {
+        let r = ret_do_tile(*k, fs, frows);
+        lx.push((r, vx));
+        ly.push((r, vy));
+    }
+    for (v, l) in [(&g.vel_x, &mut lx), (&g.vel_y, &mut ly)] {
+        if v.is_empty() {
+            l.drain(..).for_each(|(_, d)| d.clear());
+        }
+    }
+    let (vx, vy) = (&mut g.vel_x, &mut g.vel_y);
+    rayon::scope(|sc| {
+        troca_no_pool(vx, fs, lx, sc);
+        troca_no_pool(vy, fs, ly, sc);
+    });
+    tiles.into_iter().collect()
+}
+
+fn fluxo_em_serie() -> bool {
+    #[cfg(test)]
+    if FLUXO_EM_SERIE.with(std::cell::Cell::get) {
+        return true;
+    }
+    static S: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *S.get_or_init(|| std::env::var("PH2D_FLUXO_SERIE").is_ok_and(|v| v == "1"))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// O fluxo em série de antes, por fio: a régua A/B no MESMO processo.
+    pub(crate) static FLUXO_EM_SERIE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O mesmo para um plano de fluxo, em série (o caminho de antes, `PH2D_FLUXO_SERIE=1`).
 fn troca_ou_copia(v: &mut [f32], s: usize, r: Ret, d: &mut Vec<f32>) {
     let w = r.x1 - r.x0;
     if !v.is_empty() && d.len() == w * (r.y1 - r.y0) {
@@ -249,11 +303,11 @@ impl Registo {
         let ok = Trocam::de(g, &v);
         marca("troca: tiles para a lista");
         #[cfg(any(test, feature = "sonda-fases"))]
-        if crate::sonda_fases::ligado() {
+        if crate::sonda_fases::censo_ligado() {
             for (r, t) in &tiles {
                 t.censo(g, *r);
             }
-            marca("troca: (censo da sonda)");
+            marca(crate::sonda_fases::CENSO_FASE);
         }
         let por: Vec<TileFino> = {
             let g = &*g;
@@ -283,17 +337,10 @@ impl Registo {
         super::super::aparencia::reconta_teto(g);
         super::super::oleo_celula::reconta_real(g);
         marca("troca: reconta");
-        let (fs, frows) = (g.flow.s, g.flow.rows);
-        out.fluxo = std::mem::take(&mut self.fluxo)
-            .into_iter()
-            .chain(ex_fluxo)
-            .map(|(k, [mut vx, mut vy])| {
-                let r = ret_do_tile(k, fs, frows);
-                troca_ou_copia(&mut g.vel_x, fs, r, &mut vx);
-                troca_ou_copia(&mut g.vel_y, fs, r, &mut vy);
-                (k, [vx, vy])
-            })
-            .collect();
+        out.fluxo = troca_o_fluxo(
+            g,
+            std::mem::take(&mut self.fluxo).into_iter().chain(ex_fluxo),
+        );
         marca("troca: fluxo");
         out.finos = ks.into_iter().zip(tiles.into_iter().map(|t| t.1)).collect();
         if zera_o_fluxo {

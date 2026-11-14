@@ -466,3 +466,41 @@ fn a_troca_poupa_as_linhas_iguais_e_da_o_bit_da_troca_cega() {
         );
     }
 }
+
+/// B18.11: os tiles de fluxo (`vel_x`/`vel_y`) trocam no pool e dão o bit do fluxo em série de antes
+/// (`FLUXO_EM_SERIE`) e do oráculo (`ANTIGO`), nas três leis, com a água a correr entre os passos.
+#[test]
+fn o_fluxo_no_pool_da_o_bit_do_fluxo_em_serie() {
+    use super::troca::FLUXO_EM_SERIE;
+    for lei in [0, 1, 2] {
+        let mut e = [0, 1, 2].map(|_| monta_lei(700, 420, lei, 1.0));
+        assert!(
+            e[0].active_grid().vel_x.iter().any(|v| *v != 0.0),
+            "lei {lei}: sem velocidade, o gate não mede o fluxo"
+        );
+        for passo in ["undo", "redo", "corre", "undo", "undo", "redo", "redo"] {
+            for (k, e) in e.iter_mut().enumerate() {
+                let faz = || match passo {
+                    "undo" => assert!(e.undo_sem_zerar_o_fluxo() || !e.can_undo()),
+                    "redo" => assert!(e.redo_sem_zerar_o_fluxo() || !e.can_redo()),
+                    _ => corre(e, 2),
+                };
+                FLUXO_EM_SERIE.with(|c| c.set(k == 1));
+                com(k == 2, faz);
+                FLUXO_EM_SERIE.with(|c| c.set(false));
+            }
+            let at = format!("{passo} (lei {lei})");
+            assert_eq!(
+                estado(e[0].active_grid()),
+                estado(e[1].active_grid()),
+                "{at}: × série"
+            );
+            assert_eq!(
+                estado(e[0].active_grid()),
+                estado(e[2].active_grid()),
+                "{at}: × oráculo"
+            );
+            assert_eq!(pilha(&e[0]), pilha(&e[1]), "{at}: a pilha");
+        }
+    }
+}

@@ -79,6 +79,13 @@ fn sonda_as_fases_do_ctrl_z_wet_a_4k() {
                 let total = a.elapsed().as_secs_f64() * 1e3;
                 assert!(feito, "refaz = {refaz}");
                 let f = fases::tira();
+                // O censo (`PH2D_SONDA_CENSO=1`) é da sonda, não do undo: fora do TOTAL.
+                let censo_ms: f64 = f
+                    .iter()
+                    .filter(|e| e.0 == ph2d_wet_paint::sonda_fases::CENSO_FASE)
+                    .map(|e| e.1.as_secs_f64() * 1e3)
+                    .sum();
+                let total = total - censo_ms;
                 assert!(
                     f.iter().any(|e| e.0 == "volta: repoe"),
                     "o undo vivo não correu (refaz = {refaz})"

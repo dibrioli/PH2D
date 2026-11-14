@@ -68,3 +68,35 @@ planos iguais são poucos, a cura 1 vale ~0 e o caminho é o motor **não marcar
 água viva das 3 pinceladas: pegada F4) ou guardar no `TileFino` só os PLANOS que mudaram (`Registo::marca`); se a sub-fase maior
 for `copia_os_outros`/`poe_no_pool` (os esparsos do óleo, Dabber 48 ms), levar os esparsos ao pool por pedaço (hoje
 `CampoEsparso::poe_no_pool` é UM job em série).
+
+## F1c (14/11) — a medição da cura 1, o censo fora do TOTAL, o fluxo no pool
+
+Medição (janela principal): s6 `sonda_as_fases_do_ctrl_z_wet_a_4k`, 7 rodadas, 2 pares intercalados `PH2D_TROCA_POUPA=1/0`,
+load 5,8–7,6 (`uptime` em `target/n10/f1c/load.txt`; saídas `target/n10/f1c/poupa{1,0}_r{1,2}.txt`, não comitadas). Mínimo, ms:
+
+| fase (undo) | Wet Flat 240 poupa=0 → 1 | Dabber 120 poupa=0 → 1 |
+|---|---|---|
+| `troca: troca_os_planos` | 22,8 / 23,0 → 16,4 / 16,1 | 41,6 / 42,3 → 30,8 / 30,4 |
+| `troca: fluxo` | 6,5 / 7,0 → 6,4 / 5,9 | 5,2 / 5,6 → 5,4 / 5,1 |
+| `troca: reconta` · `FotoDoMotor::de` · `repoe` (redo) · `restore_model` | 0 · 2,9 · 3,3 · 0 | 2,4 · 4,1 · 5,6 · 2,3 |
+| TOTAL **com** o censo (29 / 73 ms) | 71,1 / 73,3 → 60,7 / 59,6 | 132,9 / 135,4 → 122,8 / 120,9 |
+| TOTAL sem o censo (estimado: menos a linha do censo) | ~42–44 → ~30–31 | ~59–62 → ~48–49 |
+
+A cura 1 vale **−7 a −11 ms** por undo/redo. ⚠️ A linha `troca: (censo da sonda)` (29–76 ms) era o PRÓPRIO censo e entrava no
+TOTAL: a sonda mentia. Censo (tiles iguais ao bit à grade / tiles com o plano, undo+redo): **Wet Flat** — relevo, vela, bloom
+100 %; active, susp_rgb 59 %; wet 53 %; film/susp/sett/sett_rgb 18 %. **Dabber** — film, susp, susp_rgb, vela, active, bloom
+100 %; sett/sett_rgb/relevo 79 %, altura 78 %, espessura 81 %.
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B18.11 cura 1 | **feita, medida** | troca_os_planos 23,0 → 16,1 (Wet Flat) · 42,3 → 30,4 (Dabber) | `84c5611da8` | acima |
+| B18.11 sonda honesta | feito | censo 29–76 ms fora do TOTAL | este commit | o censo só corre com `PH2D_SONDA_CENSO=1` (lida uma vez) e a fase `sonda_fases::CENSO_FASE` sai do TOTAL da s6. |
+| B18.11 cura 2 (`fluxo`) | **feita, por medir a 4K** | 6–7 ms em série → a medir (`PH2D_FLUXO_SERIE=1` = antes) | este commit | `troca_o_fluxo`: os tiles de `vel_x`/`vel_y` trocam no pool (`troca_no_pool`, um job por faixa, com a poupança das linhas iguais); plano vazio ⇒ tile vazio (o `tira` de antes). Gate `o_fluxo_no_pool_da_o_bit_do_fluxo_em_serie` (× série `FLUXO_EM_SERIE` × oráculo `ANTIGO`, 3 leis, vel ≠ 0 conferida); mutação «não troca `vel_y`» ⇒ vermelho «undo (lei 0): × série»; os 4 gates `troca` verdes. |
+| B18.11 cura 3 (máscara de planos por tile) | **aberto** | — | — | ver próximo passo. Decidir no undo já é o que a cura 1 faz (lê os dois lados); decidir na ESCRITA pede que cada sítio que marca diga QUE planos vai escrever — os do solver (`marca_passo`/`marca_do_passo` em `painter/historia.rs`, chamados de `solver.rs`/`flow_jacobi.rs`, com edições por comitar de outro agente nesta rodada) não foram tocados. |
+
+Próximo passo exato: (1) a janela corre a s6 A×B do fluxo (comando no retorno do F1c). (2) cura 3: `Registo::marca_planos(g, ret,
+Planos)` (máscara de bits por plano do `tile_fino!`); `TileFino` ganha `guardados: Planos` e só tira os planos da máscara (os
+outros ficam «não guardado», distinto de «vazio na base»); `marca` sem máscara = todos (o de hoje); a troca/`copia_os_outros`/
+`poe_no_pool`/`inverso`/`restaura_com` saltam o plano não guardado; uma 2.ª marca do mesmo tile com planos novos tira-os NESSE
+instante (a grade ainda é a base deles). Sítios: `marca_dab` (o dab: quais planos o `deposit`/`stamp` escreve) e o passo do
+solver (por estágio: o Wet Flat nunca escreve relevo/vela/bloom ⇒ ~28 % dos bytes da troca). Oráculo = máscara cheia, ao bit.

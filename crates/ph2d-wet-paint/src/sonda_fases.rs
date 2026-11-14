@@ -85,10 +85,18 @@ mod relogio {
         CENSO.with(|c| std::mem::take(&mut *c.borrow_mut()))
     }
 
-    pub(crate) fn ligado() -> bool {
+    /// O censo por plano é caro (tira e compara cada plano de cada tile, ~30–75 ms a 4K) e mentia no TOTAL: só com
+    /// `PH2D_SONDA_CENSO=1` (lida uma vez), e a fase dele sai do TOTAL da sonda ([`CENSO_FASE`]).
+    pub(crate) fn censo_ligado() -> bool {
+        static C: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         LIGADO.with(Cell::get)
+            && *C.get_or_init(|| std::env::var("PH2D_SONDA_CENSO").is_ok_and(|v| v == "1"))
     }
 }
 
+/// O nome da fase do censo (fora do TOTAL da sonda: não é custo do undo).
 #[cfg(any(test, feature = "sonda-fases"))]
-pub(crate) use relogio::{ligado, soma_censo};
+pub const CENSO_FASE: &str = "troca: (censo da sonda)";
+
+#[cfg(any(test, feature = "sonda-fases"))]
+pub(crate) use relogio::{censo_ligado, soma_censo};

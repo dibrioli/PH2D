@@ -343,3 +343,64 @@ fn a_malha_dobrada_nao_tem_costura_sem_dono() {
         "a malha dobrada deixa texels sem dono na costura entre células: {falhas:?}"
     );
 }
+
+/// B17.6 (F1o): o Transform de uma SELEÇÃO (afim e Warp) forka a tela pelo `dirty` (a caixa de antes ∪ a de
+/// agora), não pela tela: todo texel mudado está no journal, e o journal é menos de metade da tela.
+#[test]
+fn o_transform_de_uma_selecao_captura_so_o_dirty() {
+    const N: u32 = 512;
+    for (nome, warp) in [("afim", false), ("warp", true)] {
+        let mut src = vec![255u8; (N * N * 4) as usize];
+        for (i, p) in src.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+            if (i % N as usize / 8).is_multiple_of(2) {
+                p[..3].copy_from_slice(&[20, 40, 200]);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, N, N);
+        t.set_rect_selection(100, 120, 60, 40);
+        t.set_paint_tool_mode("liquify");
+        let before: Vec<u8> = t.canvas_rgba.to_vec();
+        t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+        t.set_deform_transform_mode(1);
+        let x = t.paint.deform.xform.expect("o levante");
+        let mut cur = x.pristine;
+        cur.center = [cur.center[0] + 7.0, cur.center[1] + 5.0];
+        t.paint.deform.xform = Some(super::transform::Xform { current: cur, ..x });
+        if warp {
+            let corners = |f: &TransformFrame| {
+                let h = f.handles();
+                [h[0], h[1], h[2], h[3]]
+            };
+            t.paint.deform.transform_mode = 3;
+            t.paint.deform.xform_mesh = Some(Mesh {
+                cols: 3,
+                rows: 3,
+                pristine: Mesh::seed(corners(&x.pristine), 3, 3).pristine,
+                current: Mesh::seed(corners(&cur), 3, 3).current,
+            });
+        }
+        t.recomposite_transform();
+        let (mut changed, mut undescribed) = (0usize, 0usize);
+        for (i, (&a, &b)) in before.iter().zip(t.canvas_rgba.iter()).enumerate() {
+            if a != b {
+                changed += 1;
+                if t.undo.write_state.canvas_before(i) != Some(a) {
+                    undescribed += 1;
+                }
+            }
+        }
+        assert!(changed > 0, "{nome}: controlo — o transform não mexeu");
+        assert_eq!(
+            undescribed, 0,
+            "{nome}: {undescribed}/{changed} texels fora do journal"
+        );
+        let retido = t.undo.write_state.canvas_journal().heap_bytes();
+        assert!(
+            retido * 2 < before.len(),
+            "{nome}: o journal reteve {retido} B de uma tela de {} B (a tela inteira)",
+            before.len()
+        );
+        println!("[transform {nome}] mudou {changed} B, journal {retido} B");
+    }
+}

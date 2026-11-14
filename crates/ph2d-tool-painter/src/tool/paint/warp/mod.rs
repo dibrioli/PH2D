@@ -35,7 +35,7 @@ pub(crate) mod session;
 mod transform;
 mod transform_float;
 mod transform_geom;
-mod transform_lift;
+pub(in crate::tool::paint) mod transform_lift;
 mod transform_mesh;
 #[cfg(test)]
 mod transform_modes_tests;

@@ -92,14 +92,24 @@ impl PainterTool {
         // e, com corpo em mãos, a borda da seleção com o perfil do Falloff que o artista escolheu.
         let mask = self.fill_selection_keep();
         let guarda = self.guarda_da_escrita_direta();
+        // B17.6: fora da caixa da cobertura nada é escrito — o fork captura só ela.
+        let caixa = super::warp::transform_lift::mask_bbox(&mask, w as u32, h as u32);
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            Some(caixa.unwrap_or(Region {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            })),
         );
         let n = mask.len().min(buf.len() / 4);
-        for i in 0..n {
+        for i in indices_da_caixa(caixa, w) {
+            if i >= n {
+                continue;
+            }
             let cov = f32::from(mask[i]) / 255.0;
             if cov <= 0.0 {
                 continue;
@@ -184,14 +194,23 @@ impl PainterTool {
         let before = self.snapshot_model();
         let mask = Arc::clone(&self.paint.selection_mask);
         let guarda = self.guarda_da_escrita_direta();
+        let caixa = super::warp::transform_lift::mask_bbox(&mask, w as u32, h as u32);
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            Some(caixa.unwrap_or(Region {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            })),
         );
         let n = mask.len().min(buf.len() / 4);
-        for i in 0..n {
+        for i in indices_da_caixa(caixa, w) {
+            if i >= n {
+                continue;
+            }
             let cov = f32::from(mask[i]) / 255.0;
             if cov <= 0.0 {
                 continue;
@@ -365,3 +384,11 @@ mod escrita_direta_tests;
 #[cfg(test)]
 #[path = "prancha_b40a_tests.rs"]
 mod prancha_b40a_tests;
+
+/// Os índices de texel de `caixa` (largura `w`), por linhas; nenhum sem caixa.
+fn indices_da_caixa(caixa: Option<Region>, w: usize) -> impl Iterator<Item = usize> {
+    caixa.into_iter().flat_map(move |c| {
+        (c.y as usize..(c.y + c.h) as usize)
+            .flat_map(move |y| (c.x as usize..(c.x + c.w) as usize).map(move |x| y * w + x))
+    })
+}

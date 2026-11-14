@@ -10,7 +10,7 @@ type Caixa = Option<(u32, u32, u32, u32)>;
 
 /// A caixa dos texels com máscara > 0 (`None` = nenhum). Além do fim da máscara conta zero (como o
 /// `selection_coverage_at`).
-pub(super) fn mask_bbox(mask: &[u8], w: u32, h: u32) -> Option<Region> {
+pub(in crate::tool::paint) fn mask_bbox(mask: &[u8], w: u32, h: u32) -> Option<Region> {
     let wu = w as usize;
     let mut cx: Caixa = None;
     for y in 0..h {

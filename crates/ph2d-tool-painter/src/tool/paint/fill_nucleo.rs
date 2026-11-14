@@ -49,6 +49,41 @@ pub(in crate::tool::paint) fn flood_fill_caixa(
     (r, caixa)
 }
 
+/// [`flood_fill_caixa`] SÓ DE LEITURA (B17.6): o mesmo conjunto no `visited` e as mesmas duas caixas, sem
+/// escrever `px` — o flood só lê texels ainda não visitados, que ele nunca escreveu. Quem chama pinta o
+/// conjunto depois com [`pinta_o_conjunto`] (o fork da tela já sabe a caixa).
+pub(in crate::tool::paint) fn flood_visita_caixa(
+    px: &[u8],
+    w: usize,
+    h: usize,
+    seed: (usize, usize),
+    fill: [u8; 3],
+    tol: u8,
+    visited: &mut [bool],
+) -> (Option<Region>, Option<Region>) {
+    let (r, _, caixa) = flood_visita_em(px, w, h, seed, fill, tol, None, visited);
+    (r, caixa)
+}
+
+/// Escreve `fill` opaco em todo texel de `caixa` marcado no `visited` — a metade que escreve do flood.
+pub(in crate::tool::paint) fn pinta_o_conjunto(
+    px: &mut [u8],
+    w: usize,
+    caixa: Region,
+    visited: &[bool],
+    fill: [u8; 3],
+) {
+    let fillpx = [fill[0], fill[1], fill[2], 255];
+    for y in caixa.y as usize..(caixa.y + caixa.h) as usize {
+        for x in caixa.x as usize..(caixa.x + caixa.w) as usize {
+            let idx = y * w + x;
+            if visited[idx] {
+                px[idx * 4..idx * 4 + 4].copy_from_slice(&fillpx);
+            }
+        }
+    }
+}
+
 /// [`flood_fill`] mais o PICO da pilha (entradas) — a régua do B48.1.
 #[cfg(test)]
 fn flood_fill_medido(
@@ -69,6 +104,24 @@ fn flood_fill_medido(
 #[expect(clippy::too_many_arguments, reason = "o flood + o seu visited")]
 fn flood_fill_em(
     px: &mut [u8],
+    w: usize,
+    h: usize,
+    seed: (usize, usize),
+    fill: [u8; 3],
+    tol: u8,
+    mask: Option<&mut [u8]>,
+    visited: &mut [bool],
+) -> (Option<Region>, usize, Option<Region>) {
+    let r = flood_visita_em(px, w, h, seed, fill, tol, mask, visited);
+    if let Some(caixa) = r.2 {
+        pinta_o_conjunto(px, w, caixa, visited, fill);
+    }
+    r
+}
+
+#[expect(clippy::too_many_arguments, reason = "o flood + o seu visited")]
+fn flood_visita_em(
+    px: &[u8],
     w: usize,
     h: usize,
     seed: (usize, usize),
@@ -123,7 +176,6 @@ fn flood_fill_em(
             if px[o..o + 4] != fillpx {
                 changed = true;
             }
-            px[o..o + 4].copy_from_slice(&fillpx);
         }
         minx = minx.min(lx);
         maxx = maxx.max(rx);

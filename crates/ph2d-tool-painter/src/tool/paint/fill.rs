@@ -71,24 +71,53 @@ impl PainterTool {
         // PINCEL (`deposits_height`), não do MODO: um balde nunca está em `PaintMode::Paint`.
         let corpo = self.paint.brush.deposits_height();
         let prev = self.paint.fill_last_rect;
+        // B17.6: o snapshot É a tela de antes do balde, então o flood corre SÓ DE LEITURA nele e o fork
+        // captura só o que este tique escreve — o fill anterior (restaurado) ∪ a caixa do flood.
+        let snap_ok = self.paint.fill_snapshot.len() == n * 4;
+        let lido = snap_ok.then(|| {
+            let visited = self.paint.fill_rascunho.visitado(n, w);
+            nucleo::flood_visita_caixa(
+                &self.paint.fill_snapshot,
+                w,
+                h,
+                (sx, sy),
+                color,
+                tol,
+                visited,
+            )
+        });
+        let area = match lido {
+            Some((_, Some(c))) => Some(prev.map_or(c, |p| super::union_region(p, c))),
+            Some((_, None)) if prev.is_none() => return,
+            Some((_, None)) => prev,
+            None => None,
+        };
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            area,
         );
         if buf.len() != n * 4 {
             return;
         }
         // B48.2: o buffer só difere do snapshot dentro do fill anterior — restaurar só essas linhas.
-        if self.paint.fill_snapshot.len() == buf.len()
-            && let Some(r) = prev
-        {
+        if snap_ok && let Some(r) = prev {
             copia_caixa(buf, &self.paint.fill_snapshot, r, w);
         }
         let rascunho = &mut self.paint.fill_rascunho;
-        let visited = rascunho.visitado(n, w);
-        let (filled, caixa) = nucleo::flood_fill_caixa(buf, w, h, (sx, sy), color, tol, visited);
+        let (filled, caixa) = match lido {
+            Some((filled, caixa)) => {
+                if let Some(c) = caixa {
+                    nucleo::pinta_o_conjunto(buf, w, c, rascunho.visitados(), color);
+                }
+                (filled, caixa)
+            }
+            None => {
+                let visited = rascunho.visitado(n, w);
+                nucleo::flood_fill_caixa(buf, w, h, (sx, sy), color, tol, visited)
+            }
+        };
         rascunho.visitou(caixa);
         let Some(caixa) = caixa else {
             return;
@@ -316,14 +345,24 @@ impl PainterTool {
             return;
         }
         let n = self.paint.fill_snapshot.len();
-        if n > 0 && self.canvas_rgba.len() == n {
+        // B17.6: a tela só difere do snapshot no último fill (o invariante do B48.2) — restaurar e capturar
+        // só essa caixa; sem fill nenhum, nada a restaurar.
+        if n > 0
+            && self.canvas_rgba.len() == n
+            && let Some(r) = self.paint.fill_last_rect
+        {
             let buf = crate::tool::paint::plane_fork::fork_canvas(
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
-                None,
+                Some(r),
             );
-            buf.copy_from_slice(&self.paint.fill_snapshot);
+            copia_caixa(
+                buf,
+                &self.paint.fill_snapshot,
+                r,
+                self.source_size.0 as usize,
+            );
         }
         if let Some(rect) = self.paint.fill_last_rect {
             self.mark_dirty(rect); // repaint what the fill had painted

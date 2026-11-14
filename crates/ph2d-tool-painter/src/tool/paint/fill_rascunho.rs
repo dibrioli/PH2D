@@ -68,6 +68,11 @@ impl Rascunho {
         self.visitado[i]
     }
 
+    /// O conjunto do último flood inteiro (o `visited`).
+    pub(super) fn visitados(&self) -> &[bool] {
+        &self.visitado
+    }
+
     /// A última [`Self::componente`].
     pub(super) fn comp(&self) -> &[u8] {
         &self.comp

@@ -249,3 +249,84 @@ fn o_inpaint_captura_so_a_regiao_do_lote() {
     );
     println!("[inpaint] mudou {changed} B, journal {retido} B");
 }
+
+/// Todo texel que mudou desde `before` está no journal, e o journal retém menos de metade da tela.
+fn exige_o_journal(nome: &str, t: &PainterTool, before: &[u8]) -> usize {
+    let (mut changed, mut undescribed) = (0usize, 0usize);
+    for (i, (&a, &b)) in before.iter().zip(t.canvas_rgba.iter()).enumerate() {
+        if a != b {
+            changed += 1;
+            if t.undo.write_state.canvas_before(i) != Some(a) {
+                undescribed += 1;
+            }
+        }
+    }
+    assert!(changed > 0, "{nome}: controlo — nada mudou");
+    assert_eq!(
+        undescribed, 0,
+        "{nome}: {undescribed}/{changed} texels fora do journal"
+    );
+    let retido = t.undo.write_state.canvas_journal().heap_bytes();
+    assert!(
+        retido * 2 < before.len(),
+        "{nome}: o journal reteve {retido} B de uma tela de {} B (a tela inteira)",
+        before.len()
+    );
+    println!("[{nome}] mudou {changed} B, journal {retido} B");
+    changed
+}
+
+/// B17.6 (F1o): o balde (o soltar, o tique do limiar e o Cancel), o Color Fill e o Cut da seleção capturam só a
+/// caixa que escrevem; o undo/Cancel devolve a tela ao byte. O Transform: `warp/transform_modes_tests.rs`.
+#[test]
+fn o_balde_e_a_selecao_capturam_so_a_regiao() {
+    // O balde: a listra branca sob a semente (8 × 512) — o flood corre só de leitura no snapshot.
+    let mut t = tela();
+    t.paint.tiling = [false, false];
+    t.paint.brush.color = [0.9, 0.1, 0.1];
+    let before: Vec<u8> = t.canvas_rgba.to_vec();
+    let semente = [12.0, 100.0];
+    assert!(t.fill_pointer(cp(semente, PointerPhase::Down)));
+    assert!(t.fill_pointer(cp(semente, PointerPhase::Up)));
+    exige_o_journal("balde: o soltar", &t, &before);
+    t.set_fill_threshold(0.9); // o limiar sobe: o flood atravessa as listras azuis (o fill cresce)
+    exige_o_journal("balde: o tique que cresce", &t, &before);
+    t.set_fill_threshold(0.0);
+    exige_o_journal("balde: o tique que encolhe", &t, &before);
+    t.fill_cancel();
+    assert!(
+        t.canvas_rgba[..] == before[..],
+        "balde: o Cancel não devolveu a tela ao byte"
+    );
+    assert!(t.fill_pointer(cp(semente, PointerPhase::Down)));
+    assert!(t.fill_pointer(cp(semente, PointerPhase::Up)));
+    t.fill_commit();
+    assert!(t.undo_last(), "balde: sem passo de undo");
+    assert!(
+        t.canvas_rgba[..] == before[..],
+        "balde: o undo não devolveu a tela ao byte"
+    );
+
+    // O Color Fill e o Cut: a caixa da cobertura.
+    for (nome, cut) in [("color fill", false), ("cut", true)] {
+        let mut t = tela();
+        t.set_rect_selection(100, 120, 60, 40);
+        let before: Vec<u8> = t.canvas_rgba.to_vec();
+        if cut {
+            t.selection_cut();
+        } else {
+            t.selection_color_fill();
+        }
+        // Estes verbos não abrem passo: a proveniência recusa o journal e o undo sai do instantâneo, então a região
+        // só corta o custo da captura — a prova aqui é o undo ao byte (N10_memoria §F1o).
+        assert!(
+            t.canvas_rgba[..] != before[..],
+            "{nome}: controlo — nada mudou"
+        );
+        assert!(t.undo_last(), "{nome}: sem passo de undo");
+        assert!(
+            t.canvas_rgba[..] == before[..],
+            "{nome}: o undo não devolveu a tela ao byte"
+        );
+    }
+}

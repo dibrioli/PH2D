@@ -128,6 +128,7 @@
 - ⭐⭐ [Dono 09/11: crítica da física (Sensor, Width/Height, Trigger)](project_physics_critique_answers_2026_11_09.md)
 - ⭐⭐ [Dono 10/11: Pastel enche o dente; Noise 120; Color mixing em cartão](project_pastel_tooth_fill_and_mixing_card_2026_11_10.md)
 
+- ⭐⭐⭐ [Dono 12/11: barra de menus = versão C (menus no W, busca no centro); revoga D2; layouts saem; sem lições](project_menu_bar_version_c_2026_11_12.md)
 - ⭐⭐ [Dono 10/11: Input Map = aba central A·B·C](project_inputmap_three_versions_2026_11_10.md) · [botão Controls ao lado do Stop](project_controls_button_in_play_bar_2026_11_10.md)
 - ⭐⭐ [Dono 09/11: Timeline redesenhada sem mudar funções — versão B (chips à Rive); Keys|Curves de fora](project_timeline_redesign_rive_mold_b_2026_11_09.md)
 - ⭐ [Dono 09/11: P13 do Pixel (tween, som, CRT)](project_pixel_p13_owner_decisions_2026_11_09.md)
@@ -145,3 +146,7 @@
 - ⭐⭐ [Dono 12/11: easing = ritmo AO LONGO do caminho (modelo AE); uma linha Position, forma no canvas](project_timeline_easing_is_rhythm_along_the_path_2026_11_12.md)
 - ⭐⭐ [Dono 10/11: Collision Shape com o Look da Sprite; ferramenta Pivot](project_collision_shape_look_2026_11_10.md)
 - ⭐⭐⭐ [Dono 12/11: Joint Editor = versão B (gabarito); o Inspector fica e melhora; prontos sim, mágicos não](project_joint_editor_version_b_2026_11_12.md)
+- ⭐⭐⭐ [Dono 13/11: Painter 4K — sim a 6 traços, desfazer em janela, «+» com desfazer curto: as três SIM](project_painter_owner_three_yes_2026_11_13.md)
+- ⭐⭐ [Dono 13/11: palpite = caixa «Faster wet paint» no cartão Performance; AVX2 medido ~0 e recusado](project_painter_performance_card_two_checkboxes_2026_11_13.md)
+- ⛔⛔ [Dono 13/11: desistiu da Planilha de Eventos; linha apagada — não recomeçar sem ordem](project_event_sheet_module_abandoned_2026_11_13.md)
+- ⭐⭐ [Dono 13/11: checkbox do app todo numa MOLDURA à Godot; losango no padrão (acima do canto sup. direito)](project_checkbox_in_a_frame_like_godot_2026_11_13.md)

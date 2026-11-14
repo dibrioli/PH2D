@@ -209,3 +209,43 @@ fn o_sculpt_captura_so_a_regiao_do_lote() {
         println!("[{nome}] mudou {changed} B, journal {retido} B");
     }
 }
+
+/// B17.6 (F1n): o Inpaint (a marca do dab e a cura no pen-up) captura só a caixa que escreve. A meio do traço todo
+/// texel mudado está no journal e o journal é menos de metade da tela; o pen-up cura e o undo devolve ao byte.
+#[test]
+fn o_inpaint_captura_so_a_regiao_do_lote() {
+    let mut t = tela();
+    t.paint.tiling = [false, false];
+    pincel(&mut t);
+    t.set_paint_tool_mode("inpaint");
+    let before: Vec<u8> = t.canvas_rgba.to_vec();
+    t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([240.0, 220.0], PointerPhase::Move));
+    let (mut changed, mut undescribed) = (0usize, 0usize);
+    for (i, (&a, &b)) in before.iter().zip(t.canvas_rgba.iter()).enumerate() {
+        if a != b {
+            changed += 1;
+            if t.undo.write_state.canvas_before(i) != Some(a) {
+                undescribed += 1;
+            }
+        }
+    }
+    assert!(changed > 0, "a marca do Inpaint não mudou nada");
+    assert_eq!(
+        undescribed, 0,
+        "{undescribed}/{changed} texels fora do journal"
+    );
+    let retido = t.undo.write_state.canvas_journal().heap_bytes();
+    assert!(
+        retido * 2 < before.len(),
+        "o journal reteve {retido} B de uma tela de {} B (a tela inteira)",
+        before.len()
+    );
+    t.on_canvas_pointer(cp([240.0, 220.0], PointerPhase::Up));
+    assert!(t.undo_last(), "sem passo de undo");
+    assert!(
+        t.canvas_rgba[..] == before[..],
+        "o undo não devolveu a tela ao byte"
+    );
+    println!("[inpaint] mudou {changed} B, journal {retido} B");
+}

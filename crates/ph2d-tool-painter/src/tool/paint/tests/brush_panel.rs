@@ -16,9 +16,9 @@ fn brush_size_norm_round_trips_through_settings() {
         "size_norm = {}",
         s.size_norm
     );
-    // Clamps at the ends.
+    // Clamps at the ends (the top is the MOTOR's ceiling, B42.5: Digital 1024).
     t.set_brush_size_norm(2.0);
-    assert!((t.brush_settings().size_px - BRUSH_SIZE_MAX_PX).abs() < 0.01);
+    assert!((t.brush_settings().size_px - t.tecto_do_motor()).abs() < 0.01);
     t.set_brush_size_norm(-1.0);
     assert!((t.brush_settings().size_px - BRUSH_SIZE_MIN_PX).abs() < 0.01);
 }
@@ -974,4 +974,50 @@ fn o_tecto_do_raio_e_do_motor() {
     t.set_paint_media(crate::PaintMedia::WetPaint);
     t.set_brush_size_px(5000.0);
     assert_eq!(t.brush_size_px(), BRUSH_SIZE_MAX_PX);
+}
+
+/// B42.5 (F1n): o trilho do Size estica-se até ao tecto do MOTOR. Até ao joelho o mesmo curso dá o MESMO raio em
+/// todo motor (ao bit com o trilho de 512); acima, o Digital chega a 1024 em `t = 1`, monótono, e o snapshot devolve
+/// o curso de onde veio.
+#[test]
+fn o_trilho_do_size_chega_ao_tecto_do_motor() {
+    use super::super::brush_ranges::{BRUSH_SIZE_MAX_DIGITAL_PX, TRILHO_JOELHO};
+    use super::super::brush_settings::size_norm_to_px;
+    for media in [
+        crate::PaintMedia::Digital,
+        crate::PaintMedia::Watercolor,
+        crate::PaintMedia::Impasto,
+        crate::PaintMedia::WetPaint,
+    ] {
+        let mut t = PainterTool::default();
+        t.set_paint_media(media);
+        let mut anterior = 0.0f32;
+        for i in 0..=200u32 {
+            let curso = i as f32 / 200.0;
+            t.set_brush_size_norm(curso);
+            let px = t.brush_size_px();
+            if curso <= TRILHO_JOELHO || media != crate::PaintMedia::Digital {
+                assert_eq!(
+                    px.to_bits(),
+                    size_norm_to_px(curso).min(t.raio_maximo()).to_bits(),
+                    "{media:?} t={curso}"
+                );
+            }
+            assert!(px >= anterior, "{media:?} t={curso}: {px} < {anterior}");
+            anterior = px;
+            let volta = t.brush_settings().size_norm;
+            if px < t.raio_maximo() {
+                assert!(
+                    (volta - curso).abs() < 1e-4,
+                    "{media:?} t={curso}: volta {volta}"
+                );
+            }
+        }
+        let topo = if media == crate::PaintMedia::Digital {
+            BRUSH_SIZE_MAX_DIGITAL_PX
+        } else {
+            BRUSH_SIZE_MAX_PX
+        };
+        assert_eq!(anterior, topo.min(t.raio_maximo()), "{media:?}");
+    }
 }

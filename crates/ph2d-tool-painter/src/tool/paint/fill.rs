@@ -107,7 +107,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
-                None,
+                Some(fr),
             );
             let comp = self.paint.fill_rascunho.comp();
             let snap = &self.paint.fill_snapshot;

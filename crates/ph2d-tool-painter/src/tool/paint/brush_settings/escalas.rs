@@ -1,6 +1,7 @@
 //! O snap de 45° e as escalas dos sliders (tamanho, contagem) — filho de `brush_settings` por LOC.
 
 use super::*;
+use crate::tool::paint::brush_ranges::TRILHO_JOELHO;
 
 /// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting onto it.
 /// Transcendental-free (abs/signum/mul + the `tan(22.5°)`/`tan(67.5°)`/`√½` constants) for HR-5.
@@ -39,6 +40,38 @@ pub(in crate::tool::paint) fn size_px_to_norm(px: f32) -> f32 {
 pub(in crate::tool::paint) fn size_norm_to_px(t: f32) -> f32 {
     let t = t.clamp(0.0, 1.0);
     BRUSH_SIZE_MIN_PX + t * t * (BRUSH_SIZE_MAX_PX - BRUSH_SIZE_MIN_PX)
+}
+
+/// O trilho do Size sobre o tecto do MOTOR (B42.5): até [`TRILHO_JOELHO`] é o trilho de 512 ao bit (o mesmo
+/// curso dá o mesmo raio em todo motor); acima, um motor de tecto maior soma `(tecto − 512)·u³`
+/// (`u = (t − joelho)/(1 − joelho)`: valor, 1.ª e 2.ª derivada nulas no joelho) e chega ao tecto em `t = 1`.
+pub(in crate::tool::paint) fn size_norm_to_px_em(t: f32, tecto: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    let base = size_norm_to_px(t);
+    let extra = tecto - BRUSH_SIZE_MAX_PX;
+    if extra <= 0.0 || t <= TRILHO_JOELHO {
+        return base;
+    }
+    let u = (t - TRILHO_JOELHO) / (1.0 - TRILHO_JOELHO);
+    base + extra * u * u * u
+}
+
+/// Inverso de [`size_norm_to_px_em`]: fórmula fechada até ao joelho (ao bit com [`size_px_to_norm`]), bissecção
+/// acima (a curva é monótona).
+pub(in crate::tool::paint) fn size_px_to_norm_em(px: f32, tecto: f32) -> f32 {
+    if tecto <= BRUSH_SIZE_MAX_PX || px <= size_norm_to_px(TRILHO_JOELHO) {
+        return size_px_to_norm(px);
+    }
+    let (mut lo, mut hi) = (TRILHO_JOELHO, 1.0f32);
+    for _ in 0..32 {
+        let mid = 0.5 * (lo + hi);
+        if size_norm_to_px_em(mid, tecto) < px {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    hi
 }
 
 /// Map a slider's `0..1` track onto a count in `1..=BRUSH_COUNT_SLIDER_MAX` (Input Samples /

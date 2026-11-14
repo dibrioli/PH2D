@@ -67,6 +67,28 @@ impl PainterTool {
         if self.paint.inpaint_mask.len() != w * h {
             self.paint.inpaint_mask = vec![0u8; w * h];
         }
+        // B17.6: a caixa de cada dab (a MESMA conta do laço abaixo), unida — a captura do undo é só ela.
+        let caixa_do_dab = |d: &Dab| {
+            let (cx, cy) = (d.center[0], d.center[1]);
+            let r = d.radius_px.max(0.5);
+            let x0 = (cx - r).floor().max(0.0) as usize;
+            let x1 = ((cx + r).ceil() as usize).min(w - 1);
+            let y0 = (cy - r).floor().max(0.0) as usize;
+            let y1 = ((cy + r).ceil() as usize).min(h - 1);
+            (x0 <= x1 && y0 <= y1).then(|| Region {
+                x: x0 as u32,
+                y: y0 as u32,
+                w: (x1 - x0 + 1) as u32,
+                h: (y1 - y0 + 1) as u32,
+            })
+        };
+        let Some(lote) = dabs
+            .iter()
+            .filter_map(caixa_do_dab)
+            .reduce(super::union_region)
+        else {
+            return;
+        };
         let mut touched: Option<Region> = None;
         {
             let mask = &mut self.paint.inpaint_mask;
@@ -74,7 +96,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
-                None,
+                Some(lote),
             );
             if buf.len() != w * h * 4 {
                 return;
@@ -199,12 +221,18 @@ impl PainterTool {
             },
         );
         // Write only the reconstructed (marked) pixels back into the layer.
+        let caixa = Region {
+            x: x0 as u32,
+            y: y0 as u32,
+            w: cw as u32,
+            h: ch as u32,
+        };
         {
             let dst = crate::tool::paint::plane_fork::fork_canvas(
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
-                None,
+                Some(caixa),
             );
             for cy in 0..ch {
                 for cx in 0..cw {
@@ -218,12 +246,7 @@ impl PainterTool {
                 }
             }
         }
-        self.mark_dirty(Region {
-            x: x0 as u32,
-            y: y0 as u32,
-            w: cw as u32,
-            h: ch as u32,
-        });
+        self.mark_dirty(caixa);
         self.paint.inpaint_mask.iter_mut().for_each(|m| *m = 0);
     }
 }

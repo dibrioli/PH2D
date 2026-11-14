@@ -141,7 +141,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            Some(*rect),
         );
         for row in 0..rect.h {
             let dst = (rect.y + row) as usize * stride + rect.x as usize * 4;

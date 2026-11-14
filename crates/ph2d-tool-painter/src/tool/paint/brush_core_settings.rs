@@ -5,7 +5,7 @@
 //! list needed two more published fields and there was no room for them. Nothing changed but the file
 //! this `impl PainterTool` block lives in; a child module of `paint`, so it keeps the same access.
 
-use super::brush_settings::{count_from_norm, size_norm_to_px};
+use super::brush_settings::{count_from_norm, size_norm_to_px_em};
 use super::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_JITTER_ABS_MAX_PX,
     BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
@@ -161,14 +161,21 @@ impl PainterTool {
     pub fn raio_maximo(&self) -> f32 {
         let crua = self.paint_media() == crate::PaintMedia::WetPaint
             && self.paint.wetpaint.largura.is_none();
-        let tecto = if self.paint_media() == crate::PaintMedia::Digital {
-            super::brush_ranges::BRUSH_SIZE_MAX_DIGITAL_PX
-        } else {
-            BRUSH_SIZE_MAX_PX
-        };
+        let tecto = self.tecto_do_motor();
         match self.paint.brush.size_max_px {
             Some(d) if !crua => (0.5 * d).min(tecto),
             _ => tecto,
+        }
+    }
+
+    /// O tecto do raio do MOTOR (B42.5), sem o Max Size do pincel: Digital 1024, os outros 512. O trilho do Size
+    /// estica-se sobre ele.
+    #[must_use]
+    pub fn tecto_do_motor(&self) -> f32 {
+        if self.paint_media() == crate::PaintMedia::Digital {
+            super::brush_ranges::BRUSH_SIZE_MAX_DIGITAL_PX
+        } else {
+            BRUSH_SIZE_MAX_PX
         }
     }
 
@@ -178,7 +185,7 @@ impl PainterTool {
         if t <= 0.0 && self.pixel_vivo(&self.paint.brush) {
             return self.set_brush_size_px(super::pixel_route::PIXEL_SIZE_MIN_PX);
         }
-        self.set_brush_size_px(size_norm_to_px(t));
+        self.set_brush_size_px(size_norm_to_px_em(t, self.tecto_do_motor()));
     }
 
     /// Nudge the brush radius by one step — `[` (`dir < 0`) / `]` (`dir >= 0`). Multiplicative (constant

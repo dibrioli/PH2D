@@ -2,7 +2,7 @@
 //! Colour Ramp + the Shape Value Ramp) into the panel's `Copy` snapshot each frame. Split from
 //! `brush_settings.rs` for the LOC cap; the struct + setters stay there.
 
-use super::brush_settings::{BrushSettings, PANEL_RAMP_STOPS, size_px_to_norm};
+use super::brush_settings::{BrushSettings, PANEL_RAMP_STOPS, size_px_to_norm_em};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{Falloff, FalloffPoint, MAX_FALLOFF_POINTS, eval_falloff_curve};
 
@@ -205,7 +205,7 @@ impl PainterTool {
         BrushSettings {
             size_px: b.radius_px,
             size_max_px: self.raio_maximo(),
-            size_norm: size_px_to_norm(b.radius_px),
+            size_norm: size_px_to_norm_em(b.radius_px, self.tecto_do_motor()),
             strength: b.strength,
             flow: b.flow,
             falloff: b.falloff.to_u8(),

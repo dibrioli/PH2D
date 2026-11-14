@@ -110,7 +110,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            Some(bbox),
         );
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;

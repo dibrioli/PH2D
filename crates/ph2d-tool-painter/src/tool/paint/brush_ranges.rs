@@ -14,6 +14,9 @@ pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
 pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 /// Tecto do raio no motor **Digital** (B42.5): o dobro da faixa do slider.
 pub const BRUSH_SIZE_MAX_DIGITAL_PX: f32 = 1024.0;
+/// O joelho do trilho do Size (B42.5): até aqui o curso dá o raio do trilho de 512 em todo motor (as cenas do dono
+/// em Size 0,4/0,5 ficam ao bit); acima, o motor de tecto maior estica até ao seu tecto.
+pub const TRILHO_JOELHO: f32 = 0.75;
 /// Tecto do **Spread** (raio, px de tela) — o molhado, o seco, o setter e a caixa do preview leem este.
 /// Recurso: o custo do borrão da orla, O(r²) por píxel tocado; o histórico do composite (IN-112).
 pub const BRUSH_SPREAD_MAX_PX: f32 = 48.0;

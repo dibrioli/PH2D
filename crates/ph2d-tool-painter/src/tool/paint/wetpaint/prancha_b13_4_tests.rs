@@ -146,7 +146,9 @@ fn prancha_b13_4_a_secagem_por_tile() {
                 "PRANCHA {res} {nome}: a correr antes {ca} · depois {cd} · sem pingo {c0}; nas poças antes×depois \
                  {antes} píxeis, depois×sem pingo {regua}"
             );
-            assert!(cd > c0, "o pingo não correu ({c0} × {cd}): a prancha não mostra nada");
+            // A contagem de passos a correr não distingue (a gravidade também corre as poças a cada passo): o que
+            // importa é a lei antiga mudar as poças com o pingo e a nova não.
+            assert!(antes > 0, "a cadência global não mudou as poças: a prancha não mostra nada");
             assert_eq!(regua, 0, "o pingo longe ainda muda as poças ({regua} píxeis)");
             monta(&a, &d, w, h)
                 .save(format!("{dir}/{res}_{nome}_antes_depois.png"))

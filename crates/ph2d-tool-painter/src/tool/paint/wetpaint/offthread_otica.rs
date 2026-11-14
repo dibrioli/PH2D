@@ -101,6 +101,8 @@ pub(in crate::tool::paint::wetpaint) struct CaixasDaImagem {
     pub(in crate::tool::paint::wetpaint) veu: Option<VeuDaCaixa>,
     /// B11.3: os RGBA da `caixa_px` (`(px1 - px0) * 4` por linha), compostos pelo laço de píxel no compositor.
     pub(in crate::tool::paint::wetpaint) rgba: Option<Vec<u8>>,
+    /// Os planos que o laço do compositor leu para os `rgba` (o fio da tela confere-os com os seus).
+    pub(in crate::tool::paint::wetpaint) lido: Option<pixel::Lido>,
 }
 
 /// Uma imagem composta fora: o que a óptica decidiu e as caixas.

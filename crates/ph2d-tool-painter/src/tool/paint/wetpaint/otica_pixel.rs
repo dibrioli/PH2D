@@ -7,7 +7,7 @@ use super::super::super::composite::pixel::{LacoDePixel, laco_de_pixel};
 use super::super::super::composite_otica::{CaixasDaOtica, PlanosDaOtica};
 use super::super::super::grid_map::SampleU;
 use super::super::super::smooth_edges::Suaves;
-use super::FormaDaTela;
+use super::{CaixaCel, FormaDaTela};
 use crate::tool::paint::watercolor_accum::SplatGate;
 use std::sync::Arc;
 
@@ -111,6 +111,73 @@ pub(in crate::tool::paint::wetpaint) fn rgba_da_caixa(
         rgba.extend_from_slice(&row[px0 * 4..px0 * 4 + cw]);
     }
     rgba
+}
+
+/// **O que o laço de píxel LEU dos planos do compositor** (B11.3): a janela de células que ele pode ler à volta da
+/// `caixa_px` (o alcance do [`Suaves`] e um vizinho do amostrador) e os bytes de cada plano nela. Os planos do
+/// compositor fora das caixas dele não são os da tela (a casa compõe dabs que ele não vê; uma faixa recusada fica só
+/// nele): o fio da tela usa os RGBA só se os SEUS planos na janela são estes ao byte — senão o laço é o de casa.
+pub(in crate::tool::paint::wetpaint) struct Lido {
+    janela: CaixaCel,
+    /// `pigment` · `suave` · `sombra` · `grao`; `None` = o plano vazio.
+    planos: [Option<Vec<u8>>; 4],
+}
+
+const BPP: [usize; 4] = [4, 1, 1, 1];
+
+fn planos_de(p: &PlanosDaOtica) -> [&[u8]; 4] {
+    [&p.pigment, &p.suave, &p.sombra, &p.grao]
+}
+
+impl Lido {
+    /// A janela de leitura da `caixa_px` (1-based, presa à grade) e os planos nela.
+    pub(in crate::tool::paint::wetpaint) fn de(
+        planos: &PlanosDaOtica,
+        forma: FormaDaTela,
+        (px0, py0, px1, py1): (usize, usize, usize, usize),
+    ) -> Self {
+        let (gw, gh) = forma.grade;
+        let rr = usize::from(forma.ratio).max(1);
+        let a = super::super::super::smooth_edges::alcance(super::super::super::smooth_edges::RAIO_MAX);
+        let lo = |p: usize| (p.saturating_sub(a) / rr).saturating_sub(2) + 1;
+        let hi = |p: usize, n: usize| ((p + a) / rr + 2).min(n - 1) + 1;
+        let janela = (lo(px0), lo(py0), hi(px1, gw), hi(py1, gh));
+        let planos = planos_de(planos)
+            .into_iter()
+            .zip(BPP)
+            .map(|(p, bpp)| (p.len() == gw * gh * bpp).then(|| recorta(p, bpp, gw, janela)))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap_or_else(|_| unreachable!("quatro planos"));
+        Self { janela, planos }
+    }
+
+    /// Os planos da tela na janela são os que o compositor leu, ao byte (o vazio também)?
+    pub(in crate::tool::paint::wetpaint) fn confere(&self, planos: &PlanosDaOtica, (gw, gh): (usize, usize)) -> bool {
+        planos_de(planos).into_iter().zip(BPP).zip(&self.planos).all(|((p, bpp), lido)| {
+            match lido {
+                None => p.len() != gw * gh * bpp,
+                Some(b) => p.len() == gw * gh * bpp && igual(p, bpp, gw, self.janela, b),
+            }
+        })
+    }
+}
+
+fn recorta(plano: &[u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel) -> Vec<u8> {
+    let mut v = Vec::with_capacity((x1 + 1 - x0) * (y1 + 1 - y0) * bpp);
+    for cy in y0..=y1 {
+        let o = (cy - 1) * gw * bpp;
+        v.extend_from_slice(&plano[o + (x0 - 1) * bpp..o + x1 * bpp]);
+    }
+    v
+}
+
+fn igual(plano: &[u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel, b: &[u8]) -> bool {
+    let cw = (x1 + 1 - x0) * bpp;
+    (y0..=y1).zip(b.chunks_exact(cw)).all(|(cy, linha)| {
+        let o = (cy - 1) * gw * bpp + (x0 - 1) * bpp;
+        plano[o..o + cw] == *linha
+    })
 }
 
 /// Cola os RGBA da caixa nas linhas `py0..py1` da tela (o inverso do recorte de [`rgba_da_caixa`]).

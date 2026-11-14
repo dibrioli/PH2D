@@ -1,6 +1,6 @@
 //! O fio do COMPOSITOR da óptica (filho de [`super`] por LOC, B52.R8): compõe sobre o espelho e recorta as caixas.
 
-use super::pixel::{EntradaDoPixel, rgba_da_caixa};
+use super::pixel::{EntradaDoPixel, Lido, rgba_da_caixa};
 use super::{CaixaCel, CaixasDaImagem, FormaDaTela, Imagem, RespostaDaOtica, VeuDaCaixa};
 use crate::tool::paint::wetpaint::composite_otica::{
     CaixasDaOtica, EntradaDaOtica, PlanosDaOtica, compoe_a_otica,
@@ -76,9 +76,9 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica, linhas: &mut Vec<u8>) -> (Box
         grade: entrada.grade,
         tela: entrada.tela,
     };
-    // Sem Óleo Real (o grão do papel é da ferramenta) e na razão 1: o laço lê só as células da caixa, as que a
-    // imagem cola — fora dela os planos do compositor não são os da tela (a casa compõe sem os ver).
-    let pixel = t.pixel.filter(|_| oleo.is_none() && forma.ratio == 1);
+    // Sem Óleo Real (o grão do papel é da ferramenta). Os RGBA compõem-se depois de TODAS as faixas: o laço lê a
+    // vizinhança da caixa, e a tela, quando os copia, já colou as faixas todas.
+    let pixel = t.pixel.filter(|_| oleo.is_none());
     for f in faixas {
         if let Some(tr) = entrada.trabalho.as_mut() {
             tr.caixa = f;
@@ -91,16 +91,26 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica, linhas: &mut Vec<u8>) -> (Box
                 .veu
                 .and_then(|i| t.espelho.camadas.get(i))
                 .map(|c_| veu_da_caixa(&c_.grid, c.caixa_px, entrada.ratio, (gw, gh)));
-            // O Smooth Edges e a sombra leem a vizinhança da caixa: com eles, o laço é da casa.
-            let rgba = pixel
-                .as_ref()
-                .filter(|_| planos.suave.is_empty() && planos.sombra.is_empty())
-                .map(|e| rgba_da_caixa(e, planos, forma, &c, linhas));
-            let mut cx = caixas_da_imagem(f, c, planos, (gw, gh), veu);
-            cx.rgba = rgba;
-            cx
+            caixas_da_imagem(f, c, planos, (gw, gh), veu)
         }));
     }
+    let caixas = caixas
+        .into_iter()
+        .map(|mut cx: CaixasDaImagem| {
+            if let Some(e) = pixel.as_ref() {
+                let c = CaixasDaOtica {
+                    caixa_cel: cx.caixa_cel,
+                    caixa_px: cx.caixa_px,
+                    caixa_suave: cx.caixa_suave,
+                    sem_oleo: cx.sem_oleo.take(),
+                };
+                cx.rgba = Some(rgba_da_caixa(e, planos, forma, &c, linhas));
+                cx.lido = Some(Lido::de(planos, forma, c.caixa_px));
+                cx.sem_oleo = c.sem_oleo;
+            }
+            cx
+        })
+        .collect();
     planos.campo_cache = None;
     drop(layers);
     let imagem = Imagem {
@@ -135,6 +145,7 @@ fn caixas_da_imagem(
         sem_oleo: c.sem_oleo,
         veu,
         rgba: None,
+        lido: None,
     }
 }
 

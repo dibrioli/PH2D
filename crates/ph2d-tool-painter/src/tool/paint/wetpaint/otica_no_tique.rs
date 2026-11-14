@@ -29,6 +29,9 @@ pub(super) struct OticaDoTique {
     /// Imagens cuja caixa tocou a `uniao_local`.
     #[cfg(test)]
     pub(super) tocadas: u32,
+    /// Faixas cujos RGBA do compositor a tela copiou (B11.3).
+    #[cfg(test)]
+    pub(super) rgba_usadas: u32,
 }
 
 pub(super) fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
@@ -185,8 +188,18 @@ impl PainterTool {
             return;
         }
         im.aplica(&mut sess.planos, sess.grid);
-        // Os planos que leem a vizinhança ficaram vazios também na tela (a imagem esvazia-os ao colar).
-        let valido = valido && sess.planos.suave.is_empty() && sess.planos.sombra.is_empty();
+        // Os RGBA de cada faixa valem se os planos da tela, já com as faixas todas coladas, são os que o laço do
+        // compositor leu à volta dela (B11.3): uma faixa recusada ou um dab composto em casa ficam só num dos lados.
+        let (planos, grade) = (&sess.planos, sess.grid);
+        let validos: Vec<bool> = im
+            .caixas
+            .iter()
+            .map(|c| valido && c.lido.as_ref().is_some_and(|l| l.confere(planos, grade)))
+            .collect();
+        #[cfg(test)]
+        {
+            sess.otica.rgba_usadas += validos.iter().filter(|v| **v).count() as u32;
+        }
         sess.seen_steps = im.passos;
         #[cfg(test)]
         {
@@ -217,7 +230,7 @@ impl PainterTool {
             );
         }
         // O laço de píxel por faixa (B14.1).
-        for c in caixas {
+        for (c, valido) in caixas.into_iter().zip(validos) {
             let linhas = match &c.veu {
                 Some(v) => FilmeEMolha {
                     film: &v.film,

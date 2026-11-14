@@ -578,3 +578,38 @@ fn a_luz_do_traco_e_a_unica_luz_do_oleo() {
         confere_com_casa(&mut t, &format!("{onde}: o repouso depois do gesto"));
     }
 }
+
+/// **B11.3: os RGBA do compositor com Smooth Edges são a tela de casa ao byte.** A água suave corre pelo compositor e um
+/// dab suave composto EM CASA fica ao lado, a `folga` px: os planos do compositor não o têm, e o laço dele lê a
+/// vizinhança da caixa. A tela copia os RGBA só onde os seus planos na janela de leitura são os que ele leu.
+#[test]
+fn os_rgba_do_compositor_com_smooth_edges_sao_a_casa_ao_byte() {
+    let mut usadas = 0;
+    for folga in [10.0, 16.0, 22.0, 30.0] {
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
+        t.set_paint_tool_mode("wetpaint");
+        forca_no_teste(Some(true));
+        let wd = "Watercolor/Fluid/Wet Drip.ph2d-brush.png";
+        traco(&mut t, wd, [230, 200, 30], 60.0, 1.0, false);
+        quadros(&mut t, 4);
+        // O dab suave, composto em casa, logo abaixo da água que ainda corre.
+        t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+            .expect("o preset");
+        t.set_wet_oleo_real_ligado(false);
+        t.set_brush_size_px(10.0);
+        t.set_brush_color_srgb8([200, 40, 40]);
+        t.set_wet_smooth_edges(1.0);
+        let y = 60.0 + folga;
+        let _ = t.on_canvas_pointer(ponto(60.0, y, PointerPhase::Down));
+        for k in 1..=8 {
+            let _ = t.on_canvas_pointer(ponto(60.0 + 10.0 * k as f32, y, PointerPhase::Move));
+        }
+        let _ = t.on_canvas_pointer(ponto(140.0, y, PointerPhase::Up));
+        quadros(&mut t, 20);
+        assenta(&mut t);
+        usadas += sess(&t).otica.rgba_usadas;
+        confere_com_casa(&mut t, &format!("Smooth Edges 1, dab de casa a {folga} px"));
+    }
+    assert!(usadas > 0, "premissa: a tela copiou RGBA do compositor com Smooth Edges");
+}

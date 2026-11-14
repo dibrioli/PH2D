@@ -150,6 +150,20 @@ pub fn segment_handle_points(k0: &KeyView, k1: &KeyView) -> [(f64, f64); 2] {
 /// absolute, so `v0 == v1` no longer freezes the handle's value axis).
 #[must_use]
 pub fn weighted_with_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f64) -> Interp {
+    // A Custom com PONTOS só troca a alça da ponta — virar `BezierW` apagaria os pontos. Parada
+    // (`v0 == v1`) não tem forma normalizada: cai no `BezierW` como as outras.
+    let (span, dv) = (k1.t_seconds - k0.t_seconds, f64::from(k1.value - k0.value));
+    if let Interp::Spline(_) = k0.interp
+        && span > 0.0
+        && dv.abs() > f64::EPSILON
+    {
+        let h = ((t - k0.t_seconds) / span, (v - f64::from(k0.value)) / dv);
+        return if which == 0 {
+            k0.interp.with_out_handle(h.0, h.1)
+        } else {
+            k0.interp.with_in_handle(h.0, h.1)
+        };
+    }
     let pts = segment_handle_points(k0, k1);
     let (out, inn) = if which == 0 {
         ((t, v), pts[1])
@@ -268,6 +282,24 @@ mod tests {
             selected: false,
             roving: false,
         }
+    }
+
+    /// Dragging an END handle of a Custom curve with points (`Spline`) moves that handle and keeps
+    /// the points — converting to `BezierW` would silently delete them.
+    #[test]
+    fn dragging_an_end_handle_of_a_curve_with_points_keeps_the_points() {
+        let mut sp = ph2d_anim::EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        sp.insert(0.5);
+        let (k0, k1) = (
+            key(0.0, 0.0, Interp::Spline(sp)),
+            key(2.0, 10.0, Interp::Linear),
+        );
+        let out = weighted_with_handle(&k0, &k1, 0, 0.5, 4.0);
+        let Interp::Spline(novo) = out else {
+            panic!("a curva com pontos virou {out:?}");
+        };
+        assert_eq!(novo.points().len(), 1);
+        assert_eq!(novo.end_handles().0, [0.25, 0.4]);
     }
 
     /// THE golden assertion (plan W3.E6): the polyline the panel draws is the

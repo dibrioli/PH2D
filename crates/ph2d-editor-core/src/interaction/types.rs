@@ -116,14 +116,14 @@ pub const TL_NO_EASE_MODE: u8 = u8::MAX;
 /// the drawn curve is the document's own arithmetic, never a second copy of it.
 pub type EaseSampler = fn(NodeId, u8, f32) -> Option<f32>;
 
-/// One batch of a drag on a handle of the key card's **Custom curve** editor, waiting for the
-/// timeline panel to turn it into `SetInterp(Bezier)` intents (editor-core knows no `Interp`).
+/// One batch of an edit in the key card's **Custom curve** editor (drag a point or a handle, add
+/// or delete a point), waiting for the timeline panel to turn it into `SetInterp` intents.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TimelineBezierEdit {
     /// The keys the edit retunes (the card's scope).
     pub scope: TimelineInterpScope,
-    /// `[x1, y1, x2, y2]` in the unit square — the normalized `Interp::Bezier`.
-    pub handles: [f32; 4],
+    /// The edited curve (points and handles, unit square) — the document's own type.
+    pub curve: ph2d_anim::EaseSpline,
     /// The drag started in this batch: the panel opens the undo step.
     pub begin: bool,
     /// The drag ended in this batch: the panel closes the undo step.

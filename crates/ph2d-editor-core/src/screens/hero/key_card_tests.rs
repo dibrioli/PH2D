@@ -157,13 +157,7 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
     let interp_base = g.interp.iter().map(|r| r.y + r.h).fold(0.0, f32::max);
     assert!(e.y >= interp_base && e.y + e.h <= g.rove.y && e.y + e.h <= g.done.y);
     assert!(e.x >= g.cartao.x && e.x + e.w <= g.cartao.x + g.cartao.w);
-    for id in [
-        c::CTX_MENU_TL_KEY_BEZ_AREA,
-        c::CTX_MENU_TL_KEY_BEZ_P1,
-        c::CTX_MENU_TL_KEY_BEZ_P2,
-    ] {
-        assert!(e_alvo_do_cartao(id));
-    }
+    assert!(e_alvo_do_cartao(c::CTX_MENU_TL_KEY_BEZ_AREA));
     let area = crate::interaction::state::BezArea {
         rect: Rect::new(100.0, 50.0, 200.0, 160.0),
         y_min: -0.5,
@@ -176,7 +170,25 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
     }
     // Fora da área prende-se à borda (uma alça nunca sai do gráfico).
     assert_eq!(area.unidade(0.0, 1000.0), (0.0, -0.5));
-    let h = [0.2, 0.0, 0.8, 1.0];
-    assert_eq!(editor::ponto(h, 0.0), (0.0, 0.0));
-    assert_eq!(editor::ponto(h, 1.0), (1.0, 1.0));
+    // Um clique em cima da curva cria um ponto ali; perto de um ponto/alça agarra-o; longe, nada.
+    let mut curva = editor::linear();
+    let (x, y) = area.tela(0.5, 0.5);
+    let u = editor::na_curva(&curva, &area, x, y + 3.0).expect("em cima da curva");
+    assert!((u - 0.5).abs() < 1e-3);
+    assert_eq!(editor::na_curva(&curva, &area, x, y - 40.0), None);
+    let i = curva.insert(u).unwrap();
+    use crate::interaction::state::BezAlvo;
+    assert_eq!(
+        editor::alvo_em(&curva, &area, x + 2.0, y),
+        Some(BezAlvo::Ponto(i))
+    );
+    let (hx, hy) = {
+        let q = curva.node(0).h_out;
+        area.tela(q[0], q[1])
+    };
+    assert_eq!(
+        editor::alvo_em(&curva, &area, hx, hy),
+        Some(BezAlvo::Alca(0, ph2d_anim::SplineSide::Out))
+    );
+    assert_eq!(editor::alvo_em(&curva, &area, 290.0, 60.0), None);
 }

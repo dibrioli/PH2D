@@ -26,6 +26,10 @@ ph2d-component-desc = { path = "../ph2d-component-desc" }
 # queixa do painel é derivada das MESMAS portas que a lei usa, e uma tabela paralela aqui
 # divergiria no dia do nono canal. Folha (`serde` + `ph2d-anim`).
 ph2d-tween = { path = "../ph2d-tween" }
+# ⭐ **A curva Custom com pontos** (`ph2d_anim::EaseSpline`): o editor do cartão da chave desenha e
+# edita a MESMA curva que o documento toca — nunca uma segunda cópia da matemática. Aresta que já
+# existia (`ph2d-tween → ph2d-anim`), agora directa.
+ph2d-anim = { path = "../ph2d-anim" }
 # **A MOLA do substrato de UI viva** (`motion.rs`). Folha pura (só serde), partilhada com a
 # `ph2d-ui-state` — copiá-la daria uma SEGUNDA resposta a "como uma mola integra", e depender da
 # `ph2d-ui-state` arrastaria `ph2d-vec-scene` + `ph2d-vec-blend` para dentro de todo painel.

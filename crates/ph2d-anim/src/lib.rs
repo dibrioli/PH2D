@@ -55,8 +55,10 @@
 pub(crate) mod anim_value_serde;
 pub mod clip;
 pub mod curve;
+mod curve_bezier;
 pub mod curve_fit;
 pub mod curve_prep;
+pub mod curve_spline;
 pub(crate) mod curve_weighted;
 pub mod easing;
 pub mod time;
@@ -72,6 +74,7 @@ pub use clip::{AnimTarget, Clip};
 pub use curve::{AnimCurve, CurveKey, Interp};
 pub use curve_fit::{FitKey, fit_fcurve, fit_fcurve_at, smooth_values};
 pub use curve_prep::{FitChannel, prepare, unwrap_angles};
+pub use curve_spline::{EaseSpline, SPLINE_MAX_POINTS, SplinePoint, SplineSide};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
 pub use track::{CurveSnapshot, Extrap, ExtrapSide, Key, KeyId, RangeSamples, Track};

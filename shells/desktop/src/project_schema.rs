@@ -456,4 +456,10 @@
 /// a largura do stroke no Look); sem `traco_proprio` vale o traço do tipo do corpo. Registos: `0`. SEM leitura dos
 /// anteriores (§0.11). Gates: `ph2d-physics-ecs shape_look::`, `ph2d-panel-physics o_traco_proprio`. ⚠️ **A tripla NÃO
 /// vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 237;
+///
+/// # `237 → 238` — **a curva Custom com pontos** (`line/TimelinePrincipal`, acréscimo 13, 2026-11-13)
+///
+/// `ph2d_anim::Interp` ganha a variante `Spline(EaseSpline)` no FIM (pontos criados/apagados no editor do cartão
+/// da chave; tecto `SPLINE_MAX_POINTS = 8`). SEM leitura dos anteriores (§0.11). Gates: `ph2d-anim curve_spline::`,
+/// `ph2d-panel-timeline cartao_bezier::`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 238;

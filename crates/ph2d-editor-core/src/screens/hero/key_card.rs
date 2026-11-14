@@ -99,12 +99,7 @@ pub fn e_alvo_do_cartao(id: NodeId) -> bool {
         || c::TIMELINE_KEY_CARD.iter().any(|r| r.0 == id)
         || c::TIMELINE_SEGMENT_MENU.iter().any(|r| r.0 == id)
         || c::TIMELINE_EASE_MENU.iter().any(|r| r.0 == id)
-        || [
-            c::CTX_MENU_TL_KEY_BEZ_AREA,
-            c::CTX_MENU_TL_KEY_BEZ_P1,
-            c::CTX_MENU_TL_KEY_BEZ_P2,
-        ]
-        .contains(&id)
+        || id == c::CTX_MENU_TL_KEY_BEZ_AREA
 }
 
 /// O que um clique no cartão pede.
@@ -589,7 +584,7 @@ fn corpo(
 }
 
 #[path = "key_card_editor.rs"]
-mod editor;
+pub(crate) mod editor;
 
 #[cfg(test)]
 #[path = "key_card_tests.rs"]

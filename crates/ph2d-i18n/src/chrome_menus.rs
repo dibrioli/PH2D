@@ -24,7 +24,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.timeline_menu.rove_check" => "Rove across time",
         "chrome.timeline_menu.done" => "Done",
         "chrome.timeline_menu.shape" => "Curve shape",
-        "chrome.timeline_menu.section_custom" => "Custom curve \u{b7} drag the handles",
+        "chrome.timeline_menu.section_custom" => {
+            "Click the curve to add a point \u{b7} right-click a point to delete it"
+        }
         "chrome.timeline_menu.key_at" => "Key at frame {n} \u{b7} {canal}",
         "chrome.timeline_menu.keys_at" => "Keys at frame {n}",
         "chrome.timeline_menu.nearest" => "Nearest",

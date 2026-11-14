@@ -7231,6 +7231,7 @@ dependencies = [
  "libm",
  "parley",
  "ph2d-a11y",
+ "ph2d-anim",
  "ph2d-board-edit",
  "ph2d-board-embed",
  "ph2d-board-export",

@@ -36,10 +36,10 @@ fn snap(tracks: Vec<TrackView>) -> TimelineViewSnapshot {
     }
 }
 
-/// A `Bezier` publica-se como está; a `BezierW` normaliza-se pela variação até à seguinte (é a
-/// mesma curva); parada, ou sem seguinte, não tem forma normalizada.
+/// A `Bezier` publica-se como a curva sem pontos; a `Spline` como está; a `BezierW` normaliza-se
+/// pela variação até à seguinte (é a mesma curva); parada, ou sem seguinte, não tem forma.
 #[test]
-fn the_card_editor_shows_the_keys_own_normalized_bezier() {
+fn the_card_editor_shows_the_keys_own_normalized_curve() {
     let bez = Interp::bezier(0.25, 0.1, 0.75, 1.2);
     let t = faixa(
         9,
@@ -48,18 +48,27 @@ fn the_card_editor_shows_the_keys_own_normalized_bezier() {
             chave(2, 1.0, 5.0, bez, false),
         ],
     );
-    assert_eq!(normalizada(&t, 0), Some([0.25, 0.1, 0.75, 1.2]));
+    let c = normalizada(&t, 0).unwrap();
+    assert!(c.points().is_empty());
+    assert_eq!(c.end_handles(), ([0.25, 0.1], [0.75, 1.2]));
+    let mut com_ponto = c;
+    com_ponto.insert(0.5);
+    let sp = Interp::Spline(com_ponto);
+    let t = faixa(
+        9,
+        vec![chave(1, 0.0, 0.0, sp, false), chave(2, 1.0, 5.0, sp, false)],
+    );
+    assert_eq!(normalizada(&t, 0), Some(com_ponto));
     let w = Interp::bezier_w(0.3, 2.0, 0.6, -5.0);
     let t = faixa(
         9,
         vec![chave(1, 0.0, 0.0, w, false), chave(2, 1.0, 10.0, w, false)],
     );
     let n = normalizada(&t, 0).unwrap();
-    assert!((n[1] - 0.2).abs() < 1e-6 && (n[3] - 0.5).abs() < 1e-6);
     // O valor ao longo da normalizada é o mesmo que a BezierW dá (é a mesma curva).
-    let normal = Interp::bezier(0.3, f64::from(n[1]), 0.6, f64::from(n[3]));
     for u in [0.25, 0.5, 0.75] {
-        assert!((normal.value(0.0, 10.0, u) - w.value(0.0, 10.0, u)).abs() < 1e-4);
+        let a = Interp::Spline(n).value(0.0, 10.0, u);
+        assert!((a - w.value(0.0, 10.0, u)).abs() < 1e-4, "u={u}");
     }
     let parada = faixa(
         9,
@@ -67,6 +76,9 @@ fn the_card_editor_shows_the_keys_own_normalized_bezier() {
     );
     assert_eq!(normalizada(&parada, 0), None);
     assert_eq!(normalizada(&parada, 1), None);
+    // Sem pontos a chave volta a ser a Bézier de duas alças; com pontos é a Spline.
+    assert!(matches!(interp_da_curva(c), Interp::Bezier { .. }));
+    assert_eq!(interp_da_curva(com_ponto), Interp::Spline(com_ponto));
 }
 
 /// Um arrasto = um passo de undo; uma chave fora da seleção muda só ela, dentro dela a seleção
@@ -84,9 +96,10 @@ fn a_handle_drag_is_one_undo_step_over_the_menus_scope() {
         ),
         faixa(8, vec![chave(3, 1.0, 0.0, lin, false)]),
     ]);
+    let curva = EaseSpline::from_bezier(0.2, 0.0, 0.8, 1.0);
     let edit = |scope, begin, end| TimelineBezierEdit {
         scope,
-        handles: [0.2, 0.0, 0.8, 1.0],
+        curve: curva,
         begin,
         end,
     };
@@ -122,18 +135,23 @@ fn a_handle_drag_is_one_undo_step_over_the_menus_scope() {
 }
 
 /// O lote do store: o 1.º leva o começo, o último o fim; depois do fim o editor volta a desenhar o
-/// que a timeline publica.
+/// que a timeline publica. Criar um ponto vai no lote do começo; apagar é um lote só.
 #[test]
-fn the_store_hands_the_drag_over_in_batches() {
+fn the_store_hands_the_edit_over_in_batches() {
+    use ph2d_editor_core::interaction::state::BezAlvo;
     let mut store = WidgetStore::default();
     let scope = S::Key { target: 9, key: 1 };
-    store.set_key_card_bezier(Some([0.1, 0.1, 0.9, 0.9]));
-    store.begin_key_card_bez(scope, 1, [0.1, 0.1, 0.9, 0.9]);
-    store.move_key_card_bez((0.5, 1.4));
+    let publicada = EaseSpline::from_bezier(0.1, 0.1, 0.9, 0.9);
+    store.set_key_card_curve(Some(publicada));
+    let mut com = publicada;
+    let i = com.insert(0.5).unwrap();
+    store.begin_key_card_bez(scope, BezAlvo::Ponto(i), com);
+    store.move_key_card_bez((0.4, 1.3));
     let a = store.take_key_card_bez_edit().unwrap();
     assert!(a.begin && !a.end);
-    assert_eq!(a.handles, [0.1, 0.1, 0.5, 1.4]);
-    assert_eq!(store.key_card_bezier(), Some([0.1, 0.1, 0.5, 1.4]));
+    assert_eq!(a.curve.points().len(), 1);
+    assert_eq!(a.curve.node(1).p, [0.4, 1.3]);
+    assert_eq!(store.key_card_curve(), Some(a.curve));
     assert_eq!(
         store.take_key_card_bez_edit(),
         None,
@@ -142,11 +160,16 @@ fn the_store_hands_the_drag_over_in_batches() {
     store.end_key_card_bez();
     let b = store.take_key_card_bez_edit().unwrap();
     assert!(!b.begin && b.end);
-    assert_eq!(store.key_card_bezier(), Some([0.1, 0.1, 0.9, 0.9]));
+    assert_eq!(store.key_card_curve(), Some(publicada));
     store.end_key_card_bez();
     assert_eq!(
         store.take_key_card_bez_edit(),
         None,
         "largar sem arrasto não faz nada"
     );
+    let mut sem = a.curve;
+    assert!(sem.remove(1));
+    store.apply_key_card_bez(scope, sem);
+    let c = store.take_key_card_bez_edit().unwrap();
+    assert!(c.begin && c.end && c.curve.points().is_empty());
 }

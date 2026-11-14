@@ -609,8 +609,6 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_TL_KEY_CARD,
         ids::CTX_MENU_TL_KEY_CARD_HEAD,
         ids::CTX_MENU_TL_KEY_BEZ_AREA,
-        ids::CTX_MENU_TL_KEY_BEZ_P1,
-        ids::CTX_MENU_TL_KEY_BEZ_P2,
     ] {
         store.register(id, InteractiveState::Plain);
     }

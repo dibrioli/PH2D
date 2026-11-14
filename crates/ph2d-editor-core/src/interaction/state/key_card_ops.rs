@@ -1,12 +1,13 @@
 //! O estado do **cartão da chave** da timeline no [`WidgetStore`]: a pega do arrasto pelo título, a
-//! régua dos eases que os botões desenham e o editor da curva **Custom** (as duas alças).
+//! régua dos eases que os botões desenham e o editor da curva **Custom** (pontos e alças).
 //!
 //! Quem sabe o documento é o painel da timeline: ele publica a régua e a Bézier da chave
-//! ([`WidgetStore::set_key_card_bezier`]) e drena o arrasto ([`WidgetStore::take_key_card_bez_edit`]).
+//! ([`WidgetStore::set_key_card_curve`]) e drena o arrasto ([`WidgetStore::take_key_card_bez_edit`]).
 
 use super::*;
 use crate::interaction::{EaseSampler, TimelineBezierEdit, TimelineInterpScope};
 use crate::zones::Rect;
+use ph2d_anim::EaseSpline;
 
 /// A área do editor da curva tal como foi pintada: o rectângulo e a faixa de `y` que ele mostra.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -37,13 +38,22 @@ impl BezArea {
     }
 }
 
+/// O que o editor da curva segura: um ponto (nó do meio) ou uma alça de um nó.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BezAlvo {
+    /// O ponto do nó `i`.
+    Ponto(usize),
+    /// A alça `lado` do nó `i`.
+    Alca(usize, ph2d_anim::SplineSide),
+}
+
 #[derive(Debug, Default)]
 pub(in crate::interaction) struct KeyCardState {
     grab: Option<(f32, f32)>,
     sampler: Option<EaseSampler>,
-    bezier: Option<[f32; 4]>,
+    curva: Option<EaseSpline>,
     area: core::cell::Cell<Option<BezArea>>,
-    alca: Option<usize>,
+    alvo: Option<BezAlvo>,
     edit: Option<TimelineBezierEdit>,
     pendente: bool,
 }
@@ -72,19 +82,16 @@ impl WidgetStore {
         self.key_card.grab = grab;
     }
 
-    /// A Bézier `[x1, y1, x2, y2]` da chave (normalizada), publicada pela timeline; `None` = a
-    /// chave não é Custom ou não tem forma normalizável.
-    pub fn set_key_card_bezier(&mut self, h: Option<[f32; 4]>) {
-        self.key_card.bezier = h;
+    /// A curva Custom da chave (normalizada), publicada pela timeline; `None` = a chave não é
+    /// Custom ou não tem forma normalizável.
+    pub fn set_key_card_curve(&mut self, curva: Option<EaseSpline>) {
+        self.key_card.curva = curva;
     }
 
-    /// A Bézier que o editor desenha: a do arrasto em curso, senão a publicada.
+    /// A curva que o editor desenha: a da edição em curso, senão a publicada.
     #[must_use]
-    pub fn key_card_bezier(&self) -> Option<[f32; 4]> {
-        self.key_card
-            .edit
-            .map(|e| e.handles)
-            .or(self.key_card.bezier)
+    pub fn key_card_curve(&self) -> Option<EaseSpline> {
+        self.key_card.edit.map(|e| e.curve).or(self.key_card.curva)
     }
 
     /// O pintor guarda onde pintou o editor (o arrasto converte o cursor por ela).
@@ -98,42 +105,56 @@ impl WidgetStore {
         self.key_card.area.get()
     }
 
-    /// A alça a ser arrastada (`0` = a de saída, `1` = a de chegada).
+    /// O que o arrasto segura agora.
     #[must_use]
-    pub fn key_card_bez_alca(&self) -> Option<usize> {
-        self.key_card.alca
+    pub fn key_card_bez_alvo(&self) -> Option<BezAlvo> {
+        self.key_card.alvo
     }
 
-    /// Começa o arrasto da alça `alca` a partir de `handles`, para as chaves de `scope`.
+    /// Começa a arrastar `alvo` da curva `curve` (já com o ponto novo, se foi criado agora).
     pub fn begin_key_card_bez(
         &mut self,
         scope: TimelineInterpScope,
-        alca: usize,
-        handles: [f32; 4],
+        alvo: BezAlvo,
+        curve: EaseSpline,
     ) {
-        self.key_card.alca = Some(alca);
+        self.key_card.alvo = Some(alvo);
         self.key_card.edit = Some(TimelineBezierEdit {
             scope,
-            handles,
+            curve,
             begin: true,
             end: false,
         });
         self.key_card.pendente = true;
     }
 
-    /// A alça arrastada vai a `(u, y)`.
-    pub fn move_key_card_bez(&mut self, (u, y): (f32, f32)) {
-        let (Some(a), Some(e)) = (self.key_card.alca, self.key_card.edit.as_mut()) else {
-            return;
-        };
-        e.handles[a * 2] = u;
-        e.handles[a * 2 + 1] = y;
+    /// Uma edição de um toque (apagar um ponto): abre e fecha o passo de undo no mesmo lote.
+    pub fn apply_key_card_bez(&mut self, scope: TimelineInterpScope, curve: EaseSpline) {
+        self.key_card.alvo = None;
+        self.key_card.edit = Some(TimelineBezierEdit {
+            scope,
+            curve,
+            begin: true,
+            end: true,
+        });
         self.key_card.pendente = true;
     }
 
-    /// Larga a alça (no-op sem arrasto).
+    /// O que está seguro vai a `(u, y)`.
+    pub fn move_key_card_bez(&mut self, (u, y): (f32, f32)) {
+        let (Some(a), Some(e)) = (self.key_card.alvo, self.key_card.edit.as_mut()) else {
+            return;
+        };
+        match a {
+            BezAlvo::Ponto(i) => e.curve.move_point(i, u, y),
+            BezAlvo::Alca(i, lado) => e.curve.move_handle(i, lado, u, y),
+        }
+        self.key_card.pendente = true;
+    }
+
+    /// Larga o que estava seguro (no-op sem arrasto).
     pub fn end_key_card_bez(&mut self) {
-        if self.key_card.alca.take().is_none() {
+        if self.key_card.alvo.take().is_none() {
             return;
         }
         if let Some(e) = self.key_card.edit.as_mut() {
@@ -142,7 +163,7 @@ impl WidgetStore {
         }
     }
 
-    /// O lote do arrasto desde a última drenagem (o painel da timeline aplica-o). Depois do lote
+    /// O lote da edição desde a última drenagem (o painel da timeline aplica-o). Depois do lote
     /// que acaba, o editor volta a desenhar o que a timeline publica.
     pub fn take_key_card_bez_edit(&mut self) -> Option<TimelineBezierEdit> {
         if !std::mem::take(&mut self.key_card.pendente) {

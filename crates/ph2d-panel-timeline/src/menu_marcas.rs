@@ -160,7 +160,7 @@ fn linha_da_interp(interp: Interp) -> NodeId {
             EasingMode::Out => c::CTX_MENU_TL_EASE_OUT,
             EasingMode::InOut => c::CTX_MENU_TL_EASE_INOUT,
         },
-        Interp::Bezier { .. } | Interp::BezierW { .. } => c::CTX_MENU_TL_CUSTOM,
+        Interp::Bezier { .. } | Interp::BezierW { .. } | Interp::Spline(_) => c::CTX_MENU_TL_CUSTOM,
     }
 }
 

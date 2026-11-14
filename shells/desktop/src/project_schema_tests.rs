@@ -375,7 +375,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`235` em 2026-11-10** (`line/InputMap`, R2c) — o Input Map no `ProjectState` e o `game_id`. A tripla NÃO vê.
         // ⚠️ **`236` em 2026-11-10** (`line/GameEngineFuncional02`, onda 8) — `ShapeLook` no registo. A tripla NÃO vê.
         // ⚠️ **`237` em 2026-11-10** (`line/GameEngineFuncional02`, onda 8.6) — o traço do `ShapeLook`. A tripla NÃO vê.
-        (237, 13, 29),
+        // ⚠️ **`238` em 2026-11-13** (`line/TimelinePrincipal`, acréscimo 13) — `Interp::Spline`, a Custom com pontos. A tripla NÃO vê.
+        (238, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

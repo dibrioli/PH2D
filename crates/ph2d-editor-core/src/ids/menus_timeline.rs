@@ -401,13 +401,9 @@ pub const fn menu_row_swatch(id: NodeId, key: &'static str, rgba: [u8; 4]) -> Me
 pub const CTX_MENU_TL_KEY_CARD: NodeId = hash_node_id("ctx_menu_tl_key_card");
 /// O título do cartão: a pega para o ARRASTAR (dono 13/11).
 pub const CTX_MENU_TL_KEY_CARD_HEAD: NodeId = hash_node_id("ctx_menu_tl_key_card_head");
-/// O editor da curva **Custom** no cartão (dono 13/11: «ao escolher Custom deve abrir abaixo a
-/// janela de edição»): a área (um aperto nela leva a alça mais perto) e as duas alças.
+/// O editor da curva **Custom** no cartão (dono 13/11): a área do gráfico — pontos e alças acham-se
+/// por geometria dentro dela (`key_card::editor::alvo_em`), não por id.
 pub const CTX_MENU_TL_KEY_BEZ_AREA: NodeId = hash_node_id("ctx_menu_tl_key_bez_area");
-/// A alça de saída (`P1`) do editor da curva Custom.
-pub const CTX_MENU_TL_KEY_BEZ_P1: NodeId = hash_node_id("ctx_menu_tl_key_bez_p1");
-/// A alça de chegada (`P2`) do editor da curva Custom.
-pub const CTX_MENU_TL_KEY_BEZ_P2: NodeId = hash_node_id("ctx_menu_tl_key_bez_p2");
 /// **Done**: fecha o cartão (as escolhas não o fecham, dono 13/11).
 pub const CTX_MENU_TL_KEY_DONE: NodeId = hash_node_id("ctx_menu_tl_key_done");
 /// Bloco **Curve**: a forma escolhida (ou Cubic) no modo escolhido (ou In-Out).

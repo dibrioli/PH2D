@@ -129,7 +129,7 @@ impl App {
 
         // ⭐⭐⭐ **DE QUEM É A TECLA com a cena a correr** (CodeEditor item 7): com o jogo a ter o teclado a tecla nua é
         // SÓ dele; um acorde é sempre do editor; F5/Shift+F5 são do transporte; o soltar passa sempre. A lei e o porquê:
-        // `ph2d_app_components::posse_do_jogo`. ⚠️ Antes do F9 e de todo atalho, depois da escuta e da paleta.
+        // `ph2d_app_game::posse_do_jogo`. ⚠️ Antes do F9 e de todo atalho, depois da escuta e da paleta.
         if let PhysicalKey::Code(code) = physical_key
             && self.tecla_do_jogo(code, state == ElementState::Pressed, repeat)
         {

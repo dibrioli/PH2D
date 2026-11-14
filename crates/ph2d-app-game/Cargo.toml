@@ -23,6 +23,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # As regras de animação: as ações premidas (`ActionState`) e os sinais ouvidos (`SignalOutbox`).
 ph2d-input = { path = "../ph2d-input" }
+# A posse do teclado e do rato com a cena a correr (`posse_do_jogo`, saiu da `ph2d-app-components` pela catraca, 13/11): o botão do rato.
+ph2d-host = { path = "../ph2d-host" }
 # O `#[derive(Resource)]` do estado das regras em curso (o derive pede o caminho `bevy_ecs`).
 bevy_ecs = "0.20"
 ph2d-runtime = { path = "../ph2d-runtime" }

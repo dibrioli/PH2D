@@ -5866,6 +5866,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-game-dicas",
  "ph2d-game-smoke-fotos",
+ "ph2d-host",
  "ph2d-input",
  "ph2d-input-map-scene",
  "ph2d-physics-ecs",

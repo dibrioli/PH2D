@@ -25,11 +25,6 @@ const FORA: &[Isento] = &[
          um gate (o censo de dois lados), nunca pintada",
     ),
     (
-        "posse_do_jogo_registo.rs",
-        "a régua do roteiro conduzido da posse do teclado: linhas escritas num ficheiro que só o script \
-         `docs/CodeEditor/ferramentas/conduz_posse/corre.sh` lê, e só com `PH2D_POSSE_LOG` — nunca pintadas",
-    ),
-    (
         "vida_arena_receitas.rs",
         "os NOMES dos objectos da arena do smoke `PH2D_VIDA_SMOKE=4` (Salamandra, Morcego, Coracao, \
          as balas, as fábricas) — `Name` é identidade durável (`stable_name_id`, as fábricas e os \

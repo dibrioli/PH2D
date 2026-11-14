@@ -3,7 +3,27 @@
 //! pergunta (o observador do teclado, o clique, o início do quadro, a moldura).
 
 use crate::posse_do_jogo_registo as registo;
-use ph2d_input::{Event, InputState, Key};
+use ph2d_input::{Event, InputState, Key, MouseButton};
+
+/// ⭐ **Um botão do rato para o JOGO**: só um clique que COMEÇA na cena conta (um clique no Play
+/// não é um tiro); o largar passa sempre, senão um arrasto que sai da cena ficava preso.
+fn game_mouse(
+    input: &mut InputState,
+    button: ph2d_host::PointerButton,
+    down: bool,
+    on_scene: bool,
+) {
+    let b = match button {
+        ph2d_host::PointerButton::Primary => MouseButton::Left,
+        ph2d_host::PointerButton::Secondary => MouseButton::Right,
+        ph2d_host::PointerButton::Middle => MouseButton::Middle,
+    };
+    if !down {
+        input.apply_event(Event::MouseButtonUp(b));
+    } else if on_scene {
+        input.apply_event(Event::MouseButtonDown(b));
+    }
+}
 
 /// O que a shell vê da cena num instante.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,7 +144,7 @@ impl FocoDoJogo {
         na_cena: bool,
     ) -> bool {
         let na_cena = desceu && na_cena && cena.a_vista;
-        crate::script_input::game_mouse(input, botao, desceu, na_cena && cena.a_correr);
+        game_mouse(input, botao, desceu, na_cena && cena.a_correr);
         let bit = 1 << (botao as u8);
         if !desceu {
             let so = self.do_jogo & bit != 0;
@@ -308,6 +328,25 @@ mod tests {
                 true
             ),
             "o clique na cena a tocar chega ao editor"
+        );
+    }
+
+    #[test]
+    fn um_clique_fora_da_cena_nao_conta_e_o_largar_passa_sempre() {
+        let mut input = InputState::new();
+        input.begin_frame();
+        game_mouse(&mut input, ph2d_host::PointerButton::Primary, true, false);
+        assert!(
+            !input.mouse.pressed(MouseButton::Left),
+            "um clique num painel não é do jogo"
+        );
+        game_mouse(&mut input, ph2d_host::PointerButton::Primary, true, true);
+        assert!(input.mouse.pressed(MouseButton::Left));
+        input.begin_frame();
+        game_mouse(&mut input, ph2d_host::PointerButton::Primary, false, false);
+        assert!(
+            input.mouse.released(MouseButton::Left),
+            "o largar fora da cena passa"
         );
     }
 

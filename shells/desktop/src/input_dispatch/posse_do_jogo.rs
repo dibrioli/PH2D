@@ -1,8 +1,8 @@
 //! ⭐ **De quem é o teclado e o rato com a cena a correr** (CodeEditor item 7) — só a composição: a lei e a régua moram
-//! em [`ph2d_app_components::posse_do_jogo`]; o porquê em `docs/CodeEditor/06_posse_do_teclado.md`.
+//! em [`ph2d_app_game::posse_do_jogo`]; o porquê em `docs/CodeEditor/06_posse_do_teclado.md`.
 
 use super::*;
-use ph2d_app_components::posse_do_jogo::{Cena, Tapa, Tecla, Transporte};
+use ph2d_app_game::posse_do_jogo::{Cena, Tapa, Tecla, Transporte};
 use ph2d_i18n::tr;
 use winit::keyboard::KeyCode;
 
@@ -33,7 +33,7 @@ impl crate::App {
         let tem = self.components.foco_do_jogo.quadro(&mut self.input, cena);
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.view.jogo_com_o_teclado = tem;
-            ph2d_app_components::posse_do_jogo_registo::selecao(hero.gizmo.selection);
+            ph2d_app_game::posse_do_jogo_registo::selecao(hero.gizmo.selection);
         }
     }
 

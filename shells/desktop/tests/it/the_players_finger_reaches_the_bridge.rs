@@ -16,11 +16,11 @@ fn read(path: &str) -> String {
 }
 
 /// ⚠️ **RE-ANCORADO em 2026-10-20 (CodeEditor item 7, `docs/CodeEditor/06_posse_do_teclado.md`).** O bloco que
-/// «observava sem consumir» saiu: a decisão é a porta `ph2d_app_components::posse_do_jogo`, e com a cena a correr e o
+/// «observava sem consumir» saiu: a decisão é a porta `ph2d_app_game::posse_do_jogo`, e com a cena a correr e o
 /// jogo com o foco a tecla nua passa a ser SÓ dele (decisão do dono). As duas leis deste ficheiro continuam — agora
 /// perguntadas à porta, pelo comportamento: sem o jogo a ter o teclado a seta é do editor (o nudge do Vector), e um
 /// acorde nunca chega ao jogador.
-use ph2d_app_components::posse_do_jogo::{Tecla, destino};
+use ph2d_app_game::posse_do_jogo::{Tecla, destino};
 
 fn seta(desceu: bool, acorde: bool) -> Tecla {
     Tecla {

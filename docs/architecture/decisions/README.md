@@ -154,7 +154,7 @@
 | [0138](0138-motion-stream-columns-are-arc-shared-clone-is-a-refcount.md) | aceito (implementado nesta linha, `line/gpu-nodes`) | as colunas do `Stream` vivem atrás de `Arc`: clonar é refcount, escrever substitui |
 | [0139](0139-gpu-voronoi-lloyd-via-jump-flooding-integer-centroids.md) | aceito (implementado nesta linha, `line/gpu-nodes`) | `motion.voronoi` na GPU: Lloyd via Jump Flooding, centroides em INTEIROS, e o cap de 600 cai |
 | [0140](0140-gpu-multi-pass-kernels-neighborhood-sims-build-a-spatial-grid-on-device.md) | PROPOSTA. … | Kernels GPU multi-passe: a simulação de VIZINHANÇA (boids/collide/SPH) constrói uma grade espacial no dispositivo |
-| [0141](0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md) | proposto — aguardando aceite do Enio (nada é construído antes) | Motion path: a posição é UM canal com trajetória, e eixos separados são um MODO |
+| [0141](0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md) | ACEITO pelo Enio em 2026-11-12 (plano 17 da Timeline, item 13, opção A: a forma do ca… | Motion path: a posição é UM canal com trajetória, e eixos separados são um MODO |
 | [0142](0142-timeline-onion-ghost-poses-non-destructive-pose-at.md) | aceito (provisório na `line/anim`; … | O onion da TIMELINE: poses-fantasma por `pose_at` não-destrutivo |
 | [0143](0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md) | aceito (provisório na `line/anim`; … | Sinais da timeline: um marker EMITE um evento desacoplado, nunca uma chamada |
 | [0144](0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md) | aceito (provisório na `line/anim`; … | Expressões na timeline: IR congelado, num passe pós-composição SEPARADO |

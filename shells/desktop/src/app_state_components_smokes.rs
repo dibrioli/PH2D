@@ -32,7 +32,7 @@ pub(crate) struct ComponentsShell {
     /// deslocada é função PURA da vista, logo não há estado de produto para segurar aqui.
     pub(crate) parallax_log: Option<String>,
     /// ⭐ O foco do JOGO com a cena a correr — de quem é o teclado (CodeEditor item 7, `posse_do_jogo`).
-    pub(crate) foco_do_jogo: ph2d_app_components::posse_do_jogo::FocoDoJogo,
+    pub(crate) foco_do_jogo: ph2d_app_game::posse_do_jogo::FocoDoJogo,
     /// A tela «Controls» do jogador e o mapa EFECTIVO do Play (plano InputMap §4) — nunca o do projecto.
     pub(crate) jogador: ph2d_player_controls::PlaySession,
 }

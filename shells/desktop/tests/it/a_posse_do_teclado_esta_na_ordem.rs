@@ -1,5 +1,5 @@
 //! ⭐ A posse do teclado e do rato com a cena a correr (CodeEditor item 7) está perguntada NO SÍTIO: a lei tem os testes
-//! dela (`ph2d_app_components::posse_do_jogo`); uma porta certa no sítio errado é o Espaço a pausar a cena outra vez.
+//! dela (`ph2d_app_game::posse_do_jogo`); uma porta certa no sítio errado é o Espaço a pausar a cena outra vez.
 //! Ponta a ponta: `docs/CodeEditor/ferramentas/conduz_posse/corre.sh` (a app numa Xvfb, teclas reais).
 
 fn corpo(ficheiro: &str, assinatura: &str) -> String {

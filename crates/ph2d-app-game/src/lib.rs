@@ -8,6 +8,8 @@ pub mod miniatura;
 pub mod object_add;
 pub mod ordem_smoke;
 pub mod personagem;
+pub mod posse_do_jogo;
+pub mod posse_do_jogo_registo;
 pub mod sessao;
 pub mod smoke;
 pub use ph2d_game_smoke_fotos::{janela as smoke_janela, mao as smoke_mao};

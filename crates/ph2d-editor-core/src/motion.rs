@@ -618,6 +618,11 @@ impl UiMotion {
         self.tracks.get(&id).map(Track::value)
     }
 
+    /// Os ids com track, por ordem (o `tick_hover` devolve ao instantâneo os que são widgets).
+    pub fn track_ids(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.tracks.keys().copied()
+    }
+
     /// Quantas coisas estão **em voo** — o número que custa integração por quadro.
     #[must_use]
     pub fn in_flight(&self) -> usize {

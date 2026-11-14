@@ -5,7 +5,7 @@ use super::*;
 
 #[derive(Debug, Default)]
 pub struct WidgetStore {
-    pub(in crate::interaction) states: BTreeMap<NodeId, InteractiveState>,
+    pub(in crate::interaction) states: super::estados_dos_widgets::EstadosDosWidgets,
     /// Insertion order, used for keyboard Tab traversal.
     pub(in crate::interaction) focus_order: Vec<NodeId>,
     pub(in crate::interaction) hot_id: Option<NodeId>,
@@ -236,6 +236,8 @@ pub struct WidgetStore {
     /// a ser o dono do relógio, do carácter e do *reduced motion* — o store carrega o NÚMERO, não
     /// a lei que o produz.
     pub(in crate::interaction) hover_live: BTreeMap<NodeId, f32>,
+    /// Os ids do `hover_live` com `t != 0.0` — o censo do polegar a arrefecer lê só estes (N10 F6d).
+    pub(in crate::interaction) hover_acesos: std::collections::BTreeSet<NodeId>,
     /// Campos cujo caret está na fase APAGADA do piscar (o dono do relógio é quem pinta). Vazio = sempre aceso.
     pub(in crate::interaction) caret_off: std::collections::BTreeSet<NodeId>,
     /// Painter-published rect of each scrollable panel — populated

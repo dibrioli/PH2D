@@ -48,8 +48,28 @@ impl WidgetStore {
     /// ⚠️ **Este doc esteve ÓRFÃO** — fundido por cima do [`Self::number_fields`], que já tinha o
     /// seu, deixando esta função sem nenhum. Reposto no corte que criou este ficheiro.
     pub fn hover_targets(&self) -> impl Iterator<Item = (NodeId, f32)> + '_ {
-        self.states.iter().filter_map(|(id, st)| {
-            let lit = match st {
+        self.states
+            .iter()
+            .filter_map(|(id, st)| Some((*id, Self::hover_target_of(st)?)))
+    }
+
+    /// Os alvos dos ids ESCRITOS desde a última colheita (N10 F6d) — o tique trata só estes.
+    pub fn colhe_hover_targets_mudados(&mut self) -> Vec<(NodeId, f32)> {
+        let mudados = self.states.colhe_mudados();
+        mudados
+            .into_iter()
+            .filter_map(|id| Some((id, Self::hover_target_of(self.states.get(&id)?)?)))
+            .collect()
+    }
+
+    /// O alvo de um id só (o `tick_hover` devolve ao instantâneo um id com track alheia).
+    #[must_use]
+    pub fn hover_target(&self, id: NodeId) -> Option<f32> {
+        Self::hover_target_of(self.states.get(&id)?)
+    }
+
+    fn hover_target_of(st: &InteractiveState) -> Option<f32> {
+        let lit = match st {
                 InteractiveState::Button { state } | InteractiveState::Radio { state, .. } => {
                     matches!(
                         state,
@@ -117,9 +137,8 @@ impl WidgetStore {
                 // e amaciá-las revive a cerca do estudo §6.2 (*o realce de uma lista OBEDECE ao
                 // cursor; oito rows meio-acesas ao mesmo tempo é rasto, não vida*).
                 _ => return None,
-            };
-            Some((*id, if lit { 1.0 } else { 0.0 }))
-        })
+        };
+        Some(if lit { 1.0 } else { 0.0 })
     }
 
     /// **O POLEGAR de uma scrollbar** — o eixo dele estava inteiro e nunca se moveu.
@@ -191,8 +210,8 @@ impl WidgetStore {
         //
         // ⚠️ `t` PRIMEIRO: quase toda entrada do mapa está fria, e assim o predicado caro (o mapa
         //    do despachante) quase nunca corre.
-        let cooling = self.hover_live.iter().filter_map(move |(id, t)| {
-            (*t != 0.0 && Some(*id) != hot && self.scroll_bar_panel(*id).is_some()).then_some(*id)
+        let cooling = self.hover_acesos.iter().filter_map(move |id| {
+            (Some(*id) != hot && self.scroll_bar_panel(*id).is_some()).then_some(*id)
         });
         hot.into_iter().chain(cooling).map(|id| {
             let lit = matches!(self.scrollbar_visual(id).0, S::Hovered | S::Dragging);

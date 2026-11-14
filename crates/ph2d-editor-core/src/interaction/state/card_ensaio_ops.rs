@@ -44,7 +44,7 @@ impl WidgetStore {
     /// Abre o ensaio: guarda estados e cores e larga foco, arrasto, botão premido e seletor de cor
     /// (nenhuma caixa se defende — a semente escreve-as todas).
     pub fn abre_ensaio(&mut self) -> Ensaio {
-        let estados = self.states.clone();
+        let estados = (*self.states).clone();
         // Toda caixa de número fica sem valor: a que a semente escrever é do preso, mesmo que hoje dê o número da seleção.
         for s in self.states.values_mut() {
             if let InteractiveState::NumberInput { value, .. } = s {
@@ -79,7 +79,7 @@ impl WidgetStore {
             .filter(|(id, c)| e.cores.get(id) != Some(*c))
             .map(|(id, c)| (*id, *c))
             .collect();
-        self.states = e.estados;
+        self.states.substitui(e.estados);
         self.widget_colors = e.cores;
         self.focus_id = e.foco;
         self.number_input_drag = e.arrasto;

@@ -55,8 +55,18 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
 /// `Role::Number`, ou um papel que o *reduced motion* desarme) faz o `animate` **remover** a track
 /// e devolver o alvo — e aí o `get` não tem o que responder. Sem o fallback, esses ids ficariam
 /// congelados no último valor publicado, para sempre.
-fn tick_hover(hero: &mut HeroScreen, dt: f64) {
-    let mut pending: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.hover_targets().collect();
+///
+/// N10 F6d: o alvo é função só do estado, então só os ids ESCRITOS desde o quadro anterior são
+/// revistos (o `WidgetStore` regista-os); um widget com track de outro papel volta ao instantâneo,
+/// como na varredura de antes. Oráculo: `live_tests::o_hover_vivo_pelos_mudados_e_o_da_varredura`.
+pub(super) fn tick_hover(hero: &mut HeroScreen, dt: f64) {
+    let mut pending: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.colhe_hover_targets_mudados();
+    let com_track: Vec<(ph2d_a11y::NodeId, f32)> = hero
+        .motion
+        .track_ids()
+        .filter_map(|id| Some((id, hero.store.hover_target(id)?)))
+        .collect();
+    pending.extend(com_track);
     let thumbs: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.scrollbar_hover_targets().collect();
     // ⛔ Dono 02/11: o fundo de widget acende e apaga NO QUADRO (`Role::Number`). Com `Fade` o que
     // o rato deixava ainda apagava enquanto o seguinte acendia — os fundos piscavam em fila
@@ -317,3 +327,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "live_tests.rs"]
+mod live_tests;

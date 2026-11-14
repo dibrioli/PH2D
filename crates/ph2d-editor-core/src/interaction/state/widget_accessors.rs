@@ -78,7 +78,18 @@ impl WidgetStore {
     /// **O tique publica aqui.** Único escritor, uma vez por quadro, imediatamente antes de todos os
     /// leitores — o gêmeo exacto do [`WidgetStore::set_panel_scroll_live`].
     pub fn set_hover_live(&mut self, id: NodeId, t: f32) {
+        if t == 0.0 {
+            self.hover_acesos.remove(&id);
+        } else {
+            self.hover_acesos.insert(id);
+        }
         self.hover_live.insert(id, t);
+    }
+
+    /// O mapa vivo inteiro — só para o oráculo do `tick_hover` (N10 F6d).
+    #[cfg(test)]
+    pub(crate) fn hover_live_retrato(&self) -> std::collections::BTreeMap<NodeId, f32> {
+        self.hover_live.clone()
     }
 
     /// O caret de `id` está aceso? `true` por omissão (o campo que ninguém faz piscar).

@@ -14,6 +14,7 @@
 //! ([`WidgetStore::register`]); the hot path's `get`/`get_mut` is allocation-free.
 
 mod blender_ops;
+mod estados_dos_widgets;
 mod chrome_ops;
 mod collapse_ops;
 mod input_map_ops;

@@ -34,6 +34,8 @@
   - `stamp_route/rota.rs` (`RotaDeCor`, porta única da cor do lote) e `pegada_que_levanta` (Blur×Clone); `Compositor` devolve o `Lido` (RGBA com Smooth Edges).
   - **Roteador de portas**: censo `toda_porta_do_painter_tem_decisao` — porta nova declara a decisão (interna ou não).
   - Cadência: `ph2d-gpu::surface::modo_de_boot` (Mailbox + latência 2) e `ph2d-host::ritmo`.
+  - **Fecho (§6): o arranque (B43.7) mora em `ph2d-host::arranque`**, não na `ph2d-app-painter` (catraca −110); ficheiros irmãos novos `undo_planes_journal.rs`,
+    `measure_dirty_overclaim_dreno.rs`, `layers/mutate_tela_transparente_tests.rs`. Quem mais editar `undo_planes.rs`/`sim.rs` reconte o tecto de 700.
 - Chaves A×B em execução (todas = o caminho de antes): `PH2D_PEN_UP_ADIADO=0` · `PH2D_DAB_SINCRONO=1` · `PH2D_WET_ZERA_JANELA=0` · `PH2D_FOTO_FUNDE=0` ·
   `PH2D_FLUXO_SERIE=1` · `PH2D_TROCA_POUPA=0` · `PH2D_TINTA_MARCA_A_JANELA=1` · `PH2D_CHEIA_ALOCA=0` (reusar) · `PH2D_PREMUL_ESCALAR=1` ·
   `PH2D_OTICA_COMPOSITOR_SMOOTH=0` · `PH2D_PRESENT=fifo|mailbox` · `PH2D_QUADRO_A_PEDIDO=0|1` · `PH2D_MASCARA_CHEIA`.
@@ -108,8 +110,39 @@
 
 ## 6. Prova de fecho
 
-*A preencher pelo fecho* (fmt/clippy `PH2D_SUITE=fecho` das crates tocadas, gates por nome, alarmes de pincel — vão ficar vermelhos pelo B13.10/B13.4, §7 —, binário smoke 2×, `rm -rf target/*/incremental`).
-A suíte completa e o `nextest-impacted` são do integrador.
+Fecho 14/11 12:02–12:30 sobre `90b2643db2` + 3 commits de cura (`5819afb965` fmt · `f4097b1e31` clippy · `696ebb2f2f` LOC). **Impactados e suíte completa ficam para a integração.**
+
+| passo | comando | resultado |
+|---|---|---|
+| fmt | `rustfmt --edition 2024 --check` nos `.rs` de `36a312482a..HEAD` | ✗ 23 ficheiros (ordem de `mod`, quebras) → `cargo fmt -p` nas 13 crates → ✓ |
+| clippy | `PH2D_SUITE=fecho ph2d-run.sh cargo clippy -p {tool-painter,app-painter,wet-paint,wet-gpu,painter-brush,render,editor-core,app-components,det-math,host-desktop,app-host,gpu,host} --all-targets --keep-going -- -D warnings` | ✗ 15 → ✓ rc 0. Lib: `drying_pass` importado e morto (`sim.rs`), `TileFino::tira` sem chamador, `size_px_to_norm`/`Arc` sem uso, `bytes_zerados`/`forca_zerar_a_janela` só do teste ⇒ `#[cfg(test)]`, `voa`/`fica_atras`/`resto_atras` com tipo mais privado que o método ⇒ `pub(in wetpaint)`. Testes: `mut` a mais, `type Traco`, `ok().expect`, `manual_range_contains`, `as_chunks_mut`, `if let` colapsado. Zero `allow` novo |
+| LOC | `architecture_workspace_file_loc_cap` + `the_shell_only_shrinks` | ✗ **a linha chegou ao fecho VERMELHA**: 6 ficheiros > 700 (`undo_planes` 745, `measure_dirty_overclaim` 742, `sim` 741, `mutate` 706, `state` 701, `brush_settings` 701) e `ph2d-app-painter` 24 385 > 24 359. Cura por MOVER (`696ebb2f2f`): **`arranque.rs` (re-exec hugetlb, B43.7) → `ph2d-host::arranque`** (ciclo de vida do processo; `main.rs` chama `ph2d_host::arranque::liga_paginas_grandes()`), `undo_planes_journal.rs`, `measure_dirty_overclaim_dreno.rs`, `sim_step_atomic_reference` → `sim_resumable_tests.rs` (o único chamador), `mutate_tela_transparente_tests.rs` → ✓ |
+| outros do fecho | `check-standalone-optional.sh` · `check-workflow-packages.sh` · `cargo check -p ph2d-host --target aarch64-apple-darwin` (deny) | ✓ · ✓ (33 nomes / 526 membros) · ✓ (o `cfg(target_os)` do arranque mudou de crate) |
+| gates por nome (`cargo-test-narrow.sh`) | editor-core `--test it`: shell_only_shrinks, claude_md_cabe_no_orcamento (+ §5.1 700 B), workspace/panel/widget LOC, `architecture_toda_{flake_de_carga,razao_de_relogios}_corre_na_faixa_isolada` | ✓ 16 |
+| | host-desktop `file_loc_caps` · det-math `o_motor_nao_chama_a_libm` · host `arranque` · gpu `o_modo_de_apresentacao_e_valido` | ✓ 4 · ✓ 3 · ✓ 1 · ✓ 1 |
+| | wet-paint: os 8 da §2 + `sim_resumable_tests` | ✓ 10 |
+| | tool-painter: os da §2 + `orcamento_4k`, `o_lote_em_voo_nao_suja_a_previa…`, `a_pilha_do_composite_abre_em_serie`, `fila_do_dab`, `tela_transparente_tests`, `journal_delta`, `undo_planes`, `composite_acumulado` | ✓ 46 |
+| alarmes de pincel | `cargo-test-narrow.sh ph2d-tool-painter --profile smoke --test it -- a_largura_de_fabrica_e_a_aprovada a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` | ✗ 2 **de propósito** (não regravados): miniatura de **Blender Dots, Blender Hard, Blender Soft, Blender Textured, Ink Brush, Oil Wash, Smear Flat, Smear Shattered, Smear Soft, Smear Spikey, Smear Wet, Water Brush** (12); largura só **Smear Wet**. Relatório `target/relatorio-pinceis/index.html` gerado 12:21 |
+| `PROJECT_SCHEMA` | `git diff --name-only 36a312482a..HEAD \| grep -i schema` | vazio ⇒ 0, sem recontagem |
+| placa (`--ignored`) | `a_historia_da_placa…`, paridade `--test tinta --test paridade` | não corridos no fecho: integrador |
+
+**Matriz final** ([N10_MATRIZ_FINAL](../missao_4k/medicoes/N10_MATRIZ_FINAL.md), 4K papel, NOVA=1, mínimo de 2 rondas, custo × custo): Flat Bristle 240 traço p95 80 → **30,6**, soltar 60 → 30,4; CPU parado ~50 % → **3–8 %** sem água; Wet de omissão soltar 19,6 → 13,7, Ctrl+Z 27,5 → 20,5; 1.º toque da camada nova Composite 43 → 18. **§Regressões curadas:** `d58329704e` (o lote em voo sujava a prévia sem caixa ⇒ tela 4K inteira por quadro): Filbert traço 15,4 → **10,7**, toque 21,6 → 15,3, Wet Liner toque 15,8 → 14,4; `90b2643db2` (a pilha do Composite abre em série; o `par_clone`/`par_fill` do B17.8 custava +8–9 ms): toque 30,4 (base) → **25,7**. Nenhuma regressão aberta; Ctrl+Z dos Wet segue ~45 ms ✗ (aberto, §3). Chave nova: `PH2D_PILHA_PELOS_FIOS=1`.
+
+**Réguas** (`bash scripts/agent-loop-profile.sh`, 20 sessões):
+```
+  ✗ paralelismo de ferramenta              1.13/passo   alvo: >= 1,5  (10% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                163   alvo: <= 800
+  ✗ cargo test : cargo check                333 : 122   alvo: <= 1,0  razao 2.7x (baseline: 4,3x)
+  ✓ edicoes SEM conferir que casaram             1.7%   alvo: <= 2%
+  ✓ contexto relido por passo (media)         244 mil   alvo: <= 250 mil
+  ✓ contexto no inicio da sessao               68 mil   alvo: <= 80 mil
+```
+`rm -rf target/{debug,smoke}/incremental` (54 G + 19 G) antes do binário. **Binário smoke, 2.ª corrida:**
+```
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 300s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```
+(1.ª corrida: 59,3 s, a partir do incremental apagado.)
 
 ## 7. Smoke do dono (UI de cartões)
 

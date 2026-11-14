@@ -150,6 +150,9 @@ pub(crate) fn upload_cpu_preview(
                 cache_version,
                 force_full,
             );
+            let conta = contagem::ligada();
+            let t0 = conta.then(std::time::Instant::now);
+            let (mut janelas, mut bytes) = (0u32, 0u64);
             let upload_result: Option<Result<u32, _>> = match plan {
                 UploadPlan::Skip => None,
                 UploadPlan::Partial { texture_id, rect } => {
@@ -159,6 +162,8 @@ pub(crate) fn upload_cpu_preview(
                         janelas_do_upload(rect, caixas)
                             .into_iter()
                             .try_for_each(|(bx, by, bw, bh)| {
+                                janelas += 1;
+                                bytes += u64::from(bw) * u64::from(bh) * 4;
                                 let mut region =
                                     extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
                                 premultiply_rgba8(&mut region);
@@ -171,6 +176,7 @@ pub(crate) fn upload_cpu_preview(
                 }
                 UploadPlan::Full { reuse } => Some(ENVIO.with_borrow_mut(|premul_bytes| {
                     envio_fundido(&preview.rgba, premul_bytes);
+                    bytes = premul_bytes.len() as u64;
                     match reuse {
                         Some(texture_id) => renderer
                             .replace_individual_pixels(
@@ -186,6 +192,14 @@ pub(crate) fn upload_cpu_preview(
                     }
                 })),
             };
+            if let Some(t0) = t0 {
+                let tipo = match plan {
+                    UploadPlan::Skip => None,
+                    UploadPlan::Full { .. } => Some(true),
+                    UploadPlan::Partial { .. } => Some(false),
+                };
+                contagem::conta(tipo, janelas, bytes, t0.elapsed().as_secs_f64() * 1e3);
+            }
             match upload_result {
                 None => {}
                 Some(Ok(texture_id)) => {
@@ -338,5 +352,6 @@ pub(crate) fn release_preview_texture(
 
 #[cfg(test)]
 mod aviso_tests;
+mod contagem;
 #[cfg(test)]
 mod envio_tests;

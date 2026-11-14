@@ -54,6 +54,20 @@ const ENCOLHE_PELO_MENOS: usize = 7;
 /// Abaixo disto não vale um fio: uma camada pequena pesa menos do que o custo de a esperar ao acordar.
 const COMPRIME_A_PARTIR_DE: usize = 64 << 20;
 
+#[cfg(test)]
+thread_local! {
+    /// n.º 10 F5j (B18.7): a sonda baixa o limiar para ligar o fio numa sessão pequena (`PH2D_SONDA_COMPRIME_MB`).
+    pub(crate) static COMPRIME_A_PARTIR_NO_TESTE: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
+fn comprime_a_partir_de() -> usize {
+    #[cfg(test)]
+    if let Some(b) = COMPRIME_A_PARTIR_NO_TESTE.get() {
+        return b;
+    }
+    COMPRIME_A_PARTIR_DE
+}
+
 impl TintaAdormecida {
     /// Comprime aqui e agora (o fio faz o mesmo).
     #[cfg(test)]
@@ -259,6 +273,7 @@ impl PainterTool {
         self.paint.wetpaint.pending_deposit.clear();
         self.undo.marca.acaba_a_molhada();
         let bytes = sess.bytes_retidos();
+        let limiar = comprime_a_partir_de();
         let camada = sess.camada;
         let lista = &mut self.paint.wetpaint.adormecidas;
         lista.retain(|a| a.camada != camada);
@@ -266,18 +281,16 @@ impl PainterTool {
             sess: Arc::new(std::sync::Mutex::new(sess)),
             tela,
             camada,
-            bytes: Arc::new(std::sync::atomic::AtomicUsize::new(
-                if bytes >= COMPRIME_A_PARTIR_DE {
-                    bytes / ENCOLHE_PELO_MENOS
-                } else {
-                    bytes
-                },
-            )),
+            bytes: Arc::new(std::sync::atomic::AtomicUsize::new(if bytes >= limiar {
+                bytes / ENCOLHE_PELO_MENOS
+            } else {
+                bytes
+            })),
             aquecendo: Arc::default(),
             espera: None,
         };
         crate::sonda_partes::parte("flush.guarda");
-        if bytes >= COMPRIME_A_PARTIR_DE {
+        if bytes >= limiar {
             tinta.encolhe_num_fio();
         }
         lista.push(tinta);

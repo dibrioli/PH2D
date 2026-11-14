@@ -21,6 +21,11 @@ fn faltas() -> u64 {
 }
 
 fn traco(t: &mut PainterTool, y: f32) -> Vec<f64> {
+    traco_de(t, y, 100.0, 12.0, 30)
+}
+
+/// Um traço em `y` de `x0`, `n` passos de `passo` px.
+fn traco_de(t: &mut PainterTool, y: f32, x0: f32, passo: f32, n: usize) -> Vec<f64> {
     let mut ms = Vec::new();
     let mut ev = |t: &mut PainterTool, x: f32, phase| {
         let f0 = faltas();
@@ -60,11 +65,11 @@ fn traco(t: &mut PainterTool, y: f32) -> Vec<f64> {
             );
         }
     };
-    ev(t, 100.0, PointerPhase::Down);
-    for k in 1..=30 {
-        ev(t, 100.0 + 12.0 * k as f32, PointerPhase::Move);
+    ev(t, x0, PointerPhase::Down);
+    for k in 1..=n {
+        ev(t, x0 + passo * k as f32, PointerPhase::Move);
     }
-    ev(t, 460.0, PointerPhase::Up);
+    ev(t, x0 + passo * (n + 1) as f32, PointerPhase::Up);
     ms
 }
 
@@ -96,6 +101,23 @@ fn sonda_primeiro_traco() {
     super::super::watercolor_backdrop::FUNDO_EM_CACHE
         .set(std::env::var("PH2D_SONDA_FUNDO_ANTIGO").is_err());
     super::preparo::liga_no_teste(std::env::var("PH2D_SONDA_PREPARO").is_ok());
+    // n.º 10 F5j (B18.7): `PH2D_SONDA_ANTES=<n>` dá à sessão o fenómeno (n traços largos antes do «+», a tela de lado a
+    // lado); `PH2D_SONDA_COMPRIME_MB=<m>` baixa o limiar do fio só aqui; `PH2D_SONDA_PAUSA_MS=<ms>` troca o preparo de
+    // 60 quadros entre o «+» e o toque por esta pausa (em quadros de 16 ms), para o traço cair DENTRO do fio.
+    let antes: usize = std::env::var("PH2D_SONDA_ANTES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    if let Some(mb) = std::env::var("PH2D_SONDA_COMPRIME_MB")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+    {
+        super::adormecida::COMPRIME_A_PARTIR_NO_TESTE.set(Some(mb << 20));
+    }
+    let pausa_q: Option<usize> = std::env::var("PH2D_SONDA_PAUSA_MS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .map(|ms| ms.div_ceil(16));
     let so = std::env::var("PH2D_SONDA_SO").ok();
     let nomes = [
         "Watercolor Basic",
@@ -213,6 +235,10 @@ fn sonda_primeiro_traco() {
             }
         }
         let (mut um, mut dois) = (traco(&mut t, 200.0), traco(&mut t, 500.0));
+        for i in 0..antes {
+            let y = 80.0 + (i as f32 + 0.5) * (h as f32 - 160.0) / antes as f32;
+            let _ = traco_de(&mut t, y, 60.0, (w as f32 - 120.0) / 61.0, 60);
+        }
         // `PH2D_SONDA_NOVA`: o 1.º e o 2.º traço numa camada NOVA (aba Layers · «+»), como o dono (B18.4).
         if std::env::var("PH2D_SONDA_NOVA").is_ok() {
             println!(
@@ -221,6 +247,16 @@ fn sonda_primeiro_traco() {
                 dois.iter().copied().fold(0.0, f64::max)
             );
             let _ = super::adormecida::ULTIMO_FIO.take();
+            let retem = t
+                .paint
+                .wetpaint
+                .session
+                .as_ref()
+                .map_or(0, |s| s.bytes_retidos());
+            println!(
+                "  a sessão retém {:.1} MB antes do «+» ({antes} traços largos a mais)",
+                retem as f64 / 1e6
+            );
             let (f0, t0) = (faltas(), Instant::now());
             crate::sonda_partes::liga();
             let nova = t.add_raster_layer("nova").expect("a camada nova");
@@ -249,11 +285,11 @@ fn sonda_primeiro_traco() {
             let ms =
                 |i: Option<Instant>| i.map_or(-1.0, |i| i.duration_since(t0).as_secs_f64() * 1e3);
             if fio.is_none() {
-                println!("  fio da compressão: nenhum (a sessão retém < 64 MB)");
+                println!("  fio da compressão: nenhum (a sessão retém menos do que o limiar)");
             }
             // O artista leva mais de um quadro do «+» ao toque: o preparo corre nesse tempo.
-            if std::env::var("PH2D_SONDA_PREPARO").is_ok() {
-                for _ in 0..60 {
+            if pausa_q.is_some() || std::env::var("PH2D_SONDA_PREPARO").is_ok() {
+                for _ in 0..pausa_q.unwrap_or(60) {
                     std::thread::sleep(std::time::Duration::from_millis(16));
                     t.on_tick(1000.0 / 60.0);
                     let _ = t.take_preview_arc();

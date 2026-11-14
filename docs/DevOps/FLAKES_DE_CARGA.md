@@ -133,6 +133,15 @@ que o painel lê. Duas mesas em paralelo trocavam-no a cada quadro; a «troca de
 estado. O mesmo acidente já tinha sido contornado duas vezes, com a mesma variável nomeada: `registo_privado`
 (`quantas_entradas_tem_cada_painel`) e `InspectorPrivado` (`cartoes_mao`); saíram em 04/11 (fatia F4), com o censo a correr no registo do processo.
 
+## A espécie da mola no relógio de parede (13/11): vermelho por PERFIL, não por carga
+
+Assinatura: vermelho em 40 ms na faixa isolada, verde sozinho no `dev`, vermelho também em `cargo test --profile ci-test`.
+`ligar_o_relevo_mede_a_linha_da_camada_no_mesmo_quadro` pintava 400 quadros para «assentar» as alturas dos cartões, que
+andam por mola com o `dt` do relógio (`cards_lista.rs`). A opt-level 0 (~0,4 ms/quadro) assentavam; a opt-level 1 do
+`ci-test` (~0,08 ms/quadro) a secção ficava com 4 px e a barra do relevo nem se pintava. **Cura:** os quadros de
+assentar correm com `aquecimento::com_passo_fixo(0.1, …)` e o quadro medido com `PASSO_DE_QUADRO_S`. Um teste que
+pinta N quadros para esperar uma mola sem fixar o passo é membro desta espécie.
+
 ## A espécie da memória da placa (W5e, 2026-10-11)
 
 Um gate de GPU que ALOCA muito (a luz 2D: 0,3–4 GB por teste) reprova no fan-out quando a soma dos

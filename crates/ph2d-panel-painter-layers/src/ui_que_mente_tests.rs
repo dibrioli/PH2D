@@ -91,15 +91,21 @@ fn ligar_o_relevo_mede_a_linha_da_camada_no_mesmo_quadro() {
         crate::state::set_current_layers(Some(stack.clone()));
         host.paint::<crate::PainterLayersPanel>(&mut st, vp)
     };
+    // The card heights ride a spring stepped by the frame's `dt`: from the wall clock, 400 frames
+    // settled at opt-level 0 and left the section 4 px tall at opt-level 1 (`ci-test`, no relief
+    // bar painted). Settle at the real frame's ceiling, then measure ONE 60 Hz frame.
+    use ph2d_editor_core::aquecimento::{PASSO_DE_QUADRO_S, com_passo_fixo};
     let _ = quadro(&mut host, &stack);
     host.open_all_sections();
-    for _ in 0..400 {
-        let _ = quadro(&mut host, &stack);
-    }
+    com_passo_fixo(0.1, || {
+        for _ in 0..60 {
+            let _ = quadro(&mut host, &stack);
+        }
+    });
     for id in ids {
         stack.get_mut(id).expect("layer").has_relief = true;
     }
-    let regs = quadro(&mut host, &stack);
+    let regs = com_passo_fixo(PASSO_DE_QUADRO_S, || quadro(&mut host, &stack));
     crate::state::set_current_layers(None);
     crate::cards::force_cards_on_this_thread(None);
     let ultimo = |id| regs.iter().rev().find(|(i, _)| *i == id).map(|(_, r)| *r);

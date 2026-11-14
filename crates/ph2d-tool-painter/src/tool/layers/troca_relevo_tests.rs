@@ -94,6 +94,13 @@ fn a_troca_com_a_tinta_viva_muda_o_relevo_so_onde_a_placa_o_redobra() {
         if let Some(y) = depois {
             traco(&mut t, y);
         }
+        if antes.is_none() && depois.is_none() {
+            // n.º 10 F5: a troca pura não muda píxel nem relevo — nada a drenar (`troca_pura_tests`).
+            assert!(!t.take_preview_dirty(), "passo {k}: a troca pura não marca nada");
+            assert_eq!(planos(&t), velhos, "passo {k}: o relevo ficou");
+            vazias += 1;
+            continue;
+        }
         assert!(t.take_preview_dirty(), "passo {k}: há o que drenar");
         let regiao = t.preview_gpu_region().expect("a troca confina");
         let relevo = t.preview_gpu_relevo();
@@ -117,15 +124,10 @@ fn a_troca_com_a_tinta_viva_muda_o_relevo_so_onde_a_placa_o_redobra() {
             fora.len(),
             fora.first()
         );
-        if antes.is_none() && depois.is_none() {
-            assert_eq!(relevo, Some(None), "passo {k}: só a figura mudou");
-            vazias += 1;
-        } else {
-            assert!(
-                matches!(relevo, Some(Some(_))),
-                "passo {k}: o traço tem a parte dele ({relevo:?})"
-            );
-        }
+        assert!(
+            !matches!(relevo, Some(None)),
+            "passo {k}: o traço redobra o relevo dele ({relevo:?})"
+        );
     }
     assert_eq!(vazias, 3, "controlo: as trocas sem traço");
 }

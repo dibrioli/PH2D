@@ -41,6 +41,32 @@ fn troca_recompoe_como_antes() -> bool {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    /// A sonda A/B do n.º 10 F5 no mesmo processo: `true` = a tinta que adormece/acorda marca a janela dela, como antes.
+    pub(crate) static TINTA_MARCA_SEMPRE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// n.º 10 F5 (A×B em execução): `true` = a tinta viva que adormece/acorda marca a janela da tinta, como antes.
+/// `PH2D_TINTA_MARCA_A_JANELA=1` no arranque.
+pub static TINTA_MARCA_COMO_ANTES: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
+
+fn tinta_marca_como_antes() -> bool {
+    use std::sync::atomic::Ordering::Relaxed;
+    #[cfg(test)]
+    if TINTA_MARCA_SEMPRE.with(std::cell::Cell::get) {
+        return true;
+    }
+    match TINTA_MARCA_COMO_ANTES.load(Relaxed) {
+        2 => {
+            let v = std::env::var_os("PH2D_TINTA_MARCA_A_JANELA").is_some_and(|v| v == "1");
+            TINTA_MARCA_COMO_ANTES.store(u8::from(v), Relaxed);
+            v
+        }
+        v => v == 1,
+    }
+}
+
 impl PainterTool {
     /// Bump the panel's publish revision — and **nothing else**.
     ///
@@ -311,6 +337,9 @@ impl PainterTool {
         };
         match alcance {
             PlaneReach::Untouched => {}
+            // n.º 10 F5: adormecer/acordar não escreve píxel e a figura só lê píxeis (sonda: 0 píxeis mudam na janela
+            // marcada de 64×44); quem escreve marca o seu. A janela só se marca como antes.
+            PlaneReach::Window(_) if !tinta_marca_como_antes() => {}
             PlaneReach::Window(j) => match j.to_region(w) {
                 Some(r) => self.mark_dirty_so_a_figura(r),
                 None => self.invalidate_composite(),
@@ -331,6 +360,9 @@ impl PainterTool {
         };
         match alcance {
             PlaneReach::Untouched => {}
+            // n.º 10 F5: adormecer/acordar não escreve píxel e a figura só lê píxeis (sonda: 0 píxeis mudam na janela
+            // marcada de 64×44); quem escreve marca o seu. A janela só se marca como antes.
+            PlaneReach::Window(_) if !tinta_marca_como_antes() => {}
             PlaneReach::Window(j) => match j.to_region(w) {
                 Some(r) => self.mark_dirty_so_a_figura(r),
                 None => self.invalidate_composite(),

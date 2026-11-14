@@ -73,6 +73,8 @@ struct Tabela {
     leis: Vec<([u64; 6], u32)>,
     proxima: u32,
     geracao: u32,
+    /// A última lei pedida e o seu id (`0` = nenhuma): a secagem pede a MESMA lei célula após célula.
+    ultima: ([u64; 6], u32),
 }
 
 impl Tabela {
@@ -84,6 +86,7 @@ impl Tabela {
             leis: Vec::new(),
             proxima: 1,
             geracao: g,
+            ultima: ([0; 6], 0),
         }
     }
 
@@ -99,8 +102,13 @@ impl Tabela {
         if self.geracao != g {
             // As entradas da geração velha já não casam (`ok == g`); os ids podem recomeçar.
             self.leis.clear();
+            self.ultima.1 = 0;
             self.proxima = 1;
             self.geracao = g;
+        }
+        // Sem o atalho a procura pela tabela custava +15 % à secagem de uma lei só (B13.8, `N10_agua_wet.md`).
+        if self.ultima.1 != 0 && self.ultima.0 == k {
+            return self.ultima.1;
         }
         if self.leis.is_empty() {
             self.leis = vec![([0; 6], 0); 1 << LEI_BITS];
@@ -113,12 +121,14 @@ impl Tabela {
             & !(VIAS - 1);
         let balde = &mut self.leis[i..i + VIAS];
         if let Some(l) = balde.iter().find(|l| l.1 != 0 && l.0 == k) {
+            self.ultima = (k, l.1);
             return l.1;
         }
         // Expulsa a mais velha do balde (o id mais baixo; o vazio tem 0).
         let velha = balde.iter_mut().min_by_key(|l| l.1).expect("VIAS > 0");
         *velha = (k, self.proxima);
         self.proxima += 1;
+        self.ultima = *velha;
         velha.1
     }
 }

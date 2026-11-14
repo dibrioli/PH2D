@@ -75,3 +75,57 @@ fn o_oleo_grosso_com_pouca_agua_nao_escorre_fora_do_pincel() {
         );
     }
 }
+
+/// B13.9 (PA-30): `MaxVelocity` é o TECTO da velocidade, não a unidade da tensão de cedência. Abaixo do tecto o fluxo
+/// do óleo é o mesmo bit com o tecto a 1 ou a 0,5 (antes `τ_y` era multiplicado por ele: baixar o tecto amolecia a tinta).
+/// O mesmo raio (`destination_reach` = ⌈tecto⌉ = 1) nas duas: o raio é a outra leitura do tecto, legítima.
+#[test]
+fn maxvelocity_nao_muda_a_cedencia() {
+    let mut e = Engine::new(L, L);
+    e.sim.oleo = true;
+    e.set_knob(Knob::Medium, 1.0);
+    e.set_knob(Knob::PigmentPerDab, 3000.0);
+    e.sliders.water = 0.2;
+    e.sliders.size = 9.0;
+    traco(&mut e, (12.0, Y1), (84.0, Y1));
+    corre(&mut e, 6);
+    let fluxo = |e: &mut Engine, max_v: f64| {
+        e.tuning.set(Knob::MaxVelocity, max_v);
+        let p = e.sim.gather_params(&e.tuning);
+        let [gx, gy] = e.sim.gravity(&e.tuning);
+        // A grade INTEIRA: a fotografia do undo não leva os planos de velocidade.
+        let mut g = e.active_grid().clone();
+        super::build_flow_field_jacobi(&mut g, &p, gx, gy, false);
+        let f: Vec<(f32, f32)> = g
+            .flow_x
+            .iter()
+            .copied()
+            .zip(g.flow_y.iter().copied())
+            .collect();
+        f
+    };
+    assert!(
+        !e.active_grid().oleo.is_empty(),
+        "a cena não tem o campo do óleo"
+    );
+    let a = fluxo(&mut e, 1.0);
+    assert!(a == fluxo(&mut e, 1.0), "a régua repete-se");
+    let b = fluxo(&mut e, 0.5);
+    let abaixo = |v: (f32, f32)| v.0.abs() < 0.49 && v.1.abs() < 0.49;
+    let (mut n, mut mexe) = (0, 0);
+    for (va, vb) in a.iter().zip(&b) {
+        if abaixo(*va) && abaixo(*vb) {
+            n += 1;
+            mexe += usize::from(va.0 != 0.0 || va.1 != 0.0);
+            assert_eq!(
+                (va.0.to_bits(), va.1.to_bits()),
+                (vb.0.to_bits(), vb.1.to_bits()),
+                "o tecto mudou o fluxo abaixo dele"
+            );
+        }
+    }
+    assert!(
+        mexe > 20,
+        "a cena não escoa: {mexe} de {n} células com fluxo"
+    );
+}

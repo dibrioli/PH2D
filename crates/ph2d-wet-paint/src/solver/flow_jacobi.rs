@@ -463,7 +463,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     if com_tensao {
                         let par = (susp_full, sett_full);
                         (ex, ey) =
-                            super::ladeira_do_oleo::cede(oleo, par, fi, f, c.max_v, (ex, ey));
+                            super::ladeira_do_oleo::cede(oleo, par, fi, f, (ex, ey));
                         let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
                         let k = crate::meio::mobilidade(f64::from(cel.meio));
                         (ex, ey) = (ex * k, ey * k);

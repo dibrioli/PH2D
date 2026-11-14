@@ -150,10 +150,10 @@ fn campo_oleo(@builtin(global_invocation_id) g: vec3<u32>) {
     if m > 0.0 && movel > 0.0 {
         let phi = movel / (movel + K_W * max(r.f, 0.0));
         let x = max((phi - PHI_C) / (1.0 - PHI_C), 0.0);
-        tau = TAU0 * u.max_v * min(m, 1.0) * (x * x);
+        tau = TAU0 * min(m, 1.0) * (x * x);
     }
     if corpo[r.fi] > 0.0 && movel + sett[r.fi] > 0.0 {
-        tau += TAU_CORPO * u.max_v * corpo[r.fi];
+        tau += TAU_CORPO * corpo[r.fi];
     }
     if tau > 0.0 {
         let v = sqrt(e.x * e.x + e.y * e.y);

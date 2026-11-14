@@ -26,7 +26,7 @@ pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::Atomic
 /// `τ_y` vem da RECEITA que está na célula, não do `film` instantâneo:
 ///
 /// `φ = M ÷ (M + K_W·film)` (`M = susp + sett`, a mesma grandeza de `painter::receita`) ·
-/// `τ_y = τ₀ · MaxVelocity · m · ((φ − φ_c) ÷ (1 − φ_c))₊ⁿ` (`m` = o MEIO da célula, [`Knob::Medium`] desde a E10;
+/// `τ_y = τ₀ · m · ((φ − φ_c) ÷ (1 − φ_c))₊ⁿ` (`m` = o MEIO da célula, [`Knob::Medium`] desde a E10;
 /// era a fracção de Real Oil).
 ///
 /// [`Knob::Medium`]: crate::tuning::Knob::Medium
@@ -79,19 +79,20 @@ pub(crate) fn tau0() -> f64 {
 }
 
 /// A tensão de cedência da célula, em unidades de velocidade: `m` o óleo, `massa` o pigmento (`susp + sett`), `f` a água.
+/// Unidade própria: o `MaxVelocity` é só o tecto da velocidade (B13.9; era também um factor de `τ_y`).
 #[inline]
 #[must_use]
-pub(crate) fn tensao(t0: f64, m: f64, massa: f64, f: f64, max_v: f64) -> f64 {
+pub(crate) fn tensao(t0: f64, m: f64, massa: f64, f: f64) -> f64 {
     if t0 <= 0.0 || m <= 0.0 || massa <= 0.0 {
         return 0.0;
     }
     let phi = massa / (massa + crate::painter::receita::K_W * f.max(0.0));
     let pc = medida(&BINGHAM_PHI_C, PHI_C);
     let x = ((phi - pc) / (1.0 - pc)).max(0.0);
-    t0 * max_v * m.min(1.0) * x.det_powi(EXPOENTE)
+    t0 * m.min(1.0) * x.det_powi(EXPOENTE)
 }
 
-/// ⭐ **O CORPO do pincel** (E10, dono Q9): `τ_y = τ_meio(m, φ) + TAU_CORPO · MaxVelocity · corpo` — uma tensão de
+/// ⭐ **O CORPO do pincel** (E10, dono Q9): `τ_y = τ_meio(m, φ) + TAU_CORPO · corpo` — uma tensão de
 /// cedência que NÃO precisa de `φ > φ_c` (a tinta de água tem `φ` baixo) e substitui a parede binária do
 /// `levelingOwnStroke` (Bug #56: empilhava 12–39 µm na borda). Só onde há pigmento (`massa > 0`). `corpo = 0` ⇒ a
 /// [`tensao`] do meio, ao bit. Faixa MEDIDA: `docs/Painter/Arquitetura/E10a2_meio_e_corpo.md`.
@@ -112,13 +113,12 @@ pub(crate) fn tensao_com_corpo(
     corpo: f64,
     (movel, toda): (f64, f64),
     f: f64,
-    max_v: f64,
 ) -> f64 {
-    let base = tensao(t0, m, movel, f, max_v);
+    let base = tensao(t0, m, movel, f);
     if corpo <= 0.0 || toda <= 0.0 {
         return base;
     }
-    base + medida(&PAPEL_CORPO, TAU_CORPO) * max_v * corpo
+    base + medida(&PAPEL_CORPO, TAU_CORPO) * corpo
 }
 
 /// ⭐ **A CEDÊNCIA da célula fina `fi`** (meio + corpo, [`tensao_com_corpo`] → [`bingham`]) sobre a velocidade `(ex, ey)`:
@@ -132,7 +132,6 @@ pub(crate) fn cede(
     (susp, sett): (&[f32], &[f32]),
     fi: usize,
     f: f64,
-    max_v: f64,
     (ex, ey): (f64, f64),
 ) -> (f64, f64) {
     if oleo.is_empty() {
@@ -143,7 +142,7 @@ pub(crate) fn cede(
         massa_movel(susp[fi], sett[fi]),
         f64::from(susp[fi]) + f64::from(sett[fi]),
     );
-    let tau = tensao_com_corpo(tau0(), cel.meio.into(), cel.corpo.into(), massa, f, max_v);
+    let tau = tensao_com_corpo(tau0(), cel.meio.into(), cel.corpo.into(), massa, f);
     bingham(ex, ey, tau)
 }
 

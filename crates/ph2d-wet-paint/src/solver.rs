@@ -400,7 +400,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
                     (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet);
                 }
                 if !oleo.is_empty() {
-                    (ex, ey) = ladeira_do_oleo::cede(oleo, (susp, sett), fi, f, max_v, (ex, ey));
+                    (ex, ey) = ladeira_do_oleo::cede(oleo, (susp, sett), fi, f, (ex, ey));
                     let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
                     let k = crate::meio::mobilidade(f64::from(cel.meio));
                     (ex, ey) = (ex * k, ey * k);

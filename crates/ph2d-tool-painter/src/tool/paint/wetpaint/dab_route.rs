@@ -16,6 +16,19 @@
 //! errado.
 
 use super::*;
+#[path = "fila_do_dab.rs"]
+mod fila_do_dab; // o depósito fora do evento da caneta (N10 F2c)
+
+/// O que a cauda do lote lê depois do depósito ([`PainterTool::stamp_dabs_wetpaint_cauda`]).
+struct CaudaDoLote {
+    erasing: bool,
+    virtual_: bool,
+    pontas: bool,
+    copia: Vec<u32>,
+    opacidade_da_pressao: Option<f32>,
+    strength: f32,
+    t_dep: std::time::Instant,
+}
 
 /// O que a metade de fora do pool decidiu e a de dentro lê.
 struct PreparoDoLote {
@@ -31,8 +44,19 @@ impl PainterTool {
     /// sees exactly what the colour routes would have seen.
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
         // Tudo o que pode esperar o motor fica FORA do pool; só o que já o tem em casa entra ([`Self::no_pool`]).
+        // O depósito vai à fila ([`fila_do_dab`]) entre as duas metades do pool; a espera dele fica FORA do pool (Bug #66).
         if let Some(preparo) = self.wet_lote_com_o_motor_em_casa(dabs, brush) {
-            self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush, preparo));
+            let (dep, cauda) = self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush, preparo));
+            let dep = if fila_do_dab::sincrono() {
+                self.no_pool(move |_| {
+                    let mut dep = dep;
+                    fila_do_dab::deposita(&mut dep);
+                    dep
+                })
+            } else {
+                fila_do_dab::drena_os_dabs(fila_do_dab::enfileira(dep))
+            };
+            self.no_pool(|t| t.stamp_dabs_wetpaint_cauda(dabs, brush, dep, cauda));
         }
     }
 
@@ -138,13 +162,14 @@ impl PainterTool {
         })
     }
 
-    /// A metade do lote de dentro do pool: o motor já está em casa, e nada daqui espera por ele.
+    /// A metade do lote de dentro do pool: o motor já está em casa, e nada daqui espera por ele. Devolve o depósito
+    /// (a sessão vai nele) e o que a cauda lê depois dele.
     fn stamp_dabs_wetpaint_corpo(
         &mut self,
         dabs: &[Dab],
         brush: &BrushSpec,
         preparo: PreparoDoLote,
-    ) {
+    ) -> (fila_do_dab::Deposito, CaudaDoLote) {
         let PreparoDoLote {
             erasing,
             opacidade_da_pressao,
@@ -279,7 +304,7 @@ impl PainterTool {
         // Só o Grain que AMOSTRA alguma coisa toma o lugar das cerdas (um Image sem imagem não).
         let grain_active = brush.grain_samples(grain_image.is_some());
         let groups = self.paint.dab_groups.clone();
-        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
+        let dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let canvas_wh = [w as f32, h as f32];
         if !sess.stroke_open {
             sess.stroke_open = true;
@@ -339,7 +364,7 @@ impl PainterTool {
             escala_tex,
             super::lote::escala_atraves(&sess.engine, brush, escala_tex),
         ];
-        let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
+        let sub_dabs: Vec<fila_do_dab::SubDab> = dabs
             .iter()
             .enumerate()
             .flat_map(|(i, d)| {
@@ -417,9 +442,43 @@ impl PainterTool {
             lote,
             gota,
         };
-        for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
-            pousa_o_dab::pousa_o_dab(&lote_do_dab, sess, &mut dab_rng, didx, sub_k, passo, d);
-        }
+        let cauda = CaudaDoLote {
+            erasing,
+            virtual_,
+            pontas,
+            copia,
+            opacidade_da_pressao,
+            strength,
+            t_dep,
+        };
+        let dep = fila_do_dab::Deposito {
+            lote: lote_do_dab,
+            sub_dabs,
+            rng: dab_rng,
+            sess: taken,
+        };
+        (dep, cauda)
+    }
+
+    /// A metade do lote DEPOIS do depósito: o pó, a sessão de volta, a borracha da base, o composite e as pontas.
+    fn stamp_dabs_wetpaint_cauda(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        dep: fila_do_dab::Deposito,
+        cauda: CaudaDoLote,
+    ) {
+        let CaudaDoLote {
+            erasing,
+            virtual_,
+            pontas,
+            copia,
+            opacidade_da_pressao,
+            strength,
+            t_dep,
+        } = cauda;
+        let mut taken = dep.sess;
+        let sess = &mut taken;
         // O PÓ SOLTO (J4 `pastel_carvao`): os grãos do lote, À PARTE do rasto ([`super::po`]); `po = 0`, nada.
         // Os dabs virtuais das pontas rectas não deixam pó: são o traço que NÃO houve.
         if !erasing && !virtual_ {

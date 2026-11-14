@@ -147,3 +147,36 @@ fn each_button_draws_what_its_choice_does() {
     };
     assert!(pontos(outra, Some(quad)).is_empty());
 }
+
+/// O editor da Custom mora no lugar de Ease e Curve shape (cabe no cartão, não toca Interpolation
+/// nem Rove/Done); as alças e a área são do cartão; o cursor e a curva convertem-se sem perda.
+#[test]
+fn the_custom_editor_takes_the_place_of_ease_and_shape() {
+    let g = geo(10.0, 20.0);
+    let e = g.editor;
+    let interp_base = g.interp.iter().map(|r| r.y + r.h).fold(0.0, f32::max);
+    assert!(e.y >= interp_base && e.y + e.h <= g.rove.y && e.y + e.h <= g.done.y);
+    assert!(e.x >= g.cartao.x && e.x + e.w <= g.cartao.x + g.cartao.w);
+    for id in [
+        c::CTX_MENU_TL_KEY_BEZ_AREA,
+        c::CTX_MENU_TL_KEY_BEZ_P1,
+        c::CTX_MENU_TL_KEY_BEZ_P2,
+    ] {
+        assert!(e_alvo_do_cartao(id));
+    }
+    let area = crate::interaction::state::BezArea {
+        rect: Rect::new(100.0, 50.0, 200.0, 160.0),
+        y_min: -0.5,
+        y_max: 1.5,
+    };
+    for (u, y) in [(0.0, 0.0), (0.3, 1.2), (1.0, -0.5)] {
+        let (px, py) = area.tela(u, y);
+        let (u2, y2) = area.unidade(px, py);
+        assert!((u - u2).abs() < 1e-5 && (y - y2).abs() < 1e-5);
+    }
+    // Fora da área prende-se à borda (uma alça nunca sai do gráfico).
+    assert_eq!(area.unidade(0.0, 1000.0), (0.0, -0.5));
+    let h = [0.2, 0.0, 0.8, 1.0];
+    assert_eq!(editor::ponto(h, 0.0), (0.0, 0.0));
+    assert_eq!(editor::ponto(h, 1.0), (1.0, 1.0));
+}

@@ -25,6 +25,7 @@ pub use kinds::{InteractiveState, NamedPalette};
 
 mod accessory_width_ops;
 pub use accessory_width_ops::AccessoryWidths;
+pub use key_card_ops::BezArea;
 mod asset_drag_ops;
 mod dock_width_ops;
 mod floating_card_ops;
@@ -56,6 +57,7 @@ mod card_field_ops;
 mod card_guest_ops;
 mod card_list_ops;
 mod card_loose_ops;
+mod key_card_ops;
 mod store_census;
 mod store_core;
 mod store_fields;

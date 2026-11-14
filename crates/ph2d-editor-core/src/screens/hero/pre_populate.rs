@@ -605,7 +605,13 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         store.register(*id, InteractiveState::Plain);
     }
     // O fundo e o título (a pega do arrasto) do cartão da chave: alvos sem rótulo.
-    for id in [ids::CTX_MENU_TL_KEY_CARD, ids::CTX_MENU_TL_KEY_CARD_HEAD] {
+    for id in [
+        ids::CTX_MENU_TL_KEY_CARD,
+        ids::CTX_MENU_TL_KEY_CARD_HEAD,
+        ids::CTX_MENU_TL_KEY_BEZ_AREA,
+        ids::CTX_MENU_TL_KEY_BEZ_P1,
+        ids::CTX_MENU_TL_KEY_BEZ_P2,
+    ] {
         store.register(id, InteractiveState::Plain);
     }
 }

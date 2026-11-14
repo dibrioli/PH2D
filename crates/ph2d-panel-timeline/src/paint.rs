@@ -213,6 +213,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let snapshot = state::current_snapshot();
     publish_view(state, &snapshot);
     crate::menu_marcas::publica(ctx.host.store_mut(), &snapshot);
+    crate::cartao_bezier::publica_e_drena(ctx.host.store_mut(), &snapshot);
     let viewport = ctx.layout.viewport;
     let docked = ctx.slot;
     if state.px_per_s <= 0.0 {

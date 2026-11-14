@@ -31,29 +31,6 @@ impl WidgetStore {
         self.menu_marks.2.push_str(titulo);
     }
 
-    /// A régua dos eases do cartão da chave, publicada por quem os conhece (a timeline): os botões
-    /// desenham a curva que a chave vai ganhar, a mesma conta que o documento usa.
-    pub fn set_ease_sampler(&mut self, sampler: crate::interaction::EaseSampler) {
-        self.key_card.1 = Some(sampler);
-    }
-
-    /// A régua publicada por [`Self::set_ease_sampler`] (`None` = ninguém publicou: sem curva).
-    #[must_use]
-    pub fn ease_sampler(&self) -> Option<crate::interaction::EaseSampler> {
-        self.key_card.1
-    }
-
-    /// A pega do arrasto do cartão da chave: `(dx, dy)` do cursor ao canto do cartão.
-    #[must_use]
-    pub fn key_card_grab(&self) -> Option<(f32, f32)> {
-        self.key_card.0
-    }
-
-    /// Arma (`Some`) ou solta (`None`) o arrasto do cartão da chave.
-    pub fn set_key_card_grab(&mut self, grab: Option<(f32, f32)>) {
-        self.key_card.0 = grab;
-    }
-
     /// O cabeçalho publicado para o menu `kind` (vazio se não houver).
     #[must_use]
     pub fn menu_title(&self, kind: crate::interaction::ContextMenuKind) -> &str {

@@ -78,6 +78,7 @@ mod linhas;
 mod loop_drag;
 mod macro_steps;
 pub use macro_steps::pedido_ao_largar;
+mod cartao_bezier;
 mod marker_drag;
 mod marker_menu;
 mod marker_rename;

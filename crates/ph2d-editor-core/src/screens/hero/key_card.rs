@@ -36,6 +36,10 @@ const DOT_R: f32 = 2.0; // LITERAL-PX-OK: ponta da curva desenhada
 /// A opacidade das guias 0 e 1 e da curva num botão não escolhido.
 const GUIDE_A: f32 = 0.14; // LITERAL-PX-OK: opacidade das guias 0/1 (não é medida de UI)
 const CURVE_A: f32 = 0.72; // LITERAL-PX-OK: opacidade da curva apagada (não é medida de UI)
+/// A opacidade do véu sobre Ease e Curve shape quando a chave não é curva (Straight, Hold, Nearest).
+const VEU_A: f32 = 0.6; // LITERAL-PX-OK: opacidade do véu (não é medida de UI)
+/// As alças da curva Linear: o editor Custom de uma chave sem Bézier normalizável parte daqui.
+pub(crate) const BEZ_LINEAR: [f32; 4] = [1.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0];
 /// Amostras por curva desenhada (o Elastic tem três ondas num botão de ~50 px).
 const SAMPLES: usize = 48;
 /// O Custom desenha uma Bézier em S com as duas alças à vista (P1, P2 no quadrado unitário).
@@ -95,6 +99,12 @@ pub fn e_alvo_do_cartao(id: NodeId) -> bool {
         || c::TIMELINE_KEY_CARD.iter().any(|r| r.0 == id)
         || c::TIMELINE_SEGMENT_MENU.iter().any(|r| r.0 == id)
         || c::TIMELINE_EASE_MENU.iter().any(|r| r.0 == id)
+        || [
+            c::CTX_MENU_TL_KEY_BEZ_AREA,
+            c::CTX_MENU_TL_KEY_BEZ_P1,
+            c::CTX_MENU_TL_KEY_BEZ_P2,
+        ]
+        .contains(&id)
 }
 
 /// O que um clique no cartão pede.
@@ -164,6 +174,8 @@ pub(super) struct Geo {
     pub rotulo_forma: Rect,
     /// Os dez botões de `ids::TIMELINE_EASE_MENU`, cinco por fileira.
     pub formas: Vec<Rect>,
+    /// Onde o editor da curva Custom mora quando a chave é Custom: o lugar de Ease e Curve shape.
+    pub editor: Rect,
     pub rove: Rect,
     pub done: Rect,
 }
@@ -209,6 +221,7 @@ pub(super) fn geo(x: f32, y: f32) -> Geo {
     let done = Rect::new(x0 + iw - DONE_W, fy, DONE_W, m::FIELD_H);
     let rove = Rect::new(x0, fy, iw - DONE_W - m::FIELD_GAP, m::FIELD_H);
     let h = done.y + done.h + m::CARD_PAD_BOTTOM - y;
+    let editor = Rect::new(x0, rotulo_ease.y, iw, base(&formas) - rotulo_ease.y);
     Geo {
         cartao: Rect::new(x, y, CARD_W, h),
         cabeca,
@@ -218,6 +231,7 @@ pub(super) fn geo(x: f32, y: f32) -> Geo {
         ease,
         rotulo_forma,
         formas,
+        editor,
         rove,
         done,
     }
@@ -467,39 +481,62 @@ fn corpo(
         hit.register(id, r);
     }
 
-    rotulo(
-        scene,
-        ts,
-        g.rotulo_ease,
-        "chrome.timeline_menu.section_ease",
-    );
-    for (&(id, linha, mode, chave), &r) in EASES.iter().zip(&g.ease) {
-        let d = Desenho::Ease { item: forma, mode };
-        botao(
+    // Custom: o editor da curva abre no lugar de Ease e Curve shape (dono 13/11).
+    store.set_key_card_bez_area(None);
+    if marcado(c::CTX_MENU_TL_CUSTOM) {
+        editor::paint(scene, ts, hit, store, g.editor, ink);
+    } else {
+        // Straight, Hold e Nearest não têm ease nem forma: as duas secções ficam apagadas (um
+        // clique nelas continua a escolher a curva).
+        let apagado = [
+            c::CTX_MENU_TL_LINEAR,
+            c::CTX_MENU_TL_HOLD,
+            c::CTX_MENU_TL_NEAREST,
+        ]
+        .into_iter()
+        .any(marcado);
+        let veu = |scene: &mut VectorScene, r: Rect| {
+            if apagado {
+                let cor = ink.color(ColorToken::KanbanCard).with_alpha(VEU_A);
+                fill_rounded_rect(scene, r, m::FIELD_RADIUS, cor);
+            }
+        };
+        rotulo(
             scene,
             ts,
-            ink,
-            r,
-            tr(chave),
-            d,
-            (marcado(linha), quente(id)),
-            sampler,
+            g.rotulo_ease,
+            "chrome.timeline_menu.section_ease",
         );
-        hit.register(id, r);
-    }
+        for (&(id, linha, mode, chave), &r) in EASES.iter().zip(&g.ease) {
+            let d = Desenho::Ease { item: forma, mode };
+            botao(
+                scene,
+                ts,
+                ink,
+                r,
+                tr(chave),
+                d,
+                (marcado(linha), quente(id)),
+                sampler,
+            );
+            veu(scene, r);
+            hit.register(id, r);
+        }
 
-    rotulo(scene, ts, g.rotulo_forma, "chrome.timeline_menu.shape");
-    for (row, &r) in c::TIMELINE_EASE_MENU.iter().zip(&g.formas) {
-        let row: &(NodeId, TextKey, _) = row;
-        let id = row.0;
-        let d = Desenho::Ease {
-            item: id,
-            mode: modo,
-        };
-        // A forma acende só quando a chave está em curva (Straight não tem forma).
-        let on = curva && marcado(id);
-        botao(scene, ts, ink, r, row.1.tr(), d, (on, quente(id)), sampler);
-        hit.register(id, r);
+        rotulo(scene, ts, g.rotulo_forma, "chrome.timeline_menu.shape");
+        for (row, &r) in c::TIMELINE_EASE_MENU.iter().zip(&g.formas) {
+            let row: &(NodeId, TextKey, _) = row;
+            let id = row.0;
+            let d = Desenho::Ease {
+                item: id,
+                mode: modo,
+            };
+            // A forma acende só quando a chave está em curva (Straight não tem forma).
+            let on = curva && marcado(id);
+            botao(scene, ts, ink, r, row.1.tr(), d, (on, quente(id)), sampler);
+            veu(scene, r);
+            hit.register(id, r);
+        }
     }
 
     // Rove: a caixa de marcar da casa e o rótulo ao lado; a linha inteira é o alvo.
@@ -513,7 +550,7 @@ fn corpo(
     );
     let px = TypeToken::Sm.px();
     let tx = caixa.x + caixa.w + m::FIELD_GAP;
-    let meio = |r: Rect| r.y + (r.h - px) * 0.5;
+    let meio = |r: Rect| r.y + crate::paint::folga_do_texto(r.h, px);
     let rove = tr("chrome.timeline_menu.rove_check");
     paint_text(
         ts,
@@ -550,6 +587,9 @@ fn corpo(
     );
     hit.register(c::CTX_MENU_TL_KEY_DONE, g.done);
 }
+
+#[path = "key_card_editor.rs"]
+mod editor;
 
 #[cfg(test)]
 #[path = "key_card_tests.rs"]

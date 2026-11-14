@@ -21,9 +21,9 @@ mod a_ponta_de_n_imagens;
 mod a_ponta_de_pixel;
 mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
-mod as_sondas_passam_o_raio; // B44.1: set_brush_size_px toma o raio (censo, N10)
 mod as_sondas_dizem_o_perfil; // B44.4: perfil dito, smoke no cabeçalho, dabs do Digital (censo, N10)
 mod as_sondas_dizem_o_que_medem; // B44.7: o censo único das sondas (declarada + perfil, N10)
+mod as_sondas_passam_o_raio; // B44.1: set_brush_size_px toma o raio (censo, N10)
 mod cerda_e_marca;
 mod curas_da_mistura; // as curas da mistura Wet blend de 08/11 (Bugs #73–#78)
 mod dente_do_papel_por_cima_do_grain; // o papel morde por cima do Grain do pincel (dono 08/11)
@@ -55,6 +55,7 @@ mod o_preset_nao_herda; // o preset escolhido depois de sujar o pincel é o pres
 mod o_relevo_dos_fios;
 mod o_spray_do_wet; // J6 I-11: as marcas do spray do Wet perto do traço, e a memória do preset com jitter alto
 mod o_wash; // o Wash: o traço pára no maior dab (dono 25/10)
+mod orcamento_4k; // B44.8: o traço a 4K custa o mesmo que a 1024² nos 4 meios (N10)
 mod os_fios;
 mod os_outros_meios_nao_mudam;
 mod pinceis_da_ponta;

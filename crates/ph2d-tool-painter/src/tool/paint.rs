@@ -72,6 +72,7 @@ mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; it
 mod impasto_tool; // Impasto: the TEN tools that act on the body, as one list (Deposit · Knife · 8 verbs)
 mod jitter_settings; // per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 pub(crate) mod media; // the paint's MEDIUM (Digital / Watercolor / Impasto / Wet Paint) + the door that switches it
+mod orcamento_da_sonda; // B44.8: os contadores do motor que o portão orcamento_4k lê
 mod paint_mode; // the canvas pointer's operation (Paint / Smear / … ) — the MEDIUM's sibling question
 mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`
 mod sculpt_blur; // Sculpt: the kernel (one expression, eight verbs) + the per-tile memo the family reads

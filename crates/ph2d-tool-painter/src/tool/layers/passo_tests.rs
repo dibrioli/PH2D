@@ -424,14 +424,27 @@ fn o_arrasto_de_um_ajuste_reusa_a_saida_com_os_mesmos_bytes() {
 /// bytes.
 #[test]
 fn a_composicao_cheia_reusa_o_acumulador_e_a_saida_com_os_mesmos_bytes() {
-    use crate::compositor::{CHEIA_ALOCA, CHEIAS_REUSADAS};
-    let corre = |aloca: bool| {
+    use crate::compositor::{CHEIA_ALOCA, CHEIAS_REUSADAS, ZERA_ANTES};
+    let corre = |aloca: bool, antes: bool| {
         CHEIA_ALOCA.set(aloca);
+        ZERA_ANTES.set(antes);
         CHEIAS_REUSADAS.set(0);
         let (mut t, ids) = doc(K::HueSaturationBrightness);
         let mut quadros = Vec::new();
+        // F5e: o fundo opaco também apaga-se (k = 2, 4): sem ele o acumulador velho de baixo vê-se — a prova do zerar.
+        let fundo: Vec<_> = t
+            .layers
+            .root()
+            .iter()
+            .copied()
+            .filter(|&l| l != ids.a && l != ids.b && l != ids.adj)
+            .collect();
+        assert!(!fundo.is_empty(), "a montagem: o fundo opaco");
         for k in 0..6 {
             t.set_layer_visible(ids.a, k % 2 == 1);
+            for &f in &fundo {
+                t.set_layer_visible(f, k % 2 == 1);
+            }
             let (q, ..) = t.take_preview_arc().expect("o quadro");
             let src = ToolPixelSource {
                 active_id: t.layers.active().expect("a activa"),
@@ -446,10 +459,16 @@ fn a_composicao_cheia_reusa_o_acumulador_e_a_saida_com_os_mesmos_bytes() {
             quadros.push(q.to_vec());
         }
         CHEIA_ALOCA.set(false);
+        ZERA_ANTES.set(false);
         (quadros, CHEIAS_REUSADAS.get())
     };
-    let (reusados, n) = corre(false);
-    let (alocados, n2) = corre(true);
+    let (reusados, n) = corre(false, false);
+    let (alocados, n2) = corre(true, false);
+    let (zerados_antes, n3) = corre(false, true);
+    assert!(
+        n3 >= 4 && zerados_antes == reusados,
+        "F5e: zerar tira a tira ≠ zerar tudo antes"
+    );
     assert_eq!(n2, 0, "controlo: com a chave de antes não há reuso");
     assert!(n >= 4, "a composição cheia reusou {n} de 6 vezes");
     assert!(reusados == alocados, "o reuso mudou os bytes");

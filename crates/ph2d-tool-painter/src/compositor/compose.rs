@@ -217,18 +217,8 @@ pub(super) fn composite_region_linear_em(
     (recorta(&acc, g, r), t.map(|t| recorta(&t, g, r)))
 }
 
-/// [`composite_region_linear`] over an already-clamped `region`, with no halo.
 #[cfg(test)]
-fn compor_regiao(
-    stack: &LayerStack,
-    src: &(impl LayerPixelSource + Sync),
-    width: u32,
-    height: u32,
-    region: Region,
-    vidros: Option<&super::vidro::Vidros>,
-) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
-    compor_regiao_em(Vec::new(), stack, src, width, height, region, vidros)
-}
+use barreira::compor_regiao;
 
 fn compor_regiao_em(
     mut acc: Vec<[f32; 4]>,
@@ -240,7 +230,7 @@ fn compor_regiao_em(
     vidros: Option<&super::vidro::Vidros>,
 ) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
     let (rw, rh) = (region.w, region.h);
-    super::cache::zera_o_acumulador(&mut acc, (rw as usize) * (rh as usize));
+    let zera = super::cache::zera_o_acumulador(&mut acc, (rw as usize) * (rh as usize));
     // A transparência do papel nasce 1 (nada por cima): o enchimento em paralelo (`plane_copy`).
     let mut t = vidros.map(|_| {
         let mut t = Vec::new();
@@ -255,8 +245,7 @@ fn compor_regiao_em(
         &resumo::com_resumos(stack, src, (width, height)),
         (width, height),
         region,
-        vidros,
-        fios,
+        (vidros, fios, zera),
     );
     (acc, t)
 }

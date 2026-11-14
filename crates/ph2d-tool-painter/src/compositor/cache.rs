@@ -182,20 +182,38 @@ fn cheia_aloca() -> bool {
     *V.get_or_init(|| std::env::var_os("PH2D_CHEIA_ALOCA").is_some_and(|v| v == "1"))
 }
 
-/// Zera `acc` com `n` píxeis: reusado, em paralelo (as páginas já são dele); vazio, `alloc_zeroed`.
-pub(super) fn zera_o_acumulador(acc: &mut Vec<[f32; 4]>, n: usize) {
+/// Prepara `acc` com `n` píxeis. Vazio/outro tamanho: `alloc_zeroed` (páginas zero), `false`. Reusado: `true` =
+/// a barreira zera-o tira a tira, quente na cache, logo antes de compor (zerar 133 MB à parte ida e volta à
+/// DRAM custava mais que as páginas novas, F5d). `PH2D_CHEIA_ZERA_ANTES=1` = zerar tudo antes (o F5c).
+pub(super) fn zera_o_acumulador(acc: &mut Vec<[f32; 4]>, n: usize) -> bool {
     if acc.len() != n {
         *acc = vec![[0.0f32; 4]; n];
-        return;
+        return false;
+    }
+    if !zera_antes() {
+        return true;
     }
     use rayon::prelude::*;
     acc.par_chunks_mut(1 << 15).for_each(|c| c.fill([0.0; 4]));
+    false
+}
+
+/// A chave A×B em execução do zerar fundido (`PH2D_CHEIA_ZERA_ANTES=1` = o acumulador zerado inteiro antes).
+fn zera_antes() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    #[cfg(test)]
+    if ZERA_ANTES.with(std::cell::Cell::get) {
+        return true;
+    }
+    *V.get_or_init(|| std::env::var_os("PH2D_CHEIA_ZERA_ANTES").is_some_and(|v| v == "1"))
 }
 
 #[cfg(test)]
 thread_local! {
     /// B19.12: o controlo do gate da composição cheia (um acumulador novo por composição).
     pub(crate) static CHEIA_ALOCA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// B19.12 (F5e): o controlo do zerar fundido (o acumulador reusado zerado inteiro antes de compor).
+    pub(crate) static ZERA_ANTES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// B19.12: full composites that reused BOTH the accumulator and the output (no allocation).
     pub(crate) static CHEIAS_REUSADAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }

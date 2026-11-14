@@ -6,7 +6,8 @@
 
 use super::*;
 
-/// Walk `stack.root()` over the clamped region `r` into `acc` (and `t`), runs in `fios` bands.
+/// Walk `stack.root()` over the clamped region `r` into `acc` (and `t`), runs in `fios` bands. `zera`
+/// (B19.12): `acc` holds stale values — the first run zeroes each cache strip right before composing it.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compor_segmentos(
     acc: &mut [[f32; 4]],
@@ -15,11 +16,20 @@ pub(super) fn compor_segmentos(
     src: &(impl LayerPixelSource + Sync),
     canvas: (u32, u32),
     r: Region,
-    vidros: Option<&super::super::vidro::Vidros>,
-    fios: usize,
+    (vidros, fios, mut zera): (Option<&super::super::vidro::Vidros>, usize, bool),
 ) {
     let root = stack.root();
     let mut fim = root.len();
+    // No strip walk first (empty stack, or a spatial item at the bottom): zero it all up front.
+    if zera
+        && root
+            .last()
+            .is_none_or(|&b| has_spatial_adjustment(stack, &[b]))
+    {
+        use rayon::prelude::*;
+        acc.par_chunks_mut(1 << 15).for_each(|c| c.fill([0.0; 4]));
+        zera = false;
+    }
     while fim > 0 {
         let mut ini = fim;
         while ini > 0 && !has_spatial_adjustment(stack, &root[ini - 1..ini]) {
@@ -35,8 +45,9 @@ pub(super) fn compor_segmentos(
                 canvas,
                 r,
                 vidros,
-                fios,
+                (fios, zera),
             );
+            zera = false;
         }
         if ini == 0 {
             break;
@@ -59,6 +70,19 @@ pub(super) fn compor_segmentos(
     }
 }
 
+/// [`composite_region_linear`] over an already-clamped `region`, with no halo.
+#[cfg(test)]
+pub(super) fn compor_regiao(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    region: Region,
+    vidros: Option<&super::super::vidro::Vidros>,
+) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
+    super::compor_regiao_em(Vec::new(), stack, src, width, height, region, vidros)
+}
+
 /// `ids` (band-safe) over `acc` in `fios` disjoint row bands, each the same bottom→top walk.
 #[allow(clippy::too_many_arguments)]
 fn em_faixas(
@@ -70,10 +94,10 @@ fn em_faixas(
     canvas: (u32, u32),
     r: Region,
     vidros: Option<&super::super::vidro::Vidros>,
-    fios: usize,
+    (fios, zera): (usize, bool),
 ) {
     if fios <= 1 {
-        em_tiras(acc, t, ids, stack, src, canvas, r, vidros);
+        em_tiras(acc, t, ids, stack, src, canvas, r, (vidros, zera));
         return;
     }
     let rpb = (r.h as usize).div_ceil(fios);
@@ -92,7 +116,16 @@ fn em_faixas(
                 h: (band.len() / (r.w as usize)) as u32,
                 ..r
             };
-            em_tiras(band, tb.take(), ids, stack, src, canvas, banda, vidros);
+            em_tiras(
+                band,
+                tb.take(),
+                ids,
+                stack,
+                src,
+                canvas,
+                banda,
+                (vidros, zera),
+            );
         });
 }
 
@@ -108,16 +141,22 @@ fn em_tiras(
     src: &(impl LayerPixelSource + Sync),
     canvas: (u32, u32),
     b: Region,
-    vidros: Option<&super::super::vidro::Vidros>,
+    (vidros, zera): (Option<&super::super::vidro::Vidros>, bool),
 ) {
     let linhas = linhas_da_tira(b.w).clamp(1, b.h.max(1));
     let tira_px = (linhas as usize) * (b.w as usize);
     if linhas >= b.h || tira_px == 0 {
+        if zera {
+            acc.fill([0.0; 4]);
+        }
         let v = vidros.zip(t);
         composite_into(acc, ids, stack, src, canvas, b.x, b.y, b.w, b.h, 0, None, v);
         return;
     }
     for (k, tira) in acc.chunks_mut(tira_px).enumerate() {
+        if zera {
+            tira.fill([0.0; 4]);
+        }
         let ty = b.y + k as u32 * linhas;
         let th = (tira.len() / (b.w as usize)) as u32;
         let tt = t

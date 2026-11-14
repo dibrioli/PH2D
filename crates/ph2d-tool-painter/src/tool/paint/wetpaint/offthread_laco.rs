@@ -2,6 +2,8 @@
 //! `worker_loop`. Aqui entra o gancho do compositor da óptica (J13b P5).
 
 use super::offthread_ritmo;
+#[path = "offthread_pool.rs"]
+mod pool;
 use super::{IDLE_SLEEP, STEP_S, SimWorker, otica, placa};
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
@@ -98,6 +100,8 @@ fn worker_loop(
     // e a pergunta *"a água lenta é trabalho ou agendamento?"* não tinha número.
     let mut step_us: u64 = 0;
     let mut placa = placa::Placa::default();
+    // As células vivas no começo do passo em voo: escolhem o pool (N10 W2b2).
+    let mut celulas = u64::MAX;
     while let Ok(mut engine) = rx.recv() {
         placa.recebe(&mut engine);
         crate::wet_diag::note_away_closed();
@@ -134,8 +138,12 @@ fn worker_loop(
             // N10 W2b: o passo que COMEÇA sem água é um no-op do motor (`sim_step_stage` volta antes do
             // `frame += 1`, `marca_passo` não declara): não conta, e a tela não tem o que recompor.
             let sem_agua = !in_flight && !engine.active_grid().has_fluid;
+            if !in_flight {
+                celulas = engine.active_grid().live_span_cells();
+            }
             let t = Instant::now();
-            let closed = placa.passo(&mut engine).is_some() || engine.step_stage().is_some();
+            let closed = placa.passo(&mut engine).is_some()
+                || pool::no_pool_da_poca(celulas, || engine.step_stage().is_some());
             let spent = t.elapsed().as_micros() as u64;
             step_us += spent;
             crate::wet_diag::note_busy(spent);

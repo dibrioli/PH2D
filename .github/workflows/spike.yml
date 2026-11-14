@@ -497,6 +497,26 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      # B43.3 (missão 4K N10): cada pincel de fábrica pintado pelo motor de hoje (sem `cfg(test)`,
+      # como o app), um FNV por pincel; a última linha `pinceis-fnv <n> <fnv>` compara-se entre SO
+      # no `determinism-compare`. As linhas por pincel ficam no log para achar QUAL divergiu.
+      - name: Brush hashes (ph2d-tool-painter, hash_dos_pinceis) and capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=$(cargo run --profile ci-test --locked --quiet -p ph2d-tool-painter --example hash_dos_pinceis)
+          echo "$OUT"
+          LINE=$(echo "$OUT" | grep -E '^pinceis-fnv ' | tail -1)
+          test -n "$LINE"
+          echo "$LINE" > "${RUNNER_TEMP}/brushes-hash.txt"
+
+      - name: Upload brush hashes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: brushes-hash-${{ matrix.os }}
+          path: ${{ runner.temp }}/brushes-hash.txt
+          if-no-files-found: error
+
       # Correctness fixtures only — no perf-gated benches in CI.
       # Bench fixtures (c2_1_messaging, c3_coro_timing, c10_gc_stress,
       # c12_wasm_marshall, c7_bytecode) measure p99 latency vs thresholds
@@ -583,7 +603,7 @@ jobs:
   # docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md §Perfil).
   # --------------------------------------------------------------------------
   determinism-compare:
-    name: C9 cross-platform comparison (ECS + physics)
+    name: C9 cross-platform comparison (ECS + physics + brushes)
     needs: test
     runs-on: ubuntu-latest
     # Pure artifact diff, no compile; observed <1 min.
@@ -640,6 +660,21 @@ jobs:
             exit 1
           fi
           echo "PASS: physics-ECS bridge hash identical across all OSes (ADR-0131 W1 gate)."
+      - name: Compare brush hashes across all OSes (B43.3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Per-OS brush hashes:"
+          for f in hashes/brushes-hash-*/brushes-hash.txt; do
+            os=$(basename "$(dirname "$f")" | sed 's/brushes-hash-//')
+            echo "  $os: $(cat "$f")"
+          done
+          uniq=$(for f in hashes/brushes-hash-*/brushes-hash.txt; do cat "$f"; done | sort -u | wc -l)
+          if [ "$uniq" -ne 1 ]; then
+            echo "FAIL: brush hashes differ across OSes — the paint engine is not bit-identical (B43.3)."
+            exit 1
+          fi
+          echo "PASS: every factory brush paints the same bits on all OSes (B43.3)."
 
   # --------------------------------------------------------------------------
   # Bench baseline — runs criterion against `main` to surface regressions in PRs.

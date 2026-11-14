@@ -330,7 +330,10 @@ mod tests {
         // merge-base desta linha **+1**. Quem integrar conta o DELTA, nunca o literal.
         // ⭐ **+1 (GameEngineFuncional 08: `AnimRules`)** ⇒ `45 -> 46`; delta contra o merge-base **+2**.
         // ⭐ **+1 (GEF02 onda 8: `ShapeLook`, o Look da forma de colisão)** ⇒ `48 -> 49`; delta +1.
-        assert_eq!(reg.len(), 49);
+        // ⭐ **+1 (JointEditor W1: `JointAssembly`, a montagem como objecto)** ⇒ `49 -> 50`; delta +1
+        // contra o `main` 4f46a3573c (integração 13/11).
+        assert_eq!(reg.len(), 50);
+        assert!(reg.get_by_name("ph2d::physics::JointAssembly").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavCostArea").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavLink").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());

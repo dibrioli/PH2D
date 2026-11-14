@@ -101,7 +101,7 @@ impl PainterTool {
         let t_pre = std::time::Instant::now();
         if self.paint.pilha.pre.len() != len {
             // B17.8: a tela inteira em blocos pelos fios (33 MB a 4K; o `clone` serial falta página a página).
-            self.paint.pilha.pre = crate::plane_copy::par_clone(&self.canvas_rgba);
+            self.paint.pilha.pre = super::composite_reserva::abre_o_pre(&self.canvas_rgba);
             self.paint.pilha.lotes.clear();
             self.paint.pilha.larga_os_planos();
             self.paint.pilha.relevo = Default::default();
@@ -299,6 +299,9 @@ impl PainterTool {
                 .reserva
                 .tira(len, chao, self.source_size.0)
                 .unwrap_or_else(|| {
+                    if !super::composite_reserva::pilha_pelos_fios() {
+                        return vec![chao; len];
+                    }
                     let mut v = Vec::new();
                     crate::plane_copy::size_to(&mut v, len, chao);
                     v

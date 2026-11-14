@@ -127,3 +127,37 @@ lotes, B25.5/B25.6 rota), worktree temporária `/home/enio/Documentos/Projetos/.
 
 O Wet fica melhor que a base em todo gesto (e melhor que o síncrono: Filbert traço 13,7 → 10,7). Fica aberto só o toque
 do Composite (+11 ms, o 1.º toque do documento; o 1.º toque da camada nova segue 43 → 18).
+
+### 4.1 Toque do Composite: causa e cura (F11b, 14/11 11:38–12:05)
+
+Bisseção por binários `--profile smoke` (worktree temporária `.ph2d-bis-n10c`, target próprio), só `"Composite Brush:digital"`,
+`NOVA=1 PH2D_QUADRO_A_PEDIDO=1`, custo do quadro do toque (o quadro do 1.º toque: `quadro` · `preview`). Saídas e
+binários: `target/n10/f11b/` (`mede.sh`, `tq.sh`, `progresso.txt`, `load_*.txt`).
+
+| binário | toque ms (preview) | load |
+|---|---|---|
+| #56 `7467538c43` | 26,5 (15,4) | 2,9 |
+| #69 `729234ac53` | 27,1 · 27,0 | 2,9 · 0,4 |
+| **#70 `410902e7b3`** (B17.8) | **34,2 · 34,5** | 1,2 · 0,2 |
+| #80 `414a205cf6` | 35,2 · 34,6 | 0,5 · 2,4 |
+| #82 `281780b362` | 35,3 · 35,6 | 13,7 ⚠ · 5,7 |
+
+**Culpado: `410902e7b3` (B17.8)** — a pilha do Composite abria o `pre` (a tela 4K, 33 MB) por `par_clone` e o plano de
+cobertura (chão 255) por `par_fill` (`rayon::repeat_n(..).collect()`). No 1.º toque o caminho pelos fios custa +8–9 ms ao
+`compoe` da pilha (preview 15 → 24 ms) contra o `to_vec`/`vec![255; len]` em série (falta de página em paralelo sobre memória
+nova + o `collect` elemento a elemento; não decomposto — a cura não depende disso).
+
+**Cura (este commit):** a pilha abre em SÉRIE (`composite_reserva::abre_o_pre`, `vec![chao; len]`); `PH2D_PILHA_PELOS_FIOS=1`
+repõe os fios só para A×B. Ao bit por construção (as duas rotas dão o mesmo plano; 10 de `composite_acumulado_tests` verdes).
+Gate `a_pilha_do_composite_abre_em_serie` (conta `par_clone`/`par_fill` = 0); mutação «a chave sempre ligada» VERMELHA
+(«o `pre` da pilha nasceu pelo `par_clone`»).
+
+**Depois — o MESMO binário (HEAD + cura, `bin-ab`) com a chave × a base, F1 S0 A × 2 intercalado, load 0,4–2,4:**
+
+| variante | toque ms (preview) | traço p50/p95 | soltar | Ctrl+Z |
+|---|---|---|---|---|
+| base 36a312 | 30,4 · 30,5 (19) | 10,6 / 14,2 | 14,5 | 15,0 |
+| head, `PH2D_PILHA_PELOS_FIOS=1` (antes) | 36,2 · 34,7 (24) | 10,0 / 14,2 | 13,4 | 12,2 |
+| **head, cura** | **26,5 · 25,7 (15)** | 10,1 / 14,2 | 13,9 | 12,3 |
+
+O toque do Composite fica **4,7 ms melhor que a base** (mínimo 25,7 × 30,4); nada piora. A §4 não tem mais regressão aberta.

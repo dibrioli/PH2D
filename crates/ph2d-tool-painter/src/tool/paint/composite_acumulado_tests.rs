@@ -609,11 +609,12 @@ fn o_borrao_da_pilha_cresce_com_o_pincel_acima_do_tecto_do_binomial() {
     );
 }
 
-/// **B17.8: a pilha abre pelos fios** — o `pre` (a tela inteira) nasce por `par_clone` e o plano de
-/// COBERTURA (chão 255) por `par_fill`; o de TINTA (chão 0) vem zerado do alocador. A identidade não
-/// vê a rota (o mesmo plano), então o gate CONTA (ADR-0120). 1536² = 9,4 MB, acima do limiar.
+/// **N10 F11b: a pilha abre em SÉRIE** — o `pre` nasce por `to_vec` e o plano de cobertura por
+/// `vec![255; len]`, nunca por `par_clone`/`par_fill` (B17.8, 410902e7b3): no app 4K o 1.º toque do
+/// Composite custava 27 → 34 ms com os fios (`medicoes/N10_MATRIZ_FINAL.md` §4). `PH2D_PILHA_PELOS_FIOS=1`
+/// repõe os fios só para A×B. A identidade não vê a rota, então o gate CONTA (ADR-0120).
 #[test]
-fn a_pilha_do_composite_abre_pelos_fios() {
+fn a_pilha_do_composite_abre_em_serie() {
     const N: u32 = 1536;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (N * N * 4) as usize], N, N);
@@ -633,14 +634,8 @@ fn a_pilha_do_composite_abre_pelos_fios() {
     let clones = crate::plane_copy::par_clones_nesta_thread() - c0;
     let fills = crate::plane_copy::par_fills_nesta_thread() - f0;
     t.on_canvas_pointer(cp([440.0, 400.0], PointerPhase::Up));
-    assert!(
-        clones >= 1,
-        "o `pre` da pilha não nasceu pelo `par_clone` ({clones})"
-    );
-    assert!(
-        fills >= 1,
-        "o plano de cobertura não nasceu pelo `par_fill` ({fills})"
-    );
+    assert_eq!(clones, 0, "o `pre` da pilha nasceu pelo `par_clone`");
+    assert_eq!(fills, 0, "o plano de cobertura nasceu pelo `par_fill`");
 }
 
 /// **B17.8: a reserva dos planos dá o MESMO bit que o plano novo** — dois traços que se cruzam (o 2.º

@@ -95,3 +95,18 @@ fn repoe(plano: &mut [u8], w: u32, r: Region, chao: u8) {
         plano[y * stride + x0..y * stride + x1].fill(chao);
     }
 }
+
+/// N10 F11b: `PH2D_PILHA_PELOS_FIOS=1` = a abertura do B17.8 (`par_clone`/`par_fill`), lida uma vez (A×B).
+pub(super) fn pilha_pelos_fios() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("PH2D_PILHA_PELOS_FIOS").is_ok_and(|v| v == "1"))
+}
+
+/// O `pre` da pilha: a tela inteira ANTES do traço.
+pub(super) fn abre_o_pre(tela: &[u8]) -> Vec<u8> {
+    if pilha_pelos_fios() {
+        crate::plane_copy::par_clone(tela)
+    } else {
+        tela.to_vec()
+    }
+}

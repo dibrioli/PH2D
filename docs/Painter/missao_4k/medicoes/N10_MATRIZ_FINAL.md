@@ -78,3 +78,52 @@ Resumos crus: `target/n10/final/{A1,A2,B1,B2}.resumo{,_intervalo,_custo}.txt`; q
   depósito fora do quadro (F2d–F2h) a pôr a espera do lote dentro de cada quadro do Filbert. Próximo passo: a mesma matriz
   `"Filbert:wet" "Wet Liner:wet" "Composite Brush:digital"` no `bin-head` com `PH2D_PEN_UP_ADIADO=0` × `=1` e `PH2D_DAB_SINCRONO=1`, intercalados.
 - Ctrl+Z dos Wet (Filbert, Wet Liner, Flat) segue 45 ms ✗ nas duas.
+
+## 4. Regressões: causa e cura (F11, 14/11 11:07–11:40)
+
+Régua: a mesma `mede_pen_up_4k.sh matriz 3840x2160 papel` com `NOVA=1`, Xvfb `:91`, `REGUA=custo` nos dois binários,
+só `"Filbert:wet" "Wet Liner:wet" "Composite Brush:digital"`. Saídas: `target/n10/f11/{H1,P,D,D2,GC,H3,A1,C1,C2,A2}.resumo_custo.txt`,
+lotes `target/n10/f11/lote{,2,3}.sh`, `load_*.txt`. O `bin-head` (9fcbf6c075) vale pelo HEAD 940015ec75: depois dele só
+um contador `ROTAS_DO_DEPOSITO` (`par.rs`, um `fetch_add` por dab) e testes.
+
+**Isolamento por chave no `bin-head`** (cada célula = 1 ronda; toque · traço p50 · soltar ms):
+
+| variante | load | Filbert | Wet Liner | Composite (toque) |
+|---|---|---|---|---|
+| H1 head | 0,2 | 34,5 · 29,9 · 30,1 | 32,9 · 10,4 · 14,9 | 41,0 |
+| P `PH2D_PEN_UP_ADIADO=0` | 0,5 | 33,9 · 29,9 · 29,8 | 32,3 · 10,3 · 14,9 | 41,1 |
+| D `PH2D_DAB_SINCRONO=1` | 0,3 | **20,5 · 13,7 · 15,5** | **16,9** · 10,2 · 14,7 | 41,5 |
+| D2 `PH2D_DAB_SINCRONO=1` | 0,9 | **20,1 · 13,8 · 16,3** | **17,6** · 10,2 · 14,3 | 41,5 |
+| GC `HUGETLB=0 CHEIA_ALOCA=0 PREMUL_ESCALAR=1 SUBIDA_SEM_ANEL=1` | 5,9–6,7 ⚠ | 32,3 · 32,1 · 32,3 | 31,5 · 11,6 · 17,5 | 36,5 (carga) |
+| H3 head | 6,7→1,4 | 34,7 · 30,2 · 30,2 | 32,1 · 10,3 · 14,5 | 41,0 |
+
+**Causa (Filbert traço/soltar, toque Wet Liner) — o depósito em voo (F2d/F2h) sujava a prévia SEM caixa.** O lote que voa
+(`dab_route.rs`, ramo `o_lote_pode_voar`) punha `preview_dirty = true` com o lote ainda no operário; na drenagem do quadro
+(`take_preview_dirty`) o `compoe_o_pendente` não espera o voo (F2g), o `dirty_rect` fica `None` e `preview_dirty_region = None`
+= «não confinado»: a pista da placa dobrava o relevo e acendia a luz da TELA INTEIRA em cada quadro do traço
+(`[paint-perf] WORST split … fold 7,1 janela=TELA` no head × `fold 0,1 janela=rect` com `DAB_SINCRONO=1`; dobra 5–8 ms + luz/
+composição 4K ≈ +20 ms por quadro). Não era o pen-up adiado (P = H).
+
+**Cura (este commit):** o voo só deixa o `composite_pendente`; o sujo nasce no `mark_dirty` da composição que trouxer o lote,
+com a caixa. Acordar não depende do `preview_dirty` (a sessão Wet viva mantém `quer_quadro`; as duas pistas chamam
+`compoe_o_pendente` antes do portão). Gate `o_lote_em_voo_nao_suja_a_previa_e_a_volta_dele_e_confinada` (Textured,
+operário segurado: a drenagem em voo devolve `false`; a volta suja com região confinada) verde; mutação «repõe o
+`preview_dirty = true` do voo» VERMELHA (linha 518, «o lote em voo sujou a prévia sem caixa»). Os 9 de
+`fila_do_dab::tests` (telas ao bit do síncrono, 3 fundos) e `o_pen_up_adiado…` verdes.
+
+**Composite Brush:digital toque 29,5 → 41,5: NÃO explicado por chave** (nem P, D, nem o grupo GC — o 36,5 do GC é sob load 6).
+O quadro do toque: `preview 30–32 ms, fold 0,4 janela=rect` no head × 17,7 na base = o `compoe_o_pendente` da PILHA no 1.º
+toque (o CPU da pilha, não a placa). ⏳ Próximo passo: bissecção por binários na linha só com `"Composite Brush:digital"`
+(36a312..9fcbf6c075, commits que tocam `composite_por_quadro.rs`/`compositor/`/`stamp_preview.rs`: B26.4 bandas, B27.2
+lotes, B25.5/B25.6 rota), worktree temporária `/home/enio/Documentos/Projetos/.ph2d-bis-n10b` com target próprio.
+
+**Depois — base 36a312 × cura (HEAD + F11, `target/n10/f11/bin-cura`), A1 C1 C2 A2, load 0,3–1,3, mínimo de 2 rondas, custo × custo:**
+
+| pincel | toque | traço p50 / p95 | soltar | +1 s máx | Ctrl+Z |
+|---|---|---|---|---|---|
+| Filbert:wet | 21,6 → **15,3** | 15,4 / 15,9 → **10,7 / 11,4** | 15,4 → 15,3 | 15,7 → 15,3 | 45,1 → 44,8 |
+| Wet Liner:wet | 15,8 → **14,4** | 11,4 / 12,0 → 10,3 / 10,5 | 19,1 → 14,1 | 19,1 → 14,1 | 47,8 → 45,9 |
+| Composite Brush:digital | 29,5 → **40,7 ✗** | 10,5 / 14,1 → 9,5 / 13,4 | 14,5 → 12,0 | 14,5 → 12,4 | 15,2 → 12,6 |
+
+O Wet fica melhor que a base em todo gesto (e melhor que o síncrono: Filbert traço 13,7 → 10,7). Fica aberto só o toque
+do Composite (+11 ms, o 1.º toque do documento; o 1.º toque da camada nova segue 43 → 18).

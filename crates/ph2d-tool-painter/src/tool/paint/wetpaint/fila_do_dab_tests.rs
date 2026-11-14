@@ -471,3 +471,55 @@ fn o_pen_up_adiado_fecha_o_passo_de_undo_do_sincrono_ao_bit() {
         }
     }
 }
+
+/// N10 F11: o lote em voo NÃO suja a prévia — a tela ainda não mudou. O sujo chega com a composição que o trouxer,
+/// com a caixa: a pista da placa dobra e acende só ela. Antes, o `preview_dirty` do voo chegava à drenagem sem caixa
+/// («não confinado») e cada quadro do traço dobrava e acendia a tela inteira (Filbert 4K: traço 15 → 30 ms).
+#[test]
+fn o_lote_em_voo_nao_suja_a_previa_e_a_volta_dele_e_confinada() {
+    let _so_um = PORTA_DE_UM
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (w, h) = (320u32, 160u32);
+    super::fila_no_teste(true);
+    let mut t = PainterTool::default();
+    t.agenda_papel_texturizado(7);
+    t.bind_document(7, fundo(w, h, false), w, h);
+    t.set_compor_por_quadro(true);
+    t.set_paint_tool_mode("wetpaint");
+    t.preset_aplicar(&preset("Oil/Flat/Flat Bristle.ph2d-brush.png"))
+        .expect("o pincel");
+    t.set_brush_size_px(30.0);
+    t.on_canvas_pointer(cp([60.0, 50.0], 0.6, PointerPhase::Down));
+    for k in 1..=4 {
+        t.on_canvas_pointer(cp([60.0 + 12.0 * k as f32, 50.0], 0.7, PointerPhase::Move));
+    }
+    t.ticks_em_blocos(1);
+    // Drena tudo o que havia (e o «stale» da pista da CPU): daqui em diante só o voo.
+    let prazo = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while t.paint.wetpaint.session.em_voo() && std::time::Instant::now() < prazo {
+        let _ = t.take_preview_dirty();
+    }
+    let _ = t.take_preview_dirty();
+    super::segura_o_operario(true);
+    t.on_canvas_pointer(cp([120.0, 52.0], 0.8, PointerPhase::Move));
+    let voou = t.paint.wetpaint.session.em_voo();
+    let sujo_em_voo = t.take_preview_dirty();
+    super::segura_o_operario(false);
+    let mut chegou = false;
+    while !chegou && std::time::Instant::now() < prazo {
+        chegou = t.take_preview_dirty();
+    }
+    let regiao = t.preview_gpu_region();
+    t.on_canvas_pointer(cp([130.0, 52.0], 1.0, PointerPhase::Up));
+    t.ticks_em_blocos(2);
+    super::fila_no_teste(false);
+    assert!(voou, "o lote não voou (o gate não mediria nada)");
+    assert!(!sujo_em_voo, "o lote em voo sujou a prévia sem caixa");
+    assert!(chegou, "a volta do lote não sujou a prévia");
+    let (_, _, rw, rh) = regiao.expect("a volta do lote saiu NÃO confinada (a tela inteira)");
+    assert!(
+        rw < w || rh < h,
+        "a volta do lote saiu com a tela inteira: {regiao:?}"
+    );
+}

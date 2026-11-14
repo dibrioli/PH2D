@@ -72,8 +72,10 @@ impl PainterTool {
                     .wetpaint
                     .session
                     .voa(fila_do_dab::enfileira(dep), marca);
+                // Só o pendente (N10 F11): a tela não mudou ainda — o `mark_dirty` da composição que o trouxer
+                // levanta o sujo com a caixa. Um `preview_dirty` aqui chegava à drenagem SEM caixa (o lote ainda no
+                // operário) = «não confinado» = dobra e luz da tela INTEIRA em cada quadro (Filbert 4K 15 → 30 ms).
                 self.paint.wetpaint.composite_pendente = true;
-                self.preview_dirty = true;
                 crate::wet_diag::note_stamp(dabs.len(), deposit_ms, 0.0);
                 return;
             } else {

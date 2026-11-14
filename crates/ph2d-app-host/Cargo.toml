@@ -22,6 +22,7 @@ authors.workspace = true
 #   e não é pacote novo — ⚠️ ele é quem SEGURA o `pollster` (`stack-audit.sh --tetos`).
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
 rfd = "0.17"
 # W16 (MiroClone) — ler a área de transferência com PRAZO (`clipboard.rs`); a mesma linha da shell.
 arboard = { version = "3", features = ["wayland-data-control"] }

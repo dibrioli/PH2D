@@ -7,5 +7,6 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_vez_da_placa;
+mod o_modo_de_apresentacao;
 mod pass_profiler_gpu;
 mod surface_state;

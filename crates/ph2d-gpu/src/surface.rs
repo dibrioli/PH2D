@@ -60,6 +60,48 @@ pub enum SurfaceState {
     TimingOut(u32),
 }
 
+/// B21.1: a fila da superfície. Mailbox + 2 (Fifo + 2 sem Mailbox); NUNCA 1 — no Vulkan são duas
+/// imagens e o 4K caiu a 30 q/s (recusa medida, PLANO_DESEMPENHO_TOTAL).
+pub const LATENCIA: u32 = 2;
+
+/// Mailbox/Immediate não esperam o vblank: o laço do quadro tem de se ritmar ([`ph2d_host::ritmo`]).
+#[must_use]
+pub fn nao_bloqueia(m: wgpu::PresentMode) -> bool {
+    matches!(
+        m,
+        wgpu::PresentMode::Mailbox | wgpu::PresentMode::Immediate | wgpu::PresentMode::AutoNoVsync
+    )
+}
+
+/// `PH2D_PRESENT=fifo|mailbox` (A × B no mesmo binário), lido uma vez.
+#[must_use]
+pub fn pedido_do_ambiente() -> Option<wgpu::PresentMode> {
+    match std::env::var("PH2D_PRESENT").ok()?.as_str() {
+        "fifo" => Some(wgpu::PresentMode::Fifo),
+        "mailbox" => Some(wgpu::PresentMode::Mailbox),
+        _ => None,
+    }
+}
+
+/// O modo do arranque, sempre um que o backend TEM: Mailbox quando existe e o refresco do monitor
+/// é conhecido (é ele que dá o ritmo ao laço); senão Fifo; o pedido do ambiente vence se existir.
+#[must_use]
+pub fn modo_de_boot(
+    disponiveis: &[wgpu::PresentMode],
+    refresco_conhecido: bool,
+    pedido: Option<wgpu::PresentMode>,
+) -> wgpu::PresentMode {
+    let tem = |m: &wgpu::PresentMode| disponiveis.contains(m);
+    let mailbox = refresco_conhecido.then_some(wgpu::PresentMode::Mailbox);
+    pedido
+        .into_iter()
+        .chain(mailbox)
+        .chain([wgpu::PresentMode::Fifo])
+        .find(tem)
+        .or_else(|| disponiveis.first().copied())
+        .unwrap_or(wgpu::PresentMode::Fifo)
+}
+
 pub struct SurfaceContext {
     surface: wgpu::Surface<'static>,
     config: wgpu::SurfaceConfiguration,
@@ -91,28 +133,22 @@ impl SurfaceContext {
             color_space: wgpu::SurfaceColorSpace::Auto,
             width: size.width.max(1),
             height: size.height.max(1),
-            // Default to VSync (`Fifo`) — perfectly smooth, hardware-
-            // paced pan + animation. The mouse-move stutter (acquire
-            // stalling under the continuously-animating demo scene) is
-            // an opt-in trade: the user switches to the non-blocking
-            // `Immediate` mode at runtime via Config → Display
-            // (`SurfaceContext::set_present_mode`). `Fifo` is universally
-            // supported; the fallback only fires in a degenerate no-Fifo
-            // backend.
-            present_mode: surface_caps
-                .present_modes
-                .iter()
-                .copied()
-                .find(|m| *m == wgpu::PresentMode::Fifo)
-                .unwrap_or(surface_caps.present_modes[0]),
+            present_mode: modo_de_boot(
+                &surface_caps.present_modes,
+                ph2d_host::ritmo::refresco_mhz().is_some(),
+                pedido_do_ambiente(),
+            ),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
-            desired_maximum_frame_latency: 2,
+            desired_maximum_frame_latency: LATENCIA,
         };
-        // Boot-time record of the selected present mode — confirms
-        // whether the backend gave us a non-blocking mode (Mailbox /
-        // Immediate, the stutter fix) or fell back to Fifo.
-        eprintln!("[ph2d-gpu] surface present mode: {:?}", config.present_mode);
+        eprintln!(
+            "[ph2d-gpu] surface present mode: {:?} (available {:?}, refresh {:?} mHz)",
+            config.present_mode,
+            surface_caps.present_modes,
+            ph2d_host::ritmo::refresco_mhz()
+        );
+        ph2d_host::ritmo::publica_nao_bloqueia(nao_bloqueia(config.present_mode));
         surface.configure(&gpu.device, &config);
 
         Ok(Self {
@@ -180,6 +216,7 @@ impl SurfaceContext {
         }
         self.config.present_mode = mode;
         self.surface.configure(&self.gpu.device, &self.config);
+        ph2d_host::ritmo::publica_nao_bloqueia(nao_bloqueia(mode));
         eprintln!("[ph2d-gpu] surface present mode → {mode:?}");
     }
 

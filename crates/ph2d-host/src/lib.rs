@@ -18,6 +18,7 @@
 
 pub mod events;
 pub mod filter;
+pub mod ritmo;
 
 pub use events::{
     CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PenInfo, PointerButton, PointerEvent,

@@ -252,3 +252,24 @@ fn o_pedido_de_dentro_do_quadro_vale_um_acorda() {
     assert_eq!(l.acorda(&[], agora), Some(agora + PRAZO), "nunca alonga");
     assert_eq!(l.acorda(&[], agora), Some(agora + PRAZO));
 }
+
+/// B21.1: em Mailbox (ritmo = um refresco) o contínuo não passa do monitor e dorme até ao
+/// próximo refresco; sem ritmo (Fifo) «já» é sempre já.
+#[test]
+fn no_modo_que_nao_bloqueia_o_quadro_segue_o_refresco() {
+    let r = Some(Duration::from_millis(7));
+    let t0 = Instant::now();
+    let mut l = Laco::novo(false);
+    let p = [Produtor::Animacao];
+    assert_eq!(l.acorda_no_ritmo(&p, t0, r), None);
+    let t1 = t0 + Duration::from_millis(2);
+    assert_eq!(
+        l.acorda_no_ritmo(&p, t1, r),
+        Some(t0 + Duration::from_millis(7))
+    );
+    let t2 = t0 + Duration::from_millis(7);
+    assert_eq!(l.acorda_no_ritmo(&p, t2, r), None);
+    let mut f = Laco::novo(false);
+    assert_eq!(f.acorda_no_ritmo(&p, t0, None), None);
+    assert_eq!(f.acorda_no_ritmo(&p, t1, None), None);
+}

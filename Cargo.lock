@@ -5886,6 +5886,7 @@ version = "0.0.0"
 dependencies = [
  "arboard",
  "ph2d-editor-core",
+ "ph2d-host",
  "rfd",
 ]
 

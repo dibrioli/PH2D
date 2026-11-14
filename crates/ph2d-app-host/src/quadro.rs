@@ -165,6 +165,8 @@ pub struct Laco {
     pedidos: u32,
     /// O despertar mais cedo pedido dentro do quadro ([`desperta_ate`]); esvazia como `pedidos`.
     despertar: Option<Instant>,
+    /// B21.1: o início do último quadro «já» (o ritmo em Mailbox, [`Laco::no_ritmo`]).
+    ultimo_ja: Option<Instant>,
 }
 
 /// Um smoke conta quadros ou conduz a cena: qualquer `PH2D_*SMOKE*`/`*DEMO*`,
@@ -188,6 +190,7 @@ impl Laco {
             passo_oculto: None,
             pedidos: 0,
             despertar: None,
+            ultimo_ja: None,
         }
     }
 
@@ -272,6 +275,18 @@ impl Laco {
     /// Sem present, o «já» é o próximo [`SEM_PRESENT`]: o quadro que acabou de correr gastou o anterior.
     #[must_use]
     pub fn acorda(&mut self, documento: &[Produtor], agora: Instant) -> Option<Instant> {
+        let ritmo = ph2d_host::ritmo::intervalo();
+        self.acorda_no_ritmo(documento, agora, ritmo)
+    }
+
+    /// [`Laco::acorda`] com o intervalo mínimo entre quadros explícito (`None` = o `acquire` dá o ritmo).
+    #[must_use]
+    pub fn acorda_no_ritmo(
+        &mut self,
+        documento: &[Produtor],
+        agora: Instant,
+        ritmo: Option<Duration>,
+    ) -> Option<Instant> {
         let pedido = self.pedido(documento, agora);
         self.pedidos = 0;
         let despertar = self.despertar.take();
@@ -286,11 +301,22 @@ impl Laco {
                 self.passo_oculto = Some(alvo.max(agora));
                 (alvo > agora).then_some(alvo)
             }
-            Pedido::Ja(_) => None,
+            Pedido::Ja(_) => self.no_ritmo(agora, ritmo),
             Pedido::Ate { prazo, .. } => {
                 Some(despertar.map_or(agora + prazo, |d| d.min(agora + prazo)))
             }
         }
+    }
+
+    /// B21.1: em Mailbox o quadro contínuo espera o próximo refresco DORMINDO (os eventos entram),
+    /// em vez de o `acquire` do Fifo o prender; sem ritmo, «já» é já.
+    fn no_ritmo(&mut self, agora: Instant, ritmo: Option<Duration>) -> Option<Instant> {
+        let proximo = ritmo.zip(self.ultimo_ja).map(|(r, t)| t + r);
+        if let Some(t) = proximo.filter(|t| *t > agora) {
+            return Some(t);
+        }
+        self.ultimo_ja = Some(agora);
+        None
     }
 
     /// Ver [`pede`].

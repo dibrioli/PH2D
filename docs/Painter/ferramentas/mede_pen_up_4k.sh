@@ -380,12 +380,14 @@ if [ "$1" = parado ]; then
   sleep 1
   cd "$R"
   tiques() { awk '{print $14+$15}' "/proc/$1/stat"; }
-  for i in $(seq 1 "$N"); do for modo in pedido continuo; do
-    VAR=(); [ $modo = continuo ] && VAR=(PH2D_QUADRO_A_PEDIDO=0)
+  # B21.1: PARADO_MODOS="pedido_fifo pedido_mailbox continuo_fifo continuo_mailbox" = o PH2D_PRESENT no mesmo binário.
+  for i in $(seq 1 "$N"); do for modo in ${PARADO_MODOS:-pedido continuo}; do
+    VAR=(); case $modo in continuo*) VAR=(PH2D_QUADRO_A_PEDIDO=0) ;; esac
+    case $modo in *_fifo) VAR+=(PH2D_PRESENT=fifo) ;; *_mailbox) VAR+=(PH2D_PRESENT=mailbox) ;; esac
     env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$S/home_parado "${PLACA_ENV[@]}" "${VAR[@]}" "$BIN" > "$S/parado_$modo.log" 2>&1 &
     APP=$!; sleep 8
     a=$(tiques $APP); sleep "$SEG"; b=$(tiques $APP)
-    echo "[parado] rodada=$i modo=$modo cpu=$(( (b - a) * 100 / $(getconf CLK_TCK) / SEG ))% de um núcleo em ${SEG}s"
+    echo "[parado] rodada=$i modo=$modo cpu=$(( (b - a) * 100 / $(getconf CLK_TCK) / SEG ))% de um núcleo em ${SEG}s $(grep -m1 -o 'surface present mode: [A-Za-z]*' "$S/parado_$modo.log") $(uptime | grep -o 'load.*')"
     kill -INT $APP 2>/dev/null
     for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
     kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null

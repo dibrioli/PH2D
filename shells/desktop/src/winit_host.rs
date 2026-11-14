@@ -1,9 +1,6 @@
-//! [`WinitHost`] + [`LoggingHandler`] — the winit-side adapters that
-//! satisfy the editor's `PlatformHost` / `HostHandler` traits.
+//! [`WinitHost`] + [`LoggingHandler`]: the winit adapters of `PlatformHost` / `HostHandler`.
 //!
-//! Extracted from [`main`] (Track B6). Self-contained: depends only
-//! on winit + ph2d-host. The application orchestrator lives in main
-//! and threads one instance of each through its lifecycle.
+//! Self-contained (winit + ph2d-host); main threads one of each through its lifecycle.
 
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, Lifecycle, PlatformHost, PointerEvent, PointerKind,
@@ -31,6 +28,8 @@ pub struct WinitHost {
 impl WinitHost {
     pub fn new(window: Arc<Window>) -> Self {
         let scale = window.scale_factor() as f32;
+        let m = window.current_monitor(); // B21.1: o ritmo em Mailbox é o do monitor
+        ph2d_host::ritmo::publica_refresco(m.and_then(|m| m.refresh_rate_millihertz()));
         Self {
             window,
             scale: Cell::new(scale),

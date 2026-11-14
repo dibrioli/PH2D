@@ -158,6 +158,18 @@ pub(super) fn composite_region_linear(
     region: Region,
     vidros: Option<&super::vidro::Vidros>,
 ) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
+    composite_region_linear_em(Vec::new(), stack, src, (width, height), region, vidros)
+}
+
+/// [`composite_region_linear`] num acumulador reusado (B19.12: zerado em paralelo, sem páginas novas).
+pub(super) fn composite_region_linear_em(
+    acc: Vec<[f32; 4]>,
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    (width, height): (u32, u32),
+    region: Region,
+    vidros: Option<&super::vidro::Vidros>,
+) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
     let rx = region.x.min(width);
     let ry = region.y.min(height);
     let rw = region.w.min(width - rx);
@@ -169,7 +181,7 @@ pub(super) fn composite_region_linear(
         h: rh,
     };
     if rw == 0 || rh == 0 || !has_spatial_adjustment(stack, stack.root()) {
-        return compor_regiao(stack, src, width, height, r, vidros);
+        return compor_regiao_em(acc, stack, src, width, height, r, vidros);
     }
     let g = match halo_da_pilha(stack, stack.root()) {
         Some(halo) => {
@@ -190,7 +202,7 @@ pub(super) fn composite_region_linear(
             h: height,
         },
     };
-    let (acc, t) = compor_regiao(stack, src, width, height, g, vidros);
+    let (acc, t) = compor_regiao_em(acc, stack, src, width, height, g, vidros);
     if g == r {
         return (acc, t);
     }
@@ -206,6 +218,7 @@ pub(super) fn composite_region_linear(
 }
 
 /// [`composite_region_linear`] over an already-clamped `region`, with no halo.
+#[cfg(test)]
 fn compor_regiao(
     stack: &LayerStack,
     src: &(impl LayerPixelSource + Sync),
@@ -214,8 +227,20 @@ fn compor_regiao(
     region: Region,
     vidros: Option<&super::vidro::Vidros>,
 ) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
+    compor_regiao_em(Vec::new(), stack, src, width, height, region, vidros)
+}
+
+fn compor_regiao_em(
+    mut acc: Vec<[f32; 4]>,
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    region: Region,
+    vidros: Option<&super::vidro::Vidros>,
+) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
     let (rw, rh) = (region.w, region.h);
-    let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
+    super::cache::zera_o_acumulador(&mut acc, (rw as usize) * (rh as usize));
     // A transparência do papel nasce 1 (nada por cima): o enchimento em paralelo (`plane_copy`).
     let mut t = vidros.map(|_| {
         let mut t = Vec::new();

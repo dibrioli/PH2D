@@ -178,7 +178,13 @@ fn sonda_primeiro_traco() {
             println!("ROTA\t{n}\tvidro_pelo_journal={rota}");
         }
         let mut t = PainterTool::default();
-        t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
+        // `PH2D_SONDA_PAPEL`: o Textured Paper do dono (sem ele a dobra do relevo não existe).
+        if std::env::var("PH2D_SONDA_PAPEL").is_ok() {
+            t.agenda_papel_texturizado(7);
+            t.bind_document(7, vec![255u8; w * h * 4], w as u32, h as u32);
+        } else {
+            t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
+        }
         t.set_paint_tool_mode("wetpaint");
         t.preset_aplicar(por_nome(&lib, n)).expect("preset");
         t.set_brush_size_px(60.0);
@@ -263,6 +269,38 @@ fn sonda_primeiro_traco() {
                     ms(b),
                     t1.duration_since(t0).as_secs_f64() * 1e3,
                     t0.elapsed().as_secs_f64() * 1e3
+                );
+            }
+        }
+        // `PH2D_SONDA_TROCA` (n.º 10 F5c, B18.3): trocar da camada activa para a de baixo e voltar, as partes de cada.
+        if std::env::var("PH2D_SONDA_TROCA").is_ok() {
+            let ida = t.layers.active().expect("a activa");
+            let baixo = (t.layers.all_ids())
+                .find(|&id| id != ida && t.images.contains_key(&id))
+                .expect("a de baixo");
+            for (rot, alvo) in [
+                ("troca", baixo),
+                ("volta", ida),
+                ("troca", baixo),
+                ("volta", ida),
+            ] {
+                let (f0, t0) = (faltas(), Instant::now());
+                crate::sonda_partes::liga();
+                t.select_layer(alvo);
+                crate::sonda_partes::parte("troca.fim");
+                t.on_tick(1000.0 / 60.0);
+                crate::sonda_partes::parte("tique");
+                let _ = t.take_preview_arc();
+                crate::sonda_partes::parte("preview");
+                let partes: Vec<String> = crate::sonda_partes::tira()
+                    .into_iter()
+                    .map(|(nome, ms, mb)| format!("{nome} {ms:.2} ms/{mb:.0} MB"))
+                    .collect();
+                println!(
+                    "TROCA\t{n}\t{rot}\t{:.1} ms · {:.1} MB novos\t{}",
+                    t0.elapsed().as_secs_f64() * 1e3,
+                    (faltas() - f0) as f64 * 4096.0 / 1e6,
+                    partes.join(" · ")
                 );
             }
         }

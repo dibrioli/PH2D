@@ -27,6 +27,8 @@ pub struct CompositorCache {
     /// B19.12: the previous frame's output, handed back by [`Self::recicla`] for the next
     /// [`composite_with_cache_into`]. Scratch: never cloned.
     pub(crate) saida: Vec<u8>,
+    /// B19.12: the accumulator of the FULL composite ([`composite_cheia_into`]). Scratch: never cloned.
+    pub(crate) cheio: Vec<[f32; 4]>,
 }
 
 impl Clone for CompositorCache {
@@ -38,6 +40,7 @@ impl Clone for CompositorCache {
             ajustado: Vec::new(),
             ajustado_por_faixa: Vec::new(),
             saida: Vec::new(),
+            cheio: Vec::new(),
         }
     }
 }
@@ -137,6 +140,64 @@ pub fn composite_with_cache_into(
         SAIDAS_REUSADAS.with(|n| n.set(n.get() + 1));
     }
     super::compose::encode_into(&cache.acc, out);
+}
+
+/// B19.12: [`super::composite`] into `out` (resized, never cleared) over the cache's reused accumulator — no
+/// canvas-sized allocation nor page faults per full recompose. Bit-identical to [`super::composite`].
+pub fn composite_cheia_into(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    (width, height): (u32, u32),
+    cache: &mut CompositorCache,
+    out: &mut Vec<u8>,
+) {
+    let tela = Region {
+        x: 0,
+        y: 0,
+        w: width,
+        h: height,
+    };
+    let acc = if cheia_aloca() {
+        Vec::new()
+    } else {
+        std::mem::take(&mut cache.cheio)
+    };
+    #[cfg(test)]
+    if acc.len() == (width as usize) * (height as usize) && out.capacity() >= acc.len() * 4 {
+        CHEIAS_REUSADAS.with(|n| n.set(n.get() + 1));
+    }
+    let (acc, _) =
+        super::compose::composite_region_linear_em(acc, stack, src, (width, height), tela, None);
+    super::compose::encode_into(&acc, out);
+    cache.cheio = acc;
+}
+
+/// A chave A×B em execução: `PH2D_CHEIA_ALOCA=1` = o acumulador novo por composição cheia (antes do B19.12).
+fn cheia_aloca() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    #[cfg(test)]
+    if CHEIA_ALOCA.with(std::cell::Cell::get) {
+        return true;
+    }
+    *V.get_or_init(|| std::env::var_os("PH2D_CHEIA_ALOCA").is_some_and(|v| v == "1"))
+}
+
+/// Zera `acc` com `n` píxeis: reusado, em paralelo (as páginas já são dele); vazio, `alloc_zeroed`.
+pub(super) fn zera_o_acumulador(acc: &mut Vec<[f32; 4]>, n: usize) {
+    if acc.len() != n {
+        *acc = vec![[0.0f32; 4]; n];
+        return;
+    }
+    use rayon::prelude::*;
+    acc.par_chunks_mut(1 << 15).for_each(|c| c.fill([0.0; 4]));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// B19.12: o controlo do gate da composição cheia (um acumulador novo por composição).
+    pub(crate) static CHEIA_ALOCA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// B19.12: full composites that reused BOTH the accumulator and the output (no allocation).
+    pub(crate) static CHEIAS_REUSADAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 #[cfg(test)]
@@ -290,6 +351,7 @@ fn em_faixas(
             ajustado: std::mem::take(a),
             ajustado_por_faixa: Vec::new(),
             saida: Vec::new(),
+            cheio: Vec::new(),
         })
         .collect();
     {

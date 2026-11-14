@@ -418,3 +418,39 @@ fn o_arrasto_de_um_ajuste_reusa_a_saida_com_os_mesmos_bytes() {
     assert_eq!(n, 5, "o arrasto não reusou a saída do quadro anterior");
     assert!(reusados == segurados, "o reuso mudou os bytes");
 }
+
+/// B19.12 — a composição CHEIA (cada edição estrutural: aqui a visibilidade) reusa o acumulador e a saída da anterior
+/// (a shell copia o quadro e larga-o), com os bytes da `composite` de sempre. Controlo `CHEIA_ALOCA`: 0 reusos, os mesmos
+/// bytes.
+#[test]
+fn a_composicao_cheia_reusa_o_acumulador_e_a_saida_com_os_mesmos_bytes() {
+    use crate::compositor::{CHEIA_ALOCA, CHEIAS_REUSADAS};
+    let corre = |aloca: bool| {
+        CHEIA_ALOCA.set(aloca);
+        CHEIAS_REUSADAS.set(0);
+        let (mut t, ids) = doc(K::HueSaturationBrightness);
+        let mut quadros = Vec::new();
+        for k in 0..6 {
+            t.set_layer_visible(ids.a, k % 2 == 1);
+            let (q, ..) = t.take_preview_arc().expect("o quadro");
+            let src = ToolPixelSource {
+                active_id: t.layers.active().expect("a activa"),
+                active_rgba: &t.canvas_rgba,
+                images: &t.images,
+            };
+            let oraculo = crate::compositor::composite(&t.layers, &src, LADO, LADO);
+            assert!(
+                *q == oraculo,
+                "aloca={aloca} · quadro {k}: ≠ a composite de sempre"
+            );
+            quadros.push(q.to_vec());
+        }
+        CHEIA_ALOCA.set(false);
+        (quadros, CHEIAS_REUSADAS.get())
+    };
+    let (reusados, n) = corre(false);
+    let (alocados, n2) = corre(true);
+    assert_eq!(n2, 0, "controlo: com a chave de antes não há reuso");
+    assert!(n >= 4, "a composição cheia reusou {n} de 6 vezes");
+    assert!(reusados == alocados, "o reuso mudou os bytes");
+}

@@ -402,8 +402,11 @@ impl PainterTool {
         let salvo_a_tinta = !mantem && self.a_troca_mantem_salvo_a_tinta(target);
         let saida = self.layers.active().filter(|_| self.tinta_viva());
         self.fecha_a_forma_aberta();
+        crate::sonda_partes::parte("troca.perguntas");
         let undo_before = self.snapshot_model();
+        crate::sonda_partes::parte("troca.snapshot_model");
         self.flush_active_to_images();
+        crate::sonda_partes::parte("troca.flush");
         let dormiu = !self.tinta_viva();
         #[cfg(test)]
         if super::cache::TROCA_RECOMPOE_SEMPRE.with(std::cell::Cell::get) {
@@ -413,8 +416,11 @@ impl PainterTool {
         }
         #[cfg(not(test))]
         self.carrega_a_tela_da_troca(target);
+        crate::sonda_partes::parte("troca.carrega");
         self.commit_structural_edit(undo_before);
+        crate::sonda_partes::parte("troca.commit");
         self.wet_acorda_da_camada();
+        crate::sonda_partes::parte("troca.acorda");
         if mantem && self.a_troca_mantem_a_figura(target) {
             self.troca_sem_mudar_a_figura();
         } else if (mantem || salvo_a_tinta) && dormiu && self.a_troca_mantem_salvo_a_tinta(target) {
@@ -428,7 +434,9 @@ impl PainterTool {
         } else {
             self.invalidate_composite();
         }
+        crate::sonda_partes::parte("troca.marca");
         self.aquece_o_fundo_do_toque();
+        crate::sonda_partes::parte("troca.aquece");
     }
 
     /// Collapse the multi-selection to a single layer (selection bookkeeping

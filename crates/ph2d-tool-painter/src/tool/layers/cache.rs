@@ -103,7 +103,7 @@ impl PainterTool {
                 std::backtrace::Backtrace::force_capture()
             );
         }
-        self.composited = None;
+        self.compositor_cache.recicla(self.composited.take());
         self.estrutura_confinada = None;
         self.larga_a_luz_guardada();
         // Drop any accumulated dirty-rect: a structural edit (opacity / blend /

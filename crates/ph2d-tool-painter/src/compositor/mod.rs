@@ -160,8 +160,10 @@ mod tests;
 pub mod vidro;
 pub use abaixo::{Corte, composite_below, composite_below_cortavel};
 #[cfg(test)]
-pub(crate) use cache::SAIDAS_REUSADAS;
-pub use cache::{CompositorCache, composite_with_cache, composite_with_cache_into};
+pub(crate) use cache::{CHEIA_ALOCA, CHEIAS_REUSADAS, SAIDAS_REUSADAS};
+pub use cache::{
+    CompositorCache, composite_cheia_into, composite_with_cache, composite_with_cache_into,
+};
 #[cfg(test)]
 pub(crate) use compose::FIOS_FORCADOS;
 pub use compose::{composite, composite_region};

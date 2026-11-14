@@ -256,7 +256,17 @@ impl PainterTool {
                             c
                         } else {
                             self.compositor_cache.invalidate_from(active, &self.layers);
-                            composite(&self.layers, &src, w, h)
+                            // B19.12: a saída e o acumulador reusados (nada de 166 MB novos por recomposição).
+                            let mut c = self.compositor_cache.toma_a_saida();
+                            let cache = &mut self.compositor_cache;
+                            crate::compositor::composite_cheia_into(
+                                &self.layers,
+                                &src,
+                                (w, h),
+                                cache,
+                                &mut c,
+                            );
+                            c
                         };
                     self.compoe_sobre_o_papel(&mut c, full);
                     self.guarda_o_nao_aceso(&c);

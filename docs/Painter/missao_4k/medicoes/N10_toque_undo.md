@@ -100,3 +100,23 @@ outros ficam «não guardado», distinto de «vazio na base»); `marca` sem más
 `poe_no_pool`/`inverso`/`restaura_com` saltam o plano não guardado; uma 2.ª marca do mesmo tile com planos novos tira-os NESSE
 instante (a grade ainda é a base deles). Sítios: `marca_dab` (o dab: quais planos o `deposit`/`stamp` escreve) e o passo do
 solver (por estágio: o Wet Flat nunca escreve relevo/vela/bloom ⇒ ~28 % dos bytes da troca). Oráculo = máscara cheia, ao bit.
+
+## F1d (14/11) — a medição da cura 2 (fluxo) e a foto + repoe numa passada
+
+Medição (janela principal): s6, 7 rodadas, `PH2D_FLUXO_SERIE=0/1` × 2, load **10–23** (`target/n10/f1d/load.txt`; saídas
+`serie{0,1}_r{1,2}.txt`, não comitadas). ⚠️ As corridas `serie1_*` compilaram já com a passada única (abaixo) a meio de ser
+escrita: só a linha `troca: fluxo` é comparável entre `serie0` e `serie1` (as fases `de`/`repoe` não). Mínimo, ms (undo / redo):
+
+| fase | Wet Flat 240 série → pool | Dabber 120 série → pool |
+|---|---|---|
+| `troca: fluxo` | 8,0–8,4 / 8,2–10,9 → **2,9–3,0 / 2,9** | 5,5–5,6 / 5,4 → **2,7–2,9 / 2,8–3,1** |
+| `FotoDoMotor::de` + `repoe` (undo, pool, sem a passada) | 2,8 + 1,9 | 4,2 + 0,3 |
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B18.11 cura 2 (`fluxo`) | **feita, medida** | 5,4–8,4 → 2,7–3,0 ms por undo/redo | `e2a0076f8d` | acima |
+| B18.11 cura 4 (foto + repoe numa passada) | **feita, por medir A×B** | `de` 2,8/4,2 + `repoe` 1,9/0,3 (undo) → a medir com `PH2D_FOTO_FUNDE=0/1` | este commit | `PlanoEmTiles::de_e_repoe` (uma passada por faixa de tiles: igual ao bit ⇒ partilha o `Arc` de `antes`, não escreve; diferente ⇒ o vivo vai ao «depois», o `antes` à grade, com o tile quente na cache) e `FotoDoMotor::de_e_repoe` (o relógio do «depois» tirado antes do motor). Só no undo com o fluxo inteiro reescrito (a condição do `ja`); o redo e o resto ficam no par. O tile novo junta-se num tampão reusado por fio (`copia_tile`): sem o `Vec` por tile que o `Arc::from` recopiava (também no `de`). «Arcs de uma alocação só» RECUSADO sem `unsafe` (o crate é `forbid(unsafe_code)`; `Arc<[f32]>` por tile tem o seu cabeçalho). Gates: `a_passada_unica_da_o_bit_do_par` (plano, bits e partilha do «depois», bytes novos; mesma grade e fora dela) e `a_passada_unica_do_undo_da_o_bit_do_par_de_e_repoe` (aguada e Dabber, undo/redo ×6, tela + planos + bytes retidos; oráculo `SEPARADA`); `o_repoe_sobre_o_depois_da_o_bit_do_repoe_inteiro` verde (agora o oráculo é o repoe inteiro × a passada). Mutação «a passada não escreve o `antes`» ⇒ vermelho «o plano» (unidade) e vermelho no e2e (`repoe_sobre_tests.rs:94`, tela/planos ≠ ao 1.º undo). |
+
+Próximo passo exato: (1) a janela corre a s6 com `PH2D_FOTO_FUNDE=1` e `=0`, 2 pares intercalados, e lê `volta: FotoDoMotor::de` +
+`volta: repoe` do undo. Se a passada não baixar a soma (ela é memória: lê o vivo e o `antes`, escreve o diferente), reverter a
+chamada em `undo_vivo.rs` e deixar o `copia_tile`. (2) Filbert toque, B17.4/B17.5 e a família 7: não iniciados nesta janela (F1e).

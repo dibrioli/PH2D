@@ -303,6 +303,11 @@ impl PainterTool {
     pub(crate) fn wet_volta_do_undo(&mut self, solta: SessaoNoUndo, aplicou: bool) {
         let SessaoNoUndo(mut sess, foto, refaz, chave) = solta;
         marca("pintor: undo.undo + restore_model");
+        // O undo que não escreve a ladeira nem o fluxo tira o «depois» e repõe numa passada, depois do motor.
+        let funde = !refaz && foto::funde() && foto.repoe_o_fluxo_de(sess.engine.active_layer);
+        #[cfg(test)]
+        let funde = funde && !REPOE_CHEIO.with(std::cell::Cell::get);
+        let mut relogio = None;
         if aplicou {
             sess.bring_home();
             marca("volta: bring_home");
@@ -314,7 +319,11 @@ impl PainterTool {
                 let atual = Arc::clone(&sess.base);
                 let i = sess.antes_do_passo.iter().position(|p| p.chave == chave);
                 if let Some(p) = i.map(|i| &mut sess.antes_do_passo[i]) {
-                    p.depois = Some(FotoDoMotor::de(&sess.engine, Some(&p.antes)));
+                    if funde {
+                        relogio = Some(foto::Relogio::de(&sess.engine));
+                    } else {
+                        p.depois = Some(FotoDoMotor::de(&sess.engine, Some(&p.antes)));
+                    }
                     marca("volta: FotoDoMotor::de");
                     p.base_depois = Some(atual);
                     sess.base = Arc::clone(&p.base_antes);
@@ -361,7 +370,14 @@ impl PainterTool {
                 .and_then(|p| p.depois.as_ref());
             #[cfg(test)]
             let ja = ja.filter(|_| !REPOE_CHEIO.with(std::cell::Cell::get));
-            foto.repoe_sobre(&mut sess.engine, ja);
+            if let Some(r) = relogio {
+                let depois = foto.de_e_repoe(&mut sess.engine, r);
+                if let Some(p) = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave) {
+                    p.depois = Some(depois);
+                }
+            } else {
+                foto.repoe_sobre(&mut sess.engine, ja);
+            }
             marca("volta: repoe");
             // Uma imagem no ar é de antes do restauro: aplicada, punha a tela de outro passo por cima, e nada a corrigia.
             // Fora do sujo do motor (a caixa do restauro e o que já estava por compor) a grade é a mesma.

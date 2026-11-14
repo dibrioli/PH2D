@@ -68,13 +68,9 @@ impl PlanoEmTiles {
                         return (Arc::clone(velho), 0);
                     }
                 }
-                let mut novo = Vec::with_capacity(w * (y1 - y0));
-                for y in y0..y1 {
-                    let o = y * s + x0;
-                    novo.extend_from_slice(&v[o..o + w]);
-                }
+                let novo = Self::copia_tile(v, s, (x0, x1, y0, y1), &mut Vec::new());
                 let n = novo.len();
-                (Arc::from(novo), n)
+                (novo, n)
             })
             .collect();
         let novas = feitos.iter().map(|f| f.1).sum();
@@ -83,6 +79,76 @@ impl PlanoEmTiles {
             rows,
             tiles: feitos.into_iter().map(|f| f.0).collect(),
             novas,
+        }
+    }
+
+    /// O tile `(x0, x1, y0, y1)` de `v` num `Arc` novo, juntado em `junta` (reusada: quente na cache, sem `Vec` por tile).
+    fn copia_tile(
+        v: &[f32],
+        s: usize,
+        (x0, x1, y0, y1): (usize, usize, usize, usize),
+        junta: &mut Vec<f32>,
+    ) -> Arc<[f32]> {
+        junta.clear();
+        for y in y0..y1 {
+            let o = y * s + x0;
+            junta.extend_from_slice(&v[o..o + x1 - x0]);
+        }
+        Arc::from(&junta[..])
+    }
+
+    /// O par [`Self::de`] (`v` contra `antes`) e `antes.repoe_sobre(v, Some(&depois))` numa passada por tile: o tile
+    /// igual ao bit partilha o `Arc` de `antes` e não se escreve; o diferente copia o vivo para o «depois» e recebe o de
+    /// `antes`. Devolve o «depois». Fora da mesma grade, o par de sempre. Oráculo: `a_passada_unica_da_o_bit_do_par`.
+    pub(crate) fn de_e_repoe(v: &mut Vec<f32>, s: usize, antes: &Self) -> Self {
+        let rows = if s == 0 { 0 } else { v.len() / s };
+        let mesma = !v.is_empty()
+            && s > 0
+            && v.len().is_multiple_of(s)
+            && antes.s == s
+            && antes.rows == rows
+            && !antes.tiles.is_empty();
+        if !mesma {
+            let depois = Self::de(v, s, Some(antes));
+            antes.repoe_sobre(v, Some(&depois));
+            return depois;
+        }
+        let n = Self::tiles_por_linha(s);
+        let feitos: Vec<Vec<(Arc<[f32]>, usize)>> = v
+            .par_chunks_mut(s * TILE)
+            .enumerate()
+            .map_init(Vec::new, |junta, (ty, faixa)| {
+                (0..n)
+                    .map(|tx| {
+                        let i = ty * n + tx;
+                        let (x0, x1, y0, y1) = Self::caixa(s, rows, i);
+                        let w = x1 - x0;
+                        let velho = &antes.tiles[i];
+                        let igual = (0..y1 - y0).zip(velho.chunks_exact(w)).all(|(y, l)| {
+                            faixa[y * s + x0..y * s + x1]
+                                .iter()
+                                .zip(l)
+                                .all(|(p, q)| p.to_bits() == q.to_bits())
+                        });
+                        if igual {
+                            return (Arc::clone(velho), 0);
+                        }
+                        let novo = Self::copia_tile(faixa, s, (x0, x1, 0, y1 - y0), junta);
+                        for (y, l) in (0..y1 - y0).zip(velho.chunks_exact(w)) {
+                            faixa[y * s + x0..y * s + x1].copy_from_slice(l);
+                        }
+                        let k = novo.len();
+                        (novo, k)
+                    })
+                    .collect()
+            })
+            .collect();
+        let feitos: Vec<_> = feitos.into_iter().flatten().collect();
+        Self {
+            s,
+            rows,
+            novas: feitos.iter().map(|f| f.1).sum(),
+            tiles: feitos.into_iter().map(|f| f.0).collect(),
         }
     }
 
@@ -292,6 +358,49 @@ mod tests {
             bits(&curto),
             bits(&v),
             "de outro comprimento, reescreve tudo"
+        );
+    }
+
+    /// A passada única dá o bit do par `de` + `repoe_sobre` de hoje: o plano, o «depois» (bits e partilha com `antes`) e
+    /// os bytes novos — na mesma grade com tiles iguais e diferentes (bordas parciais, `-0.0`), e fora dela.
+    #[test]
+    fn a_passada_unica_da_o_bit_do_par() {
+        let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        let (s, rows) = (150, 135);
+        let base = plano(s, rows);
+        let antes = PlanoEmTiles::de(&base, s, None);
+        let mut vivo = base.clone();
+        vivo[0] = 5.0;
+        vivo[s * 70 + 149] = -0.0;
+        vivo[s * rows - 1] = 1e9;
+        let outra = plano(s + 1, rows);
+        for (v, s) in [
+            (vivo.clone(), s),
+            (base.clone(), s),
+            (Vec::new(), s),
+            (outra, s + 1),
+        ] {
+            let (mut par, mut uma) = (v.clone(), v);
+            let d_par = PlanoEmTiles::de(&par, s, Some(&antes));
+            antes.repoe_sobre(&mut par, Some(&d_par));
+            let d_uma = PlanoEmTiles::de_e_repoe(&mut uma, s, &antes);
+            assert_eq!(bits(&uma), bits(&par), "o plano");
+            assert_eq!(d_uma.bytes_novos(), d_par.bytes_novos(), "os bytes novos");
+            assert_eq!(d_uma.tiles.len(), d_par.tiles.len());
+            for (i, (a, b)) in d_uma.tiles.iter().zip(&d_par.tiles).enumerate() {
+                assert_eq!(bits(a), bits(b), "tile {i} do depois");
+                let partilha =
+                    |t: &Arc<[f32]>| antes.tiles.get(i).is_some_and(|x| Arc::ptr_eq(x, t));
+                assert_eq!(partilha(a), partilha(b), "tile {i}: a partilha");
+            }
+        }
+        let mut v = vivo.clone();
+        let d = PlanoEmTiles::de_e_repoe(&mut v, s, &antes);
+        assert_eq!(bits(&v), bits(&base), "CONTROLO: o vivo voltou ao antes");
+        assert_eq!(
+            d.bytes_novos(),
+            (64 * 64 + 22 * 64 + 22 * 7) * 4,
+            "três tiles mudaram"
         );
     }
 

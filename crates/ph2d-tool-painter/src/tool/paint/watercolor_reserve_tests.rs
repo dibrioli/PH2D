@@ -569,3 +569,13 @@ fn o_rascunho_de_um_quadro_nao_vaza_para_o_seguinte() {
         "{seco_agora_molhado_antes}"
     );
 }
+
+/// B42.4 (IN-114): o tecto do Rewet é metade do maior RAIO do painel — o número de antes (256), agora derivado.
+#[test]
+fn o_tecto_do_rewet_e_metade_do_maior_raio() {
+    assert_eq!(RESERVE_R_MAX, 256);
+    assert_eq!(
+        RESERVE_R_MAX as f32,
+        super::super::brush_ranges::BRUSH_SIZE_MAX_PX * 0.5
+    );
+}

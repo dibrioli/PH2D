@@ -260,9 +260,10 @@ pub(in crate::tool::paint) fn reserve_radius(
 }
 
 /// O tecto do raio, e o recurso é a JANELA do composite: ela cresce `R` para cada lado (duas vezes —
-/// saída e leitura), e a área dela é o custo do quadro. `256` é `0,25 ×` o maior raio que o painel
-/// oferece (`1024 px`); acima disso o Rewet satura em vez de estourar o quadro.
-pub(super) const RESERVE_R_MAX: usize = 256;
+/// saída e leitura), e a área dela é o custo do quadro. É **metade do maior RAIO** que o painel oferece
+/// ([`BRUSH_SIZE_MAX_PX`](super::brush_ranges::BRUSH_SIZE_MAX_PX) = 512 ⇒ 256; o texto antigo chamava
+/// raio ao diâmetro de 1024, B42.4/IN-114); acima disso o Rewet satura em vez de estourar o quadro.
+pub(super) const RESERVE_R_MAX: usize = (super::brush_ranges::BRUSH_SIZE_MAX_PX * 0.5) as usize;
 
 /// A janela de leitura do composite: `(largura do canvas, n.º de pixels, origem, extensão)`.
 pub(super) type ReserveWindow = (usize, usize, (usize, usize), (usize, usize));

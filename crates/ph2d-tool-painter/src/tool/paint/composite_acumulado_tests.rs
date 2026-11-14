@@ -608,3 +608,37 @@ fn o_borrao_da_pilha_cresce_com_o_pincel_acima_do_tecto_do_binomial() {
         "o borrão a r=200 tem de crescer além do tecto: {antes} → {depois} colunas de transição"
     );
 }
+
+/// **B17.8: a pilha abre pelos fios** — o `pre` (a tela inteira) nasce por `par_clone` e o plano de
+/// COBERTURA (chão 255) por `par_fill`; o de TINTA (chão 0) vem zerado do alocador. A identidade não
+/// vê a rota (o mesmo plano), então o gate CONTA (ADR-0120). 1536² = 9,4 MB, acima do limiar.
+#[test]
+fn a_pilha_do_composite_abre_pelos_fios() {
+    const N: u32 = 1536;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (N * N * 4) as usize], N, N);
+    t.paint.brush.radius_px = 20.0;
+    t.paint.composite_enabled = true;
+    for pos in 0..N_CAMADAS {
+        t.paint.composite[pos] = CompositeLayer::default();
+    }
+    com(&mut t, 0, CompositeOp::Brush, 1.0, Some([1.0, 0.0, 0.0]));
+    com(&mut t, 1, CompositeOp::Erase, 0.5, None);
+    let (c0, f0) = (
+        crate::plane_copy::par_clones_nesta_thread(),
+        crate::plane_copy::par_fills_nesta_thread(),
+    );
+    t.on_canvas_pointer(cp([400.0, 400.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([440.0, 400.0], PointerPhase::Move));
+    let clones = crate::plane_copy::par_clones_nesta_thread() - c0;
+    let fills = crate::plane_copy::par_fills_nesta_thread() - f0;
+    t.on_canvas_pointer(cp([440.0, 400.0], PointerPhase::Up));
+    assert!(
+        clones >= 1,
+        "o `pre` da pilha não nasceu pelo `par_clone` ({clones})"
+    );
+    assert!(
+        fills >= 1,
+        "o plano de cobertura não nasceu pelo `par_fill` ({fills})"
+    );
+}

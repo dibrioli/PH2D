@@ -100,7 +100,8 @@ impl PainterTool {
         #[cfg(test)]
         let t_pre = std::time::Instant::now();
         if self.paint.pilha.pre.len() != len {
-            self.paint.pilha.pre = (*self.canvas_rgba).clone();
+            // B17.8: a tela inteira em blocos pelos fios (33 MB a 4K; o `clone` serial falta página a página).
+            self.paint.pilha.pre = crate::plane_copy::par_clone(&self.canvas_rgba);
             self.paint.pilha.lotes.clear();
             for p in &mut self.paint.pilha.planos {
                 *p = Arc::new(Vec::new());
@@ -289,10 +290,14 @@ impl PainterTool {
         if self.paint.pilha.planos[pos].len() != len {
             // ⚠️ O estado inicial é a lei do acumulador: a tinta compõe-se sobre o TRANSPARENTE, a
             // cobertura MEDE-SE num plano opaco a que o depósito come o alfa.
-            let semente = match modo {
-                Acumulo::Tinta => vec![0u8; len],
-                _ => vec![255u8; len],
+            // B17.8: o zero vem do alocador; o 255 pelos fios (`par_fill`), não um memset serial de 33 MB a 4K.
+            let mut semente = Vec::new();
+            let chao = if matches!(modo, Acumulo::Tinta) {
+                0
+            } else {
+                255
             };
+            crate::plane_copy::size_to(&mut semente, len, chao);
             self.paint.pilha.planos[pos] = Arc::new(semente);
         }
         let saved_strength = self.paint.brush.strength;

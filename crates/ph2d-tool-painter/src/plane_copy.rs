@@ -146,6 +146,12 @@ pub(crate) fn par_clones_nesta_thread() -> usize {
     PAR_CLONES.with(std::cell::Cell::get)
 }
 
+/// Quantos planos o [`par_fill`] materializou **nesta thread** (o gate de quem tem de nascer por ele).
+#[cfg(test)]
+pub(crate) fn par_fills_nesta_thread() -> usize {
+    PAR_FILLS.with(std::cell::Cell::get)
+}
+
 /// **Materializa um plano de `n` elementos no valor `value`** — e o caso do ZERO é de graça.
 ///
 /// ⚠️ **`Vec::resize` num vetor VAZIO escreve elemento a elemento**, mesmo quando o valor é zero;

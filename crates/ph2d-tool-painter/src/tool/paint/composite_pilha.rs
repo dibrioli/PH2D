@@ -283,7 +283,7 @@ impl PainterTool {
         //    deste traço tocar nela — é dela que toda recomposição parte, e é ela que a borracha de
         //    escopo `Traco` devolve.
         if self.paint.pilha.pre.len() != len {
-            self.paint.pilha.pre = (*self.canvas_rgba).clone();
+            self.paint.pilha.pre = crate::plane_copy::par_clone(&self.canvas_rgba); // B17.8
             self.paint.pilha.lotes.clear();
         }
         let Some(caixa_nova) = super::region::caixa_das_camadas(

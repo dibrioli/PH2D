@@ -65,7 +65,7 @@ impl WorldBbox {
     /// itself answers *Frame All / Frame Selected*.
     #[must_use]
     pub fn of_local_box(t: &ph2d_ecs::Transform, center: [f32; 2], half: [f32; 2]) -> Self {
-        let (s, k) = t.rotation.sin_cos();
+        let (s, k) = ph2d_det_math::DetMath::det_sin_cos(t.rotation);
         let (ax, ay) = (center[0] * t.scale.x, center[1] * t.scale.y);
         let (hx, hy) = ((half[0] * t.scale.x).abs(), (half[1] * t.scale.y).abs());
         let c = [

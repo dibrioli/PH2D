@@ -28,6 +28,10 @@ pub trait DetMath: Sized + Copy {
     fn det_cbrt(self) -> Self;
     #[must_use]
     fn det_hypot(self, o: Self) -> Self;
+    #[must_use]
+    fn det_exp2(self) -> Self;
+    #[must_use]
+    fn det_log2(self) -> Self;
     /// Quadrados em ordem fixa (a do `__powisf2`): o `powi` de `std` é dobrado pelo LLVM em compilação com outro bit (#65088).
     #[must_use]
     fn det_powi(self, n: i32) -> Self;
@@ -81,6 +85,14 @@ impl DetMath for f32 {
     #[inline]
     fn det_hypot(self, o: Self) -> Self {
         libm::hypotf(self, o)
+    }
+    #[inline]
+    fn det_exp2(self) -> Self {
+        libm::exp2f(self)
+    }
+    #[inline]
+    fn det_log2(self) -> Self {
+        libm::log2f(self)
     }
     #[inline]
     fn det_powi(self, n: i32) -> Self {
@@ -149,6 +161,14 @@ impl DetMath for f64 {
     #[inline]
     fn det_hypot(self, o: Self) -> Self {
         libm::hypot(self, o)
+    }
+    #[inline]
+    fn det_exp2(self) -> Self {
+        libm::exp2(self)
+    }
+    #[inline]
+    fn det_log2(self) -> Self {
+        libm::log2(self)
     }
     #[inline]
     fn det_powi(self, n: i32) -> Self {

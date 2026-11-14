@@ -55,7 +55,7 @@ impl LensUniform {
         }
         let quadro = [rect[2] as f32, rect[3] as f32];
         let centro = [quadro[0] * 0.5, quadro[1] * 0.5];
-        let meia_diag = 0.5 * quadro[0].hypot(quadro[1]);
+        let meia_diag = 0.5 * ph2d_det_math::DetMath::det_hypot(quadro[0], quadro[1]);
         let a = &l.aberracao;
         let d = if a.linear {
             aberracao::deslocamento(meia_diag, a)
@@ -106,8 +106,8 @@ impl LensUniform {
             ],
             vin_alvo: [alvo[0], alvo[1], alvo[2], 0.0],
             grade: [
-                l.grade.exposure.exp2(),
-                l.grade.contraste.exp2(),
+                ph2d_det_math::DetMath::det_exp2(l.grade.exposure),
+                ph2d_det_math::DetMath::det_exp2(l.grade.contraste),
                 1.0 + l.grade.saturacao,
                 l.grade.lut_mix.min(1.0),
             ],

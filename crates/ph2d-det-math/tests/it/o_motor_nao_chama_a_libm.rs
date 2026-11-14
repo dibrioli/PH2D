@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const CRATES: [&str; 15] = [
+const CRATES: [&str; 16] = [
     "ph2d-wet-paint",
     "ph2d-paint-tinta",
     "ph2d-pigment",
@@ -20,6 +20,8 @@ const CRATES: [&str; 15] = [
     "ph2d-sfx-dsp",
     "ph2d-sfx-lab",
     "ph2d-sfx-explore",
+    // B43.2: o premul `_in_linear`, a câmara, a lente e a escolha pelo clique.
+    "ph2d-render",
 ];
 const FUNCOES: [&str; 23] = [
     "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sin_cos", "sinh", "cosh", "tanh", "exp",
@@ -37,6 +39,7 @@ fn e_de_teste(p: &Path) -> bool {
             || s.ends_with("_test")
             || s.ends_with("_tests")
             || s.contains("sonda")
+            || s.ends_with("_probe")
             || s.starts_with("diag")
     })
 }

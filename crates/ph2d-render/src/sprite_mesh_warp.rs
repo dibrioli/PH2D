@@ -210,7 +210,7 @@ pub(crate) fn warp_over(
         for ang in 0..ANGULOS {
             let k = anel * ANGULOS + ang;
             let a = (ang as f32) * std::f32::consts::TAU / (ANGULOS as f32);
-            let (sen, cos) = a.sin_cos();
+            let (sen, cos) = ph2d_det_math::DetMath::det_sin_cos(a);
             amostra_norm[k] = [rho * cos, rho * sen];
             amostra_uv[k] = [
                 centro[0] + fx * amostra_norm[k][0],

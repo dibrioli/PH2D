@@ -147,12 +147,12 @@ pub fn along(from: View, to: View, s: f32) -> View {
         f64::from(to.height_world),
         f64::from(s),
     );
-    let lr = (h1 / h0).ln();
-    let rs = (lr * s).exp();
+    let lr = ph2d_det_math::DetMath::det_ln(h1 / h0);
+    let rs = ph2d_det_math::DetMath::det_exp(lr * s);
     let g = if lr.abs() < 1e-9 {
         s
     } else {
-        (1.0 - rs) / (1.0 - lr.exp())
+        (1.0 - rs) / (1.0 - ph2d_det_math::DetMath::det_exp(lr))
     };
     let c = |i: usize| {
         f64::from(from.center[i]) + (f64::from(to.center[i]) - f64::from(from.center[i])) * g

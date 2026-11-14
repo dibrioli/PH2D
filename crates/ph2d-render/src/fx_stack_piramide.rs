@@ -34,7 +34,7 @@ pub(crate) fn niveis(sigma_px: f32) -> u32 {
         return 0;
     }
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let m = (sigma_px / SIGMA_MAX).log2().ceil() as u32;
+    let m = ph2d_det_math::DetMath::det_log2(sigma_px / SIGMA_MAX).ceil() as u32;
     m.clamp(1, MAX_NIVEIS)
 }
 

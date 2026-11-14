@@ -182,7 +182,7 @@ fn linear_to_srgb(c: f64) -> f64 {
     if c <= 0.003_130_8 {
         c * 12.92
     } else {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
+        1.055 * ph2d_det_math::DetMath::det_powf(c, 1.0 / 2.4) - 0.055
     }
 }
 

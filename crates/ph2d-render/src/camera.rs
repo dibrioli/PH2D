@@ -141,7 +141,7 @@ impl Camera2d {
     /// **A LEI da roda**: `dy_px` de roda (positivo = para cima) vira o factor do zoom.
     #[must_use]
     pub fn wheel_factor(dy_px: f32) -> f32 {
-        Self::WHEEL_ZOOM_PER_NOTCH.powf(dy_px / Self::WHEEL_NOTCH_PX)
+        ph2d_det_math::DetMath::det_powf(Self::WHEEL_ZOOM_PER_NOTCH, dy_px / Self::WHEEL_NOTCH_PX)
     }
 
     /// A inversa de [`Self::wheel_factor`]: os `dy_px` de roda que dão `factor` — por onde a pinça
@@ -151,7 +151,8 @@ impl Camera2d {
         if !factor.is_finite() || factor <= 0.0 {
             return 0.0;
         }
-        factor.ln() / Self::WHEEL_ZOOM_PER_NOTCH.ln() * Self::WHEEL_NOTCH_PX
+        ph2d_det_math::DetMath::det_ln(factor) / ph2d_det_math::DetMath::det_ln(Self::WHEEL_ZOOM_PER_NOTCH)
+            * Self::WHEEL_NOTCH_PX
     }
 
     /// **O arrasto (px) que mantém o mundo sob `at` parado quando o `height_world` vai de

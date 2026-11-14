@@ -553,7 +553,7 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
     let mut out = [0.0f64; 3];
     let rate_knob = p.k(Knob::ExtDiffusion);
     let pigmento = tinta_transporte::liga(p, g);
-    if !pigmento {
+    if !pigmento && difusao::DIFUSAO_GS.load(std::sync::atomic::Ordering::Relaxed) == 0 {
         // B13.7: a lei do produto difunde em Jacobi (`solver/difusao.rs`); o Gauss-Seidel fica só na lei do pigmento
         // (arquivada, dono 05/11: as somas da `tinta` não têm o gather).
         return difusao::diffusion_pass_jacobi(g, p);
@@ -617,7 +617,7 @@ mod active_region;
 mod advect;
 mod advect_jacobi;
 mod difusao; // B13.7: a difusão em Jacobi
-pub use difusao::diffusion_pass_jacobi_rows;
+pub use difusao::{DIFUSAO_GS, diffusion_pass_jacobi_rows};
 mod chao_forca; // janela 10: o declive do chão (o óleo assentado) como força no momento
 mod remolha_parada; // J11: a água parada dissolve a tinta solúvel (Re-wet × Solubility)
 pub(crate) use advect_jacobi::tinta as tinta_transporte;

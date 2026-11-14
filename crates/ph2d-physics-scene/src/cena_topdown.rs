@@ -6,7 +6,6 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, ZIndexOverride};
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::registry::hash_node_id;
 use ph2d_editor_core::{NodeId, ids};
 use ph2d_physics_ecs::{AnimRule, AnimRules, AnimWhen, Collider, ColliderShape, TopDownPlayer};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
@@ -158,8 +157,7 @@ pub fn gavetas(nivel: u32, foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, b
     if nivel == CENA {
         g.push((ids::INSP_LIVE_TOPDOWN_SECTION, false));
         if foto == Some(Foto::MaisAberto) {
-            // O id é do `ph2d-panel-inspector` (`INSP_TD_FOLD_MORE`), que esta folha não vê.
-            g.push((hash_node_id("insp_td_fold_more"), false));
+            g.push((ids::INSP_TD_FOLD_MORE, false));
         }
     }
     g
@@ -211,7 +209,7 @@ mod tests {
             cartao_a_vista(CENA, None),
             Some(ids::INSP_LIVE_TOPDOWN_SECTION)
         );
-        let more = hash_node_id("insp_td_fold_more");
+        let more = ids::INSP_TD_FOLD_MORE;
         assert!(gavetas(CENA, Some(Foto::MaisAberto), c).contains(&(more, false)));
         assert_eq!(
             gavetas(4, Some(Foto::MaisAberto), c),

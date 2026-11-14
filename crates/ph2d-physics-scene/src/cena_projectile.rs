@@ -7,7 +7,6 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, ZIndexOverride, stable_name_id};
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::registry::hash_node_id;
 use ph2d_editor_core::{NodeId, ids};
 use ph2d_physics_ecs::{Collider, ColliderShape, ProjectileMotion};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
@@ -171,8 +170,7 @@ pub fn foto(nome: Option<&str>) -> Option<Foto> {
 pub fn gavetas(foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, bool)> {
     let mut g = vec![(cartao, false), (ids::INSP_LIVE_PROJECTILE_SECTION, false)];
     if foto == Some(Foto::SpeedChange) {
-        // O id é do `ph2d-panel-inspector` (`INSP_PJ_FOLD_SPEED_CHANGE`), que esta folha não vê.
-        g.push((hash_node_id("insp_pj_fold_speed_change"), false));
+        g.push((ids::INSP_PJ_FOLD_SPEED_CHANGE, false));
     }
     g
 }
@@ -195,7 +193,7 @@ mod tests {
         let c = ids::INSP_LIVE_PLAYER_SECTION;
         let p = ids::INSP_LIVE_PROJECTILE_SECTION;
         assert_eq!(gavetas(None, c), vec![(c, false), (p, false)]);
-        let dobra = hash_node_id("insp_pj_fold_speed_change");
+        let dobra = ids::INSP_PJ_FOLD_SPEED_CHANGE;
         assert!(gavetas(foto(Some("projectile_speed_change")), c).contains(&(dobra, false)));
         assert_eq!(foto(Some("topdown_more")), None);
         let mut s = WidgetStore::default();

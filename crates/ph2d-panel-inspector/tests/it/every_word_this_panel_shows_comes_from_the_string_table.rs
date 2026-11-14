@@ -62,6 +62,9 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/topdown.rs",
     // A 12.ª: o cartão do Projectile Motion (GEF 06), com as palavras da bala.
     "crates/ph2d-i18n/src/projectile.rs",
+    // A 13.ª: o botão «Open in Joint Editor» do cartão Joint (JointEditor W3) mora com as
+    // palavras da aba que ele abre.
+    "crates/ph2d-i18n/src/joint_editor_tab.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

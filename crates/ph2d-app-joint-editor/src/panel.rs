@@ -149,7 +149,7 @@ fn cards(ui: &Ui<'_>) -> Vec<Group> {
     }
     let mut out = vec![Group("joint_editor.group.assembly", head)];
     if let Some(info) = info {
-        let kind = ph2d_app_physics::joint::kind_of(info.kind_tag);
+        let kind = ph2d_joint_assembly::joint_info::kind_of(info.kind_tag);
         out.extend(groups_of(
             kind,
             &info,

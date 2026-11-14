@@ -24,6 +24,16 @@ use ph2d_vector::VectorScene;
 pub(crate) const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset
 const SECTION_HEAD_H: f32 = ROW_H_PX;
 
+/// O bloco «Joints» do corpo: linhas dinâmicas, registadas antes de pintar (sem repor o hover).
+fn registra_as_linhas_das_juntas(store: &mut WidgetStore) {
+    for i in 0..crate::state_components::current_inspector_body_joints().len() {
+        let id = crate::ids::insp_body_joint_row(i);
+        if store.get(id).is_none() {
+            crate::populate::register_button_ids(store, &[id]);
+        }
+    }
+}
+
 pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(InspectorPanel::ID)
         && !ctx.host.store().in_card_guest_pass(ids::INSP_PANEL)
@@ -38,13 +48,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         .store_mut()
         .set_panel_rect(ids::INSP_PANEL, ctx.slot);
     sync_inspector_from_snapshots(inspector_state, ctx.host);
-    // O bloco «Joints» do corpo: linhas dinâmicas, registadas antes de pintar (sem repor o hover).
-    for i in 0..crate::state_components::current_inspector_body_joints().len() {
-        let id = crate::ids::insp_body_joint_row(i);
-        if ctx.host.store().get(id).is_none() {
-            crate::populate::register_button_ids(ctx.host.store_mut(), &[id]);
-        }
-    }
+    registra_as_linhas_das_juntas(ctx.host.store_mut());
     crate::signal_hint::instala();
     let display_unit = ctx.host.project().display_unit;
     let ppm = ctx.host.project().pixels_per_meter;

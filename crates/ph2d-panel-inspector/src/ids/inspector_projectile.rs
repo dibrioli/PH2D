@@ -36,4 +36,4 @@ pub const INSP_PJ_HOMING: NodeId = hash_node_id("insp_pj_homing");
 /// ⭐ GEF 06 — o conta-gotas do Target: arma, e o próximo clique no palco escolhe o objecto perseguido.
 pub const INSP_PJ_TARGET_PICK: NodeId = hash_node_id("insp_pj_target_pick");
 /// ⭐ GEF 06 — a dobra «Speed change» (Acceleration, Max Speed): nasce FECHADA; o cabeçalho leva o resumo.
-pub const INSP_PJ_FOLD_SPEED_CHANGE: NodeId = hash_node_id("insp_pj_fold_speed_change");
+pub use ph2d_editor_core::ids::INSP_PJ_FOLD_SPEED_CHANGE;

@@ -131,13 +131,13 @@ pub fn read(sim: &mut SimWorld) -> Snapshot {
                 }
             })
             .collect();
-        let joints = ph2d_app_physics::joint_assembly::joints_of(sim.world_mut(), sid)
+        let joints = ph2d_joint_assembly::joint_assembly::joints_of(sim.world_mut(), sid)
             .into_iter()
             .map(|(je, joint)| JointRow {
                 bits: je.to_bits(),
                 rule: joint.role,
                 joint,
-                info: ph2d_app_physics::joint::build_joint_info(sim, je.to_bits(), 0, 0),
+                info: ph2d_joint_assembly::joint_info::build_joint_info(sim, je.to_bits(), 0, 0),
             })
             .collect();
         out.push(AssemblyRow {

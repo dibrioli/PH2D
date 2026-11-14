@@ -16,15 +16,6 @@ use ph2d_physics_ecs::PhysicsBridge;
 /// O nome de tipo do componente, como o registry o conhece.
 const WHEEL: &str = "ph2d::physics::PulleyWheel";
 
-/// Quantas roldanas apontam para esta corda, no mundo AUTORADO.
-pub(crate) fn rope_wheel_count(sim: &mut SimWorld, joint: Entity) -> u32 {
-    // A corda é apontada pela IDENTIDADE dela (ADR-0164 F1), não pelo hash do nome.
-    let Some(rope) = ph2d_ecs::stable_id_of(sim.world(), joint).map(|s| s.0) else {
-        return 0;
-    };
-    let mut q = sim.world_mut().query::<&ph2d_physics_ecs::PulleyWheel>();
-    u32::try_from(q.iter(sim.world()).filter(|w| w.rope == rope).count()).unwrap_or(u32::MAX)
-}
 
 /// **Acrescentar uma roldana a uma corda** — o pedido (4) do artista, *"escolher
 /// o número de roldanas, em tempo real"*.

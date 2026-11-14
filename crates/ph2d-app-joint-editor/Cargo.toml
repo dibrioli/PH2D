@@ -17,13 +17,13 @@ authors.workspace = true
 [dependencies]
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-app-host = { path = "../ph2d-app-host" }
-ph2d-app-physics = { path = "../ph2d-app-physics" }
 ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-joint-assembly = { path = "../ph2d-joint-assembly" }
 ph2d-joint-templates = { path = "../ph2d-joint-templates" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }

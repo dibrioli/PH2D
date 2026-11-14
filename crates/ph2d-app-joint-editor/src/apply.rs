@@ -48,12 +48,15 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             }
             let (asm, new) = match assembly_entity(sim, assembly) {
                 Some(e) => (e, false),
-                None => (ph2d_app_physics::joint_assembly::new_assembly(sim, t), true),
+                None => (
+                    ph2d_joint_assembly::joint_assembly::new_assembly(sim, t),
+                    true,
+                ),
             };
             let mut made = 0_usize;
             for p in &parts {
                 if let Ok(j) =
-                    ph2d_app_physics::joint_assembly::place_part(sim, asm, role, Some(*p))
+                    ph2d_joint_assembly::joint_assembly::place_part(sim, asm, role, Some(*p))
                 {
                     made += j.len();
                 } else {
@@ -67,7 +70,7 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
                     .is_some_and(|a| a.parts.is_empty())
             {
                 // A peça foi recusada: nada de montagem vazia na Hierarchy.
-                ph2d_app_physics::joint_assembly::dissolve(sim, asm);
+                ph2d_joint_assembly::joint_assembly::dissolve(sim, asm);
                 return out;
             }
             let name = sim
@@ -98,10 +101,14 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             };
             let (asm, new) = match assembly_entity(sim, assembly) {
                 Some(e) => (e, false),
-                None => (ph2d_app_physics::joint_assembly::new_assembly(sim, t), true),
+                None => (
+                    ph2d_joint_assembly::joint_assembly::new_assembly(sim, t),
+                    true,
+                ),
             };
-            if ph2d_app_physics::joint_assembly::place_part(sim, asm, role, None).is_err() && new {
-                ph2d_app_physics::joint_assembly::dissolve(sim, asm);
+            if ph2d_joint_assembly::joint_assembly::place_part(sim, asm, role, None).is_err() && new
+            {
+                ph2d_joint_assembly::joint_assembly::dissolve(sim, asm);
                 return out;
             }
             if new {
@@ -110,7 +117,7 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
         }
         Edit::Remove { assembly } => {
             if let Some(e) = assembly_entity(sim, assembly) {
-                ph2d_app_physics::joint_assembly::dissolve(sim, e);
+                ph2d_joint_assembly::joint_assembly::dissolve(sim, e);
             }
         }
         Edit::Joints { joints, edit } => {
@@ -119,7 +126,7 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             }
         }
         Edit::Linked { joint, on } => {
-            let _ = ph2d_app_physics::joint_assembly_card::set_linked(
+            let _ = ph2d_joint_assembly::joint_assembly_card::set_linked(
                 sim.world_mut(),
                 Entity::from_bits(joint),
                 on,
@@ -141,7 +148,7 @@ fn write_joint(sim: &mut SimWorld, bits: u64, edit: JointFieldEdit) {
     let Some(&cur) = sim.world().get::<PhysicsJoint>(e) else {
         return;
     };
-    if let Some(next) = ph2d_app_physics::joint::joint_with_edit(cur, edit)
+    if let Some(next) = ph2d_joint_assembly::joint_info::joint_with_edit(cur, edit)
         && next != cur
         && let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(e)
     {
@@ -153,7 +160,7 @@ fn write_joint(sim: &mut SimWorld, bits: u64, edit: JointFieldEdit) {
 /// da de trás; a junta dela vai junto (a âncora no corpo, a entidade-junta). Só peças na raiz da cena.
 fn set_wheelbase(sim: &mut SimWorld, asm: Entity, metres: f32) {
     let asm_id = sid_of(sim, asm);
-    let joints = ph2d_app_physics::joint_assembly::joints_of(sim.world_mut(), asm_id);
+    let joints = ph2d_joint_assembly::joint_assembly::joints_of(sim.world_mut(), asm_id);
     let wheels: Vec<&(Entity, PhysicsJoint)> = joints
         .iter()
         .filter(|(_, j)| j.kind == ph2d_physics_ecs::JointKind::Wheel)
@@ -270,7 +277,7 @@ mod tests {
         let asm = o.made.expect("a montagem nasce com a 1.ª peça");
         let o2 = place(&mut sim, asm, 2, "Front");
         assert!(o2.made.is_none(), "a 2.ª peça não faz outra montagem");
-        let joints = ph2d_app_physics::joint_assembly::joints_of(sim.world_mut(), asm);
+        let joints = ph2d_joint_assembly::joint_assembly::joints_of(sim.world_mut(), asm);
         assert_eq!(joints.len(), 1, "uma junta: corpo + roda da frente");
         assert_eq!(joints[0].1.role, 1, "a regra da roda da frente");
         assert_eq!(joints[0].1.kind, ph2d_physics_ecs::JointKind::Wheel);
@@ -306,7 +313,7 @@ mod tests {
             "a roda da frente foi para 1,3"
         );
         assert!((x(&mut sim, "Back") + 0.7).abs() < 1e-4, "a de trás ficou");
-        let joints = ph2d_app_physics::joint_assembly::joints_of(sim.world_mut(), asm);
+        let joints = ph2d_joint_assembly::joint_assembly::joints_of(sim.world_mut(), asm);
         let front = joints
             .iter()
             .find(|(_, j)| j.role == 1)

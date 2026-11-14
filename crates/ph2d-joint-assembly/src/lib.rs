@@ -5,6 +5,7 @@ pub mod joint_assembly;
 pub mod joint_assembly_card;
 pub mod joint_create;
 pub mod joint_drop;
+pub mod joint_info;
 pub mod joint_world;
 
 #[cfg(test)]

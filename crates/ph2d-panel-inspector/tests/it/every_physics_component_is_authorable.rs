@@ -92,7 +92,7 @@ const WRITERS: [&str; 19] = [
     // ⭐ A MONTAGEM de juntas (Joint Editor W3): a aba cria-a e põe cada peça no papel dela
     // (`place_part`), e a caixa «Same as» do cartão Joint escreve o `JointAssembly::linked`.
     "../../crates/ph2d-app-joint-editor/src/apply.rs",
-    "../../crates/ph2d-app-physics/src/joint_assembly_card.rs",
+    "../../crates/ph2d-joint-assembly/src/joint_assembly_card.rs",
 ];
 
 #[test]

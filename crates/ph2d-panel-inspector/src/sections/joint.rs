@@ -289,6 +289,82 @@ pub(crate) fn unidade_guardada(
     }
 }
 
+/// **Copy / Paste properties** (W-JointCopy), logo acima do Delete. Fora de
+/// [`paint_joint_section`] pelo tecto de 200 LOC por fn de painel.
+#[allow(clippy::too_many_arguments)]
+fn paint_copy_paste_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut yy: f32,
+    info: &InspectorJointInfo,
+) -> f32 {
+    // **Copiar / colar as propriedades** (W-JointCopy) — logo acima do Delete
+    // porque são verbos sobre o objeto inteiro, como ele, e não afinação de um
+    // parâmetro. O Copy é sempre oferecido: a §12 só existe com um joint
+    // selecionado, e todo joint tem propriedades a copiar.
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        let colar = paste_label(info.paste_targets);
+        yy = super::rows::fila_de_botoes(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            &[
+                (
+                    true,
+                    ids::INSP_JOINT_COPY,
+                    tr("panel.inspector.joint.copy_properties"),
+                ),
+                (info.paste_targets > 0, ids::INSP_JOINT_PASTE, &colar),
+            ],
+        );
+    } else {
+        let copy_rect = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            yy,
+            tr("panel.inspector.joint.copy_properties"),
+        );
+        let copy = Button::new(
+            ids::INSP_JOINT_COPY,
+            tr("panel.inspector.joint.copy_properties"),
+        )
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_JOINT_COPY));
+        paint_button(&copy, copy_rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(copy_rect);
+        // ⚠️ **O Paste só existe com algo copiado**, e a contagem entra no RÓTULO
+        // quando ele vai tocar mais de um: o fan-out é o que o gesto tem de valioso,
+        // e um clique que muda dez objetos tem de dizer isso antes de ser clicado
+        // (a lei do `Bake 5.0s to Timeline`). Zero alvos = sem botão — um Paste
+        // vazio não muda um pixel, e ler isso como "quebrado" é o que a ausência
+        // evita.
+        if info.paste_targets > 0 {
+            let label = paste_label(info.paste_targets);
+            let paste_rect =
+                ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
+            let paste = Button::new(ids::INSP_JOINT_PASTE, label)
+                .kind(ButtonKind::Default)
+                .visual(store.button_visual(ids::INSP_JOINT_PASTE));
+            paint_button(&paste, paste_rect, scene, text_system, theme);
+            hit_index.register(ids::INSP_JOINT_PASTE, paste_rect);
+            yy = ph2d_editor_core::property_row::abaixo_do_botao(paste_rect);
+        }
+    }
+    yy
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_joint_section(
     scene: &mut VectorScene,
@@ -434,65 +510,7 @@ pub(crate) fn paint_joint_section(
         yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
     }
 
-    // **Copiar / colar as propriedades** (W-JointCopy) — logo acima do Delete
-    // porque são verbos sobre o objeto inteiro, como ele, e não afinação de um
-    // parâmetro. O Copy é sempre oferecido: a §12 só existe com um joint
-    // selecionado, e todo joint tem propriedades a copiar.
-    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        let colar = paste_label(info.paste_targets);
-        yy = super::rows::fila_de_botoes(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            &[
-                (
-                    true,
-                    ids::INSP_JOINT_COPY,
-                    tr("panel.inspector.joint.copy_properties"),
-                ),
-                (info.paste_targets > 0, ids::INSP_JOINT_PASTE, &colar),
-            ],
-        );
-    } else {
-        let copy_rect = ph2d_editor_core::property_row::caixa_do_botao(
-            text_system,
-            x,
-            w,
-            yy,
-            tr("panel.inspector.joint.copy_properties"),
-        );
-        let copy = Button::new(
-            ids::INSP_JOINT_COPY,
-            tr("panel.inspector.joint.copy_properties"),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_JOINT_COPY));
-        paint_button(&copy, copy_rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
-        yy = ph2d_editor_core::property_row::abaixo_do_botao(copy_rect);
-        // ⚠️ **O Paste só existe com algo copiado**, e a contagem entra no RÓTULO
-        // quando ele vai tocar mais de um: o fan-out é o que o gesto tem de valioso,
-        // e um clique que muda dez objetos tem de dizer isso antes de ser clicado
-        // (a lei do `Bake 5.0s to Timeline`). Zero alvos = sem botão — um Paste
-        // vazio não muda um pixel, e ler isso como "quebrado" é o que a ausência
-        // evita.
-        if info.paste_targets > 0 {
-            let label = paste_label(info.paste_targets);
-            let paste_rect =
-                ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
-            let paste = Button::new(ids::INSP_JOINT_PASTE, label)
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_JOINT_PASTE));
-            paint_button(&paste, paste_rect, scene, text_system, theme);
-            hit_index.register(ids::INSP_JOINT_PASTE, paste_rect);
-            yy = ph2d_editor_core::property_row::abaixo_do_botao(paste_rect);
-        }
-    }
+    yy = paint_copy_paste_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
 
     let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,

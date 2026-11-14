@@ -34,6 +34,10 @@ pub const INSP_LIVE_FACTORY_SECTION: NodeId = hash_node_id("insp_live_factory_se
 pub const INSP_LIVE_TOPDOWN_SECTION: NodeId = hash_node_id("insp_live_topdown_section");
 /// O cabeçalho dobrável da secção PROJECTILE MOTION (TOP-20 #14).
 pub const INSP_LIVE_PROJECTILE_SECTION: NodeId = hash_node_id("insp_live_projectile_section");
+/// As dobras que nascem FECHADAS e que a cena de smoke abre para a foto (Top-Down «More», GEF 05;
+/// Projectile «Speed change», GEF 06): aqui, na folha que o painel e a `ph2d-physics-scene` vêem.
+pub const INSP_TD_FOLD_MORE: NodeId = hash_node_id("insp_td_fold_more");
+pub const INSP_PJ_FOLD_SPEED_CHANGE: NodeId = hash_node_id("insp_pj_fold_speed_change");
 /// O cabeçalho dobrável da secção STATE MACHINE (TOP-20 #15).
 pub const INSP_LIVE_SM_SECTION: NodeId = hash_node_id("insp_live_sm_section");
 /// O cabeçalho dobrável da secção SCRIPT (TOP-20 #16).

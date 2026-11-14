@@ -54,6 +54,6 @@ pub const INSP_TD_MAX_SLIDES: NodeId = hash_node_id("insp_td_max_slides");
 /// Lê as setas do Input Map? Desligado, ele é motor puro.
 pub const INSP_TD_DEFAULT_CONTROLS: NodeId = hash_node_id("insp_td_default_controls");
 /// A dobra «More» (versão A, GEF 05): nasce FECHADA; o cabeçalho leva o resumo.
-pub const INSP_TD_FOLD_MORE: NodeId = hash_node_id("insp_td_fold_more");
+pub use ph2d_editor_core::ids::INSP_TD_FOLD_MORE;
 /// O botão «Turn on» do aviso de Default Controls desligado: liga-o num diff.
 pub const INSP_TD_TURN_ON_CONTROLS: NodeId = hash_node_id("insp_td_turn_on_controls");

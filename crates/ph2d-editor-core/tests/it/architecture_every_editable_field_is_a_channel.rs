@@ -365,6 +365,22 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/joint_assembly_rows.rs::paint_linked_row",
+        NaoAnimavel,
+        &[],
+        "«Same as …» (Joint Editor W3) escreve `JointAssembly::linked` — o AGRUPAMENTO das juntas da montagem é \
+         estrutura do objecto montagem (ADR-0201), não um valor da junta no tempo (§8)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/joint_assembly_rows.rs::paint_one_chain_row",
+        Divida,
+        &[],
+        "«Solve as one chain» (Joint Editor W3) escreve `PhysicsJoint::one_chain` e ainda não tem canal JUNTA \
+         (`ph2d-ecs/src/canal_junta.rs`): a zerar como o `SOLDA_MOLE`, um bit por junta",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/physics_cartao_contorno.rs::fundir",
         NaoAnimavel,
         &["INSP_PHYS_OUTLINE_MERGE_DIST"],

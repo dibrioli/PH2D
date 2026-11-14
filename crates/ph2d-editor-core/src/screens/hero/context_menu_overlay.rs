@@ -5,13 +5,11 @@
 //! from [`crate::interaction::WidgetStore::context_menu`] and walks a
 //! per-kind option list (one match arm per [`ContextMenuKind`]).
 
-use super::fixture;
 use crate::icons::IconId;
 use crate::ids;
-use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetStore};
+use crate::interaction::{ContextMenuKind, HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::lista_flutuante::Superficie;
-use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;

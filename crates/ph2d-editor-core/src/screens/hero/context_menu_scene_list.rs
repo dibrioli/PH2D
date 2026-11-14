@@ -5,13 +5,13 @@ use super::context_menu_overlay::{ROW_H, clamp_to_viewport, pad_y};
 use super::fixture;
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text};
+use crate::paint::paint_text;
 use crate::widget::lista_flutuante::Superficie;
 use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Paint the Scene List popover.

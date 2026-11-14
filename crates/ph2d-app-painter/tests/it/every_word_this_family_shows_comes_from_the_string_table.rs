@@ -41,6 +41,11 @@ const FORA: &[Isento] = &[
          (`PalcosDoPainter::diagnostico`), escrita no MESMO registo, nunca ecrã",
     ),
     (
+        "painter_bridge_upload/contagem.rs",
+        "os contadores `PH2D_ENVIO=1` do envio da prévia à placa (N10 F5j, B20.5): a linha `ENVIO\\t…` só vai \
+         ao stderr (`eprintln!`) para quem mede o envio — nunca ecrã",
+    ),
+    (
         "wetpaint_fps.rs",
         "a cena `PH2D_WETPAINT_SMOKE=3` (o FPS): os nomes das FASES e do modo (`sem real`/`real oil`) só \
          entram na tabela que ela imprime no terminal (`eprintln!`) para quem mede — nunca ecrã",

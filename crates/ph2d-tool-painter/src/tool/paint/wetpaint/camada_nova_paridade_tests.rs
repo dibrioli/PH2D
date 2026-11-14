@@ -88,6 +88,9 @@ struct Gemeos {
     oraculo: PainterTool,
     /// O controlo: os três pelo caminho antigo (o que sobra de diferença é do teste, não da cura).
     controlo: bool,
+    /// A última figura que cada gémeo CPU drenou (cura, oráculo): «nada a drenar» = a figura não mudou (B18.12: o
+    /// «+» transparente com a tinta viva não marca nada), e a comparação é com a figura que ficou no ecrã.
+    figura: (Option<Vec<u8>>, Option<Vec<u8>>),
 }
 
 impl Gemeos {
@@ -110,8 +113,13 @@ impl Gemeos {
         for _ in 0..3 {
             self.em(caso, &|_| {});
         }
-        let a = self.cpu.current_preview().map(|(p, _, _)| p.to_vec());
-        let b = self.oraculo.current_preview().map(|(p, _, _)| p.to_vec());
+        if let Some((p, _, _)) = self.cpu.current_preview() {
+            self.figura.0 = Some(p.to_vec());
+        }
+        if let Some((p, _, _)) = self.oraculo.current_preview() {
+            self.figura.1 = Some(p.to_vec());
+        }
+        let (a, b) = &self.figura;
         assert!(a.is_some() && a == b, "{caso}: a tela ≠ a do oráculo");
         let bits = |t: &PainterTool| {
             t.impasto_gpu_planes().map(|p| {
@@ -160,6 +168,7 @@ fn corre_com(novo: fn() -> PainterTool, controlo: bool, com_undo: bool) {
         cpu: fixo(),
         oraculo: fixo(),
         controlo,
+        figura: (None, None),
     };
     g.confere("o documento");
     let base = g.cpu.layers.active().expect("a base");

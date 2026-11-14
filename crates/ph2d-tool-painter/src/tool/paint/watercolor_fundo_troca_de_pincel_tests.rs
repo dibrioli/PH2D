@@ -147,3 +147,33 @@ fn o_fundo_do_toque_aquece_no_chip_do_meio_e_e_o_mesmo_bit() {
         }
     }
 }
+
+/// n.º 10 F5d (B18.8): a troca de FERRAMENTA (borracha → pincel com a aguada armada) aquece o fundo do 1.º toque, ao
+/// bit da rota do clique. O fundo fica frio enquanto a borracha está na mão (o portão recusa a borracha), por isso
+/// só a volta ao pincel o pode lançar. **Mutação que sangra:** tirar o `aquece_o_fundo_do_toque` do fim de
+/// `set_paint_tool_mode`.
+#[test]
+fn o_fundo_do_toque_aquece_na_troca_de_ferramenta_e_e_o_mesmo_bit() {
+    let borracha_e_volta = |t: &mut PainterTool| {
+        // O pincel arma a aguada com o fundo frio (o aquecimento desligado só aqui), e a borracha entra.
+        super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(false);
+        t.set_paint_media(super::media::PaintMedia::Watercolor);
+        t.set_paint_tool_mode("eraser");
+        super::watercolor_vidro::FUNDO_AQUECIDO_NA_TROCA.set(true);
+        assert!(!aquecido(t), "CONTROLO: a borracha na mão com o fundo frio");
+        t.set_paint_tool_mode("brush");
+        assert!(t.paint.brush.watercolor && !t.paint.eraser, "o pincel volta com a aguada armada");
+    };
+    for descarta in [false, true] {
+        let (com, contas, antes, depois) = corre_com(true, descarta, &borracha_e_volta);
+        let (sem, contas_sem, _, depois_sem) = corre_com(false, descarta, &borracha_e_volta);
+        assert!(!antes, "CONTROLO: o «+» com o pincel seco não aquece nada");
+        assert!(depois && depois_sem, "descarta={descarta}: a volta ao pincel aquece");
+        assert_eq!(contas, if descarta { (0, 1) } else { (1, 0) }, "descarta={descarta}");
+        assert_eq!(contas_sem, (0, 0));
+        assert_eq!(com.len(), sem.len());
+        for (i, (a, b)) in com.iter().zip(&sem).enumerate() {
+            assert!(!a.is_empty() && a == b, "descarta={descarta}: a foto {i} ao bit");
+        }
+    }
+}

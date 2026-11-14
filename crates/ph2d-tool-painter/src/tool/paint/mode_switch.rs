@@ -186,6 +186,8 @@ impl PainterTool {
             _ => self.paint.eraser = false,
         }
         self.arma_o_preparo_do_toque();
+        // B18.8: borracha → pincel com a aguada armada aquece o fundo do 1.º toque, como a troca de camada e o preset.
+        self.aquece_o_fundo_do_toque();
     }
 
     /// The active paint mode as the `set_paint_tool_mode` string id — its inverse, used by the shell to

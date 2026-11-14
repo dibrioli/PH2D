@@ -159,3 +159,25 @@ fn a_tinta_nao_fica_afundada_no_papel_de_alto_relevo() {
     let s = (alto.1 - alto.0) - (liso.1 - liso.0);
     assert!(s.abs() < 0.03, "S = {s:+.3}");
 }
+
+/// B44.5 (GT-24, S-21 «colocação ≠ tela»): o papel nu da régua (`tela(None)`, sem o preset) é o papel da tela do traço —
+/// longe do traço (`y ≥ 200`; o traço a `y = 70`, raio 40) as duas telas são iguais ao byte. Medido 14/11: 0 bytes
+/// diferem (a suspeita do estudo não se confirma aqui; o nu montado com o preset deu o mesmo).
+#[test]
+fn o_papel_nu_da_regua_e_o_da_tela_do_traco() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let lib = Biblioteca::carregar(&raiz, None);
+    let b = super::sonda_bordas_longe::por_nome(&lib, "Wet Liner");
+    let com = tela(Some(b), 1.0, &|_| {});
+    let nu = tela(None, 1.0, &|_| {});
+    let longe = 200 * W * 4..H * W * 4;
+    let difere = com[longe.clone()]
+        .iter()
+        .zip(&nu[longe])
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        difere, 0,
+        "{difere} bytes do papel longe do traço diferem da régua"
+    );
+}

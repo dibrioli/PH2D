@@ -261,9 +261,12 @@ fn sonda_presets_varre() {
         let (dois, plano) = coluna_com(&b, i, false, &knobs, agua, mol);
         let t2 = regua(&dois, i).0;
         let (t, la, o, bu, _) = regua(&plano, i);
-        let (ti, li, oi, _, es) = regua(&coluna_com(&b, i, true, &knobs, agua, mol).1, i);
+        // B44.5 (GT-24): o 1.º braço do inclinado (2 s) era pintado e deitado fora; a sonda imprime-o.
+        let (dois_i, inclinado) = coluna_com(&b, i, true, &knobs, agua, mol);
+        let ti2 = regua(&dois_i, i).0;
+        let (ti, li, oi, _, es) = regua(&inclinado, i);
         println!(
-            "[{l}] plano: tinta 2 s {t2:.0} → {t:.0} largura {la:.0} orla {o:.2} buracos {bu:.2} · inclinado: tinta {ti:.0} largura {li:.0} orla {oi:.2} escorre {es}"
+            "[{l}] plano: tinta 2 s {t2:.0} → {t:.0} largura {la:.0} orla {o:.2} buracos {bu:.2} · inclinado: tinta 2 s {ti2:.0} → {ti:.0} largura {li:.0} orla {oi:.2} escorre {es}"
         );
     }
 }

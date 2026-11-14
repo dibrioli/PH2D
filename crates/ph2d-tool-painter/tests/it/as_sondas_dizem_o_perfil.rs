@@ -4,8 +4,9 @@
 
 use std::path::Path;
 
-/// Ficheiros com WIP alheio aberto (outra linha da rodada): o cabeçalho cura-se quando ela fechar.
-const PENDENTES: &[&str] = &["src/tool/paint/measure_undo_cost.rs"];
+/// Ficheiros com WIP alheio aberto (outra linha da rodada): o cabeçalho cura-se quando ela fechar. Vazio desde o
+/// F6k (o F1i fechou `measure_undo_cost.rs`).
+const PENDENTES: &[&str] = &[];
 
 fn varre(dir: &Path, raiz: &Path, maus: &mut Vec<String>) {
     for e in std::fs::read_dir(dir).unwrap().flatten() {

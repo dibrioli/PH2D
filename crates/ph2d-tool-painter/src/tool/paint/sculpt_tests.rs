@@ -606,7 +606,6 @@ fn no_other_paint_mode_touches_the_relief() {
 
     for mode in [
         "brush",
-        "eraser",
         "smear",
         "blur",
         "clone",
@@ -630,6 +629,32 @@ fn no_other_paint_mode_touches_the_relief() {
              scratch and re-enters the same choke point the sculpt hangs off."
         );
         assert!(!session, "the `{mode}` tool opened a sculpt session");
+    }
+
+    // The Eraser is the THIRD owner since B06.1 (`be091a8ae5`, BUGS #70): erasing paint takes its body
+    // with it (`stamp_dabs_height` erases by `stroke_erases()`). Its honest halves: the relief only goes
+    // DOWN (an eraser that raised the ridge would be a sculpt by the back door), it does move, and no
+    // sculpt session opens.
+    {
+        let (mut t, layer, before) = sculpt_canvas(100);
+        t.set_paint_tool_mode("eraser");
+        let mut b = t.paint.brush;
+        b.strength = 1.0;
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        drag(&mut t, &[[30.0, 50.0], [50.0, 50.0], [70.0, 50.0]]);
+        let after = heights_of(&t, layer);
+        let raised = before.iter().zip(&after).filter(|(x, y)| y > x).count();
+        let lowered = before.iter().zip(&after).filter(|(x, y)| y < x).count();
+        assert_eq!(raised, 0, "the eraser RAISED {raised} relief texels");
+        assert!(
+            lowered > 100,
+            "the eraser must take the paint's body with the paint — it lowered {lowered} texels"
+        );
+        assert!(
+            t.paint.sculpt.layer.is_none(),
+            "the eraser opened a sculpt session"
+        );
     }
 
     // …and the half the old sweep could not say: with the Plow at its DEFAULT the knife moves relief, and

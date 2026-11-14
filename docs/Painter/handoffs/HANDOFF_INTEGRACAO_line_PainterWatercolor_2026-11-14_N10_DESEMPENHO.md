@@ -122,7 +122,7 @@ Fecho 14/11 12:02–12:30 sobre `90b2643db2` + 3 commits de cura (`5819afb965` f
 | | host-desktop `file_loc_caps` · det-math `o_motor_nao_chama_a_libm` · host `arranque` · gpu `o_modo_de_apresentacao_e_valido` | ✓ 4 · ✓ 3 · ✓ 1 · ✓ 1 |
 | | wet-paint: os 8 da §2 + `sim_resumable_tests` | ✓ 10 |
 | | tool-painter: os da §2 + `orcamento_4k`, `o_lote_em_voo_nao_suja_a_previa…`, `a_pilha_do_composite_abre_em_serie`, `fila_do_dab`, `tela_transparente_tests`, `journal_delta`, `undo_planes`, `composite_acumulado` | ✓ 46 |
-| alarmes de pincel | `cargo-test-narrow.sh ph2d-tool-painter --profile smoke --test it -- a_largura_de_fabrica_e_a_aprovada a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` | ✗ 2 **de propósito** (não regravados): miniatura de **Blender Dots, Blender Hard, Blender Soft, Blender Textured, Ink Brush, Oil Wash, Smear Flat, Smear Shattered, Smear Soft, Smear Spikey, Smear Wet, Water Brush** (12); largura só **Smear Wet**. Relatório `target/relatorio-pinceis/index.html` gerado 12:21 |
+| alarmes de pincel | `cargo-test-narrow.sh ph2d-tool-painter --profile smoke --test it -- a_largura_de_fabrica_e_a_aprovada a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` | (no fecho) ✗ 2 **de propósito** (não regravados): miniatura de **Blender Dots, Blender Hard, Blender Soft, Blender Textured, Ink Brush, Oil Wash, Smear Flat, Smear Shattered, Smear Soft, Smear Spikey, Smear Wet, Water Brush** (12); largura só **Smear Wet**. Relatório `target/relatorio-pinceis/index.html` gerado 12:21 · **integração (`d79e9f7cdd`, B13.10/B13.4 desligados): ✓ os dois + `sem_glaze_…`, `shape_color …_ao_byte`, `opcoes …_ao_byte`** |
 | `PROJECT_SCHEMA` | `git diff --name-only 36a312482a..HEAD \| grep -i schema` | vazio ⇒ 0, sem recontagem |
 | placa (`--ignored`) | `a_historia_da_placa…`, paridade `--test tinta --test paridade` | não corridos no fecho: integrador |
 
@@ -146,20 +146,31 @@ Fecho 14/11 12:02–12:30 sobre `90b2643db2` + 3 commits de cura (`5819afb965` f
 
 ## 7. Smoke do dono (UI de cartões)
 
-Os alarmes de pincel ficam VERMELHOS de propósito: mudaram **11–12 pincéis do Wet** (Blender Dots, Hard, Soft, Textured, Oil Wash, Smear Flat, Shattered, Soft, Spikey, Wet, Water Brush)
-por B13.10 (a água já não prende na borda do quadro) e B13.4 (a secagem de cada poça é só dela). Só a aprovação do dono regrava.
+**As duas mudanças de aparência desta rodada vêm DESLIGADAS** (`d79e9f7cdd`): B13.10 (a água já não prende na borda do
+quadro) e B13.4 (a secagem de cada poça é só dela). O produto pinta ao byte o aprovado: os alarmes de pincel, `sem_glaze_…`,
+`shape_color …_ao_byte` e `opcoes …_ao_byte` estão VERDES (`--profile smoke`, 14/11). As réguas de teste viraram escolhas
+do `Sim` (`freio_na_grade_fina`, `secagem_por_tile`), lidas de `PH2D_FREIO_NA_GRADE_FINA=1` / `PH2D_SECAGEM_POR_TILE=1`
+uma vez; CPU e placa (`Knobs.freio_fino` no `advect.wgsl`, `passo.rs`) seguem a mesma escolha. Os gates do B13.10/B13.4
+fixam a lei NOVA ligando-a no teste (`flow_step_bits_with_the_fine_grid_brake_are_the_b13_10_ones`,
+`the_per_tile_drying_cadence_reproduces_its_three_pins`, `duas_pocas_isoladas…`, o undo do `corre_tile`,
+`sim_resumable` nas duas cadências); os pinos de antes voltaram a ser os da omissão. **Paridade da placa `--ignored`
+(`tinta`/`paridade`/`passo`/`seca`) por correr: o guarda recusou-a no subagente** — o coordenador corre-a, nas DUAS
+posições (sem e com as duas variáveis).
+
+**Se o dono aprovar**, a próxima janela liga-as por omissão (as duas funções `…_por_omissao`) e regrava os alarmes com
+`PH2D_PINCEIS_APROVA=1` (e os pinos `GRAVADO`/`PINNED*` passam a ser os da lei nova).
 
 **Atribuição da integração n.º 10 (bissecção de binários em `36a312482a..HEAD` + réguas em execução no mesmo binário):**
-- `sem_glaze_…` **Ink Brush** mudava em `1535559a91` (B13.7, difusão Jacobi: a mensagem dizia «Diffusion é 0 na fábrica», o Ink Brush difunde) — **curado ao bit**: o produto volta ao Gauss-Seidel (`DIFUSAO_GS = 1`); Jacobi (3,1× a 4K) fica atrás da chave até o dono aprovar o Ink Brush que ela muda.
-- `sem_glaze_…` **Wet Drip**, `shape_color_tests::a_secao_desligada_e_o_traco_de_hoje_ao_byte` (cenas 1, 2, 4 por B13.4; 0, 3, 6 por B13.10) e `opcoes_tests::…_ao_byte` (S anel 8, por B13.4): com `FREIO_LINEAR` + `CADENCIA_GLOBAL` ligados no mesmo binário voltam os hashes de antes **ao byte** — vão com a aprovação do B13.10/B13.4; regravar só com ela (não regravados). Os três, mais os alarmes, estavam VERDES no merge-base.
+- `sem_glaze_…` **Ink Brush** mudava em `1535559a91` (B13.7, difusão Jacobi) — **curado ao bit** em `b5d21a1b99`: o produto volta ao Gauss-Seidel (`DIFUSAO_GS = 1`); Jacobi (3,1× a 4K) fica atrás da chave até o dono aprovar o Ink Brush que ela muda.
+- Os 11–12 pincéis do Wet (Blender Dots, Hard, Soft, Textured, Oil Wash, Smear Flat, Shattered, Soft, Spikey, Wet, Water Brush), **Wet Drip**, `shape_color` e `opcoes` mudavam só por B13.10/B13.4 — desligados, voltam ao byte.
 - `preview::censo_tests` (campos novos `lote`, `plano_marcado`, `fecho_adiado`): curado no censo.
 
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && ./target/smoke/ph2d-host-desktop`
-2. **Os pincéis que mudaram.** Abra [`target/relatorio-pinceis/index.html`](../../../target/relatorio-pinceis/index.html) no navegador e veja as miniaturas
-   dos 11 pincéis acima; depois as pranchas [antes/depois da borda](../missao_4k/pranchas/B13.10/4k_papel_antes_depois.png) e
+1. Para ver as duas mudanças ligadas: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && PH2D_FREIO_NA_GRADE_FINA=1 PH2D_SECAGEM_POR_TILE=1 ./target/smoke/ph2d-host-desktop`
+   (sem as duas variáveis, o app pinta como sempre). O binário tem de ser refeito depois de `d79e9f7cdd`.
+2. **Os pincéis que mudariam.** Veja as pranchas [antes/depois da borda](../missao_4k/pranchas/B13.10/4k_papel_antes_depois.png) e
    [antes/depois da secagem](../missao_4k/pranchas/B13.4/4k_papel_antes_depois.png). Tem de acontecer: a diferença só na borda e nas poças (a água não gruda no limite;
    uma poça calma não seca mais devagar por causa de outra). Deu errado se: o traço inteiro mudou de cor ou de forma.
-3. **Água que seca por poça.** Painter, tela 3840×2160, pincel «Smear Wet»: pinte duas poças longe uma da outra e, enquanto uma ainda escorre, olhe a outra. Tem de acontecer: a calma continua a secar no mesmo ritmo.
+3. **Água que seca por poça** (com as duas variáveis). Painter, tela 3840×2160, pincel «Smear Wet»: pinte duas poças longe uma da outra e, enquanto uma ainda escorre, olhe a outra. Tem de acontecer: a calma continua a secar no mesmo ritmo. Sem as variáveis, a de antes.
 4. **Pontos de referência do óleo (B44.3).** Quem olha a ficha do papel vê o «Relevo do papel» **3,86** onde dizia 2,24: é a régua que passou a ler o que a tela mostra (nada foi repintado); diga se o grão do papel no óleo continua como gosta.
 5. **Blur com a caneta deitada (B25.6).** Pincel «Blur» com a caneta inclinada, sem textura: a ponta agora deita (como o Clone). Deu errado se: a ponta continuar redonda ou o borrão sair fora do traço.
 6. **Malha (B25.7).** Pincel com a malha ligada: confira se o carimbo cai onde a ponta está (registado para o seu olho).

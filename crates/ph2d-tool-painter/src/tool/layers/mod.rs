@@ -24,6 +24,8 @@ pub(crate) use cache::TROCA_RECOMPOE_SEMPRE;
 pub(crate) use mutate::TELA_NOVA_PELO_MMAP;
 #[cfg(test)]
 mod copias_de_plano_tests;
+#[cfg(test)]
+mod desfaz_nova_tests;
 mod estrutura;
 #[cfg(test)]
 mod estrutura_relevo_tests;

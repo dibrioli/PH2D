@@ -115,6 +115,10 @@ pub struct IndividualTextureStore {
     /// pipeline de blit é barato, e construí-lo preguiçosamente exigiria `&mut self` em
     /// [`Self::regen_mips`], que hoje é `&self` e é chamado de sítios que só têm leitura.
     mip_gen_16: crate::mipgen::MipGenerator,
+    /// B20.6: o anel reusado da subida inteira ([`crate::individual_entry::write_pixels_pelo_anel`]).
+    pub(crate) anel: wgpu::util::StagingBelt,
+    /// Quantas subidas inteiras foram pelo anel (o gate vê o caminho).
+    pub(crate) subidas_pelo_anel: u64,
 }
 
 #[path = "individual_error.rs"]
@@ -145,6 +149,11 @@ impl IndividualTextureStore {
             sampler,
             mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
             mip_gen_16: crate::mipgen::MipGenerator::new(gpu, Self::FORMAT_16),
+            anel: wgpu::util::StagingBelt::new(
+                (*gpu.device).clone(),
+                crate::individual_entry::ANEL_PEDACO,
+            ),
+            subidas_pelo_anel: 0,
         }
     }
 

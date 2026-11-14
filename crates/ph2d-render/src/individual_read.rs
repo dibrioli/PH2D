@@ -169,7 +169,19 @@ impl IndividualTextureStore {
         };
         if entry.width == width && entry.height == height {
             if entry.fonte.is_none() {
-                crate::individual_entry::write_pixels(gpu, &entry.texture, width, height, rgba);
+                if crate::individual_entry::subida_pelo_anel() {
+                    crate::individual_entry::write_pixels_pelo_anel(
+                        gpu,
+                        &mut self.anel,
+                        &entry.texture,
+                        width,
+                        height,
+                        rgba,
+                    );
+                    self.subidas_pelo_anel += 1;
+                } else {
+                    crate::individual_entry::write_pixels(gpu, &entry.texture, width, height, rgba);
+                }
             }
             self.anota_pixels_recusados(id, rgba);
         } else {

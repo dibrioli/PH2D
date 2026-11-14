@@ -337,6 +337,6 @@ pub(crate) fn release_preview_texture(
 }
 
 #[cfg(test)]
-mod envio_tests;
-#[cfg(test)]
 mod aviso_tests;
+#[cfg(test)]
+mod envio_tests;

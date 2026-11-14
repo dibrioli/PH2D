@@ -235,3 +235,90 @@ pub(crate) fn write_pixels_16(
         },
     );
 }
+
+/// O pedaço do anel: o `chunk_size` do [`wgpu::util::StagingBelt`]. Uma subida maior cria o seu
+/// pedaço do tamanho dela (33 MB a 4K) e REUSA-o nas seguintes (B20.6).
+pub(crate) const ANEL_PEDACO: u64 = 4 << 20;
+
+std::thread_local! {
+    /// Teste: força o caminho (`Some(true)` = o anel, `Some(false)` = `write_texture`).
+    pub(crate) static PELO_ANEL: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+/// `PH2D_SUBIDA_SEM_ANEL=1` = antes (`queue.write_texture`, um staging novo por subida). Lida uma vez.
+pub(crate) fn subida_pelo_anel() -> bool {
+    static SEM: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    PELO_ANEL.with(std::cell::Cell::get).unwrap_or_else(|| {
+        !*SEM.get_or_init(|| std::env::var("PH2D_SUBIDA_SEM_ANEL").is_ok_and(|v| v == "1"))
+    })
+}
+
+/// **B20.6 — a subida inteira pelo anel**: os bytes vão direto ao buffer mapeado de um
+/// [`wgpu::util::StagingBelt`] reusado e `copy_buffer_to_texture`, submetido já (a ordem com as
+/// `write_texture` pendentes fica: elas descem no MESMO `submit`, antes do comando). Os mesmos
+/// texels que [`write_pixels`]; a linha alinha-se a 256 B quando `width × 4` não o é.
+/// Sonda `mede_a_subida_4k_write_texture_contra_staging_belt`: CPU 2,68 → 1,28 ms a 4K.
+pub(crate) fn write_pixels_pelo_anel(
+    gpu: &GpuContext,
+    anel: &mut wgpu::util::StagingBelt,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) {
+    let linha = (width as usize) * 4;
+    let passo = linha.next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as usize);
+    let Some(tamanho) = wgpu::BufferSize::new((passo * height as usize) as u64) else {
+        return;
+    };
+    let alinha = wgpu::BufferSize::new(wgpu::COPY_BUFFER_ALIGNMENT).expect("4 ≠ 0");
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ph2d-render subida pelo anel"),
+        });
+    {
+        let fatia = anel.allocate(tamanho, alinha);
+        let mut vista = fatia
+            .get_mapped_range_mut()
+            .expect("o anel entrega o pedaço mapeado");
+        if passo == linha {
+            vista.copy_from_slice(rgba);
+        } else {
+            for (y, src) in rgba.chunks_exact(linha).enumerate() {
+                vista
+                    .slice(y * passo..y * passo + linha)
+                    .copy_from_slice(src);
+            }
+        }
+        drop(vista);
+        enc.copy_buffer_to_texture(
+            wgpu::TexelCopyBufferInfo {
+                buffer: fatia.buffer(),
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: fatia.offset(),
+                    bytes_per_row: Some(passo as u32),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    anel.finish();
+    gpu.queue.submit([enc.finish()]);
+    anel.recall();
+}
+
+#[cfg(test)]
+#[path = "individual_anel_tests.rs"]
+mod individual_anel_tests;

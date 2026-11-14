@@ -90,3 +90,33 @@ fn o_desfazer_do_traco_na_camada_nova_redobra_so_a_janela_do_traco() {
         }
     }
 }
+
+/// **B18.12 — o «+» com a tinta viva do Wet deixa a camada nova limpa** (a versão é a do nascimento, a placa só lhe
+/// limpa a fatia). A tinta que adormece já não marca a activa (n.º 10 F5). Controlo (`TINTA_MARCA_SEMPRE`, o de
+/// antes): a marca sobe a versão da NOVA e `take_camada_nova_limpa` nunca casa.
+#[test]
+fn o_mais_com_a_tinta_viva_deixa_a_camada_nova_limpa() {
+    use super::cache::TINTA_MARCA_SEMPRE;
+    for antes in [false, true] {
+        TINTA_MARCA_SEMPRE.with(|x| x.set(antes));
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
+        t.set_wet_relogio_fixo(true);
+        t.set_substrate_depth(1.0);
+        t.set_paint_tool_mode("wetpaint");
+        traco(&mut t, 30.0);
+        let _ = t.take_preview_dirty();
+        assert!(t.tinta_viva(), "antes={antes}: controlo, a sessão viva");
+        let nova = t.add_raster_layer("Nova").expect("a nova");
+        let limpa = t.take_camada_nova_limpa();
+        TINTA_MARCA_SEMPRE.with(|x| x.set(false));
+        if antes {
+            assert_eq!(
+                limpa, None,
+                "controlo: a marca de antes sobe a versão da nova"
+            );
+        } else {
+            assert_eq!(limpa.map(|(k, _)| k), Some(nova.0), "a nova nasce limpa");
+        }
+    }
+}

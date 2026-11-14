@@ -126,3 +126,26 @@ fn o_motor_nao_le_a_ponta_alem_da_pegada_e_a_tela_e_a_do_oraculo_ao_byte() {
         );
     }
 }
+
+/// N10 F2b passo 1: o `LoteDoDab` DONO dos dados (`Arc` das imagens, cópia do resto) pinta a tela do lote EMPRESTADO
+/// ao bit. O oráculo é o hash da tela medido com o lote emprestado (HEAD `b67d1ed474`, mesma árvore) — FNV-1a 64.
+#[test]
+fn o_lote_dono_dos_dados_pinta_a_tela_do_lote_emprestado_ao_bit() {
+    let fnv = |px: &[u8]| {
+        px.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+        })
+    };
+    let mut visto = Vec::new();
+    for (pincel, tamanho) in [
+        ("Oil/Flat/Flat Bristle.ph2d-brush.png", 70.0),
+        ("Oil/Flat/Thick Impasto.ph2d-brush.png", 60.0),
+    ] {
+        let (px, _) = pinta(false, pincel, tamanho);
+        assert!(px.iter().any(|&b| b != 255), "{pincel}: o traço não pintou");
+        visto.push(fnv(&px));
+    }
+    eprintln!("HASHES_LOTE {visto:016x?}");
+    assert_eq!(visto, LOTE_EMPRESTADO, "a tela mudou com o lote dono");
+}
+const LOTE_EMPRESTADO: [u64; 2] = [0x8fee_397a_d66c_80bd, 0x9750_6a4a_3e29_2835];

@@ -19,7 +19,7 @@ pub(super) use super::lote_do_dab::LoteDoDab;
 
 /// Um dab do lote (`didx` o índice na mão, `sub_k` o sub-dab da cápsula, `passo` o sub-passo) pousa na água.
 pub(super) fn pousa_o_dab(
-    l: &LoteDoDab<'_>,
+    l: &LoteDoDab,
     sess: &mut WetSession,
     dab_rng: &mut super::super::tiling::DabRng,
     didx: usize,
@@ -28,7 +28,7 @@ pub(super) fn pousa_o_dab(
     d: &Dab,
 ) {
     let &LoteDoDab {
-        brush,
+        ref brush,
         erasing,
         opacidade_da_pressao,
         ref dual,
@@ -37,8 +37,6 @@ pub(super) fn pousa_o_dab(
         ref rampa,
         padrao_vira_cor,
         grao_e_cor,
-        shape_image,
-        shape_ramp_lut,
         cerdas,
         marca_do_spray,
         filme_liso,
@@ -46,9 +44,8 @@ pub(super) fn pousa_o_dab(
         relevo,
         lamina,
         shape_active,
-        grain_image,
         grain_active,
-        groups,
+        ref groups,
         canvas_wh,
         strength,
         escala_tex,
@@ -64,6 +61,8 @@ pub(super) fn pousa_o_dab(
         lote,
         ..
     } = l;
+    let (shape_image, grain_image) = (l.shape_mask(), l.grain_mask());
+    let shape_ramp_lut = l.shape_ramp_lut.as_deref();
     let [x, y] = d.center;
     let lane = a_lane::casa(l, sess, didx, d);
     let (li, lane_prev) = (lane.li, lane.lane_prev);

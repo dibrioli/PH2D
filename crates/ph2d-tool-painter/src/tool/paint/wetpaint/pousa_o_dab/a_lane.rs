@@ -14,12 +14,12 @@ pub(super) struct LaneDoDab {
 }
 
 /// A lane do dab ([`super::super::rota_da_lane::casa_a_lane`]); a borracha não tem lanes.
-pub(super) fn casa(l: &LoteDoDab<'_>, sess: &mut WetSession, didx: usize, d: &Dab) -> LaneDoDab {
+pub(super) fn casa(l: &LoteDoDab, sess: &mut WetSession, didx: usize, d: &Dab) -> LaneDoDab {
     let &LoteDoDab {
-        brush,
+        ref brush,
         erasing,
         wet_tool,
-        copia,
+        ref copia,
         virtual_,
         gota,
         ..
@@ -54,9 +54,9 @@ pub(super) fn casa(l: &LoteDoDab<'_>, sess: &mut WetSession, didx: usize, d: &Da
 }
 
 /// O peso do pigmento do dab e os passos do pente do relevo, ambos por COMPRIMENTO de caminho.
-pub(super) fn pesos(l: &LoteDoDab<'_>, sess: &WetSession, lane: &LaneDoDab, d: &Dab) -> (f32, f64) {
+pub(super) fn pesos(l: &LoteDoDab, sess: &WetSession, lane: &LaneDoDab, d: &Dab) -> (f32, f64) {
     let &LoteDoDab {
-        brush,
+        ref brush,
         ratio,
         passo_do_pigmento,
         capsulas,

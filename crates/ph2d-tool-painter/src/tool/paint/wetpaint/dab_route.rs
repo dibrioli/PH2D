@@ -269,13 +269,13 @@ impl PainterTool {
         // texture. The per-pixel law is `dab::grain_at`, the same single
         // door the colour route and the impasto height kernel call.
         // A imagem do slot que faz de Grain: a do PAPEL quando ele o é (`papel_como_grain`, como o carimbo).
-        let grain_image = if self.papel_como_grain_do(brush) {
+        let grain_imagem_do_slot = if self.papel_como_grain_do(brush) {
             &self.paint.paper_image
         } else {
             &self.paint.texture_image
         }
-        .as_ref()
-        .map(|i| i.as_mask());
+        .clone();
+        let grain_image = grain_imagem_do_slot.as_ref().map(|i| i.as_mask());
         // Só o Grain que AMOSTRA alguma coisa toma o lugar das cerdas (um Image sem imagem não).
         let grain_active = brush.grain_samples(grain_image.is_some());
         let groups = self.paint.dab_groups.clone();
@@ -373,7 +373,7 @@ impl PainterTool {
         // Cada marca do spray é uma GOTA: um traço de um dab que pousa e solta a lane ([`super::rota_da_lane`]).
         let gota = marca_do_spray && !erasing && !virtual_ && wet_tool.uses_lanes();
         let lote_do_dab = pousa_o_dab::LoteDoDab {
-            brush,
+            brush: *brush,
             erasing,
             opacidade_da_pressao,
             dual,
@@ -382,8 +382,8 @@ impl PainterTool {
             rampa,
             padrao_vira_cor,
             grao_e_cor,
-            shape_image,
-            shape_ramp_lut,
+            shape_image: self.paint.shape_image.clone(),
+            shape_ramp_lut: shape_ramp_lut.map(std::sync::Arc::from),
             cerdas,
             marca_do_spray,
             filme_liso,
@@ -394,9 +394,9 @@ impl PainterTool {
             passo_do_pigmento,
             capsulas,
             shape_active,
-            grain_image,
+            grain_image: grain_imagem_do_slot.clone(),
             grain_active,
-            groups: &groups,
+            groups,
             canvas_wh,
             strength,
             fino,
@@ -409,7 +409,7 @@ impl PainterTool {
             sem_grao,
             pigmento_da_marca,
             escala_cerdas,
-            copia: &copia,
+            copia: copia.clone(),
             pontas,
             alem,
             esbate_e,

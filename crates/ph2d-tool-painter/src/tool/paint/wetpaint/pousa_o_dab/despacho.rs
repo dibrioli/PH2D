@@ -31,7 +31,7 @@ pub(super) struct Despacho<'a, G, C> {
 }
 
 /// A lane fica no centro deste dab (pousado ou não) e larga a gota.
-pub(super) fn anda_a_lane(l: &LoteDoDab<'_>, sess: &mut WetSession, li: usize, d: &Dab) {
+pub(super) fn anda_a_lane(l: &LoteDoDab, sess: &mut WetSession, li: usize, d: &Dab) {
     sess.lanes[li].pos = d.center;
     sess.lanes[li].arco = d.arc_len;
     if l.gota {
@@ -41,7 +41,7 @@ pub(super) fn anda_a_lane(l: &LoteDoDab<'_>, sess: &mut WetSession, li: usize, d
 
 /// Pousa o dab pela porta da ferramenta.
 pub(super) fn despacha<G, C>(
-    l: &LoteDoDab<'_>,
+    l: &LoteDoDab,
     sess: &mut WetSession,
     d: &Dab,
     x: Despacho<'_, G, C>,
@@ -50,7 +50,7 @@ pub(super) fn despacha<G, C>(
     C: Fn(i32, i32) -> f64 + Sync,
 {
     let &LoteDoDab {
-        brush,
+        ref brush,
         erasing,
         wet_tool,
         ratio,

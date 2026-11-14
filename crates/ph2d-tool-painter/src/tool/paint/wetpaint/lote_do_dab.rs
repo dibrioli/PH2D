@@ -3,8 +3,11 @@
 use super::*;
 
 /// O que [`super::dab_route`] apurou para o lote inteiro e cada dab lê (os nomes são os da rota).
-pub(super) struct LoteDoDab<'a> {
-    pub(super) brush: &'a BrushSpec,
+///
+/// DONO dos seus dados (N10 F2b): as imagens são `Arc` (clonar = contador), o resto é cópia — o lote pode
+/// atravessar para o fio que segura o motor sem emprestar do `PainterTool`.
+pub(super) struct LoteDoDab {
+    pub(super) brush: BrushSpec,
     pub(super) erasing: bool,
     pub(super) opacidade_da_pressao: Option<f32>,
     pub(super) dual: Option<super::super::dual::RecorteNoWet>,
@@ -13,8 +16,8 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) rampa: Option<super::super::watercolor_accum_cor::RampaDaAguada>,
     pub(super) padrao_vira_cor: bool,
     pub(super) grao_e_cor: bool,
-    pub(super) shape_image: Option<ph2d_painter_brush::ImageMask<'a>>,
-    pub(super) shape_ramp_lut: Option<&'a [f32]>,
+    pub(super) shape_image: Option<super::super::brush_settings::BrushTextureImage>,
+    pub(super) shape_ramp_lut: Option<std::sync::Arc<[f32]>>,
     pub(super) cerdas: bool,
     pub(super) marca_do_spray: bool,
     pub(super) filme_liso: bool,
@@ -25,9 +28,9 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) passo_do_pigmento: f32,
     pub(super) capsulas: bool,
     pub(super) shape_active: bool,
-    pub(super) grain_image: Option<ph2d_painter_brush::ImageMask<'a>>,
+    pub(super) grain_image: Option<super::super::brush_settings::BrushTextureImage>,
     pub(super) grain_active: bool,
-    pub(super) groups: &'a [u32],
+    pub(super) groups: Vec<u32>,
     pub(super) canvas_wh: [f32; 2],
     pub(super) strength: f32,
     pub(super) fino: f32,
@@ -40,7 +43,7 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) sem_grao: Option<[f64; 2]>,
     pub(super) pigmento_da_marca: f32,
     pub(super) escala_cerdas: [f32; 2],
-    pub(super) copia: &'a [u32],
+    pub(super) copia: Vec<u32>,
     pub(super) pontas: bool,
     pub(super) alem: f32,
     pub(super) esbate_e: f32,
@@ -48,3 +51,19 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) lote: super::tampa::Lote,
     pub(super) gota: bool,
 }
+
+impl LoteDoDab {
+    /// A imagem do Shape como o motor a lê.
+    pub(super) fn shape_mask(&self) -> Option<ph2d_painter_brush::ImageMask<'_>> {
+        self.shape_image.as_ref().map(|i| i.as_mask())
+    }
+    /// A imagem do Grain como o motor a lê.
+    pub(super) fn grain_mask(&self) -> Option<ph2d_painter_brush::ImageMask<'_>> {
+        self.grain_image.as_ref().map(|i| i.as_mask())
+    }
+}
+
+const _: () = {
+    const fn envia<T: Send + 'static>() {}
+    envia::<LoteDoDab>();
+};

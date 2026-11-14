@@ -37,17 +37,8 @@ fn tela(rel: &str, press: f64) -> Vec<u8> {
             g.material.len()
         );
     }
-    let mut px = t.run_full().0;
-    t.apply_impasto_light(
-        &mut px,
-        crate::Region {
-            x: 0,
-            y: 0,
-            w: OW,
-            h: OH,
-        },
-    );
-    px
+    // B44.3 (GT-16): o `run_full` já acende o relevo; acender aqui dobrava a luz.
+    t.run_full().0
 }
 
 /// `PH2D_OLEO_PNG=<pasta>`: `press_<pincel>_p<press>.ppm`.

@@ -112,12 +112,13 @@ fn a_transmissao_e_o_relevo_do_papel_mostram_o_grao() {
     let abs = dente_na_tela(&com, &sem, &miolo) / nu_abs;
     let brilhos = dente_nos_brilhos(&com, &sem, &miolo) / nu_abs;
     println!(
-        "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (dono 2,24 · Cycles 1,71) · nos brilhos {brilhos:.3}"
+        "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (dono 3,86 no ecrã, 2,24 com a luz dobrada · Cycles 1,71) · nos brilhos {brilhos:.3}"
     );
     assert!(
-        // A faixa relativa de sempre (−18 % · +19 %) sobre o número aprovado (2,24).
-        (1.84..=2.67).contains(&abs),
-        "Relevo do papel 1 ≈ o aprovado pelo dono: {abs} × 2,24"
+        // A faixa relativa de sempre (−18 % · +19 %) sobre o número aprovado. B44.3: 2,24 era a tela com a luz
+        // DOBRADA (a régua reacendia o `run_full`); o ecrã do dono, a mesma lei sem repintar nada, mede 3,86.
+        (3.17..=4.60).contains(&abs),
+        "Relevo do papel 1 ≈ o aprovado pelo dono: {abs} × 3,86"
     );
     assert!(brilhos >= 0.5, "o grão nos brilhos: {brilhos}");
 }
@@ -175,7 +176,8 @@ fn a_transparencia_deixa_ver_o_grao_e_a_cor_do_papel() {
     println!(
         "[transparency] dente miolo/nu: T0 {d0:.2}/{n0:.2} · T0,5 {dm:.2}/{nm:.2} · T1 {d1:.2}/{n1:.2} · papel no miolo {dp:.2}"
     );
-    assert!(n0 > 4.0, "o papel nu devia mostrar o dente: {n0}");
+    // B44.3: a régua lê o ecrã (uma luz): o papel nu mede 3,08 (antes > 4 com a luz dobrada); −19 % de folga.
+    assert!(n0 > 2.5, "o papel nu devia mostrar o dente: {n0}");
     assert!(d0 <= 0.1 * n0, "T 0 tapa o grão: {d0} × {n0}");
     assert!(
         d1 >= 0.95 * dp,
@@ -583,5 +585,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// lei espectral de 10 bandas (`00f3ca1751`, decisão 7a do dono); com `PH2D_WET_MISTURA=km` voltam os de antes.
 /// Regravado 12/11 (era `0x6f35_8929_a88e_2278` · `0xb41f_d227_f619_2c77`): a luz única do traço (`7359c0095b`), o céu
 /// lido inteiro com 4 fatias × 9 distâncias e o reflexo do ambiente com o antisserrilhado (o brilho picotado, dono).
-const CLEAR_GLASS_05: u64 = 0x333b_fa93_94c2_2dc5;
-const CLEAR_GLASS_1: u64 = 0xffc2_b09e_85b1_5561;
+/// Regravado 14/11 (B44.3, era `0x333b_fa93_94c2_2dc5` · `0xffc2_b09e_85b1_5561`): nada repintado — a régua passa a
+/// ler o `run_full` (o ecrã), em vez de o acender outra vez com `apply_impasto_light`.
+const CLEAR_GLASS_05: u64 = 0x66b6_7caa_0a27_e62a;
+const CLEAR_GLASS_1: u64 = 0x948c_d3a3_e204_e3d3;

@@ -285,19 +285,10 @@ pub(super) fn cena_papel_texturizado(
     (t, cob)
 }
 
-/// A TELA FINAL do produto: o composite e a luz do relevo (`apply_impasto_light`).
+/// A TELA FINAL do produto: o `run_full` (o composite com a luz do relevo, o que o ecrã mostra).
 pub(super) fn tela_final(t: &mut PainterTool) -> Vec<u8> {
-    let mut px = t.run_full().0;
-    t.apply_impasto_light(
-        &mut px,
-        crate::Region {
-            x: 0,
-            y: 0,
-            w: OW,
-            h: OH,
-        },
-    );
-    px
+    // B44.3 (GT-16): o `run_full` já acende o relevo; acender aqui dobrava a luz.
+    t.run_full().0
 }
 
 /// As amostras (1 em 9 píxeis) do miolo da tinta grossa `cob` (a ≥ 12 px de papel) e do papel nu (a ≥ 40 px).
@@ -358,7 +349,9 @@ fn o_dente_do_papel_nao_atravessa_a_tinta_grossa() {
         dente_na_tela(&px, &liso, &miolo),
         dente_na_tela(&px, &liso, &nu),
     );
-    assert!(b > 4.0, "o papel nu devia mostrar o dente: {b}");
+    println!("[dente] miolo {a:.3} · papel nu {b:.3}");
+    // B44.3: a régua lê o ecrã (uma luz): o papel nu mede 3,08 (antes > 4 com a luz dobrada); −19 % de folga.
+    assert!(b > 2.5, "o papel nu devia mostrar o dente: {b}");
     assert!(
         a <= 0.1 * b,
         "o dente atravessa a tinta grossa: {a} × papel nu {b}"
@@ -422,17 +415,8 @@ pub(super) fn tela_da_borda(rel: &str, texturizado: bool, suave: f32) -> Vec<u8>
         t.on_tick(8.0);
     }
     arrasta(&mut t, s(640.0), s(640.0));
-    let mut px = t.run_full().0;
-    t.apply_impasto_light(
-        &mut px,
-        crate::Region {
-            x: 0,
-            y: 0,
-            w: OW,
-            h: OH,
-        },
-    );
-    px
+    // B44.3 (GT-16): o `run_full` já acende o relevo; acender aqui dobrava a luz.
+    t.run_full().0
 }
 
 /// `PH2D_OLEO_PNG=<pasta>`: as telas da borda (`borda_<pincel>_<papel>_s<suave>.ppm`) — régua `oraculo/bordas_regua.py`.
@@ -541,4 +525,24 @@ fn sonda_pontos_pretos_termos() {
         }
         eprintln!("total escuros {n}");
     }
+}
+
+/// B44.3 (GT-16): a régua das telas do óleo lê o que o ecrã mostra (o `run_full`, que já acende o relevo), ao byte;
+/// e acender outra vez MUDA a tela (a luz dobrada dos denominadores de antes não era inócua).
+#[test]
+fn a_regua_le_o_que_o_ecra_mostra() {
+    let (mut t, _) = cena_papel_texturizado(true, 0.6, true);
+    let ecra = t.run_full().0;
+    assert!(ecra == tela_final(&mut t), "a régua acende a tela de novo");
+    let mut dobrada = ecra.clone();
+    t.apply_impasto_light(
+        &mut dobrada,
+        crate::Region {
+            x: 0,
+            y: 0,
+            w: OW,
+            h: OH,
+        },
+    );
+    assert!(dobrada != ecra, "o controlo não vê a luz: a cena não tem relevo aceso");
 }

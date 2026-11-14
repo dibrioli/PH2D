@@ -24,17 +24,8 @@ pub(super) fn tela_horizontal(rel: &str, texturizado: bool, suave: f32) -> Vec<u
     for y in [90.0f32, 220.0, 350.0] {
         arrasta(&mut t, [60.0, y], [640.0, y + 12.0]);
     }
-    let mut px = t.run_full().0;
-    t.apply_impasto_light(
-        &mut px,
-        crate::Region {
-            x: 0,
-            y: 0,
-            w: OW,
-            h: OH,
-        },
-    );
-    px
+    // B44.3 (GT-16): o `run_full` já acende o relevo; acender aqui dobrava a luz.
+    t.run_full().0
 }
 
 pub(super) const PINCEIS_W3B: [(&str, &str); 3] = [

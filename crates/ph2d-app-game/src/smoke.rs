@@ -23,7 +23,8 @@ use std::sync::OnceLock;
 
 /// A última cena do roteiro: 6..=`input_map::ULTIMA` = a aba Input Map (a tabela: `input_map`); a seguinte = o
 /// Top-Down Player, e depois o Projectile Motion. Contada: uma cena nova sem empurrar as seguintes não compila.
-pub const CENAS: u32 = projectile::CENA;
+pub const CENAS: u32 = 25;
+const _: () = assert!(CENAS == projectile::CENA);
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 const _: () = assert!(projectile::CENA == topdown::CENA + 1);
 pub use ph2d_input_map_scene as input_map;

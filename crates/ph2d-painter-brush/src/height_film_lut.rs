@@ -43,12 +43,18 @@ impl FilmLut {
             reason = "N = 16384 é exato em f32; o índice é um contador pequeno"
         )]
         let inv = 1.0 / (n as f32);
-        let mut table = Vec::with_capacity(n + 1);
-        for i in 0..=n {
-            #[expect(clippy::cast_precision_loss, reason = "i <= 16384, exato em f32")]
-            let t = (i as f32) * inv;
-            table.push(film_of(spec.falloff_weight(t)));
-        }
+        // B26.4 (N10): as `N + 1` amostras são independentes ⇒ em paralelo, na ordem do índice (o `collect` de um
+        // iterador indexado), cada uma a MESMA conta da série — ao bit (`a_lut_em_paralelo_e_a_serie_ao_bit`).
+        // Com a dureza da mão (`Dynamics::dureza_da_mao`) a chave do memo muda em todo dab e esta tabela é refeita.
+        use rayon::prelude::*;
+        let table: Vec<f32> = (0..=n)
+            .into_par_iter()
+            .map(|i| {
+                #[expect(clippy::cast_precision_loss, reason = "i <= 16384, exato em f32")]
+                let t = (i as f32) * inv;
+                film_of(spec.falloff_weight(t))
+            })
+            .collect();
         #[expect(clippy::cast_precision_loss, reason = "N = 16384 é exato em f32")]
         let nf = n as f32;
         Self { table, n: nf }
@@ -307,13 +313,21 @@ pub fn film_lut_for(spec: &crate::BrushSpec, radius: f32) -> Option<Arc<FilmLut>
     };
     // Um `Mutex` envenenado é razão para o caminho exato, nunca para um pânico: o filme é uma
     // aparência, e recusar-se a pintar seria pior que pintá-la pela rota lenta.
-    let mut slot = LUT_MEMO.lock().ok()?;
-    if let Some((k, lut)) = slot.as_ref()
-        && *k == key
     {
-        return Some(Arc::clone(lut));
+        let slot = LUT_MEMO.lock().ok()?;
+        if let Some((k, lut)) = slot.as_ref()
+            && *k == key
+        {
+            return Some(Arc::clone(lut));
+        }
     }
+    // ⛔ A tabela constrói-se com o trinco LARGADO: ela corre no rayon, e um operário que roubasse outro dab
+    // por cima pediria este mesmo `Mutex` no mesmo fio — a espera sem prazo dentro de job (Bug #66).
     let lut = Arc::new(FilmLut::new(spec));
-    *slot = Some((key, Arc::clone(&lut)));
+    *LUT_MEMO.lock().ok()? = Some((key, Arc::clone(&lut)));
     Some(lut)
 }
+
+#[cfg(test)]
+#[path = "height_film_lut_paralelo_tests.rs"]
+mod paralelo_tests; // B26.4 (N10): a tabela em paralelo é a série ao bit

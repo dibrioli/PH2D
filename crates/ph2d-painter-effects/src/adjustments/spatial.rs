@@ -318,7 +318,7 @@ pub fn apply_gaussian(p: &GaussianBlurParams, acc: &mut [[f32; 4]], win: AdjustW
 /// premultiplied ([`premultiply`]); the output stays premultiplied. Shared by
 /// Gaussian + the blur stage of Sharpen.
 /// Compute the `h` rows of a `w`-wide output buffer, splitting them across the
-/// available CPUs on the rayon pool (B19.7, ADR-0201). `row(y, out_row)` fills one
+/// available CPUs on the rayon pool (B19.7, ADR-0202). `row(y, out_row)` fills one
 /// output row from shared input it captures — each thread owns a disjoint
 /// `&mut` band, so it is data-race-free, and the per-pixel work is independent of
 /// thread count, so the result is BIT-IDENTICAL regardless of CPU count (keeps

@@ -23,7 +23,7 @@ acrescentou: `8a15446986..HEAD` (11 commits). **Nada integrado nem enviado.**
 
 ## 3. Números que se CONTAM (DELTA)
 
-- `PROJECT_SCHEMA` **+0** · ADR **+0** (a linha continua com 0201–0203) · registo de componentes 0 · pacotes externos 0.
+- `PROJECT_SCHEMA` **+0** · ADR **+0** (a linha continua com 0202–0204) · registo de componentes 0 · pacotes externos 0.
 - Formato gravado **ao bit**: `a_imagem_partilhada_grava_os_mesmos_bytes_que_o_vec`,
   `o_documento_colhido_partilha_os_planos_e_grava_os_bytes_do_vec`; `IMPRESSAO_DO_DOCUMENTO_V3` igual.
 
@@ -143,7 +143,7 @@ Comando base (cada passo acrescenta só o que diz): `cd /home/enio/Documentos/Pr
 1. **W5 depósito fora do quadro** (dono: muda QUANDO a tinta aparece). Cortes restantes: `FiosNoDab::fio` (perlin por fio, 1,38 %)
    guardável por dab; flag «linha limpa» do `tip_rows` (≤ 0,3 %); `sqrt` do `falloff_t`, `dyn CellFn`, divisão: sem corte ao bit.
 2. **Ctrl+Z:** a troca do motor (Wet 32 ms, Óleo 55 ms; sonda `sonda_as_fases_do_ctrl_z_wet_a_4k`) está presa à memória (a foto lê
-   ~6×33 MB) → chunk esparso como tile 64×64 (adenda 2 do ADR-0203) e marcar os tiles escritos pelo passo da água
+   ~6×33 MB) → chunk esparso como tile 64×64 (adenda 2 do ADR-0204) e marcar os tiles escritos pelo passo da água
    (`solver.rs`, `flow_jacobi.rs`; `ladeira_do_oleo.rs:424` troca o plano inteiro).
 3. **Custo da luz:** `visibilidade_e_ceu` 10 %, rebote 6 %; a poda por produtos foi recusada.
 4. B19.10; a pista GPU recompõe sempre na troca de camada.

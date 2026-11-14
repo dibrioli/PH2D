@@ -1,4 +1,4 @@
-//! **A base da sessão molhada depois de quem escreve o vidro FORA do quadro da aguada** (ADR-0204 D3, o risco
+//! **A base da sessão molhada depois de quem escreve o vidro FORA do quadro da aguada** (ADR-0205 D3, o risco
 //! de correcção): Ctrl+Z e Ctrl+Shift+Z a meio da sessão, duplicar a camada, um traço Wet Paint na mesma camada
 //! (trocar de meio não seca a aguada). Oráculo independente do journal: cada janela do `vbase` = o vidro que
 //! estava vivo quando a tela viva era a base da sessão (o par tela↔vidro gravado em cada pen-down), ao bit.

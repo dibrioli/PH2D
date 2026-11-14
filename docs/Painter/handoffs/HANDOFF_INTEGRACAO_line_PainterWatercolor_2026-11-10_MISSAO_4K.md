@@ -7,7 +7,7 @@ aqui só o que evita colisão e regressão. **Nada integrado nem enviado.** A mi
 ## 1. Identidade
 
 - Branch `line/PainterWatercolor`, merge-base com o main `bc4a6ce930`, 285 commits de código/docs (10/11 07:10 a 11/11), 1 403 ficheiros.
-- HEAD do código `e7728c2ee2`; **os commits deste fecho vêm por cima** (só docs: BUGS, guia, ADR-0202, handoff, prompt, `CLAUDE.md` §5.1).
+- HEAD do código `e7728c2ee2`; **os commits deste fecho vêm por cima** (só docs: BUGS, guia, ADR-0203, handoff, prompt, `CLAUDE.md` §5.1).
 - Anterior: [pen-up 4K e mistura, 10/11](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-10_PEN_UP_E_MISTURA.md) (já no main).
   Missão: [prompt 10g](PROMPT_MISSAO_2026-11-10g_painter_4k_autonomo.md) · [regras](../missao_4k/REGRAS_DO_AGENTE.md) ·
   [despacho](../missao_4k/DESPACHO.md) (ondas 1–14, o que cada agente devolveu). Continuação: [10h](PROMPT_CONTINUACAO_2026-11-10h_pos_missao_4k.md).
@@ -15,7 +15,7 @@ aqui só o que evita colisão e regressão. **Nada integrado nem enviado.** A mi
   `ph2d-painter-brush` 3 803/947 (46) · `ph2d-app-painter` 1 790/799 (26) · `ph2d-painter-effects` 1 036/129 (8) · `ph2d-render`
   423/17 (14) · `ph2d-panel-wet-tuning` 228/21 · `ph2d-inpaint` 214/58 · `ph2d-anim-sheets` 179/12 · `ph2d-editor-core` 175/0 ·
   `shells/desktop` 173/155 (20) · pequenos: `ph2d-app-motion`, `-audio`, `-board`, `-sprite-anim`, `ph2d-wet-gpu`, `ph2d-gpu`,
-  `ph2d-panel-painter-layers` · **`ph2d-app-host` 62 797/0 (220) = o `winit` 0.30.13 vendorizado** (ADR-0202) · `docs/Painter` 585.
+  `ph2d-panel-painter-layers` · **`ph2d-app-host` 62 797/0 (220) = o `winit` 0.30.13 vendorizado** (ADR-0203) · `docs/Painter` 585.
 
 ## 2. Superfície de colisão (`bash scripts/collision-surface.sh`, 11/11)
 
@@ -24,7 +24,7 @@ merge-base bc4a6ce930 · 285 commit(s) · 1403 arquivo(s)
 ⚠ PROJECT_SCHEMA 232 (base 231) · ⚠ tripla (232, 13, 29) (base (231, 13, 29)) · VEC 29 · FLIP 13 · DOC_VERSION 25
 ph2d-ecs 121 (base 121) · ✗ SONDA CEGA ph2d-render/ph2d-script = defeito conhecido do SCRIPT, a linha não toca componentes
 Contrato congelado §6: node.rs intocado · tool.rs intocado
-ADR: último no disco 0201 · esta linha CRIA 0201 (e 0202 neste fecho) — reconte contra o main do dia
+ADR: último no disco 0202 · esta linha CRIA 0202 (e 0203 neste fecho) — reconte contra o main do dia
 Cargo.lock: nenhum '+name' novo · marcadores de conflito: nenhum
 TETOS DE LOC: 25 ✗ todos em crates/ph2d-app-host/vendor/winit/** (código de terceiros; o gate varre só crates/*/src)
 ```
@@ -39,7 +39,7 @@ TETOS DE LOC: 25 ✗ todos em crates/ph2d-app-host/vendor/winit/** (código de t
 ## 3. Números que se CONTAM (DELTA)
 
 - **`PROJECT_SCHEMA`: +1** (231 → 232; tripla `(232, 13, 29)`). Sem migração (CLAUDE §0.11).
-- **ADR: +2** (0201 rayon no compositor e kernels espaciais; 0202 quadro a pedido + `winit` vendorizado). **Registo de componentes: 0.**
+- **ADR: +2** (0202 rayon no compositor e kernels espaciais; 0203 quadro a pedido + `winit` vendorizado). **Registo de componentes: 0.**
   **Pacotes externos novos: 0** (o `winit` é o mesmo 0.30.13, agora por caminho). Dep interna nova: `rayon` em `ph2d-painter-effects`.
 - **Tectos:** `ph2d-app-painter` 22 427 linhas contadas por `find|wc` (catraca `the_shell_only_shrinks` ≤ 24 429; o gate conta à sua
   maneira, medido 24 382 em `5a5aac2f52`) · shell 189 015 (`aa64a921ee`) · ficheiros `.rs` ≤ 700 fora do vendor (o fecho partiu
@@ -52,13 +52,13 @@ TETOS DE LOC: 25 ✗ todos em crates/ph2d-app-host/vendor/winit/** (código de t
 |---|---|---|
 | Perda de dados e undo | B01, B02, B03, B04.1, B05, B06a–c, B48 | #86–#96; ajustes com passo de undo; Wet/tinta por assar presos ao documento |
 | Pen-up / quadro 4K | B10.3, B10.5, B10.6–8, B20a (`PH2D_PREVIA_INTEIRA=1` volta) | quadro p50 4096² 38,8→10,2 ms (4 camadas 47,4→10,6); toque/traço/Ctrl+Z 32–38→15–17 ms |
-| Compositor CPU | B19a–b, B19.7, B19.11, B52.R3 (ADR-0201) | arrasto de ajuste 1 149→134 ms; 1 044 fios do SO→0; camadas vazias 38,1→19,2 ms |
+| Compositor CPU | B19a–b, B19.7, B19.11, B52.R3 (ADR-0202) | arrasto de ajuste 1 149→134 ms; 1 044 fios do SO→0; camadas vazias 38,1→19,2 ms |
 | Memória do undo | B17a–c, B12b | Impasto diagonal 265→32 MB; Wet dab r30 897→26 MB (motor); cópias de tela 2→1 |
 | Wet | B11 (agenda, espelho estreito, worker morto), B12.1 anel, B13 span_runs, B14 (óptica, luz simples), B02.A3 | espelho 30,35→3,89 ms; Ctrl+Z Wet Round 54→30 ms; secagem longe 65,1→22,1 ms/12 q |
 | Watercolor | B16.1–4, B16.9, B16.12, B16b/c/d, B04 | pen-up aguada 48,5→1,95 ms; toque no papel 186→32 ms; Rewet 201→3,1 MB |
 | Impasto | B15 (settle, planos, lâmpada), B10a | planos Gaussiano/Nitidez 434→3 ms; Ctrl+Z ciclos −52 % |
 | Carimbo / pincéis | B24, B25, B26.A2, B29a, B49.1, B14c | pó Pastel pen-down 6,65→2,62 ms; dente 0,149→0,045 ms/dab; mesmo byte a 1/2/32 fios |
-| Quadro a pedido | B23 (ADR-0202) | janela oculta 97–100 %→44–46 % CPU; parado: pedido 3 % × contínuo 57–70 % |
+| Quadro a pedido | B23 (ADR-0203) | janela oculta 97–100 %→44–46 % CPU; parado: pedido 3 % × contínuo 57–70 % |
 | Formas, seleção, macros, pânicos | B40a–b, B41a–b, B16.7, B22.2 | Feather r64 11 121→16,8 ms; arrasto da seleção sem recompor |
 | Preset | B35.A1, B50.1–2, B35a.1/.4/.6a, B35.A3 | enums pelo nome (schema +1); Tuning sem as 19 linhas do Inspector |
 | Fecho | `14a2efbbae` `88f867ac68` `1eb4854b25` `3e3572bd18` `e7728c2ee2` | clippy workspace verde; tectos; provas de mutação |
@@ -134,13 +134,13 @@ BACKLOG: **117 feitos · 16 parciais · 9 recusas medidas · 174 abertos**; audi
 - Gates de custo sob carga (candidatos a flake, [FLAKES_DE_CARGA.md](../../DevOps/FLAKES_DE_CARGA.md)): os 4 vermelhos da óptica Wet a
   load 26–34 (B12c: 23/23 sozinho); `a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela`; o tecto do Wet Wash Mix 1,3→0,75 medido
   só no perfil dev (B07) — conferir no `ci-test`.
-- `quer_quadro`: família nova com produtor sem evento que não o declare congela até à entrada seguinte (ADR-0202).
+- `quer_quadro`: família nova com produtor sem evento que não o declare congela até à entrada seguinte (ADR-0203).
 - Alarmes de pincel vermelhos por desenho (46 presets): não regravar.
 
 ## 9. Onde está o mecanismo
 
 [BUGS_painter.md](../BUGS_painter.md) #86–#113 · [COMO_ACELERAR_UM_PINCEL.md](../Pinceis/COMO_ACELERAR_UM_PINCEL.md) §7–§8 ·
-[ADR-0201](../../architecture/decisions/0201-o-compositor-cpu-e-os-kernels-espaciais-correm-no-pool-do-rayon.md) ·
-[ADR-0202](../../architecture/decisions/0202-o-app-desenha-a-pedido-e-o-winit-vendorizado-diz-a-janela-oculta-no-wayland.md) ·
+[ADR-0202](../../architecture/decisions/0202-o-compositor-cpu-e-os-kernels-espaciais-correm-no-pool-do-rayon.md) ·
+[ADR-0203](../../architecture/decisions/0203-o-app-desenha-a-pedido-e-o-winit-vendorizado-diz-a-janela-oculta-no-wayland.md) ·
 [BACKLOG](../missao_4k/BACKLOG.md) · [BACKLOG_AUDITORIA](../missao_4k/BACKLOG_AUDITORIA.md) · [medições](../missao_4k/medicoes/ANTES.md) ·
 [diagnóstico 100 ms](../missao_4k/medicoes/DIAGNOSTICO_100MS.md) · `crates/ph2d-app-host/vendor/winit/VENDOR.md`.

@@ -23,7 +23,7 @@ libera `unsafe` num módulo isolado para AVX2 (política).
    (n.º 7: §0 colisão e o tecto de LOC, §5 a matriz final, §6 o ABERTO, §7 recusas, §10 regras).
 2. O n.º 6 [PRIMEIRO_TOQUE_4K](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-13_PRIMEIRO_TOQUE_4K.md) e os anteriores nele linkados.
 3. As notas do bloco que for tocar: `../missao_4k/medicoes/N7_CAMADAS.md` (gestos de camada), `N7_ITEM3_mais.md` («+», fundo do toque,
-   item 5), `N7_ITEM2_vidro_tiles.md` + ADR-0204 (vidro), `N7_ITEM1_sim6.md` (sim a 6 traços).
+   item 5), `N7_ITEM2_vidro_tiles.md` + ADR-0205 (vidro), `N7_ITEM1_sim6.md` (sim a 6 traços).
 4. `../missao_4k/BACKLOG.md`: B18.6–B18.12, B13.12, B19.10, B20.6, B23.2 (`grep -n '^| B18\.'` + `Read` com offset).
 
 ## Estado (depois da onda n.º 7)
@@ -31,7 +31,7 @@ libera `unsafe` num módulo isolado para AVX2 (política).
 | item | estado |
 |---|---|
 | sim a 6 traços: 0,77 → ~0,91 sim-s/s ao bit; palpite 0,97 atrás de chave | FEITO o que cabe sem `unsafe`; o palpite espera o dono |
-| ADR-0204: vidro no journal por tile (cópias traços 2–8 `[1;7]` → `[0;7]`) | FEITO; aberto o `fork_par_raw` da tela |
+| ADR-0205: vidro no journal por tile (cópias traços 2–8 `[1;7]` → `[0;7]`) | FEITO; aberto o `fork_par_raw` da tela |
 | «+» sem diff, tela pelo mmap, compressão no silêncio, janela por palavras | FEITO («+» Wet 34–39 → 6–10 ms) |
 | fundo do toque aquecido em fio (troca, «+», troca de pincel) | FEITO (1.º pen-down WB na nova 33 → 12–18 ms) |
 | gestos de camada: base digital/WB/Wet ~11–23 ms; nova digital 13–18 | FEITO; abertos a nova WB/impasto/Wet |
@@ -53,7 +53,7 @@ libera `unsafe` num módulo isolado para AVX2 (política).
 8. **B19.10**, **B20.6** (anel da placa), a **espera activa ~10 % do rayon** (`crossbeam_epoch`).
 9. **A espera do pen-down pelo motor** (item 5, 3,8 + 2 ms): documentada em `N7_ITEM3_mais.md`; medir com `sonda_partes::parte` antes de
    qualquer cura; adiar o pen-down inteiro é arriscado.
-10. **`fork_par_raw`** (B18.10, aberto do ADR-0204): confirmar o `strong` da tela no pen-down Wet; fork por tile só se medir.
+10. **`fork_par_raw`** (B18.10, aberto do ADR-0205): confirmar o `strong` da tela no pen-down Wet; fork por tile só se medir.
 11. **Os 7 vermelhos antigos e os 77 alarmes**: decisões do dono. Só ele regrava (`PH2D_PINCEIS_APROVA=1`).
     ✅ **Dono 13/11 (n.º 8), decidido:** «Ambas SIM, mas como opções a mais e não a substituição do que já existe. OU seja: 2
     checkbox numa seção nova: performance (card novo no painel).» ⇒ cartão novo «Performance» no painel do Painter com 2

@@ -1,7 +1,7 @@
-# N.º 7, item 2 — o vidro no journal por tile (ADR-0204): estado
+# N.º 7, item 2 — o vidro no journal por tile (ADR-0205): estado
 
-> ADR: [`0204`](../../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md).
-> Linha `line/PainterWatercolor`, 13/11. **FECHADO** pelo 6.º agente (passos 7 e 8, mutações dos 5 e 6). ADR-0204 «Implementado».
+> ADR: [`0205`](../../../architecture/decisions/0205-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md).
+> Linha `line/PainterWatercolor`, 13/11. **FECHADO** pelo 6.º agente (passos 7 e 8, mutações dos 5 e 6). ADR-0205 «Implementado».
 
 ## Passos feitos
 

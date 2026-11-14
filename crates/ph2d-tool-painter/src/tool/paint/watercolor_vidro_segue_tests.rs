@@ -23,7 +23,7 @@ fn cp(x: f32, phase: PointerPhase) -> CanvasPointer {
 }
 
 /// Um traço com Smudge: os píxeis da tela depois de cada tique, quantas vezes o plano do vidro mudou de `Arc`
-/// e quantas vezes a sessão do vidro congelou (ADR-0204 D3: recongelar já não copia o plano, recomeça a sessão).
+/// e quantas vezes a sessão do vidro congelou (ADR-0205 D3: recongelar já não copia o plano, recomeça a sessão).
 fn traco(segue: bool) -> (Vec<Vec<u8>>, usize, usize, usize) {
     VIDRO_SEGUE_A_BASE.set(segue);
     super::watercolor_vidro::CONGELACOES.set(0);
@@ -85,7 +85,7 @@ fn o_vidro_segue_a_base_que_o_borrao_move_sem_copiar_o_plano() {
 
 /// O 1.º traço de uma camada sem vidro não COPIA o plano que acabou de nascer zerado (a 4K, 58 MB tocados no
 /// 1.º toque). Controlo: sem a chave `VIDRO_PELO_JOURNAL` o 2.º traço copia (o desfazer segura o plano), e
-/// a régua vê a cópia quando ela existe; com ela (ADR-0204) não copia.
+/// a régua vê a cópia quando ela existe; com ela (ADR-0205) não copia.
 #[test]
 fn o_primeiro_traco_da_camada_nao_copia_o_vidro_que_nasce_zerado() {
     for journal in [false, true] {
@@ -137,7 +137,7 @@ fn primeiro_e_segundo_traco() -> (usize, usize) {
     (primeiro, traco(&mut t, 110.0))
 }
 
-/// **O `vbase` é o vidro do INÍCIO da sessão** (ADR-0204 D3): três traços WB com Smudge na mesma sessão
+/// **O `vbase` é o vidro do INÍCIO da sessão** (ADR-0205 D3): três traços WB com Smudge na mesma sessão
 /// molhada; cada janela que o quadro lê = o plano tirado inteiro na congelação, ao bit. Controlo: a sessão
 /// atravessa traços e, nas janelas dos traços seguintes, o vivo já não é o início (o journal da sessão é que
 /// responde; o do passo zerou no commit).

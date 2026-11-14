@@ -1,4 +1,4 @@
-# Handoff de integração — linha PainterWatercolor · 13/11 (onda n.º 7): desempenho 4K — sim a 6 traços, vidro em tiles (ADR-0204), «+» sem diff, gestos de camada
+# Handoff de integração — linha PainterWatercolor · 13/11 (onda n.º 7): desempenho 4K — sim a 6 traços, vidro em tiles (ADR-0205), «+» sem diff, gestos de camada
 
 > A linha NÃO está integrada; quem o dono nomear integra. Leitor: o integrador e a próxima LLM da linha.
 > Anteriores (continuam a valer): [n.º 6 PRIMEIRO_TOQUE_4K](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-13_PRIMEIRO_TOQUE_4K.md) ·
@@ -9,7 +9,7 @@
 > [DESEMPENHO_TOTAL](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-12_DESEMPENHO_TOTAL.md).
 > Notas da onda (a verdade dos números): [`N7_ITEM1_sim6.md`](../missao_4k/medicoes/N7_ITEM1_sim6.md) ·
 > [`n7_assenta/`](../missao_4k/medicoes/n7_assenta/README.md) · [`N7_ITEM2_vidro_tiles.md`](../missao_4k/medicoes/N7_ITEM2_vidro_tiles.md) ·
-> [ADR-0204](../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md) ·
+> [ADR-0205](../../architecture/decisions/0205-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md) ·
 > [`N7_ITEM3_mais.md`](../missao_4k/medicoes/N7_ITEM3_mais.md) · [`N7_CAMADAS.md`](../missao_4k/medicoes/N7_CAMADAS.md) ·
 > [`N7_FECHO.md`](../missao_4k/medicoes/N7_FECHO.md). Backlog: [`../missao_4k/BACKLOG.md`](../missao_4k/BACKLOG.md) (B13.12, B18.3–B18.12).
 
@@ -19,7 +19,7 @@
 - Esta onda = `da83348ee0..6d13348bb0`, 45 commits (41 de trabalho + 4 de fecho). Código: **70 ficheiros, +5 484/−255**, em
   3 crates: `ph2d-tool-painter` (57), `ph2d-wet-paint` (11), `ph2d-app-painter` (2). **Zero** em `shells/`, `Cargo.*`,
   `project-memory/`, schema; `CLAUDE.md` só a linha do §5.1.
-- Contadores (DELTA da onda): `PROJECT_SCHEMA` 0 · ADR **+1** (0204; a linha inteira cria 0201–0204 — reconte contra o `main` do
+- Contadores (DELTA da onda): `PROJECT_SCHEMA` 0 · ADR **+1** (0205; a linha inteira cria 0202–0205 — reconte contra o `main` do
   dia, o próximo livre no disco é 0205) · cenas de smoke 0 · tripla 0 · gates novos **35** (§9) · Cargo.lock sem pacote externo novo.
   O `collision-surface.sh` da linha inteira mostra `PROJECT_SCHEMA` 239 (base 237): vem das ondas anteriores, não desta.
 - ✅ **Tecto de LOC (`workspace_src_files_under_loc_cap`, 700) — CURADO por corte em `b41453c3c5`** (undo_planes 764→666 + `undo_planes_bytes`/`undo_planes_neutra`; watercolor_backdrop 737→673 + `watercolor_backdrop/molhar`; watercolor_vidro_journal_tests 781→478 + `watercolor_vidro_journal_doc_tests`; 3190 testes antes e depois). Era VERMELHO na árvore da linha:
@@ -49,7 +49,7 @@
 | # | decisão | o que se fez | estado |
 |---|---|---|---|
 | 1 | sim a 6 traços em tempo real (mudar a aritmética da `assenta`) | o produto ao bit foi de **0,77 → ~0,91 sim-s/s** (média, 4K, 6 traços); a aproximação fica atrás da chave `PH2D_ASSENTA_PALPITE=1` (0,97), **DESLIGADA**, à espera do olho do dono | parcial: o alvo 1,0 não sai sem `unsafe` (AVX2) ou mudar a física |
-| 2 | desfazer em janela/tiles do vidro (e do canvas) por traço | [ADR-0204](../../architecture/decisions/0204-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md) escrito e **implementado** (passos 0–8), chave `VIDRO_PELO_JOURNAL` ligada | feito; aberto o `fork_par_raw` da tela (§6) |
+| 2 | desfazer em janela/tiles do vidro (e do canvas) por traço | [ADR-0205](../../architecture/decisions/0205-o-vidro-entra-no-journal-por-tile-e-o-desfazer-do-traco-deixa-de-segurar-o-plano.md) escrito e **implementado** (passos 0–8), chave `VIDRO_PELO_JOURNAL` ligada | feito; aberto o `fork_par_raw` da tela (§6) |
 | 3 | o «+» a 4K com o desfazer a lembrar menos passos | `StoredPlane::Nova`: o «+» sem diff, chave `MAIS_SEM_DIFF` ligada | feito |
 
 ## 2. Item 1 — a sim do Wet a 6 traços (`2aa76c2a4e`, `787ef3bf42`, `6c1a3527b8`, `2c3a2185b0`)
@@ -79,7 +79,7 @@ intercaladas no MESMO processo, a régua é a MÉDIA. Hash do produto `a9bac64ac
 - Gates: `o_complemento_nos_blocos_da_o_commit_a_parte_ao_bit`, `o_transporte_em_lanes_da_o_escalar_ao_bit`,
   `o_palpite_do_assentar_fica_perto_da_conta_exacta` (tecto 21 níveis; controlo 107).
 
-## 3. Item 2 — o vidro no journal por tile, ADR-0204 (`552e79d66c` … `80559a3331`, `e409ad95e2`)
+## 3. Item 2 — o vidro no journal por tile, ADR-0205 (`552e79d66c` … `80559a3331`, `e409ad95e2`)
 
 Passos 0–8 em [`N7_ITEM2_vidro_tiles.md`](../missao_4k/medicoes/N7_ITEM2_vidro_tiles.md). Chave `VIDRO_PELO_JOURNAL` (`true`; `false` =
 o oráculo dos portões).
@@ -113,7 +113,7 @@ o oráculo dos portões).
 
 - A contabilidade (decisão 3): o «+» pesa 1 plano `Nova` + 1 `OnlyAfter` = 66,4 MB a 4K. Sobre camada opaca lembra MAIS (−33,2 MB);
   sobre camada rala perde até ≈ 1,5 traço por «+» no histórico.
-- O controlo de `o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio` acompanha o ADR-0204 (`v=<janela>` com a chave; a rota antiga
+- O controlo de `o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio` acompanha o ADR-0205 (`v=<janela>` com a chave; a rota antiga
   no mesmo processo continua `v=WHOLE`) — `b8be38f548`.
 - **Item 5 (espera do pen-down pelo motor, 3,8 ms + `abre_o_passo` 2 ms): documentado, NÃO curado.** O `bring_home` espera ≤ um estágio
   do worker; abrir o passo antes do `recv` fotografaria um estado a meio do estágio. Não re-medido.
@@ -184,7 +184,7 @@ Wet Liner Ctrl+Z 48,9 → 49,4 · omissão wet Ctrl+Z 37,1 → 34,9 · **Finger 
 8. **CPU parado 50–54 %** (B23.2: o laço do Painter já dorme, falta o resto da shell — outro módulo).
 9. **B19.10** (faixas/ruído), **B20.6** (anel da placa), a **espera activa ~10 % do rayon** (`crossbeam_epoch`).
 10. **A espera do pen-down pelo motor** (item 5, §4): documentada; adiar o pen-down inteiro é arriscado, meça antes.
-11. **`fork_par_raw` (aberto do ADR-0204):** copia a tela inteira (33 MB a 4K) quando outro dono forte segura o `Arc`; o mesmo em
+11. **`fork_par_raw` (aberto do ADR-0205):** copia a tela inteira (33 MB a 4K) quando outro dono forte segura o `Arc`; o mesmo em
     `undo_vivo/casco.rs`. Não aparece no pen-down WB (< 0,3 ms); confirmar o `strong` da tela no Wet antes de construir o fork por tile.
 12. **Os 7 vermelhos antigos e os 77 alarmes** ([`N7_FECHO.md`](../missao_4k/medicoes/N7_FECHO.md)): decisão do dono; só ele regrava
     (`PH2D_PINCEIS_APROVA=1`). E a chave `PH2D_ASSENTA_PALPITE` (§2): o olho do dono.
@@ -223,9 +223,9 @@ preview, `o_classic_e_o_paper_edge_zero…`, `a_primeira_marca_do_wet_refaz…`)
   (`bash scripts/cargo-test-narrow.sh ph2d-tool-painter --lib -- <os 31>`, 5,9 s; lista em `N7_FECHO.md`) · `ph2d-wet-paint` **3/3** ·
   `ph2d-app-painter` **1/1** (`apagar_duplicar_e_agrupar_compoem_na_placa_so_o_sujo_ao_bit`, placa × placa). A sonda
   `sonda_gestos_de_camada_na_cena_do_app_a_4k` é `#[ignore]`, não é gate.
-- Mutações por item (vermelhas) nas notas: ADR-0204 passos 1–7, `MAIS_SEM_DIFF` M1/M2, `TELA_NOVA_PELO_MMAP`, `ENCOLHE_NO_SILENCIO` M1/M3,
+- Mutações por item (vermelhas) nas notas: ADR-0205 passos 1–7, `MAIS_SEM_DIFF` M1/M2, `TELA_NOVA_PELO_MMAP`, `ENCOLHE_NO_SILENCIO` M1/M3,
   janela por palavras, fundo aquecido M1–M3 (3e) e M1–M4 (3f), troca de pincel/corte M1/M2, camadas M1–M7 e onda 5. Equivalentes
-  registadas: `ENCOLHE_NO_SILENCIO` M2, camadas M5/M6, ADR-0204 passo 6 (2).
+  registadas: `ENCOLHE_NO_SILENCIO` M2, camadas M5/M6, ADR-0205 passo 6 (2).
 - `fmt` (`rustfmt --edition 2024 --check` nos 70 `.rs` do diff) e `clippy -D warnings --all-targets` nas 3 crates (`PH2D_SUITE=fecho`):
   limpos (`58db5f05dc`, `08c3e5101e`; os 10 erros eram todos da onda).
 - `cargo build -p ph2d-host-desktop --profile smoke` na HEAD, 2×: 25,6 s e depois `Finished … in 0.21s`, zero `Compiling`; o único

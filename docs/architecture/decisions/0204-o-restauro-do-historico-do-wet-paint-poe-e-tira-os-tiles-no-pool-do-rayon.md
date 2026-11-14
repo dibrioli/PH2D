@@ -1,4 +1,4 @@
-# ADR-0203 — O restauro do histórico do Wet Paint põe e tira os tiles no pool do `rayon`
+# ADR-0204 — O restauro do histórico do Wet Paint põe e tira os tiles no pool do `rayon`
 
 - **Status:** Accepted — missão Painter 4K (dono 10/11, Ctrl+Z do Wet a 4K ≤ 33 ms); desenho técnico delegado (padrão-ouro).
 - **Data:** 2026-11-12
@@ -6,7 +6,7 @@
 - **Estende:** a cerca do `rayon` em `ph2d-wet-paint` (ADR-0145, ADR-0147: «qualquer uso novo exige ADR novo»).
 - **Amparo:** sonda `ph2d-wet-paint sonda_o_ctrl_z_wet_a_4k` · gate `o_restauro_por_plano_da_o_bit_do_restauro_em_serie`.
 
-> ⚠️ Número por recontar na integração (§5.0): escrito como `0203` com esta linha em `0202`.
+> Número recontado na integração de 13/11 (§5.0): a linha escreveu `0203`; a linha JointEditor tomou o `0201`.
 
 ## Contexto
 

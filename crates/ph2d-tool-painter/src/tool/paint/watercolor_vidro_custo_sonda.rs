@@ -1,4 +1,4 @@
-//! **Sonda (ignorada): o custo da cura do vidro do escorrido** (`69158c3890`, ADR-0204) a 4096². O Wet sobre a aguada
+//! **Sonda (ignorada): o custo da cura do vidro do escorrido** (`69158c3890`, ADR-0205) a 4096². O Wet sobre a aguada
 //! em papel de cor, a água a correr depois do pen-up (o escorrido escreve o vidro), e então o pen-down seguinte e o
 //! Ctrl+Z — duas telas no MESMO processo, intercaladas: `cura` (o produto) × `antes` (o vidro elidido não testemunha,
 //! [`SEM_SEGURAR_O_VIDRO`]: o custo de antes da cura, e a resposta errada). Resumo = o MÍNIMO.

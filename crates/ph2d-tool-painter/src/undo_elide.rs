@@ -49,7 +49,7 @@ pub struct ElidedRelief {
     pub(crate) heights: BTreeMap<RtLayerId, Weak<Vec<f32>>>,
     pub(crate) covers: BTreeMap<RtLayerId, Weak<Vec<u8>>>,
     pub(crate) mats: BTreeMap<RtLayerId, Weak<Vec<MaterialBytes>>>,
-    /// A 4.ª família (ADR-0204 D2): o vidro, sob a chave `VIDRO_PELO_JOURNAL`.
+    /// A 4.ª família (ADR-0205 D2): o vidro, sob a chave `VIDRO_PELO_JOURNAL`.
     pub(crate) vidros: BTreeMap<RtLayerId, Weak<Vec<crate::compositor::vidro::Vidro>>>,
 }
 

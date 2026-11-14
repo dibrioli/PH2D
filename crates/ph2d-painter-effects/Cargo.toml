@@ -32,7 +32,7 @@ ph2d-blend-mode = { path = "../ph2d-blend-mode" }
 # Canonical sRGB↔linear transfer + OKLab/OKLCH color types reused by the
 # adjustment kernels (blend math + composite happen in linear light).
 ph2d-color = { path = "../ph2d-color" }
-# B19.7 (ADR-0201): the spatial kernels' row bands and the per-pixel map run on the rayon pool, not on
+# B19.7 (ADR-0202): the spatial kernels' row bands and the per-pixel map run on the rayon pool, not on
 # a fresh OS thread per band per call (the Color Lookup inside a composite band was threads in threads).
 # Disjoint output rows, no reduction: the same bit at any pool size. No blocking wait inside a job (#66).
 rayon = "1"

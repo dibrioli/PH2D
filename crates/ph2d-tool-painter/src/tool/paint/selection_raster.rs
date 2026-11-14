@@ -180,7 +180,7 @@ fn feather(crisp: &[u8], w: usize, h: usize, r: usize) -> Vec<u8> {
         row.copy_from_slice(&crisp[(y0 + y) * w + x0..][..ww]);
     }
     let mut tmp = vec![0u8; ww * wh];
-    // Row bands on the pool (ADR-0201): every byte is its own exact sum, so no band count changes it.
+    // Row bands on the pool (ADR-0202): every byte is its own exact sum, so no band count changes it.
     let threads = crate::compositor::parallel_threads(ww * wh, wh);
     for _ in 0..3 {
         crate::compositor::em_faixas_de_linhas(&mut tmp, ww, threads, |band, y| {

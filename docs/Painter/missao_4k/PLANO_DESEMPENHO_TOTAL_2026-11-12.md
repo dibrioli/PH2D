@@ -54,7 +54,7 @@ Em voo (worktrees `.ph2d-ag-<x>`, base `7babb40720`): α2 (os próximos cortes e
 **02:55 — na linha:** α2 `9ce5682066` `e9233800b9` `2d207f37c6` (corte por linha do motor + miolo + `CerdasDoDab`;
 Flat 240 427,5 → 388,5 G; acumulado 662 → ~388 G, −41 %, hash `fe1a4c3dc2e7193a`) · δ `e5ebe3f068` (current_layers
 devolve o Arc) `d648f295f9` (cópias de plano em par_clone) · ε `22010692a6` (restauro do histórico do Wet no pool,
-ADR-0203: desfazer do motor 28,9 → 22,5 ms na sonda) · γ `c7c3e2a9c2` `3602c2b884` (laços do Óleo Real fora do fio
+ADR-0204: desfazer do motor 28,9 → 22,5 ms na sonda) · γ `c7c3e2a9c2` `3602c2b884` (laços do Óleo Real fora do fio
 do quadro: 325 → 141 G instruções nele) · δ2 `d872d3811c` `3230d3ba5f` (trocar de camada sem recompor quando a figura
 é provada igual: o quadro seguinte 47 → 0 ms; a troca 12 → 9 ms). Em voo: ε2 (fases do Ctrl+Z do Wet no app, trocar
 tiles em vez de copiar 2×), bissecção dos 5 vermelhos herdados (verdes no main, vermelhos em `4381ee6d4a`:

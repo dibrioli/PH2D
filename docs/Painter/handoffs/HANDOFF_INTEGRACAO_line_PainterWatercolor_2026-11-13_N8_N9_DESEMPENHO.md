@@ -15,7 +15,7 @@
 - ⚠️ **`the_shell_only_shrinks_and_every_app_crate_too`**: as +21 linhas da shell são da pref (o padrão de toda pref do app mora lá);
   já estava vermelho na linha por app-painter/app-pixel (n.º 8 §vermelhos). A cura é do integrador: recontar, ou mover a leitura das
   prefs do Painter para a crate da família, se a catraca o exigir.
-- Contadores (DELTA destas janelas): `PROJECT_SCHEMA` 0 · ADR 0 (a linha inteira cria 0201–0204; reconte contra o `main` do dia) ·
+- Contadores (DELTA destas janelas): `PROJECT_SCHEMA` 0 · ADR 0 (a linha inteira cria 0202–0205; reconte contra o `main` do dia) ·
   cenas de smoke 0 · Cargo.lock sem pacote novo · registos de painel 0 · `quantas_entradas…a_carga_de_comandos…`: `wet_tuning` 12 × 14
   (o cartão Performance; número que soma entre linhas — reconte).
 - O que um merge pode partir (desenho mudado):
@@ -39,7 +39,7 @@
 | `cbd47ce04b` | Impasto apagar/duplicar/grupo recompõem só tinta ∪ corpo + 1 texel | gate 36 casos; app sem régua de calma (§3) |
 | `3026ea2e53` | o `[quadro-lento]` imprime as partes do Painter no quadro | — |
 | `69158c3890` | **defeito**: o Ctrl+Z logo após um traço Wet sobre aguada não desfazia o vidro do escorrido — a absorção leva-o | — |
-| `8a1714c8d0` | a cura acima custava a varredura de 58 MB: o vidro do topo **compõe-se com o journal** nas caixas dos dois (ADR-0204) | sonda 4096²: pen-down 46–64 → **14,2**; Ctrl+Z 71–93 → **35,6** |
+| `8a1714c8d0` | a cura acima custava a varredura de 58 MB: o vidro do topo **compõe-se com o journal** nas caixas dos dois (ADR-0205) | sonda 4096²: pen-down 46–64 → **14,2**; Ctrl+Z 71–93 → **35,6** |
 | `c166588404` | a troca com a tinta viva do Wet dobra na placa **só a parte do relevo** (a ótica muda, o relevo não) | gate: a dobra sai (1 texel); app sob load 7–20 inconclusivo (troca Filbert 46,5–46,9 × 49,4–50,9) |
 
 Detalhe, mecanismos e mutações: N8_NOTAS §Item 2/3/Cartão e N9_NOTAS §Item 2/3.

@@ -1,4 +1,4 @@
-//! **O VIDRO na janela** (ADR-0204 D1) — filho de [`super`]: o journal por tile do plano do vidro, a
+//! **O VIDRO na janela** (ADR-0205 D1) — filho de [`super`]: o journal por tile do plano do vidro, a
 //! 5.ª família do documento, no molde de [`super::ReliefJournals`] (um mapa por camada: dois planos de
 //! camadas diferentes têm a mesma forma, e um 2.º dono marca o journal como misturado).
 
@@ -17,7 +17,7 @@ pub(super) struct VidroJournal {
 }
 
 thread_local! {
-    /// **A chave do A×B** (ADR-0204): `true` = o `before` e o cursor DESCREVEM o vidro (testemunha `Weak` +
+    /// **A chave do A×B** (ADR-0205): `true` = o `before` e o cursor DESCREVEM o vidro (testemunha `Weak` +
     /// journal por tile); `false` = o caminho de antes, que os segura (o oráculo).
     static VIDRO_PELO_JOURNAL: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
 }
@@ -103,7 +103,7 @@ impl WriteState {
     }
 
     /// **O antes do vidro, numa janela densa** `[x0, x1) × [y0, y1)` de um plano `w` de largura:
-    /// `journal.get(i).unwrap_or(vivo[i])` (ADR-0204 D2). Tirada ANTES da escrita da janela.
+    /// `journal.get(i).unwrap_or(vivo[i])` (ADR-0205 D2). Tirada ANTES da escrita da janela.
     #[must_use]
     pub(crate) fn vidro_antes_na_janela(
         &self,
@@ -131,7 +131,7 @@ impl WriteState {
         j.layer.is_none() && !j.mixed && !j.incomplete && !j.absent
     }
 
-    /// **O vidro do topo COMPOSTO com o journal** — a absorção barata do escorrido (ADR-0204): `topo` = o mapa do
+    /// **O vidro do topo COMPOSTO com o journal** — a absorção barata do escorrido (ADR-0205): `topo` = o mapa do
     /// vidro da entrada do topo, `vivo` = o mapa de agora. Devolve o mapa `antes0 → vivo` e se o escorrido mudou
     /// algum byte do vidro. `None` = o journal não o descreve, ou a forma não compõe (quem chama segura o plano).
     pub(crate) fn vidro_composto(
@@ -146,7 +146,7 @@ impl WriteState {
         topo.composto_com_o_journal(vivo, j.layer?, &j.tiles)
     }
 
-    /// **O vidro do último reset, SEGURADO** — a absorção do escorrido (ADR-0204): `testemunhas` = o cursor
+    /// **O vidro do último reset, SEGURADO** — a absorção do escorrido (ADR-0205): `testemunhas` = o cursor
     /// elidido, `vivo` = o mapa de agora. A camada do journal volta pelos tiles (`rewind_into`); as outras
     /// têm de ser o MESMO plano que a testemunha aponta. `None` = o journal não o descreve (quem chama recusa).
     pub(crate) fn vidro_no_reset(
@@ -229,7 +229,7 @@ mod tests {
         [v, v ^ k, k, 1, 2, 3, v.wrapping_add(k)]
     }
 
-    /// ADR-0204 D1: a captura toma os tiles que a região toca (os parciais pelo tamanho real), só a 1.ª vez,
+    /// ADR-0205 D1: a captura toma os tiles que a região toca (os parciais pelo tamanho real), só a 1.ª vez,
     /// e o antes reconstruído é o plano de antes ao bit; outra camada mistura o journal.
     #[test]
     fn o_journal_do_vidro_guarda_os_tiles_que_a_regiao_toca_e_so_a_primeira_vez() {

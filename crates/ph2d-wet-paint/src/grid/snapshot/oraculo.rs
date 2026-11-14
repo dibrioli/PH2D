@@ -1,5 +1,5 @@
 //! O restauro e o inverso do histórico de ANTES (tiles em série, recontagens célula a célula), verbatim: os oráculos
-//! do gate `o_restauro_por_plano_da_o_bit_do_restauro_em_serie` e o lado A da sonda (ADR-0203).
+//! do gate `o_restauro_por_plano_da_o_bit_do_restauro_em_serie` e o lado A da sonda (ADR-0204).
 
 use super::*;
 

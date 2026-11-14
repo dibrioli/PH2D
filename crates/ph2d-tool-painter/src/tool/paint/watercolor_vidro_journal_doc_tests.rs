@@ -1,4 +1,4 @@
-//! **O vidro no journal por tile** (ADR-0204), segunda metade: o documento inteiro (cada vidro e cada tela) contra
+//! **O vidro no journal por tile** (ADR-0205), segunda metade: o documento inteiro (cada vidro e cada tela) contra
 //! o oráculo nos passos 5–7 — o Wet sobre a aguada, a camada nova e o tecto do desfazer. Partido de
 //! `watercolor_vidro_journal_tests.rs` pelo tecto de 700 linhas; os ajudantes moram lá.
 
@@ -61,7 +61,7 @@ fn desfaz_e_refaz_tudo(j: &mut PainterTool, o: &mut PainterTool, n: usize, depoi
     );
 }
 
-/// **ADR-0204 passo 5: o composite Wet sobre a aguada volta ao bit no desfazer.** Aguadas em papel de cor, Wet
+/// **ADR-0205 passo 5: o composite Wet sobre a aguada volta ao bit no desfazer.** Aguadas em papel de cor, Wet
 /// Paint por cima na mesma camada (o `molhada` escreve o vidro pelo `abre_o_vidro`), drenando cada quadro; depois
 /// de cada traço, de desfazer tudo e de refazer tudo, o documento é o do oráculo ao bit.
 #[test]
@@ -108,7 +108,7 @@ fn o_composite_wet_sobre_aguada_volta_ao_bit_no_desfazer() {
     desfaz_e_refaz_tudo(&mut j, &mut o, 6, &depois);
 }
 
-/// **ADR-0204 passo 6: a camada nova e o vidro elidido dão o bit.** Dois traços WB na base, «+», dois na nova,
+/// **ADR-0205 passo 6: a camada nova e o vidro elidido dão o bit.** Dois traços WB na base, «+», dois na nova,
 /// um na base; desfaz tudo até antes do «+» e refaz tudo: o documento ao bit do oráculo. O 1.º traço na base
 /// depois do «+» não copia o plano do vidro (o oráculo copia: o controlo).
 #[test]
@@ -230,7 +230,7 @@ fn bytes_dos_tiles_que_diferem(a: &[Vidro], b: &[Vidro]) -> usize {
     soma
 }
 
-/// **ADR-0204 D5: o tecto conta o journal do vidro.** Com o gesto ABERTO (3.º traço WB a meio), o journal do passo
+/// **ADR-0205 D5: o tecto conta o journal do vidro.** Com o gesto ABERTO (3.º traço WB a meio), o journal do passo
 /// soma em `journal_bytes_retidos` e o da sessão no instantâneo: largar a sessão baixa o instantâneo em pelo menos os
 /// tiles que mudaram desde o início dela (o oráculo `GUARDA_O_INICIO_DA_SESSAO`) e em menos que o plano. Com o mesmo
 /// `max_bytes`, a pilha pelo journal retém pelo menos os passos do oráculo (a chave desligada).
@@ -315,7 +315,7 @@ fn o_tecto_do_desfazer_conta_o_journal_do_vidro() {
     );
 }
 
-/// **A absorção do escorrido com o vidro COMPOSTO dá o documento da que o SEGURA** (ADR-0204): o Wet sobre a
+/// **A absorção do escorrido com o vidro COMPOSTO dá o documento da que o SEGURA** (ADR-0205): o Wet sobre a
 /// aguada, a água a correr entre os traços (o escorrido escreve o vidro depois do commit), e cada traço, cada
 /// desfazer e cada refazer ao bit da rota segurada — as duas com o journal ligado, no mesmo processo. O
 /// controlo: a composta disparou em `j` e a segurada em `o` (sem isso as duas seriam a mesma rota).

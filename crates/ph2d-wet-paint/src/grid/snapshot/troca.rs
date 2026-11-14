@@ -1,6 +1,6 @@
 //! O undo/redo do motor numa passada: o registo que sai da pilha TROCA os seus tiles com a grade nos planos densos que
 //! o restauro não redimensiona — o tile passa a ser o do inverso, sem alocar nem largar a memória dele; o resto copia
-//! como o [`Registo::inverso`] + [`Registo::restaura_com`], que ficam como oráculo (`ANTIGO`; ADR-0203).
+//! como o [`Registo::inverso`] + [`Registo::restaura_com`], que ficam como oráculo (`ANTIGO`; ADR-0204).
 
 use super::*;
 

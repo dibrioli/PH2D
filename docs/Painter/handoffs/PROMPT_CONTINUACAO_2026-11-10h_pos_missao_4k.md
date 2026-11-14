@@ -15,7 +15,7 @@ Cole numa janela NOVA. Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/l
 9 recusas medidas · 174 abertos. 28 defeitos curados (BUGS #86–#113: perda de dados nas camadas/undo/Wet entre abas, traço preso
 fora da janela, pânicos da placa e do worker Wet, macros meio-aplicadas). Desempenho 4K (Radeon integrada, A×B por item): quadro
 38,8→10,2 ms; toque/traço/Ctrl+Z 32–38→15–17 ms; arrasto de ajuste 1 149→134 ms; undo Impasto 265→32 MB; Wet dab 897→26 MB
-(motor); planos Gaussiano/Nitidez 434→3 ms; janela oculta 97–100 %→44–46 % CPU. ADR-0201 (rayon no compositor), ADR-0202
+(motor); planos Gaussiano/Nitidez 434→3 ms; janela oculta 97–100 %→44–46 % CPU. ADR-0202 (rayon no compositor), ADR-0203
 (quadro a pedido + `winit` vendorizado). PROJECT_SCHEMA 231→232. Clippy workspace e fmt verdes no fecho; mutação 15/17 sangram.
 
 ## ABERTO, por ordem

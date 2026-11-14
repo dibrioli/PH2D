@@ -29,7 +29,7 @@ thread_local! {
     /// **Quantas vezes o detector perguntou ao canvas só dentro da janela DECLARADA.**
     pub(crate) static DETECTED_WITHIN: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 
-    /// Quantas absorções correram com o vidro do reset SEGURADO (ADR-0204, o caminho caro).
+    /// Quantas absorções correram com o vidro do reset SEGURADO (ADR-0205, o caminho caro).
     pub(crate) static VIDRO_SEGURADO: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 
     /// Quantas absorções correram com o vidro COMPOSTO com o journal (o caminho do produto).
@@ -40,7 +40,7 @@ thread_local! {
         const { std::cell::Cell::new(RotaDoVidro::Composta) };
 }
 
-/// Por onde a absorção leva o vidro que o escorrido escreveu depois do commit (ADR-0204).
+/// Por onde a absorção leva o vidro que o escorrido escreveu depois do commit (ADR-0205).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum RotaDoVidro {
     /// O produto: o delta do topo composto com o journal, nas caixas dos dois.
@@ -91,7 +91,7 @@ impl UndoController {
     /// escrever uma segunda lista de planos é deliberado: uma segunda lista é a que nasce incompleta
     /// quando o vigésimo plano aparecer.
     ///
-    /// # O VIDRO pelo journal (ADR-0204)
+    /// # O VIDRO pelo journal (ADR-0205)
     ///
     /// O cursor elide o vidro (não segura os bytes), então ele não testemunha no detector. Mas o escorrido
     /// do Wet ESCREVE o vidro depois do commit, e essa escrita é do topo como a da tela. Só quando o journal
@@ -172,7 +172,7 @@ impl UndoController {
         let Some(cursor) = self.cursor.as_deref() else {
             return Some(false); // história vazia: não há topo a corrigir
         };
-        // O vidro do topo seguido do journal (ADR-0204): o mapa `antes0 → vivo`, e se o escorrido o mudou.
+        // O vidro do topo seguido do journal (ADR-0205): o mapa `antes0 → vivo`, e se o escorrido o mudou.
         let vidro_novo = match (modo, self.undo.last()) {
             (Vidro::Composto, Some(top)) => Some(
                 self.write_state
@@ -226,7 +226,7 @@ impl UndoController {
             m.heights.clear();
             m.covers.clear();
             m.mats.clear();
-            // O vidro descrito pelo journal (ADR-0204) também não testemunha aqui, pela mesma razão.
+            // O vidro descrito pelo journal (ADR-0205) também não testemunha aqui, pela mesma razão.
             if crate::undo::window::vidro_pelo_journal() && modo != Vidro::Segurado {
                 m.vidros.clear();
             }

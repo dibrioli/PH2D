@@ -1,4 +1,4 @@
-# ADR-0204 — O vidro entra no journal por tile e o desfazer do traço deixa de segurar o plano
+# ADR-0205 — O vidro entra no journal por tile e o desfazer do traço deixa de segurar o plano
 
 - **Status:** Accepted, **Implementado** (13/11, passos 0–8; ver «Implementado» no fim) — missão Painter 4K; o dono autorizou em 13/11 («2- pode»: desfazer em janela/tiles do vidro e do
   canvas por traço); desenho técnico delegado (padrão-ouro).
@@ -10,8 +10,7 @@
   guarda os tiles dela (33 MB → a caixa); `4e4486cb30` — o mesmo no composite Wet.
 - **Amparo:** sonda `sonda_primeiro_traco` (`ph2d-tool-painter`, `PH2D_SONDA_PARTES=1`), handoff n.º 6 §3/§4/§6.
 
-> ⚠️ Número por recontar na integração (§5.0): escrito como `0204` com o maior existente em `0203` nesta linha e
-> nenhum `0204` noutra worktree (`ls Worktrees/*/docs/architecture/decisions`, 13/11).
+> Número recontado na integração de 13/11 (§5.0): a linha escreveu `0204`; a linha JointEditor tomou o `0201`.
 
 ## Contexto
 

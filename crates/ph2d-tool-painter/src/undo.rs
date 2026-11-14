@@ -425,7 +425,7 @@ impl Default for UndoController {
 }
 
 impl UndoController {
-    /// O cursor segura este plano do vidro da camada `l`? (ADR-0204 passo 0: quem segura o plano.)
+    /// O cursor segura este plano do vidro da camada `l`? (ADR-0205 passo 0: quem segura o plano.)
     #[cfg(test)]
     pub(crate) fn cursor_canvas_ptr(&self) -> Option<*const Vec<u8>> {
         self.cursor.as_ref().map(|c| Arc::as_ptr(&c.canvas_rgba))

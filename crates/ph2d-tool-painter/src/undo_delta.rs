@@ -370,7 +370,7 @@ pub(crate) enum StoredEntry<T> {
     OnlyBefore(Arc<Vec<T>>),
     OnlyAfter(Arc<Vec<T>>),
     /// Um `OnlyAfter` que guarda só a janela fora do neutro (`T::default()`), sem segurar o plano vivo:
-    /// o refazer recria-o ([`aparece`], ADR-0204). `win = None` = nasceu todo neutro.
+    /// o refazer recria-o ([`aparece`], ADR-0205). `win = None` = nasceu todo neutro.
     Aparece {
         len: usize,
         win: Option<PlaneWindow>,
@@ -654,7 +654,7 @@ pub(crate) mod tiles;
 mod copiado;
 
 #[path = "undo_delta_composto.rs"]
-pub(crate) mod composto; // o topo seguido do journal do vidro (a absorção do escorrido, ADR-0204)
+pub(crate) mod composto; // o topo seguido do journal do vidro (a absorção do escorrido, ADR-0205)
 
 #[cfg(test)]
 #[path = "undo_delta_tests.rs"]

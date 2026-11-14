@@ -1,4 +1,4 @@
-//! **O vidro no journal por tile** (ADR-0204): o passo do traço captura os tiles do vidro que a região
+//! **O vidro no journal por tile** (ADR-0205): o passo do traço captura os tiles do vidro que a região
 //! escrita toca, e o antes reconstruído (`journal.get(i).unwrap_or(vivo[i])`) é o plano de antes ao bit.
 
 use crate::compositor::vidro::Vidro;
@@ -118,7 +118,7 @@ fn o_traco_que_cruza_tiles_guarda_so_os_tiles_tocados() {
     traco_conferido(&mut t, [505.0, 375.0], [517.0, 387.0], "canto parcial");
 }
 
-/// **ADR-0204 passo 0 — quem segura o plano do vidro no 2.º pen-down** (a contagem não depende do tamanho da
+/// **ADR-0205 passo 0 — quem segura o plano do vidro no 2.º pen-down** (a contagem não depende do tamanho da
 /// tela). Imprime, por dono, quem segura o plano vivo antes e depois do 1.º quadro do 2.º traço, e as cópias.
 /// Asserta só que a conta fecha: nenhum dono sem nome.
 #[test]
@@ -170,7 +170,7 @@ fn quem_segura_o_vidro_no_segundo_pen_down() {
     traco(&mut t, 140.0);
     println!("cópias do plano no 3.º traço: {}", COPIAS_DO_VIDRO.get());
     // O 1.º traço CRIOU o plano: sem a chave a entrada dele (`OnlyAfter`) segura-o até ao 2.º traço; com
-    // ela guarda só a janela (`Aparece`, ADR-0204) e não segura nada.
+    // ela guarda só a janela (`Aparece`, ADR-0205) e não segura nada.
     let da_entrada = usize::from(!crate::undo::window::vidro_pelo_journal());
     assert_eq!(
         repouso.0,
@@ -214,7 +214,7 @@ pub(super) fn traco_k(t: &mut PainterTool, k: usize) {
     }
 }
 
-/// ADR-0204 D4: com o `before` e o cursor a DESCREVER o vidro (journal por tile), o desfazer e o refazer do
+/// ADR-0205 D4: com o `before` e o cursor a DESCREVER o vidro (journal por tile), o desfazer e o refazer do
 /// 1.º, 2.º e N-ésimo traço dão o vidro E a tela ao bit do oráculo (a chave desligada), no mesmo processo.
 #[test]
 fn o_vidro_do_traco_volta_ao_bit_no_desfazer_e_no_refazer() {
@@ -305,7 +305,7 @@ fn o_vidro_do_traco_volta_ao_bit_no_desfazer_e_no_refazer() {
     crate::undo::window::set_vidro_pelo_journal(true);
 }
 
-/// **ADR-0204: o 2.º traço (e cada um depois) não copia o plano do vidro.** A entrada do 1.º traço guarda só a
+/// **ADR-0205: o 2.º traço (e cada um depois) não copia o plano do vidro.** A entrada do 1.º traço guarda só a
 /// janela fora do neutro (`StoredEntry::Aparece`); o cursor e o `before` descrevem o vidro pelo journal. O
 /// controlo é a chave desligada no mesmo processo: lá o 2.º traço copia (a régua mede alguma coisa).
 #[test]
@@ -339,7 +339,7 @@ fn o_segundo_traco_nao_copia_o_plano_do_vidro() {
     );
 }
 
-/// **ADR-0204 D2: o traço Digital sobre a aguada continua o vidro lendo o journal** (o `before` já não segura
+/// **ADR-0205 D2: o traço Digital sobre a aguada continua o vidro lendo o journal** (o `before` já não segura
 /// o plano: `continua_o_vidro_do_traco` lê o antes pelo journal sobre o vivo). Três aguadas, depois Digital por
 /// cima (sobrepostos e a cruzar tiles); depois de cada traço, de desfazer tudo o Digital e de o refazer, o vidro
 /// e a tela são os do oráculo (a chave desligada) ao bit, no mesmo processo.

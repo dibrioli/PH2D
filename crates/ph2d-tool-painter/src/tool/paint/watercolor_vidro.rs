@@ -9,12 +9,12 @@ use super::*;
 use crate::compositor::vidro::Vidro;
 use std::sync::Weak;
 
-/// A base congelada (e a camada) e o vidro dela, pelo journal da sessão (ADR-0204 D3).
+/// A base congelada (e a camada) e o vidro dela, pelo journal da sessão (ADR-0205 D3).
 pub(super) type BaseCongelada = (Weak<Vec<u8>>, RtLayerId, SessaoDoVidro);
 /// O plano do vidro aberto para escrita e o vidro da base na janela do quadro.
 pub(super) type PlanoEBase = (Arc<Vec<Vidro>>, JanelaDoVidro);
 
-/// **O vidro do início da sessão molhada** (ADR-0204 D3): os tiles que a sessão escreveu, tomados na 1.ª
+/// **O vidro do início da sessão molhada** (ADR-0205 D3): os tiles que a sessão escreveu, tomados na 1.ª
 /// escrita de cada um; o resto é o vivo (§5.28). Atravessa traços: não zera com o passo.
 #[derive(Clone, Default)]
 pub(super) struct SessaoDoVidro {
@@ -117,7 +117,7 @@ thread_local! {
 }
 
 impl VidroCongelado {
-    /// **O que as duas sessões do vidro retêm** (ADR-0204 D5): os tiles tomados desde a congelação.
+    /// **O que as duas sessões do vidro retêm** (ADR-0205 D5): os tiles tomados desde a congelação.
     pub(crate) fn bytes(&self) -> usize {
         [&self.aguada, &self.molhada]
             .into_iter()
@@ -293,7 +293,7 @@ impl PainterTool {
         {
             return None;
         }
-        // O vidro de antes do traço: o que o `before` segura (o oráculo) ou, descrito (ADR-0204 D2), o journal
+        // O vidro de antes do traço: o que o `before` segura (o oráculo) ou, descrito (ADR-0205 D2), o journal
         // sobre o vivo, materializado na janela que este passe escreve ANTES do `fork_vidro`.
         let antes = self.paint.stroke_undo.as_ref()?;
         let segurado = antes.vidros.get(&camada).map(Arc::clone);

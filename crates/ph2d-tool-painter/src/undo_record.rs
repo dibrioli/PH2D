@@ -105,7 +105,7 @@ impl UndoController {
     }
 
     /// [`Self::base_for_top`]; `sem_vidro` = quem chama não lê o vidro da base (a absorção que o COMPÕE com o
-    /// journal, ADR-0204): o vidro elidido sai da base em vez de a recusar.
+    /// journal, ADR-0205): o vidro elidido sai da base em vez de a recusar.
     pub(super) fn base_for_top_com(
         &self,
         live: Option<&std::sync::Arc<Vec<u8>>>,

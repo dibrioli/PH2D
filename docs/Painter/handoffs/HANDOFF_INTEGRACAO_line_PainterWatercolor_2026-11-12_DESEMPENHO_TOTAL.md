@@ -13,15 +13,15 @@ Plano por famílias e estado: [PLANO_DESEMPENHO_TOTAL_2026-11-12.md](../missao_4
 - Esta janela: `4381ee6d4a..HEAD` (52 commits; 87+ ficheiros, +4 651/−523 antes do corte dos tectos). Tocado:
   `ph2d-tool-painter` (44 ficheiros) · `ph2d-wet-paint` (19) · `ph2d-painter-brush` (4) · `ph2d-app-painter` (4) ·
   `ph2d-render` (3) · `ph2d-pigment` (3) · `ph2d-panel-painter-layers` (3) · `Cargo.toml` (perfil smoke) · `Cargo.lock` ·
-  `docs/` (ADR-0203, medições, plano). **`shells/desktop` intocado.**
+  `docs/` (ADR-0204, medições, plano). **`shells/desktop` intocado.**
 - O trabalho foi feito em worktrees de agentes (`.ph2d-ag-<x>`, ramos `tmp/painter-<x>`) e trazido por `cherry-pick -x`
   (cada commit cita o original); os ramos tmp e as worktrees são limpos no fim desta janela.
 
 ## 2. Superfície de colisão (`bash scripts/collision-surface.sh`, 12/11)
 
 - Contrato congelado §6: `node.rs`/`tool.rs` intocados. Nenhum tipo de componente/registo novo.
-- **ADR: esta linha cria 0201, 0202 e agora 0203** (`0203-o-restauro-do-historico-do-wet-paint-poe-e-tira-os-tiles-no-pool-do-rayon.md`,
-  com 2 adendas). O main tem até 0200 — **reconte contra o main do dia** (outra linha pode ter criado 0201+).
+- **ADR: esta linha cria 0202, 0203 e agora 0204** (`0204-o-restauro-do-historico-do-wet-paint-poe-e-tira-os-tiles-no-pool-do-rayon.md`,
+  com 2 adendas). O main tem até 0200 — **reconte contra o main do dia** (outra linha pode ter criado 0202+).
 - `Cargo.lock`: só `rayon` acrescentado às deps da `ph2d-app-painter` (pacote já existente na árvore). Nenhum pacote novo.
 - `Cargo.toml` raiz: `[profile.smoke.package.ph2d-pigment] codegen-units = 1, incremental = false` (como painter-brush e
   wet-paint). Colide só se outra linha mexer na mesma secção de perfis — união trivial.
@@ -35,7 +35,7 @@ Plano por famílias e estado: [PLANO_DESEMPENHO_TOTAL_2026-11-12.md](../missao_4
   `PaintedDocument.fator_aparencia` (B34.1, `602f277f35`) tinha entrado no fim sem subir a versão; a impressão
   `IMPRESSAO_DO_DOCUMENTO_V3 = 0x227b_81b4_002d_bafd`; o leitor da v1 (`LeituraSemTintas`, `DOCUMENTO_SEM_TINTAS`) saiu
   (CLAUDE §0.11). Se a linha Macros mexer no mesmo número, **conte**: a versão sobe uma vez por mudança de formato.
-- ADR +1 (0203). Registo de componentes 0. Pacotes externos 0.
+- ADR +1 (0204). Registo de componentes 0. Pacotes externos 0.
 
 ## 4. O que entra (antes → depois; 4K na Radeon integrada, `--profile smoke`, mínimo de blocos intercalados)
 
@@ -58,7 +58,7 @@ Por família (o commit diz o mecanismo, a medição e os testes):
   reancorado (3 mutações).
 - **Wet:** `b5f4a90128` Ctrl+Z sem o memset do fluxo · `62bb7c2efa` o preparo do toque arma-se no evento (o laço a pedido
   não dá `on_tick` antes do 1.º gesto; o preparo vale 15 ms, mesmo binário, r13) · `3848f195aa` provas.
-  `22010692a6` `f7bc76d564` `7e9091c171` `7e2b088c64` (ADR-0203): o histórico do motor TROCA os tiles com a grade em vez de
+  `22010692a6` `f7bc76d564` `7e9091c171` `7e2b088c64` (ADR-0204): o histórico do motor TROCA os tiles com a grade em vez de
   copiar 2× (densos e esparsos), no pool; a foto repõe só o que o «depois» não partilha. Oráculos verbatim em `cfg(test)`.
 - **Cerdas largas (B14.3):** `c572c293e2` (memo do espectro + `ph2d-pigment` num pedaço no smoke + pow fora do laço) ·
   `ac4730824c` `61c3ceb0bc` (a mistura espectral em 12 pistas SSE, ao bit; prova exaustiva 2³² do log2/exp2, `#[ignore]`) ·
@@ -142,7 +142,7 @@ Binário: `Worktrees/line-PainterWatercolor/target/smoke/ph2d-host-desktop`, com
    silhueta base (`falloff_t`, `footprint.rs:556`) 5 %, `CerdasDoDab::em` 4,5 %, a flag «linha limpa» do `tip_rows` (7
    escritores), `penteia_o_relevo_do_dab` 3,7 %. Fora do bit (dono): bilinear da ponta, memo f32, corte analítico.
 2. **Ctrl+Z do Wet/Óleo:** Wet 34 ms (alvo 33), Filbert 48, Óleo 47. Resta: `FotoDoMotor::de` 3–6 ms (precisa de
-   rastrear os tiles que a água mudou), o chunk esparso como tile 64×64 para trocar ponteiros (ADR-0203 adenda 2).
+   rastrear os tiles que a água mudou), o chunk esparso como tile 64×64 para trocar ponteiros (ADR-0204 adenda 2).
 3. **Água com Óleo Real:** o campo refaz-se na janela inteira a cada imagem (a revisão muda a cada passo) — guardar por
    linhas; B13.5/B13.6 (o passo cresce com os traços) não atacados; B13.7 (Jacobi) muda bits = dono.
    ⛔ **Recusa MEDIDA (12/11, ramo `tmp/painter-gama2`): o cache do campo por LINHAS não tem o que poupar.** A caixa
@@ -166,7 +166,7 @@ Binário: `Worktrees/line-PainterWatercolor/target/smoke/ph2d-host-desktop`, com
 
 - **Medições com carga:** a máquina esteve com load 15–190 (outra sessão a integrar + os agentes). Os ganhos foram aceites
   por instruções (`perf stat`), por A×B no MESMO binário ou por matriz intercalada com o mínimo; o relógio absoluto vale pouco.
-- **Mudança de arquitectura de paralelismo:** a `ph2d-wet-paint` passa a usar o pool no restauro do histórico (ADR-0203);
+- **Mudança de arquitectura de paralelismo:** a `ph2d-wet-paint` passa a usar o pool no restauro do histórico (ADR-0204);
   a `ph2d-app-painter` cria um pool rayon próprio para a miniatura. Testes de contagem de fios do SO
   (`as_faixas_fora_do_compositor_nao_abrem_fios_do_so`) foram vistos instáveis só em lote (passam sozinhos).
 - **Testes lentos novos:** `o_restauro_por_plano_da_o_bit_do_restauro_em_serie` (27–55 s sob carga),

@@ -13,7 +13,7 @@
   - `PROJECT_SCHEMA`: degraus da linha recontados por `python3 scripts/schema-recount.py`: B50.1 `231→232` virou `237→238`; B34.1 `232→233` virou `238→239`; const = **239**, tripla **(239,13,29)**; comentários corrigidos em `299399bf9b`.
   - `CLAUDE.md` §5.1 = texto do main + a entrada Painter da linha (4 vezes); `docs/archive/.../COMENTARIOS_CORTADOS_PARA_O_TECTO_2026-11-10.md` por rerere, append-only verificado.
   - Mergiraf resolveu `janela_do_jogo.rs` (2×): o diff da linha contra o main é adição pura (`pede_o_quadro`), conferido.
-  - ADR-0202: sem colisão (máximo do main = 0200). `cargo check -p ph2d-host-desktop` verde depois do rebase.
+  - ADR-0203: sem colisão (máximo do main = 0200). `cargo check -p ph2d-host-desktop` verde depois do rebase.
 - **Risco para o integrador:** `cargo fmt --all` nesta árvore reformata ficheiros de OUTRAS linhas vindos do main (`ph2d-editor-core` `card_loose_ops.rs`, `tests/it/a_frame_request_has_a_listener.rs`, `ph2d-physics-outline` `tests/pontos/w5.rs`): o main não está fmt-clean e a linha não os tocou. Formate só os ficheiros da linha.
 - Ficheiros da onda: `crates/ph2d-wet-paint/examples/sonda_estagios_4k.rs`, `…/advect_commit.rs` (`advect_jacobi_partes`, `#[doc(hidden)]`), `crates/ph2d-tool-painter/src/tool/paint/wetpaint/` (`watercolor_vidro.rs`, `watercolor_smudge.rs`, `watercolor_vidro_segue_tests.rs`, `sonda_primeiro_traco.rs`).
 - Contadores (DELTA da onda): gates novos 2 (§2); `PROJECT_SCHEMA` 0 (o 239 é do rebase); ADR 0; cenas de smoke 0; tripla 0.

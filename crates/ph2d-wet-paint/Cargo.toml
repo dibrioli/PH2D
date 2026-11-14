@@ -56,7 +56,7 @@ libm = { version = "=0.2.16", default-features = false }
 # REFERENCIA (o porque de cada um esta em `src/par.rs`). Qualquer uso novo de
 # rayon nesta crate exige ADR novo.
 #
-#   ADR-0203 -- o undo/redo do historico (`grid/snapshot.rs`): o inverso tira
+#   ADR-0204 -- o undo/redo do historico (`grid/snapshot.rs`): o inverso tira
 #     os tiles por tile, o restauro os poe por plano/faixa; byte-identico ao
 #     serial (oraculo `ANTIGO` + gate `o_restauro_por_plano_da_o_bit_...`).
 rayon = "1"

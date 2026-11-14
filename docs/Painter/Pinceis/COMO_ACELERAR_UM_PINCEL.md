@@ -108,7 +108,7 @@ Medidas a 4K na Radeon integrada (nunca a RTX), A×B no mesmo binário; o detalh
 |---|---|---|
 | **Custar pela CAIXA, não pela tela**: cada passe recebe a região mudada (dabs do passo, união dos sujos) e o antigo fica como oráculo `#[cfg(test)]` | balde (B48), aguada pen-up (B16.2), enterro do Wet (B02.A3), premul/mips da prévia (B20a), planos Gaussiano/Nitidez (B15.5) | 11,3→3,2 ms · 48,5→1,95 ms · visitas 77 473→12 100 · planos 434→3 ms |
 | **Campo esparso por pedaços** (`CampoEsparso<T>`, 4096 células; tiles mudados no undo) | `Grid::aparencia` (B12b), `StoredPlane::changed_tiles` (B17b), RewetCache 64² (B16b) | Wet dab r30 897→26 MB · undo Impasto diagonal 265→32 MB · Rewet 201→3,1 MB |
-| **Pool do rayon com a mesma partição** (faixas de linhas, sem redução: o byte não depende do nº de fios) | compositor e ajustes (ADR-0201), Feather em janela deslizante (B40.A2), cópia do par_clone em blocos de 256 KiB (B17a) | 1 044 fios do SO → 0 · Feather r64 11 121→16,8 ms · cópia 7,72→1,67 ms |
+| **Pool do rayon com a mesma partição** (faixas de linhas, sem redução: o byte não depende do nº de fios) | compositor e ajustes (ADR-0202), Feather em janela deslizante (B40.A2), cópia do par_clone em blocos de 256 KiB (B17a) | 1 044 fios do SO → 0 · Feather r64 11 121→16,8 ms · cópia 7,72→1,67 ms |
 | **Pó/dente por ladrilho 256²** em vez da tela | `po_do_papel` (B49.1) | pen-down Pastel 4K 6,65→2,62 ms |
 | **Memória própria do dente** no `GraoCache` (sem reamostrar) | B26.A2 | 0,149→0,045 ms/dab |
 | **Silhueta base da ponta memorizada** | Flat Bristle 240 (B14c) | 7,11 M→1,89 M avaliações/dab (mas só −4,9 % no traço: a silhueta já não é a alavanca) |

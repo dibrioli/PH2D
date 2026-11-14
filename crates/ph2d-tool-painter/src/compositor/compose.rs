@@ -98,7 +98,7 @@ thread_local! {
 }
 
 /// `f(band, first_row)` over `region` (full rows of `row_bytes`) in `threads` disjoint row bands on the
-/// rayon pool (ADR-0201): no reduction, so the bytes do not depend on the band count. No blocking wait
+/// rayon pool (ADR-0202): no reduction, so the bytes do not depend on the band count. No blocking wait
 /// inside a job (#66).
 pub(crate) fn em_faixas_de_linhas<F>(region: &mut [u8], row_bytes: usize, threads: usize, f: F)
 where

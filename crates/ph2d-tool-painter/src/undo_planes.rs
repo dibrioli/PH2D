@@ -65,7 +65,7 @@ thread_local! {
     /// conta o próprio trabalho — e um contador por-thread não tem a lista de "quem precisa travar" que a
     /// §5.57 viu apodrecer no contador da LUT do `ph2d-painter-brush`.
     pub(crate) static RELIEF_FROM_JOURNAL: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-    /// O mesmo contador para o vidro (ADR-0204): o gate do round-trip não pode ser verde por vácuo.
+    /// O mesmo contador para o vidro (ADR-0205): o gate do round-trip não pode ser verde por vácuo.
     pub(crate) static VIDRO_FROM_JOURNAL: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
@@ -260,7 +260,7 @@ impl PlaneDeltas {
                 relief.as_ref(),
             ),
         };
-        // O vidro ANTES do relevo: o `relief_maps` zera as testemunhas que lê (ADR-0204 D4).
+        // O vidro ANTES do relevo: o `relief_maps` zera as testemunhas que lê (ADR-0205 D4).
         let (mut vidros, vidro_indescribable) =
             Self::vidro_map(before, after, s.scalar, win_scalar, relief.as_ref());
         let (mut heights, mut covers, mut mats, relief_indescribable) =
@@ -436,7 +436,7 @@ impl PlaneDeltas {
         }
     }
 
-    /// **O delta do vidro** (ADR-0204 D4): com o `before` a DESCREVER o vidro, pelo journal por tile
+    /// **O delta do vidro** (ADR-0205 D4): com o `before` a DESCREVER o vidro, pelo journal por tile
     /// ([`StoredMap::from_journal`]); a segurá-lo (a chave desligada, um snapshot estrutural), pelo `split`.
     /// Elidido e o journal a recusar = indescritível: o `split` leria toda chave como `OnlyAfter` e o undo
     /// APAGARIA o vidro (o mesmo braço do relevo, abaixo).
@@ -597,7 +597,7 @@ impl PlaneDeltas {
         out.heights = self.heights.side(&live.heights, b)?;
         out.covers = self.covers.side(&live.covers, b)?;
         out.mats = self.mats.side(&live.mats, b)?;
-        // O vidro do VIVO, como o relevo: o cursor descreve-o sem o segurar (ADR-0204 D2).
+        // O vidro do VIVO, como o relevo: o cursor descreve-o sem o segurar (ADR-0205 D2).
         let vbase = if cursor.relief_elided.vidros.is_empty() {
             &cursor.vidros
         } else {
@@ -663,7 +663,7 @@ impl PlaneDeltas {
         &mut self.canvas_rgba
     }
 
-    /// O mapa do vidro — a absorção barata do escorrido o compõe com o journal (ADR-0204).
+    /// O mapa do vidro — a absorção barata do escorrido o compõe com o journal (ADR-0205).
     pub(crate) fn vidros(&self) -> &StoredMap<crate::compositor::vidro::Vidro> {
         &self.vidros
     }

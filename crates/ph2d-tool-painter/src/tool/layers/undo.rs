@@ -84,7 +84,7 @@ impl PainterTool {
         if !self.undo.elide_relief {
             return m; // a ablação do A/B — ver `UndoController::elide_relief`
         }
-        // O vidro (ADR-0204 D2), sob a chave: o lado de antes é o journal dele.
+        // O vidro (ADR-0205 D2), sob a chave: o lado de antes é o journal dele.
         let vidro = crate::undo::window::vidro_pelo_journal();
         m.relief_elided = crate::undo::elide::ElidedRelief::of(
             &self.heights,

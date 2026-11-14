@@ -1,4 +1,4 @@
-# ADR-0201 — O compositor da CPU e os kernels espaciais correm no pool do `rayon`
+# ADR-0202 — O compositor da CPU e os kernels espaciais correm no pool do `rayon`
 
 - **Status:** Accepted — missão Painter 4K (dono 10/11, «todas as recomendações dos estudos»); desenho técnico delegado
   (padrão-ouro).
@@ -8,7 +8,7 @@
   1.º uso (dep nova).
 - **Amparo:** `docs/Painter/missao_4k/BACKLOG.md` B19.7 (PX-11, PP-20, PL-23, IN-50, PA-72).
 
-> ⚠️ Número por recontar na integração (§5.0): escrito como `0201` com esta linha em `0200`.
+> Número recontado na integração de 13/11 (§5.0): a linha escreveu `0201`; a linha JointEditor tomou o `0201`.
 
 ## Contexto
 

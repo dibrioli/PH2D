@@ -64,7 +64,7 @@ embora seja o mesmo `Arc` da imagem viva (conservador, como o `Whole`).
 3. O Wet não é bit-determinístico entre duas ferramentas no «+»: isto existia antes desta mudança. Fica
    registado para quem fizer um oráculo cruzado do Wet.
 4. ⚠️ Vizinho vermelho que NÃO é deste item: `undo_confine_tests::o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio`
-   (sem «+»). O controlo dele espera `v=WHOLE` no 1.º traço do Watercolor; com o `Aparece` do ADR-0204 (item 2) o
+   (sem «+»). O controlo dele espera `v=WHOLE` no 1.º traço do Watercolor; com o `Aparece` do ADR-0205 (item 2) o
    vidro que aparece guarda só a janela (`v=win`). Ou seja, o controlo ficou velho com o item 2: a cura é atualizar o
    controlo para `v=win`. Fica para o item 2 / coordenador.
 
@@ -72,7 +72,7 @@ embora seja o mesmo `Arc` da imagem viva (conservador, como o `Whole`).
 
 ### 1. `o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio`: era só a expectativa (`b8be38f548`, `e024c322ba`)
 
-A lei do teste (o Ctrl+Z do 1.º traço é confinado nos 4 meios) é a que o ADR-0204 passou a cumprir. O que estava
+A lei do teste (o Ctrl+Z do 1.º traço é confinado nos 4 meios) é a que o ADR-0205 passou a cumprir. O que estava
 velho era o controlo do Watercolor, que pedia `v=WHOLE`. Agora pede `v=<janela>` com a chave `VIDRO_PELO_JOURNAL`
 ligada. No mesmo processo, com a chave desligada (a rota antiga), continua a pedir `v=WHOLE`, e esse controlo ficou
 dentro do teste. Verdes por nome: `confin` 27 e `undo` 182 (29 ignorados), sem outros vermelhos novos.
@@ -233,7 +233,7 @@ processo, perfil `smoke`, load 3–5. Para o coordenador: `N7_ITEM3e_sonda.sh` (
 
 Os ~10 ms a mais da nova eram o `fundo_de_baixo` a falhar a cache, porque a pilha mudou no «+», e a compor 4K inteiro
 (já em paralelo, em faixas). Somava-se o chão preto do vidro, chaveado pelo `Arc` desse fundo e recomposto no 1.º quadro.
-`fork_par_raw`/`make_mut` e `abre_o_passo` NÃO aparecem neste pen-down (< 0,3 ms cada): o «aberto» do ADR-0204 não é
+`fork_par_raw`/`make_mut` e `abre_o_passo` NÃO aparecem neste pen-down (< 0,3 ms cada): o «aberto» do ADR-0205 não é
 o custo do WB.
 
 - **Cura** (`watercolor_vidro.rs::aquece_o_fundo_do_toque`, chave em execução `FUNDO_AQUECIDO_NA_TROCA`, por fio,

@@ -1,4 +1,4 @@
-//! B19.7 (resto, ADR-0201): fora do compositor, as passadas em faixas de linhas — o overlay da seleção,
+//! B19.7 (resto, ADR-0202): fora do compositor, as passadas em faixas de linhas — o overlay da seleção,
 //! o levante / a cor / o corpo do Transform e a recomposição por camada do carimbo colorido — correm no
 //! pool do rayon (TIDs novos em `/proc/self/task` = 0) e dão o byte do laço serial a 1..32 faixas.
 

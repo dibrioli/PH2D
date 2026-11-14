@@ -105,7 +105,7 @@ fn sonda_primeiro_traco() {
         "Marker Bullet",
     ];
     // `PH2D_SONDA_VIDRO`: `1` (omissão) a chave `VIDRO_PELO_JOURNAL` ligada, `0` desligada, `ab` as duas
-    // intercaladas em blocos rodados (`PH2D_SONDA_REPETE` blocos) no MESMO binário (ADR-0204, A×B).
+    // intercaladas em blocos rodados (`PH2D_SONDA_REPETE` blocos) no MESMO binário (ADR-0205, A×B).
     let repete: usize = std::env::var("PH2D_SONDA_REPETE")
         .ok()
         .and_then(|v| v.parse().ok())

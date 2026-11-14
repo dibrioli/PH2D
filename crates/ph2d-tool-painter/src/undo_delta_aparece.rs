@@ -48,7 +48,7 @@ impl<T> StoredMap<T> {
 }
 
 impl<T: Copy + Default + PartialEq> StoredMap<T> {
-    /// **O plano que aparece deixa de ser segurado** (ADR-0204, o 2.º traço): cada `OnlyAfter` com a janela
+    /// **O plano que aparece deixa de ser segurado** (ADR-0205, o 2.º traço): cada `OnlyAfter` com a janela
     /// já achada ([`Self::guarda_janelas_que_aparecem`]) troca o `Arc` vivo por essa janela. Só vale onde o
     /// neutro é `T::default()` (o vidro: `[0; 7]`); senão o refazer recriaria outro plano.
     pub(crate) fn larga_os_planos_que_aparecem(&mut self) {
@@ -64,7 +64,7 @@ impl<T: Copy + Default + PartialEq> StoredMap<T> {
             let after = win.map_or_else(Box::default, |w| w.extract(p));
             debug_assert!(
                 recria(p.len(), win, &after) == **p,
-                "o plano que aparece não é o neutro fora da janela — o refazer recriaria outro (ADR-0204)"
+                "o plano que aparece não é o neutro fora da janela — o refazer recriaria outro (ADR-0205)"
             );
             *e = StoredEntry::Aparece {
                 len: p.len(),

@@ -1,4 +1,4 @@
-//! **O topo SEGUIDO do journal** (ADR-0204, a absorção do escorrido do Wet) — filho de [`super`] (`#[path]`: lê
+//! **O topo SEGUIDO do journal** (ADR-0205, a absorção do escorrido do Wet) — filho de [`super`] (`#[path]`: lê
 //! os campos privados de [`PlaneWindow`]). O topo guarda `antes0 → R` (R = o cursor), o journal do vidro guarda
 //! `R → vivo` (o escorrido depois do commit); a entrada re-partida é `antes0 → vivo`. Em vez de segurar o plano
 //! do reset e varrer o plano inteiro três vezes (clone + detector + re-split: medido +34 ms no pen-down e +41 ms

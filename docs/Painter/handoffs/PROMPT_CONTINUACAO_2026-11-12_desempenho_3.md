@@ -24,7 +24,7 @@ outra linha vai integrar.»
 
 | onda | estado |
 |---|---|
-| 1 toque e Ctrl+Z | FEITA (Wet Ctrl+Z 34 ms). Resto = §8 do handoff (troca do motor presa à memória → chunk esparso como tile 64×64, ADR-0203 adenda 2) |
+| 1 toque e Ctrl+Z | FEITA (Wet Ctrl+Z 34 ms). Resto = §8 do handoff (troca do motor presa à memória → chunk esparso como tile 64×64, ADR-0204 adenda 2) |
 | 2 cerdas largas | parcial: W5 ainda ~0,3 s/dab; depósito fora do quadro = DONO; cortes ao bit esgotados (ver recusas) |
 | 3 **mistura de cor** | **NÃO ATACADA**: B28.1 · B28.2 · B28.4 · B32.A1 — Wet blend 21,6 ms/q (alvo 16,7) · Wash Mix 24 ms/q. (B28.3 `omp critical` = recusa) |
 | 4 água do Wet | parcial: B11.3 feito; **B13.5/B13.6 (o passo cresce com os traços: 26 → 8 img/s no 4.º traço) por atacar**; B13.7 = dono |

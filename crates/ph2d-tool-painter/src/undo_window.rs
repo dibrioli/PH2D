@@ -175,7 +175,7 @@ pub struct WriteState {
     journal_since: std::cell::Cell<Option<u64>>,
     /// Os bytes velhos dos três planos de RELEVO — ver [`ReliefJournals`].
     relief: std::cell::RefCell<ReliefJournals>,
-    /// Os bytes velhos do plano do VIDRO, por tile (ADR-0204 D1).
+    /// Os bytes velhos do plano do VIDRO, por tile (ADR-0205 D1).
     vidro: std::cell::RefCell<vidro::VidroJournal>,
     /// O endereço da tela que a sessão molhada viva pintou por último (0 = nenhuma).
     tela_vigiada: std::cell::Cell<usize>,

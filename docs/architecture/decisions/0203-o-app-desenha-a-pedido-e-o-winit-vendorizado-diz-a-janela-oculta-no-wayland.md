@@ -1,4 +1,4 @@
-# ADR-0202 — O app desenha a pedido (`quadro::Laco`) e o `winit` vendorizado diz a janela oculta no Wayland
+# ADR-0203 — O app desenha a pedido (`quadro::Laco`) e o `winit` vendorizado diz a janela oculta no Wayland
 
 - **Status:** Accepted — missão Painter 4K (dono 10/11, «todas as recomendações dos estudos»); desenho técnico delegado
   (padrão-ouro).
@@ -7,7 +7,7 @@
 - **Amparo:** `docs/Painter/missao_4k/BACKLOG.md` B23 (B23.1–B23.6); medição de partida em `missao_4k/medicoes/ANTES.md`
   (parado: 48–70 % de um núcleo).
 
-> ⚠️ Número por recontar na integração (§5.0): escrito como `0202` com esta linha em `0201`.
+> Número recontado na integração de 13/11 (§5.0): a linha escreveu `0202`; a linha JointEditor tomou o `0201`.
 
 ## Contexto
 

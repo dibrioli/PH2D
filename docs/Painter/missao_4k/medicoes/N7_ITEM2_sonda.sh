@@ -1,5 +1,5 @@
 #!/bin/bash
-# Sonda do passo 0/alvo do ADR-0204 (n.º 7 item 2): 2.º pen-down WB 4K, `vidro_do_quadro`.
+# Sonda do passo 0/alvo do ADR-0205 (n.º 7 item 2): 2.º pen-down WB 4K, `vidro_do_quadro`.
 # As DUAS rotas (VIDRO_PELO_JOURNAL ligada · desligada) intercaladas em 4 blocos rodados, no mesmo binário;
 # resumo = o MÍNIMO de cada rota (linhas TRACO … journal=true|false).
 # Corre pela fila pesada (coordenador): bash scripts/fila-pesada.sh pôr 'bash docs/Painter/missao_4k/medicoes/N7_ITEM2_sonda.sh'

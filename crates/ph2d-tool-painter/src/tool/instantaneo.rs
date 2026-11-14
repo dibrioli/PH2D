@@ -183,7 +183,7 @@ impl PainterTool {
     /// **O que um instantâneo deste tool RETÉM** enquanto o original continua: a água copiada (o motor e os planos; as
     /// fotografias do undo vivo são `Arc` em tiles, partilhadas com o original, e não contam), a tela da camada ativa e a composição (partilhadas na cópia, desdobradas na
     /// primeira escrita do original), o histórico de undo (as janelas de pixels e os journals que a cópia
-    /// duplica) e o journal da sessão do vidro (ADR-0204 D5). As outras camadas ninguém as escreve a tocar uma macro. O gate `medida_instantaneo_memoria`
+    /// duplica) e o journal da sessão do vidro (ADR-0205 D5). As outras camadas ninguém as escreve a tocar uma macro. O gate `medida_instantaneo_memoria`
     /// compara este número com o que o alocador vê.
     #[must_use]
     pub fn bytes_do_instantaneo(&self) -> usize {

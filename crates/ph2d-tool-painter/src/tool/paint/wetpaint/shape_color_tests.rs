@@ -124,13 +124,15 @@ pub(super) fn cena(n: usize) -> PainterTool {
 /// `Cargo.lock`; SHAs da linha rebaseada): mudam TODAS num só degrau, o mesmo da 0 — `ed8a69351d` (E4, `7a4bc540b7`
 /// antes do rebase), lei nova da tinta. Antes dele `0x29b7…4e43` (1, 2, 4) e `0xfa55…c815` (3) do merge-base até
 /// `9fb79dc282`; depois os de hoje até ao topo (`ff2077c768`), iguais nos degraus da E10 (`7c8e08d16b`, `1f9e115c7e`).
+/// Integração 13/11: a 6 regravada pela mistura espectral de 10 bandas do Wet (B32.1, `ea2024a050`, dono 10/11);
+/// com `PH2D_WET_MISTURA=km` no mesmo binário volta o `0xec88…4f2f` de antes, ao byte.
 const HOJE: [(usize, u64); 6] = [
     (0, 0x4282_f44d_b602_5076),
     (1, 0x91c1_c72e_008a_7205),
     (2, 0x91c1_c72e_008a_7205),
     (3, 0x8885_c46f_88bb_3136),
     (4, 0x91c1_c72e_008a_7205),
-    (6, 0xec88_0f5b_394b_4f2f),
+    (6, 0xbfae_422b_c698_6abc),
 ];
 
 /// ⭐ **A SECÇÃO DESLIGADA É O TRAÇO DE HOJE AO BYTE** (o portão de identidade do prompt 41, nascido

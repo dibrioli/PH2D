@@ -18,30 +18,6 @@ thread_local! {
     pub(crate) static ENCOLHE_NO_SILENCIO: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
 }
 
-/// n.º 10 (B18.7): a compressão corre num pool rayon PRÓPRIO, de ¼ dos núcleos: no global, os `par_iter` dela enchiam a
-/// fila dos operários e o traço que chegasse depois do silêncio esperava por eles. `PH2D_COMPRIME_NO_POOL_GLOBAL=1` =
-/// antes (lida uma vez).
-fn pool_da_compressao() -> Option<&'static rayon::ThreadPool> {
-    static POOL: OnceLock<Option<rayon::ThreadPool>> = OnceLock::new();
-    POOL.get_or_init(|| {
-        if std::env::var("PH2D_COMPRIME_NO_POOL_GLOBAL").is_ok_and(|v| v == "1") {
-            return None;
-        }
-        let n = std::thread::available_parallelism().map_or(1, |n| (n.get() / 4).max(1));
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(n)
-            .thread_name(|i| format!("ph2d-comprime-{i}"))
-            .build()
-            .ok()
-    })
-    .as_ref()
-}
-
-thread_local! {
-    /// O A×B do gate: `true` = o pool global, como antes. Lida no fio que adormece.
-    pub(crate) static COMPRIME_NO_POOL_GLOBAL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
 static ULTIMO_GESTO_MS: AtomicU64 = AtomicU64::new(0);
 
 fn agora_ms() -> u64 {
@@ -87,12 +63,6 @@ thread_local! {
 #[cfg(test)]
 type Horas = Arc<std::sync::Mutex<(Option<Instant>, Option<Instant>)>>;
 
-#[cfg(test)]
-thread_local! {
-    /// Os operários do pool rayon onde correu o último fio nascido neste fio (0 = nenhum: os `par_iter` vão ao global).
-    pub(crate) static ULTIMO_POOL: std::cell::Cell<Option<Arc<std::sync::atomic::AtomicUsize>>> =
-        const { std::cell::Cell::new(None) };
-}
 #[cfg(not(test))]
 struct Horas;
 
@@ -127,28 +97,10 @@ fn marca(h: &Horas, fim: bool) {
 pub(super) fn lanca(comprime: impl FnOnce() + Send + 'static) -> Option<Espera> {
     let silencio = ENCOLHE_NO_SILENCIO.get();
     let horas = horas_novas();
-    let pool = pool_da_compressao().filter(|_| !COMPRIME_NO_POOL_GLOBAL.get());
-    #[cfg(test)]
-    let fios_vistos = {
-        let f = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        ULTIMO_POOL.set(Some(Arc::clone(&f)));
-        f
-    };
     let corre = move || {
-        let faz = || {
-            #[cfg(test)]
-            fios_vistos.store(
-                rayon::current_thread_index().map_or(0, |_| rayon::current_num_threads()),
-                SeqCst,
-            );
-            marca(&horas, false);
-            comprime();
-            marca(&horas, true);
-        };
-        match pool {
-            Some(p) => p.install(faz),
-            None => faz(),
-        }
+        marca(&horas, false);
+        comprime();
+        marca(&horas, true);
     };
     if !silencio {
         std::thread::spawn(corre);

@@ -4,7 +4,7 @@
 //! GPU CI lane, not the headless CPU runners (which `None` out of
 //! `try_headless_gpu`). It proves the `PreviewPremul` compute blit agrees with
 //! the CPU `premultiply_rgba8` (the byte-space premultiply the CPU preview path
-//! uploads) to ±1 per channel — the bound that makes the GPU live preview
+//! uploads) to 0 levels per channel (B20.8) — the bound that makes the GPU live preview
 //! byte-identical to the committed result on the shared `Rgba8UnormSrgb` +
 //! premul-blend sprite shader.
 //!
@@ -149,8 +149,8 @@ fn preview_premul_matches_cpu_reference() {
     for (i, (g, c)) in gpu_bytes.iter().zip(cpu.iter()).enumerate() {
         let d = (*g as i32 - *c as i32).abs();
         assert!(
-            d <= 1,
-            "byte {i} (px {}, ch {}): GPU {g} vs CPU {c} (delta {d} > 1)",
+            d == 0,
+            "byte {i} (px {}, ch {}): GPU {g} vs CPU {c} (delta {d}; B20.8: 0 levels)",
             i / 4,
             i % 4,
         );
@@ -268,4 +268,39 @@ fn o_premul_da_regiao_so_escreve_a_regiao() {
             }
         }
     }
+}
+
+/// n.º 10 (B20.8): a prévia da placa pré-multiplica com a lei INTEIRA da CPU, `(c·a + 127) / 255`, e dá o byte
+/// dela em TODOS os 65 536 pares (c, α) — 0 níveis, nunca o ±1 do produto em `f32` arredondado pelo driver.
+/// Cada canal varre os 256 c em ordens diferentes (r = c, g = 255 − c, b = 37·c mod 256) contra os 256 α.
+#[test]
+#[ignore = "needs a GPU device (GPU CI lane)"]
+fn o_premul_da_placa_e_o_byte_da_cpu_nos_65536_pares() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no headless GPU; skipping o_premul_da_placa_e_o_byte_da_cpu_nos_65536_pares");
+        return;
+    };
+    let (w, h) = (256u32, 256u32);
+    let mut straight = Vec::with_capacity(256 * 256 * 4);
+    for a in 0..=255u8 {
+        for c in 0..=255u8 {
+            straight.extend_from_slice(&[c, 255 - c, c.wrapping_mul(37), a]);
+        }
+    }
+    let src = make_src(&gpu, w, h, &straight);
+    let mut premul = PreviewPremul::new(&gpu);
+    let out_tex = premul.run(&gpu, &src, w, h).expect("premul ran");
+    let gpu_bytes = readback(&gpu, out_tex, w, h);
+    let mut cpu = straight.clone();
+    premultiply_rgba8(&mut cpu);
+    let diferentes = gpu_bytes.iter().zip(&cpu).filter(|(g, c)| g != c).count();
+    let maximo = (gpu_bytes.iter().zip(&cpu))
+        .map(|(g, c)| (*g as i32 - *c as i32).abs())
+        .max()
+        .unwrap_or(0);
+    eprintln!("B20.8\t65 536 pares\tbytes diferentes {diferentes}\tmáx {maximo}");
+    assert_eq!(
+        diferentes, 0,
+        "a placa dá o byte da CPU (máx {maximo} níveis)"
+    );
 }

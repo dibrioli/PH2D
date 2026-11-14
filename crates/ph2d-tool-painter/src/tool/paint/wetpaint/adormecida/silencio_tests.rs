@@ -3,7 +3,7 @@
 use super::super::adormecida_tests::{borracha_viva, volta_e_apaga};
 use super::super::agua_sobre_oleo_tests::com_oleo;
 use super::super::borracha_de_fabrica_tests::{apaga, diferentes};
-use super::{COMPRIME_NO_POOL_GLOBAL, ENCOLHE_NO_SILENCIO, ULTIMO_FIO, ULTIMO_POOL};
+use super::{ENCOLHE_NO_SILENCIO, ULTIMO_FIO};
 use crate::tool::paint::PaintMedia;
 use std::time::{Duration, Instant};
 
@@ -88,44 +88,4 @@ fn acordar_na_espera_cancela_a_compressao() {
     }
     t.set_paint_tool_mode("eraser");
     assert_eq!(diferentes(&vivo, &apaga(&mut t)), 0);
-}
-
-/// n.º 10 (B18.7): a compressão corre no pool rayon PRÓPRIO (¼ dos núcleos), nunca no global onde o traço corre; o
-/// controlo (`COMPRIME_NO_POOL_GLOBAL`) corre fora de pool, como antes. Os dois acordam ao bit de quem nunca dormiu.
-#[test]
-fn a_compressao_corre_no_pool_proprio_e_nao_no_do_traco() {
-    let esperado = std::thread::available_parallelism().map_or(1, |n| (n.get() / 4).max(1));
-    for global in [false, true] {
-        let vivo = borracha_viva();
-        let mut t = com_oleo();
-        COMPRIME_NO_POOL_GLOBAL.set(global);
-        let (_, horas) = lanca(&mut t, false);
-        COMPRIME_NO_POOL_GLOBAL.set(false);
-        let pool = ULTIMO_POOL.take().expect("o fio nasceu");
-        let (ini, fim) = espera_o_fim(&horas);
-        let fios = pool.load(std::sync::atomic::Ordering::SeqCst);
-        assert!(ini.is_some() && fim.is_some(), "global={global}: comprimiu");
-        if global {
-            assert_eq!(fios, 0, "controlo: fora de pool, os par_iter vão ao global");
-        } else {
-            assert_eq!(
-                fios, esperado,
-                "a compressão corre no pool próprio de ¼ dos núcleos"
-            );
-        }
-        assert!(
-            t.paint.wetpaint.adormecidas[0]
-                .sess
-                .lock()
-                .expect("trinco")
-                .dormente
-                .is_some(),
-            "global={global}: está comprimida"
-        );
-        assert_eq!(
-            diferentes(&vivo, &volta_e_apaga(&mut t)),
-            0,
-            "global={global}: o bit"
-        );
-    }
 }

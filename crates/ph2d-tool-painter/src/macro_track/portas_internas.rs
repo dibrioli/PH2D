@@ -404,4 +404,12 @@ pub const INTERNAS: &[&str] = &[
     "set_mistura_salta_a_copia_do_veu",
     // A sonda da prancha B34 (`tests/it/prancha_b34.rs`) fixa o fator de aparência: nunca se grava.
     "fixa_fator_aparencia_para_sonda",
+    // As sondas da missão 4K N10 (B44.1 `raio_da_sonda.rs`, B44.8 `orcamento_da_sonda.rs`): põem o raio e lêem
+    // contadores do motor para os portões de custo — nunca se gravam.
+    "sonda_raio",
+    "wet_marcas_da_tela_inteira",
+    // O lote de Moves de um quadro (B27.2, `canvas_pointer.rs`): a shell agrupa os `on_canvas_pointer` (que já se
+    // gravam) e o fecho carimba-os juntos; o traço é o mesmo (`a_particao_em_lotes_nao_muda_o_traco`) — interna.
+    "abre_lote",
+    "fecha_lote",
 ];

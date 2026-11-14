@@ -1228,6 +1228,10 @@ carimbo, o que só a escolha `None` revelou.
 - **ABERTO:** `presets_dos_meios::os_exemplos_sao_os_que_o_motor_grava` (Sketch Pencil, Digital) continua vermelho: verde em
   bc0f53f29b, vermelho em f6bc64fc6e (B43.1) na linha crua; nessa janela estão leis já restritas, logo a bissecção crua não o
   isola. Próximo passo: na fila pesada, regenerar o exemplo e diffar os chunks do PNG (os ajustes gravados × os pixels).
+  **FECHADO (13/11):** não é lei. Diff por chunk dos três exemplos (Sketch Pencil, Flat Wash, Thick Impasto): `IDAT` igual
+  (0 bytes), JSON do `iTXt` igual campo a campo salvo `"schema": 1 → 2` — o `SCHEMA` do preset subido por 1bfd772603 (B50.1,
+  enums pelo nome), intencional; o teste parava no 1.º. Os três regravados com os bytes de `grava()` (os do gerador); o teste,
+  ao reprovar, deixa o de hoje em `target/tmp/<nome>.ph2d-brush.png.novo` para diffar antes de regravar.
 
 ## Como adicionar um bug aqui
 

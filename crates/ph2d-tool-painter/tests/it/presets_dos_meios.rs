@@ -383,7 +383,13 @@ fn os_exemplos_sao_os_que_o_motor_grava() {
     for (i, (r, grupo, nome)) in EXEMPLOS.iter().enumerate() {
         let f = caminho_do_exemplo(i);
         let guardado = std::fs::read(&f).unwrap_or_else(|e| panic!("{f:?}: {e}"));
-        assert!(guardado == grava(r, grupo, nome), "{f:?} mudou — regenere");
+        let hoje = grava(r, grupo, nome);
+        if guardado != hoje {
+            // O que o motor grava hoje fica ao lado, para diffar antes de regenerar.
+            let novo = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("{nome}.ph2d-brush.png.novo"));
+            std::fs::write(&novo, &hoje).unwrap();
+            panic!("{f:?} mudou — regenere (o de hoje: {novo:?})");
+        }
     }
 }
 

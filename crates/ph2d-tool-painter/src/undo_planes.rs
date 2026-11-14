@@ -260,11 +260,14 @@ impl PlaneDeltas {
                 relief.as_ref(),
             ),
         };
+        crate::sonda_partes::parte("split.tela");
         // O vidro ANTES do relevo: o `relief_maps` zera as testemunhas que lê (ADR-0205 D4).
         let (mut vidros, vidro_indescribable) =
             Self::vidro_map(before, after, s.scalar, win_scalar, relief.as_ref());
+        crate::sonda_partes::parte("split.vidro");
         let (mut heights, mut covers, mut mats, relief_indescribable) =
             Self::relief_maps(before, after, s.scalar, win_scalar, relief);
+        crate::sonda_partes::parte("split.relevo");
         heights.guarda_janelas_que_aparecem(win_scalar, linha_de_altura_neutra, altura_neutra);
         covers.guarda_janelas_que_aparecem(win_scalar, linha_de_cobertura_neutra, cobertura_neutra);
         let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
@@ -282,10 +285,13 @@ impl PlaneDeltas {
         if crate::undo::window::vidro_pelo_journal() {
             vidros.larga_os_planos_que_aparecem();
         }
+        crate::sonda_partes::parte("split.janelas");
+        let images = StoredImages::split(&mut before.images, &mut after.images);
+        crate::sonda_partes::parte("split.imagens");
         Self {
             relief_indescribable: relief_indescribable || canvas_lost || vidro_indescribable,
             canvas_rgba,
-            images: StoredImages::split(&mut before.images, &mut after.images),
+            images,
             vidros,
             heights,
             covers,

@@ -523,7 +523,7 @@ fn tiles_estreitos(e: &Engine) -> usize {
         .count()
 }
 
-/// B18.11 cura 3: o dab marca só os planos que escreve (sem o `bloom`), o passo da água continua a marcar todos — e o
+/// B18.11 cura 3: o dab marca só os planos que escreve (sem o `bloom`), o passo da água marca sem `relevo`/`vela` (cura 3b) — e o
 /// bit é o da máscara cheia (`MASCARA_CHEIA`), nas três leis: o estado a cada passo, undo/redo com o `extra` (o tile
 /// que só o dab marcou junta o `bloom` que o passo guardou depois), um traço direto sem água a meio, a história
 /// inteira desfeita e refeita.
@@ -565,6 +565,99 @@ fn a_mascara_do_dab_da_o_bit_da_mascara_cheia() {
         assert!(
             estreitos > 0,
             "lei {lei}: nenhum tile estreito, o gate não mede a máscara"
+        );
+        let mut n = 0;
+        for desfaz in [true, false] {
+            loop {
+                let [a, b] = &mut e;
+                let fa = if desfaz { a.undo() } else { a.redo() };
+                let fb = cheia(true, || if desfaz { b.undo() } else { b.redo() });
+                assert_eq!(fa, fb);
+                if !fa {
+                    break;
+                }
+                n += 1;
+                assert_eq!(
+                    estado(a.active_grid()),
+                    estado(b.active_grid()),
+                    "volta {n} (lei {lei})"
+                );
+            }
+        }
+        assert!(n >= 4, "a história inteira tinha só {n} passos");
+    }
+}
+
+/// Os tiles que o PASSO estreitou (sem `relevo`/`vela`, com o `bloom` que só o passo guarda), em toda a pilha.
+fn tiles_do_passo(e: &Engine) -> usize {
+    let l = &e.layers[e.active_layer];
+    l.undo
+        .iter()
+        .flat_map(|r| r.finos.values())
+        .filter(|t| t.guardados.bloom && !t.guardados.relevo && !t.guardados.vela)
+        .count()
+}
+
+/// B18.11 cura 3b: o passo da água marca sem `relevo`/`vela` — e o bit é o da máscara cheia: o passo que abre o tile
+/// ANTES do dab (registo aberto, a água corre, o dab chega depois e acrescenta os planos dele), o dab antes do passo,
+/// undo/redo com o `extra`, a história inteira desfeita e refeita.
+#[test]
+fn a_mascara_do_passo_da_o_bit_da_mascara_cheia() {
+    for lei in [0, 1, 2] {
+        let mut e = [false, true].map(|c| cheia(c, || monta_lei(700, 420, lei, 1.0)));
+        let mut do_passo = 0;
+        let passos = [
+            "abre_corre",
+            "dabs",
+            "corre",
+            "undo",
+            "redo",
+            "traco",
+            "abre_corre",
+            "dabs",
+            "undo",
+            "undo",
+            "redo",
+            "redo",
+            "corre",
+        ];
+        for (k, passo) in passos.into_iter().enumerate() {
+            for (c, e) in e.iter_mut().enumerate() {
+                cheia(c == 1, || match passo {
+                    "undo" => assert!(e.undo() || !e.can_undo()),
+                    "redo" => assert!(e.redo_sem_zerar_o_fluxo() || !e.can_redo()),
+                    "corre" => corre(e, 3),
+                    "abre_corre" => {
+                        e.capture_history();
+                        corre(e, 3);
+                    }
+                    "dabs" => {
+                        e.begin_direct_stroke(0, 120.0, 90.0);
+                        for i in 0..30 {
+                            e.dispatch_pressure_dab(
+                                120.0 + 5.0 * f64::from(i),
+                                90.0 + 4.0 * f64::from(i),
+                                0.7,
+                                11.0,
+                            );
+                        }
+                        e.end_direct_stroke();
+                    }
+                    _ => traco(e, (250.0, 300.0), (6.0, -3.0), 25),
+                });
+            }
+            do_passo += tiles_do_passo(&e[0]);
+            assert_eq!(tiles_estreitos(&e[1]), 0, "CONTROLO: a cheia guarda tudo");
+            let at = format!("{k}: {passo} (lei {lei})");
+            assert_eq!(
+                estado(e[0].active_grid()),
+                estado(e[1].active_grid()),
+                "{at}"
+            );
+        }
+        assert!(
+            do_passo > 0,
+            "lei {lei}: nenhum tile do passo estreito, o gate não mede a cura 3b"
         );
         let mut n = 0;
         for desfaz in [true, false] {

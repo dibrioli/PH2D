@@ -22,6 +22,15 @@ const PLANOS_DO_DAB: crate::grid::Planos = crate::grid::Planos {
     ..crate::grid::Planos::TODOS
 };
 
+/// B18.11 cura 3b: o que um estágio do passo da água escreve — tudo menos `relevo` e `vela` (só o depósito
+/// `trail/transfer.rs`, as acções de tela `grid/canvas_ops.rs` e o `grid/patch.rs` os escrevem; o sim e a secagem
+/// só os lêem).
+const PLANOS_DO_PASSO: crate::grid::Planos = crate::grid::Planos {
+    relevo: false,
+    vela: false,
+    ..crate::grid::Planos::TODOS
+};
+
 /// Um retângulo por banda de [`crate::grid::TILE`] linhas: a união das janelas da faixa viva das linhas a `f` dela,
 /// com `f` de folga em x (meio-aberto, células finas com o pad). Banda sem linha viva a `f` não entra.
 fn faixas_do_passo(g: &Grid, f: i64) -> Vec<[i64; 4]> {
@@ -188,7 +197,7 @@ impl Engine {
 
     /// O que o passo marca no registo é o que ele DECLARA ao espelho (B13.1: a mesma grelha de tiles).
     fn marca_do_passo(&mut self, x0: i64, y0: i64, x1: i64, y1: i64) {
-        self.marca_ret(x0, y0, x1, y1);
+        self.marca_ret_planos(x0, y0, x1, y1, PLANOS_DO_PASSO);
         self.declara_tiles_do_passo(x0, y0, x1, y1);
     }
 

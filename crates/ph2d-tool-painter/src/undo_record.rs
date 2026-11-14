@@ -186,6 +186,7 @@ impl UndoController {
         let (mut before, mut after) = (before, after);
         self.absorb_foreign_writes(&before);
         let marca = self.marca_do_passo_held(&before, &after, hint);
+        crate::sonda_partes::parte("commit.marca");
         // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
         // um clone de `Arc`s, não de pixels.
         let cursor = after.clone();
@@ -202,6 +203,7 @@ impl UndoController {
         // guard cairia no caminho de sempre — silenciosamente, com todos os gates verdes.
         let src = self.relief_source(&before, &cursor);
         let mut entry = UndoEntry::split(before, after, None, hint, src);
+        crate::sonda_partes::parte("commit.split");
         if let Some(a) = tela_que_saiu {
             entry.planes.poe_a_tela_nova(a);
         }
@@ -210,11 +212,15 @@ impl UndoController {
         if self.discard_if_relief_is_lost(&entry, &cursor) {
             return;
         }
+        crate::sonda_partes::parte("commit.descarta");
         self.set_cursor(cursor);
+        crate::sonda_partes::parte("commit.cursor");
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         self.drop_redo();
+        crate::sonda_partes::parte("commit.redo");
         self.cap();
+        crate::sonda_partes::parte("commit.cap");
     }
 
     /// Record a COALESCIBLE structural transition: when the newest undo entry carries the SAME

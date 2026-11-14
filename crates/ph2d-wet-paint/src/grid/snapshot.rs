@@ -442,6 +442,12 @@ mod restauro_tests;
 #[path = "snapshot/oraculo.rs"]
 mod oraculo;
 
+/// `PH2D_MASCARA_CHEIA=1` (lida uma vez): toda marca guarda TODOS os planos — a variante A do A×B da cura 3/3b.
+fn mascara_cheia_pela_chave() -> bool {
+    static CHAVE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *CHAVE.get_or_init(|| std::env::var("PH2D_MASCARA_CHEIA").is_ok_and(|v| v == "1"))
+}
+
 /// Um passo do histórico: a base (escalares) + os tiles escritos desde que abriu, cada um com o
 /// conteúdo da BASE.
 #[derive(Clone)]
@@ -486,6 +492,11 @@ impl Registo {
     pub fn marca_planos(&mut self, g: &Grid, x0: i64, y0: i64, x1: i64, y1: i64, m: Planos) {
         #[cfg(test)]
         let m = if MASCARA_CHEIA.with(std::cell::Cell::get) {
+            Planos::TODOS
+        } else {
+            m
+        };
+        let m = if mascara_cheia_pela_chave() {
             Planos::TODOS
         } else {
             m

@@ -342,6 +342,7 @@ impl PainterTool {
         let hint = self.undo.write_state.get().hint_for(before.writes);
         self.audit_commit_window(before.writes, hint);
         self.audit_journal_matches_the_before(&before);
+        crate::sonda_partes::parte("commit.auditoria");
         // ⚠️ **A identidade do §5.28 NÃO é perguntável aqui, e a tentativa está registrada.** Neste
         // ponto o `absorb_foreign_writes` ainda não rodou (ele mora dentro do `record_*` abaixo),
         // então o cursor é o de ANTES da reconciliação — perguntar se ele é reconstruível é
@@ -350,6 +351,7 @@ impl PainterTool {
         // para consertar. O lugar onde a pergunta cabe é `begin_undo_step`, ANTES do passo (doc
         // 28 §5.28), e é lá que ela está.
         let after = self.snapshot_model();
+        crate::sonda_partes::parte("commit.after");
         self.undo.record_structural_hinted(before, after, hint);
         let mut w = self.undo.write_state.get();
         w.reset(self.undo_writes);

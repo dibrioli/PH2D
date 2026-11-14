@@ -276,3 +276,90 @@ fn um_clique_sem_aproximar_ainda_seleciona() {
         }
     }
 }
+
+/// O centro do ícone de TIPO da linha `n` (o glifo à esquerda do nome), como foi pintado.
+fn centro_do_icone(m: &Mesa, n: usize) -> (f32, f32) {
+    let r = m
+        .rect(ph2d_panel_hierarchy::ids::hier_icon_companion(id_de(n)))
+        .unwrap_or_else(|| panic!("ícone da linha {n} não pintado"));
+    (r.x + r.w * 0.5, r.y + r.h * 0.5)
+}
+
+/// ⭐ Smoke do dono 13/11: «clicar uma vez no ícone deve selecionar» — o mesmo pedido do nome.
+#[test]
+fn um_clique_no_icone_seleciona() {
+    for cards_on in [true, false] {
+        for (rolar, alvo) in [(false, 1), (true, N - 1)] {
+            let mut m = Mesa::nova(cards_on, None);
+            if rolar {
+                m.rola_ao_fundo();
+            }
+            let p = centro_do_icone(&m, alvo);
+            let (ev, acts) = m.clique(p, 3, 120_000_000);
+            assert!(
+                acts.contains(&seleciona(id_de(alvo))),
+                "cards {cards_on} linha {alvo}: um clique no ícone não seleccionou: {ev:?} · {acts:?}"
+            );
+        }
+    }
+}
+
+/// ⭐ Smoke do dono 13/11: «arrastar através do ícone deve ser possível» — o arrasto da LINHA (o mesmo
+/// do nome: reparentar dentro do painel; fora dele, a shell arma a carga `Object` por `hierarchy_row_grip`).
+#[test]
+fn arrastar_pelo_icone_arrasta_o_objeto() {
+    for cards_on in [true, false] {
+        let mut m = Mesa::nova(cards_on, None);
+        let p = centro_do_icone(&m, 1);
+        let destino = m.rect(id_de(5)).expect("linha 5");
+        let icone = ph2d_panel_hierarchy::ids::hier_icon_companion(id_de(1));
+        assert_eq!(m.host.store().hierarchy_row_grip(icone), Some(id_de(1)));
+        let _ = m.ponteiro(PointerKind::Move, p);
+        m.quadro();
+        let mut ev = m.ponteiro(PointerKind::Down, p);
+        let fim = (p.0, destino.y + destino.h * 0.5);
+        for i in 1..=6 {
+            let y = p.1 + (fim.1 - p.1) * i as f32 / 6.0;
+            ev.extend(m.ponteiro(PointerKind::Move, (p.0, y)));
+            m.quadro();
+        }
+        let drag = m.host.store().hierarchy_drag();
+        assert!(
+            drag.is_some_and(|d| d.dragged == id_de(1) && d.active),
+            "cards {cards_on}: o arrasto pelo ícone não pegou a linha: {drag:?}"
+        );
+        ev.extend(m.ponteiro(PointerKind::Up, fim));
+        assert!(
+            ev.iter().any(|e| matches!(
+                e,
+                WidgetEvent::HierReparent { dragged, .. } if *dragged == id_de(1)
+            )),
+            "cards {cards_on}: soltar sobre a linha 5 não reparentou: {ev:?}"
+        );
+    }
+}
+
+/// O duplo clique no ícone continua a enquadrar o objecto (2026-05-26) — e não abre o renomear.
+#[test]
+fn duplo_clique_no_icone_ainda_enquadra() {
+    for cards_on in [true, false] {
+        let mut m = Mesa::nova(cards_on, None);
+        let p = centro_do_icone(&m, 1);
+        let (_, mut acts) = m.clique(p, 1, 50_000_000);
+        let (ev, segundo) = m.clique(p, 1, 50_000_000);
+        acts.extend(segundo);
+        let foco = EditorAction::SetViewFocus {
+            kind: ph2d_editor_core::screens::hero::ViewFocusKind::Selected,
+        };
+        assert!(
+            acts.contains(&foco) && acts.contains(&seleciona(id_de(1))),
+            "cards {cards_on}: o duplo clique no ícone não enquadrou: {ev:?} · {acts:?}"
+        );
+        assert!(
+            !acts
+                .iter()
+                .any(|a| matches!(a, EditorAction::Hierarchy(HierRequest::RenameSeed { .. }))),
+            "cards {cards_on}: o duplo clique no ícone abriu o renomear: {acts:?}"
+        );
+    }
+}

@@ -415,6 +415,10 @@ pub(super) fn dispatch_down<'frame>(
     {
         store.set_active(Some(id));
         store.set_active_rect(Some(rect));
+        // O ícone de tipo é parte da linha: semeia o mesmo arrasto que o nome.
+        if let Some(row) = store.hierarchy_row_grip(id) {
+            store.begin_hierarchy_drag(row, event.x, event.y);
+        }
         return;
     }
 

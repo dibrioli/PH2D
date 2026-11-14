@@ -180,6 +180,14 @@ impl WidgetStore {
         self.hierarchy_row_ids.contains(&id)
     }
 
+    /// A linha que um gesto em `id` pega: a própria linha ou o ícone de TIPO dela (dono 13/11: o ícone
+    /// selecciona e arrasta como o nome; só o duplo clique nele é próprio — enquadrar).
+    #[must_use]
+    pub fn hierarchy_row_grip(&self, id: NodeId) -> Option<NodeId> {
+        let row = crate::ids::hier_icon_companion_to_row(id).unwrap_or(id);
+        self.is_hierarchy_row(row).then_some(row)
+    }
+
     /// ⭐ Publica o TIPO de cada linha cujo objecto pode ir para um quadro (Image · Vector · Flip — a
     /// lei é [`crate::screens::hero::send_to_board::goes_to_board`]). Por quadro, inteiro.
     pub fn set_hierarchy_board_rows(

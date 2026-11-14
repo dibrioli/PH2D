@@ -71,6 +71,7 @@ impl Panel for HierarchyPanel {
         host: &mut dyn PanelHostInternal,
         ev: WidgetEvent,
     ) -> EventOutcome {
+        let ev = event::icon_click_is_a_row_click(host, ev);
         event::apply_event(state, host, ev)
     }
 

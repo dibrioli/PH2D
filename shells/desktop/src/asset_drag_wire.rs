@@ -43,7 +43,7 @@ impl crate::App {
         let Some(id) = hero.chrome_hit(x, y) else {
             return;
         };
-        if hero.store.is_hierarchy_row(id) {
+        if let Some(id) = hero.store.hierarchy_row_grip(id) {
             let row = gfx.hero_live.as_ref().and_then(|l| l.bridge.entity_for(id));
             return object_drag::seed(hero, gfx.sim.world(), row, (x, y));
         }

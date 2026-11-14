@@ -400,6 +400,20 @@ pub(crate) fn apply_event(
     EventOutcome::Ignored
 }
 
+/// Um clique no ícone de tipo é o clique na linha (dono 13/11) — o mesmo caminho de selecção, com os
+/// modificadores; o `DoubleClick` no ícone continua dele (enquadrar).
+pub(crate) fn icon_click_is_a_row_click(
+    host: &dyn PanelHostInternal,
+    ev: WidgetEvent,
+) -> WidgetEvent {
+    match ev {
+        WidgetEvent::Click(id) => {
+            WidgetEvent::Click(host.store().hierarchy_row_grip(id).unwrap_or(id))
+        }
+        ev => ev,
+    }
+}
+
 /// **Confirma o renomear** de `row` com o texto da caixa — a mesma porta para o Enter e para o
 /// Blur (a convenção do Finder). Texto vazio não renomeia.
 fn commit_rename(host: &mut dyn PanelHostInternal, row: ph2d_a11y::NodeId) {

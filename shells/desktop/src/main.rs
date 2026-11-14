@@ -949,7 +949,7 @@ impl ApplicationHandler for App {
 pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 
 fn main() {
-    ph2d_app_painter::arranque::liga_paginas_grandes(); // B43.7: antes de tudo (re-exec)
+    ph2d_host::arranque::liga_paginas_grandes(); // B43.7: antes de tudo (re-exec)
     install_panic_hook();
     ph2d_app_game::smoke::recusa_nomes_desconhecidos(); // nome do smoke que ninguém lê sai ALTO, antes da janela
     // Os cartões do Inspector (`PH2D_CARDS=0` = a coluna clássica); na thread do laço de eventos.

@@ -12,6 +12,61 @@
 use super::*;
 use crate::grid::Grid;
 
+/// **A ROTA ATÔMICA CONGELADA** — o `sim_step` que shipava antes de o passo ser retomável, verbatim.
+///
+/// ⚠️ **Ela existe porque o gate de identidade não pode ser `sim_step` contra `sim_step_stage`:**
+/// `sim_step` **É** o laço sobre os estágios, então os dois lados passam pelo MESMO código, e uma
+/// mutação dentro do estágio move os dois — *razão entre dois doentes, verde por construção*. Medido:
+/// três mutações (params re-colhidos por estágio · relógio por estágio · um estágio pulado)
+/// **sobreviveram** ao gate escrito daquele jeito.
+///
+/// `#[cfg(test)]` de propósito: um `pub fn` sem chamador não é código morto silencioso, é uma
+/// **segunda resposta** esperando alguém chamá-la (a lição do `warp_axis` / do `serial_side`).
+fn sim_step_atomic_reference(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
+    if !g.has_fluid {
+        return false;
+    }
+    let p = sim.gather_params(tuning);
+    let grav = sim.gravity(tuning);
+    sim.frame += 1;
+    let n = sim.frame;
+
+    if n.is_multiple_of(2) {
+        rebuild_active_region(g);
+        if !g.has_fluid {
+            return false;
+        }
+    }
+    if n.is_multiple_of(sim.dry_every) {
+        let t = sim.seca_por_tile(g, &p, n);
+        crate::drying::drying_pass_por_tile(
+            g,
+            &p,
+            sim.evap_scale * p.k(Knob::Evaporation),
+            sim.rewet_base * p.k(Knob::Rewet),
+            sim.ext_bypass,
+            t.as_ref(),
+        );
+    }
+    if n.is_multiple_of(4) {
+        build_flow_field(g, &p, grav[0], grav[1], sim.ext_bypass);
+    } else {
+        smooth_velocity(g, &p);
+        if !sim.ext_bypass && p.k(Knob::ExtDiffusion) > 0.0 {
+            diffusion_pass(g, &p);
+        }
+    }
+    let vmax = advect(g, &p, grav[0], grav[1]);
+    let corre = crate::drying::por_tile::corre_por_tile(g, vmax);
+    apply_boundaries(g, false);
+    if n.is_multiple_of(3) {
+        project(g, &p);
+        apply_boundaries(g, true);
+    }
+    sim.cadencia(vmax, corre);
+    true
+}
+
 /// Uma folha pequena com água semeada à mão — sem depender do harness de `tests/`.
 fn seeded(w: usize, h: usize) -> Grid {
     let mut g = Grid::new(w, h);

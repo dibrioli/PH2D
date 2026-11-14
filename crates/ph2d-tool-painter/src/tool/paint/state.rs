@@ -1,10 +1,7 @@
 //! **O que uma sessão de pintura SEGURA** — irmão de [`super`] pelo teto de 700 LOC.
 //!
-//! O corte é o mesmo que este subsistema já vinha fazendo, um degrau adiante: o `state_default`
-//! levou o CONSTRUTOR ("com que valores ela nasce") e deixou a struct para trás; agora a struct
-//! vai junto, e o `paint.rs` fica sendo o que ele de fato é — o **manifesto** do subsistema: a
-//! lista de módulos, os re-exports e as suítes de gate. Um manifesto tem de morar na raiz do
-//! módulo; o estado não.
+//! O `state_default` levou o CONSTRUTOR; a struct mora aqui, e o `paint.rs` fica o **manifesto** do
+//! subsistema (módulos, re-exports, suítes de gate), que tem de morar na raiz do módulo; o estado não.
 //!
 //! Os campos são `pub(super)`: quem os lê são os ~40 módulos IRMÃOS (`brush_settings`, `sculpt`,
 //! `wetpaint`, …), DESCENDENTES de `paint` — e nada mais. Nenhum símbolo novo sai da crate.

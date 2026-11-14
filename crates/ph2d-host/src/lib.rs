@@ -16,6 +16,8 @@
 //! core calls `PlatformHost` methods when it needs the OS to do
 //! something on its behalf.
 
+/// O arranque do processo liga as páginas grandes do malloc (B43.7): re-`exec` com `glibc.malloc.hugetlb=1`.
+pub mod arranque;
 pub mod events;
 pub mod filter;
 pub mod ritmo;

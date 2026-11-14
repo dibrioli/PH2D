@@ -12,8 +12,7 @@ pub const DEFORM_TEMPERAMENT_NONE: u8 = 0;
 pub const DEFORM_TEMPERAMENT_RESHAPE: u8 = 1;
 pub const DEFORM_TEMPERAMENT_TRANSFORM: u8 = 2;
 
-// `BrushTextureImage` lives in the sibling `brush_image` module (LOC cap); re-exported so the existing
-// `super::brush_settings::BrushTextureImage` import paths stay stable.
+// `BrushTextureImage` lives in `brush_image` (LOC cap); re-exported so the old import path stays stable.
 pub(super) use super::brush_image::BrushTextureImage;
 
 mod escalas; // o snap de 45° e as escalas dos sliders — filho por LOC

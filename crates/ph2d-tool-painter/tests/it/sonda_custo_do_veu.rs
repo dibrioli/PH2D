@@ -26,8 +26,12 @@ enum Variante {
 }
 
 fn cena(nome: &str, tamanho: f32, v: Variante) -> PainterTool {
+    cena_em(nome, tamanho, v, (W, H))
+}
+
+fn cena_em(nome: &str, tamanho: f32, v: Variante, (w, h): (usize, usize)) -> PainterTool {
     let mut t = PainterTool::default();
-    t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_source(vec![255u8; w * h * 4], w as u32, h as u32);
     let r = csp_secos::MEIOS
         .iter()
         .chain(crate::familias::csp_tinta_grossa::MEIOS.iter())
@@ -275,4 +279,62 @@ fn o_grao_que_segue_o_pincel_vai_a_definicao_inteira() {
             "o Grain no mapping {m} correu a meia definição (o `size` × 2 só vale no Tiled)"
         );
     }
+}
+
+/// ⭐ **B07.3 (GT-06) — o véu a meia definição a 4K escreve o que escreve a 1400×360** (por CONTAGEM, sem relógio): o
+/// mesmo traço do Wet Wash Mix de fábrica (meia definição armada) nas duas telas; os texels que a ampliação escreve
+/// (`PainterTool::mistura_texels_do_veu`) não crescem com a tela (≤ 1,02×) e cabem na caixa do traço × as passadas.
+/// Uma ampliação que andasse a meia tela inteira por lote passa daqui a 4K (8,29 Mpx por lote).
+#[test]
+fn o_veu_a_meia_definicao_a_4k_escreve_o_mesmo_que_na_tela_pequena() {
+    let conta = |tela: (usize, usize)| {
+        let mut t = cena_em("Wet Wash Mix", 30.0, Variante::Fabrica, tela);
+        traco(&mut t);
+        let n = t.mistura_texels_do_veu();
+        (n, t)
+    };
+    let ((pequena, mut t), (k4, _)) = (conta((W, H)), conta((3840, 2160)));
+    // A área suja: a caixa dos texels que o traço mudou na tela pequena (contra a mesma cena sem traço).
+    let tela = t.run_full().0;
+    let nua = cena_em("Wet Wash Mix", 30.0, Variante::Fabrica, (W, H))
+        .run_full()
+        .0;
+    let (mut x0, mut y0, mut x1, mut y1) = (W, H, 0, 0);
+    for (i, (px, nu)) in tela
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(nua.as_chunks::<4>().0)
+        .enumerate()
+    {
+        if px != nu {
+            let (x, y) = (i % W, i / W);
+            (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1));
+        }
+    }
+    assert!(x1 > x0 && y1 > y0, "o traço não mudou a tela");
+    let (area, largura) = ((x1 - x0) * (y1 - y0), (y1 - y0) as f64);
+    // Cada evento (6 px) amplia a caixa do seu lote, ~largura × (largura + 6): um ponto é coberto por
+    // ~(largura + 6) / 6 eventos. O tecto é esse k com folga de 1,5× (o pad da ampliação e a orla dos dabs).
+    let k = 1.5 * (largura + 6.0) / 6.0;
+    let razao = pequena as f64 / area as f64;
+    eprintln!(
+        "[véu 4K] texels ampliados 1400×360 {pequena} · 3840×2160 {k4} ({:.3}×) · área suja {area} ({}×{}) · \
+         {razao:.1} passadas (tecto {k:.1})",
+        k4 as f64 / pequena.max(1) as f64,
+        x1 - x0,
+        y1 - y0
+    );
+    assert!(
+        pequena > 0,
+        "o Wet Wash Mix de fábrica não ampliou nada: a meia definição não armou"
+    );
+    assert!(
+        k4 * 100 <= pequena * 102,
+        "a 4K o véu ampliou {k4} texels contra {pequena} na tela pequena: o custo cresce com a TELA, não com o traço"
+    );
+    assert!(
+        razao <= k,
+        "o véu ampliou {razao:.1}× a área suja ({area} texels), acima das {k:.1} passadas que a largura do traço explica"
+    );
 }

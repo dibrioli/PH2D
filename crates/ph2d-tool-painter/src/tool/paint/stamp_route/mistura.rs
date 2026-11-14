@@ -118,6 +118,8 @@ pub(in crate::tool::paint) struct MisturaDoTraco {
     pub camadas: Vec<Vec<u8>>,
     /// Salta a cópia do véu no mesmo centro ([`ReservatorioOpaco::repete_o_centro`]); `false` só na sonda de custo.
     pub salta_a_copia_do_veu: bool,
+    /// B07.3 (diagnóstico): texels de tela inteira que a meia definição AMPLIOU (`meia::amplia`), acumulados.
+    pub texels_ampliados: u64,
 }
 
 impl Default for MisturaDoTraco {
@@ -133,6 +135,7 @@ impl Default for MisturaDoTraco {
             meia: Vec::new(),
             camadas: Vec::new(),
             salta_a_copia_do_veu: true,
+            texels_ampliados: 0,
         }
     }
 }
@@ -191,6 +194,13 @@ impl PainterTool {
         for m in std::iter::once(&mut paint.mistura_opaca).chain(paint.mistura_camada.iter_mut()) {
             m.salta_a_copia_do_veu = sim;
         }
+    }
+
+    /// B07.3: os texels de tela inteira que o véu a meia definição ampliou até agora (o contador do portão por CONTAGEM).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn mistura_texels_do_veu(&self) -> u64 {
+        self.paint.mistura_opaca.texels_ampliados
     }
 
     /// A sonda de custo compara a meia definição com a inteira no MESMO processo (`MisturaOpaca::meia_definicao`).

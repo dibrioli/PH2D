@@ -370,6 +370,9 @@ impl PainterTool {
         self.paint.mistura_opaca.res = res;
         self.paint.mistura_opaca.sombra = sombra;
         self.paint.mistura_opaca.meia = meia;
+        if let Some(r) = touched {
+            self.paint.mistura_opaca.texels_ampliados += u64::from(r.w) * u64::from(r.h);
+        }
         self.paint.tex_rng = dab_rng.finish();
         self.declare_wrote(touched);
         if let Some(rect) = touched {

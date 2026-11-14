@@ -58,9 +58,24 @@ fn faixas_do_passo(g: &Grid, f: i64) -> Vec<[i64; 4]> {
     out
 }
 
-/// O que um restauro pode mudar na camada INTEIRA fora dos tiles: os planos preguiçosos que nascem/morrem, o
-/// caminho do Real Oil e o tecto do Smooth Edges (o alcance da óptica).
+/// O que um restauro pode mudar na camada INTEIRA fora dos tiles: os planos preguiçosos que nascem/morrem, o caminho
+/// do Real Oil e o tecto do Smooth Edges. N10 W2a2: só o tecto (o ALCANCE da óptica) suja a tela. O plano que
+/// nasce/morre tem fora dos tiles do registo o valor de omissão, que é o que o vazio lê; o Real Oil que liga/desliga só
+/// muda a óptica das células com ele, todas dentro dos tiles. O sujo deles é a caixa do restauro (gate
+/// `o_ctrl_z_vivo_suja_a_caixa_e_pinta_o_mesmo_que_a_tela_inteira`). `PH2D_UNDO_SUJO_DOS_PLANOS=1` (ou
+/// [`UNDO_SUJO_DOS_PLANOS`]) volta ao `Full` de antes: o oráculo.
 type FormaGlobal = ([usize; 9], bool, u32);
+
+/// O oráculo do sujo do restauro: o plano preguiçoso que nasce/morre volta a sujar a tela inteira (régua/medição).
+#[doc(hidden)]
+pub static UNDO_SUJO_DOS_PLANOS: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+fn conta_os_planos() -> bool {
+    static E: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    UNDO_SUJO_DOS_PLANOS.load(std::sync::atomic::Ordering::Relaxed)
+        || *E.get_or_init(|| std::env::var("PH2D_UNDO_SUJO_DOS_PLANOS").is_ok_and(|v| v == "1"))
+}
 
 #[cfg(test)]
 mod enterro_tests;
@@ -389,7 +404,8 @@ impl Engine {
             self.rebake_paper();
         }
         let g = &self.layers[self.active_layer].grid;
-        if forma != forma_global(g) {
+        let agora = forma_global(g);
+        if forma.2 != agora.2 || (forma != agora && conta_os_planos()) {
             return self.mark_dirty_full();
         }
         if let Some([x0, y0, x1, y1]) = caixa {

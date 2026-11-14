@@ -229,3 +229,24 @@ estreito × com `Full` (oráculo = o `toca_tudo` de hoje), ao bit, 1.º traço e
 óleo); mutação = devolver `Full` ⇒ o contador de células recompostas (`conta_sujo`) volta à tela. (3) Depois: a dobra do
 relevo segue o `preview_gpu_region` da óptica sozinha (`painter_gpu_preview.rs`, `janelas`). (4) A matriz `Filbert:wet
 "Wet Liner:wet" "Flat Bristle:wet"` base × head, intercalada, load < 5.
+
+## 2.ª vaga — W2a2 (14/11): a cura do `Full` do Ctrl+Z vivo
+
+**Quem marcava `Full`** (`conta_sujo` no teste, Filbert e Wet Liner, 1.º traço): `historia.rs::depois_do_restauro`,
+`forma != forma_global` — o 1.º traço ALOCA `altura`/`espessura`/`aparencia`/`oleo` e liga `oleo_real`; o undo devolve
+os planos vazios e `oleo_real = false`. **Cura:** só o tecto do Smooth Edges (o alcance da óptica) suja a tela; o plano
+que nasce/morre (fora dos tiles do registo tem o valor de omissão, que é o que o vazio lê) e o Real Oil que liga/desliga
+(só muda as células com ele, dentro dos tiles) sujam a caixa do restauro. `PH2D_UNDO_SUJO_DOS_PLANOS=1` (lida uma vez)
+ou `painter::UNDO_SUJO_DOS_PLANOS` = o `Full` de antes (oráculo). No app (`[undo-sujo]`, Filbert 4K papel):
+`motor=Rect (1407,703)–(2368,1344)` em vez de `Full`.
+
+Gate `o_ctrl_z_vivo_suja_a_caixa_e_pinta_o_mesmo_que_a_tela_inteira` (tp, `undo_vivo/sujo_do_undo_tests.rs`, 1280×800,
+papel): Filbert · Wet Liner · omissão · Wet Round · Knife Oily · Thick Impasto, 1.º e 2.º traço, undo e redo: a tela
+igual ao byte à do oráculo, e o traço SEGUINTE (por cima da caixa e para lá dela) também; sujo 220–367 mil células ×
+1 024 000 do oráculo no 1.º traço. Mutações: devolver `Full` (`if forma != agora`) ⇒ vermelho (sujo = 1 024 000);
+⚠️ largar o `merge_dirty` da caixa SOBREVIVE: a tela restaurada vem da imagem do undo e o traço seguinte recompõe a
+sua região — o sujo do undo só decide o trabalho do 2.º quadro, não pixels (prova de que estreitar é seguro).
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| Ctrl+Z Wet 45 ms (W2a2) | **feito** | sujo `Full` (8,3 M células) → a caixa do restauro (~6 %) | este commit | o `Full` era a forma (planos preguiçosos + `oleo_real`), não o papel |

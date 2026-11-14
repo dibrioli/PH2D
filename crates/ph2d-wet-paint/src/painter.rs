@@ -649,6 +649,8 @@ impl Engine {
 
 mod caixa_do_passo; // B14.1: a caixa da óptica fora é a que o passo MUDOU
 pub use caixa_do_passo::Pedacos;
+#[doc(hidden)]
+pub use historia::UNDO_SUJO_DOS_PLANOS;
 pub mod conta_sujo; // J11: medição — quem marca o sujo
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
 pub mod espelho; // J13b P2: o espelho da óptica para a thread de composição

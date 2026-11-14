@@ -30,6 +30,8 @@ pub(super) mod fases;
 #[cfg(test)]
 mod repoe_sobre_tests;
 #[cfg(test)]
+mod sujo_do_undo_tests;
+#[cfg(test)]
 mod teto_pela_ram_tests;
 #[cfg(test)]
 thread_local! {

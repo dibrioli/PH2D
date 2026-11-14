@@ -122,6 +122,7 @@ fn a_agua_herdada_volta_como_sujo_do_passo_e_o_espelho_a_reduz() {
         let uniao = e.dirty;
         let (t, _) = mudou(&e, &esp, uniao);
         let (passo, alheio) = e.take_dirty_partido();
+        let alheio = alheio.uniao();
         assert_eq!(e.dirty, Dirty::Clean, "passo {k}: o sujo fica em casa");
         let junta = match (passo, alheio) {
             (d, Dirty::Clean) | (Dirty::Clean, d) => d,
@@ -283,4 +284,30 @@ fn o_anel_da_borda_nao_liga_as_faixas() {
         vec![(1, 1, 1, N as i32), (40, 20, 60, 30), (100, 120, 120, 130)],
         "o anel e as duas manchas, cada um na sua caixa"
     );
+}
+
+/// **B14.1, a última envolvente:** duas portas alheias longe uma da outra (a dívida de duas imagens recusadas, dois
+/// dabs) saem da óptica como DOIS pedaços, não a envolvente; a união deles é a de sempre e um pedaço que toca outro
+/// funde-se. Antes: um `Dirty` só, a caixa de canto a canto.
+#[test]
+fn a_porta_alheia_sai_em_pedacos_e_nao_na_envolvente() {
+    let mut e = Engine::new(N, N);
+    let mut esp = Espelho::default();
+    let _ = e.take_dirty();
+    e.copia_para(&mut esp);
+    e.merge_dirty_otica(3, 3, 6, 6);
+    e.merge_dirty_otica(150, 150, 154, 154);
+    let uniao = e.dirty;
+    let pedacos = e.take_dirty_pela_otica_em_faixas(&esp);
+    assert_eq!(pedacos.len(), 2, "dois pedacos: {pedacos:?}");
+    let soma: usize = pedacos.iter().map(|d| area(*d)).sum();
+    assert!(soma < area(uniao), "{soma} >= a envolvente {}", area(uniao));
+    e.merge_dirty_otica(3, 3, 6, 6);
+    e.merge_dirty_otica(150, 150, 154, 154);
+    e.merge_dirty_otica(5, 5, 151, 151);
+    assert_eq!(e.take_dirty_partido().1.pedacos(), &[uniao], "quem toca funde-se");
+    e.merge_dirty_otica(3, 3, 6, 6);
+    e.mark_dirty_full();
+    e.merge_dirty_otica(150, 150, 154, 154);
+    assert_eq!(e.take_dirty_partido().1.pedacos(), &[Dirty::Full], "cheio fica cheio");
 }

@@ -18,7 +18,7 @@ thread_local! {
 fn imagem_no_ar(t: &mut PainterTool) {
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
-    s.otica.divida = Some((1, 1, 1, 1));
+    s.otica.divida = vec![(1, 1, 1, 1)];
     tique(t);
     let s = t.paint.wetpaint.session.as_ref().expect("sessão");
     assert!(s.otica.pendente(), "premissa: o pedido saiu");

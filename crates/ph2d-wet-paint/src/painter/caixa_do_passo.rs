@@ -9,18 +9,103 @@ use super::{Dirty, Engine, conta_sujo, nova_revisao};
 use crate::grid::Grid;
 
 /// O `dirty` partido: o que o passo da sim marcou × o das outras portas.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(super) struct SujoDaOtica {
     pub(super) passo: Dirty,
-    pub(super) alheio: Dirty,
+    /// As outras portas em PEDAÇOS (B14.1, a última envolvente): a sua união é a caixa de sempre.
+    pub(super) alheio: Pedacos,
 }
 
 impl Default for SujoDaOtica {
     fn default() -> Self {
         Self {
             passo: Dirty::Clean,
-            alheio: Dirty::Clean,
+            alheio: Pedacos::default(),
         }
+    }
+}
+
+/// Retângulos sujos que não se tocam (B14.1): um novo junta-se aos que toca (até nenhum tocar), senão entra à parte.
+/// `[Full]` = a tela inteira; vazio = limpo. Cobre exactamente o que a união cobria menos os vãos entre pedaços.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Pedacos(Vec<Dirty>);
+
+impl Pedacos {
+    /// A porta de [`Dirty::une`] (com a folga de uma célula), em pedaços.
+    pub(super) fn une(&mut self, r: Caixa, w: usize, h: usize) {
+        let mut d = Dirty::Clean;
+        d.une(r, w, h);
+        self.junta(d);
+    }
+
+    /// Junta um sujo já com a folga.
+    pub fn junta(&mut self, d: Dirty) {
+        let Dirty::Rect { x0, y0, x1, y1 } = d else {
+            if d == Dirty::Full {
+                self.0 = vec![Dirty::Full];
+            }
+            return;
+        };
+        if self.cheio() {
+            return;
+        }
+        let mut c = (x0, y0, x1, y1);
+        while let Some(k) = self.0.iter().position(|p| match *p {
+            Dirty::Rect { x0, y0, x1, y1 } => x0 <= c.2 && c.0 <= x1 && y0 <= c.3 && c.1 <= y1,
+            _ => false,
+        }) {
+            if let Dirty::Rect { x0, y0, x1, y1 } = self.0.swap_remove(k) {
+                c = (c.0.min(x0), c.1.min(y0), c.2.max(x1), c.3.max(y1));
+            }
+        }
+        self.0.push(Dirty::Rect {
+            x0: c.0,
+            y0: c.1,
+            x1: c.2,
+            y1: c.3,
+        });
+    }
+
+    /// A tela inteira.
+    #[must_use]
+    pub fn cheio(&self) -> bool {
+        self.0.first() == Some(&Dirty::Full)
+    }
+
+    /// A envolvente (o `alheio` de antes do B14.1).
+    #[must_use]
+    pub fn uniao(&self) -> Dirty {
+        self.0.iter().fold(Dirty::Clean, |mut u, p| {
+            match (*p, &mut u) {
+                (Dirty::Full, _) => u = Dirty::Full,
+                (_, Dirty::Full) | (Dirty::Clean, _) => {}
+                (r, Dirty::Clean) => u = r,
+                (
+                    Dirty::Rect { x0, y0, x1, y1 },
+                    Dirty::Rect {
+                        x0: a,
+                        y0: b,
+                        x1: c,
+                        y1: e,
+                    },
+                ) => {
+                    (*a, *b, *c, *e) = ((*a).min(x0), (*b).min(y0), (*c).max(x1), (*e).max(y1));
+                }
+            }
+            u
+        })
+    }
+
+    /// Os pedaços (`[Full]` = a tela inteira).
+    #[must_use]
+    pub fn pedacos(&self) -> &[Dirty] {
+        &self.0
+    }
+
+    /// Os pedaços, consumidos.
+    #[must_use]
+    pub fn em_vec(self) -> Vec<Dirty> {
+        self.0
     }
 }
 
@@ -42,7 +127,7 @@ impl Engine {
     /// O [`Engine::take_dirty`] de casa partido em `(passo, alheio)`; a união deles é a de sempre. O do passo volta ao
     /// worker por [`Engine::devolve_sujo_do_passo`], onde o espelho o reduz ao que mudou (B14.1: a água herdada no
     /// pen-down era a caixa do fluido inteira, a envolvente de todas as pinceladas molhadas).
-    pub fn take_dirty_partido(&mut self) -> (Dirty, Dirty) {
+    pub fn take_dirty_partido(&mut self) -> (Dirty, Pedacos) {
         self.dirty = Dirty::Clean;
         let SujoDaOtica { passo, alheio } = std::mem::take(&mut self.sujo_da_otica);
         (passo, alheio)
@@ -62,7 +147,7 @@ impl Engine {
         match self.tira_pela_otica(espelho) {
             PelaOtica::Uniao(d) => d,
             PelaOtica::Faixas { alheio, faixas } => {
-                let mut d = alheio;
+                let mut d = alheio.uniao();
                 for r in faixas {
                     d.une(r, self.width, self.height);
                 }
@@ -71,16 +156,16 @@ impl Engine {
         }
     }
 
-    /// O mesmo sujo em PEDAÇOS (B14.1): a porta alheia e cada faixa de linhas mudadas (separadas por ≥ 1 linha sem
-    /// mudança), cada uma com a folga de uma célula. A união deles é [`Engine::take_dirty_pela_otica`]; vazio = limpo.
+    /// O mesmo sujo em PEDAÇOS (B14.1): cada pedaço da porta alheia e cada faixa de linhas mudadas (separadas por ≥ 1
+    /// linha sem mudança), cada uma com a folga de uma célula. A união deles é [`Engine::take_dirty_pela_otica`]; vazio = limpo.
     pub fn take_dirty_pela_otica_em_faixas(&mut self, espelho: &Espelho) -> Vec<Dirty> {
         match self.tira_pela_otica(espelho) {
             PelaOtica::Uniao(Dirty::Clean) => Vec::new(),
             PelaOtica::Uniao(d) => vec![d],
             PelaOtica::Faixas { alheio, faixas } => {
                 let (w, h) = (self.width, self.height);
-                let alheio = (!matches!(alheio, Dirty::Clean)).then_some(alheio);
                 alheio
+                    .em_vec()
                     .into_iter()
                     .chain(faixas.into_iter().map(|r| {
                         let mut f = Dirty::Clean;
@@ -96,9 +181,16 @@ impl Engine {
         let uniao = std::mem::replace(&mut self.dirty, Dirty::Clean);
         let SujoDaOtica { passo, alheio } = std::mem::take(&mut self.sujo_da_otica);
         let Dirty::Rect { x0, y0, x1, y1 } = passo else {
-            return PelaOtica::Uniao(uniao);
+            // Sem passo o espelho não reduz nada, mas a porta alheia continua em pedaços (B14.1).
+            return match passo {
+                Dirty::Clean if !alheio.cheio() => PelaOtica::Faixas {
+                    alheio,
+                    faixas: Vec::new(),
+                },
+                _ => PelaOtica::Uniao(uniao),
+            };
         };
-        if matches!(alheio, Dirty::Full) || matches!(self.espelho_sujo, Dirty::Full) {
+        if alheio.cheio() || matches!(self.espelho_sujo, Dirty::Full) {
             return PelaOtica::Uniao(uniao);
         }
         let mesma_forma = espelho.camadas.len() == self.layers.len()
@@ -123,7 +215,7 @@ impl Engine {
 /// O sujo tirado pela óptica: a união (sem espelho de confiança) ou a porta alheia e as faixas sem folga.
 enum PelaOtica {
     Uniao(Dirty),
-    Faixas { alheio: Dirty, faixas: Vec<Caixa> },
+    Faixas { alheio: Pedacos, faixas: Vec<Caixa> },
 }
 
 /// As caixas de `caixa` (presa a `[1..=w]×[1..=h]`) onde algum plano da óptica difere ao bit entre `g` e o espelho `e`,

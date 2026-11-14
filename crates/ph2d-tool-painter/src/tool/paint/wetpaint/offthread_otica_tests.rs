@@ -172,7 +172,7 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
         let antigo = w.otica.as_ref().unwrap().pede(PedidoDeImagem {
             factos: factos(),
             epoca,
-            divida,
+            divida: divida.into_iter().collect(),
             agua: None,
             forma: FORMA,
             com_veu: true,
@@ -299,7 +299,7 @@ fn duas_caixas_vivas(
         w.otica.as_ref().unwrap().pede(PedidoDeImagem {
             factos: factos(),
             epoca,
-            divida: None,
+            divida: Vec::new(),
             agua: None,
             forma: FORMA,
             com_veu: true,

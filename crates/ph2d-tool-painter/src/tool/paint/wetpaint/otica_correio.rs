@@ -15,8 +15,9 @@ use std::time::Instant;
 #[derive(Default)]
 struct Correio {
     pedido: Option<PedidoDeImagem>,
-    /// `(época, caixa)` do último pedido servido: o sujo saiu do motor e a imagem dele vem a caminho.
-    servido: Option<(u64, CaixaCel)>,
+    /// `(época, faixas)` do último pedido servido: o sujo saiu do motor e a imagem dele vem a caminho (B14.1: as
+    /// faixas, não a envolvente).
+    servido: Option<(u64, Vec<CaixaCel>)>,
     /// O fio do compositor morreu (B11.A1): o sujo servido voltou ao motor e a tela compõe em casa.
     morto: bool,
     /// A porta de teste: o próximo `compoe` entra em pânico.
@@ -42,18 +43,16 @@ impl DoFioPrincipal {
         trava(&self.correio).pedido.replace(p)
     }
 
-    /// O sujo que o pedido `epoca` levou do motor: `([a dívida dele por servir, a caixa já servida], a água dele por
+    /// O sujo que o pedido `epoca` levou do motor: `(a dívida dele por servir ++ as faixas já servidas, a água dele por
     /// servir)`. Só vale com o motor em casa: o worker não está a meio de um `serve`.
     pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(&self, epoca: u64) -> SujoDoPedido {
         let c = trava(&self.correio);
         let pedido = c.pedido.as_ref().filter(|p| p.epoca == epoca);
-        (
-            [
-                pedido.and_then(|p| p.divida),
-                c.servido.filter(|s| s.0 == epoca).map(|s| s.1),
-            ],
-            pedido.and_then(|p| p.agua),
-        )
+        let mut sujo: Vec<CaixaCel> = pedido.map(|p| p.divida.clone()).unwrap_or_default();
+        if let Some((_, faixas)) = c.servido.as_ref().filter(|s| s.0 == epoca) {
+            sujo.extend_from_slice(faixas);
+        }
+        (sujo, pedido.and_then(|p| p.agua))
     }
 
     /// O compositor ainda está de pé? `false` = morreu e o sujo que levava voltou ao motor (B11.A1).
@@ -158,7 +157,7 @@ impl DoWorker {
             return;
         };
         let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
-        if let Some((x0, y0, x1, y1)) = p.divida {
+        for &(x0, y0, x1, y1) in &p.divida {
             engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
         if let Some((x0, y0, x1, y1)) = p.agua {
@@ -187,7 +186,7 @@ impl DoWorker {
             });
             return;
         };
-        trava(&self.correio).servido = Some((p.epoca, caixa));
+        trava(&self.correio).servido = Some((p.epoca, faixas.clone()));
         let Some(mut espelho) = self.espelho.take() else {
             unreachable!("conferido acima")
         };
@@ -229,8 +228,8 @@ impl DoWorker {
         self.morto = true;
         let mut c = trava(&self.correio);
         c.morto = true;
-        if let Some((_, (x0, y0, x1, y1))) = c.servido.take() {
-            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+        let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+        for (x0, y0, x1, y1) in c.servido.take().map(|s| s.1).unwrap_or_default() {
             engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
     }

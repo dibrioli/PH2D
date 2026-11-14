@@ -53,8 +53,8 @@ pub(in crate::tool::paint::wetpaint) struct FormaDaTela {
     pub(in crate::tool::paint::wetpaint) tela: (usize, usize),
 }
 
-/// `([dívida por servir, caixa servida], água por servir)` de um pedido (`DoFioPrincipal::sujo_do_pedido`).
-pub(in crate::tool::paint::wetpaint) type SujoDoPedido = ([Option<CaixaCel>; 2], Option<CaixaCel>);
+/// `(dívida por servir ++ faixas servidas, água por servir)` de um pedido (`DoFioPrincipal::sujo_do_pedido`).
+pub(in crate::tool::paint::wetpaint) type SujoDoPedido = (Vec<CaixaCel>, Option<CaixaCel>);
 
 /// O pedido de UMA imagem, escrito só pelo fio principal.
 #[derive(Clone)]
@@ -62,8 +62,8 @@ pub(in crate::tool::paint::wetpaint) struct PedidoDeImagem {
     pub(in crate::tool::paint::wetpaint) factos: FactosDaOtica,
     /// Ecoada na resposta: o fio principal sabe a que pedido ela responde.
     pub(in crate::tool::paint::wetpaint) epoca: u64,
-    /// A caixa de uma imagem descartada (tocou a composição local): entra no sujo antes de o tirar.
-    pub(in crate::tool::paint::wetpaint) divida: Option<CaixaCel>,
+    /// As caixas das imagens descartadas (tocaram a composição local), em pedaços: entram no sujo antes de o tirar.
+    pub(in crate::tool::paint::wetpaint) divida: Vec<CaixaCel>,
     /// A água herdada no pen-down: entra como sujo do PASSO (o espelho redu-la ao que mudou).
     pub(in crate::tool::paint::wetpaint) agua: Option<CaixaCel>,
     pub(in crate::tool::paint::wetpaint) forma: FormaDaTela,
@@ -267,7 +267,7 @@ impl super::super::WetSession {
         self.worker
             .as_ref()
             .and_then(|w| w.otica.as_ref())
-            .map_or(([None, None], None), |o| o.sujo_do_pedido(epoca))
+            .map_or((Vec::new(), None), |o| o.sujo_do_pedido(epoca))
     }
 
     /// A próxima resposta do compositor, sem esperar.

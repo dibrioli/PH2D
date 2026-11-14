@@ -86,7 +86,7 @@ impl Clone for Engine {
             espelho_tiles: Vec::new(),
             #[cfg(test)]
             espelho_passo: super::Dirty::Clean,
-            sujo_da_otica: *sujo_da_otica,
+            sujo_da_otica: sujo_da_otica.clone(),
             flow_ratio: *flow_ratio,
         }
     }

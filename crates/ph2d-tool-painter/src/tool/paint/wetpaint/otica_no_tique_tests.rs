@@ -246,7 +246,7 @@ fn a_divida_leva_a_caixa_da_imagem_descartada() {
     s.bring_home();
     s.engine.fast_dry_now();
     // O motor não andou: só a dívida (uma célula) faz o tique pedir.
-    s.otica.divida = Some((1, 1, 1, 1));
+    s.otica.divida = vec![(1, 1, 1, 1)];
     tique(&mut t);
     assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
     std::thread::sleep(Duration::from_millis(150));
@@ -266,6 +266,37 @@ fn a_divida_leva_a_caixa_da_imagem_descartada() {
     );
     assenta(&mut t);
     confere_com_casa(&mut t, "Fast dry e dab");
+}
+
+/// **B14.1, a última envolvente:** uma dívida em dois cantos opostos é servida em DUAS faixas (antes a envolvente de
+/// canto a canto, a tela inteira) e a tela que a imagem deixa é a de casa ao byte.
+#[test]
+fn a_divida_em_pedacos_e_servida_em_pedacos_ao_byte() {
+    let mut t = cena(true, 0.0, false);
+    quadros(&mut t, 10);
+    assenta(&mut t);
+    congela(&mut t);
+    let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+    let (gw, gh) = s.grid;
+    let (a, b) = ((1, 1, 2, 2), (gw - 1, gh - 1, gw, gh));
+    s.otica.divida = vec![a, b];
+    tique(&mut t);
+    let epoca = sess(&t).otica.no_ar.expect("premissa: o pedido saiu");
+    std::thread::sleep(Duration::from_millis(150));
+    let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+    s.bring_home();
+    let (servido, _) = s.sujo_do_pedido(epoca);
+    let toca = |p: CaixaCel, q: CaixaCel| p.0 <= q.2 && q.0 <= p.2 && p.1 <= q.3 && q.1 <= p.3;
+    assert!(
+        servido.iter().any(|&f| toca(f, a)) && servido.iter().any(|&f| toca(f, b)),
+        "premissa: servido {servido:?}"
+    );
+    assert!(
+        servido.iter().all(|&f| !(toca(f, a) && toca(f, b))),
+        "a envolvente de canto a canto: {servido:?}"
+    );
+    assenta(&mut t);
+    confere_com_casa(&mut t, "a dívida em pedaços");
 }
 
 /// Um traço curto de Smooth Edges no máximo, sem tique, à direita da caixa pedida ou (`abaixo`) em baixo dela.
@@ -362,7 +393,7 @@ fn a_imagem_velha_nao_esvazia_o_que_a_casa_ja_pintou() {
         let velha = caixa_ate(5, abaixo, usize::from(sess(&t).ratio));
         let s = t.paint.wetpaint.session.as_mut().expect("sessao");
         s.bring_home();
-        s.otica.divida = Some(velha);
+        s.otica.divida = vec![velha];
         tique(&mut t);
         assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
         std::thread::sleep(Duration::from_millis(150));
@@ -400,7 +431,7 @@ fn a_imagem_velha_nao_esvazia_a_sombra_sem_grao() {
     let velha = caixa_ate(5, false, usize::from(sess(&t).ratio));
     let s = t.paint.wetpaint.session.as_mut().expect("sessao");
     s.bring_home();
-    s.otica.divida = Some(velha);
+    s.otica.divida = vec![velha];
     tique(&mut t);
     assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
     std::thread::sleep(Duration::from_millis(150));
@@ -450,7 +481,7 @@ fn a_imagem_velha_nao_cola_degraus_velhos_no_traco_ao_lado() {
                 let rr = usize::from(sess(&t).ratio);
                 let s = t.paint.wetpaint.session.as_mut().expect("sessao");
                 s.bring_home();
-                s.otica.divida = Some(caixa_ate(inicio + 1 - folga, abaixo, rr));
+                s.otica.divida = vec![caixa_ate(inicio + 1 - folga, abaixo, rr)];
                 tique(&mut t);
                 assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
                 std::thread::sleep(Duration::from_millis(150));
@@ -483,7 +514,7 @@ fn a_tinta_suave_na_margem_da_caixa_e_a_tela_de_casa_ao_byte() {
         let inicio = pinta_e_mede(&mut t, abaixo, 16.0);
         // O resto do sujo do traço sai com uma imagem no canto oposto.
         let s = t.paint.wetpaint.session.as_mut().expect("sessao");
-        s.otica.divida = Some(caixa_ate(5, abaixo, rr));
+        s.otica.divida = vec![caixa_ate(5, abaixo, rr)];
         assenta(&mut t);
         // A região acaba `r` depois da caixa: a duas células da mancha, ao alcance da orla dela.
         let r = super::smooth_edges::alcance_da_mudanca(super::smooth_edges::RAIO_MAX);
@@ -491,7 +522,7 @@ fn a_tinta_suave_na_margem_da_caixa_e_a_tela_de_casa_ao_byte() {
         let s = t.paint.wetpaint.session.as_mut().expect("sessao");
         let inteiro = s.planos.suave.iter().filter(|d| **d > 0).count();
         s.planos.suave = Vec::new();
-        s.otica.divida = Some(caixa);
+        s.otica.divida = vec![caixa];
         assenta(&mut t);
         let n = sess(&t).planos.suave.iter().filter(|d| **d > 0).count();
         assert!(

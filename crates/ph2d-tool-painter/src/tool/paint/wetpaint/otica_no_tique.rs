@@ -20,7 +20,8 @@ pub(super) struct OticaDoTique {
     pub(super) no_ar: Option<u64>,
     epoca: u64,
     pub(super) uniao_local: Option<CaixaCel>,
-    pub(super) divida: Option<CaixaCel>,
+    /// As caixas que a tela deve, em pedaços que não se tocam (B14.1: a última envolvente).
+    pub(super) divida: Vec<CaixaCel>,
     /// A água do passo herdada no pen-down (B14.1): volta ao worker como sujo do PASSO, que o espelho reduz ao que
     /// mudou; pela `divida` era a caixa do fluido inteira.
     pub(super) agua: Option<CaixaCel>,
@@ -32,6 +33,14 @@ pub(super) struct OticaDoTique {
     /// Faixas cujos RGBA do compositor a tela copiou (B11.3).
     #[cfg(test)]
     pub(super) rgba_usadas: u32,
+}
+
+/// Junta `c` aos pedaços: os que ela toca fundem-se com ela (até nenhum tocar), os outros ficam à parte (B14.1).
+pub(super) fn junta(v: &mut Vec<CaixaCel>, mut c: CaixaCel) {
+    while let Some(k) = v.iter().position(|&p| toca(p, c)) {
+        c = une(Some(v.swap_remove(k)), c);
+    }
+    v.push(c);
 }
 
 pub(super) fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
@@ -57,19 +66,19 @@ impl OticaDoTique {
 
     /// Há sujo tirado do motor que a tela ainda não mostra (uma imagem no ar ou a dívida).
     pub(super) fn pendente(&self) -> bool {
-        self.no_ar.is_some() || self.divida.is_some() || self.agua.is_some()
+        self.no_ar.is_some() || !self.divida.is_empty() || self.agua.is_some()
     }
 
     /// O compositor morreu: o que estava no ar e por servir já voltou ao motor (B11.A1).
     pub(super) fn esquece_o_que_estava_no_ar(&mut self) {
         self.no_ar = None;
         self.uniao_local = None;
-        self.divida = None;
+        self.divida.clear();
         self.agua = None;
     }
 
     fn deve(&mut self, c: CaixaCel) {
-        self.divida = Some(une(self.divida, c));
+        junta(&mut self.divida, c);
     }
 }
 
@@ -77,10 +86,13 @@ impl WetSession {
     /// J13b P8 ([doc](../../../../../../docs/Painter/Arquitetura/J13b_P8_pen_down.md)): o sujo que o motor traz do
     /// worker é da ÁGUA (a tela de casa não tem traço por compor) e vai pela dívida, para a composição de casa do lote
     /// levar só o que o traço muda. O sujo é uma caixa só: sem isto o traço longe da poça compunha a UNIÃO das duas.
+    /// A porta alheia vem em pedaços e fica em pedaços (B14.1).
     pub(super) fn a_agua_herdada_vai_pela_divida(&mut self) {
         let (passo, alheio) = self.engine.take_dirty_partido();
-        if let Some(c) = offthread::otica::caixa_da_grade(alheio, self.grid) {
-            self.otica.deve(c);
+        for d in alheio.em_vec() {
+            if let Some(c) = offthread::otica::caixa_da_grade(d, self.grid) {
+                self.otica.deve(c);
+            }
         }
         if let Some(c) = offthread::otica::caixa_da_grade(passo, self.grid) {
             self.otica.agua = Some(une(self.otica.agua, c));
@@ -90,12 +102,12 @@ impl WetSession {
     /// O sujo que saiu do motor e a tela ainda não mostra (a dívida e a imagem no ar) volta ao motor. Motor em casa: a
     /// composição seguinte leva só o que falta, nunca a tela inteira.
     pub(super) fn o_sujo_por_mostrar_volta_ao_motor(&mut self) {
-        let ([divida, servido], agua) = self
+        let (pedido, agua) = self
             .otica
             .no_ar
-            .map_or(([None, None], None), |e| self.sujo_do_pedido(e));
+            .map_or((Vec::new(), None), |e| self.sujo_do_pedido(e));
         let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
-        for (x0, y0, x1, y1) in [divida, servido, self.otica.divida].into_iter().flatten() {
+        for &(x0, y0, x1, y1) in pedido.iter().chain(&self.otica.divida) {
             self.engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
         for (x0, y0, x1, y1) in [agua, self.otica.agua].into_iter().flatten() {
@@ -267,7 +279,7 @@ impl PainterTool {
         };
         if sess.otica.no_ar.is_some()
             || sess.base.len() != w * h * 4
-            || (done == sess.seen_steps && sess.otica.divida.is_none() && sess.otica.agua.is_none())
+            || (done == sess.seen_steps && sess.otica.divida.is_empty() && sess.otica.agua.is_none())
         {
             return;
         }
@@ -275,7 +287,7 @@ impl PainterTool {
         let p = PedidoDeImagem {
             factos,
             epoca,
-            divida: sess.otica.divida,
+            divida: sess.otica.divida.clone(),
             agua: sess.otica.agua,
             forma: FormaDaTela {
                 ratio: sess.ratio,
@@ -290,7 +302,7 @@ impl PainterTool {
             o.epoca = epoca;
             o.no_ar = Some(epoca);
             o.uniao_local = None;
-            o.divida = antigo.as_ref().and_then(|a| a.divida);
+            o.divida = antigo.as_ref().map(|a| a.divida.clone()).unwrap_or_default();
             o.agua = antigo.and_then(|a| a.agua);
         }
     }

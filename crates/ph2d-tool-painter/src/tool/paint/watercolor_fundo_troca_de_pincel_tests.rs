@@ -46,6 +46,16 @@ fn aquecido(t: &PainterTool) -> bool {
 
 /// `(fotos, (colhidos, descartados), aquecido antes do preset, aquecido depois)`.
 fn corre(em_fundo: bool, pincel: &str, descarta: bool) -> (Vec<Vec<u8>>, (u32, u32), bool, bool) {
+    corre_com(em_fundo, descarta, &|t| {
+        t.preset_aplicar(&de_fabrica_ou_candidato(pincel)).expect("meio");
+    })
+}
+
+fn corre_com(
+    em_fundo: bool,
+    descarta: bool,
+    troca: &dyn Fn(&mut PainterTool),
+) -> (Vec<Vec<u8>>, (u32, u32), bool, bool) {
     FUNDO_AQUECIDO_EM_FUNDO.set(em_fundo);
     CONTAS.set((0, 0));
     let mut t = PainterTool::default();
@@ -61,8 +71,7 @@ fn corre(em_fundo: bool, pincel: &str, descarta: bool) -> (Vec<Vec<u8>>, (u32, u
     let mut fotos = Vec::new();
     t.add_raster_layer("nova").expect("a nova");
     let antes = aquecido(&t);
-    t.preset_aplicar(&de_fabrica_ou_candidato(pincel))
-        .expect("meio");
+    troca(&mut t);
     t.set_brush_size_px(10.0);
     let depois = aquecido(&t);
     if descarta {
@@ -118,4 +127,23 @@ fn o_fundo_do_toque_aquece_na_troca_de_pincel_e_e_o_mesmo_bit() {
     let (_, contas, _, depois) = corre(true, "Hard Round", false);
     assert!(!depois, "um pincel seco não aquece o fundo da aguada");
     assert_eq!(contas, (0, 0));
+}
+
+/// n.º 10 F5c (B18.8): o chip do meio (Watercolor) com o mesmo pincel também aquece o fundo do 1.º toque, ao bit da
+/// rota do clique. **Mutação que sangra:** tirar o `aquece_o_fundo_do_toque` do fim de `set_paint_media`.
+#[test]
+fn o_fundo_do_toque_aquece_no_chip_do_meio_e_e_o_mesmo_bit() {
+    let chip = |t: &mut PainterTool| t.set_paint_media(super::media::PaintMedia::Watercolor);
+    for descarta in [false, true] {
+        let (com, contas, antes, depois) = corre_com(true, descarta, &chip);
+        let (sem, contas_sem, _, depois_sem) = corre_com(false, descarta, &chip);
+        assert!(!antes, "CONTROLO: o «+» com o pincel seco não aquece nada");
+        assert!(depois && depois_sem, "descarta={descarta}: o chip da aguada aquece");
+        assert_eq!(contas, if descarta { (0, 1) } else { (1, 0) }, "descarta={descarta}");
+        assert_eq!(contas_sem, (0, 0));
+        assert_eq!(com.len(), sem.len());
+        for (i, (a, b)) in com.iter().zip(&sem).enumerate() {
+            assert!(!a.is_empty() && a == b, "descarta={descarta}: a foto {i} ao bit");
+        }
+    }
 }

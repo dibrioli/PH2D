@@ -323,6 +323,8 @@ impl crate::tool::PainterTool {
         }
         self.settle_stroke_method();
         self.arma_o_preparo_do_toque();
+        // B18.8: o chip da aguada aquece o fundo do 1.º toque, como a troca de camada e a de pincel.
+        self.aquece_o_fundo_do_toque();
     }
 
     /// Deixa o método de traço num que o meio vigente de fato OFERECE — chamado no fim de

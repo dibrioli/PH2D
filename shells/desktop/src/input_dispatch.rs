@@ -350,9 +350,6 @@ impl App {
 
     /// ⭐ A porta ÚNICA do clique (ver [`Self::pointer_moved`]); `button` = o do winit.
     pub(crate) fn pointer_button(&mut self, evt: PointerEvent, button: MouseButton) {
-        if self.ramo_faixa_unica(evt, button) {
-            return;
-        }
         ph2d_pen::porta::poe_tinta(&evt);
         let (kind, mapped_button) = (evt.kind, evt.button);
         let state = match kind {
@@ -375,7 +372,8 @@ impl App {
             }
             self.end_anchor_gizmo_drag();
         }
-        if self.ramo_aperto_solta_teclado(state, evt) {
+        // A faixa única (arrastar, redimensionar a janela) só depois das portas: desarmar, soltar, a pressão.
+        if self.ramo_aperto_solta_teclado(state, evt) || self.ramo_faixa_unica(evt, button) {
             return;
         }
         self.ramo_arrasto_biblioteca(state, button);

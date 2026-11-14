@@ -54,8 +54,8 @@ impl PainterTool {
                 .paint
                 .wetpaint
                 .session
-                .as_ref()
-                .is_some_and(|s| self.undo.marca.molhada_viva(s.marca))
+                .marca()
+                .is_some_and(|m| self.undo.marca.molhada_viva(m))
     }
 
     /// Pen-up: close the engine's direct stroke (the sim resumes). Called from
@@ -88,26 +88,30 @@ impl PainterTool {
 
     /// **Pousa os lotes adiados** ([`session::LoteAdiado`]) pela rota de sempre, com o estado por lote
     /// de cada um — trazendo o motor (bloqueia ≤ um estágio: quem chama já decidiu que é a hora).
+    /// F2f: um lote que voa leva os seguintes ATRÁS dele; o dreno do `as_mut` devolve-os aos adiados e a volta
+    /// seguinte pousa-os — até não sobrar nenhum.
     pub(in crate::tool::paint) fn wetpaint_pousa_adiados(&mut self) {
-        let Some(sess) = self.paint.wetpaint.session.as_mut() else {
-            return;
-        };
-        if sess.adiados.is_empty() {
-            return;
+        loop {
+            let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+                return;
+            };
+            if sess.adiados.is_empty() {
+                return;
+            }
+            sess.bring_home();
+            let lotes = std::mem::take(&mut sess.adiados);
+            let (grupos, semente) = (
+                std::mem::take(&mut self.paint.dab_groups),
+                self.paint.tex_rng,
+            );
+            for l in lotes {
+                self.paint.dab_groups = l.groups;
+                self.paint.tex_rng = l.tex_rng;
+                self.stamp_dabs_wetpaint(&l.dabs, &l.brush);
+            }
+            self.paint.dab_groups = grupos;
+            self.paint.tex_rng = semente;
         }
-        sess.bring_home();
-        let lotes = std::mem::take(&mut sess.adiados);
-        let (grupos, semente) = (
-            std::mem::take(&mut self.paint.dab_groups),
-            self.paint.tex_rng,
-        );
-        for l in lotes {
-            self.paint.dab_groups = l.groups;
-            self.paint.tex_rng = l.tex_rng;
-            self.stamp_dabs_wetpaint(&l.dabs, &l.brush);
-        }
-        self.paint.dab_groups = grupos;
-        self.paint.tex_rng = semente;
     }
 
     /// Per-frame heartbeat: **MOSTRA o que o worker já simulou** e devolve o
@@ -171,6 +175,10 @@ impl PainterTool {
                 sess.try_bring_home();
             }
             return;
+        }
+        // F2f: no relógio fixo (os oráculos) os lotes atrás do voo pousam todos antes dos passos — a ordem síncrona.
+        if self.paint.wetpaint.relogio_fixo.is_some() && self.paint.wetpaint.live_gesture {
+            self.wetpaint_pousa_adiados();
         }
         // Os dabs dos eventos deste quadro entram na tela ANTES de o motor ir para o worker.
         self.wet_compoe_o_pendente();
@@ -247,7 +255,13 @@ impl PainterTool {
                     sess.seen_steps = done;
                 }
                 sess.reconcile_facts(facts);
-                if adiados {
+                if adiados && self.encadeia() {
+                    // F2f: um por quadro até voar; com a sessão em voo o resto do tique leria (esperaria) por ela.
+                    self.wetpaint_pousa_ate_voar();
+                    if self.paint.wetpaint.session.em_voo() {
+                        return;
+                    }
+                } else if adiados {
                     self.wetpaint_pousa_adiados();
                 }
                 if mostra {

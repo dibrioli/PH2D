@@ -9,12 +9,15 @@
 
 use super::WetSession;
 use super::dab_route::fila_do_dab::{self, EmVoo};
+use super::session::LoteAdiado;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
 #[cfg(test)]
 thread_local! {
     /// Quantos lotes voaram neste fio (o gate prova que a fila adiada correu).
     pub(in crate::tool::paint) static VOOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Quantos lotes ficaram ATRÁS de um voo neste fio (F2f: o gate prova que o encadeado correu).
+    pub(in crate::tool::paint) static ATRAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// A sessão viva: em casa, com o operário, ou nenhuma.
@@ -22,6 +25,11 @@ thread_local! {
 pub(in crate::tool::paint) struct SessaoDoWet {
     aqui: OnceLock<WetSession>,
     voo: Mutex<Option<EmVoo>>,
+    /// Os lotes que chegaram com a sessão em voo (F2f), na ordem da mão: o dreno põe-nos no FIM de
+    /// `WetSession::adiados`, e a rota pousa-os um por oportunidade (evento ou tique) sem esperar o operário.
+    atras: Mutex<Vec<LoteAdiado>>,
+    /// A `WetSession::marca` da sessão em voo (o operário não a muda): a rota lê-a sem drenar.
+    marca_em_voo: Option<u64>,
 }
 
 impl SessaoDoWet {
@@ -30,12 +38,25 @@ impl SessaoDoWet {
         Self {
             aqui: OnceLock::from(s),
             voo: Mutex::new(None),
+            atras: Mutex::new(Vec::new()),
+            marca_em_voo: None,
         }
     }
 
     /// A sessão sai ao operário ([`fila_do_dab::enfileira`]); a próxima leitura espera-a.
-    pub(in crate::tool::paint) fn voa(&mut self, voo: EmVoo) {
-        debug_assert!(self.aqui.get().is_none(), "a sessão voa sem estar fora de casa");
+    pub(in crate::tool::paint) fn voa(&mut self, voo: EmVoo, marca: Option<u64>) {
+        self.marca_em_voo = marca;
+        debug_assert!(
+            self.aqui.get().is_none(),
+            "a sessão voa sem estar fora de casa"
+        );
+        debug_assert!(
+            self.atras
+                .get_mut()
+                .unwrap_or_else(PoisonError::into_inner)
+                .is_empty(),
+            "a sessão voa com lotes atrás de um voo anterior"
+        );
         #[cfg(test)]
         VOOS.set(VOOS.get() + 1);
         *self.voo.get_mut().unwrap_or_else(PoisonError::into_inner) = Some(voo);
@@ -47,6 +68,49 @@ impl SessaoDoWet {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .is_some()
+    }
+
+    /// F2f: com um lote ainda com o operário, `lote()` fica ATRÁS dele (`true`) e o evento volta sem esperar;
+    /// sem voo, ou com o voo já pronto, nada muda (`false`) e a rota segue (drenando, sem espera).
+    pub(in crate::tool::paint) fn fica_atras(&mut self, lote: impl FnOnce() -> LoteAdiado) -> bool {
+        let voo = self.voo.get_mut().unwrap_or_else(PoisonError::into_inner);
+        if !voo.as_mut().is_some_and(|v| !v.pronto()) {
+            return false;
+        }
+        #[cfg(test)]
+        ATRAS.set(ATRAS.get() + 1);
+        self.atras
+            .get_mut()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(lote());
+        true
+    }
+
+    /// F2f: os lotes que ainda faltam de uma vez de adiados vão atrás do voo que acabou de sair (antes de qualquer
+    /// lote de evento: `atras` está vazio, a sessão estava em casa). Sem voo, voltam a `adiados`.
+    pub(in crate::tool::paint) fn resto_atras(&mut self, resto: Vec<LoteAdiado>) {
+        if resto.is_empty() {
+            return;
+        }
+        if self.em_voo() {
+            let a = self.atras.get_mut().unwrap_or_else(PoisonError::into_inner);
+            debug_assert!(
+                a.is_empty(),
+                "o resto dos adiados passaria à frente de um lote de evento"
+            );
+            let novos = std::mem::replace(a, resto);
+            a.extend(novos);
+        } else if let Some(s) = self.as_mut() {
+            s.adiados.extend(resto);
+        }
+    }
+
+    /// A marca de undo da sessão, em casa ou em voo, SEM drenar (F2f). `None` = sem sessão.
+    pub(in crate::tool::paint) fn marca(&self) -> Option<Option<u64>> {
+        if let Some(s) = self.aqui.get() {
+            return Some(s.marca);
+        }
+        self.em_voo().then_some(self.marca_em_voo)
     }
 
     /// Traz o lote de volta SEM esperar: `true` = a sessão está em casa (ou não há nenhuma em voo).
@@ -66,8 +130,10 @@ impl SessaoDoWet {
     fn drena(&self) {
         let mut voo = self.voo.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(v) = voo.take() {
-            let dep = fila_do_dab::drena_os_dabs(v);
-            if self.aqui.set(dep.sess).is_err() {
+            let mut sess = fila_do_dab::drena_os_dabs(v).sess;
+            sess.adiados
+                .append(&mut self.atras.lock().unwrap_or_else(PoisonError::into_inner));
+            if self.aqui.set(sess).is_err() {
                 unreachable!("um lote voltou com a sessão em casa");
             }
         }

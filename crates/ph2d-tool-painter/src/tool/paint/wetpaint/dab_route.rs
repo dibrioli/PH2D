@@ -45,6 +45,12 @@ impl PainterTool {
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
         // Tudo o que pode esperar o motor fica FORA do pool; só o que já o tem em casa entra ([`Self::no_pool`]).
         // O depósito vai à fila ([`fila_do_dab`]) entre as duas metades do pool; a espera dele fica FORA do pool (Bug #66).
+        // F2f: o lote anterior ainda com o operário — este fica ATRÁS dele, sem trazer a sessão (o guarda, a marca do
+        // artista e a mangueira drenariam). O lote vivo só: o de commit (`deposit_pass`) pousa já.
+        let vivo = self.paint.wetpaint.live_gesture && brush.stroke_method.is_incremental();
+        if vivo && !dabs.is_empty() && self.o_lote_fica_atras(dabs, brush) {
+            return;
+        }
         if let Some(preparo) = self.wet_lote_com_o_motor_em_casa(dabs, brush) {
             let (dep, cauda) = self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush, preparo));
             // Dentro de um job do rayon (a miniatura viva, os alarmes de pincel) a espera seria o Bug #66: síncrono.
@@ -57,7 +63,11 @@ impl PainterTool {
             } else if self.o_lote_pode_voar(&cauda, brush) {
                 // A sessão fica com o operário; quem a ler a seguir drena-a, e o tique compõe quando assentar (F2d).
                 let deposit_ms = cauda.t_dep.elapsed().as_secs_f32() * 1e3;
-                self.paint.wetpaint.session.voa(fila_do_dab::enfileira(dep));
+                let marca = dep.sess.marca;
+                self.paint
+                    .wetpaint
+                    .session
+                    .voa(fila_do_dab::enfileira(dep), marca);
                 self.paint.wetpaint.composite_pendente = true;
                 self.preview_dirty = true;
                 crate::wet_diag::note_stamp(dabs.len(), deposit_ms, 0.0);
@@ -78,6 +88,57 @@ impl PainterTool {
             || self.paint.eraser
             || self.paint.wetpaint.tool != WetTool::Paint;
         !cauda.erasing && !cauda.pontas && sem_po && self.pilha_pode_adiar()
+    }
+
+    /// F2f: a fila encadeia lotes atrás do voo (fora de um job do rayon: lá o lote pousa síncrono, Bug #66).
+    pub(in crate::tool::paint) fn encadeia(&self) -> bool {
+        !fila_do_dab::sincrono() && rayon::current_thread_index().is_none()
+    }
+
+    /// `true` = o lote ficou atrás do voo em curso, com o estado por lote de um adiado ([`session::LoteAdiado`]).
+    fn o_lote_fica_atras(&mut self, dabs: &[Dab], brush: &BrushSpec) -> bool {
+        if !self.encadeia() {
+            return false;
+        }
+        let (groups, tex_rng) = (&self.paint.dab_groups, self.paint.tex_rng);
+        self.paint
+            .wetpaint
+            .session
+            .fica_atras(|| session::LoteAdiado {
+                dabs: dabs.to_vec(),
+                brush: *brush,
+                groups: groups.clone(),
+                tex_rng,
+            })
+    }
+
+    /// F2f: pousa os adiados, um a um, até um VOAR (os restantes vão atrás dele) — o evento e o tique não esperam o
+    /// operário. Pela rota de sempre, com o estado por lote de cada um, como [`Self::wetpaint_pousa_adiados`].
+    pub(in crate::tool::paint) fn wetpaint_pousa_ate_voar(&mut self) {
+        loop {
+            let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+                return;
+            };
+            if sess.adiados.is_empty() {
+                return;
+            }
+            sess.bring_home();
+            let mut resto = std::mem::take(&mut sess.adiados);
+            let l = resto.remove(0);
+            let (grupos, semente) = (
+                std::mem::replace(&mut self.paint.dab_groups, l.groups),
+                std::mem::replace(&mut self.paint.tex_rng, l.tex_rng),
+            );
+            self.stamp_dabs_wetpaint(&l.dabs, &l.brush);
+            self.paint.dab_groups = grupos;
+            self.paint.tex_rng = semente;
+            let voou = self.paint.wetpaint.session.em_voo();
+            let n = resto.len();
+            self.paint.wetpaint.session.resto_atras(resto);
+            if voou || n == 0 {
+                return;
+            }
+        }
     }
 
     /// A metade do lote de antes do pool: as filas, a sessão e o motor em casa. `None` = o lote acabou aqui.
@@ -143,7 +204,15 @@ impl PainterTool {
                 return None;
             }
             if !sess.adiados.is_empty() {
-                self.wetpaint_pousa_adiados();
+                if self.encadeia() {
+                    // Um por oportunidade: o 1.º que voa leva os outros atrás dele, e este lote vai no fim.
+                    self.wetpaint_pousa_ate_voar();
+                    if self.o_lote_fica_atras(dabs, brush) {
+                        return None;
+                    }
+                } else {
+                    self.wetpaint_pousa_adiados();
+                }
             }
         }
         // The wet ERASER (W2.6) erases the fluid and the old paint under it (`borracha_na_base`): with no

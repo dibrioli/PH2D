@@ -96,9 +96,24 @@ fn pinta_nada(qual: u8) -> Vec<u8> {
 /// O traço INTEIRO com a sessão em voo entre eventos (F2d): conta-gotas a meio, undo, redo, troca de camada e um
 /// traço em cada camada. Devolve a tela mostrada, as amostras do conta-gotas e quantos lotes voaram.
 fn traco_inteiro(fila: bool, qual: u8) -> (Vec<u8>, Vec<Option<[u8; 4]>>, usize) {
+    traco_inteiro_com(fila, false, qual)
+}
+
+/// `encadeado` (F2f): a porta segura o operário durante os eventos, então cada lote fica ATRÁS do voo anterior;
+/// abre-se antes do conta-gotas, do tique e do pen-up (os leitores que drenam).
+fn traco_inteiro_com(
+    fila: bool,
+    encadeado: bool,
+    qual: u8,
+) -> (Vec<u8>, Vec<Option<[u8; 4]>>, usize) {
     let (w, h) = (320u32, 160u32);
     super::fila_no_teste(fila);
     super::super::sessao_do_wet::VOOS.set(0);
+    let porta = |fechada: bool| {
+        if encadeado {
+            super::segura_o_operario(fechada);
+        }
+    };
     let mut t = PainterTool::default();
     if qual == 2 {
         t.agenda_papel_texturizado(7);
@@ -120,17 +135,23 @@ fn traco_inteiro(fila: bool, qual: u8) -> (Vec<u8>, Vec<Option<[u8; 4]>>, usize)
     t.set_brush_color_srgb8([40, 90, 220]);
     let mut gotas = Vec::new();
     let mut traco = |t: &mut PainterTool, y0: f32, gotas: &mut Vec<Option<[u8; 4]>>| {
+        porta(true);
         t.on_canvas_pointer(cp([60.0, y0], 0.6, PointerPhase::Down));
         for k in 1..=10 {
             let p = [60.0 + 18.0 * k as f32, y0 + 2.0 * k as f32];
             t.on_canvas_pointer(cp(p, 0.6 + 0.03 * k as f32, PointerPhase::Move));
             if k % 4 == 0 {
+                porta(false);
                 gotas.push(t.eyedropper_amostra([p[0] - 20.0, p[1]]));
+                porta(true);
             }
             if k % 3 == 0 {
+                porta(false);
                 t.ticks_em_blocos(1);
+                porta(true);
             }
         }
+        porta(false);
         t.on_canvas_pointer(cp([250.0, y0 + 20.0], 1.0, PointerPhase::Up));
     };
     traco(&mut t, 50.0, &mut gotas);
@@ -156,10 +177,43 @@ fn o_traco_inteiro_em_voo_pinta_a_tela_do_sincrono_ao_bit() {
         let (sincrono, gotas_s, voos_s) = traco_inteiro(false, qual);
         let (fila, gotas_f, voos_f) = traco_inteiro(true, qual);
         assert_eq!(voos_s, 0, "{nome}: o síncrono não voa");
-        assert!(voos_f > 0, "{nome}: nenhum lote ficou em voo (o gate não mediria nada)");
+        assert!(
+            voos_f > 0,
+            "{nome}: nenhum lote ficou em voo (o gate não mediria nada)"
+        );
         assert!(sincrono != pinta_nada(qual), "{nome}: o traço não pintou");
-        assert_eq!(gotas_s, gotas_f, "{nome}: o conta-gotas leu outra tela em voo");
+        assert_eq!(
+            gotas_s, gotas_f,
+            "{nome}: o conta-gotas leu outra tela em voo"
+        );
         assert!(sincrono == fila, "{nome}: a sessão em voo mudou a tela");
+    }
+}
+
+/// A porta do operário é uma só no processo: os testes que a fecham correm um de cada vez.
+static PORTA_DE_UM: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// F2f: o lote que chega com o anterior ainda no operário fica ATRÁS dele (o evento não espera) e o traço inteiro —
+/// conta-gotas a meio, undo, redo, troca de camada — pinta a tela do síncrono ao bit, nos três fundos.
+#[test]
+fn o_lote_encadeado_atras_do_voo_pinta_a_tela_do_sincrono_ao_bit() {
+    let _so_um = PORTA_DE_UM
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "Textured")] {
+        let (sincrono, gotas_s, _) = traco_inteiro(false, qual);
+        super::super::sessao_do_wet::ATRAS.set(0);
+        let (fila, gotas_f, voos_f) = traco_inteiro_com(true, true, qual);
+        let atras = super::super::sessao_do_wet::ATRAS.get();
+        assert!(
+            voos_f > 0 && atras > 0,
+            "{nome}: nenhum lote ficou atrás de um voo ({voos_f} voos, {atras} atrás)"
+        );
+        assert_eq!(
+            gotas_s, gotas_f,
+            "{nome}: o conta-gotas leu outra tela com lotes atrás do voo"
+        );
+        assert!(sincrono == fila, "{nome}: o encadeado mudou a tela");
     }
 }
 
@@ -167,6 +221,9 @@ fn o_traco_inteiro_em_voo_pinta_a_tela_do_sincrono_ao_bit() {
 /// ainda fora (o guarda e a sim drenariam: a mutação «sem o `assentou` no tique» espera os 2 s da porta e reprova).
 #[test]
 fn o_tique_nao_espera_o_lote_em_voo() {
+    let _so_um = PORTA_DE_UM
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let (w, h) = (320u32, 160u32);
     super::fila_no_teste(true);
     let mut t = PainterTool::default();
@@ -235,5 +292,8 @@ fn dentro_de_um_job_do_rayon_o_lote_pousa_sincrono() {
         pinta(true)
     });
     assert_eq!(voos, 0, "um lote voou dentro do job do rayon");
-    assert!(sincrono == no_job, "a tela pintada no job difere da síncrona");
+    assert!(
+        sincrono == no_job,
+        "a tela pintada no job difere da síncrona"
+    );
 }

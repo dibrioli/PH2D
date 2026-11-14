@@ -60,6 +60,9 @@ fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
         for step in [40.0f32, 10.0, 2.5, 1.0] {
             let mut t = wetted(SIDE, 100.0);
             t.set_paint_media(media);
+            // B44.2 (GT-18): sem a Live Water `hand_off_sim` recusa com o traço aberto e a sim NÃO roda.
+            t.set_wet_agua_viva(true);
+            let passos0 = passos_da_sim(&mut t);
             let (x0, y0) = (300.0f32, 2048.0f32);
             t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
             let n = (PATH_PX / step).round() as u32;
@@ -84,6 +87,13 @@ fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
                 let _ = t.take_preview_arc();
             }
             t.on_canvas_pointer(cp([x0 + PATH_PX, y0], PointerPhase::Up));
+            let passos = passos_da_sim(&mut t) - passos0;
+            if media == PaintMedia::WetPaint {
+                assert!(
+                    passos >= 1,
+                    "«a sim RODANDO» e o worker não deu passo nenhum"
+                );
+            }
             ms.sort_by(f64::total_cmp);
             let per = ms[ms.len() / 2];
             let total: f64 = ms.iter().sum();
@@ -91,7 +101,7 @@ fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
                 base = total;
             }
             println!(
-                "    {:<14} {step:>6.1}p {n:>8} {per:>11.3}m {total:>11.2}m {:>11.2}x",
+                "    {:<14} {step:>6.1}p {n:>8} {per:>11.3}m {total:>11.2}m {:>11.2}x   sim {passos} passos",
                 format!("{media:?}"),
                 total / base,
             );
@@ -206,6 +216,9 @@ fn measure_the_stamp_while_the_sim_is_actually_running() {
         for (slot, live) in [(0usize, false), (1, true)] {
             let mut t = wetted(SIDE, radius);
             t.set_paint_media(PaintMedia::WetPaint);
+            // B44.2 (GT-18): «simulando» exige a Live Water (senão `hand_off_sim` recusa com o traço aberto).
+            t.set_wet_agua_viva(live);
+            let passos0 = passos_da_sim(&mut t);
             let (x0, y0) = (400.0f32, 2048.0f32);
             t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
             let mut ms = Vec::with_capacity(MOVES as usize);
@@ -231,6 +244,14 @@ fn measure_the_stamp_while_the_sim_is_actually_running() {
                 let _ = t.take_preview_arc();
             }
             t.on_canvas_pointer(cp([x0 + STEP_PX * MOVES as f32, y0], PointerPhase::Up));
+            let passos = passos_da_sim(&mut t) - passos0;
+            if live {
+                assert!(
+                    passos >= u64::from(MOVES / 4),
+                    "a coluna SIMULANDO mediu {passos} passos do worker em {MOVES} quadros (< {})",
+                    MOVES / 4
+                );
+            }
             row[slot] = ms.iter().sum();
         }
         println!(
@@ -482,3 +503,26 @@ fn measure_whether_the_grid_slider_pays_for_a_big_brush() {
 }
 
 mod measure_preview_drain; // o que o DISPATCH custa sem carimbo -- irma por assunto
+
+/// B44.2 (GT-18): as duas sondas «com a sim» armam a Live Water e conferem os passos do worker.
+#[test]
+fn as_sondas_do_carimbo_com_a_sim_armam_a_agua_viva_e_contam_os_passos() {
+    let s = include_str!("measure_wetpaint_stamp.rs");
+    assert_eq!(s.matches(concat!("set_wet_", "agua_viva(")).count(), 2);
+    assert_eq!(
+        s.matches(concat!("passos_da_", "sim(&mut t) - passos0"))
+            .count(),
+        2
+    );
+}
+
+/// Os passos que a sim deu até aqui; `0` sem sessão de água (o Digital). O motor volta para casa antes de ler
+/// (como `measure_wetpaint_tick::sim_frame`, que exige a sessão).
+fn passos_da_sim(t: &mut PainterTool) -> u64 {
+    t.wet_bring_home();
+    t.paint
+        .wetpaint
+        .session
+        .as_ref()
+        .map_or(0, |s| s.engine.sim.frame)
+}

@@ -272,7 +272,7 @@ fn measure_what_an_advect_is_made_of() {
 // ---------------------------------------------------------------------------
 
 /// A rota da sim que o PRODUTO dá (o despachante de `sim.rs`, B44.2): Jacobi quando `order_invariant`.
-fn rota(jacobi: bool) -> &'static str {
+pub(super) fn rota(jacobi: bool) -> &'static str {
     if jacobi {
         "Jacobi (produto)"
     } else {
@@ -281,7 +281,7 @@ fn rota(jacobi: bool) -> &'static str {
 }
 
 /// A secagem do produto (sem a cadência por tile, que depende do quadro).
-fn secagem_do_produto(
+pub(super) fn secagem_do_produto(
     g: &mut ph2d_wet_paint::grid::Grid,
     p: &ph2d_wet_paint::sim::Params,
     evap: f64,
@@ -295,8 +295,22 @@ fn secagem_do_produto(
     }
 }
 
+/// O `build_flow_field` do produto (`sim.rs`, estágio 2).
+pub(super) fn fluxo_do_produto(
+    g: &mut ph2d_wet_paint::grid::Grid,
+    p: &ph2d_wet_paint::sim::Params,
+    grav: [f64; 2],
+    jacobi: bool,
+) {
+    if jacobi {
+        ph2d_wet_paint::solver::build_flow_field_jacobi(g, p, grav[0], grav[1], false);
+    } else {
+        ph2d_wet_paint::solver::build_flow_field(g, p, grav[0], grav[1], false);
+    }
+}
+
 /// O `advect` do produto.
-fn advect_do_produto(
+pub(super) fn advect_do_produto(
     g: &mut ph2d_wet_paint::grid::Grid,
     p: &ph2d_wet_paint::sim::Params,
     grav: [f64; 2],
@@ -493,12 +507,21 @@ fn as_sondas_dos_passes_medem_a_rota_do_produto() {
         ph2d_wet_paint::sim::Sim::default().order_invariant,
         "a fábrica deixou de ser Jacobi: reveja as sondas"
     );
-    let s = include_str!("measure_wetpaint_passes.rs");
-    let gs = s.matches(concat!("solver::", "advect(")).count()
-        + s.matches(concat!("drying::", "drying_pass(")).count();
-    // 2 = o ramo GS de `advect_do_produto` + a coluna «serial (GS)» do gather (de antes da cura: 3).
+    let gs = |s: &str| {
+        s.matches(concat!("solver::", "advect(")).count()
+            + s.matches(concat!("drying::", "drying_pass(")).count()
+            + s.matches(concat!("solver::", "build_flow_field(")).count()
+    };
+    // 3 = os ramos GS de `advect_do_produto` e `fluxo_do_produto` + a coluna «serial (GS)» do gather.
     assert_eq!(
-        gs, 2,
-        "uma sonda chama a GS direto em vez de `advect_do_produto`/`secagem_do_produto`"
+        gs(include_str!("measure_wetpaint_passes.rs")),
+        3,
+        "uma sonda chama a GS direto em vez de `advect_do_produto`/`secagem_do_produto`/`fluxo_do_produto`"
+    );
+    // A sonda do Flow Grid (B44.2): a decomposição por passe usa os despachantes daqui.
+    assert_eq!(
+        gs(include_str!("measure_wetpaint_flow.rs")),
+        0,
+        "measure_wetpaint_flow chama a GS direto: use os despachantes do produto"
     );
 }

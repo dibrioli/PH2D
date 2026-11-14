@@ -110,6 +110,8 @@ fn measure_what_the_flow_ratio_buys_in_the_product() {
         let e = &mut *sess.engine;
         let p = e.sim.gather_params(&e.tuning);
         let grav = e.sim.gravity(&e.tuning);
+        // B44.2: a rota do PRODUTO (`sim.rs`), não a Gauss-Seidel serial.
+        let jacobi = e.sim.order_invariant;
         let evap = e.sim.evap_scale * p.k(ph2d_wet_paint::tuning::Knob::Evaporation);
         let rewet = e.sim.rewet_base * p.k(ph2d_wet_paint::tuning::Knob::Rewet);
         let g = e.active_grid_mut();
@@ -133,7 +135,7 @@ fn measure_what_the_flow_ratio_buys_in_the_product() {
             (
                 "build_flow_field".to_string(),
                 time(g, &mut |g| {
-                    solver::build_flow_field(g, &p, grav[0], grav[1], false)
+                    super::measure_wetpaint_passes::fluxo_do_produto(g, &p, grav, jacobi)
                 }),
             ),
             (
@@ -147,13 +149,13 @@ fn measure_what_the_flow_ratio_buys_in_the_product() {
             (
                 "advect".to_string(),
                 time(g, &mut |g| {
-                    solver::advect(g, &p, grav[0], grav[1]);
+                    super::measure_wetpaint_passes::advect_do_produto(g, &p, grav, jacobi);
                 }),
             ),
             (
                 "drying_pass".to_string(),
                 time(g, &mut |g| {
-                    ph2d_wet_paint::drying::drying_pass(g, &p, evap, rewet, false);
+                    super::measure_wetpaint_passes::secagem_do_produto(g, &p, evap, rewet, jacobi);
                 }),
             ),
             (
@@ -163,6 +165,10 @@ fn measure_what_the_flow_ratio_buys_in_the_product() {
         ];
         cols.push((flow, out));
     }
+    println!(
+        "    rota da sim: {}\n",
+        super::measure_wetpaint_passes::rota(ph2d_wet_paint::sim::Sim::default().order_invariant)
+    );
     println!("    passe                   Flow 1      Flow 4     razao   cadencia");
     let cad = ["/4", "/3", "x3/4", "x1", "/3", "/2"];
     let wgt = [0.25, 1.0 / 3.0, 0.75, 1.0, 1.0 / 3.0, 0.5];

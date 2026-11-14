@@ -2,7 +2,7 @@
 //! (o Size 64), N passadas em vaivém deslocadas, com a PAUSA do dono entre elas (2 s: a tinta assenta — a
 //! `sonda_oleo_grumos` pausava 10 ticks e via limpo), azul e depois amarelo por cima. Mede no miolo, onde todas as
 //! passadas se cobrem: furos (massa < 5 % da mediana), papel à vista (alfa < 0,9), claros (mais claros que as duas
-//! tintas) e os picos da altura. Variantes no MESMO processo (`PH2D_SONDA_ROTAS`, a ladeira: 5 = o produto, 2 = sem).
+//! tintas) e os picos da altura. Variantes no MESMO processo (`PH2D_SONDA_ROTAS`, a ladeira: `0` = a do produto, seja ela qual for, 2 = sem; B44.2).
 //! `bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib sonda_oleo_furos -- --ignored --nocapture`
 use super::sonda_oleo_grumos::{AZ, alturas, grava_png, mede, preset};
 use super::*;
@@ -13,6 +13,9 @@ use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Raste
 const W: u32 = 360;
 const H: u32 = 280;
 const AM: [u8; 3] = [245, 205, 25];
+/// As rotas da ladeira que a sonda mede sem `PH2D_SONDA_ROTAS`: a 1.ª é a do PRODUTO (`0` = o despachante de
+/// `ladeira_do_oleo::rota`, que segue a rota de fábrica quando ela muda; B44.2 / GT-17: era `5`, e o produto é `7`).
+const ROTAS_DE_FABRICA: &str = "0,2";
 
 fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -160,7 +163,7 @@ fn sonda_oleo_furos() {
         std::fs::create_dir_all(d).expect("pasta");
     }
     let rotas: Vec<u8> = std::env::var("PH2D_SONDA_ROTAS")
-        .unwrap_or_else(|_| "5,2".into())
+        .unwrap_or_else(|_| ROTAS_DE_FABRICA.into())
         .split(',')
         .filter_map(|s| s.parse().ok())
         .collect();
@@ -178,7 +181,10 @@ fn sonda_oleo_furos() {
     for pincel in pinceis.split(',') {
         for &n in &ns {
             for &rota in &rotas {
-                let _r = ph2d_wet_paint::solver::regua::Regua::poe(&ph2d_wet_paint::solver::LADEIRA_ROTA, rota);
+                let _r = ph2d_wet_paint::solver::regua::Regua::poe(
+                    &ph2d_wet_paint::solver::LADEIRA_ROTA,
+                    rota,
+                );
                 let rot = format!(
                     "{}_n{n}_r{rota}",
                     pincel.replace(['/', ' '], "_").to_lowercase()
@@ -222,4 +228,14 @@ fn o_oleo_sobre_o_oleo_assentado_nao_encaroca() {
     let f = &cena(&b, "Flat/Filbert", &[AZ], 8, 120, None)[0];
     assert!(f.picos <= 5, "Filbert: {} caroços em 8 passadas", f.picos);
     assert_eq!(oito.furos + f.furos, 0, "furos até ao papel");
+}
+
+/// B44.2 (GT-17): sem variável, a sonda mede a rota do PRODUTO primeiro (`0`), nunca um número de rota congelado.
+#[test]
+fn a_sonda_dos_furos_mede_a_rota_do_produto_por_omissao() {
+    assert_eq!(
+        ROTAS_DE_FABRICA.split(',').next(),
+        Some("0"),
+        "a 1.ª rota de fábrica da sonda tem de ser `0` (= a do produto)"
+    );
 }

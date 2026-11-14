@@ -39,9 +39,8 @@ pub const SMALL_PX: f32 = 10.5;
 /// O valor mais largo que um campo escreve, «-0.000» (sinal, três casas), medido no `TextSystem` a
 /// `VALUE_PX` (34,6 px, teste `o_campo_minimo_cabe_o_valor_e_a_letra_mais_largos`), arredondado acima.
 pub const VALUE_MIN_W: f32 = 35.0;
-/// A pega mais larga, «Max» a `LABEL_PX` com `SEG_INSET` de cada lado (34,4 px, mesmo teste); as de uma
-/// letra cabem na `ICON_CELL` (26).
-pub const GLYPH_MIN_W: f32 = 35.0;
+/// A pega: toda cabe na `ICON_CELL` (letra ou ícone; os limites usam as setas, dono 13/11), mesmo teste.
+pub const GLYPH_MIN_W: f32 = m::ICON_CELL;
 /// ⭐ **O campo mínimo que ainda se lê** (dono 13/11): a pega, «-0.000» inteiro e a folga da direita.
 /// Abaixo disto dois campos lado a lado cortam o valor, e a fila passa a uma coluna.
 pub const FIELD_MIN_W: f32 = GLYPH_MIN_W + VALUE_MIN_W + m::FIELD_PAD_R;
@@ -310,7 +309,7 @@ mod tests {
         let mut ts = ph2d_text::TextSystem::without_system_fonts();
         let v = ts.prefix_width("-0.000", m::VALUE_PX);
         let keys = ["stiffness", "damping", "speed", "force", "torque"];
-        let more = ["wheelbase", "length", "min", "max"];
+        let more = ["wheelbase", "length"];
         let g = keys
             .iter()
             .chain(&more)
@@ -326,7 +325,7 @@ mod tests {
             v <= VALUE_MIN_W && v > VALUE_MIN_W - 1.0,
             "«-0.000» mede {v}"
         );
-        assert!(g <= GLYPH_MIN_W && g > GLYPH_MIN_W - 1.0, "a pega mede {g}");
+        assert!(g <= GLYPH_MIN_W, "a pega mede {g}");
     }
 
     #[test]

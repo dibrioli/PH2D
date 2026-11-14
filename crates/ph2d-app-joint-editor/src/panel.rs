@@ -79,8 +79,8 @@ fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJoin
             let mut limits = vec![Check(Flag::Limits, "component.field.joint.4", info.limits_enabled)];
             if info.limits_enabled {
                 limits.extend([
-                    Num(Field::LimitMin, Key("joint_editor.glyph.min"), lo, lim),
-                    Num(Field::LimitMax, Key("joint_editor.glyph.max"), hi, lim),
+                    Num(Field::LimitMin, Icon(IconId::ArrowDown), lo, lim),
+                    Num(Field::LimitMax, Icon(IconId::ArrowUp), hi, lim),
                 ]);
             }
             out.push(Group("joint_editor.group.limits", limits));

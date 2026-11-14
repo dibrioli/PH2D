@@ -460,14 +460,13 @@ fn a_roda_e_a_barra_rolam_e_recolher_esconde_os_campos() {
     );
 }
 
-/// ⭐⭐ **No mínimo, os pares passam a uma coluna** (dono 13/11, «os componentes podem se reorganizar
-/// mudando de linha»): na largura de fábrica Joint e Template partilham a fila; no mínimo cada par fica
-/// empilhado (o mesmo `x`, o 2.º por baixo), o botão Inspector desce, e nenhum alvo do painel sai dele
-/// nem pisa outro (os segmentados quebram em fileiras).
+/// ⭐⭐ **No mínimo do Inspector, ainda dois campos por fila** (dono 13/11: «veja o mínimo no inspector · no
+/// mínimo quase sempre é possível 2 caixas por linha»): o painel pára no `DOCK_W_MIN`; ali os pares ficam
+/// lado a lado e nenhum alvo do painel sai dele nem pisa outro (os segmentados quebram em fileiras).
 ///
-/// Mutações que devem sangrar: `two_up` sempre `true` · `seg_rows` sem quebra · `seg_h` de uma fileira.
+/// Mutações que devem sangrar: `two_up` sempre `false` · `panel_min_w` abaixo do Inspector · `seg_rows` sem quebra.
 #[test]
-fn no_minimo_cada_par_fica_empilhado_e_nada_sai_nem_se_sobrepoe() {
+fn no_minimo_dois_campos_por_fila_e_nada_sai_nem_se_sobrepoe() {
     use ph2d_app_joint_editor::doc::{Field, Menu};
     let mut m = Mesa::carro();
     m.area = Rect { h: 2400.0, ..AREA };
@@ -483,10 +482,13 @@ fn no_minimo_cada_par_fica_empilhado_e_nada_sai_nem_se_sobrepoe() {
     m.drag(&Hit::Split, 5000.0, 0.0);
     let (lo, _) = m.tab().doc.panel_bounds();
     let p = m.tab().doc.panel;
-    assert!((p.w - lo).abs() < 0.5, "no mínimo: {p:?}");
+    assert!(
+        (p.w - lo).abs() < 0.5
+            && (lo - ph2d_editor_core::interaction::state::WidgetStore::DOCK_W_MIN).abs() < 0.5,
+        "no mínimo, o do Inspector: {p:?}"
+    );
     let pairs = [
         (Hit::OpenMenu(Menu::Kind), Hit::OpenMenu(Menu::Template)),
-        (Hit::OpenMenu(Menu::Kind), Hit::Inspect),
         (Hit::Field(Field::Stiffness), Hit::Field(Field::Damping)),
         (Hit::Field(Field::LimitMin), Hit::Field(Field::LimitMax)),
         (Hit::Field(Field::MotorSpeed), Hit::Field(Field::MotorForce)),
@@ -494,8 +496,8 @@ fn no_minimo_cada_par_fica_empilhado_e_nada_sai_nem_se_sobrepoe() {
     for (a, b) in pairs {
         let (ra, rb) = (m.rect(&a), m.rect(&b));
         assert!(
-            ra.x == rb.x && rb.y >= ra.y + ra.h,
-            "{a:?} {ra:?} em cima de {b:?} {rb:?}"
+            (ra.y - rb.y).abs() < 0.5 && ra.x + ra.w <= rb.x,
+            "{a:?} {ra:?} ao lado de {b:?} {rb:?}"
         );
     }
     let ours: Vec<(Rect, Hit)> = m

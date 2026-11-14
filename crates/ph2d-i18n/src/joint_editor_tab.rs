@@ -62,8 +62,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.glyph.torque" => "T",
         "joint_editor.glyph.wheelbase" => "W",
         "joint_editor.glyph.length" => "L",
-        "joint_editor.glyph.min" => "Min",
-        "joint_editor.glyph.max" => "Max",
         "joint_editor.unit.m" => "m",
         "joint_editor.unit.deg" => "\u{b0}",
         "joint_editor.unit.m_per_s" => "m/s",

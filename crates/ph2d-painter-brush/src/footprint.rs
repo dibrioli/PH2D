@@ -620,7 +620,8 @@ impl FootprintDeform {
         let (c, s, m, q) = self.termos_f64();
         let raio = limiar / ((1.0 - q) + q * std::f64::consts::FRAC_1_SQRT_2);
         let qa = c * c + m * m * s * s;
-        let det = qa * (s * s + m * m * c * c) - (s * c * (1.0 - m * m)).powi(2);
+        let cruz = s * c * (1.0 - m * m);
+        let det = qa * (s * s + m * m * c * c) - cruz * cruz;
         raio * (qa / det).sqrt()
     }
 

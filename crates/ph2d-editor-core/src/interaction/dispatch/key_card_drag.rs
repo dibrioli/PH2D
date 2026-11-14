@@ -49,6 +49,17 @@ fn editor(store: &mut WidgetStore, kind: ContextMenuKind, id: NodeId, ev: Pointe
     let ContextMenuKind::TimelineSegment { scope } = kind else {
         return false;
     };
+    // Um dos tipos de alça (Corner · Smooth · Symmetric): troca o do ponto escolhido.
+    if let Some(&(_, tipo, _)) = ed::TIPOS.iter().find(|t| t.0 == id) {
+        let mut curva = store.key_card_curve().unwrap_or_else(ed::linear);
+        if ev.button == PointerButton::Primary
+            && let Some(i) = store.key_card_bez_escolhido()
+            && curva.set_kind(i, tipo)
+        {
+            store.apply_key_card_bez(scope, curva);
+        }
+        return true;
+    }
     if id != crate::ids::CTX_MENU_TL_KEY_BEZ_AREA {
         return false;
     }
@@ -60,6 +71,12 @@ fn editor(store: &mut WidgetStore, kind: ContextMenuKind, id: NodeId, ev: Pointe
     match ev.button {
         PointerButton::Primary => {
             if let Some(a) = alvo {
+                // Alt + agarrar uma alça quebra o ponto em Corner, como no Vector.
+                if let BezAlvo::Alca(i, _) = a
+                    && store.alt_held()
+                {
+                    curva.set_kind(i, ph2d_anim::HandleKind::Corner);
+                }
                 store.begin_key_card_bez(scope, a, curva);
             } else if let Some(u) = ed::na_curva(&curva, &area, ev.x, ev.y)
                 && let Some(i) = curva.insert(u)
@@ -71,6 +88,7 @@ fn editor(store: &mut WidgetStore, kind: ContextMenuKind, id: NodeId, ev: Pointe
             if let Some(BezAlvo::Ponto(i)) = alvo
                 && curva.remove(i)
             {
+                store.set_key_card_bez_escolhido(None);
                 store.apply_key_card_bez(scope, curva);
             }
         }

@@ -100,6 +100,7 @@ pub fn e_alvo_do_cartao(id: NodeId) -> bool {
         || c::TIMELINE_SEGMENT_MENU.iter().any(|r| r.0 == id)
         || c::TIMELINE_EASE_MENU.iter().any(|r| r.0 == id)
         || id == c::CTX_MENU_TL_KEY_BEZ_AREA
+        || editor::TIPOS.iter().any(|t| t.0 == id)
 }
 
 /// O que um clique no cartão pede.

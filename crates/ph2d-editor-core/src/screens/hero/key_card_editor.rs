@@ -7,7 +7,27 @@
 
 use super::*;
 use crate::interaction::state::{BezAlvo, BezArea};
-use ph2d_anim::{EaseSpline, SplineSide};
+use ph2d_anim::{EaseSpline, HandleKind, SplineSide};
+
+/// Os tipos de alça do ponto escolhido, na ordem e com os nomes do cartão de ponto do Vector
+/// (`ph2d-panel-vector cards_ponto`; as mesmas chaves de texto).
+pub(crate) const TIPOS: [(NodeId, HandleKind, &str); 3] = [
+    (
+        c::CTX_MENU_TL_KEY_HANDLE_CORNER,
+        HandleKind::Corner,
+        "panel.vector.vertex.corner",
+    ),
+    (
+        c::CTX_MENU_TL_KEY_HANDLE_SMOOTH,
+        HandleKind::Smooth,
+        "panel.vector.vertex.smooth",
+    ),
+    (
+        c::CTX_MENU_TL_KEY_HANDLE_SYMM,
+        HandleKind::Symmetric,
+        "panel.vector.vertex.symm",
+    ),
+];
 
 /// A faixa de `y` que o editor mostra: o quadrado 0–1 no meio, folga para passar (overshoot).
 const Y_MIN: f32 = -0.5; // LITERAL-PX-OK: faixa do gráfico em unidades da curva, não px
@@ -90,7 +110,9 @@ pub(super) fn paint(
     let label = tr("chrome.timeline_menu.section_custom");
     crate::widget::card_field::paint_label(scene, ts, ink, rot.x, rot.y, rot.w, label);
     let top = rot.y + rot.h + m::LABEL_BOTTOM;
-    let caixa = Rect::new(r.x, top, r.w, r.y + r.h - top);
+    // Os tipos de alça numa fileira por baixo do gráfico.
+    let fila = Rect::new(r.x, r.y + r.h - m::FIELD_H, r.w, m::FIELD_H);
+    let caixa = Rect::new(r.x, top, r.w, fila.y - m::FIELD_GAP - top);
     fill_rounded_rect(
         scene,
         caixa,
@@ -155,16 +177,29 @@ pub(super) fn paint(
         fill_circle(scene, x, y, DOT_R * 1.5, fg);
     }
     let agarrado = store.key_card_bez_alvo();
+    let escolhido = store.key_card_bez_escolhido();
     let fundo = ink.color(ColorToken::CardField);
     for (a, q) in alvos(&curva) {
         let (x, y) = area.tela(q[0], q[1]);
         let preso = agarrado == Some(a);
         match a {
-            // Um ponto: cheio, no acento, com o miolo claro (a forma que se apaga com o direito).
-            BezAlvo::Ponto(_) => {
-                let raio = if preso { AGARRADO_R } else { PONTO_R };
-                fill_circle(scene, x, y, raio, acento);
-                fill_circle(scene, x, y, raio - ALCA_ANEL, fg);
+            // Um ponto: no acento, com o miolo claro (a forma que se apaga com o direito); o
+            // Corner é quadrado, o liso redondo; o escolhido maior e de miolo no acento.
+            BezAlvo::Ponto(i) => {
+                let raio = if preso || escolhido == Some(i) {
+                    AGARRADO_R
+                } else {
+                    PONTO_R
+                };
+                let miolo = if escolhido == Some(i) { acento } else { fg };
+                if curva.kind(i) == Some(HandleKind::Corner) {
+                    let q = |r: f32| Rect::new(x - r, y - r, r * 2.0, r * 2.0);
+                    fill_rounded_rect(scene, q(raio), BRACO_W, acento);
+                    fill_rounded_rect(scene, q(raio - ALCA_ANEL), BRACO_W, miolo);
+                } else {
+                    fill_circle(scene, x, y, raio, acento);
+                    fill_circle(scene, x, y, raio - ALCA_ANEL, miolo);
+                }
             }
             // Uma alça: um anel no acento (cheio enquanto agarrada).
             BezAlvo::Alca(..) => {
@@ -175,5 +210,19 @@ pub(super) fn paint(
                 }
             }
         }
+    }
+
+    // Corner · Smooth · Symmetric do ponto escolhido; sem ponto escolhido, apagados e sem nenhum aceso.
+    let tipo = escolhido.and_then(|i| curva.kind(i));
+    let segs: Vec<(&str, bool, NodeId)> = TIPOS
+        .iter()
+        .map(|&(id, k, chave)| (tr(chave), tipo == Some(k), id))
+        .collect();
+    crate::widget::panel_chrome::paint_segmented_group(
+        fila, &segs, scene, ts, ink.theme, store, hit,
+    );
+    if tipo.is_none() {
+        let cor = ink.color(ColorToken::KanbanCard).with_alpha(super::VEU_A);
+        fill_rounded_rect(scene, fila, m::FIELD_RADIUS, cor);
     }
 }

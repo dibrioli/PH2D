@@ -307,6 +307,7 @@ mod harmony;
 mod hierarchy_drop;
 mod ime;
 mod inputs;
+mod key_card_tipos;
 mod note_body;
 mod number_drag;
 mod picks;

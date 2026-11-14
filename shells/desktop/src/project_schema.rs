@@ -462,4 +462,10 @@
 /// `ph2d_anim::Interp` ganha a variante `Spline(EaseSpline)` no FIM (pontos criados/apagados no editor do cartão
 /// da chave; tecto `SPLINE_MAX_POINTS = 8`). SEM leitura dos anteriores (§0.11). Gates: `ph2d-anim curve_spline::`,
 /// `ph2d-panel-timeline cartao_bezier::`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 238;
+///
+/// # `238 → 239` — **os tipos de alça da curva Custom** (`line/TimelinePrincipal`, acréscimo 14, 2026-11-13)
+///
+/// `ph2d_anim::EaseSpline` ganha `kinds: u16` (o `HandleKind` Corner·Smooth·Symmetric de cada ponto, 2 bits por
+/// ponto, os do Vector). SEM leitura dos anteriores (§0.11). Gates: `ph2d-anim curve_spline::`. Registos: `0`.
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 239;

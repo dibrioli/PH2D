@@ -34,6 +34,35 @@ pub struct SplinePoint {
     pub h_out: [f32; 2],
 }
 
+/// O tipo de alça de um ponto — os três do módulo Vector (`ph2d_vec_scene::VertexKind`), com os
+/// mesmos nomes e a mesma regra ao arrastar uma alça (`ph2d_vec_edit::pen_drag`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum HandleKind {
+    /// Canto: as duas alças são livres; arrastar uma não mexe a outra.
+    Corner,
+    /// Liso: a outra alça fica na mesma reta, do lado oposto, com o comprimento dela.
+    #[default]
+    Smooth,
+    /// Simétrico: a outra alça é o espelho exato (mesma reta, mesmo comprimento).
+    Symmetric,
+}
+
+impl HandleKind {
+    const ALL: [Self; 3] = [Self::Corner, Self::Smooth, Self::Symmetric];
+
+    fn bits(self) -> u16 {
+        match self {
+            Self::Corner => 0,
+            Self::Smooth => 1,
+            Self::Symmetric => 2,
+        }
+    }
+
+    fn from_bits(b: u16) -> Self {
+        Self::ALL.get(usize::from(b)).copied().unwrap_or_default()
+    }
+}
+
 /// Qual das alças de um nó.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SplineSide {
@@ -48,6 +77,10 @@ pub enum SplineSide {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EaseSpline {
     n: u8,
+    /// O [`HandleKind`] de cada ponto, 2 bits por ponto (o ponto `k` nos bits `2k..2k+2`). Mora
+    /// aqui e não no [`SplinePoint`] porque cabe na folga de alinhamento ao lado do `n`: um campo
+    /// por ponto subiria cada um de 24 B para 28 B (alinhamento a 4), +32 B em TODA chave.
+    kinds: u16,
     out0: [f32; 2],
     in1: [f32; 2],
     pts: [SplinePoint; SPLINE_MAX_POINTS],
@@ -59,6 +92,7 @@ impl EaseSpline {
     pub fn from_bezier(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
         let mut s = Self {
             n: 0,
+            kinds: 0,
             out0: [x1, y1],
             in1: [x2, y2],
             pts: [SplinePoint::default(); SPLINE_MAX_POINTS],
@@ -111,6 +145,65 @@ impl EaseSpline {
             _ if i >= fim => self.in1 = no.h_in,
             _ => self.pts[i - 1] = no,
         }
+    }
+
+    /// O tipo de alça do nó `i`; `None` no início e no fim (têm uma alça só).
+    #[must_use]
+    pub fn kind(&self, i: usize) -> Option<HandleKind> {
+        (i != 0 && i < self.node_count() - 1).then(|| self.kind_slot(i - 1))
+    }
+
+    fn kind_slot(&self, k: usize) -> HandleKind {
+        HandleKind::from_bits((self.kinds >> (2 * k)) & 0b11)
+    }
+
+    fn set_kind_slot(&mut self, k: usize, kind: HandleKind) {
+        self.kinds = (self.kinds & !(0b11 << (2 * k))) | (kind.bits() << (2 * k));
+    }
+
+    /// Troca o tipo de alça do ponto `i`, como o Vector: Corner só troca o tipo (as alças ficam
+    /// onde estão); Smooth põe a de chegada na reta da de saída, cada uma com o seu comprimento;
+    /// Symmetric faz o mesmo com a média dos dois comprimentos. Alças recolhidas no ponto ganham
+    /// a direção dos vizinhos. `false` se `i` não é um ponto ou o tipo já era esse.
+    pub fn set_kind(&mut self, i: usize, kind: HandleKind) -> bool {
+        if self.kind(i).is_none_or(|k| k == kind) {
+            return false;
+        }
+        self.set_kind_slot(i - 1, kind);
+        if kind != HandleKind::Corner {
+            let mut no = self.node(i);
+            let p = no.p;
+            let comp = |q: [f32; 2]| ((q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2)).sqrt();
+            let (li, lo) = (comp(no.h_in), comp(no.h_out));
+            // A direção: a da alça de saída; recolhida, a de chegada; as duas, a dos vizinhos.
+            let (a, b) = (self.node(i - 1).p, self.node(i + 1).p);
+            let dir = if lo > f32::EPSILON {
+                [no.h_out[0] - p[0], no.h_out[1] - p[1]]
+            } else if li > f32::EPSILON {
+                [p[0] - no.h_in[0], p[1] - no.h_in[1]]
+            } else {
+                [b[0] - a[0], b[1] - a[1]]
+            };
+            let d = (dir[0] * dir[0] + dir[1] * dir[1]).sqrt().max(f32::EPSILON);
+            let u = [dir[0] / d, dir[1] / d];
+            let (mut ci, mut co) = if li + lo > f32::EPSILON {
+                (li, lo)
+            } else {
+                // Recolhidas: um terço de cada trecho, como uma Bézier nova.
+                ((p[0] - a[0]) / 3.0, (b[0] - p[0]) / 3.0)
+            };
+            if kind == HandleKind::Symmetric {
+                ci = (ci + co) * 0.5;
+                co = ci;
+            }
+            no.h_out = [p[0] + u[0] * co, p[1] + u[1] * co];
+            no.h_in = [p[0] - u[0] * ci, p[1] - u[1] * ci];
+            self.set_node(i, no);
+            // Re-arrasta a de saída onde está: a regra do tipo encurta o que sairia do trecho.
+            let [x, y] = no.h_out;
+            self.move_handle(i, SplineSide::Out, x, y);
+        }
+        true
     }
 
     /// As alças das pontas: `((saída do início), (chegada ao fim))`.
@@ -197,6 +290,10 @@ impl EaseSpline {
                 },
             );
         }
+        let pts = usize::from(self.n);
+        for k in 0..pts {
+            s.set_kind_slot(k, self.kind_slot(pts - 1 - k));
+        }
         s.arruma();
         s
     }
@@ -227,6 +324,10 @@ impl EaseSpline {
         // O nó novo entra na posição `i` dos pontos (nó `i + 1`); os de depois andam um.
         let k = i;
         self.pts.copy_within(k..usize::from(self.n), k + 1);
+        // O ponto novo nasce Smooth: o corte de de Casteljau deixa as duas alças na mesma reta.
+        let baixo = self.kinds & ((1 << (2 * k)) - 1);
+        self.kinds = baixo | ((self.kinds & !((1 << (2 * k)) - 1)) << 2);
+        self.set_kind_slot(k, HandleKind::Smooth);
         self.pts[k] = SplinePoint {
             p: f(meio),
             h_in: f(p012),
@@ -244,7 +345,10 @@ impl EaseSpline {
         }
         let k = i - 1;
         self.pts.copy_within(k + 1..usize::from(self.n), k);
+        let baixo = self.kinds & ((1 << (2 * k)) - 1);
+        self.kinds = baixo | ((self.kinds >> 2) & !((1 << (2 * k)) - 1));
         self.n -= 1;
+        self.set_kind_slot(usize::from(self.n), HandleKind::Corner);
         self.pts[usize::from(self.n)] = SplinePoint::default();
         self.arruma();
         true
@@ -268,8 +372,9 @@ impl EaseSpline {
         self.arruma();
     }
 
-    /// Leva a alça `lado` do nó `i` a `(x, y)`. Num ponto do meio a outra alça ALINHA (o nó fica
-    /// liso) e guarda o comprimento.
+    /// Leva a alça `lado` do nó `i` a `(x, y)`. Num ponto do meio a outra segue o
+    /// [`HandleKind`] dele: Corner não a mexe; Smooth ALINHA-a e guarda o comprimento dela;
+    /// Symmetric espelha-a com o mesmo comprimento.
     pub fn move_handle(&mut self, i: usize, lado: SplineSide, x: f32, y: f32) {
         let fim = self.node_count() - 1;
         let mut no = self.node(i);
@@ -289,12 +394,17 @@ impl EaseSpline {
             SplineSide::Out => (&mut no.h_out, &mut no.h_in, (p[0], depois), (antes, p[0])),
         };
         *esta = [x.clamp(lo, hi), y];
-        if i != 0 && i != fim {
-            // A outra ALINHA com esta (o nó fica liso), com o comprimento dela — encurtada ao
-            // longo da mesma reta se sairia do trecho dela.
+        let kind = self.kind(i).unwrap_or(HandleKind::Corner);
+        if kind != HandleKind::Corner {
+            // A outra na reta desta, do lado oposto — com o comprimento dela (Smooth) ou o desta
+            // (Symmetric), encurtada ao longo da reta se sairia do trecho dela.
             let (dx, dy) = (esta[0] - p[0], esta[1] - p[1]);
             let d = (dx * dx + dy * dy).sqrt();
-            let mut comp = ((outra[0] - p[0]).powi(2) + (outra[1] - p[1]).powi(2)).sqrt();
+            let mut comp = if kind == HandleKind::Symmetric {
+                d
+            } else {
+                ((outra[0] - p[0]).powi(2) + (outra[1] - p[1]).powi(2)).sqrt()
+            };
             if d > f32::EPSILON {
                 let (ux, uy) = (-dx / d, -dy / d);
                 let limite = if ux > 0.0 {
@@ -306,6 +416,10 @@ impl EaseSpline {
                 };
                 comp = comp.min(limite.max(0.0));
                 *outra = [p[0] + ux * comp, p[1] + uy * comp];
+                if kind == HandleKind::Symmetric && comp < d {
+                    // O espelho não coube: esta encurta junto, para continuarem iguais.
+                    *esta = [p[0] - ux * comp, p[1] - uy * comp];
+                }
             }
         }
         self.set_node(i, no);

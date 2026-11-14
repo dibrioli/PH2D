@@ -74,7 +74,7 @@ pub use clip::{AnimTarget, Clip};
 pub use curve::{AnimCurve, CurveKey, Interp};
 pub use curve_fit::{FitKey, fit_fcurve, fit_fcurve_at, smooth_values};
 pub use curve_prep::{FitChannel, prepare, unwrap_angles};
-pub use curve_spline::{EaseSpline, SPLINE_MAX_POINTS, SplinePoint, SplineSide};
+pub use curve_spline::{EaseSpline, HandleKind, SPLINE_MAX_POINTS, SplinePoint, SplineSide};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
 pub use track::{CurveSnapshot, Extrap, ExtrapSide, Key, KeyId, RangeSamples, Track};

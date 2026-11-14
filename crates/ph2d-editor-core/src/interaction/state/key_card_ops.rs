@@ -54,6 +54,7 @@ pub(in crate::interaction) struct KeyCardState {
     curva: Option<EaseSpline>,
     area: core::cell::Cell<Option<BezArea>>,
     alvo: Option<BezAlvo>,
+    escolhido: Option<usize>,
     edit: Option<TimelineBezierEdit>,
     pendente: bool,
 }
@@ -111,6 +112,19 @@ impl WidgetStore {
         self.key_card.alvo
     }
 
+    /// O ponto escolhido no editor (o último agarrado, ou o dono da alça agarrada): os botões de
+    /// tipo de alça mostram e trocam o dele. `None` se já não é um ponto da curva desenhada.
+    #[must_use]
+    pub fn key_card_bez_escolhido(&self) -> Option<usize> {
+        let i = self.key_card.escolhido?;
+        self.key_card_curve()?.kind(i).map(|_| i)
+    }
+
+    /// Escolhe (`Some`) ou larga (`None`) o ponto do editor.
+    pub fn set_key_card_bez_escolhido(&mut self, i: Option<usize>) {
+        self.key_card.escolhido = i;
+    }
+
     /// Começa a arrastar `alvo` da curva `curve` (já com o ponto novo, se foi criado agora).
     pub fn begin_key_card_bez(
         &mut self,
@@ -119,6 +133,9 @@ impl WidgetStore {
         curve: EaseSpline,
     ) {
         self.key_card.alvo = Some(alvo);
+        self.key_card.escolhido = match alvo {
+            BezAlvo::Ponto(i) | BezAlvo::Alca(i, _) => curve.kind(i).map(|_| i),
+        };
         self.key_card.edit = Some(TimelineBezierEdit {
             scope,
             curve,

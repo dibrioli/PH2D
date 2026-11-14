@@ -404,6 +404,11 @@ pub const CTX_MENU_TL_KEY_CARD_HEAD: NodeId = hash_node_id("ctx_menu_tl_key_card
 /// O editor da curva **Custom** no cartão (dono 13/11): a área do gráfico — pontos e alças acham-se
 /// por geometria dentro dela (`key_card::editor::alvo_em`), não por id.
 pub const CTX_MENU_TL_KEY_BEZ_AREA: NodeId = hash_node_id("ctx_menu_tl_key_bez_area");
+/// Os tipos de alça do ponto escolhido no editor da Custom (dono 13/11: «os tipos de alça como no
+/// módulo vector»): Corner · Smooth · Symmetric, os do cartão de ponto do Vector.
+pub const CTX_MENU_TL_KEY_HANDLE_CORNER: NodeId = hash_node_id("ctx_menu_tl_key_handle_corner");
+pub const CTX_MENU_TL_KEY_HANDLE_SMOOTH: NodeId = hash_node_id("ctx_menu_tl_key_handle_smooth");
+pub const CTX_MENU_TL_KEY_HANDLE_SYMM: NodeId = hash_node_id("ctx_menu_tl_key_handle_symm");
 /// **Done**: fecha o cartão (as escolhas não o fecham, dono 13/11).
 pub const CTX_MENU_TL_KEY_DONE: NodeId = hash_node_id("ctx_menu_tl_key_done");
 /// Bloco **Curve**: a forma escolhida (ou Cubic) no modo escolhido (ou In-Out).

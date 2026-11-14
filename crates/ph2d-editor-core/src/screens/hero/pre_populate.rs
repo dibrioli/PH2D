@@ -609,6 +609,9 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_TL_KEY_CARD,
         ids::CTX_MENU_TL_KEY_CARD_HEAD,
         ids::CTX_MENU_TL_KEY_BEZ_AREA,
+        ids::CTX_MENU_TL_KEY_HANDLE_CORNER,
+        ids::CTX_MENU_TL_KEY_HANDLE_SMOOTH,
+        ids::CTX_MENU_TL_KEY_HANDLE_SYMM,
     ] {
         store.register(id, InteractiveState::Plain);
     }

@@ -115,7 +115,135 @@ fn it_holds_eight_points_and_refuses_the_ninth() {
     }
     assert!(!sp.has_room());
     assert_eq!(sp.insert(0.99), None);
-    // A medida do tecto: 24 B por ponto em toda `Interp` (ver o doc do módulo).
+    // A medida do tecto: 24 B por ponto em toda `Interp` (ver o doc do módulo); os tipos de alça
+    // moram na folga ao lado do `n` e não sobem nada.
     assert_eq!(core::mem::size_of::<SplinePoint>(), 24);
     assert_eq!(core::mem::size_of::<Interp>(), 216);
+}
+
+/// A alça oposta em relação ao ponto `i`: `(comprimento da de chegada, da de saída, seno do ângulo
+/// entre a de chegada e o oposto da de saída)` — seno 0 = na mesma reta.
+fn bracos(sp: &EaseSpline, i: usize) -> (f32, f32, f32) {
+    let no = sp.node(i);
+    let a = [no.h_in[0] - no.p[0], no.h_in[1] - no.p[1]];
+    let b = [no.p[0] - no.h_out[0], no.p[1] - no.h_out[1]];
+    let (la, lb) = (a[0].hypot(a[1]), b[0].hypot(b[1]));
+    (
+        la,
+        lb,
+        (a[0] * b[1] - a[1] * b[0]) / (la * lb).max(f32::EPSILON),
+    )
+}
+
+fn com_um_ponto() -> EaseSpline {
+    let mut sp = s_curve();
+    sp.insert(0.5);
+    sp
+}
+
+#[test]
+fn each_handle_kind_moves_the_other_handle_like_the_vector_module() {
+    // Um ponto novo nasce Smooth (o corte não muda a forma: as alças já estão na mesma reta).
+    let base = com_um_ponto();
+    assert_eq!(base.kind(1), Some(HandleKind::Smooth));
+    assert_eq!(
+        (base.kind(0), base.kind(2)),
+        (None, None),
+        "as pontas não têm tipo"
+    );
+    let antes = base.node(1);
+
+    // Corner: a outra alça não se mexe.
+    let mut c = base;
+    assert!(c.set_kind(1, HandleKind::Corner));
+    assert_eq!(c.node(1), antes, "trocar para Corner não mexe nas alças");
+    c.move_handle(1, SplineSide::Out, 0.6, 0.2);
+    assert_eq!(c.node(1).h_in, antes.h_in);
+    assert_eq!(c.node(1).h_out, [0.6, 0.2]);
+
+    // Smooth: na mesma reta, cada uma com o seu comprimento.
+    let mut s = base;
+    let (li, ..) = bracos(&s, 1);
+    s.move_handle(1, SplineSide::Out, 0.6, 0.2);
+    let (li2, lo2, sen) = bracos(&s, 1);
+    assert!(sen.abs() < 1e-4 && (li2 - li).abs() < 1e-5 && (lo2 - li2).abs() > 1e-2);
+
+    // Symmetric: o espelho exato.
+    let mut y = base;
+    assert!(y.set_kind(1, HandleKind::Symmetric));
+    let (a, b, sen) = bracos(&y, 1);
+    assert!(
+        sen.abs() < 1e-4 && (a - b).abs() < 1e-5,
+        "ao trocar: média dos dois"
+    );
+    y.move_handle(1, SplineSide::Out, 0.6, 0.2);
+    let (a, b, sen) = bracos(&y, 1);
+    assert!(
+        sen.abs() < 1e-4 && (a - b).abs() < 1e-5,
+        "ao arrastar: espelho"
+    );
+    assert_eq!(y.node(1).h_out, [0.6, 0.2]);
+
+    // Symmetric cujo espelho sairia do trecho: as duas encurtam juntas e ficam iguais.
+    // (um ponto em 0,3: a alça de saída pode ir a 0,6 de distância, a de chegada só a 0,3)
+    let mut z = s_curve();
+    z.insert(0.3);
+    z.set_kind(1, HandleKind::Symmetric);
+    z.move_handle(1, SplineSide::Out, 0.9, 0.5);
+    let (a, b, sen) = bracos(&z, 1);
+    assert!(sen.abs() < 1e-4 && (a - b).abs() < 1e-5, "{a} {b} {sen}");
+    assert!(
+        z.node(1).h_in[0] >= 0.0 && z.node(1).h_out[0] < 0.9 - 1e-3,
+        "encurtou"
+    );
+
+    // Trocar para o tipo que já é não muda nada.
+    assert!(!y.set_kind(1, HandleKind::Symmetric));
+    assert!(!y.set_kind(0, HandleKind::Corner), "o início não tem tipo");
+}
+
+#[test]
+fn a_corner_turned_smooth_lines_its_handles_up_and_collapsed_ones_get_a_direction() {
+    let mut sp = com_um_ponto();
+    sp.set_kind(1, HandleKind::Corner);
+    sp.move_handle(1, SplineSide::Out, 0.6, 0.2);
+    assert!(bracos(&sp, 1).2.abs() > 1e-2, "o canto quebrou a reta");
+    assert!(sp.set_kind(1, HandleKind::Smooth));
+    assert!(bracos(&sp, 1).2.abs() < 1e-4, "Smooth volta a pôr na reta");
+    // As duas recolhidas no ponto: Symmetric dá-lhes a direção dos vizinhos.
+    let p = sp.node(1).p;
+    sp.set_kind(1, HandleKind::Corner);
+    sp.move_handle(1, SplineSide::In, p[0], p[1]);
+    sp.move_handle(1, SplineSide::Out, p[0], p[1]);
+    assert!(sp.set_kind(1, HandleKind::Symmetric));
+    let (a, b, sen) = bracos(&sp, 1);
+    assert!(a > 1e-2 && (a - b).abs() < 1e-5 && sen.abs() < 1e-4);
+}
+
+#[test]
+fn the_kind_travels_with_its_point_when_points_come_and_go() {
+    let mut sp = s_curve();
+    sp.insert(0.3);
+    sp.insert(0.7);
+    sp.set_kind(1, HandleKind::Corner);
+    sp.set_kind(2, HandleKind::Symmetric);
+    // Um ponto novo entre os dois: os de depois andam um, com o tipo.
+    assert_eq!(sp.insert(0.5), Some(2));
+    let tipos = |sp: &EaseSpline| {
+        (1..sp.node_count() - 1)
+            .map(|i| sp.kind(i).unwrap())
+            .collect::<Vec<_>>()
+    };
+    use HandleKind::{Corner, Smooth, Symmetric};
+    assert_eq!(tipos(&sp), [Corner, Smooth, Symmetric]);
+    // Ao contrário, a ordem inverte.
+    assert_eq!(tipos(&sp.reversed()), [Symmetric, Smooth, Corner]);
+    // Apagar o do meio: os outros ficam com o seu.
+    assert!(sp.remove(2));
+    assert_eq!(tipos(&sp), [Corner, Symmetric]);
+    assert!(sp.remove(1));
+    assert_eq!(tipos(&sp), [Symmetric]);
+    // Um ponto novo onde morava um apagado nasce Smooth, não herda o tipo antigo.
+    sp.insert(0.2);
+    assert_eq!(tipos(&sp), [Smooth, Symmetric]);
 }

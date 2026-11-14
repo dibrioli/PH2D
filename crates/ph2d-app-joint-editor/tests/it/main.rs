@@ -376,8 +376,8 @@ fn arrastar_a_divisoria_muda_a_largura_dentro_dos_limites() {
         "nasce com a do Inspector"
     );
     assert!(
-        (lo - ph2d_tokens::PANEL_MIN_W_PX).abs() < 0.5,
-        "estreita até ao piso dos painéis, como o Inspector"
+        lo < ph2d_tokens::PANEL_MIN_W_PX,
+        "estreita abaixo do piso dos painéis (dono 13/11): {lo}"
     );
     m.drag(&Hit::Split, -120.0, 0.0);
     let w1 = m.tab().doc.panel.w;
@@ -392,7 +392,7 @@ fn arrastar_a_divisoria_muda_a_largura_dentro_dos_limites() {
     m.drag(&Hit::Split, 5000.0, 0.0);
     assert!(
         (m.tab().doc.panel.w - lo).abs() < 0.5,
-        "presa ao piso dos painéis"
+        "presa ao mínimo de uma coluna"
     );
 }
 
@@ -458,4 +458,80 @@ fn a_roda_e_a_barra_rolam_e_recolher_esconde_os_campos() {
             .is_some(),
         "reabre"
     );
+}
+
+/// ⭐⭐ **No mínimo, os pares passam a uma coluna** (dono 13/11, «os componentes podem se reorganizar
+/// mudando de linha»): na largura de fábrica Joint e Template partilham a fila; no mínimo cada par fica
+/// empilhado (o mesmo `x`, o 2.º por baixo), o botão Inspector desce, e nenhum alvo do painel sai dele
+/// nem pisa outro (os segmentados quebram em fileiras).
+///
+/// Mutações que devem sangrar: `two_up` sempre `true` · `seg_rows` sem quebra · `seg_h` de uma fileira.
+#[test]
+fn no_minimo_cada_par_fica_empilhado_e_nada_sai_nem_se_sobrepoe() {
+    use ph2d_app_joint_editor::doc::{Field, Menu};
+    let mut m = Mesa::carro();
+    m.area = Rect { h: 2400.0, ..AREA };
+    m.frame();
+    let (k, t) = (
+        m.rect(&Hit::OpenMenu(Menu::Kind)),
+        m.rect(&Hit::OpenMenu(Menu::Template)),
+    );
+    assert!(
+        k.y == t.y && k.x < t.x,
+        "de fábrica, Joint e Template na mesma fila"
+    );
+    m.drag(&Hit::Split, 5000.0, 0.0);
+    let (lo, _) = m.tab().doc.panel_bounds();
+    let p = m.tab().doc.panel;
+    assert!((p.w - lo).abs() < 0.5, "no mínimo: {p:?}");
+    let pairs = [
+        (Hit::OpenMenu(Menu::Kind), Hit::OpenMenu(Menu::Template)),
+        (Hit::OpenMenu(Menu::Kind), Hit::Inspect),
+        (Hit::Field(Field::Stiffness), Hit::Field(Field::Damping)),
+        (Hit::Field(Field::LimitMin), Hit::Field(Field::LimitMax)),
+        (Hit::Field(Field::MotorSpeed), Hit::Field(Field::MotorForce)),
+    ];
+    for (a, b) in pairs {
+        let (ra, rb) = (m.rect(&a), m.rect(&b));
+        assert!(
+            ra.x == rb.x && rb.y >= ra.y + ra.h,
+            "{a:?} {ra:?} em cima de {b:?} {rb:?}"
+        );
+    }
+    let ours: Vec<(Rect, Hit)> = m
+        .tab()
+        .doc
+        .hits()
+        .filter(|(_, h)| {
+            matches!(
+                h,
+                Hit::OpenMenu(_)
+                    | Hit::Field(_)
+                    | Hit::Flag(_)
+                    | Hit::Scope(_)
+                    | Hit::Drive(_)
+                    | Hit::Inspect
+                    | Hit::Fold(_)
+                    | Hit::Bar
+            )
+        })
+        .map(|(r, h)| (r, h.clone()))
+        .collect();
+    assert!(ours.len() > 12, "o painel pintado: {}", ours.len());
+    for (i, (r, h)) in ours.iter().enumerate() {
+        assert!(
+            r.x >= p.x - 0.5
+                && r.x + r.w <= p.x + p.w + 0.5
+                && r.y >= p.y
+                && r.y + r.h <= p.y + p.h,
+            "{h:?} {r:?} sai do painel {p:?}"
+        );
+        for (q, g) in &ours[i + 1..] {
+            let over = r.x < q.x + q.w - 0.5
+                && q.x < r.x + r.w - 0.5
+                && r.y < q.y + q.h - 0.5
+                && q.y < r.y + r.h - 0.5;
+            assert!(!over, "{h:?} {r:?} pisa {g:?} {q:?}");
+        }
+    }
 }

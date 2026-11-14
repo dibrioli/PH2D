@@ -2,14 +2,26 @@
 //! da aba), a barra arrasta-se para rolar e cada cartão recolhe pelo título. Tudo guardado no doc enquanto a
 //! aba vive.
 
+use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::zones::Rect;
+
 use crate::doc::{Grab, Hit, JointEditorDoc};
 
+/// ⭐ **O painel mais estreito em que UMA coluna de campos ainda se lê** (dono 13/11, «pode ser mais
+/// estreito»): o campo mínimo [`crate::widgets::FIELD_MIN_W`], a folga do cartão dos dois lados e a faixa
+/// da barra (a coluna estreita é alta e rola). Abaixo do piso dos painéis (`PANEL_MIN_W_PX`): os pares
+/// passam a uma coluna em vez de cortar o valor.
+#[must_use]
+pub fn panel_min_w() -> f32 {
+    let bar = ph2d_editor_core::widget::scrollbar_track_rect(Rect::default());
+    crate::widgets::FIELD_MIN_W + m::CARD_PAD_X * 2.0 - bar.x + m::LIST_BAR_GAP
+}
+
 impl JointEditorDoc {
-    /// A largura mínima e a máxima do painel: o piso dos painéis do app (o Inspector estreita até ele,
-    /// dono 13/11) e metade da aba.
+    /// A largura mínima e a máxima do painel: [`panel_min_w`] e metade da aba.
     #[must_use]
     pub fn panel_bounds(&self) -> (f32, f32) {
-        let min = ph2d_tokens::PANEL_MIN_W_PX;
+        let min = panel_min_w();
         (min, (self.area.w * 0.5).max(min))
     }
 
@@ -28,6 +40,11 @@ impl JointEditorDoc {
     /// Escolhe a largura do painel (presa aos limites na pintura).
     pub fn set_panel_width(&mut self, w: f32) {
         self.panel_w = w;
+    }
+
+    /// Os alvos pintados neste quadro, na ordem da pintura.
+    pub fn hits(&self) -> impl Iterator<Item = (Rect, &Hit)> {
+        self.hits.iter().map(|(r, h, _)| (*r, h))
     }
 
     /// Quanto o painel está rolado.

@@ -248,9 +248,11 @@ fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
     let y0 = (b.y + b.h + m::SEG_PAD)
         .min(area.y + area.h - h)
         .max(area.y);
-    // A lista abre na largura do cartão (Joint e Template partilham a fila; a miniatura e o nome cabem).
+    // A lista abre na largura do cartão (Joint e Template partilham a fila; a miniatura e o nome cabem);
+    // no painel estreito, nunca menos que no de fábrica, alargando para o palco.
     let p = ui.doc.panel;
-    let r = Rect::new(p.x + m::CARD_PAD_X, y0, p.w - m::CARD_PAD_X * 2.0, h);
+    let lw = (p.w.max(ph2d_tokens::INSPECTOR_W_PX) - m::CARD_PAD_X * 2.0).min(area.w);
+    let r = Rect::new(p.x + p.w - m::CARD_PAD_X - lw, y0, lw, h);
     let shade = ui.c(ColorToken::KanbanListShadow);
     ph2d_editor_core::paint_flight::shadow(ui.scene, r, m::CARD_RADIUS, shade, m::LIST_SHADOW_FAR);
     fill_rounded_rect(

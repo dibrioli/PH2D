@@ -36,6 +36,15 @@ pub const THUMB: (f32, f32) = (76.0, 38.0);
 pub const MENU_ROW_H: f32 = 48.0;
 /// O texto pequeno (pés, papéis).
 pub const SMALL_PX: f32 = 10.5;
+/// O valor mais largo que um campo escreve, «-0.000» (sinal, três casas), medido no `TextSystem` a
+/// `VALUE_PX` (34,6 px, teste `o_campo_minimo_cabe_o_valor_e_a_letra_mais_largos`), arredondado acima.
+pub const VALUE_MIN_W: f32 = 35.0;
+/// A pega mais larga, «Max» a `LABEL_PX` com `SEG_INSET` de cada lado (34,4 px, mesmo teste); as de uma
+/// letra cabem na `ICON_CELL` (26).
+pub const GLYPH_MIN_W: f32 = 35.0;
+/// ⭐ **O campo mínimo que ainda se lê** (dono 13/11): a pega, «-0.000» inteiro e a folga da direita.
+/// Abaixo disto dois campos lado a lado cortam o valor, e a fila passa a uma coluna.
+pub const FIELD_MIN_W: f32 = GLYPH_MIN_W + VALUE_MIN_W + m::FIELD_PAD_R;
 
 /// As cores das montagens na lista (e das peças no desenho): a paleta das camadas.
 pub const PALETTE: [ColorToken; 8] = [
@@ -134,7 +143,7 @@ impl Ui<'_> {
         self.hit(b, h, a11y);
     }
 
-    /// Uma escolha segmentada a toda a largura de `r`.
+    /// Uma escolha segmentada a toda a largura de `r` (a altura de [`seg_h`] das fileiras de [`seg_rows`]).
     pub fn segmented(&mut self, r: Rect, opts: &[(String, Hit, bool)]) {
         fill_rounded_rect(
             self.scene,
@@ -142,35 +151,23 @@ impl Ui<'_> {
             m::FIELD_RADIUS,
             self.c(ColorToken::CardField),
         );
-        // D32: cada segmento com a largura do que mostra; a sobra reparte-se. No painel estreito (dono
-        // 13/11) cada opção encolhe à primeira palavra («Rear wheel» → «Rear»); o leitor de ecrã ouve o nome inteiro.
-        let avail = r.w - m::SEG_PAD * 2.0;
-        let need_of = |ts: &mut TextSystem, short: bool| -> Vec<(f32, bool)> {
-            opts.iter()
-                .map(|(l, _, _)| {
-                    let s = if short { first_word(l) } else { l.as_str() };
-                    (
-                        ts.prefix_width(s, m::SEG_TEXT_PX) + m::SEG_INSET * 2.0,
-                        false,
-                    )
-                })
-                .collect()
-        };
-        let mut need = need_of(self.ts, false);
-        let short = need.iter().map(|s| s.0).sum::<f32>() > avail;
-        if short {
-            need = need_of(self.ts, true);
-        }
-        let ws = m::seg_widths(&need, avail);
-        let mut x = r.x + m::SEG_PAD;
-        for ((full, h, on), w) in opts.iter().zip(ws) {
+        let (short, rows) = seg_rows(self.ts, opts, r.w);
+        let seg_h = m::FIELD_H - m::SEG_PAD * 2.0;
+        let cells = rows.iter().enumerate().flat_map(|(k, ws)| {
+            #[allow(clippy::cast_precision_loss)]
+            let y = r.y + m::SEG_PAD + seg_h * k as f32;
+            let mut x = r.x + m::SEG_PAD;
+            ws.iter().map(move |w| {
+                x += w;
+                Rect::new(x - w, y, *w, seg_h)
+            })
+        });
+        for ((full, h, on), s) in opts.iter().zip(cells.collect::<Vec<_>>()) {
             let label = if short {
                 first_word(full)
             } else {
                 full.as_str()
             };
-            let s = Rect::new(x, r.y + m::SEG_PAD, w, r.h - m::SEG_PAD * 2.0);
-            x += w;
             if *on {
                 fill_rounded_rect(self.scene, s, m::SEG_RADIUS, self.c(ColorToken::Accent));
             } else if self.hot(h) {
@@ -243,6 +240,50 @@ impl Ui<'_> {
     }
 }
 
+/// ⭐ **A disposição de um segmentado na largura `w`** (o pintor e o medidor leem-na): `(curto, larguras
+/// por fileira)`. D32: cada segmento com a largura do que mostra, a sobra repartida. Não cabe ⇒ cada opção
+/// encolhe à primeira palavra («Rear wheel» → «Rear»; o leitor de ecrã ouve o nome inteiro). Nem assim ⇒
+/// quebra em fileiras, quantas couberem por fileira (a lei do `segmented_row_counts` do app, dono 19/07).
+pub fn seg_rows(
+    ts: &mut TextSystem,
+    opts: &[(String, Hit, bool)],
+    w: f32,
+) -> (bool, Vec<Vec<f32>>) {
+    let avail = w - m::SEG_PAD * 2.0;
+    let need_of = |ts: &mut TextSystem, short: bool| -> Vec<(f32, bool)> {
+        opts.iter()
+            .map(|(l, _, _)| {
+                let s = if short { first_word(l) } else { l.as_str() };
+                (
+                    ts.prefix_width(s, m::SEG_TEXT_PX) + m::SEG_INSET * 2.0,
+                    false,
+                )
+            })
+            .collect()
+    };
+    let sum = |n: &[(f32, bool)]| n.iter().map(|s| s.0).sum::<f32>();
+    let full = need_of(ts, false);
+    if sum(&full) <= avail {
+        return (false, vec![m::seg_widths(&full, avail)]);
+    }
+    let need = need_of(ts, true);
+    let mut rows: Vec<Vec<(f32, bool)>> = Vec::new();
+    for s in need {
+        match rows.last_mut() {
+            Some(row) if sum(row) + s.0 <= avail => row.push(s),
+            _ => rows.push(vec![s]),
+        }
+    }
+    (true, rows.iter().map(|r| m::seg_widths(r, avail)).collect())
+}
+
+/// A altura do segmentado com `rows` fileiras.
+#[must_use]
+#[allow(clippy::cast_precision_loss)]
+pub fn seg_h(rows: usize) -> f32 {
+    m::SEG_PAD * 2.0 + (m::FIELD_H - m::SEG_PAD * 2.0) * rows.max(1) as f32
+}
+
 /// A forma curta de uma opção: a primeira palavra.
 fn first_word(s: &str) -> &str {
     s.split_whitespace().next().unwrap_or(s)
@@ -262,6 +303,32 @@ pub fn format(v: f32) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::{GLYPH_MIN_W, VALUE_MIN_W, m};
+
+    #[test]
+    fn o_campo_minimo_cabe_o_valor_e_a_letra_mais_largos() {
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let v = ts.prefix_width("-0.000", m::VALUE_PX);
+        let keys = ["stiffness", "damping", "speed", "force", "torque"];
+        let more = ["wheelbase", "length", "min", "max"];
+        let g = keys
+            .iter()
+            .chain(&more)
+            .map(|k| {
+                ts.prefix_width(
+                    ph2d_i18n::tr(&format!("joint_editor.glyph.{k}")),
+                    m::LABEL_PX,
+                )
+            })
+            .fold(0.0f32, f32::max)
+            + m::SEG_INSET * 2.0;
+        assert!(
+            v <= VALUE_MIN_W && v > VALUE_MIN_W - 1.0,
+            "«-0.000» mede {v}"
+        );
+        assert!(g <= GLYPH_MIN_W && g > GLYPH_MIN_W - 1.0, "a pega mede {g}");
+    }
+
     #[test]
     fn o_numero_sai_sem_zeros_a_direita() {
         assert_eq!(super::format(0.15), "0.15");

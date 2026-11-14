@@ -16,7 +16,7 @@ use ph2d_joint_templates::JointKind;
 use ph2d_tokens::{ColorToken, StrokeToken};
 
 use crate::doc::{Field, Flag, Hit, Menu, kind_key, scope_options};
-use crate::widgets::Ui;
+use crate::widgets::{FIELD_MIN_W, Ui, seg_h, seg_rows};
 
 /// Um controlo de um cartão.
 enum Item {
@@ -235,12 +235,18 @@ const NOTE_LINE: f32 = m::VALUE_PX + m::LABEL_BOTTOM * 2.0;
 /// O rótulo acima de uma caixa: a letra e o vão até à caixa.
 const LABEL_H: f32 = m::LABEL_PX + m::LABEL_BOTTOM;
 
-/// As filas de um cartão: números, listas e o resumo com o botão aos pares; o resto sozinho.
-fn rows(items: &[Item]) -> Vec<Vec<&Item>> {
+/// ⭐ Cabem dois campos legíveis lado a lado em `iw` (dono 13/11)? Cada metade tem de levar
+/// [`FIELD_MIN_W`]; senão cada par passa a uma coluna.
+fn two_up(iw: f32) -> bool {
+    (iw - m::FIELD_GAP) * 0.5 >= FIELD_MIN_W
+}
+
+/// As filas de um cartão: números, listas e o resumo com o botão aos pares quando `two`; o resto sozinho.
+fn rows(items: &[Item], two: bool) -> Vec<Vec<&Item>> {
     let mut out: Vec<Vec<&Item>> = Vec::new();
     for it in items {
         let pairs = |a: &Item| {
-            matches!(
+            two && matches!(
                 (a, it),
                 (Item::Num(..), Item::Num(..))
                     | (Item::Menu(_), Item::Menu(_))
@@ -255,11 +261,17 @@ fn rows(items: &[Item]) -> Vec<Vec<&Item>> {
     out
 }
 
-fn row_h(ui: &mut Ui<'_>, it: &Item, wide: f32) -> f32 {
-    match it {
-        Item::Menu(_) | Item::Num(..) | Item::Scope(..) => LABEL_H + m::FIELD_H,
+/// A altura de uma fila; numa coluna o resumo parte-se em linhas como uma frase.
+fn row_h(ui: &mut Ui<'_>, row: &[&Item], wide: f32) -> f32 {
+    match row[0] {
+        Item::Menu(_) | Item::Num(..) => LABEL_H + m::FIELD_H,
+        Item::Scope(_, segs) => LABEL_H + seg_h(seg_rows(ui.ts, segs, wide).1.len()),
         #[allow(clippy::cast_precision_loss)]
         Item::Note(k) => wrap(ui, tr(k), wide).len() as f32 * NOTE_LINE,
+        #[allow(clippy::cast_precision_loss)]
+        Item::Line(s) if row.len() == 1 && !two_up(wide) => {
+            (wrap(ui, s, wide).len() as f32 * NOTE_LINE).max(m::FIELD_H)
+        }
         _ => m::FIELD_H,
     }
 }
@@ -274,15 +286,18 @@ fn card_h(ui: &mut Ui<'_>, g: &Group, w: f32) -> f32 {
     }
     let iw = (w - m::CARD_PAD_X * 2.0).max(0.0);
     let mut body = 0.0;
-    for (k, row) in rows(&g.1).iter().enumerate() {
-        body += row_h(ui, row[0], iw) + if k > 0 { m::FIELD_ROW_GAP } else { 0.0 };
+    for (k, row) in rows(&g.1, two_up(iw)).iter().enumerate() {
+        body += row_h(ui, row, iw) + if k > 0 { m::FIELD_ROW_GAP } else { 0.0 };
     }
     TOP + body + m::CARD_PAD_BOTTOM
 }
 
-/// As larguras de uma fila em `iw`: metade e metade; o resumo cede ao botão compacto o que ele pede.
+/// As larguras de uma fila em `iw`: a toda a largura numa coluna; senão metade e metade; o resumo cede ao botão compacto o que ele pede.
 fn widths(ui: &mut Ui<'_>, row: &[&Item], iw: f32) -> Vec<f32> {
     let half = (iw - m::FIELD_GAP) * 0.5;
+    if !two_up(iw) {
+        return vec![iw];
+    }
     match row {
         [Item::Line(_), Item::Inspect] => {
             let bw = ui
@@ -340,8 +355,8 @@ fn card(ui: &mut Ui<'_>, r: Rect, g: &Group, at: &mut [Rect; 2]) -> f32 {
     }
     let left = r.x + m::CARD_PAD_X;
     let mut y = r.y + TOP;
-    for row in rows(&g.1) {
-        let rh = row_h(ui, row[0], iw);
+    for row in rows(&g.1, two_up(iw)) {
+        let rh = row_h(ui, &row, iw);
         let ws = widths(ui, &row, iw);
         let mut x = left;
         for (it, w) in row.into_iter().zip(ws) {
@@ -395,15 +410,10 @@ fn item(ui: &mut Ui<'_>, b: Rect, it: &Item, at: &mut [Rect; 2]) {
         }
         Item::Scope(label, segs) => {
             let bx = labelled(ui, b, tr(label));
-            ui.segmented(bx, segs);
+            ui.segmented(Rect::new(bx.x, bx.y, bx.w, b.h - LABEL_H), segs);
         }
-        Item::Note(k) => {
-            for (n, l) in wrap(ui, tr(k), b.w).iter().enumerate() {
-                #[allow(clippy::cast_precision_loss)]
-                let lr = Rect::new(b.x, b.y + NOTE_LINE * n as f32, b.w, NOTE_LINE);
-                ui.put(l, lr, m::VALUE_PX, ColorToken::Text2);
-            }
-        }
+        Item::Note(k) => note(ui, tr(k), b),
+        Item::Line(s) if wrap(ui, s, b.w).len() > 1 && b.h > m::FIELD_H => note(ui, s, b),
         Item::Line(s) => ui.put(s, b, m::VALUE_PX, ColorToken::Text2),
         Item::Inspect => {
             let a11y = tr("joint_editor.open_inspector");
@@ -427,5 +437,14 @@ fn item(ui: &mut Ui<'_>, b: Rect, it: &Item, at: &mut [Rect; 2]) {
             ui.dropdown(bx, value, h, &format!("{label}: {value}. {}", tr(tip)));
             at[*menu as usize] = bx;
         }
+    }
+}
+
+/// Uma frase partida em linhas na largura de `b`.
+fn note(ui: &mut Ui<'_>, s: &str, b: Rect) {
+    for (n, l) in wrap(ui, s, b.w).iter().enumerate() {
+        #[allow(clippy::cast_precision_loss)]
+        let lr = Rect::new(b.x, b.y + NOTE_LINE * n as f32, b.w, NOTE_LINE);
+        ui.put(l, lr, m::VALUE_PX, ColorToken::Text2);
     }
 }

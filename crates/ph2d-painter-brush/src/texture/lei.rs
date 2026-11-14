@@ -102,6 +102,10 @@ pub struct GrainLaw {
     /// ⭐ O ENCHIMENTO do dente (`0..1`): no Height o papel sobe a fracção `fill·pó` do que lhe falta onde a camada já tinha
     /// tinta no pen-down ([`super::PoDoPapel`]) — cada repasse cobre mais vales. `0` = o papel de sempre, ao bit.
     pub fill: f32,
+    /// ⭐ O papel em DUAS leituras (B33.1: 256 + 241 a 180°, não se repete a 256 px) — só o Wet Paint a liga
+    /// (`PainterTool::papel_na_escala`; BUGS_painter #115, dono 07/10). Desligado = a leitura única do main, ao bit.
+    /// Não se grava: o meio decide-a a cada leitura.
+    pub leitura_dupla: bool,
 }
 
 impl Default for GrainLaw {
@@ -122,6 +126,7 @@ impl GrainLaw {
         softness: 0.0,
         tip_depth: false,
         fill: 0.0,
+        leitura_dupla: false,
     };
 
     /// O pó pousado conta ([`Self::papel_com_po`] muda o papel): Height com enchimento.

@@ -88,6 +88,7 @@ pub(super) fn pincel_mexido() -> BrushSpec {
             softness: 0.3,
             tip_depth: true,
             fill: 0.2,
+            leitura_dupla: false,
         },
     };
     let curva = FalloffCurve::from_points(&[

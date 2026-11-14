@@ -36,7 +36,7 @@ pub(super) fn sample_kind(
     params: [f32; super::MAX_TEX_PARAMS],
     image: Option<&ImageMask>,
 ) -> f32 {
-    sample_kind_t(kind, tex, params, image, [0, 0])
+    sample_kind_t(kind, tex, params, image, [0, 0], false)
 }
 
 /// [`sample_kind`] with a lattice **wrap** period `(pu, pv)` in cells (`[0, 0]` = no wrap ⇒ byte-identical):
@@ -49,6 +49,7 @@ pub(super) fn sample_kind_t(
     params: [f32; super::MAX_TEX_PARAMS],
     image: Option<&ImageMask>,
     period: [i32; 2],
+    dupla: bool,
 ) -> f32 {
     let (u, v) = (tex[0], tex[1]);
     let (pu, pv) = (period[0], period[1]);
@@ -86,9 +87,9 @@ pub(super) fn sample_kind_t(
         // sample; the fibre character (laid lines) is baked into each tile's ridge, keeping the
         // lookup isotropic. Two reads (B33): under Tiling the second one snaps to the sprite
         // `period` so the seam stays exact (seam-tested).
-        TextureKind::PaperCold => paper_tile::sample_t(0, u, v, period),
-        TextureKind::PaperRough => paper_tile::sample_t(1, u, v, period),
-        TextureKind::PaperHot => paper_tile::sample_t(2, u, v, period),
+        TextureKind::PaperCold => paper_tile::sample_t(0, u, v, period, dupla),
+        TextureKind::PaperRough => paper_tile::sample_t(1, u, v, period, dupla),
+        TextureKind::PaperHot => paper_tile::sample_t(2, u, v, period, dupla),
         // No tone slots: the four sliders are the bristle knobs.
         TextureKind::Bristles => return super::bristles::sample_unit(&params, u, v),
         TextureKind::Image => match image {
@@ -109,6 +110,7 @@ pub(super) fn sample_kind_px(
     image: Option<&ImageMask>,
     period: [i32; 2],
     fw: f32,
+    dupla: bool,
 ) -> f32 {
     if kind == TextureKind::Dots && fw > 0.0 {
         let raw = dots_t(tex[0], tex[1], &params[2..], period[0], period[1], fw);
@@ -121,7 +123,7 @@ pub(super) fn sample_kind_px(
             params[1],
         );
     }
-    sample_kind_t(kind, tex, params, image, period)
+    sample_kind_t(kind, tex, params, image, period, dupla)
 }
 
 /// Read kind knob `i` from the `&params[2..]` slice (default `0.5` if a kind reads beyond its specs).

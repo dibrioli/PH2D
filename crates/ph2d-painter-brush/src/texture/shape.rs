@@ -409,7 +409,7 @@ fn shape_value_px(
             .map(|img| sample_image_clamped(img, tex[0], tex[1]))
             .unwrap_or(0.0),
         TextureKind::None => 1.0, // not reached (the caller uses the falloff when Shape is inactive)
-        _ => super::patterns::sample_kind_px(s.kind, tex, s.params, image, [0, 0], fw)
+        _ => super::patterns::sample_kind_px(s.kind, tex, s.params, image, [0, 0], fw, s.lei.leitura_dupla)
             .clamp(0.0, 1.0),
     }
 }

@@ -65,7 +65,7 @@ pub fn render_texture_preview(
             let bv = bu0 * sa + bv0 * ca + centre;
             let u = bu * sx + offset[0];
             let v = bv * sy + offset[1];
-            let s = sample_kind_px(kind, [u, v], params, image, [0, 0], fw).clamp(0.0, 1.0);
+            let s = sample_kind_px(kind, [u, v], params, image, [0, 0], fw, false).clamp(0.0, 1.0);
             let [r, g, b] = match ramp {
                 Some((lut, mode)) if !lut.is_empty() => {
                     let idx = ((s * (lut.len() - 1) as f32) + 0.5) as usize;

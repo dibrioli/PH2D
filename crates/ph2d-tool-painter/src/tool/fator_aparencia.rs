@@ -47,7 +47,9 @@ impl PainterTool {
 
     /// ⭐ A porta ÚNICA do papel em píxeis (B34.1): todo leitor que amostra o papel na tela passa por aqui.
     #[must_use]
-    pub(crate) fn papel_na_escala(&self, p: TextureSettings) -> TextureSettings {
+    pub(crate) fn papel_na_escala(&self, mut p: TextureSettings) -> TextureSettings {
+        // B33.1 (o papel em duas leituras) só no Wet Paint; os outros meios leem o papel do main (BUGS #115).
+        p.lei.leitura_dupla = self.paint_media() == crate::PaintMedia::WetPaint;
         papel_a_escala(p, self.fator_aparencia)
     }
 }
@@ -63,6 +65,10 @@ impl crate::BrushSettings {
             offset: self.paper_offset,
             size: self.paper_size,
             params: self.paper_params,
+            lei: ph2d_painter_brush::GrainLaw {
+                leitura_dupla: self.wetpaint,
+                ..ph2d_painter_brush::GrainLaw::NEUTRA
+            },
             ..TextureSettings::default()
         };
         papel_a_escala(p, self.paper_fator.max(1.0))
@@ -112,5 +118,20 @@ mod tests {
         u.install_document(9, lido);
         u.bind_document(9, Vec::new(), w, h);
         assert_eq!(u.fator_aparencia(), 2.0, "e volta ao documento");
+    }
+
+    /// ⛔ BUGS_painter #115 (dono 07/10: só o Wet Paint evolui): fora do Wet Paint o papel lê-se numa leitura, a de
+    /// `main` 4f46a3573c; as duas leituras do B33.1 só no Wet Paint — no motor e na prévia do cartão.
+    #[test]
+    fn fora_do_wet_paint_o_papel_e_a_leitura_unica_de_antes() {
+        use crate::PaintMedia;
+        for meio in [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto, PaintMedia::WetPaint] {
+            let mut t = PainterTool::default();
+            t.set_paint_media(meio);
+            assert_eq!(t.paint_media(), meio);
+            let wet = meio == PaintMedia::WetPaint;
+            assert_eq!(t.papel_na_escala(TextureSettings::default()).lei.leitura_dupla, wet, "{meio:?}: o motor");
+            assert_eq!(t.brush_settings().papel_como_o_motor_o_le().lei.leitura_dupla, wet, "{meio:?}: a prévia");
+        }
     }
 }

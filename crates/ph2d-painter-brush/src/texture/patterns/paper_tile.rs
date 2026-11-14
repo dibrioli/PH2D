@@ -291,17 +291,21 @@ fn fetch(tile: &[f32], x: f32, y: f32) -> f32 {
 /// mean and the tooth depth (std) stay the preset's.
 #[cfg(test)]
 pub(super) fn sample(which: usize, u: f32, v: f32) -> f32 {
-    sample_t(which, u, v, [0, 0])
+    sample_t(which, u, v, [0, 0], true)
 }
 
 /// [`sample`] under sprite **Tiling**: `period` = whole 256-px tiles across the sprite per axis (`0` = that
 /// axis doesn't tile). A tiled axis can only repeat what fits a whole number of times in the sprite, so the
 /// second read takes the nearest period to [`TILE_B`] that divides the span (`span / round(span · 256/241)`)
 /// — seam-free, and still off the 256 grid inside the sprite. `[0, 0]` ⇒ [`sample`] to the bit.
-pub(super) fn sample_t(which: usize, u: f32, v: f32, period: [i32; 2]) -> f32 {
+/// `dupla = false` ⇒ the single 256-px read of `main` 4f46a3573c, to the bit (only Wet Paint evolves, BUGS #115).
+pub(super) fn sample_t(which: usize, u: f32, v: f32, period: [i32; 2], dupla: bool) -> f32 {
     let tile = &tiles()[which.min(2)];
     let (x, y) = (u * TILE as f32, v * TILE as f32);
     let a = fetch(tile, x, y);
+    if !dupla {
+        return a;
+    }
     let escala = |p: i32| {
         if p > 0 {
             let span = p as f32;
@@ -318,6 +322,5 @@ pub(super) fn sample_t(which: usize, u: f32, v: f32, period: [i32; 2]) -> f32 {
 /// The single 256-px read before B33, verbatim — the «antes» of the prancha and the red of the gate.
 #[cfg(test)]
 pub(super) fn sample_uma_leitura(which: usize, u: f32, v: f32) -> f32 {
-    let tile = &tiles()[which.min(2)];
-    fetch(tile, u * TILE as f32, v * TILE as f32)
+    sample_t(which, u, v, [0, 0], false)
 }

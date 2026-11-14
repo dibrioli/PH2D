@@ -151,6 +151,7 @@ pub(super) fn lei_de_json(v: Option<&Value>) -> GrainLaw {
         softness: f(o.get("softness"), n.softness).clamp(0.0, 1.0),
         tip_depth: booleano(o.get("tip_depth"), n.tip_depth),
         fill: f(o.get("fill"), n.fill).clamp(0.0, 1.0),
+        leitura_dupla: n.leitura_dupla,
     }
 }
 

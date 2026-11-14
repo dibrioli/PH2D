@@ -83,3 +83,19 @@ vermelho em `4381ee6d4a` — bissecção em curso.
 **Ferramentas desta onda:** binários com símbolos em `CARGO_TARGET_DIR=/home/enio/Documentos/Projetos/.ph2d-perf-target`
 com `CARGO_PROFILE_SMOKE_STRIP=none CARGO_PROFILE_SMOKE_DEBUG=line-tables-only` (o perf não grava pilha aqui: paranoid
 2; usar `perf annotate -l` para a linha). Matriz por bash (zsh não parte `"a b"`): roteiros no scratch da janela.
+
+**Rodada n.º 10 (14/11, base `main` `36a312482a`, 109 commits; ordem do dono: atacar todo o plano, integrar e fazer ship no fim, smoke só depois):**
+agentes por família, estado em `medicoes/N10_*.md` (a matriz final: [`N10_MATRIZ_FINAL.md`](medicoes/N10_MATRIZ_FINAL.md), base em
+[`N10_BASE_MATRIZ.md`](medicoes/N10_BASE_MATRIZ.md)); BACKLOG dobrado nos ids tocados. Fechado: **depósito do dab fora do evento**
+(Flat Bristle 240 4K, traço máx 629/538 → 68/91 ms; composição no quadro 72–85 → 10–35) e pen-up adiado ligado · **Ctrl+Z e troca do
+Wet** (fluxo no pool 5,4–8,4 → 2,7–3,0 ms; troca_os_planos 23,0 → 16,1; Ctrl+Z da tela e do relevo do Impasto no lugar, 0 cópias) ·
+**memória 4K** (1.º traço Impasto 100 407 872 → 1 528 256 B = 1024²; figura de aguada 58 060 800 → 131 871 B/quadro, quadro Drag Dot
+1,08 → 0,15 ms; 13 dos 15 `None` do fork viram caixa; Digital até 1024) · **água** (difusão Jacobi paralela 33 × 104 ms; secagem
+por tile; freio na grade fina; cedência sem Max velocity) · **camadas/placa** (Repeat Image 8 ids → 1; premul opaca 10,05 → 2,08 ms;
+anel de subida 2,68 → 1,28 ms CPU; chip do meio e troca de ferramenta aquecem o fundo; Compositor com Smooth Edges: on_tick 50,0 →
+0,02 ms) · **UI/quadro** (Mailbox ritmado, parado 48–70 % → 3–4 % de um núcleo a pedido; Moves em lote) · **build/medição** (libm 23 →
+0, hugetlb: minflt 2 955 k → 65 k, hash dos pincéis no CI, 93 cabeçalhos `--release` → 0, sondas dizem perfil e raio). Recusas medidas:
+reuso do acumulador (−12–17 ms), pool próprio da compressão (23,9 × 18,7), cache f32 e views em cache da placa, FilmLut paralela
+(1,09×), `cos` por célula (−0,1 %), memo da mistura (+0,3 %), cura 4 `de_e_repoe`. Aberto: B23.6 (weston), B44.11–13, B08.6, B26.1–3,
+B25.8 (cura), B17.6 (2 casos), B18.3, soltar +1 s do Flat Bristle 240, B13.3/B14.2/B30.5 (dono). Handoff:
+[N10_DESEMPENHO](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-14_N10_DESEMPENHO.md).

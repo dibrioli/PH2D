@@ -43,7 +43,9 @@ impl PainterTool {
             .as_mut()
             .is_some_and(WetSession::try_bring_home_now)
         {
+            let t0 = std::time::Instant::now();
             self.no_pool(Self::wetpaint_composite);
+            super::sessao_do_wet::diag_espera("compoe", t0, std::panic::Location::caller());
         }
     }
 

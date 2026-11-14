@@ -257,6 +257,47 @@ fn o_tique_nao_espera_o_lote_em_voo() {
     );
 }
 
+/// F2g: a drenagem do quadro (`take_preview_dirty` → `reconcile_substrate` → o grão do Óleo Real) não espera o lote
+/// em voo — o `[wet-espera]` mediu 32–85 ms por quadro nesse dreno (Flat Bristle 240, 4K).
+#[test]
+fn a_drenagem_do_quadro_nao_espera_o_lote_em_voo() {
+    let _so_um = PORTA_DE_UM
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (w, h) = (320u32, 160u32);
+    super::fila_no_teste(true);
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(fundo(w, h, false), w, h);
+    t.set_compor_por_quadro(true);
+    t.set_paint_tool_mode("wetpaint");
+    t.preset_aplicar(&preset("Oil/Flat/Flat Bristle.ph2d-brush.png"))
+        .expect("o pincel");
+    t.set_brush_size_px(60.0);
+    t.paint.wetpaint.oleo_na_tela = true;
+    t.on_canvas_pointer(cp([60.0, 50.0], 0.6, PointerPhase::Down));
+    for k in 1..=5 {
+        let p = [60.0 + 18.0 * k as f32, 50.0 + 2.0 * k as f32];
+        t.on_canvas_pointer(cp(p, 0.6 + 0.03 * k as f32, PointerPhase::Move));
+    }
+    t.ticks_em_blocos(1);
+    super::segura_o_operario(true);
+    t.on_canvas_pointer(cp([168.0, 62.0], 0.8, PointerPhase::Move));
+    let voou = t.paint.wetpaint.session.em_voo();
+    let antes = std::time::Instant::now();
+    let _ = t.take_preview_dirty();
+    let esperou = antes.elapsed();
+    let ainda = t.paint.wetpaint.session.em_voo();
+    super::segura_o_operario(false);
+    t.on_canvas_pointer(cp([200.0, 60.0], 1.0, PointerPhase::Up));
+    t.ticks_em_blocos(2);
+    super::fila_no_teste(false);
+    assert!(voou, "o lote não voou (o gate não mediria nada)");
+    assert!(
+        ainda && esperou < std::time::Duration::from_secs(1),
+        "a drenagem do quadro esperou o lote em voo ({esperou:?})"
+    );
+}
+
 /// F2e: um traço pintado DENTRO de um job do rayon (a miniatura viva, os alarmes de pincel) com a fila ligada não
 /// voa nem espera o operário no job (Bug #66: `drena_os_dabs` entraria em pânico) e pinta a tela do síncrono.
 #[test]

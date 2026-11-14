@@ -127,10 +127,13 @@ impl SessaoDoWet {
     }
 
     /// A ÚNICA espera (Bug #66: nunca num job do rayon — `drena_os_dabs` confere).
+    #[track_caller]
     fn drena(&self) {
         let mut voo = self.voo.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(v) = voo.take() {
+            let t0 = std::time::Instant::now();
             let mut sess = fila_do_dab::drena_os_dabs(v).sess;
+            diag_espera("dreno", t0, std::panic::Location::caller());
             sess.adiados
                 .append(&mut self.atras.lock().unwrap_or_else(PoisonError::into_inner));
             if self.aqui.set(sess).is_err() {
@@ -139,6 +142,7 @@ impl SessaoDoWet {
         }
     }
 
+    #[track_caller]
     pub(in crate::tool::paint) fn as_ref(&self) -> Option<&WetSession> {
         if self.aqui.get().is_none() {
             self.drena();
@@ -146,6 +150,7 @@ impl SessaoDoWet {
         self.aqui.get()
     }
 
+    #[track_caller]
     pub(in crate::tool::paint) fn as_mut(&mut self) -> Option<&mut WetSession> {
         if self.aqui.get().is_none() {
             self.drena();
@@ -153,6 +158,7 @@ impl SessaoDoWet {
         self.aqui.get_mut()
     }
 
+    #[track_caller]
     pub(in crate::tool::paint) fn take(&mut self) -> Option<WetSession> {
         if self.aqui.get().is_none() {
             self.drena();
@@ -166,6 +172,23 @@ impl SessaoDoWet {
 
     pub(in crate::tool::paint) fn is_none(&self) -> bool {
         !self.is_some()
+    }
+}
+
+/// ⚠️ Medição, nunca produto (F2g): com `PH2D_QUADRO_LENTO_MS` posto, cada espera do fio da UI > 5 ms imprime
+/// `[wet-espera] <o quê> ms=<n> em <ficheiro:linha>` — o `[quadro-lento]` diz QUE o quadro parou, isto diz ONDE.
+pub(in crate::tool::paint) fn diag_espera(
+    oque: &str,
+    t0: std::time::Instant,
+    onde: &std::panic::Location<'_>,
+) {
+    static ON: OnceLock<bool> = OnceLock::new();
+    if !*ON.get_or_init(|| std::env::var_os("PH2D_QUADRO_LENTO_MS").is_some()) {
+        return;
+    }
+    let ms = t0.elapsed().as_secs_f64() * 1e3;
+    if ms > 5.0 {
+        eprintln!("[wet-espera] {oque} ms={ms:.1} em {onde}");
     }
 }
 

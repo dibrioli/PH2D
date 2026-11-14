@@ -141,6 +141,11 @@ impl crate::tool::PainterTool {
         if !self.paint.wetpaint.oleo_na_tela {
             return;
         }
+        // F2g: o lote com o operário não se espera aqui (medido: 32–85 ms por quadro no Flat Bristle 240 4K); a
+        // chave confere-se no quadro em que ele assentar, e a recomposição pelo orçamento é a mesma.
+        if !self.paint.wetpaint.session.assentou() {
+            return;
+        }
         let agora = ChaveDoGrao::de(self);
         let Some(s) = self.paint.wetpaint.session.as_mut() else {
             return;

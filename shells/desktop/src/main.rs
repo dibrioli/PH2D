@@ -931,7 +931,11 @@ impl ApplicationHandler for App {
                 self.on_focus_lost();
                 self.perde_a_mao(false);
             }
-            WindowEvent::CursorLeft { .. } => self.perde_a_mao(false),
+            WindowEvent::CursorLeft { .. } => {
+                self.perde_a_mao(false);
+                self.on_cursor_left();
+                let _ = self.movimento_dos_controles(false);
+            }
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(ime) => self.on_ime(ime),
             WindowEvent::CursorMoved { .. }
@@ -939,10 +943,6 @@ impl ApplicationHandler for App {
             | WindowEvent::Touch(_)
                 if ph2d_app_painter::macro_track::caminho::a_cena_conduz_o_ponteiro() => {}
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
-            WindowEvent::CursorLeft { .. } => {
-                self.on_cursor_left();
-                let _ = self.movimento_dos_controles(false);
-            }
             WindowEvent::MouseWheel { delta, .. } => self.on_wheel_event(delta),
             WindowEvent::PinchGesture { delta, .. } => self.on_pinch_gesture(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),

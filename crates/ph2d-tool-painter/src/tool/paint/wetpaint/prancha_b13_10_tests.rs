@@ -9,7 +9,10 @@ use ph2d_editor_core::tool::{
 };
 use std::sync::atomic::Ordering::Relaxed;
 
-fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
+#[path = "prancha_b13_4_tests.rs"]
+mod prancha_b13_4;
+
+pub(super) fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     let cores = [
         [200u8, 60, 50],
         [60, 150, 210],

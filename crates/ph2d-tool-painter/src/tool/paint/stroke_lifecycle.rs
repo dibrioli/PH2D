@@ -44,6 +44,7 @@ impl PainterTool {
     /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo
     /// **before** painting so the whole stroke restores to the pre-stroke pixels.
     pub(super) fn paint_begin(&mut self, ev: CanvasPointer) {
+        self.conclui_o_fecho_adiado(); // N10 F2j: o traço anterior fecha o seu passo de undo primeiro
         // Mask tool: ensure the TRANSIENT scratch mask exists for the current layer (tool-side, no layer
         // created) before the stroke paints into it.
         if matches!(self.paint.paint_mode, PaintMode::Mask) {
@@ -538,6 +539,10 @@ impl PainterTool {
         // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —
         // stays alive across strokes). BEFORE close_stroke so the undo entry sees the final state.
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+            // N10 F2j: com o lote no operário, o fecho espera a sessão assentar (o tique, ou a porta seguinte).
+            if self.wet_adia_o_fecho() {
+                return;
+            }
             self.wetpaint_stroke_end();
         }
         // Inpaint heal brush: reconstruct the marked defect BEFORE close_stroke, so the structural-undo

@@ -86,6 +86,69 @@ impl PainterTool {
         }
     }
 
+    /// N10 F2j: o pen-up ADIADO. Com o lote ainda com o operário (ou adiados por pousar), fora do relógio fixo e fora
+    /// de job do rayon (Bug #66), o `paint_end` não espera: guarda o traço (o `paint_tick_do_traco` não dá passos de
+    /// aerógrafo com a caneta em cima) e o tique conclui o fecho quando a sessão assentar. `true` = adiado.
+    pub(in crate::tool::paint) fn wet_adia_o_fecho(&mut self) -> bool {
+        if !adia_o_pen_up()
+            || self.paint.tracos_fora > 0
+            || self.paint.wetpaint.fecho_adiado.is_some()
+            || rayon::current_thread_index().is_some()
+            || self.watercolor_render_active()
+            || (self.paint.wetpaint.relogio_fixo.is_some() && !adia_no_relogio_fixo())
+        {
+            return false;
+        }
+        let s = &mut self.paint.wetpaint.session;
+        let pendente = s.em_voo() || s.as_ref().is_some_and(|x| !x.adiados.is_empty());
+        if !pendente {
+            return false;
+        }
+        #[cfg(test)]
+        FECHOS_ADIADOS.set(FECHOS_ADIADOS.get() + 1);
+        self.paint.wetpaint.fecho_adiado = Some(self.paint.stroke.take());
+        true
+    }
+
+    /// N10 F2j: conclui o pen-up adiado AGORA (síncrono: espera o operário) — `wetpaint_stroke_end` + `close_stroke`,
+    /// a ordem do `paint_end` síncrono. Toda porta que lê o documento ou o undo chama-a primeiro; sem fecho, no-op.
+    pub(crate) fn conclui_o_fecho_adiado(&mut self) {
+        let Some(traco) = self.paint.wetpaint.fecho_adiado.take() else {
+            return;
+        };
+        self.paint.stroke = traco;
+        self.wetpaint_stroke_end();
+        self.close_stroke();
+    }
+
+    /// O tique do fecho adiado: `true` = o quadro volta já (o operário ainda tem o lote, ou um adiado acabou de voar).
+    fn wet_tique_do_fecho(&mut self) -> bool {
+        if self.paint.wetpaint.fecho_adiado.is_none() {
+            return false;
+        }
+        if self.paint.wetpaint.relogio_fixo.is_some() {
+            self.conclui_o_fecho_adiado(); // os oráculos: a ordem síncrona, no topo do tique
+            return false;
+        }
+        if !self.paint.wetpaint.session.assentou() {
+            return true;
+        }
+        if self
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|x| !x.adiados.is_empty())
+        {
+            self.wetpaint_pousa_ate_voar(); // um por quadro
+            if self.paint.wetpaint.session.em_voo() {
+                return true;
+            }
+        }
+        self.conclui_o_fecho_adiado();
+        false
+    }
+
     /// **Pousa os lotes adiados** ([`session::LoteAdiado`]) pela rota de sempre, com o estado por lote
     /// de cada um — trazendo o motor (bloqueia ≤ um estágio: quem chama já decidiu que é a hora).
     /// F2f: um lote que voa leva os seguintes ATRÁS dele; o dreno do `as_mut` devolve-os aos adiados e a volta
@@ -126,6 +189,9 @@ impl PainterTool {
     pub(in crate::tool::paint) fn wetpaint_tick(&mut self, dt_s: f32) {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
+        if self.wet_tique_do_fecho() {
+            return;
+        }
         // N10 F2e: o lote ainda com o operário do depósito — o guarda e a sim leriam a sessão e ESPERARIAM por
         // ela; o quadro não espera (`quer_quadro` conta o voo), o tique seguinte corre com ela em casa.
         // O relógio fixo (os oráculos ao bit) mantém a ordem síncrona «lote → passos» e espera.
@@ -320,3 +386,42 @@ impl PainterTool {
 #[cfg(test)]
 #[path = "motor_perdido_tests.rs"]
 mod motor_perdido_tests; // B11.A1: o worker morto em pânico não leva a tela nem pendura a sessão
+
+#[cfg(test)]
+thread_local! {
+    /// Quantos pen-ups o `paint_end` adiou (a prova de que o gate do F2j mediu o caminho adiado).
+    pub(in crate::tool::paint) static FECHOS_ADIADOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static ADIA_NO_RELOGIO_FIXO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Porta de TESTE: adia o pen-up também no relógio fixo (o tique conclui-o síncrono no topo: a ordem do oráculo).
+#[cfg(test)]
+pub(in crate::tool::paint) fn adia_no_teste(sim: bool) {
+    ADIA_NO_RELOGIO_FIXO.set(sim);
+}
+
+fn adia_no_relogio_fixo() -> bool {
+    #[cfg(test)]
+    {
+        ADIA_NO_RELOGIO_FIXO.get()
+    }
+    #[cfg(not(test))]
+    {
+        false
+    }
+}
+
+/// `PH2D_PEN_UP_ADIADO=1` liga o pen-up adiado (lida uma vez). DESLIGADO por omissão até a porta das edições
+/// estruturais existir (o `before` do `snapshot_model` é `&self` e é tirado ANTES do `commit_structural_edit`:
+/// N10 F2j). Nos testes, ligado (o relógio fixo decide pela [`adia_no_teste`]).
+fn adia_o_pen_up() -> bool {
+    #[cfg(test)]
+    {
+        true
+    }
+    #[cfg(not(test))]
+    {
+        static S: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *S.get_or_init(|| std::env::var("PH2D_PEN_UP_ADIADO").is_ok_and(|v| v == "1"))
+    }
+}

@@ -52,6 +52,7 @@ impl PainterTool {
     }
 
     fn undo_last_corpo(&mut self) -> bool {
+        self.conclui_o_fecho_adiado(); // N10 F2j: o pen-up adiado fecha antes
         // A LIVE Deform Transform owns undo while it's up: step the gizmo back through its gestures (and
         // finally un-lift), all WITHOUT touching the structural timeline — the whole transform is one
         // structural entry, committed only when it ends (Enio 2026-07-04).
@@ -123,6 +124,7 @@ impl PainterTool {
     }
 
     fn redo_last_corpo(&mut self) -> bool {
+        self.conclui_o_fecho_adiado(); // N10 F2j: o pen-up adiado fecha antes
         // A live / just-un-lifted Transform owns redo: re-lift the gizmo (recreate it) or step a gizmo pose
         // FORWARD — mirroring transform_undo_step, WITHOUT touching the structural timeline (Enio 2026-07-04).
         if self.transform_redo_step() {

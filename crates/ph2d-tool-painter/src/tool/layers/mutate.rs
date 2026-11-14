@@ -380,6 +380,7 @@ impl PainterTool {
     /// the `selection` set bookkeeping. A Group id is resolved to its first
     /// paintable descendant (a group can never be the paint target).
     pub(crate) fn set_active_layer(&mut self, id: RtLayerId) {
+        self.conclui_o_fecho_adiado(); // N10 F2j: o pen-up adiado fecha antes
         // A Group has NO pixel buffer — making it the paint target would load a
         // throwaway transparent `canvas_rgba` (the composite never reads it) and
         // silently swallow strokes. Resolve a group to its first paintable
@@ -463,6 +464,7 @@ impl PainterTool {
     /// Plain row click — replace the selection with `id` and make it active.
     /// No-op mid-stroke or for an unknown id.
     pub fn select_single(&mut self, id: RtLayerId) {
+        self.conclui_o_fecho_adiado(); // N10 F2j: o pen-up adiado fecha antes
         if self.layers.get(id).is_none() {
             return;
         }

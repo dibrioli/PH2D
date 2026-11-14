@@ -363,3 +363,101 @@ fn dentro_de_um_job_do_rayon_o_lote_pousa_sincrono() {
         "a tela pintada no job difere da síncrona"
     );
 }
+
+/// F2j: o traço solta com o lote ainda no operário (a porta fechada até ao Up) e a PORTA seguinte vem logo — `0`
+/// Ctrl+Z (conta-gotas, Ctrl+Shift+Z) · `1` troca de camada · `2` traço novo · `3` o tique. `fila = false` é o oráculo
+/// síncrono (nenhum voo, nenhum adiado).
+fn pen_up_e_a_porta(fila: bool, qual: u8, porta: u8) -> (Vec<u8>, Vec<Option<[u8; 4]>>, usize) {
+    let (w, h) = (320u32, 160u32);
+    super::fila_no_teste(fila);
+    super::super::ciclo::adia_no_teste(true);
+    super::super::ciclo::FECHOS_ADIADOS.set(0);
+    let segura = |fechada: bool| {
+        if fila {
+            super::segura_o_operario(fechada);
+        }
+    };
+    let mut t = PainterTool::default();
+    if qual == 2 {
+        t.agenda_papel_texturizado(7);
+        t.bind_document(7, fundo(w, h, false), w, h);
+    } else {
+        t.abre_a_sprite(fundo(w, h, qual == 1), w, h);
+    }
+    let a = t.layers.active().expect("a camada");
+    let b = t
+        .add_raster_layer_with_pixels("B", vec![0u8; (w * h * 4) as usize])
+        .expect("B");
+    t.select_layer(a);
+    t.set_compor_por_quadro(true);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    t.preset_aplicar(&preset("Oil/Flat/Flat Bristle.ph2d-brush.png"))
+        .expect("o pincel");
+    t.set_brush_size_px(60.0);
+    t.set_brush_color_srgb8([40, 90, 220]);
+    let traco = |t: &mut PainterTool, y0: f32| {
+        t.on_canvas_pointer(cp([60.0, y0], 0.6, PointerPhase::Down)); // conclui o fecho de antes: porta aberta
+        segura(true);
+        for k in 1..=10 {
+            let p = [60.0 + 18.0 * k as f32, y0 + 2.0 * k as f32];
+            t.on_canvas_pointer(cp(p, 0.6 + 0.03 * k as f32, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([250.0, y0 + 20.0], 1.0, PointerPhase::Up));
+        segura(false);
+    };
+    let mut gotas = Vec::new();
+    traco(&mut t, 50.0);
+    match porta {
+        0 => {
+            assert!(t.undo_last(), "o undo");
+            gotas.push(t.eyedropper_amostra([120.0, 56.0]));
+            assert!(t.redo_last(), "o redo");
+        }
+        1 => t.select_layer(b),
+        2 => traco(&mut t, 90.0),
+        _ => t.ticks_em_blocos(1),
+    }
+    // ⚠️ o `eyedropper_amostra` é `&self` (não é porta): lê depois de um tique, que conclui o fecho de um traço novo.
+    t.ticks_em_blocos(1);
+    gotas.push(t.eyedropper_amostra([150.0, 60.0]));
+    traco(&mut t, 110.0);
+    t.ticks_em_blocos(2);
+    assert!(t.undo_last(), "o undo do último");
+    gotas.push(t.eyedropper_amostra([150.0, 120.0]));
+    assert!(t.undo_last(), "o undo do anterior");
+    let px = mostrada(&mut t);
+    let adiados = super::super::ciclo::FECHOS_ADIADOS.get();
+    super::super::ciclo::adia_no_teste(false);
+    super::fila_no_teste(false);
+    (px, gotas, adiados)
+}
+
+/// F2j: o pen-up ADIADO (o `close_stroke` espera a sessão assentar) fecha o passo de undo do síncrono ao bit — com
+/// Ctrl+Z, troca de camada, traço novo ou tique logo a seguir ao soltar, nos três fundos; a prova de que o caminho
+/// correu é `FECHOS_ADIADOS > 0` (a mutação «o undo não conclui o fecho» desfaz o traço de antes e reprova).
+#[test]
+fn o_pen_up_adiado_fecha_o_passo_de_undo_do_sincrono_ao_bit() {
+    let _so_um = PORTA_DE_UM
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "Textured")] {
+        for porta in 0..4u8 {
+            let (sincrono, gotas_s, adiados_s) = pen_up_e_a_porta(false, qual, porta);
+            let (fila, gotas_f, adiados_f) = pen_up_e_a_porta(true, qual, porta);
+            assert_eq!(adiados_s, 0, "{nome}/{porta}: o síncrono não adia");
+            assert!(
+                adiados_f > 0,
+                "{nome}/{porta}: nenhum pen-up adiado (o gate não mediria nada)"
+            );
+            assert_eq!(
+                gotas_s, gotas_f,
+                "{nome}/{porta}: o conta-gotas leu outra tela"
+            );
+            assert!(
+                sincrono == fila,
+                "{nome}/{porta}: o pen-up adiado mudou a tela"
+            );
+        }
+    }
+}

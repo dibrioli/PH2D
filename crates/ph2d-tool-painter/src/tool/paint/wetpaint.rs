@@ -179,6 +179,9 @@ pub(crate) struct WetPaintState {
     /// 2026-10-03): um gate que pergunta «este controlo muda a tinta?» precisa da mesma tinta duas vezes.
     /// A miniatura de um preset (`wetpaint_preset_miniatura.rs`) pinta por ele pela mesma razão.
     pub(super) relogio_fixo: Option<f64>,
+    /// N10 F2j: o pen-up ADIADO — `Some(traço)` = o `close_stroke` espera a sessão assentar ([`ciclo`]); toda porta
+    /// que lê o documento ou o undo conclui-o antes (`conclui_o_fecho_adiado`).
+    pub(super) fecho_adiado: Option<Option<ph2d_painter_brush::Stroke>>,
     /// O pedido do bloco de presets que espera a ponte da app (o disco é dela, não do tool).
     pub(super) preset_pedido: Option<super::wetpaint_preset::PedidoPreset>,
     /// **A largura prometida (W2)**: a lei raio do motor → largura do pincel de agora (a do preset; sem
@@ -255,6 +258,7 @@ impl Default for WetPaintState {
             grid_ratio: grid_map::DEFAULT_RATIO,
             flow_ratio: 1,
             relogio_fixo: None,
+            fecho_adiado: None,
             preset_pedido: None,
             largura: Some(largura::LeiDaLargura::de_omissao()),
             largura_por_slot: std::array::from_fn(|_| Some(largura::LeiDaLargura::de_omissao())),

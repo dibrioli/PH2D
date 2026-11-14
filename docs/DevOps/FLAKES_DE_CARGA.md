@@ -102,6 +102,12 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `as_faixas_fora_do_compositor_nao_abrem_fios_do_so` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/fios_do_so_tests.rs) | censo de fios do SO fora do pool (`("carimbo", 16, 15)`) — candidato: o mesmo B2 de 13/11; verde na suíte anterior e `2/2` sozinho. ⚠️ Se voltar, conte os fios com a máquina calma ANTES de chamar carga: um fio a mais é defeito, não relógio |
 | `a_luz_do_traco_e_a_unica_luz_do_oleo` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/otica_no_tique_tests.rs) | a tela 30 quadros depois do pen-up (1 743 px diferentes) — candidato: vermelho só no 2.º B2 de 13/11 (máquina carregada); verde na 4.ª suíte completa do dia (18,7 s) e `2/2` sozinho (`load ~4`, 6,8 s) |
 | `a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/sonda_custo_do_veu.rs) | razão de relógios: 1,26–1,29 contra o tecto 1,3 sob carga (10/11), sã ~0,9; a régua passou a aquecimento + 7 voltas rodadas + o mínimo (B07.1) e o tecto não subiu |
+| `o_indicador_custa_o_que_o_quadro_ja_paga_pela_mesma_arte` | [`ph2d-skeleton-live`](../../crates/ph2d-skeleton-live/src/peso_a_mao_relogio_tests.rs) | razão de relógios — entrou pelo censo B07.7 (14/11), não por ter reprovado |
+| `o_tecto_de_manchas_custa_uma_razao_e_nao_uma_ordem_de_grandeza` | [`ph2d-skeleton-live`](../../crates/ph2d-skeleton-live/src/peso_a_mao_relogio_tests.rs) | razão de relógios — entrou pelo censo B07.7 (14/11), não por ter reprovado |
+| `o_tique_do_balde_custa_pela_regiao_nao_pela_tela` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/fill_tique_tests.rs) | razão de relógios — entrou pelo censo B07.7 (14/11), não por ter reprovado |
+| `pigment_mixing_costs_a_ratio_not_an_order_of_magnitude` | [`ph2d-wet-paint`](../../crates/ph2d-wet-paint/tests/it/perf_experimental.rs) | razão de relógios — entrou pelo censo B07.7 (14/11), não por ter reprovado |
+| `the_route_cost_is_linear_in_the_wheel_count` | [`ph2d-physics`](../../crates/ph2d-physics/tests/it/pulley.rs) | razão de relógios — entrou pelo censo B07.7 (14/11), não por ter reprovado |
+| `what_one_frame_of_a_knob_drag_costs` | [`ph2d-audio-edit`](../../crates/ph2d-audio-edit/tests/it/measure_preview.rs) | razão de relógios — entrou pelo censo B07.7 (14/11), não por ter reprovado |
 
 As cenas 3, 4 e 5 do editor de scripts (`a_cena_*_conduzida_passo_a_passo`) SAÍRAM em 29/10: não eram carga, era a
 árvore velha da gramática a esticar o comentário sobre o `ph2d.` escrito na linha nova (cura e gate em
@@ -109,6 +115,12 @@ As cenas 3, 4 e 5 do editor de scripts (`a_cena_*_conduzida_passo_a_passo`) SAÍ
 verdes a `load` 35–48 contra ~40 % vermelhas a `load` 10 antes).
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
+
+⭐ **B07.7 (14/11): toda RAZÃO entre relógios é membro, sem esperar a primeira flake.** O censo
+`architecture_toda_razao_de_relogios_corre_na_faixa_isolada` (`ph2d-editor-core`) classifica pelo texto: razão = um `let`
+que divide dois relógios ou um `assert!` que junta dois; o PRAZO (`t.elapsed() < 5 s`, um tecto de segurança) fica
+FORA da faixa — serializá-lo pararia a suíte por nada. Medido no dia: 15 razões (9 já na faixa, 6 entraram) e 40
+testes com relógio que não o são.
 
 ## A espécie do estado do painel (04/11): nem era carga
 

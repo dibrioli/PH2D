@@ -170,3 +170,241 @@ fn o_leitor_do_doc_separa_membros_de_outros() {
         vec!["outro_motivo".to_string()]
     );
 }
+
+// ── B07.7 (14/11): todo portão de RAZÃO entre relógios corre na faixa; o PRAZO não ─────────────────
+//
+// Um teste que lê o relógio faz uma de duas coisas: afirma um PRAZO (`t.elapsed() < 5 s`, um tecto de
+// segurança que a carga não vira, salvo ×10) ou uma RAZÃO entre dois relógios (`t4 / t2 < 1,5`) — e
+// a razão é o que a fome de núcleo da suíte inverte. Serializar os prazos pararia a suíte por nada;
+// deixar uma razão fora é a flake de carga à espera. O censo classifica pelo TEXTO do corpo:
+// relógio = `let` cujo valor vem de `.elapsed()`, de outro relógio ou de um `fn` do mesmo ficheiro
+// que lê `.elapsed()` e devolve `f64`/`Duration`/`u128`; razão = um `let` que divide dois relógios
+// ou um `assert!` cuja condição junta dois. Só `#[test]` sem `#[ignore]`.
+
+fn corpo(s: &str, de: usize) -> &str {
+    let Some(j) = s[de..].find('{').map(|j| de + j) else {
+        return "";
+    };
+    let mut d = 0i32;
+    for (k, c) in s[j..].char_indices() {
+        match c {
+            '{' => d += 1,
+            '}' => {
+                d -= 1;
+                if d == 0 {
+                    return &s[j..=j + k];
+                }
+            }
+            _ => {}
+        }
+    }
+    &s[j..]
+}
+
+fn ident(t: &str) -> &str {
+    let fim = t
+        .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .unwrap_or(t.len());
+    &t[..fim]
+}
+
+/// Os identificadores minúsculos de uma expressão (os nomes de variável).
+fn ids(e: &str) -> BTreeSet<&str> {
+    e.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .filter(|w| {
+            w.starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
+                && w.chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+        })
+        .collect()
+}
+
+/// Os `fn` do ficheiro que leem o relógio e devolvem um tempo.
+fn cronometros(s: &str) -> BTreeSet<&str> {
+    let mut out = BTreeSet::new();
+    let mut i = 0;
+    while let Some(p) = s[i..].find("fn ") {
+        let a = i + p + 3;
+        let nome = ident(&s[a..]);
+        let assinatura = s[a..].split('{').next().unwrap_or("");
+        let devolve = assinatura.rsplit_once("->").map_or("", |(_, r)| r);
+        if ["f64", "Duration", "u128"]
+            .iter()
+            .any(|t| devolve.contains(t))
+            && corpo(s, a).contains("elapsed()")
+        {
+            out.insert(nome);
+        }
+        i = a;
+    }
+    out
+}
+
+/// `true` = razão entre relógios; `None` = o corpo nem lê o relógio.
+fn e_razao(corpo: &str, crono: &BTreeSet<&str>) -> Option<bool> {
+    let mut lets: Vec<(&str, &str)> = Vec::new();
+    let mut i = 0;
+    while let Some(p) = corpo[i..].find("let ") {
+        let mut a = i + p + 4;
+        i = a;
+        if corpo[a..].starts_with("mut ") {
+            a += 4;
+        }
+        if corpo[a..].starts_with('(') {
+            a += 1;
+        }
+        let v = ident(&corpo[a..]);
+        let resto = &corpo[a..];
+        let (Some(eq), pv) = (resto.find('='), resto.find(';').unwrap_or(resto.len())) else {
+            continue;
+        };
+        if v.is_empty() || eq > pv {
+            continue;
+        }
+        lets.push((v, &resto[eq + 1..pv]));
+    }
+    let mut rel: BTreeSet<&str> = BTreeSet::new();
+    for _ in 0..4 {
+        for (v, e) in &lets {
+            let ie = ids(e);
+            if e.contains("elapsed()") || ie.iter().any(|w| rel.contains(w) || crono.contains(w)) {
+                rel.insert(v);
+            }
+        }
+    }
+    if rel.is_empty() {
+        return None;
+    }
+    let razoes: BTreeSet<&str> = lets
+        .iter()
+        .filter(|(_, e)| e.contains('/') && ids(e).iter().filter(|w| rel.contains(*w)).count() >= 2)
+        .map(|(v, _)| *v)
+        .collect();
+    let mut i = 0;
+    while let Some(p) = corpo[i..].find("assert!(") {
+        let a = i + p + 8;
+        i = a;
+        let cond = corpo[a..].split(',').next().unwrap_or("");
+        let ic = ids(cond);
+        let n_rel = ic
+            .iter()
+            .filter(|w| rel.contains(*w) && !razoes.contains(*w))
+            .count();
+        if ic.iter().any(|w| razoes.contains(w)) || n_rel >= 2 {
+            return Some(true);
+        }
+    }
+    Some(false)
+}
+
+/// Os `#[test]` sem `#[ignore]` de um ficheiro, classificados: `(nome, razão?)`.
+fn testes_com_relogio(s: &str) -> Vec<(String, bool)> {
+    let crono = cronometros(s);
+    let mut out = Vec::new();
+    let mut i = 0;
+    while let Some(p) = s[i..].find("#[test]") {
+        let mut a = i + p + 7;
+        i = a;
+        let mut ignorado = false;
+        loop {
+            let t = s[a..].trim_start();
+            a = s.len() - t.len();
+            if t.starts_with("#[") {
+                let fim = t.find(']').unwrap_or(t.len());
+                ignorado |= t[..fim].contains("ignore");
+                a += fim + 1;
+            } else {
+                break;
+            }
+        }
+        let t = s[a..].trim_start_matches("pub ");
+        let Some(t) = t.strip_prefix("fn ") else {
+            continue;
+        };
+        let nome = ident(t);
+        if ignorado {
+            continue;
+        }
+        let mut c = crono.clone();
+        c.remove(nome);
+        if let Some(r) = e_razao(corpo(s, a), &c) {
+            out.push((nome.to_string(), r));
+        }
+    }
+    out
+}
+
+fn razoes_da_arvore(dir: &Path, out: &mut BTreeSet<String>, prazos: &mut usize) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            if p.file_name().is_some_and(|n| n == "target") {
+                continue;
+            }
+            razoes_da_arvore(&p, out, prazos);
+        } else if p.extension().is_some_and(|x| x == "rs") {
+            let Ok(s) = std::fs::read_to_string(&p) else {
+                continue;
+            };
+            // O próprio censo traz os exemplos do controlo no texto.
+            if !s.contains("elapsed()") || p.ends_with(file!().rsplit('/').next().unwrap_or("")) {
+                continue;
+            }
+            for (n, r) in testes_com_relogio(&s) {
+                if r {
+                    out.insert(n);
+                } else {
+                    *prazos += 1;
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn architecture_toda_razao_de_relogios_corre_na_faixa_isolada() {
+    let faixa = nomes_da_faixa(&ler(".config/nextest.toml"));
+    let (mut razoes, mut prazos) = (BTreeSet::new(), 0usize);
+    for topo in ["crates", "shells"] {
+        razoes_da_arvore(&raiz().join(topo), &mut razoes, &mut prazos);
+    }
+    // Pisos medidos 14/11: 15 razões, 40 com relógio que não o são (prazo ou só impressão).
+    assert!(
+        razoes.len() >= 12,
+        "o censo achou só {} razões — a varredura partiu",
+        razoes.len()
+    );
+    assert!(
+        prazos >= 20,
+        "o censo achou só {prazos} prazos — a varredura partiu"
+    );
+    let fora: Vec<_> = razoes.iter().filter(|n| !faixa.contains(*n)).collect();
+    assert!(
+        fora.is_empty(),
+        "portões de RAZÃO entre relógios fora da faixa isolada (a suíte cheia inverte-os):\n  {fora:?}\n\
+         Cura: `+ test(<nome>)` no filtro da faixa em .config/nextest.toml e a linha na tabela de \
+         docs/DevOps/FLAKES_DE_CARGA.md (as duas escritas)."
+    );
+}
+
+/// Controlo do classificador: a razão (por `let` e por `assert!` directo) acusa-se, o prazo não.
+#[test]
+fn o_censo_separa_o_prazo_da_razao() {
+    let s = "fn ms(f: &dyn Fn()) -> f64 { let t = Instant::now(); f(); t.elapsed().as_secs_f64() }\n\
+             #[test]\nfn razao_por_let() { let a = ms(&|| {}); let b = ms(&|| {}); let r = a / b; assert!(r < 1.5); }\n\
+             #[test]\nfn razao_directa() { let t = Instant::now(); let a = t.elapsed(); let b = t.elapsed(); assert!(a < b * 2); }\n\
+             #[test]\nfn prazo() { let t = Instant::now(); let d = t.elapsed(); assert!(d < Duration::from_secs(5)); }\n\
+             #[test]\n#[ignore = \"sonda\"]\nfn sonda() { let a = ms(&|| {}); let b = ms(&|| {}); assert!(a / b < 2.0); }\n\
+             #[test]\nfn sem_relogio() { let x = 1; assert!(x == 1); }\n";
+    assert_eq!(
+        testes_com_relogio(s),
+        vec![
+            ("razao_por_let".to_string(), true),
+            ("razao_directa".to_string(), true),
+            ("prazo".to_string(), false),
+        ]
+    );
+}

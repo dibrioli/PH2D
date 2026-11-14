@@ -206,6 +206,26 @@ mod tests {
         assert_eq!(role_at(&m, car(), &[1, 1, 1], r.x + 1.0, r.y + 1.0), None);
     }
 
+    /// ⭐ Um papel em fileira (os elos da corrente) responde em TODAS as cópias, não só na primeira.
+    ///
+    /// Mutação que deve sangrar: ignorar `counts` em [`role_at`] (tratar todo papel como um só).
+    #[test]
+    fn a_fileira_responde_em_cada_copia() {
+        let chain = by_name(JointKind::Rope, "Chain").expect("a corrente");
+        let counts = [1, 6];
+        let m = StageMap::fit(
+            chain,
+            &counts,
+            Rect::new(0.0, 0.0, 400.0, 800.0),
+            20.0,
+            f32::MAX,
+        );
+        for k in 0..6 {
+            let c = m.px(centre_of(&chain.roles[1], k));
+            assert_eq!(role_at(&m, chain, &counts, c.0, c.1), Some(1), "elo {k}");
+        }
+    }
+
     /// O eixo da roda do carro nasce no centro da roda (`at_b(0, 0)`).
     #[test]
     fn a_junta_da_roda_nasce_no_centro_dela() {

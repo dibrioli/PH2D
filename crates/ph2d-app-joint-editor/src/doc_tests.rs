@@ -171,3 +171,83 @@ fn o_entre_eixos_e_medido_na_cena() {
     let d = doc_with(car_row(u32::MAX));
     assert!((d.wheelbase().expect("duas rodas") - 1.4).abs() < 1e-5);
 }
+
+/// ⭐ **Um papel em fileira leva todos os objetos largados; um papel único só o primeiro.**
+///
+/// Mutações que devem sangrar: `drop_into` levar sempre um corpo / sempre todos / inverter `many`.
+#[test]
+fn a_queda_na_fileira_leva_todos_e_no_papel_unico_so_o_primeiro() {
+    let mut d = JointEditorDoc::default();
+    d.set_snapshot(Snapshot {
+        assemblies: vec![],
+        bodies: vec!["Hook".into(), "A".into(), "B".into(), "C".into()],
+    });
+    d.choose_template(7);
+    let names: Vec<String> = ["A", "B", "C"].map(String::from).into();
+    assert!(d.drop_into(1, &names), "o Link é uma fileira");
+    assert_eq!(
+        d.take_pending(),
+        [Edit::Place {
+            assembly: 0,
+            template: 7,
+            role: 1,
+            bodies: names.clone()
+        }]
+    );
+    assert!(d.drop_into(0, &names), "o Hook é um só");
+    assert_eq!(
+        d.take_pending(),
+        [Edit::Place {
+            assembly: 0,
+            template: 7,
+            role: 0,
+            bodies: vec!["A".into()]
+        }]
+    );
+}
+
+/// ⭐ **A queda recusada não deixa pedido nenhum no quadro.**
+///
+/// Mutação que deve sangrar: `drop_into` ignorar o veredito de [`JointEditorDoc::verdict`].
+#[test]
+fn a_queda_recusada_nao_deixa_pedido() {
+    let mut d = doc_with(car_row(u32::MAX));
+    assert!(
+        !d.drop_into(2, &["Crate".into()]),
+        "o papel da frente já tem a Front"
+    );
+    assert!(!d.drop_into(0, &["Ghost".into()]), "sem corpo");
+    assert!(!d.drop_into(9, &["Crate".into()]), "papel que não existe");
+    assert!(d.take_pending().is_empty());
+}
+
+/// O alcance escolhido fora das opções cai na última (nunca fora do vetor), com o grupo desligado.
+///
+/// Mutação que deve sangrar: o recurso de `scope_index` ser sempre a primeira opção.
+#[test]
+fn o_alcance_fora_das_opcoes_fica_na_ultima() {
+    let mut d = doc_with(car_row(0));
+    d.scope.insert(9, 7);
+    let t: Vec<u64> = d.targets().iter().map(|j| j.bits).collect();
+    assert_eq!(t, [51], "a última opção é a roda da frente");
+}
+
+/// A queda numa montagem aberta leva o `sid` dela (não cria uma nova).
+///
+/// Mutação que deve sangrar: `drop_into` pôr sempre `assembly: 0`.
+#[test]
+fn a_queda_na_montagem_aberta_leva_o_sid_dela() {
+    let mut row = car_row(u32::MAX);
+    row.parts.retain(|p| p.role != 2);
+    let mut d = doc_with(row);
+    assert!(d.drop_into(2, &["Crate".into()]));
+    assert_eq!(
+        d.take_pending(),
+        [Edit::Place {
+            assembly: 9,
+            template: d.template().id.0,
+            role: 2,
+            bodies: vec!["Crate".into()]
+        }]
+    );
+}

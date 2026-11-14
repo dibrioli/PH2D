@@ -137,9 +137,11 @@ impl App {
     /// BARREIRA (todo `WindowEvent` ≠ `CursorMoved`, o `Up`) e topo do quadro: cada Move enfileirado, na
     /// ordem; um recusado abandona o traço (`false`). Abaixo dela, o `window_event` é a tabela pura (PR 9b).
     pub(crate) fn drena_a_caneta(&mut self) -> bool {
+        let _ = self.painter_tool_mut().map(|p| p.abre_lote()); // B27.2: os Moves do quadro num lote
         let fila = ph2d_app_painter::fila_da_caneta::drena;
         let d = fila(|e| self.entrega(e, PointerPhase::Move, None, false));
-        self.paint_stamp_us_this_frame = self.paint_stamp_us_this_frame.saturating_add(d.us);
+        let us = d.us + self.painter_tool_mut().map_or(0, |p| p.fecha_lote());
+        self.paint_stamp_us_this_frame = self.paint_stamp_us_this_frame.saturating_add(us);
         self.paint_stamps_this_frame = self.paint_stamps_this_frame.saturating_add(d.entregues);
         STROKE_ACTIVE.with(|s| s.set(s.get() && d.vivo)); // morto = Painter/seleção já não estão
         d.vivo

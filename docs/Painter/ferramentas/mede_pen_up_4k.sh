@@ -54,8 +54,9 @@ if [ "$1" = matriz ]; then
     # B08.5 (faixas): KNOBS = linhas do Tuning do Wet depois do preset; RELEVO = o Relief do papel; TECLAS = `]` × n.
     [ -n "$KNOBS" ] && EXTRA+=("PH2D_COMPOSITE_KNOBS=$KNOBS")
     [ -n "$RELEVO" ] && EXTRA+=("PH2D_COMPOSITE_RELEVO=$RELEVO")
-    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s","rot":"%s","knobs":"%s","teclas":"%s","relevo":"%s"}\n' \
-      "$PIN" "$PAINEL" "$TELA" "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" "$ROT" "$KNOBS" "${TECLAS:-0}" "$RELEVO" > "$M/$TAG.meta"
+    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s","rot":"%s","knobs":"%s","teclas":"%s","relevo":"%s","a_pedido":"%s"}\n' \
+      "$PIN" "$PAINEL" "$TELA" "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" "$ROT" "$KNOBS" "${TECLAS:-0}" "$RELEVO" \
+      "${PH2D_QUADRO_A_PEDIDO:-}" > "$M/$TAG.meta"
     : > "$M/$TAG.marcas"
     env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$M/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=$PAINEL \
       PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" "$BIN" \

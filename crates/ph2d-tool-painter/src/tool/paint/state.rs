@@ -25,6 +25,8 @@ pub(crate) struct PaintState {
     pub(super) hover_pos: Option<[f32; 2]>,
     /// Reused dab buffer so a hot pointer stream allocates nothing per sample.
     pub(super) dabs: Vec<Dab>,
+    /// B27.2: os dabs dos Moves de um LOTE ([`PainterTool::abre_lote`]), carimbados juntos no fecho.
+    pub(super) lote: Option<Vec<Dab>>,
     /// O caminho do gesto enquanto ele é depositado como forma SÓLIDA (plano 38 §1.1). Vazio — e
     /// sem uma alocação — em todo traço que não é Solid.
     ///

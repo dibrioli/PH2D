@@ -43,8 +43,13 @@ def matriz(pasta, saida=None):
             linhas.append(r)
             continue
 
-        def janela(a, b):
-            return [q[1] for q in quadros if a < q[0] <= b]
+        # Com o laço a pedido (`PH2D_QUADRO_A_PEDIDO=1`) o intervalo entre quadros inclui o SONO (o despertador de
+        # 250 ms): a régua passa a ler o CUSTO do quadro (`quadro=` do `[quadro-lento]`). `REGUA=intervalo|custo` força.
+        col = {"custo": 2, "intervalo": 1}[os.environ.get("REGUA") or ("custo" if meta.get("a_pedido") == "1" else "intervalo")]
+        r["regua"] = "custo" if col == 2 else "intervalo"
+
+        def janela(a, b, c=None):
+            return [q[col if c is None else c] for q in quadros if a < q[0] <= b]
 
         def cpu(a, b):
             (ta, ca), (tb, cb) = marcas[a], marcas[b]
@@ -60,7 +65,7 @@ def matriz(pasta, saida=None):
         traco = janela(ti + 150_000_000, tf)
 
         def pico(a, b):
-            q = max(((i, t) for t, i, _ in quadros if a < t <= b), default=(0, a))
+            q = max(((v[col], v[0]) for v in quadros if a < v[0] <= b), default=(0, a))
             return round(q[0], 1), round((q[1] - a) / 1e6)
 
         r.update(
@@ -86,7 +91,7 @@ def matriz(pasta, saida=None):
         # B08.1: o controlo (SIGSTOP de 250 ms) e trocar de camada (o maior intervalo no segundo depois de cada clique).
         for k in ("controlo",) + CAMADA:
             if k in marcas:
-                r[k] = round(max(janela(marcas[k][0], marcas[k][0] + 1_000_000_000), default=0), 1)
+                r[k] = round(max(janela(marcas[k][0], marcas[k][0] + 1_000_000_000, 1 if k == "controlo" else None), default=0), 1)
         for k in [f"{t}_{f}" for t in ("nova1", "nova2", "baixo1", "volta1") for f in ("toque", "traco", "up")]:
             if k in marcas and k + "_fim" in marcas:  # NOVA=1: o pior quadro de cada fase do traço depois da camada nova
                 r[k] = round(max(janela(marcas[k][0], marcas[k + "_fim"][0] + 200_000_000), default=0), 1)
@@ -97,7 +102,7 @@ def matriz(pasta, saida=None):
             if k in marcas and fim in marcas:
                 r[k] = round(max(janela(marcas[k][0], marcas[fim][0]), default=0), 1)
         if "controlo" in marcas:  # o mesmo critério no segundo ANTES (sem trava): tem de reprovar, senão não distingue
-            r["controlo_sem"] = round(max(janela(marcas["controlo"][0] - 1_000_000_000, marcas["controlo"][0]), default=0), 1)
+            r["controlo_sem"] = round(max(janela(marcas["controlo"][0] - 1_000_000_000, marcas["controlo"][0], 1), default=0), 1)
         linhas.append(r)
         if saida:
             os.makedirs(os.path.join(saida, "quadros"), exist_ok=True)
@@ -114,6 +119,7 @@ def matriz(pasta, saida=None):
     def marca(v, ok):
         return "—" if v is None else (f"{v}" if ok else f"**{v} ✗**")
 
+    print("régua:", ", ".join(sorted({r.get("regua", "?") for r in linhas})), "(custo = `quadro=` do [quadro-lento]; intervalo = parede)")
     print("| pincel | painel | tela | fundo | base ms | toque ms | traço p50/p95 ms | soltar ms | +1 s máx ms | Ctrl+Z ms "
           "| parado CPU % (antes/depois) | Wet img/s |")
     print("|---|---|---|---|---|---|---|---|---|---|---|---|")

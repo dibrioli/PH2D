@@ -120,6 +120,7 @@ impl Default for PaintState {
             hover_heading: [0.0, 0.0],
             hover_pos: None,
             dabs: Vec::new(),
+            lote: None,
             solid_path: Vec::new(),
             solid_fill_owed: false,
             solid_passagem: super::uma_passagem::UmaPassagem::default(),

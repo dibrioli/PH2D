@@ -394,7 +394,9 @@ impl PainterTool {
         // dab **é** carimbado (a tinta do gesto é a região cercada **MAIS** o traço que a cerca, como
         // um `FlipStroke` com `fill`) e desde a W8 é ele quem DIZ onde a região passa.
         super::ribbon_diag::note(super::ribbon_diag::Source::Extend, dabs.len());
-        self.stamp_stroke_dabs(&dabs);
+        if !self.junta_no_lote(&dabs) {
+            self.stamp_stroke_dabs(&dabs);
+        }
         // Watercolor render-path: the dabs are ACCUMULATED here (the path is the data, so this is per
         // event and stays per event) and the optical reconstruction is **left to the frame**, not run
         // here. `paint_tick` pays it once — it already knows a Move arrived, from `moved_this_frame`,

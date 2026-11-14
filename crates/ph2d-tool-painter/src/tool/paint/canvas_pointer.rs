@@ -190,3 +190,58 @@ impl PainterTool {
         self.paint.canvas_warp = warp;
     }
 }
+
+impl PainterTool {
+    /// **B27.2 — os Moves de um quadro num LOTE:** entre [`Self::abre_lote`] e [`Self::fecha_lote`] cada
+    /// Move estende o caminho como sempre e os dabs juntam-se; o fecho carimba-os numa chamada só. Lote
+    /// por EVENTOS (o quadro), nunca por relógio; o portão `a_particao_em_lotes_nao_muda_o_traco` prova-o.
+    pub fn abre_lote(&mut self) {
+        self.paint.lote.get_or_insert_with(Vec::new);
+    }
+
+    /// Carimba o lote aberto; devolve o custo em µs (0 sem lote aberto).
+    pub fn fecha_lote(&mut self) -> u64 {
+        let t0 = std::time::Instant::now();
+        match self.paint.lote.take() {
+            Some(l) if self.carimba_o_lote(&l) > 0 => {
+                u64::try_from(t0.elapsed().as_micros()).unwrap_or(u64::MAX)
+            }
+            _ => 0,
+        }
+    }
+
+    /// O carimbo do lote corre como no `paint_extend`: com o traço fora do estado.
+    fn carimba_o_lote(&mut self, dabs: &[ph2d_painter_brush::Dab]) -> usize {
+        if !dabs.is_empty() {
+            let s = self.paint.stroke.take();
+            self.stamp_stroke_dabs(dabs);
+            self.paint.stroke = s;
+        }
+        dabs.len()
+    }
+
+    /// `paint_extend`: `true` = os dabs ficaram no lote aberto. BARREIRA onde a partição não está provada
+    /// (o Move carimba já, e o que o lote guardava antes dele): a gravação de macro guarda um passo por
+    /// Move, a 2.ª ponta carimba intercalada com a 1.ª, a aguada legada recompõe por evento. A força W10
+    /// (a marca do artista) está PROVADA no portão: sem barreira.
+    pub(super) fn junta_no_lote(&mut self, dabs: &[ph2d_painter_brush::Dab]) -> bool {
+        if self.paint.lote.is_none() {
+            return false;
+        }
+        let prova = self.macro_gravacao.is_none()
+            && self.paint.brush.dual.is_none()
+            && !(self.watercolor_render_active() && self.wash.per_event);
+        let l = self.paint.lote.as_mut().expect("checado acima");
+        if prova {
+            l.extend_from_slice(dabs);
+            return true;
+        }
+        let antes = std::mem::take(l);
+        self.carimba_o_lote(&antes);
+        false
+    }
+}
+
+#[cfg(test)]
+#[path = "lote_de_moves_tests.rs"]
+mod lote_de_moves_tests;

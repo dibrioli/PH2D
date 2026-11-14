@@ -23,10 +23,18 @@
 //! |---|---|---|---|---|
 //! | main | 57,7 · 58,1 | 82,7 · 53,3 | 93,2 · 99,2 | 1,62 · 1,71 |
 //! | integ | 39,1 · 38,6 | 39,6 · 37,1 | 53,5 · 53,3 | 1,37 · 1,38 |
+//!
+//! ⛔ **N10 F9 (14/11): a 2.ª metade deixa de ser relógio.** O Express Oil reprovou sozinho (`1,13`); bissecção
+//! `36a312482a..17e253532e` com 3 corridas por passo: o produto ficou parado (`~21` ms) e a série desceu aos poucos
+//! (`~27,9` → `~25,8` ms, sem degrau), e commits só de docs da base deram `1,07`–`1,27` a load 7–16 — a razão vive
+//! na margem e cai com a carga em QUALQUER árvore. O roteador partido agora lê-se nas decisões da rota medida
+//! ([`ph2d_wet_paint::par::ROTAS_DO_DEPOSITO`]): com o piso do produto quase todas paralelas (`[0, 1430]`), com o de
+//! antes nenhuma. Mutação piso de fábrica `u64::MAX`: vermelha.
 
 use crate::exame_bancada::pinceis;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::PainterTool;
+use ph2d_wet_paint::par::ROTAS_DO_DEPOSITO;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -70,24 +78,44 @@ fn o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga() {
         // [produto, paralelo, série]: o piso de cada rota e o mínimo das medianas dela.
         let pisos = [do_produto, 0, u64::MAX];
         let mut ms = [f64::INFINITY; 3];
+        // [série, paralelo] decididos pela rota medida em cada rota.
+        let mut rotas = [[0u64; 2]; 3];
+        let rotas_agora = || {
+            ROTAS_DO_DEPOSITO
+                .each_ref()
+                .map(|a| a.load(Ordering::Relaxed))
+        };
         for r in 0..2 {
             for k in 0..3 {
                 let v = (k + r) % 3;
                 piso.store(pisos[v], Ordering::Relaxed);
                 let y = 120.0 + 110.0 * (3 * r + k) as f32;
+                let r0 = rotas_agora();
                 ms[v] = ms[v].min(ms_por_quadro(&mut t, y, 8));
+                let r1 = rotas_agora();
+                for i in 0..2 {
+                    rotas[v][i] += r1[i] - r0[i];
+                }
             }
         }
         piso.store(do_produto, Ordering::Relaxed);
         let [produto, paralelo, serie] = ms;
+        let [rp, _, rs] = rotas;
         println!(
-            "[custo] {}: produto {produto:.2} · paralelo {paralelo:.2} · antes {serie:.2} ms/quadro",
+            "[custo] {}: produto {produto:.2} · paralelo {paralelo:.2} · antes {serie:.2} ms/quadro · rotas do produto \
+             {rp:?} · da série {rs:?} ([série, paralelo])",
             p.nome
         );
         assert!(
-            produto < 1.6 * paralelo && serie > 1.2 * produto,
-            "{}: o traço do app custa {produto:.2} ms por quadro pela rota do produto, {paralelo:.2} pela paralela e \
-             {serie:.2} pela de antes (em série) — o depósito de um pincel pesado voltou a correr em série",
+            produto < 1.6 * paralelo,
+            "{}: o traço do app custa {produto:.2} ms por quadro pela rota do produto e {paralelo:.2} pela paralela — \
+             o depósito de um pincel pesado voltou a correr em série",
+            p.nome
+        );
+        assert!(
+            rs[1] == 0 && rs[0] > 0 && rp[1] >= 9 * rp[0].max(1),
+            "{}: a rota medida do depósito decidiu {rp:?} ([série, paralelo]) com o piso do produto e {rs:?} com o de \
+             antes — o depósito de um pincel pesado voltou a correr em série",
             p.nome
         );
     }

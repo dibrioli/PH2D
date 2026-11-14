@@ -448,6 +448,14 @@ where
     }
 }
 
+/// As decisões da rota medida do depósito: `[série, paralelo]`. Lido pelo gate
+/// `o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga` (o roteador partido manda tudo à série sem
+/// depender do relógio da máquina); um `fetch_add` por dab.
+pub static ROTAS_DO_DEPOSITO: [std::sync::atomic::AtomicU64; 2] = [
+    std::sync::atomic::AtomicU64::new(0),
+    std::sync::atomic::AtomicU64::new(0),
+];
+
 /// [`walk_items_reduce`] com a rota MEDIDA: o item do meio corre em série e o relógio dele, vezes os
 /// itens, decide o resto — paralelo quando a estimativa passa `piso_ns`. A mesma resposta nas duas rotas
 /// (a regra do irmão: `red` associativa e comutativa), então o relógio só escolhe o caminhante.
@@ -477,6 +485,8 @@ where
     } else {
         Rows::Serial
     };
+    ROTAS_DO_DEPOSITO[usize::from(matches!(mode, Rows::Parallel))]
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let mut outros: Vec<&mut T> = antes.iter_mut().chain(depois.iter_mut()).collect();
     let r = walk_items_reduce(mode, &mut outros, ident, |t| f(t), &red);
     red(r_meio, r)

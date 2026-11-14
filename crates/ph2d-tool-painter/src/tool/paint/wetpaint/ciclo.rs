@@ -186,6 +186,26 @@ impl PainterTool {
     /// novo (atômico, sem trazer o motor), composita se houver, e entrega o
     /// motor de volta. O `dt` do shell deixou de ser entrada da água: era ele
     /// que fechava o laço de realimentação da era do agendamento (doc 28 §5.31).
+    /// N10 W2b: a sessão Wet pede o quadro seguinte só quando o [`Self::wetpaint_tick`] tem o que fazer. Quieta, o
+    /// laço dorme e o worker acorda-o no passo seguinte com água (medido: Filbert a 4K parado 45–60 % de CPU a
+    /// desenhar 70 q/s sobre passos sem água). `PH2D_WET_QUADRO_SEMPRE=1` volta ao de antes.
+    pub(in crate::tool::paint) fn wet_quer_o_tique(&self) -> bool {
+        let w = &self.paint.wetpaint;
+        if w.session.is_none() {
+            return false;
+        }
+        if quadro_sempre()
+            || w.session.em_voo()
+            || w.fecho_adiado.is_some()
+            || w.composite_pendente
+            || w.relogio_fixo.is_some()
+            || w.session.tem_compostas()
+        {
+            return true;
+        }
+        w.session.as_ref().is_none_or(|s| !s.quieta())
+    }
+
     pub(in crate::tool::paint) fn wetpaint_tick(&mut self, dt_s: f32) {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
@@ -424,4 +444,10 @@ fn adia_o_pen_up() -> bool {
         static S: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         *S.get_or_init(|| !std::env::var("PH2D_PEN_UP_ADIADO").is_ok_and(|v| v == "0"))
     }
+}
+
+/// `PH2D_WET_QUADRO_SEMPRE=1`: a sessão Wet pede todo quadro, como antes do N10 W2b (A × B no mesmo binário; lida uma vez).
+fn quadro_sempre() -> bool {
+    static S: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *S.get_or_init(|| std::env::var("PH2D_WET_QUADRO_SEMPRE").is_ok_and(|v| v == "1"))
 }

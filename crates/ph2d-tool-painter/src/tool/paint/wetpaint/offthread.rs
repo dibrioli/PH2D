@@ -57,6 +57,26 @@ pub(super) const STEP_S: f64 = 1.0 / ph2d_wet_paint::sim::SIM_HZ;
 /// atraso perceptível, longo o bastante para não ocupar um núcleo à toa.
 const IDLE_SLEEP: Duration = Duration::from_millis(4);
 
+/// N10 W2b: quem acorda o laço da janela quando um passo com água fecha (a shell instala o `EventLoopProxy`).
+/// Com ele o tique só pede quadro quando a sim tem algo novo ([`super::super::PainterTool::wet_quer_o_tique`]).
+static DESPERTADOR: std::sync::OnceLock<Arc<dyn Fn() + Send + Sync>> = std::sync::OnceLock::new();
+
+/// A ponte do Painter, uma vez; uma segunda instalação é ignorada.
+pub fn instala_o_despertador_do_wet(f: Arc<dyn Fn() + Send + Sync>) {
+    let _ = DESPERTADOR.set(f);
+}
+
+/// Há quem acorde o laço? Sem despertador (testes, smoke sem ponte) o tique pede todo quadro, como antes.
+pub(super) fn ha_despertador() -> bool {
+    DESPERTADOR.get().is_some()
+}
+
+pub(super) fn acorda_o_laco() {
+    if let Some(f) = DESPERTADOR.get() {
+        f();
+    }
+}
+
 /// **Quanto o TICK espera pelo motor** — e o número é MEDIDO, com um joelho
 /// nítido e um mecanismo que o explica.
 ///
@@ -327,6 +347,25 @@ impl super::WetSession {
     /// Um pedido do tique ([`Self::try_bring_home_now`]) ficou por responder: o motor anda a caminho de casa.
     pub(in crate::tool::paint) fn motor_pedido(&self) -> bool {
         matches!(self.engine, EngineSlot::Away) && self.worker.as_ref().is_some_and(|w| w.pedido)
+    }
+
+    /// N10 W2b: o tique desta sessão não tem nada a fazer — o motor com o worker AO RELÓGIO (sem ritmo nem fita),
+    /// nenhum pedido em aberto, nenhum passo por mostrar, nenhum lote adiado, nenhuma imagem no ar. O passo seguinte
+    /// com água acorda o laço ([`acorda_o_laco`]).
+    pub(in crate::tool::paint) fn quieta(&self) -> bool {
+        let Some(w) = self.worker.as_ref() else {
+            return false;
+        };
+        matches!(self.engine, EngineSlot::Away)
+            && ha_despertador()
+            && w.ritmo.is_none()
+            && self.fita.is_none()
+            && !w.pedido
+            && !w.perdido
+            && !self.compositor_morto()
+            && w.steps.load(Ordering::Acquire) == self.seen_steps
+            && self.adiados.is_empty()
+            && !self.otica.pendente()
     }
 
     /// O motor desta sessão morreu com o worker ([`Self::perde_o_motor`]).

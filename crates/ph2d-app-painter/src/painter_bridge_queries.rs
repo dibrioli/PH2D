@@ -157,6 +157,13 @@ pub(crate) fn produtores(
     fora: &mut Vec<ph2d_app_host::quadro::Produtor>,
 ) {
     use ph2d_app_host::quadro::Produtor as P;
+    // N10 W2b: o worker da sim acorda o laço no passo com água (a sessão quieta não pede quadro).
+    static INSTALADO: std::sync::Once = std::sync::Once::new();
+    INSTALADO.call_once(|| {
+        ph2d_tool_painter::instala_o_despertador_do_wet(std::sync::Arc::new(
+            ph2d_app_host::quadro::acorda_o_laco,
+        ));
+    });
     let de = [P::TracoAberto, P::PapelMolhado, P::SimWet, P::UiAnima];
     fora.extend(
         de.into_iter()

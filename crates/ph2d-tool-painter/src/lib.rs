@@ -62,7 +62,7 @@ pub use tool::paint::selection_formigas::{
 };
 pub use tool::paint::selection_formigas_ecra::desenha_formigas;
 pub use tool::paint::selection_formigas_raster::construcoes_das_formigas_raster;
-pub use tool::paint::{instala_o_palpite, palpite_ligado};
+pub use tool::paint::{instala_o_despertador_do_wet, instala_o_palpite, palpite_ligado};
 
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,

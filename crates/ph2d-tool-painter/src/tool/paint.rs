@@ -16,6 +16,7 @@ use ph2d_painter_brush::{
 mod desempenho; // o cartão Performance (n.º 8): o palpite do motor Wet
 pub(crate) use desempenho::route_desempenho;
 pub use desempenho::{instala_o_palpite, palpite_ligado};
+pub use wetpaint::instala_o_despertador_do_wet;
 mod brush_core_settings; // Falloff/size/spacing/jitter/dash setters; split from `brush_settings` (LOC cap)
 mod brush_image; // The imported brush-texture image type (`BrushTextureImage`); split from `brush_settings`
 mod brush_settings; // Brush + Stroke-section snapshot & setters (shares `PaintState`'s private brush access)

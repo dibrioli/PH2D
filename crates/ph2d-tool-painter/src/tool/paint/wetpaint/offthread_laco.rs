@@ -131,14 +131,21 @@ fn worker_loop(
                 crate::wet_diag::note_sleep(t.elapsed().as_micros() as u64);
                 continue;
             }
+            // N10 W2b: o passo que COMEÇA sem água é um no-op do motor (`sim_step_stage` volta antes do
+            // `frame += 1`, `marca_passo` não declara): não conta, e a tela não tem o que recompor.
+            let sem_agua = !in_flight && !engine.active_grid().has_fluid;
             let t = Instant::now();
             let closed = placa.passo(&mut engine).is_some() || engine.step_stage().is_some();
             let spent = t.elapsed().as_micros() as u64;
             step_us += spent;
             crate::wet_diag::note_busy(spent);
-            if closed {
+            if closed && sem_agua {
+                acc -= STEP_S;
+                step_us = 0;
+            } else if closed {
                 acc -= STEP_S;
                 steps.fetch_add(1, Ordering::Release);
+                super::acorda_o_laco();
                 crate::wet_diag::note_step(step_us as f32 / 1000.0);
                 // ⚠️ **O custo sem o TAMANHO não é atribuível** — a mesma linha
                 // de log serve *"a poça é grande"* e *"a máquina está

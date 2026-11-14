@@ -472,7 +472,7 @@ impl PainterTool {
         [
             self.traco_aberto() || self.paint.tracos_fora > 0,
             self.paint.canvas_wet_rect.is_some(),
-            self.paint.wetpaint.session.is_some(),
+            self.wet_quer_o_tique(),
             self.paint.stencil_preview_s > 0.0,
         ]
     }

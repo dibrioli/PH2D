@@ -158,17 +158,21 @@ fn measure_what_a_drying_pass_is_made_of() {
     const REPS: usize = 7;
     let (mut t, p, evap, rewet) = puddle();
     let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+    let jacobi = sess.engine.sim.order_invariant;
     let g = sess.engine.active_grid_mut();
     let snap = ph2d_wet_paint::grid::snapshot_grid(g);
     let mut v = Vec::with_capacity(REPS);
     for _ in 0..REPS {
         ph2d_wet_paint::grid::restore_grid(g, &snap);
         let t0 = Instant::now();
-        ph2d_wet_paint::drying::drying_pass(g, &p, evap, rewet, false);
+        secagem_do_produto(g, &p, evap, rewet, jacobi);
         v.push(t0.elapsed().as_secs_f64() * 1e3);
     }
     v.sort_by(f64::total_cmp);
-    println!("\n  DE QUE O `drying_pass` E FEITO (mediana de {REPS}, poca do produto)\n");
+    println!(
+        "\n  DE QUE A SECAGEM E FEITA (mediana de {REPS}, poca do produto, {})\n",
+        rota(jacobi)
+    );
     println!("    passe inteiro (a porta)      {:8.3} ms", v[v.len() / 2]);
     println!(
         "\n    Corte uma peca do PRODUTO e re-rode: a diferenca e a atribuicao.\n\
@@ -240,17 +244,22 @@ fn measure_what_an_advect_is_made_of() {
         let (mut t, p, _e, _r) = puddle_at(flow);
         let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
         let grav = sess.engine.sim.gravity(&sess.engine.tuning);
+        let jacobi = sess.engine.sim.order_invariant;
         let g = sess.engine.active_grid_mut();
         let snap = ph2d_wet_paint::grid::snapshot_grid(g);
         let mut v = Vec::with_capacity(REPS);
         for _ in 0..REPS {
             ph2d_wet_paint::grid::restore_grid(g, &snap);
             let t0 = Instant::now();
-            ph2d_wet_paint::solver::advect(g, &p, grav[0], grav[1]);
+            advect_do_produto(g, &p, grav, jacobi);
             v.push(t0.elapsed().as_secs_f64() * 1e3);
         }
         v.sort_by(f64::total_cmp);
-        println!("    Flow {flow}x   advect  {:8.3} ms", v[v.len() / 2]);
+        println!(
+            "    Flow {flow}x   advect ({})  {:8.3} ms",
+            rota(jacobi),
+            v[v.len() / 2]
+        );
     }
     println!(
         "\n    Corte uma peca do PRODUTO e re-rode: a diferenca e a atribuicao.\n\
@@ -261,6 +270,44 @@ fn measure_what_an_advect_is_made_of() {
 // ---------------------------------------------------------------------------
 // O GATHER (doc 28 §5.45) — quanto ele CUSTA e quanto ele MUDA
 // ---------------------------------------------------------------------------
+
+/// A rota da sim que o PRODUTO dá (o despachante de `sim.rs`, B44.2): Jacobi quando `order_invariant`.
+fn rota(jacobi: bool) -> &'static str {
+    if jacobi {
+        "Jacobi (produto)"
+    } else {
+        "Gauss-Seidel"
+    }
+}
+
+/// A secagem do produto (sem a cadência por tile, que depende do quadro).
+fn secagem_do_produto(
+    g: &mut ph2d_wet_paint::grid::Grid,
+    p: &ph2d_wet_paint::sim::Params,
+    evap: f64,
+    rewet: f64,
+    jacobi: bool,
+) {
+    if jacobi {
+        ph2d_wet_paint::drying::drying_pass_jacobi(g, p, evap, rewet, false);
+    } else {
+        ph2d_wet_paint::drying::drying_pass_por_tile(g, p, evap, rewet, false, None);
+    }
+}
+
+/// O `advect` do produto.
+fn advect_do_produto(
+    g: &mut ph2d_wet_paint::grid::Grid,
+    p: &ph2d_wet_paint::sim::Params,
+    grav: [f64; 2],
+    jacobi: bool,
+) {
+    if jacobi {
+        ph2d_wet_paint::solver::advect_jacobi(g, p, grav[0], grav[1]);
+    } else {
+        ph2d_wet_paint::solver::advect(g, p, grav[0], grav[1]);
+    }
+}
 
 /// Os três planos que decidem a aparência, copiados para fora.
 fn planes(t: &mut crate::tool::PainterTool) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
@@ -385,7 +432,11 @@ fn measure_what_the_gather_advect_costs() {
     println!("\n  O CUSTO DO `advect` PELAS TRES ROTAS (mediana de {REPS})\n");
     println!(
         "    {:>6}  {:>12} {:>14} {:>14}  {:>8}",
-        "flow", "serial (GS)", "gather serial", "gather par", "ganho"
+        "flow", "serial (GS)", "gather serial", "gather par", "GS/par"
+    );
+    println!(
+        "    (a fábrica é a {}; o «GS/par» compara a rota de ANTES)",
+        rota(ph2d_wet_paint::sim::Sim::default().order_invariant)
     );
     for flow in [1u8, 4] {
         let (mut t, p, _e, _r) = puddle_at(flow);
@@ -432,4 +483,22 @@ fn measure_what_the_gather_advect_costs() {
             a / c
         );
     }
+}
+
+/// B44.2 (missão 4K N10): as sondas daqui medem a rota do PRODUTO (`Sim::order_invariant`, de fábrica
+/// `true` = Jacobi), não a Gauss-Seidel serial. A GS só entra como a coluna «serial (GS)» do gather.
+#[test]
+fn as_sondas_dos_passes_medem_a_rota_do_produto() {
+    assert!(
+        ph2d_wet_paint::sim::Sim::default().order_invariant,
+        "a fábrica deixou de ser Jacobi: reveja as sondas"
+    );
+    let s = include_str!("measure_wetpaint_passes.rs");
+    let gs = s.matches(concat!("solver::", "advect(")).count()
+        + s.matches(concat!("drying::", "drying_pass(")).count();
+    // 2 = o ramo GS de `advect_do_produto` + a coluna «serial (GS)» do gather (de antes da cura: 3).
+    assert_eq!(
+        gs, 2,
+        "uma sonda chama a GS direto em vez de `advect_do_produto`/`secagem_do_produto`"
+    );
 }

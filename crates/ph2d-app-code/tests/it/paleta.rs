@@ -96,13 +96,15 @@ fn arroba_leva_ao_inicio_do_nome_e_dois_pontos_a_linha() {
     );
     m.hero.store.close_command_palette();
     global_palette::open(&mut m.hero);
-    for c in ">save".chars() {
+    // Desde a barra de menus (versão C) o `Save` do projeto mora na MESMA busca e vence `>save` pelo
+    // nome exato; o comando da aba é o «Save Script».
+    for c in ">save script".chars() {
         m.hero.store.command_palette_push_char(c);
     }
     assert_eq!(
         m.hero.store.command_palette_top(),
         Some(ph2d_app_code::commands::CMD_SAVE),
-        "`>save` é o comando da aba"
+        "`>save script` é o comando da aba"
     );
     m.hero.store.close_command_palette();
     paleta(&mut m, "@nada_disto");

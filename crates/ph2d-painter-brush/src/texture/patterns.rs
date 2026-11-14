@@ -84,10 +84,11 @@ pub(super) fn sample_kind_t(
         // generator's spectrum was a low-frequency blotch, ~90-98% of the energy at λ > 32 px,
         // measured by FFT: the direct cause of the "mottled" wash). One bilinear wrap-fetch per
         // sample; the fibre character (laid lines) is baked into each tile's ridge, keeping the
-        // lookup isotropic so the 1-unit tile period is EXACT (seam-tested).
-        TextureKind::PaperCold => paper_tile::sample(0, u, v),
-        TextureKind::PaperRough => paper_tile::sample(1, u, v),
-        TextureKind::PaperHot => paper_tile::sample(2, u, v),
+        // lookup isotropic. Two reads (B33): under Tiling the second one snaps to the sprite
+        // `period` so the seam stays exact (seam-tested).
+        TextureKind::PaperCold => paper_tile::sample_t(0, u, v, period),
+        TextureKind::PaperRough => paper_tile::sample_t(1, u, v, period),
+        TextureKind::PaperHot => paper_tile::sample_t(2, u, v, period),
         // No tone slots: the four sliders are the bristle knobs.
         TextureKind::Bristles => return super::bristles::sample_unit(&params, u, v),
         TextureKind::Image => match image {

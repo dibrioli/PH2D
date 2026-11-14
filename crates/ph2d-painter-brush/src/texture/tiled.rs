@@ -72,13 +72,18 @@ pub fn sample_tiled_rot_wrapped(
     ];
     // Hash wrap: only with no rotation (else the axis grid can't meet the axis-aligned seam) and a real
     // sprite period. Applies to the LATTICE procedurals AND the hash-jittered analytic patterns (Dots /
-    // Scales, `analytic_needs_hash_wrap`) — both hash their cells, so the seam needs the hash aliased at
+    // Scales, `analytic_needs_hash_wrap`) and the baked Paper (its second read, B33, snaps to the span) —
+    // the first two hash their cells, so the seam needs the hash aliased at
     // the cell period. `rel`-span across the sprite = `period_px · size / 256` cells (integer here because
     // the caller snapped the Size); `[0, 0]` ⇒ `sample_kind_t` no-ops the wrap (byte-identical).
     let period = if rot[0] == 1.0
         && rot[1] == 0.0
-        && (lattice_tileable(s.kind) || analytic_needs_hash_wrap(s.kind))
-    {
+        && (lattice_tileable(s.kind)
+            || analytic_needs_hash_wrap(s.kind)
+            || matches!(
+                s.kind,
+                TextureKind::PaperCold | TextureKind::PaperRough | TextureKind::PaperHot
+            )) {
         [
             lattice_period(period_px[0], sx),
             lattice_period(period_px[1], sy),

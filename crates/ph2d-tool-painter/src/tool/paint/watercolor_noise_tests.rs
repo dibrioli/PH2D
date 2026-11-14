@@ -472,10 +472,13 @@ fn lattice_wrap_is_byte_identical_off_tiling_and_rotated() {
 
 /// **#2b: a baked PAPER preset tiles seamlessly under Tiling.** The 256² paper tile repeats every 1
 /// unit of `rel`, so snapping Size to a whole tile count across the sprite lands the seam on a tile
-/// boundary. Control: the raw (unsnapped) Size seams. Off-tiling ⇒ unchanged.
+/// boundary; its SECOND read (B33, period 241) snaps to the sprite span through the period the app passes
+/// ([`sample_tiled_rot_wrapped`] with `slot_period`). Controls: the raw (unsnapped) Size seams, and the
+/// snapped Size WITHOUT the period seams too (the B33.1 defect: 241 never divides the sprite). Off-tiling
+/// ⇒ unchanged.
 #[test]
 fn slot_paper_preset_tiles_seamlessly_under_tiling() {
-    use ph2d_painter_brush::texture::{angle_basis, sample_tiled_rot};
+    use ph2d_painter_brush::texture::{angle_basis, sample_tiled_rot, sample_tiled_rot_wrapped};
     let (pw, ph) = (100i64, 60i64);
     let tile = NoiseTile::new((pw as usize, ph as usize), [true, true]);
     let raw = TextureSettings {
@@ -485,23 +488,27 @@ fn slot_paper_preset_tiles_seamlessly_under_tiling() {
     };
     let snapped = snap_slot_size(raw, tile);
     let rot = angle_basis(0);
+    let per = tile.slot_period();
+    let at =
+        |s: &TextureSettings, x: i64, y: i64| sample_tiled_rot_wrapped(s, x, y, None, rot, per);
     for y in [3i64, 29, 51] {
-        let a = sample_tiled_rot(&snapped, 0, y, None, rot);
-        let b = sample_tiled_rot(&snapped, pw, y, None, rot);
+        let (a, b) = (at(&snapped, 0, y), at(&snapped, pw, y));
         assert!((a - b).abs() < 1e-4, "paper X seam at y={y}: {a} vs {b}");
     }
     for x in [7i64, 41, 88] {
-        let a = sample_tiled_rot(&snapped, x, 0, None, rot);
-        let b = sample_tiled_rot(&snapped, x, ph, None, rot);
-        assert!((a - b).abs() < 1e-4, "paper Y seam at x={x}");
+        let (a, b) = (at(&snapped, x, 0), at(&snapped, x, ph));
+        assert!((a - b).abs() < 1e-4, "paper Y seam at x={x}: {a} vs {b}");
     }
-    let seams = (0..ph).any(|y| {
-        (sample_tiled_rot(&raw, 0, y, None, rot) - sample_tiled_rot(&raw, pw, y, None, rot)).abs()
-            > 1e-4
-    });
+    let seams = |s: &TextureSettings, f: &dyn Fn(&TextureSettings, i64, i64) -> f32| {
+        (0..ph).any(|y| (f(s, 0, y) - f(s, pw, y)).abs() > 1e-4)
+    };
     assert!(
-        seams,
+        seams(&raw, &at),
         "control: an unsnapped paper preset should seam across the sprite"
+    );
+    assert!(
+        seams(&snapped, &|s, x, y| sample_tiled_rot(s, x, y, None, rot)),
+        "control: without the sprite period the second read (241) must seam"
     );
     assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
 }

@@ -314,7 +314,10 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
             let t = pinta_com_o_cartao(m, papel, relief, rough);
             let (r, sg, sv, n) = grao_e_visivel(&t);
             eprintln!("{m:?} {nome}: r = {r:.3}, σ grão {sg:.4}, σ visível {sv:.4}, {n} texels");
-            if n < 400 || r < 0.8 {
+            // `n` é só a AMOSTRA para o r valer (texels que o filtro de cor aceita na janela 80×24): o Digital
+            // e o Impasto dão 1 920; o Wet dava 417–536 com o papel de uma leitura e 378–474 com as duas (B33.1,
+            // `52a5af249d`), com o r igual ou MAIOR (Rough 0,954 → 0,976). O piso guarda o «nada pintado».
+            if n < 300 || r < 0.8 {
                 falhas.push(format!(
                     "{m:?} {nome}: o grão não desenha o papel visível (r = {r:.3}, {n})"
                 ));

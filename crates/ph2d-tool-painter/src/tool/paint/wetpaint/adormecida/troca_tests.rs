@@ -33,7 +33,7 @@ fn a_recusa_de_acordar_nao_perde_a_adormecida() {
     let mut t = com_oleo();
     assert!(t.wet_adormece(), "fixture: a tinta adormece");
     assert_eq!(t.paint.wetpaint.adormecidas.len(), 1, "fixture");
-    t.paint.wetpaint.session = com_oleo().paint.wetpaint.session.take();
+    t.paint.wetpaint.session = com_oleo().paint.wetpaint.session.take().into();
     assert!(!t.wet_acorda(), "com uma sessão viva, acordar recusa");
     assert_eq!(
         t.paint.wetpaint.adormecidas.len(),

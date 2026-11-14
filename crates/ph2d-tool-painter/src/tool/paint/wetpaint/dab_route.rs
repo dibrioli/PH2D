@@ -17,7 +17,7 @@
 
 use super::*;
 #[path = "fila_do_dab.rs"]
-mod fila_do_dab; // o depósito fora do evento da caneta (N10 F2c)
+pub(super) mod fila_do_dab; // o depósito fora do evento da caneta (N10 F2c)
 
 /// O que a cauda do lote lê depois do depósito ([`PainterTool::stamp_dabs_wetpaint_cauda`]).
 struct CaudaDoLote {
@@ -53,11 +53,30 @@ impl PainterTool {
                     fila_do_dab::deposita(&mut dep);
                     dep
                 })
+            } else if self.o_lote_pode_voar(&cauda, brush) {
+                // A sessão fica com o operário; quem a ler a seguir drena-a, e o tique compõe quando assentar (F2d).
+                let deposit_ms = cauda.t_dep.elapsed().as_secs_f32() * 1e3;
+                self.paint.wetpaint.session.voa(fila_do_dab::enfileira(dep));
+                self.paint.wetpaint.composite_pendente = true;
+                self.preview_dirty = true;
+                crate::wet_diag::note_stamp(dabs.len(), deposit_ms, 0.0);
+                return;
             } else {
                 fila_do_dab::drena_os_dabs(fila_do_dab::enfileira(dep))
             };
             self.no_pool(|t| t.stamp_dabs_wetpaint_cauda(dabs, brush, dep, cauda));
         }
+    }
+
+    /// `true` = a cauda deste lote é só «sessão de volta + compor»: o depósito pode ficar em voo depois do evento.
+    /// O pó, a borracha da base e as pontas lêem o tool inteiro: esses lotes drenam no evento, como antes.
+    fn o_lote_pode_voar(&self, cauda: &CaudaDoLote, brush: &BrushSpec) -> bool {
+        let sem_po = cauda.virtual_
+            || self.paint.brush.dab_jitter.po <= 0.0
+            || !brush.stroke_method.allows_jitter()
+            || self.paint.eraser
+            || self.paint.wetpaint.tool != WetTool::Paint;
+        !cauda.erasing && !cauda.pontas && sem_po && self.pilha_pode_adiar()
     }
 
     /// A metade do lote de antes do pool: as filas, a sessão e o motor em casa. `None` = o lote acabou aqui.
@@ -485,7 +504,7 @@ impl PainterTool {
             self.pousa_o_po_do_lote(sess, dabs, &copia, brush, opacidade_da_pressao, strength);
         }
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
-        self.paint.wetpaint.session = Some(taken);
+        self.paint.wetpaint.session = SessaoDoWet::aqui(taken);
         if erasing {
             self.apaga_a_base_sob_os_dabs(dabs);
         }

@@ -18,11 +18,11 @@ use std::sync::{Mutex, OnceLock};
 pub(super) type SubDab = (usize, u64, Option<f32>, Dab);
 
 /// O que viaja ao operário e volta dele.
-pub(super) struct Deposito {
+pub(in crate::tool::paint::wetpaint) struct Deposito {
     pub(super) lote: LoteDoDab,
     pub(super) sub_dabs: Vec<SubDab>,
     pub(super) rng: super::super::tiling::DabRng,
-    pub(super) sess: WetSession,
+    pub(in crate::tool::paint::wetpaint) sess: WetSession,
 }
 
 const _: () = {
@@ -46,30 +46,28 @@ pub(super) fn deposita(d: &mut Deposito) {
 type Volta = std::thread::Result<Box<Deposito>>;
 
 struct Operario {
-    ida: Sender<Box<Deposito>>,
-    volta: Receiver<Volta>,
+    ida: Sender<(Box<Deposito>, Sender<Volta>)>,
 }
 
 fn operario() -> &'static Mutex<Operario> {
     static O: OnceLock<Mutex<Operario>> = OnceLock::new();
     O.get_or_init(|| {
-        let (ida, rx) = channel::<Box<Deposito>>();
-        let (tx, volta) = channel::<Volta>();
+        let (ida, rx) = channel::<(Box<Deposito>, Sender<Volta>)>();
         std::thread::Builder::new()
             .name("ph2d-wet-dab".into())
             .spawn(move || {
-                while let Ok(mut d) = rx.recv() {
+                // Cada lote leva a SUA volta: dois tools em dois fios nunca trocam sessões.
+                while let Ok((mut d, tx)) = rx.recv() {
                     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                         deposita(&mut d);
                         d
                     }));
-                    if tx.send(r).is_err() {
-                        return;
-                    }
+                    // Volta largada = sessão substituída antes de assentar: o lote morre com ela.
+                    let _ = tx.send(r);
                 }
             })
             .expect("o fio do depósito do Wet");
-        Mutex::new(Operario { ida, volta })
+        Mutex::new(Operario { ida })
     })
 }
 
@@ -98,36 +96,45 @@ pub(super) fn sincrono() -> bool {
 }
 
 /// Envia o lote ao operário. O lote seguinte espera atrás dele: a ordem da mão é a ordem da fila.
-pub(super) fn enfileira(d: Deposito) -> EmVoo {
+pub(in crate::tool::paint::wetpaint) fn enfileira(d: Deposito) -> EmVoo {
+    let (tx, rx) = channel::<Volta>();
     let o = operario()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     assert!(
-        o.ida.send(Box::new(d)).is_ok(),
+        o.ida.send((Box::new(d), tx)).is_ok(),
         "o fio do depósito do Wet morreu"
     );
-    EmVoo(())
+    EmVoo { rx, chegou: None }
 }
 
 /// Um lote com o operário: só [`drena_os_dabs`] o traz de volta.
 #[must_use = "a sessão está com o operário: drene-a"]
-pub(super) struct EmVoo(());
+pub(in crate::tool::paint::wetpaint) struct EmVoo {
+    rx: Receiver<Volta>,
+    chegou: Option<Volta>,
+}
+
+impl EmVoo {
+    /// `true` = o operário já devolveu o lote (sem esperar: `try_recv`).
+    pub(in crate::tool::paint::wetpaint) fn pronto(&mut self) -> bool {
+        if self.chegou.is_none() {
+            self.chegou = self.rx.try_recv().ok();
+        }
+        self.chegou.is_some()
+    }
+}
 
 /// **Espera o lote em voo** e devolve-o. Um pânico do operário volta a este fio.
-pub(super) fn drena_os_dabs(_: EmVoo) -> Deposito {
+pub(in crate::tool::paint::wetpaint) fn drena_os_dabs(v: EmVoo) -> Deposito {
     assert!(
         rayon::current_thread_index().is_none(),
         "espera pelo depósito dentro de um job do rayon (Bug #66): drene antes de `no_pool`"
     );
-    let o = operario()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    match o.volta.recv().expect("o fio do depósito do Wet morreu") {
+    let EmVoo { rx, chegou } = v;
+    match chegou.unwrap_or_else(|| rx.recv().expect("o fio do depósito do Wet morreu")) {
         Ok(d) => *d,
-        Err(p) => {
-            drop(o);
-            std::panic::resume_unwind(p)
-        }
+        Err(p) => std::panic::resume_unwind(p),
     }
 }
 

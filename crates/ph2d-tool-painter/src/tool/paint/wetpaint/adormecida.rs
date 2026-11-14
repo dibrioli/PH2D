@@ -166,7 +166,7 @@ impl PainterTool {
         self.wet_enterra_como_passo(&mut sess, &velha, None);
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
-        self.paint.wetpaint.session = Some(sess);
+        self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
         true
     }
 
@@ -215,7 +215,7 @@ impl PainterTool {
         }
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
-        self.paint.wetpaint.session = Some(sess);
+        self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
     }
 
     /// A porta de quem sai do Wet: adormece a sessão, ou acaba-a se ela não pode parar.
@@ -346,7 +346,7 @@ impl PainterTool {
         }
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
-        self.paint.wetpaint.session = Some(sess);
+        self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
         true
     }
 

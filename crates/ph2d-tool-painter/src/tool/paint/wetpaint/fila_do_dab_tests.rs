@@ -92,3 +92,73 @@ fn pinta_nada(qual: u8) -> Vec<u8> {
     t.set_wet_relogio_fixo(true);
     mostrada(&mut t)
 }
+
+/// O traço INTEIRO com a sessão em voo entre eventos (F2d): conta-gotas a meio, undo, redo, troca de camada e um
+/// traço em cada camada. Devolve a tela mostrada, as amostras do conta-gotas e quantos lotes voaram.
+fn traco_inteiro(fila: bool, qual: u8) -> (Vec<u8>, Vec<Option<[u8; 4]>>, usize) {
+    let (w, h) = (320u32, 160u32);
+    super::fila_no_teste(fila);
+    super::super::sessao_do_wet::VOOS.set(0);
+    let mut t = PainterTool::default();
+    if qual == 2 {
+        t.agenda_papel_texturizado(7);
+        t.bind_document(7, fundo(w, h, false), w, h);
+    } else {
+        t.abre_a_sprite(fundo(w, h, qual == 1), w, h);
+    }
+    let a = t.layers.active().expect("a camada");
+    let b = t
+        .add_raster_layer_with_pixels("B", vec![0u8; (w * h * 4) as usize])
+        .expect("B");
+    t.select_layer(a);
+    t.set_compor_por_quadro(true); // o produto: só o lote que compõe no quadro pode voar
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    t.preset_aplicar(&preset("Oil/Flat/Flat Bristle.ph2d-brush.png"))
+        .expect("o pincel");
+    t.set_brush_size_px(60.0);
+    t.set_brush_color_srgb8([40, 90, 220]);
+    let mut gotas = Vec::new();
+    let mut traco = |t: &mut PainterTool, y0: f32, gotas: &mut Vec<Option<[u8; 4]>>| {
+        t.on_canvas_pointer(cp([60.0, y0], 0.6, PointerPhase::Down));
+        for k in 1..=10 {
+            let p = [60.0 + 18.0 * k as f32, y0 + 2.0 * k as f32];
+            t.on_canvas_pointer(cp(p, 0.6 + 0.03 * k as f32, PointerPhase::Move));
+            if k % 4 == 0 {
+                gotas.push(t.eyedropper_amostra([p[0] - 20.0, p[1]]));
+            }
+            if k % 3 == 0 {
+                t.ticks_em_blocos(1);
+            }
+        }
+        t.on_canvas_pointer(cp([250.0, y0 + 20.0], 1.0, PointerPhase::Up));
+    };
+    traco(&mut t, 50.0, &mut gotas);
+    t.ticks_em_blocos(1);
+    assert!(t.undo_last(), "o undo");
+    gotas.push(t.eyedropper_amostra([120.0, 56.0]));
+    assert!(t.redo_last(), "o redo");
+    traco(&mut t, 90.0, &mut gotas);
+    t.select_layer(b);
+    traco(&mut t, 70.0, &mut gotas);
+    t.select_layer(a);
+    traco(&mut t, 110.0, &mut gotas);
+    t.ticks_em_blocos(2);
+    let px = mostrada(&mut t);
+    let voos = super::super::sessao_do_wet::VOOS.get();
+    super::fila_no_teste(false);
+    (px, gotas, voos)
+}
+
+#[test]
+fn o_traco_inteiro_em_voo_pinta_a_tela_do_sincrono_ao_bit() {
+    for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "Textured")] {
+        let (sincrono, gotas_s, voos_s) = traco_inteiro(false, qual);
+        let (fila, gotas_f, voos_f) = traco_inteiro(true, qual);
+        assert_eq!(voos_s, 0, "{nome}: o síncrono não voa");
+        assert!(voos_f > 0, "{nome}: nenhum lote ficou em voo (o gate não mediria nada)");
+        assert!(sincrono != pinta_nada(qual), "{nome}: o traço não pintou");
+        assert_eq!(gotas_s, gotas_f, "{nome}: o conta-gotas leu outra tela em voo");
+        assert!(sincrono == fila, "{nome}: a sessão em voo mudou a tela");
+    }
+}

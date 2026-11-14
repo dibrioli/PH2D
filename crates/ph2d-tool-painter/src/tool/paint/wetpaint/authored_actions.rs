@@ -76,7 +76,7 @@ impl PainterTool {
         engine.fundo_da_historia = usize::MAX; // o tecto é de bytes (`undo_vivo::teto_da_historia`)
         let marca = self.undo.marca.nasce_a_molhada(self.papel);
         self.paint.wetpaint.composta = None;
-        self.paint.wetpaint.session = Some(WetSession {
+        self.paint.wetpaint.session = SessaoDoWet::aqui(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,
             grid: (gw, gh),
@@ -223,7 +223,7 @@ impl PainterTool {
         {
             self.undo.marca.agua_da_gravacao_parou(c);
         }
-        self.paint.wetpaint.session = None;
+        self.paint.wetpaint.session = SessaoDoWet::default();
         self.undo.write_state.vigia_a_tela(None);
         self.undo.marca.acaba_a_molhada();
         // Doc 21: mode-leave hygiene — a stash must not survive into another

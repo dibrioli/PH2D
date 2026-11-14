@@ -283,7 +283,7 @@ impl PainterTool {
             .as_ref()
             .is_some_and(WetSession::perdeu_o_motor);
         if perdido || (self.wet_tela_alheia() && !self.wet_atravessa_a_troca()) {
-            self.paint.wetpaint.session = None;
+            self.paint.wetpaint.session = SessaoDoWet::default();
             self.undo.write_state.vigia_a_tela(None);
             self.undo.marca.acaba_a_molhada();
         }

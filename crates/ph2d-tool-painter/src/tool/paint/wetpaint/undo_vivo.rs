@@ -423,7 +423,7 @@ impl PainterTool {
             marca("volta: planos_em_dia + congela");
         }
         // Uma sessão que o restore fez nascer (não devia: o restore acaba-as) perde para a que estava viva.
-        self.paint.wetpaint.session = Some(sess);
+        self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
     }
 }
 

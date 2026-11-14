@@ -288,11 +288,11 @@ fn a_sessao_nova_herda_a_lei_da_tinta() {
     t.set_paint_media(crate::PaintMedia::WetPaint);
     t.set_wet_lei_da_tinta(LeiDaTinta::Pigmento);
     assert_eq!(t.wet_lei_da_tinta(), Some(LeiDaTinta::Pigmento));
-    t.paint.wetpaint.session = None;
+    t.paint.wetpaint.session = Default::default();
     traco(&mut t, [50.0, 50.0], [80.0, 50.0], 1.0, 0); // o traço cria a sessão nova
     assert_eq!(t.wet_lei_da_tinta(), Some(LeiDaTinta::Pigmento));
     t.set_wet_lei_da_tinta(LeiDaTinta::Velha);
-    t.paint.wetpaint.session = None;
+    t.paint.wetpaint.session = Default::default();
     traco(&mut t, [50.0, 50.0], [80.0, 50.0], 1.0, 0); // o traço cria a sessão nova
     assert_eq!(t.wet_lei_da_tinta(), Some(LeiDaTinta::Velha));
 }

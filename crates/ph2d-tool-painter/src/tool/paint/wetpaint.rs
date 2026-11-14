@@ -78,7 +78,7 @@ pub(crate) struct WetPaintState {
     /// while the paint is wet would be the lying radio this file refuses.
     pub(super) armed: bool,
     /// The live session; `None` until the first Wet Paint dab lands.
-    pub(super) session: Option<WetSession>,
+    pub(super) session: SessaoDoWet,
     /// A tinta viva das sessões que saíram do Wet ou da camada ([`adormecida`]), a mais antiga primeiro. Sem tique
     /// nem worker.
     pub(super) adormecidas: Vec<adormecida::TintaAdormecida>,
@@ -224,7 +224,7 @@ impl Default for WetPaintState {
     fn default() -> Self {
         Self {
             armed: false,
-            session: None,
+            session: SessaoDoWet::default(),
             adormecidas: Vec::new(),
             sulco: None,
             medindo_o_escudo: false,
@@ -317,6 +317,8 @@ mod preparo_tests;
 mod regua_do_fecho_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
 mod session;
+mod sessao_do_wet; // a sessão que pode estar com o operário do depósito (N10 F2d)
+pub(in crate::tool::paint) use sessao_do_wet::SessaoDoWet;
 #[cfg(test)]
 mod sonda_borracha_morta;
 mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC

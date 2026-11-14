@@ -31,6 +31,11 @@ impl PainterTool {
         if !std::mem::take(&mut self.paint.wetpaint.composite_pendente) {
             return;
         }
+        // O lote ainda com o operário (F2d): o quadro não espera, o seguinte compõe.
+        if !self.paint.wetpaint.session.assentou() {
+            self.paint.wetpaint.composite_pendente = true;
+            return;
+        }
         if self
             .paint
             .wetpaint

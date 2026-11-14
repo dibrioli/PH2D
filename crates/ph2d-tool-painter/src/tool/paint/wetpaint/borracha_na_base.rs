@@ -87,7 +87,7 @@ impl PainterTool {
             return;
         };
         if sess.base.len() != len {
-            self.paint.wetpaint.session = Some(sess);
+            self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
             return;
         }
         let plano = self.mede_o_escudo(dabs, r);
@@ -173,7 +173,7 @@ impl PainterTool {
         }
         self.paint.pilha.escudo = plano;
         self.paint.wetpaint.sulco = sulco;
-        self.paint.wetpaint.session = Some(sess);
+        self.paint.wetpaint.session = SessaoDoWet::aqui(sess);
         if let Some((esc, razao)) = relevo {
             self.relevo_segue_o_alfa(esc, &razao);
         }

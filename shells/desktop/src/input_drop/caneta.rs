@@ -27,10 +27,6 @@ impl crate::App {
                 Saida::Ponteiro(e) if e.kind == ph2d_host::PointerKind::Move => {
                     self.pointer_moved(e)
                 }
-                Saida::Ponteiro(e)
-                    if e.kind == ph2d_host::PointerKind::Down
-                        && e.button == B::Primary
-                        && self.faixa_unica_down(e.x, e.y, true) => {}
                 Saida::Ponteiro(e) => self.pointer_button(
                     e,
                     match e.button {

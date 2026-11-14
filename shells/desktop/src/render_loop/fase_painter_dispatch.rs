@@ -142,7 +142,7 @@ impl crate::App {
             &mut self.painter_redo_requested,
             toasts,
             self.held_button.is_some(),
-            self.pointer_inside,
+            ph2d_pen::porta::dentro(),
             crate::input_dispatch::fill_drag::fill_drag_armed(),
             // O funil de leitura desta shell: a família não conhece o `texture_edit`.
             // PRECISION-READONLY: o bind só lê; a escrita de volta é o Apply.

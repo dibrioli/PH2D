@@ -16,6 +16,7 @@ use crate::ponteiro::{Saida, Tinta};
 thread_local! {
     static TINTA: Cell<Tinta> = const { Cell::new(Tinta::RATO) };
     static EVENTO_NS: Cell<u128> = const { Cell::new(0) };
+    static DENTRO: Cell<bool> = const { Cell::new(true) };
 }
 
 // `None` = ainda não ligado; `Some(None)` = não há (X11, ou o compositor sem tablet-v2).
@@ -41,6 +42,18 @@ pub fn evento_ns() -> u128 {
 pub fn poe_tinta(evt: &PointerEvent) {
     TINTA.with(|t| t.set(Tinta::de(evt)));
     EVENTO_NS.with(|t| t.set(evt.timestamp_ns));
+}
+
+/// O ponteiro está sobre a janela: `false` depois de `CursorLeft` / foco perdido, `true` desde o
+/// movimento seguinte (o anel do pincel some fora da janela, AU-AU13-7).
+#[must_use]
+pub fn dentro() -> bool {
+    DENTRO.with(Cell::get)
+}
+
+/// O ponteiro entrou (`true`, a porta do movimento) ou saiu (`false`, a mão perdida) da janela.
+pub fn poe_dentro(dentro: bool) {
+    DENTRO.with(|d| d.set(dentro));
 }
 
 /// A caneta saiu ([`Saida::Saiu`]): o rato volta a mandar.

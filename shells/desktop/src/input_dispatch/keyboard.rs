@@ -49,6 +49,49 @@ impl App {
         self.key_input(physical_key, state, repeat, text);
     }
 
+    /// O chip que ensina o atalho (barra de menus) ouve a tecla que desce, sem a tomar.
+    fn ramo_chip_ouve_a_tecla(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        repeat: bool,
+    ) {
+        if state == ElementState::Pressed
+            && !repeat
+            && let PhysicalKey::Code(c) = physical_key
+            && let Some(k) = crate::keymap::winit_to_input_keycode(c)
+            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+        {
+            let m = Self::convert_modifiers(self.modifiers);
+            ph2d_editor_core::screens::hero::menu_teach::heard_key(h, ph2d_input::Key(k), m);
+        }
+    }
+
+    /// Os menus da faixa: `Alt` sozinho abre o «Menu»; aberto, as setas e o Enter são dele (`true` = tomou).
+    fn ramo_menus_da_faixa(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        repeat: bool,
+    ) -> bool {
+        let PhysicalKey::Code(code) = physical_key else {
+            return false;
+        };
+        let m = Self::convert_modifiers(self.modifiers);
+        self.gfx
+            .as_mut()
+            .and_then(|g| g.hero_screen.as_mut())
+            .is_some_and(|h| {
+                ph2d_editor_core::screens::hero::menu_cascade::shell_key(
+                    h,
+                    winit_to_editor_keycode(code),
+                    matches!(code, KeyCode::AltLeft | KeyCode::AltRight),
+                    (state == ElementState::Pressed, repeat),
+                    m,
+                )
+            })
+    }
+
     /// O caminho de teclado de verdade: roteamento, atalhos e forward pros widgets.
     pub(crate) fn key_input(
         &mut self,
@@ -69,15 +112,7 @@ impl App {
             self.diag_undo_chord("RECEBIDA pela janela");
         }
         // ⭐ O chip que ensina o atalho ouve TODA tecla que desce, antes de qualquer ramo a tomar.
-        if state == ElementState::Pressed
-            && !repeat
-            && let PhysicalKey::Code(c) = physical_key
-            && let Some(k) = crate::keymap::winit_to_input_keycode(c)
-            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
-        {
-            let m = Self::convert_modifiers(self.modifiers);
-            ph2d_editor_core::screens::hero::menu_teach::heard_key(h, ph2d_input::Key(k), m);
-        }
+        self.ramo_chip_ouve_a_tecla(physical_key, state, repeat);
         let keycode = match physical_key {
             PhysicalKey::Code(code) => code as u32,
             PhysicalKey::Unidentified(_) => 0,
@@ -136,16 +171,7 @@ impl App {
             return;
         }
         // ⭐ Os menus da faixa: `Alt` sozinho abre o «Menu»; aberto, as setas e o Enter são dele.
-        if let PhysicalKey::Code(code) = physical_key
-            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
-            && ph2d_editor_core::screens::hero::menu_cascade::shell_key(
-                h,
-                winit_to_editor_keycode(code),
-                matches!(code, KeyCode::AltLeft | KeyCode::AltRight),
-                (state == ElementState::Pressed, repeat),
-                Self::convert_modifiers(self.modifiers),
-            )
-        {
+        if self.ramo_menus_da_faixa(physical_key, state, repeat) {
             return;
         }
         // ⭐ **F9 — o chrome legado volta.** Porquê um interruptor: `crate::legacy_chrome`.

@@ -151,7 +151,7 @@ impl App {
     /// ⭐ A porta ÚNICA do movimento: o rato do winit e a caneta (`input_drop/caneta.rs`) acabam aqui.
     pub(crate) fn pointer_moved(&mut self, evt: PointerEvent) {
         ph2d_pen::porta::poe_tinta(&evt);
-        self.pointer_inside = true;
+        ph2d_pen::porta::poe_dentro(true);
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
@@ -350,6 +350,9 @@ impl App {
 
     /// ⭐ A porta ÚNICA do clique (ver [`Self::pointer_moved`]); `button` = o do winit.
     pub(crate) fn pointer_button(&mut self, evt: PointerEvent, button: MouseButton) {
+        if self.ramo_faixa_unica(evt, button) {
+            return;
+        }
         ph2d_pen::porta::poe_tinta(&evt);
         let (kind, mapped_button) = (evt.kind, evt.button);
         let state = match kind {

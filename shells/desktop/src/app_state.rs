@@ -405,8 +405,6 @@ pub(crate) struct App {
     /// middle/right identity for graph pan/box-select). `Some` between Down
     /// and Up; `None` when no button is held.
     pub(crate) held_button: Option<ph2d_host::PointerButton>,
-    /// `false` after `CursorLeft` / `Focused(false)`, `true` from the next move (AU-AU13-7).
-    pub(crate) pointer_inside: bool,
     /// `true` while the primary button is held with the BgRemoval
     /// eyedropper armed — drives multi-colour sampling on `CursorMoved`.
     /// Set on Primary Down (when over the sprite + armed), cleared on

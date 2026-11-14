@@ -18,16 +18,33 @@
 
 const SRC: &str = include_str!("../../src/input_dispatch/painter_canvas_input.rs");
 
-/// O corpo da entrega, do `fn` até a função irmã seguinte. Desde a W11 das macros o
-/// `deliver_canvas_pointer` embrulha `deliver_canvas_pointer_colordrop`, e é nesta que a entrega vive.
-fn deliver_body() -> &'static str {
+/// O corpo de uma função do ficheiro, do `fn` até a doc da função irmã seguinte.
+fn body_of(sig: &str) -> &'static str {
     let start = SRC
-        .find("pub(crate) fn deliver_canvas_pointer_colordrop(")
-        .expect("`deliver_canvas_pointer_colordrop` sumiu — se foi movida, mova este gate junto");
-    let end = SRC[start..].find("\n    /// ").map(|o| start + o).expect(
-        "o corpo de `deliver_canvas_pointer_colordrop` não termina numa doc de função irmã",
-    );
+        .find(sig)
+        .unwrap_or_else(|| panic!("`{sig}` sumiu — se foi movida, mova este gate junto"));
+    let end = SRC[start..]
+        .find("\n    /// ")
+        .map(|o| start + o)
+        .unwrap_or_else(|| panic!("o corpo de `{sig}` não termina numa doc de função irmã"));
     &SRC[start..end]
+}
+
+/// O corpo da entrega. Desde a B27.1 do Painter (a fila da caneta) a entrega vive em `entrega`, com
+/// `chega` = carimbar a chegada aqui; o Move enfileirado já foi carimbado no handler.
+fn deliver_body() -> &'static str {
+    body_of("fn entrega(")
+}
+
+/// A porta pública (`deliver_canvas_pointer_colordrop`) entrega com `chega = true`: sem isto o
+/// carimbo da entrega ficava mudo para todo evento que não passa pela fila.
+#[test]
+fn the_public_door_stamps_on_arrival() {
+    let door = body_of("pub(crate) fn deliver_canvas_pointer_colordrop(");
+    assert!(
+        door.contains("self.entrega(") && door.contains(", true)"),
+        "a porta pública não entrega com `chega = true`: o relógio cala-se fora da fila"
+    );
 }
 
 /// Controle positivo: o arquivo foi mesmo lido, e é o que este gate pensa que é.
@@ -56,7 +73,7 @@ fn the_gate_reads_the_delivery_it_claims_to_read() {
 fn the_pointer_clock_is_stamped_between_the_footprint_gate_and_the_delivery() {
     let body = deliver_body();
     let stamp = body
-        .find("paint_perf::stamp_pointer()")
+        .find("chega.then(ph2d_app_painter::paint_perf::stamp_pointer)")
         .expect("a entrega não carimba mais a chegada do evento — a frente L perdeu o instrumento");
     let refusal = body
         .find("if phase == PointerPhase::Down && !(in_x && in_y)")

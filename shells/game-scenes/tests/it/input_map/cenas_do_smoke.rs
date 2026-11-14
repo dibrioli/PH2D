@@ -24,13 +24,16 @@ fn id(m: &Mesa, n: &str) -> ph2d_input::ActionId {
 
 #[test]
 fn as_cenas_do_input_map_fecham_o_roteiro_pela_ordem() {
-    use ph2d_app_game::smoke::{CENAS as TODAS, input_map::ULTIMA, topdown};
+    use ph2d_app_game::smoke::{CENAS as TODAS, input_map::ULTIMA, projectile, topdown};
     assert_eq!(codigo(PRIMEIRA - 1), None);
     assert_eq!(codigo(PRIMEIRA), Some("A1"));
     assert_eq!(codigo(ULTIMA), CENAS.last().copied());
     assert_eq!(codigo(ULTIMA + 1), None);
-    // A aba fecha o seu trecho; o Top-Down Player vem logo a seguir e fecha o roteiro.
-    assert_eq!((topdown::CENA, TODAS), (ULTIMA + 1, ULTIMA + 1));
+    // A aba fecha o seu trecho; o Top-Down Player vem logo a seguir e o Projectile Motion fecha o roteiro.
+    assert_eq!(
+        (topdown::CENA, projectile::CENA, TODAS),
+        (ULTIMA + 1, ULTIMA + 2, ULTIMA + 2)
+    );
     assert!(arma(&mut Mesa::new(View::List).tab_mut().doc, "Z9").is_none());
 }
 

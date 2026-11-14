@@ -75,7 +75,14 @@ Projectile: cartão + sync do Target + teto de velocidade do Missile 13/13 · Ho
 
 ## 8. Fecho (bateria)
 
-PENDENTE — preenchido pela janela principal
+Corrida 1× sobre `4f46a3573c..aaa273dfaa` (13/11), sem suíte completa nem `nextest-impacted` (são do integrador):
+
+- ✓ `cargo fmt --all --check` · clippy `--workspace --all-targets -D warnings` (`PH2D_SUITE=fecho`) · `check-standalone-optional.sh` · `check-workflow-packages.sh` · `cargo machete` · `censos-da-arvore-combinada.sh` (135/135).
+- ✓ por nome: os 21 gates de arquitetura de `ph2d-editor-core` (shell só encolhe, tectos de LOC, CLAUDE.md no orçamento, §5.1 curto, memória, superfícies de contrato), `arch_safe_clamp_only`, `file_loc_caps` da shell, condutor do `ph2d-app-game`.
+- ✗→✓ `as_cenas_do_input_map_fecham_o_roteiro_pela_ordem` (`shells/game-scenes/tests/it/input_map/cenas_do_smoke.rs`): escrito quando o Top-Down fechava o roteiro (`1979ca5c5d`); com o Projectile (25) ficou velho. Agora afirma `(topdown, projectile, CENAS) = (ULTIMA+1, ULTIMA+2, ULTIMA+2)`; `jogo_nomes_do_smoke` verde (4).
+- `collision-surface.sh`: schemas iguais à base (`PROJECT_SCHEMA` 237, tripla 237/13/29), registos de componentes iguais (ecs 121), contratos congelados intocados, próximo ADR livre 0201; `Cargo.lock` +2 (`ph2d-game-smoke-fotos`, `ph2d-physics-smoke-jump`); nenhum marcador de conflito.
+- Não corrido: `cargo check --target aarch64-apple-darwin`.
+- `agent-loop-profile.sh`: paralelismo 1,13/passo (alvo ≥ 1,5 ✗) · test:check 2,7× (alvo ≤ 1 ✗) · edições sem conferir 1,8 % ✓ · contexto por passo 248 mil ✓ · início 67 mil ✓.
 
 ## 9. Smokes (comando inteiro)
 

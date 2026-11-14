@@ -583,7 +583,10 @@ fn o_ponto_sob_o_ponteiro_cresce_suave_pelo_relogio() {
         500.0 + CRESCE_MS / 2.0
     ));
     let a_mexer = ph2d_shape_handles::anima_pontos::a_mexer;
-    assert!(a_mexer(sim.world()), "B23.2: a crescer, o laço a pedido lê «a mexer»");
+    assert!(
+        a_mexer(sim.world()),
+        "B23.2: a crescer, o laço a pedido lê «a mexer»"
+    );
     assert!(
         !passo(sim.world_mut(), &cam(), WIN, canto, 500.0 + CRESCE_MS),
         "cresceu: pára"

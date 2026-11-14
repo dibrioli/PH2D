@@ -12,6 +12,11 @@
 # ou num nome continua acusada (isentá-la esconderia um `property`/`true`/`space` errado no repo).
 extend-ignore-re = [
     "(?:ph2d\\.|[\"'`}])(?:proprety|proeprty|ture|spcae)\\b",
+    # Integração 13/11 — a mesma regra (SÓ entre aspas/«», nunca solta): `"edtor"` é a ENTRADA do
+    # «Quis dizer «editor»?» do condutor do smoke do jogo; `"sav"` e `"Caf\u{e9}"` são consultas
+    # de PREFIXO e de acento da paleta de comandos (`lista_tests.rs`); `«Arrang»` é o rótulo
+    # cortado que um comentário da timeline cita (o defeito que a largura de folga curou).
+    "[\"«](?:edtor|sav|Caf|Arrang)\\b",
 ]
 extend-ignore-identifiers-re = [
     # ─────────────────────────────────────────────────────────────────────────
@@ -422,6 +427,12 @@ extend-ignore-identifiers-re = [
     # `Unser` — o apelido de Michael Unser (pré-filtro recursivo da B-spline cúbica, 1991), citado em
     # três comentários de `ph2d-wet-paint/src/oleo_vista.rs`. O typos lê `User`/`Under`.
     "^Unser$",
+    # `aprox` — pt «aproximação», o parâmetro da secagem aproximada nos testes de
+    # `ph2d-wet-paint/src/assenta/aproxima_tests.rs` (a `aprox` contra a exacta). O typos quer `approx`.
+    "^aprox$",
+    # `flate2` — o nome do crate (deflate), na saída de compilação gravada como medição da missão
+    # Painter 4K (`Compiling flate2 v…`). O typos parte-o e lê `flat`.
+    "^flate2$",
 ]
 
 [default.extend-identifiers]

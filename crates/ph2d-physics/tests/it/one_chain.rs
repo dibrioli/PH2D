@@ -138,8 +138,8 @@ fn run(b: &mut Bridge, ticks: usize) -> f32 {
     low
 }
 
-/// A caixa 200× mais pesada pousa na ponte e ela segura: em repouso a caixa fica a 1,30 m (tábua 1,05
-/// + meia caixa). Medido: corrente 1,283 (−2 cm), o mais baixo da tábua do meio +0,74; Pins de
+/// A caixa 200× mais pesada pousa na ponte e ela segura: em repouso a caixa fica a 1,30 m (tábua
+/// 1,05 mais meia caixa). Medido: corrente 1,283 (−2 cm), o mais baixo da tábua do meio +0,74; Pins de
 /// impulso 1,017 com a caixa escorregada; os mesmos Pins sem `one_chain` são o controlo.
 #[test]
 fn a_light_bridge_as_one_chain_holds_a_heavy_load() {
@@ -300,7 +300,7 @@ fn a_chain_born_crooked_keeps_its_pose() {
     );
     let tip = [p1[0] + 0.5 * s, p1[1] - 0.5 * c];
     let (s2, c2) = ((-0.4_f32).sin(), (-0.4_f32).cos());
-    let p2 = [tip[0] - 0.5 * s2 * -1.0, tip[1] - 0.5 * c2];
+    let p2 = [tip[0] + 0.5 * s2, tip[1] - 0.5 * c2];
     let l2 = body(
         &mut w,
         RigidBodyType::Dynamic,

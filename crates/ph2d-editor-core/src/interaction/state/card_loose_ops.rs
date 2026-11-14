@@ -303,7 +303,9 @@ impl WidgetStore {
     #[must_use]
     pub fn a_piscar(&self) -> bool {
         let solto = |c: &LooseCard| {
-            c.flash.is_some_and(|t| t.elapsed().as_secs_f64() < ph2d_card_stack::metrics::LOOSE_FLASH_S)
+            c.flash.is_some_and(|t| {
+                t.elapsed().as_secs_f64() < ph2d_card_stack::metrics::LOOSE_FLASH_S
+            })
         };
         self.flashing(true).is_some() || self.card_lists.loose.values().any(solto)
     }

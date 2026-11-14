@@ -179,7 +179,10 @@ fn cada_fase_do_quadro_marca_as_faltas() {
 fn o_chrome_que_anima_sozinho_pede_quadro() {
     let corpo = corpo_do_leitor();
     for p in [".a_ui_mexe()", "anima_pontos::a_mexer"] {
-        assert!(corpo.contains(p), "o `pede_o_quadro` não lê `{p}`: o chrome anda a 4 q/s");
+        assert!(
+            corpo.contains(p),
+            "o `pede_o_quadro` não lê `{p}`: o chrome anda a 4 q/s"
+        );
     }
 }
 
@@ -193,7 +196,10 @@ fn as_molas_e_o_piscar_do_chrome_pedem_quadro_ate_assentar() {
     assert!(!hero.a_ui_mexe(), "parado de fábrica não pede quadro");
     hero.motion.animate(NodeId(7), 0.0, Role::Surface);
     hero.motion.animate(NodeId(7), 1.0, Role::Surface);
-    assert!(hero.a_ui_mexe(), "a mola em voo tem de pedir o quadro seguinte");
+    assert!(
+        hero.a_ui_mexe(),
+        "a mola em voo tem de pedir o quadro seguinte"
+    );
     for _ in 0..600 {
         hero.motion.advance(1.0 / 60.0);
     }
@@ -202,5 +208,8 @@ fn as_molas_e_o_piscar_do_chrome_pedem_quadro_ate_assentar() {
     hero.store.flash(NodeId(9));
     assert!(hero.a_ui_mexe(), "o piscar do comando tem de pedir quadro");
     hero.store.note_clock(10_000_000_000);
-    assert!(!hero.a_ui_mexe(), "o piscar acabou (3 pulsos): o laço dorme");
+    assert!(
+        !hero.a_ui_mexe(),
+        "o piscar acabou (3 pulsos): o laço dorme"
+    );
 }

@@ -215,10 +215,10 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-game", 2_869), // 1_993 (12/11: as fotos e a mão do smoke saíram para `ph2d-game-smoke-fotos`); +776 (integ 13/11: `posse_do_jogo`, o registo e o `game_mouse` vieram da `ph2d-app-components`, que estava 29 acima do tecto)
     ("ph2d-app-input-map", 449), // 349 (InputMap R2a, 10/11: + `listen.rs`, a escuta do comando que saiu da shell)
     ("ph2d-app-joint-editor", 4_749), // 4_649 (recontado 13/11 após a W3f, `conta()` + `folga_da_crate`)
-    ("ph2d-app-kanban", 32_175), // 31_545
-    ("ph2d-app-light2d", 25_523), // 25_023
-    ("ph2d-app-macros", 14_630), // 14_344
-    ("ph2d-app-motion", 197_516), // 193_644
+    ("ph2d-app-kanban", 32_175),      // 31_545
+    ("ph2d-app-light2d", 25_523),     // 25_023
+    ("ph2d-app-macros", 14_630),      // 14_344
+    ("ph2d-app-motion", 197_516),     // 193_644
     ("ph2d-app-painter", 24_359), // 23_882 (integ 13/11: −724 do `CanvasMap` para a `ph2d-painter-canvas-map`; o tecto desce); 23_950
     ("ph2d-app-physics", 37_798), // 37_778 (GEF02 onda 8: a cena 48 saiu para `ph2d-physics-smoke-scenes`, 287 linhas com o tecto)
     ("ph2d-app-pixel", 11_278),   // 11_278 (P12a: as teclas pela tabela `ph2d-pixel-keys`)

@@ -21,8 +21,11 @@ mod edge_window;
 #[cfg(test)]
 mod evaporacao_base_tests;
 use edge_window::EdgeWindow;
+#[path = "drying/por_tile.rs"]
+pub mod por_tile;
 #[path = "drying/tinta.rs"]
 pub mod tinta;
+pub use por_tile::SecaPorTile;
 pub use tinta::{PASSOS_DA_CURA, cura};
 
 /// Staining extension: bidirectional lift multiplier, exactly 1 at 0.5.
@@ -325,11 +328,23 @@ pub(crate) fn dry_cell(
 /// caminho de referência do ADR-0134; quem o produto roda é o
 /// [`drying_pass_jacobi`].
 pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) {
+    drying_pass_por_tile(g, p, evap_base, rewet_base, ext_bypass, None);
+}
+
+/// [`drying_pass`] com a cadência por tile ([`SecaPorTile`], B13.4); `None` = tudo calmo, o de antes ao bit.
+pub fn drying_pass_por_tile(
+    g: &mut Grid,
+    p: &Params,
+    evap_base: f64,
+    rewet_base: f64,
+    ext_bypass: bool,
+    t: Option<&SecaPorTile<'_>>,
+) {
     match p.k(Knob::EdgeSoftMass) {
         k if k > 0.0 => {
-            dry_gs::<edge_window::EdgeWindowSoft>(g, p, evap_base, rewet_base, ext_bypass, k)
+            dry_gs::<edge_window::EdgeWindowSoft>(g, p, evap_base, rewet_base, ext_bypass, k, t)
         }
-        _ => dry_gs::<EdgeWindow>(g, p, evap_base, rewet_base, ext_bypass, 0.0),
+        _ => dry_gs::<EdgeWindow>(g, p, evap_base, rewet_base, ext_bypass, 0.0, t),
     }
 }
 
@@ -340,10 +355,12 @@ fn dry_gs<W: edge_window::EdgeGather>(
     rewet_base: f64,
     ext_bypass: bool,
     k: f64,
+    t: Option<&SecaPorTile<'_>>,
 ) {
     let s = g.s;
     let mut out = [0.0f64; 3];
     let c = DryConst::new(g, p, evap_base, rewet_base, ext_bypass);
+    let esc = por_tile::Escolha::new(t, g, p, ext_bypass);
     let pigmento = p.tinta == crate::sim::LeiDaTinta::Pigmento && !g.tinta.is_empty();
     for y in g.by0..=g.by1 {
         // Faixa viva: ela é publicada a partir de `film > 0 || susp > 0` — o
@@ -369,6 +386,10 @@ fn dry_gs<W: edge_window::EdgeGather>(
                 i += 1;
                 continue;
             }
+            let Some(c) = por_tile::escolhe(&c, esc.as_ref(), x as usize, y as usize) else {
+                i += 1;
+                continue;
+            };
             let count = win.frac();
             let mut film = g.film[i];
             let mut susp = g.susp[i];
@@ -376,7 +397,7 @@ fn dry_gs<W: edge_window::EdgeGather>(
             let mut srgb = g.susp_rgb[i];
             let mut trgb = g.sett_rgb[i];
             dry_cell(
-                &c,
+                c,
                 g.paper[i],
                 count,
                 g.vela[i],
@@ -514,6 +535,19 @@ pub fn drying_pass_jacobi_rows(
     ext_bypass: bool,
     mode: crate::par::Rows,
 ) {
+    drying_pass_jacobi_por_tile(g, p, evap_base, rewet_base, ext_bypass, mode, None);
+}
+
+/// [`drying_pass_jacobi_rows`] com a cadência por tile ([`SecaPorTile`], B13.4); `None` = o de antes ao bit.
+pub fn drying_pass_jacobi_por_tile(
+    g: &mut Grid,
+    p: &Params,
+    evap_base: f64,
+    rewet_base: f64,
+    ext_bypass: bool,
+    mode: crate::par::Rows,
+    t: Option<&SecaPorTile<'_>>,
+) {
     if g.by0 > g.by1 {
         return;
     }
@@ -522,12 +556,12 @@ pub fn drying_pass_jacobi_rows(
     if k > 0.0 {
         return edge_window::soft_plane(g, mode, k, |g, soft| {
             dry_jacobi::<edge_window::SoftPlane>(
-                g, p, evap_base, rewet_base, ext_bypass, mode, soft,
+                g, p, evap_base, rewet_base, ext_bypass, mode, soft, t,
             )
         });
     }
     edge_rows(g, mode);
-    dry_jacobi::<edge_window::HardPlane>(g, p, evap_base, rewet_base, ext_bypass, mode, &[]);
+    dry_jacobi::<edge_window::HardPlane>(g, p, evap_base, rewet_base, ext_bypass, mode, &[], t);
 }
 
 fn dry_jacobi<P: edge_window::EdgePlane>(
@@ -538,12 +572,15 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
     ext_bypass: bool,
     mode: crate::par::Rows,
     soft: &[f64],
+    t: Option<&SecaPorTile<'_>>,
 ) {
     let s = g.s;
     let c = DryConst::new(g, p, evap_base, rewet_base, ext_bypass);
+    let esc = por_tile::Escolha::new(t, g, p, ext_bypass);
     if p.tinta == crate::sim::LeiDaTinta::Pigmento && !g.tinta.is_empty() {
-        return tinta::dry_jacobi::<P>(g, &c, mode, soft);
+        return tinta::dry_jacobi::<P>(g, &c, esc.as_ref(), mode, soft);
     }
+    let esc = esc.as_ref();
     let (by0, by1) = (g.by0, g.by1);
     let Grid {
         scratch,
@@ -592,11 +629,14 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
                 if fr[x] <= 0.0 && sr[x] <= 0.0 {
                     continue;
                 }
+                let Some(c) = por_tile::escolhe(&c, esc, x, y as usize) else {
+                    continue;
+                };
                 let i = base + x;
                 let (mut a, mut b, mut d) = (fr[x], sr[x], tr[x]);
                 let (mut e, mut f) = (cr[x], dr[x]);
                 dry_cell(
-                    &c,
+                    c,
                     paper[i],
                     P::nb(edge, soft, i),
                     vela[i],

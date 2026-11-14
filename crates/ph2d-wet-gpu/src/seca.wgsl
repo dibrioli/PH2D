@@ -9,7 +9,7 @@ struct S {
     ext_stain: f32, evap_base: f32, rewet_base: f32, bypass: u32,
     filme: f32, esconde: f32, vela: f32, oleo: f32,
     s: u32, by0: u32, by1: u32, bx0: u32,
-    bx1: u32, cross: u32, _p1: u32, _p2: u32,
+    bx1: u32, cross: u32, evap_calmo: f32, rewet_calmo: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: S;
@@ -25,6 +25,13 @@ struct S {
 @group(0) @binding(9) var<storage, read> alfa: array<f32>;
 // x = lo, y = hi da faixa da linha (span_x_of)
 @group(0) @binding(10) var<storage, read> faixa: array<vec2<i32>>;
+// A cadência por tile 64×64 (B13.4, `drying::por_tile`): 0 salta · 1 o par calmo · 2 o par do chamador.
+// O 15 (e não o 11): o `seca_tinta.wgsl` vem colado a este e usa 11..14.
+@group(0) @binding(15) var<storage, read> modo: array<u32>;
+
+fn modo_da(i: u32) -> u32 {
+    return modo[((i / u.s) >> 6u) * ((u.s + 63u) / 64u) + ((i % u.s) >> 6u)];
+}
 
 const PIGMENT: f32 = 10.0;
 
@@ -218,6 +225,10 @@ fn seca(@builtin(global_invocation_id) gid: vec3<u32>) {
     let film0 = film[i];
     let s_mass = susp[i];
     if film0 <= 0.0 && s_mass <= 0.0 { return; }
+    let md = modo_da(i);
+    if md == 0u { return; }
+    let evb = select(u.evap_calmo, u.evap_base, md == 2u);
+    let rwb = select(u.rewet_calmo, u.rewet_base, md == 2u);
     var susp_c = s_mass;
     var sett_c = sett[i];
     var susp_rgb = ldx(i);
@@ -238,7 +249,7 @@ fn seca(@builtin(global_invocation_id) gid: vec3<u32>) {
     let f = film0;
     var borda = u.edge_dark;
     if ax.w >= 0.0 { borda = ax.w; }
-    var new_film = f * u.retention - u.evap_base * ((1.0 - ev) * borda + u.base_evap);
+    var new_film = f * u.retention - evb * ((1.0 - ev) * borda + u.base_evap);
     if new_film < 0.0001 { new_film = 0.0; }
     var lost = 1.0;
     if f > 0.0 { lost = 1.0 - clamp(new_film / f, 0.0, 1.0); }
@@ -260,7 +271,7 @@ fn seca(@builtin(global_invocation_id) gid: vec3<u32>) {
     let st = sett_c;
     if film_c > 0.0 && st > 0.0 {
         let excess = max(film_c - alpha_of_mass(susp_c), 0.0);
-        var b = u.rewet_base * (1.0 + excess * 50.0);
+        var b = rwb * (1.0 + excess * 50.0);
         if u.bypass == 0u {
             let sm = select((1.0 - u.ext_stain) * 2.0, 1.0 + (0.5 - u.ext_stain) * 14.0, u.ext_stain < 0.5);
             b = b * sm;

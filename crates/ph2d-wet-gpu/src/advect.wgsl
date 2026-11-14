@@ -620,11 +620,14 @@ fn re_caixa() {
 }
 
 // O `vmax` da advecção (`prepare`): máx |u| por componente nas células ativas da caixa. f32 ≥ 0 ordena
-// como i32 pelos bits ⇒ `atomicMax` sobre `caixa[15]` (zerado pela CPU antes do plano).
+// como i32 pelos bits ⇒ `atomicMax` sobre `caixa[15]` e `caixa[16 + tile]` (zerados pela CPU antes do plano).
 @compute @workgroup_size(16, 16, 1)
 fn vmax_red(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = cell(g);
     if !c.ok || act[c.i] == 0u { return; }
     let v = uv[c.i];
-    atomicMax(&caixa[15], bitcast<i32>(max(abs(v.x), abs(v.y))));
+    let b = bitcast<i32>(max(abs(v.x), abs(v.y)));
+    atomicMax(&caixa[15], b);
+    // O leque por tile 64×64 (B13.4, `drying::por_tile::vmax_por_tile`): `caixa[16 + tile]`.
+    atomicMax(&caixa[16 + (c.y >> 6u) * ((u.s + 63) / 64) + (c.x >> 6u)], b);
 }

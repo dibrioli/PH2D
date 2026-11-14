@@ -31,7 +31,9 @@ pub struct SecaU {
     pub bx1: u32,
     /// `1` = `entre_perfis` pelo produto vectorial (Lagrange); `0` = a conta literal.
     pub cross: u32,
-    pub _p: [u32; 2],
+    /// O par do tile calmo (B13.4, o `modo` 1); o `evap_base`/`rewet_base` é o do chamador (o `modo` 2).
+    pub evap_calmo: f32,
+    pub rewet_calmo: f32,
 }
 
 impl SecaU {
@@ -76,7 +78,8 @@ impl SecaU {
             bx0: g.bx0.max(0) as u32,
             bx1: g.bx1.max(0) as u32,
             cross: 1,
-            _p: [0; 2],
+            evap_calmo: evap_base as f32,
+            rewet_calmo: rewet_base as f32,
         }
     }
 }
@@ -96,6 +99,9 @@ pub struct SecaGpu {
     edge: wgpu::Buffer,
     alfa: wgpu::Buffer,
     faixa: wgpu::Buffer,
+    /// A cadência por tile 64×64 (`seca.wgsl` binding 15): 0 salta · 1 calmo · 2 o par do chamador.
+    modo: wgpu::Buffer,
+    modo_atual: Vec<u32>,
     pipes: [(wgpu::ComputePipeline, wgpu::BindGroup); 2],
     u: SecaU,
     cells: usize,
@@ -131,6 +137,11 @@ impl SecaGpu {
         let edge = buf(gpu, "seca edge", n * 4);
         let alfa = buf(gpu, "seca alfa", 3001 * 4);
         let faixa = buf(gpu, "seca faixa", g.rows as u64 * 8);
+        let (tx, ty) = ph2d_wet_paint::drying::por_tile::tiles_da_grade(g);
+        let modo = buf(gpu, "seca modo", (tx * ty) as u64 * 4);
+        let modo_atual = vec![2u32; tx * ty];
+        gpu.queue
+            .write_buffer(&modo, 0, bytemuck::cast_slice(&modo_atual));
         let tab: Vec<f32> = (0..=3000)
             .map(|i| ph2d_wet_paint::opacity::table_at(i) as f32)
             .collect();
@@ -141,7 +152,7 @@ impl SecaGpu {
                 label: Some("seca.wgsl"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("seca.wgsl").into()),
             });
-        let all: [(u32, &wgpu::Buffer); 11] = [
+        let all: [(u32, &wgpu::Buffer); 12] = [
             (0, &ub),
             (1, &film),
             (2, &susp),
@@ -153,6 +164,7 @@ impl SecaGpu {
             (8, &edge),
             (9, &alfa),
             (10, &faixa),
+            (15, &modo),
         ];
         let mk = |entry: &str, usa: &[u32]| {
             let pipe = gpu
@@ -182,7 +194,7 @@ impl SecaGpu {
         };
         let pipes = [
             mk("borda", &[0, 2, 8, 10]),
-            mk("seca", &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            mk("seca", &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15]),
         ];
         let s = SecaGpu {
             ub,
@@ -196,6 +208,8 @@ impl SecaGpu {
             edge,
             alfa,
             faixa,
+            modo,
+            modo_atual,
             pipes,
             u,
             cells: g.cells,
@@ -222,7 +236,7 @@ impl SecaGpu {
                 compilation_options: Default::default(),
                 cache: None,
             });
-        let buffers: [(u32, &wgpu::Buffer); 15] = [
+        let buffers: [(u32, &wgpu::Buffer); 16] = [
             (0, &self.ub),
             (1, &self.film),
             (2, &self.susp),
@@ -238,6 +252,7 @@ impl SecaGpu {
             (12, &t.aberto),
             (13, &t.abertura),
             (14, &t.meio),
+            (15, &self.modo),
         ];
         let entries: Vec<wgpu::BindGroupEntry> = buffers
             .iter()
@@ -306,6 +321,32 @@ impl SecaGpu {
             })
             .collect();
         w(&self.aux, bytemuck::cast_slice(&aux), 16);
+    }
+
+    /// A cadência por tile do passe (B13.4): `None` = todo tile com o par do chamador (o de antes, ao bit); senão o
+    /// tile a correr usa o do chamador, o calmo o seu par quando `calmo_seca`, e salta nos outros passes.
+    /// Devolve a `u` com o par calmo; só sobe o mapa quando muda.
+    pub fn set_modo(
+        &mut self,
+        gpu: &GpuContext,
+        mut u: SecaU,
+        t: Option<&ph2d_wet_paint::drying::SecaPorTile<'_>>,
+    ) -> SecaU {
+        let novo: Vec<u32> = match t {
+            Some(t) if t.corre.len() == self.modo_atual.len() => {
+                u.evap_calmo = t.evap_calmo as f32;
+                u.rewet_calmo = t.rewet_calmo as f32;
+                let calmo = u32::from(t.calmo_seca);
+                t.corre.iter().map(|&c| if c { 2 } else { calmo }).collect()
+            }
+            _ => vec![2; self.modo_atual.len()],
+        };
+        if novo != self.modo_atual {
+            gpu.queue
+                .write_buffer(&self.modo, 0, bytemuck::cast_slice(&novo));
+            self.modo_atual = novo;
+        }
+        u
     }
 
     pub fn set_u(&mut self, gpu: &GpuContext, u: SecaU) {

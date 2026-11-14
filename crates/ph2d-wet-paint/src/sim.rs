@@ -169,6 +169,9 @@ pub struct Sim {
     pub dry_every: u64,
     pub evap_scale: f64,
     pub rewet_base: f64,
+    /// **A cadência da secagem por tile 64×64** (B13.4, [`crate::drying::por_tile`]): `true` = o tile corre (seca
+    /// com `evap_scale`/`rewet_base` a cada `dry_every`), `false` = calmo (o par calmo a cada 6). Vazio = tudo calmo.
+    pub corre_tile: Vec<bool>,
     // Gravity: the tilt dial provides direction + magnitude; boots ON
     // pointing straight down at the gravity knob's magnitude.
     pub tilt_on: bool,
@@ -298,6 +301,8 @@ pub struct StepCursor {
     stage: u8,
     /// O `vmax` que o `advect` devolveu — o estágio final o converte em cadência de secagem.
     vmax: f64,
+    /// O mapa «corre?» por tile deste advect ([`Sim::corre_tile`] dos passos seguintes).
+    corre: Vec<bool>,
 }
 
 impl Default for Sim {
@@ -307,6 +312,7 @@ impl Default for Sim {
             dry_every: 6,
             evap_scale: 0.001,
             rewet_base: 0.0001,
+            corre_tile: Vec::new(),
             tilt_on: true,
             tilt_dir_x: 0.0,
             tilt_dir_y: 1.0,
@@ -341,6 +347,40 @@ impl Default for Sim {
 }
 
 impl Sim {
+    /// A cadência da secagem dos passos seguintes, do `vmax` do advect e do mapa por tile (B13.4): a porta global
+    /// é 3 se algum tile corre, senão 6; o par lento é o do tile a correr.
+    pub fn cadencia(&mut self, vmax: f64, corre: Vec<bool>) {
+        if vmax < crate::drying::por_tile::VMAX_CORRE {
+            self.dry_every = crate::drying::por_tile::CADENCIA_CALMA;
+            self.evap_scale = crate::drying::por_tile::EVAP_CALMO;
+            self.rewet_base = crate::drying::por_tile::REWET_CALMO;
+        } else {
+            self.dry_every = 3;
+            self.evap_scale = 0.00025;
+            self.rewet_base = 0.000025;
+        }
+        self.corre_tile = corre;
+    }
+
+    /// O mapa por tile do passe de secagem `n` sobre `g`; `None` = tudo calmo (ou o mapa é de outra grade).
+    pub fn seca_por_tile(
+        &self,
+        g: &Grid,
+        p: &Params,
+        n: u64,
+    ) -> Option<crate::drying::SecaPorTile<'_>> {
+        let (nx, ny) = crate::drying::por_tile::tiles_da_grade(g);
+        (!self.corre_tile.is_empty() && self.corre_tile.len() == nx * ny).then(|| {
+            crate::drying::SecaPorTile {
+                corre: &self.corre_tile,
+                nx,
+                calmo_seca: n.is_multiple_of(crate::drying::por_tile::CADENCIA_CALMA),
+                evap_calmo: crate::drying::por_tile::EVAP_CALMO * p.k(Knob::Evaporation),
+                rewet_calmo: crate::drying::por_tile::REWET_CALMO * p.k(Knob::Rewet),
+            }
+        })
+    }
+
     /// Troca a lei da tinta em execução (o preset não a toca). Os campos da lei nova nascem no próximo passo.
     pub fn set_tinta(&mut self, lei: LeiDaTinta) {
         self.tinta = lei;
@@ -512,6 +552,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 n: sim.frame,
                 stage: 0,
                 vmax: 0.0,
+                corre: Vec::new(),
             }
         }
     };
@@ -534,10 +575,30 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                     sim.evap_scale * c.p.k(Knob::Evaporation),
                     sim.rewet_base * c.p.k(Knob::Rewet),
                 );
+                let t = sim.seca_por_tile(g, &c.p, n);
                 if sim.order_invariant {
-                    crate::drying::drying_pass_jacobi(g, &c.p, evap, rewet, sim.ext_bypass);
+                    let rows = (g.by1 - g.by0 + 1).max(0) as usize;
+                    let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
+                    let mode =
+                        crate::par::Rows::pick_medido(rows, span, crate::par::MIN_CELLS_DRYING);
+                    crate::drying::drying_pass_jacobi_por_tile(
+                        g,
+                        &c.p,
+                        evap,
+                        rewet,
+                        sim.ext_bypass,
+                        mode,
+                        t.as_ref(),
+                    );
                 } else {
-                    drying_pass(g, &c.p, evap, rewet, sim.ext_bypass);
+                    crate::drying::drying_pass_por_tile(
+                        g,
+                        &c.p,
+                        evap,
+                        rewet,
+                        sim.ext_bypass,
+                        t.as_ref(),
+                    );
                 }
             }
             if c.p.tinta == LeiDaTinta::Pigmento && n.is_multiple_of(crate::drying::PASSOS_DA_CURA)
@@ -579,6 +640,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 let a = c.p.sedimenta * (gx * gx + gy * gy).sqrt();
                 crate::solver::sedimenta(g, a, gx, gy, c.p.km_mixing);
             }
+            c.corre = crate::drying::por_tile::corre_por_tile(g, c.vmax);
             crate::estreito::arredonda(g);
         }
         4 => {
@@ -596,15 +658,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             // Adaptive drying cadence for the NEXT frames, from this advection's max
             // velocity component: calm water dries faster per pass, flowing water is
             // dried gently but often.
-            if c.vmax < 0.5 {
-                sim.dry_every = 6;
-                sim.evap_scale = 0.001;
-                sim.rewet_base = 0.0001;
-            } else {
-                sim.dry_every = 3;
-                sim.evap_scale = 0.00025;
-                sim.rewet_base = 0.000025;
-            }
+            sim.cadencia(c.vmax, std::mem::take(&mut c.corre));
             crate::estreito::arredonda(g);
             crate::grid::sono::conta(g);
             return Some(true);
@@ -642,12 +696,14 @@ fn sim_step_atomic_reference(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bo
         }
     }
     if n.is_multiple_of(sim.dry_every) {
-        drying_pass(
+        let t = sim.seca_por_tile(g, &p, n);
+        crate::drying::drying_pass_por_tile(
             g,
             &p,
             sim.evap_scale * p.k(Knob::Evaporation),
             sim.rewet_base * p.k(Knob::Rewet),
             sim.ext_bypass,
+            t.as_ref(),
         );
     }
     if n.is_multiple_of(4) {
@@ -659,20 +715,13 @@ fn sim_step_atomic_reference(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bo
         }
     }
     let vmax = advect(g, &p, grav[0], grav[1]);
+    let corre = crate::drying::por_tile::corre_por_tile(g, vmax);
     apply_boundaries(g, false);
     if n.is_multiple_of(3) {
         project(g, &p);
         apply_boundaries(g, true);
     }
-    if vmax < 0.5 {
-        sim.dry_every = 6;
-        sim.evap_scale = 0.001;
-        sim.rewet_base = 0.0001;
-    } else {
-        sim.dry_every = 3;
-        sim.evap_scale = 0.00025;
-        sim.rewet_base = 0.000025;
-    }
+    sim.cadencia(vmax, corre);
     true
 }
 

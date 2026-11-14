@@ -18,6 +18,7 @@ mod a_opacidade_do_dab;
 mod a_pena_fala_em_px;
 mod acceptance;
 mod acceptance_budget;
+mod as_pocas_secam_sozinhas;
 mod cor_por_celula;
 mod deposit_rows;
 mod fingerprint;

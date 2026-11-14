@@ -96,6 +96,7 @@ pub(crate) fn levanta(
 pub(super) fn dry_jacobi<P: EdgePlane>(
     g: &mut Grid,
     c: &DryConst,
+    esc: Option<&super::por_tile::Escolha<'_>>,
     mode: crate::par::Rows,
     soft: &[f64],
 ) {
@@ -149,6 +150,9 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
             if fr[x] <= 0.0 && sr[x] <= 0.0 {
                 continue;
             }
+            let Some(c) = super::por_tile::escolhe(c, esc, x, y as usize) else {
+                continue;
+            };
             let i = base + x;
             dry_cell(
                 c,

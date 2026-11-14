@@ -309,8 +309,10 @@ pub struct AdvectGpu {
     pub wet: wgpu::Buffer,
     pub sett: wgpu::Buffer,
     pub kb: wgpu::Buffer,
-    /// A caixa do rebuild (16 × i32, ver o WGSL).
+    /// A caixa do rebuild (16 × i32, ver o WGSL) e, depois, o leque do `vmax` por tile 64×64 (B13.4).
     pub caixa: wgpu::Buffer,
+    /// Os tiles do leque (`caixa[16..16 + leque]`, [`ph2d_wet_paint::drying::por_tile::tiles_da_grade`]).
+    pub leque: usize,
     pub pipes: Vec<wgpu::ComputePipeline>,
     pub groups: Vec<wgpu::BindGroup>,
     _scratch: Vec<wgpu::Buffer>,
@@ -361,7 +363,9 @@ impl AdvectGpu {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let caixa = storage(gpu, "wet-gpu caixa", 64);
+        let (tx, ty) = ph2d_wet_paint::drying::por_tile::tiles_da_grade(g);
+        let leque = tx * ty;
+        let caixa = storage(gpu, "wet-gpu caixa", 64 + 4 * leque as u64);
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -463,6 +467,7 @@ impl AdvectGpu {
             sett,
             kb,
             caixa,
+            leque,
             pipes,
             groups,
             _scratch: vec![uv, outflow, dst, drgb],
@@ -594,10 +599,10 @@ impl AdvectGpu {
         (c[10], c[11], c[12], c[13], c[14] != 0)
     }
 
-    /// Zera o `vmax` da placa (`caixa[15]`) antes de um plano que acaba em [`PLANO_VMAX`].
+    /// Zera o `vmax` da placa (`caixa[15]`) e o leque por tile antes de um plano que acaba em [`PLANO_VMAX`].
     pub fn zera_vmax(&self, gpu: &GpuContext) {
-        gpu.queue
-            .write_buffer(&self.caixa, 60, bytemuck::bytes_of(&0i32));
+        let z = vec![0u8; 4 * (1 + self.leque)];
+        gpu.queue.write_buffer(&self.caixa, 60, &z);
     }
 
     /// O `vmax` reduzido por [`PLANO_VMAX`]: máx |u| por componente nas células ativas da caixa (4 B lidos).

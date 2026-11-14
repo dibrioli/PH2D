@@ -71,8 +71,11 @@ pub struct PassoPlaca {
     porta_bg: wgpu::BindGroup,
     base: wgpu::Buffer,
     args: wgpu::Buffer,
-    /// 64 B mapeáveis: a caixa e o `vmax` lidos numa só cópia no fim do passo.
+    /// Mapeável: a caixa, o `vmax` e o leque por tile ([`Self::lq`] B) lidos numa só cópia no fim do passo, e os
+    /// carimbos a partir do deslocamento `lq`.
     stage: wgpu::Buffer,
+    /// Os bytes da caixa + leque no `stage`, arredondados a 8 (os carimbos são `u64`).
+    lq: u64,
     adv: AdvectGpu,
     seca: SecaGpu,
     /// A lei `Pigmento`: os seus buffers; `None` = a lei velha, passada a passada.
@@ -165,7 +168,8 @@ impl PassoPlaca {
         let base = buf("wet-gpu porta base", n_args, B::STORAGE | B::COPY_DST);
         let args = buf("wet-gpu porta args", n_args, B::STORAGE | B::INDIRECT);
         let n_ts = u64::from(MAX_CARIMBOS) * 8;
-        let stage = buf("wet-gpu caixa stage", 64 + n_ts, B::COPY_DST | B::MAP_READ);
+        let lq = (64 + 4 * adv.leque as u64).next_multiple_of(8);
+        let stage = buf("wet-gpu caixa stage", lq + n_ts, B::COPY_DST | B::MAP_READ);
         let qs = gpu
             .device
             .features()
@@ -221,6 +225,7 @@ impl PassoPlaca {
             base,
             args,
             stage,
+            lq,
             adv,
             seca,
             tinta,
@@ -441,7 +446,7 @@ impl PassoPlaca {
             f.enc
                 .copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
             f.corta();
-            let (c, _) = self.le_stage(gpu, 0);
+            let (c, _, _) = self.le_stage(gpu, 0, false);
             (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
             self.suja_junta(g);
             if !g.has_fluid {
@@ -451,7 +456,10 @@ impl PassoPlaca {
         if seca {
             let evap = sim.evap_scale * p.k(Knob::Evaporation);
             let rewet = sim.rewet_base * p.k(Knob::Rewet);
-            self.seca_na_placa(&mut f, g, SecaU::new(g, &p, evap, rewet, sim.ext_bypass));
+            let t = sim.seca_por_tile(g, &p, n);
+            let u = SecaU::new(g, &p, evap, rewet, sim.ext_bypass);
+            let u = self.seca.set_modo(gpu, u, t.as_ref());
+            self.seca_na_placa(&mut f, g, u);
         }
         if porta {
             f.passada(&self.porta, &self.porta_bg, Despacho::Direto(1, 1), 1);
@@ -467,20 +475,21 @@ impl PassoPlaca {
                 f.passada(pipe, bg, Despacho::Direto(c, r), custo(c, r));
             }
         }
+        let lc = 64 + 4 * self.adv.leque as u64;
         f.enc
-            .copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
+            .copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, lc);
         let nq = f.q;
         if let Some((qs, res)) = &self.qs
             && nq > 0
         {
             f.enc.resolve_query_set(qs, 0..nq, res, 0);
             f.enc
-                .copy_buffer_to_buffer(res, 0, &self.stage, 64, u64::from(nq) * 8);
+                .copy_buffer_to_buffer(res, 0, &self.stage, self.lq, u64::from(nq) * 8);
         }
         f.corta();
         let cortes = std::mem::take(&mut f.cortes);
         drop(f);
-        let (c, ts) = self.le_stage(gpu, nq);
+        let (c, ts, leque) = self.le_stage(gpu, nq, true);
         self.carimba(&ts, &cortes, gpu);
         // O fecho da cura é da CPU (a óptica da camada fina): raro, e só quando a placa contou alguém para fechar.
         let mut fecha = false;
@@ -504,15 +513,16 @@ impl PassoPlaca {
                 return false;
             }
         }
-        if f32::from_bits(c[15] as u32) < 0.5 {
-            sim.dry_every = 6;
-            sim.evap_scale = 0.001;
-            sim.rewet_base = 0.0001;
+        // A cadência dos passos seguintes, global e por tile (B13.4): o `Sim::cadencia` da CPU com o leque da placa.
+        use ph2d_wet_paint::drying::por_tile::VMAX_CORRE;
+        let vmax = f64::from(f32::from_bits(c[15] as u32));
+        let corre = if vmax < VMAX_CORRE {
+            Vec::new()
         } else {
-            sim.dry_every = 3;
-            sim.evap_scale = 0.00025;
-            sim.rewet_base = 0.000025;
-        }
+            let t = |b: &i32| f64::from(f32::from_bits(*b as u32)) >= VMAX_CORRE;
+            leque.iter().map(t).collect()
+        };
+        sim.cadencia(vmax, corre);
         true
     }
 
@@ -556,8 +566,9 @@ impl PassoPlaca {
         self.teto_ms = teto_ms;
     }
 
-    /// A espera: mapeia os 64 B que o submit copiou para `stage` (caixa 10..14, `vmax` 15) e os `nq` carimbos.
-    fn le_stage(&self, gpu: &GpuContext, nq: u32) -> ([i32; 16], Vec<u64>) {
+    /// A espera: mapeia o que o submit copiou para `stage` (caixa 10..14, `vmax` 15, o leque se `com_leque`) e os
+    /// `nq` carimbos.
+    fn le_stage(&self, gpu: &GpuContext, nq: u32, com_leque: bool) -> ([i32; 16], Vec<u64>, Vec<i32>) {
         let sl = self.stage.slice(..);
         sl.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -565,8 +576,14 @@ impl PassoPlaca {
             let d = sl.get_mapped_range().expect("mapped range");
             let mut c = [0i32; 16];
             c.copy_from_slice(bytemuck::cast_slice(&d[..64]));
-            let ts: Vec<u64> = bytemuck::cast_slice(&d[64..64 + nq as usize * 8]).to_vec();
-            (c, ts)
+            let lq = self.lq as usize;
+            let ts: Vec<u64> = bytemuck::cast_slice(&d[lq..lq + nq as usize * 8]).to_vec();
+            let leque: Vec<i32> = if com_leque {
+                bytemuck::cast_slice(&d[64..64 + 4 * self.adv.leque]).to_vec()
+            } else {
+                Vec::new()
+            };
+            (c, ts, leque)
         };
         self.stage.unmap();
         r

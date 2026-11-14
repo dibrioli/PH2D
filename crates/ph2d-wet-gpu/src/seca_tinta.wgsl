@@ -42,6 +42,10 @@ fn seca_tinta(@builtin(global_invocation_id) gid: vec3<u32>) {
     let film0 = film[i];
     let s_mass = susp[i];
     if film0 <= 0.0 && s_mass <= 0.0 { return; }
+    let md = modo_da(i);
+    if md == 0u { return; }
+    let evb = select(u.evap_calmo, u.evap_base, md == 2u);
+    let rwb = select(u.rewet_calmo, u.rewet_base, md == 2u);
     var susp_c = s_mass;
     var sett_c = sett[i];
     var susp_rgb = ldx(i);
@@ -70,7 +74,7 @@ fn seca_tinta(@builtin(global_invocation_id) gid: vec3<u32>) {
     let f = film0;
     var borda = u.edge_dark;
     if aux[i].w >= 0.0 { borda = aux[i].w; }
-    var new_film = f * reten - u.evap_base * ((1.0 - ev) * borda + u.base_evap) * evapora;
+    var new_film = f * reten - evb * ((1.0 - ev) * borda + u.base_evap) * evapora;
     if new_film < 0.0001 { new_film = 0.0; }
     var lost = 1.0;
     if f > 0.0 { lost = 1.0 - clamp(new_film / f, 0.0, 1.0); }
@@ -102,7 +106,7 @@ fn seca_tinta(@builtin(global_invocation_id) gid: vec3<u32>) {
     let st_m = sett_c;
     if film_c > 0.0 && st_m > 0.0 {
         let excess = max(film_c - alpha_of_mass(susp_c), 0.0);
-        var b = u.rewet_base * (1.0 + excess * 50.0);
+        var b = rwb * (1.0 + excess * 50.0);
         if u.bypass == 0u {
             let sm = select((1.0 - u.ext_stain) * 2.0, 1.0 + (0.5 - u.ext_stain) * 14.0, u.ext_stain < 0.5);
             b = b * sm;

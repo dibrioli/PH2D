@@ -78,7 +78,11 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica, linhas: &mut Vec<u8>) -> (Box
     };
     // Sem Óleo Real (o grão do papel é da ferramenta). Os RGBA compõem-se depois de TODAS as faixas: o laço lê a
     // vizinhança da caixa, e a tela, quando os copia, já colou as faixas todas.
-    let pixel = t.pixel.filter(|_| oleo.is_none());
+    // `PH2D_OTICA_COMPOSITOR_SMOOTH=0`: os filtros de antes do B11.3 (razão 1, sem suave/sombra), só para o A×B.
+    let suave_ok = crate::wet_diag::otica_rgba_suave();
+    let pixel = t
+        .pixel
+        .filter(|_| oleo.is_none() && (suave_ok || forma.ratio == 1));
     for f in faixas {
         if let Some(tr) = entrada.trabalho.as_mut() {
             tr.caixa = f;
@@ -97,7 +101,8 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica, linhas: &mut Vec<u8>) -> (Box
     let caixas = caixas
         .into_iter()
         .map(|mut cx: CaixasDaImagem| {
-            if let Some(e) = pixel.as_ref() {
+            let antigo = !suave_ok && !(planos.suave.is_empty() && planos.sombra.is_empty());
+            if let Some(e) = pixel.as_ref().filter(|_| !antigo) {
                 let c = CaixasDaOtica {
                     caixa_cel: cx.caixa_cel,
                     caixa_px: cx.caixa_px,

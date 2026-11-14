@@ -128,6 +128,28 @@ pub fn set_otica_fora(on: bool) {
     OTICA_FORA.store(u8::from(on), Ordering::Relaxed);
 }
 
+/// `2` = ainda por ler do ambiente.
+static OTICA_RGBA_SUAVE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
+
+/// **O compositor devolve os RGBA com Smooth Edges e razão > 1?** (B11.3) Ligado por omissão;
+/// `PH2D_OTICA_COMPOSITOR_SMOOTH=0` volta aos filtros antigos (razão 1, sem suave/sombra) para o A×B no mesmo processo.
+pub fn otica_rgba_suave() -> bool {
+    match OTICA_RGBA_SUAVE.load(Ordering::Relaxed) {
+        2 => {
+            let on =
+                std::env::var("PH2D_OTICA_COMPOSITOR_SMOOTH").map_or(true, |v| v.trim() != "0");
+            OTICA_RGBA_SUAVE.store(u8::from(on), Ordering::Relaxed);
+            on
+        }
+        v => v == 1,
+    }
+}
+
+/// A variante em execução de [`otica_rgba_suave`] (lida por imagem no fio do compositor).
+pub fn set_otica_rgba_suave(on: bool) {
+    OTICA_RGBA_SUAVE.store(u8::from(on), Ordering::Relaxed);
+}
+
 // ---------------------------------------------------------------------------
 // A metade do WORKER — os três baldes que particionam a janela dele
 // ---------------------------------------------------------------------------

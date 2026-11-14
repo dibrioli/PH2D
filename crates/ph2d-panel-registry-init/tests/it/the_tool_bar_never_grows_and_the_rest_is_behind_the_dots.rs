@@ -91,11 +91,7 @@ fn the_tool_bar_is_one_line_on_every_tablet() {
                 false,
                 area_w,
             );
-            let lines = ph2d_editor_core::widget::horizontal_lines(
-                &fits,
-                area_w - 16.0,
-                RailButtonSize::Small,
-            );
+            let lines = tool_bar::bar_lines(&fits, area_w, RailButtonSize::Small);
             println!(
                 "{name:11} pincel={painter:5} cabem={:2} transbordam={:2} linhas={lines}",
                 fits.entries.len(),

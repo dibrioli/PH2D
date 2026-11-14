@@ -177,6 +177,17 @@ pub fn fila_fina(rail: &ToolRail) -> bool {
     crate::widget::lista_flutuante::cromo_em_cartoes() && crate::widget::cabe_na_fila_fina(rail)
 }
 
+/// Em quantas linhas a fila `rail` se pinta numa área de `area_w` — pela régua que o [`bar_split`]
+/// usa: a da fila fina quando ela é fina, a do trilho largo senão. Os portões do tablet perguntam AQUI
+/// (com só a do trilho largo, a fila fina da onda 6 media 2 linhas onde se pinta numa).
+#[must_use]
+pub fn bar_lines(rail: &ToolRail, area_w: f32, size: crate::widget::RailButtonSize) -> usize {
+    if fila_fina(rail) {
+        return if crate::widget::fila_fina_cabe(rail, area_w) { 1 } else { 2 };
+    }
+    crate::widget::horizontal_lines(rail, (area_w - Spacing::Xs.px() * 2.0).max(0.0), size)
+}
+
 /// O transbordo da fila fina: a mesma pergunta (*a fila com esta entrada e o `⋯` cabe?*), pela porta
 /// da fila fina ([`crate::widget::fila_fina_cabe`]).
 fn bar_split_fina(rail: ToolRail, area_w: f32) -> (ToolRail, Vec<crate::widget::ToolRailEntry>) {

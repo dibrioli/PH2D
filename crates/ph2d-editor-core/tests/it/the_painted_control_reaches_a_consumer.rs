@@ -135,13 +135,11 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
     // ⚠️ **E VOLTOU em 2026-10-05 (`line/poda-3d`, ADR-0179):** o gizmo de navegação era 3D e saiu
     // com o módulo — e com ele o `CHROME_BACKDROPS`, o único consumidor POSITIVO. O que fica é o
     // efeito de 08/30, por AUSÊNCIA, e a prova dele é outro gate.
-    (
-        "MENUBAR_BACKDROP",
-        "TERMINA POR AUSENCIA: o efeito de o registar e' ENGOLIR o clique sobre a barra de menus \
-         (sem ele 86,9 % da barra deixava o ponteiro passar para a arte). Provado por \
-         `both_bars_swallow_every_pixel_they_paint`, que sangra se o `hit_index.register` sair. O \
-         consumidor positivo (o gizmo 3D, via `CHROME_BACKDROPS`) saiu com o 3D (ADR-0179).",
-    ),
+    //
+    // ⭐ **E SAIU de vez em 2026-11-13 (`line/BarraDeMenus`, onda 4, a faixa única):** o fundo da faixa
+    // é onde se ARRASTA a janela e o duplo clique maximiza — `interaction/state/window_frame.rs`
+    // pergunta `hit == Some(ids::MENUBAR_BACKDROP)` e `screens/hero/window_buttons.rs` mede o vão livre
+    // por ele. Dois consumidores POSITIVOS, que esta régua vê.
     // ⚠️⚠️ **O fundo da janela do Input Map saiu daqui em 2026-08-30 (e a janela na R2a, 10/11).**
     // Ele entrou como MORTO, foi RECLASSIFICADO como *vivo por um término que esta régua não tem*
     // — o término dele é a **AUSÊNCIA**: todo caminho de canvas do shell só corre com o índice de

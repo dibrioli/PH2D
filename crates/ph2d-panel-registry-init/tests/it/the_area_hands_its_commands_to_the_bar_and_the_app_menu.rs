@@ -307,8 +307,7 @@ fn area_chips_and_lines(h: &HeroScreen, vp: Rect) -> (usize, usize) {
         .chain(over.iter())
         .filter(|e| e.node_id().is_some_and(|id| area_ids.contains(&id)))
         .count();
-    let lines =
-        ph2d_editor_core::widget::horizontal_lines(&rail, area_w - 16.0, RailButtonSize::Small);
+    let lines = tool_bar::bar_lines(&rail, area_w, RailButtonSize::Small);
     (added, lines)
 }
 

@@ -118,7 +118,10 @@ fn a_click_outside_closes_the_add_track_list() {
     let (primeira, _) = tl::ADDPROP_BUTTONS[0];
     assert!(h.hit_index.rect_for(primeira).is_some(), "abriu");
     let down = |h: &mut HeroScreen, kind, xy| super::o_cartao_solto_no_canvas::mao(h, kind, xy);
-    let fora = (900.0, 20.0);
+    // Fora = o meio do canvas. Era `(900, 20)`, que na barra de menus versão C é o campo «Find
+    // anything» (centro da faixa): o clique abria a busca e ela comia o clique seguinte no chip.
+    let c = h.last_canvas;
+    let fora = (c.x + c.w * 0.5, c.y + c.h * 0.5);
     down(&mut h, ph2d_host::PointerKind::Down, fora);
     down(&mut h, ph2d_host::PointerKind::Up, fora);
     pinta(&mut h, 2);

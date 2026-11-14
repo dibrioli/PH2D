@@ -44,11 +44,14 @@ impl App {
         ) else {
             return false;
         };
-        let acao = wb::press(h, x, y, tamanho(w), Self::timestamp_ns());
+        // O ponteiro e o `inner_size` do winit são FÍSICOS; `wb::press` fala o espaço lógico do chrome.
+        let m = h.escala();
+        let (lx, ly) = m.to_logical((x, y));
+        let acao = wb::press(h, lx, ly, m.to_logical(tamanho(w)), Self::timestamp_ns());
         if std::env::var_os("PH2D_FAIXA_LOG").is_some() {
             eprintln!(
                 "[faixa única] down ({x:.0}, {y:.0}) alvo {:?} → {acao:?}",
-                h.hit_index.hit(x, y)
+                h.chrome_hit(x, y)
             );
         }
         let r = match acao {

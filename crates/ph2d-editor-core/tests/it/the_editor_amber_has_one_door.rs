@@ -9,8 +9,10 @@ use std::path::{Path, PathBuf};
 
 /// Medido: 7 5xx ficheiros `.rs` em `crates/`, `shells/` e `tools/` (2026-09-13).
 const PISO_FICHEIROS: usize = 7_000;
-/// Medido: 4 chamadas (Flip 2, Motion 2) em 2026-09-13 — contadas FORA deste ficheiro.
-const PISO_CHAMADAS: usize = 4;
+/// Medido: 3 chamadas (Flip 2, Motion 1) — contadas FORA deste ficheiro. Eram 4 em 2026-09-13; a
+/// tangente do Motion saiu da âmbar para os tokens de alça da Timeline (smoke do dono 12/11, linha
+/// TimelinePrincipal, `motion_path_overlay.rs`: «pequenas e da mesma cor do caminho»).
+const PISO_CHAMADAS: usize = 3;
 const PORTA: &str = "crates/ph2d-editor-core/src/editor_highlight.rs";
 /// Este ficheiro fica fora das DUAS contagens: ele escreve o matiz como DADOS da metade justa e nomeia
 /// `editor_highlight::amber(` três vezes nas próprias mensagens. ⚠️ A 1.ª redacção acusava-se a si mesma e

@@ -546,6 +546,14 @@ fn the_drop_mark_sits_where_the_tab_will_land() {
     );
 }
 
+/// A faixa em que `n` abas só cabem se cada uma parar no PISO (a altura da fila): `n + ½` pisos.
+/// Era o literal `120` quando a fila media 22 (5 × 22 + o recuo = 118); a onda 7 da barra de menus
+/// pôs a fila na altura da fila de ferramentas (32) e o literal deixou de morder — derivado da altura,
+/// ele acompanha a próxima.
+fn espremida(bar: ph2d_editor_core::zones::Rect, n: usize) -> ph2d_editor_core::zones::Rect {
+    ph2d_editor_core::zones::Rect::new(bar.x, bar.y, bar.h * (n as f32 + 0.5), bar.h)
+}
+
 /// ⭐⭐⭐ **NENHUMA ABA DESAPARECE ENQUANTO ELAS COUBEREM NO PISO** — e o que não é pintado não se
 /// clica.
 ///
@@ -591,7 +599,7 @@ fn every_tab_is_painted_while_they_fit_at_the_floor() {
     //    ~58 px, muito acima dos 22, e a asserção abaixo passaria sobre um piso que não existe.
     //    *Uma asserção que a mutação não mata é uma asserção cuja fixtura não produz o fenómeno.*
     //    ⇒ a faixa espremida abaixo é o caso em que as cinco só cabem SE cada uma parar no piso.
-    let squeezed = ph2d_editor_core::zones::Rect::new(bar.x, bar.y, 120.0, bar.h);
+    let squeezed = espremida(bar, occ.len());
     let at_floor = slot_tabs::tab_layout(
         &occ,
         front,
@@ -669,7 +677,7 @@ fn a_squeezed_tab_still_reads_as_a_tab() {
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = h.last_layout.expect("layout").slot_tabs[Slot::RightTop as usize];
     let front = slot_tabs::chosen(&h, Slot::RightTop);
-    let squeezed = ph2d_editor_core::zones::Rect::new(bar.x, bar.y, 120.0, bar.h);
+    let squeezed = espremida(bar, occ.len());
     let painted = slot_tabs::tab_layout(
         &occ,
         front,

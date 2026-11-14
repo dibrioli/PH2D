@@ -29,7 +29,10 @@ fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
 }
 
 fn pinta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
-    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+    // Duas alturas de fábrica: a lei é a recusa sob o ponteiro, não a dobra. Com a faixa 36 e a fila
+    // 32 da barra de menus (onda 7) o Merge Down passou para baixo da dobra da coluna (sem rect = sem
+    // alvo); o artista rola até ele, o teste dá-lhe a coluna inteira.
+    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H * 2.0);
     for _ in 0..30 {
         ph2d_editor_core::aquecimento::com_passo_fixo(
             ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,

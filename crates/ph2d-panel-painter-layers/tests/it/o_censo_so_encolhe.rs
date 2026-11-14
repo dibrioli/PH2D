@@ -35,7 +35,8 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     }
     let imagem =
         "a opção Image só age com uma imagem carregada (no app ela abre o seletor de ficheiro)";
-    for m in [Digital, Impasto, WetPaint] {
+    // O Digital saiu a 13/11: a fábrica dele pinta com grão, e o Image sem imagem tira-o (o censo mede a tinta mudar).
+    for m in [Impasto, WetPaint] {
         v.push((m, painter_brush_texture_kind_option_id(5), imagem));
     }
     // O Wet Paint saiu a 13/10: ele nasce com as cerdas no Shape (plano 27 W2), e o Image sem imagem
@@ -111,7 +112,13 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     }
     // O cartão Pen (L2). A rotação do carimbo: o mesmo porquê do Jitter Rotate. (Na Watercolor de fábrica — Shape
     // «Automatic» — ela nem está no cartão: o carimbo redondo dela não a lê, `LinhaDaMao::lida`.)
-    for m in [Digital, Impasto] {
+    // O Impasto saiu a 13/11: o Follow da Rotation muda-lhe a tinta na fábrica (o censo mede-o); fica só o Pen tilt.
+    v.push((
+        Impasto,
+        painter_pen_rotation_option_id(2),
+        "o Pen tilt roda pela inclinação da caneta, e o censo risca sem inclinação",
+    ));
+    for m in [Digital] {
         v.push((m, PAINTER_PEN_ROTATION, rodar));
     }
     for m in [Digital, Watercolor, Impasto, WetPaint] {

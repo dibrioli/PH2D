@@ -92,10 +92,13 @@ pub enum Dependente {
     ProfundidadeDoGraoSemPapel,
     // A Depth do Grain na aguada (Bug #80): a lavagem lê o grão cru, como a lei do grão (`LeiDoGraoNaAguada`).
     ProfundidadeNaAguada,
+    // O comprimento do ruído dos fios só o lêem a pressão por fio, a oscilação e o ruído de cor (`Fios::ganho_do_fio`,
+    // `Fios::resolvido`, `ruido_de_cor`): sem nenhum deles, mudá-lo não muda a tinta.
+    RuidoDosFiosSemLeitor,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 54] = [
+    pub const TODOS: [Dependente; 55] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -150,6 +153,7 @@ impl Dependente {
         Dependente::PenteadoSemLuz,
         Dependente::MisturaDesligada,
         Dependente::PontoFixoSemEspalhar,
+        Dependente::RuidoDosFiosSemLeitor,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -268,6 +272,7 @@ impl Dependente {
             Dependente::PenteadoForaDoMolhado => penteado(),
             Dependente::PenteadoSemFios => penteado_sem_o_relevo(),
             Dependente::PenteadoSemLuz => relevo_do_penteado(),
+            Dependente::RuidoDosFiosSemLeitor => ruido_dos_fios(),
             Dependente::MisturaDesligada => &MISTURA_DESLIGADA,
             Dependente::PontoFixoSemEspalhar => {
                 &[ids::PAINTER_BRUSH_DAB_FIXO, ids::PAINTER_BRUSH_DAB_PX]
@@ -338,6 +343,7 @@ impl Dependente {
             Dependente::PenteadoForaDoMolhado => "panel.painter_ponta.inerte.combing_wet_only",
             Dependente::PenteadoSemFios => "panel.painter_ponta.inerte.combing_needs_bristles",
             Dependente::PenteadoSemLuz => "panel.painter_ponta.inerte.combing_needs_light",
+            Dependente::RuidoDosFiosSemLeitor => "panel.painter_ponta.inerte.bristle_noise_needs_a_reader",
             Dependente::MisturaDesligada => "panel.painter_layers.brush.inerte.mix_off",
             Dependente::PontoFixoSemEspalhar => {
                 "panel.painter_layers.inerte.fixed_dab_needs_scatter"
@@ -409,16 +415,24 @@ fn penteado() -> &'static [NodeId] {
     })
 }
 
-/// O penteado menos o Bristle relief, que é o que o liga.
+/// O penteado menos o Bristle relief, que é o que o liga — e a Width wave, que só troca o fio que um ponto lê: com
+/// todos os fios iguais (sem lei por fio nem relevo à luz) não há o que trocar.
 fn penteado_sem_o_relevo() -> &'static [NodeId] {
     static IDS: std::sync::OnceLock<Vec<NodeId>> = std::sync::OnceLock::new();
     IDS.get_or_init(|| {
         ids::CERDAS_DO_PENTEADO
             .iter()
             .filter(|k| **k != "bristleHeight")
+            .chain(&["bristleWave"])
             .map(|k| ids::wet_tuning_chip_id(k))
             .collect()
     })
+}
+
+/// O comprimento do ruído dos fios (Pressure change length).
+fn ruido_dos_fios() -> &'static [NodeId] {
+    static IDS: std::sync::OnceLock<[NodeId; 1]> = std::sync::OnceLock::new();
+    IDS.get_or_init(|| [ids::wet_tuning_chip_id("bristleNoiseLength")])
 }
 
 /// O Bristle relief.

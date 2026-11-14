@@ -28,7 +28,8 @@ fn medidas_de_umidade(p: &Preset, raio: f32) -> (f64, f64) {
         };
         let miolo: f64 = (a..b).map(|x| cobre(x + j * g.s)).sum();
         let (mut soma, mut n) = (0.0, 0u32);
-        for k in (1..=g.h).flat_map(|y| (a..b).map(move |x| x + y * g.s)) {
+        // A faixa de dreno (linhas 1 e `h`, `apply_boundaries`) nasce selada com `wet = 1` (B12.1): não é papel do traço.
+        for k in (2..g.h).flat_map(|y| (a..b).map(move |x| x + y * g.s)) {
             if g.wet[k] > 0 {
                 soma += cobre(k);
                 n += 1;

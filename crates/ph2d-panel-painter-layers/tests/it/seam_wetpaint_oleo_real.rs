@@ -453,7 +453,7 @@ fn a_220_os_nomes_do_material_partem_se_em_duas_linhas_e_nao_cortam() {
     // ⭐ O CONTROLO: a régua MEDIU a secção (o «Edge Darkening» também quebra desde 03/11, pela
     //    `Seccao::que_quebra_o_nome` — ele já não corta, mas tem de estar entre os medidos).
     assert!(
-        medidos.iter().any(|m| m.texto == "Edge Darkening (%)"),
+        medidos.iter().any(|m| m.texto == "Dark Edge (%)"),
         "a régua não mediu a secção do material: {cortados:?}"
     );
     for nome in ["Coat Roughness", "Subsurface Radius"] {

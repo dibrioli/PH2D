@@ -196,6 +196,10 @@ impl PainterTool {
                     && (self.relevo_do_pincel().neutro() || sem_luz_no_relevo),
             ),
             (Dependente::PenteadoSemLuz, sem_luz_no_relevo),
+            (Dependente::RuidoDosFiosSemLeitor, agua && {
+                let f = self.fios_do_pincel();
+                f.pressao == 0.0 && f.oscilacao_px == 0.0 && f.cor == [0.0; 3]
+            }),
             (Dependente::MisturaDesligada, !b.mistura_opaca.ligada()),
             (
                 Dependente::PontoFixoSemEspalhar,

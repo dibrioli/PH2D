@@ -109,8 +109,11 @@ fn the_fixture_actually_stamps_wetness_mid_pass() {
         deep > 400,
         "so {deep} celulas tem filme > 3 — o carimbo mal roda e o gate nao mede nada"
     );
+    // A faixa de dreno (2 células em cada lado, `apply_boundaries`) nasce selada com `wet = 1` (B12.1): não é papel.
     assert!(
-        g.wet.iter().all(|w| *w == 0),
+        (2..H)
+            .flat_map(|y| (2..W).map(move |x| (x, y)))
+            .all(|(x, y)| g.wet[x + y * s] == 0),
         "a fixture ja nasce umida — carimbar o mesmo valor e indistinguivel de nao carimbar"
     );
 }

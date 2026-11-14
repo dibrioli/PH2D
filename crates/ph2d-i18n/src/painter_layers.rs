@@ -638,7 +638,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.painter_layers.wetpaint.pickup" => "Pickup (%)",
         "panel.painter_layers.wetpaint.dry_speed" => "Dry Speed",
-        "panel.painter_layers.wetpaint.edge_darkening" => "Edge Darkening (%)",
+        "panel.painter_layers.wetpaint.edge_darkening" => "Dark Edge (%)",
         "panel.painter_layers.wetpaint.gravity" => "Gravity (%)",
         "panel.painter_layers.wetpaint.leveling" => "Leveling",
         "panel.painter_layers.wetpaint.level_clamp" => "Level Clamp",

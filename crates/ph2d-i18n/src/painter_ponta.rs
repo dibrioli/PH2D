@@ -73,6 +73,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_ponta.inerte.combing_needs_bristles" => {
             "Raise Bristle relief, or Pressure per bristle in Tuning, to see this."
         }
+        "panel.painter_ponta.inerte.bristle_noise_needs_a_reader" => {
+            "Raise Pressure per bristle, Brush wobble or a jitter per bristle to see this."
+        }
         "panel.painter_ponta.inerte.combing_needs_light" => {
             "Turn on Real Oil, or raise Emboss in Tuning, to see the relief."
         }

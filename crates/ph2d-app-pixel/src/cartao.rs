@@ -60,7 +60,7 @@ fn cartao(app: &mut PixelApp, key: u32, bits: u64, em_draw: bool) -> Option<Pixe
         .get(&key)
         .is_some_and(|m| em_draw || (m.stamp == stamp && m.frame == frame));
     if !fresca {
-        let (rgba, lado) = compoe(&doc.sprite, frame);
+        let (rgba, lado) = ph2d_pixel_io::frame_rgba_reduzido(&doc.sprite, frame, LADO_MAX);
         let m = Miniatura {
             stamp,
             frame,
@@ -86,28 +86,4 @@ fn cartao(app: &mut PixelApp, key: u32, bits: u64, em_draw: bool) -> Option<Pixe
         pivot: doc.sprite.pivot_slice().map(|s| s.0),
         luz_na_paleta: doc.sprite.ramps().luz_na_paleta,
     })
-}
-
-/// O quadro `frame` achatado nas camadas visíveis e reduzido por vizinho, com o aspecto, se passa de [`LADO_MAX`].
-fn compoe(sprite: &ph2d_pixel_core::Sprite, frame: FrameId) -> (Vec<u8>, [u32; 2]) {
-    let cheio = ph2d_pixel_io::frame_rgba(sprite, frame);
-    let (w, h) = (sprite.width(), sprite.height());
-    let maior = w.max(h);
-    if maior <= LADO_MAX {
-        return (cheio, [w, h]);
-    }
-    let reduz = |n: u32| (u64::from(n) * u64::from(LADO_MAX) / u64::from(maior)).max(1) as u32;
-    let (tw, th) = (reduz(w), reduz(h));
-    let centro = |i: u32, de: u32, para: u32| {
-        ((u64::from(i) * 2 + 1) * u64::from(de) / (u64::from(para) * 2)) as usize
-    };
-    let mut out = Vec::with_capacity(tw as usize * th as usize * 4);
-    for y in 0..th {
-        let linha = centro(y, h, th) * w as usize;
-        for x in 0..tw {
-            let i = (linha + centro(x, w, tw)) * 4;
-            out.extend_from_slice(&cheio[i..i + 4]);
-        }
-    }
-    (out, [tw, th])
 }

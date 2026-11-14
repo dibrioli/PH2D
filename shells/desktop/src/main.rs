@@ -77,9 +77,6 @@ pub(crate) use ph2d_app_vec::bool_gesture;
 pub(crate) use ph2d_app_vec::bool_live;
 /// A cena de smoke da booleana viva (`PH2D_BUILD_SMOKE=48`) — irmã de `build_smoke`, teto de LOC.
 mod bool_smoke;
-/// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
-/// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
-/// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
 mod brush_corner_smoke;
 mod brush_smoke;
 mod bucket_smoke;
@@ -109,14 +106,12 @@ mod component_attach_seam_tests;
 /// da `ph2d-app-components` na auditoria de arquitectura A1 (2026-09-12).
 #[cfg(test)]
 mod component_seed_seam_tests;
-/// O gesto que cria um conector (Down numa forma, Up noutra).
 /// ⭐ O PRÓLOGO das cenas da família das instâncias — o invólucro que traduz `&mut App` para a
 /// assinatura da [`ph2d_app_components`]. *O que sai são os corpos; o que decide a ordem do quadro
 /// fica.*
 mod components_scenes;
 mod components_scenes_suplentes;
 mod connector_gesture;
-/// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 #[cfg(test)]
 mod instance_paint_seam_tests;
 pub(crate) use ph2d_app_vec::connector_live;
@@ -126,15 +121,10 @@ mod contour_smoke;
 mod corner_handles;
 mod cursor_pos;
 mod cursor_preso;
-/// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0148).
 mod cut_smoke;
 /// `PH2D_DITHER_SMOKE` — as faixas e a cura, lado a lado (plano `docs/Sprite_projeto/18` W6.1).
 mod dither_smoke;
 mod dock_resize;
-/// O canal da **DOAÇÃO de forma** para a tinta do Painter — plano de normais + o tamanho do canvas.
-/// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
-/// ⭐⭐⭐ **As FAIXAS de desenho** (ADR-0154 Fase 2) — a lei que põe vetor e sprite na MESMA ordem
-/// total, e parte essa ordem nas passagens que o presente desenha.
 /// `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
 mod emissive_smoke;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
@@ -268,7 +258,6 @@ mod onion_modal;
 /// pincel obedecem à barra *Opacity*, cada um na casa dele.
 mod paint_opacity_smoke;
 mod palette_persist;
-/// A SONDA do drift de pan (`PH2D_PAN_DIAG=1`) — report do Enio de 2026-08-25.
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 pub(crate) use ph2d_app_vec::pattern_live;
 mod pattern_path_smoke;
@@ -278,18 +267,9 @@ mod pencil_smoke;
 /// A família `physics` (W2/L2): o que dela PRECISA da shell.
 /// O resto vive em `crates/ph2d-app-physics`.
 mod physics;
-/// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
-/// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
-/// **A folha como OBJETO** (plano `docs/Sprite_projeto/17` §7) — criar uma a partir da seleção e
-/// arranjar as peças dentro dela. Quase nada aqui é código novo: a folha é um retângulo vivo que
-/// ganhou um componente, como a moldura.
-/// **Um contêiner não rouba o clique dos próprios filhos** — a lei que faz um filho de moldura
-/// (ou de folha) ser agarrável no canvas. Pura, e por isso testada.
-/// As fronteiras da folha — confinar uma peça, e contar o que está mal.
 /// **A conversão de precisão dos pixels de uma sprite** — o que os botões `RGBA8 / RGBA16` do
 /// Inspector fazem (plano `docs/Sprite_projeto/18` W5).
 mod precision_convert;
-/// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
 /// ⭐⭐⭐ **As duas SAÍDAS do palco do prefab** (`Done`/`Cancel`) — a ponte que fica porque o `Cancel`
 /// repõe o `ProjectState`. ⚠️ A LEI do palco vive em `ph2d_app_components::prefab_stage` (2026-09-13).
 mod prefab_exit;
@@ -312,7 +292,6 @@ pub(crate) use ph2d_app_vec::profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
 mod project;
-/// **A arte dos padrões dentro do ficheiro de projecto** (plano 33, W4).
 /// ⭐⭐ **A TAXONOMIA da biblioteca dentro do ficheiro** (plano 07, A3) — blob auto-versionado.
 mod project_catalogs;
 /// **O ficheiro do projeto tem NOME** — `Save`, `Save As…` e `Open Project…` com diálogo
@@ -326,8 +305,6 @@ mod project_schema_history_v128;
 /// A escada arquivada de `v144` a `v160` — a sexta faixa (integração de 2026-09-25).
 mod project_schema_history_v144;
 mod project_schema_history_v160;
-/// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
-/// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a
 /// unidade que o artista lê; irmão de `project` pelo teto de LOC.
 mod project_settings;
@@ -412,12 +389,10 @@ mod timescale_smoke;
 mod token_smoke;
 /// A cena de smoke dos **TOKENS** (`PH2D_BUILD_SMOKE=59`) — o painel que re-veste o app.
 mod tokens_smoke;
-/// ⭐⭐⭐ **A ferramenta TRIM** (plano 38) — a costura entre o ponteiro e a lei da crate.
 /// A cena de smoke do **Trim** — `PH2D_BUILD_SMOKE=80` (plano 38).
 mod trim_smoke;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
-/// ⭐ O smoke da UI VIVA (`PH2D_UI_MOTION_SMOKE`) — o carácter e a corda.
 /// A cena de smoke da **HIERARQUIA** de estados (`PH2D_BUILD_SMOKE=64`) — irmã de `build_smoke`.
 mod ui_nested_smoke;
 /// A cena de smoke do **PAINEL GERADO** (`PH2D_BUILD_SMOKE=62`) — irmã de `build_smoke`.
@@ -425,9 +400,6 @@ mod ui_panel_smoke;
 /// **Que painel esta árvore descreve** (plano UI/UX W8b) — a porta única que lê a moldura
 /// autorada e devolve o `PanelSpec` que o gerador escreve.
 pub(crate) use ph2d_app_vec::ui_panel_spec;
-/// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
-/// ⭐ A cena da BOOLEANA VIVA dentro de um ESTADO de UI (`PH2D_BUILD_SMOKE=74`) — a troca de
-/// operação que MORFA em vez de saltar, com os operandos a mover-se ao mesmo tempo.
 /// A BOOLEANA dentro do modo de PREVIEW — irmão dos gates do preview por LOC (HR-18).
 #[cfg(test)]
 #[path = "ui_preview_bool_tests.rs"]
@@ -462,9 +434,6 @@ pub(crate) use ph2d_app_vec::blend as vec_blend;
 /// ⭐⭐⭐ **O desenho ganha OSSOS** (`PH2D_VEC_BONE_SMOKE=1`, estudo 42 item 5) — irmã da cena da
 /// pilha de aparência, teto de LOC.
 mod vec_bone_smoke;
-/// ⭐ Os gates de ROTA da booleana viva até os ESTADOS (auditoria de 2026-08-23): *com uma
-/// booleana em mãos, o artista chega às poses dela?* — a pergunta que "o widget existe e o clique
-/// chega ao barramento" não faz.
 /// **O papel de cada forma dentro de uma booleana viva** — a porta única de *"que verbo é o
 /// dela?"*, que o painel e a linha da hierarquia partilham.
 pub(crate) use ph2d_app_vec::bool_shape as vec_bool_shape;

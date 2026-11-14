@@ -17,7 +17,7 @@ mod silencio;
 mod silencio_tests;
 pub(crate) use silencio::marca_gesto;
 #[cfg(test)]
-pub(crate) use silencio::{ENCOLHE_NO_SILENCIO, ULTIMO_FIO};
+pub(crate) use silencio::{COMPRIME_NO_POOL_GLOBAL, ENCOLHE_NO_SILENCIO, ULTIMO_FIO, ULTIMO_POOL};
 #[cfg(test)]
 mod troca_tests;
 pub(crate) use enterro::Congelada;

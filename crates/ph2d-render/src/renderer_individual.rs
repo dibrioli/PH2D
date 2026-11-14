@@ -242,3 +242,7 @@ impl SpriteRenderer {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "sonda_subida_4k_tests.rs"]
+mod sonda_subida_4k_tests;

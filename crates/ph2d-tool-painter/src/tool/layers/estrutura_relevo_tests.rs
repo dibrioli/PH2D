@@ -132,3 +132,41 @@ fn apagar_duplicar_e_agrupar_o_impasto_recompoem_so_tinta_e_corpo() {
         }
     }
 }
+
+/// n.º 10 (B18.6): o caso da matriz do app — o gesto sobre a camada de Impasto que está ACTIVA (a nova onde se
+/// pintou), não sobre uma de baixo. O contador é o próprio alcance: `Some` antes do gesto (o caminho confinado), e a
+/// figura ao bit da recomposição inteira (undo/redo também).
+#[test]
+fn apagar_e_duplicar_o_impasto_activo_recompoem_so_tinta_e_corpo() {
+    type Gesto = fn(&mut PainterTool, RtLayerId);
+    let gestos: [(&str, Gesto); 2] = [
+        ("apagar", |t, b| assert!(t.delete_layer(b))),
+        ("duplicar", |t, b| {
+            t.duplicate_layer(b).expect("a cópia");
+        }),
+    ];
+    for (gesto, faz) in gestos {
+        for papel in [false, true] {
+            for a_relevo in [false, true] {
+                let (mut t, _, b) = doc(papel, a_relevo, false);
+                t.select_layer(b);
+                let _ = na_tela(&mut t);
+                let rotulo = format!("{gesto} · papel={papel} · a_relevo={a_relevo} · B activa");
+                assert_eq!(t.layers.active(), Some(b), "{rotulo}: controlo, B activa");
+                assert!(
+                    t.alcance_da_tinta_de(b).is_some(),
+                    "{rotulo}: o alcance da camada de Impasto activa não é provado (None = recompõe tudo)"
+                );
+                faz(&mut t, b);
+                assert!(t.composited_is_some(), "{rotulo}: o cache");
+                let r = t.dirty_rect.expect("a janela");
+                assert!(r.w < LADO || r.h < LADO, "{rotulo}: a tela inteira ({r:?})");
+                confere(&mut t, &rotulo);
+                assert!(t.undo_last(), "{rotulo}: desfaz");
+                confere(&mut t, &format!("{rotulo} · undo"));
+                assert!(t.redo_last(), "{rotulo}: refaz");
+                confere(&mut t, &format!("{rotulo} · redo"));
+            }
+        }
+    }
+}

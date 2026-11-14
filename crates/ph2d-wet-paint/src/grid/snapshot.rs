@@ -5,8 +5,11 @@ use rayon::prelude::*;
 
 #[path = "snapshot/registo_bytes.rs"]
 mod registo_bytes;
+#[path = "snapshot/restauro.rs"]
+mod restauro;
 #[path = "snapshot/troca.rs"]
 mod troca;
+use restauro::{ajusta, ajusta_campo, comprimentos_vazios, planos_do_par, tiles_do_restauro};
 
 // ---------------------------------------------------------------------------
 // History snapshots (SPEC §15). The transient flow arrays are scratch rebuilt
@@ -311,22 +314,66 @@ fn poe<T: Clone>(v: &mut [T], s: usize, r: Ret, d: &[T]) {
 
 macro_rules! tile_fino {
     ($($f:ident : $t:ty),* $(,)?) => {
+        /// B18.11 cura 3: os planos que um tile do registo guarda. Quem marca diz que planos vai escrever; o plano
+        /// NÃO guardado não foi escrito desde que o registo abriu (≠ guardado vazio: o plano não existia na base).
+        #[derive(Clone, Copy, Default, PartialEq, Eq)]
+        #[cfg_attr(test, derive(Debug))]
+        pub struct Planos { $(pub(crate) $f: bool,)* }
+        impl Planos {
+            /// Todos os planos (quem escreve sem saber o quê).
+            pub const TODOS: Planos = Planos { $($f: true,)* };
+            fn uniao(self, o: Planos) -> Planos { Planos { $($f: self.$f || o.$f,)* } }
+            fn menos(self, o: Planos) -> Planos { Planos { $($f: self.$f && !o.$f,)* } }
+            fn nenhum(self) -> bool { true $(&& !self.$f)* }
+            fn bits(self) -> u32 {
+                let (mut b, mut i) = (0u32, 0u32);
+                $( b |= u32::from(self.$f) << i; i += 1; )*
+                let _ = i;
+                b
+            }
+            fn de_bits(b: u32) -> Planos {
+                let mut i = 0u32;
+                $( let $f = b >> i & 1 == 1; i += 1; )*
+                let _ = i;
+                Planos { $($f,)* }
+            }
+        }
         #[derive(Clone, Default)]
         #[cfg_attr(test, derive(Debug))]
-        struct TileFino { $($f: Vec<$t>,)* }
+        struct TileFino { $($f: Vec<$t>,)* guardados: Planos }
         impl TileFino {
-            fn tira(g: &Grid, r: Ret) -> Self { TileFino { $($f: Plano::tira_tile(&g.$f, g.s, r),)* } }
+            fn tira(g: &Grid, r: Ret) -> Self { Self::tira_com(g, r, Planos::TODOS) }
+            fn tira_com(g: &Grid, r: Ret, m: Planos) -> Self {
+                TileFino {
+                    $($f: if m.$f { Plano::tira_tile(&g.$f, g.s, r) } else { Vec::new() },)*
+                    guardados: m,
+                }
+            }
+            /// A 2.ª marca do tile: os planos novos de `m` tiram-se AGORA (a grade ainda é a base deles).
+            fn acrescenta(&mut self, g: &Grid, r: Ret, m: Planos) {
+                let novos = m.menos(self.guardados);
+                $( if novos.$f { self.$f = Plano::tira_tile(&g.$f, g.s, r); } )*
+                self.guardados = self.guardados.uniao(m);
+            }
+            /// Junta ao tile os planos que só `o` guarda (o `extra` do restauro: a base deles é a deste).
+            fn junta(&mut self, o: TileFino) {
+                let novos = o.guardados.menos(self.guardados);
+                $( if novos.$f { self.$f = o.$f; } )*
+                self.guardados = self.guardados.uniao(novos);
+            }
             #[cfg(test)]
             fn poe(&self, g: &mut Grid, r: Ret) { $(Plano::poe_tile(&mut g.$f, g.s, r, &self.$f);)* }
             fn bytes(&self) -> usize { 0 $(+ std::mem::size_of_val(self.$f.as_slice()))* }
             /// A sonda: que planos do tile são iguais aos da grade (a troca deles não muda nada).
             #[cfg(any(test, feature = "sonda-fases"))]
             fn censo(&self, g: &Grid, r: Ret) {
-                $( crate::sonda_fases::soma_censo(
-                    stringify!($f),
-                    Plano::tira_tile(&g.$f, g.s, r) == self.$f,
-                    !self.$f.is_empty(),
-                ); )*
+                $( if self.guardados.$f {
+                    crate::sonda_fases::soma_censo(
+                        stringify!($f),
+                        Plano::tira_tile(&g.$f, g.s, r) == self.$f,
+                        !self.$f.is_empty(),
+                    );
+                } )*
             }
             /// Põe os tiles `ts` (disjuntos) no pool: um job por plano esparso, um por faixa de tiles em cada plano denso.
             /// Cada célula é escrita por um tile só: o bit do laço por tile, em qualquer ordem.
@@ -347,43 +394,6 @@ tile_fino!(
     oleo: oleo_celula::OleoCelula, tinta: tinta::CelulaTinta,
     pigmento: tinta::pigmento::LadoEspectral, wet: u8, active: u8, bloom: u8,
 );
-
-/// Os planos que nascem VAZIOS (`garante`): o comprimento na base decide se o restauro os esvazia.
-fn comprimentos_vazios(g: &Grid) -> [usize; 9] {
-    [
-        g.altura.len(),
-        g.espessura.len(),
-        g.crista.len(),
-        g.nivelado.len(),
-        g.material.len(),
-        g.aparencia.len(),
-        g.oleo.len(),
-        g.tinta.len(),
-        g.pigmento.len(),
-    ]
-}
-
-/// Leva um plano preguiçoso ao comprimento da base antes de colar os tiles: vazio na base ⇒ vazio;
-/// cheio na base e vazio agora só acontece depois de uma acção de tela inteira, que marcou TODOS os
-/// tiles — a amostra é preenchimento que a colagem cobre.
-fn ajusta<T: Clone>(v: &mut Vec<T>, base: usize, amostra: Option<&T>) {
-    if base == 0 {
-        v.clear();
-    } else if v.len() != base
-        && let Some(a) = amostra
-    {
-        v.resize(base, a.clone());
-    }
-}
-
-/// O [`ajusta`] do campo esparso: o preenchimento é o chão (a colagem dos tiles cobre a tela inteira).
-fn ajusta_campo<T: Copy>(v: &mut campo_esparso::CampoEsparso<T>, base: usize, amostra: bool) {
-    if base == 0 {
-        v.clear();
-    } else if v.len() != base && amostra {
-        *v = campo_esparso::CampoEsparso::novo(v.chao(), base);
-    }
-}
 
 #[derive(Clone)]
 struct Escalares {
@@ -420,6 +430,8 @@ impl Escalares {
 thread_local! {
     /// O restauro e o inverso de antes (os oráculos), por fio: a régua A/B no MESMO processo.
     pub(crate) static ANTIGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Toda marca guarda TODOS os planos (o de antes da cura 3): o oráculo da máscara, por fio.
+    pub(crate) static MASCARA_CHEIA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 #[cfg(test)]
@@ -467,6 +479,17 @@ impl Registo {
     /// **Antes** de escrever no retângulo `[x0, x1) × [y0, y1)` (células finas, com o anel de pad):
     /// copia cada tile ainda não guardado. Os planos de fluxo vão pela razão `rf`, com folga de 2.
     pub fn marca(&mut self, g: &Grid, x0: i64, y0: i64, x1: i64, y1: i64) {
+        self.marca_planos(g, x0, y0, x1, y1, Planos::TODOS);
+    }
+
+    /// O [`Self::marca`] de quem só escreve os planos `m` (os de fluxo vão sempre).
+    pub fn marca_planos(&mut self, g: &Grid, x0: i64, y0: i64, x1: i64, y1: i64, m: Planos) {
+        #[cfg(test)]
+        let m = if MASCARA_CHEIA.with(std::cell::Cell::get) {
+            Planos::TODOS
+        } else {
+            m
+        };
         let cl = |v: i64, n: usize| v.clamp(0, n as i64) as usize;
         let (ax0, ax1) = (cl(x0, g.s), cl(x1, g.s));
         let (ay0, ay1) = (cl(y0, g.rows), cl(y1, g.rows));
@@ -477,9 +500,15 @@ impl Registo {
         for ty in ay0 / TILE..=(ay1 - 1) / TILE {
             for tx in ax0 / TILE..=(ax1 - 1) / TILE {
                 let k = (ty * tw + tx) as u32;
-                self.finos
-                    .entry(k)
-                    .or_insert_with(|| TileFino::tira(g, ret_do_tile(k, g.s, g.rows)));
+                let r = ret_do_tile(k, g.s, g.rows);
+                match self.finos.entry(k) {
+                    std::collections::btree_map::Entry::Vacant(v) => {
+                        v.insert(TileFino::tira_com(g, r, m));
+                    }
+                    std::collections::btree_map::Entry::Occupied(mut o) => {
+                        o.get_mut().acrescenta(g, r, m);
+                    }
+                }
             }
         }
         let f = &g.flow;
@@ -541,7 +570,7 @@ impl Registo {
         // Por tile no pool: só lê a grade, e cada tile é o `TileFino::tira` de sempre.
         let tiles: Vec<TileFino> = ks
             .par_iter()
-            .map(|k| TileFino::tira(g, ret_do_tile(*k, g.s, g.rows)))
+            .map(|k| TileFino::tira_com(g, ret_do_tile(*k, g.s, g.rows), planos_do_par(a, b, *k)))
             .collect();
         out.finos = ks.into_iter().zip(tiles).collect();
         let f = &g.flow;
@@ -571,13 +600,8 @@ impl Registo {
         if ANTIGO.with(std::cell::Cell::get) {
             return self.restaura_com_antigo(g, extra, zera_o_fluxo);
         }
-        let tiles = || {
-            self.finos.iter().chain(
-                extra
-                    .into_iter()
-                    .flat_map(|e| e.finos.iter().filter(|(k, _)| !self.finos.contains_key(k))),
-            )
-        };
+        let juntos = tiles_do_restauro(self, extra);
+        let tiles = || juntos.iter().map(|(k, t)| (k, &**t));
         let v = self.base.vazios;
         macro_rules! amostra {
             ($f:ident) => {

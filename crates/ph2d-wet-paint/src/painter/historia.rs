@@ -14,6 +14,14 @@ const FOLGA_DAB: f64 = 130.0;
 /// rebuild alarga a caixa por poucas; 64 é um tile inteiro.
 const FOLGA_PASSO: i64 = 64;
 
+/// B18.11 cura 3: o que as portas do dab escrevem — tudo menos o `bloom` (o orçamento de floração é só do passo da
+/// água, `solver/flow_jacobi/backrun.rs`, e das acções de tela; nenhum `tools/`, `trail/` nem `brush` o toca).
+/// `relevo` e `vela` ficam: o depósito escreve-os (`trail/transfer.rs`) quando a ponta os traz.
+const PLANOS_DO_DAB: crate::grid::Planos = crate::grid::Planos {
+    bloom: false,
+    ..crate::grid::Planos::TODOS
+};
+
 /// Um retângulo por banda de [`crate::grid::TILE`] linhas: a união das janelas da faixa viva das linhas a `f` dela,
 /// com `f` de folga em x (meio-aberto, células finas com o pad). Banda sem linha viva a `f` não entra.
 fn faixas_do_passo(g: &Grid, f: i64) -> Vec<[i64; 4]> {
@@ -91,13 +99,18 @@ impl Engine {
 
     /// Marca o retângulo (células finas, com pad) no registo aberto da camada activa ANTES de escrever.
     pub(crate) fn marca_ret(&mut self, x0: i64, y0: i64, x1: i64, y1: i64) {
+        self.marca_ret_planos(x0, y0, x1, y1, crate::grid::Planos::TODOS);
+    }
+
+    /// O [`Self::marca_ret`] de quem só escreve os planos `m`.
+    fn marca_ret_planos(&mut self, x0: i64, y0: i64, x1: i64, y1: i64, m: crate::grid::Planos) {
         let layer = &mut self.layers[self.active_layer];
         let g = &layer.grid;
         if let Some(r) = layer.undo.last_mut() {
-            r.marca(g, x0, y0, x1, y1);
+            r.marca_planos(g, x0, y0, x1, y1, m);
         }
         if let Some(r) = layer.desde.as_mut() {
-            r.marca(g, x0, y0, x1, y1);
+            r.marca_planos(g, x0, y0, x1, y1, m);
         }
     }
 
@@ -122,7 +135,7 @@ impl Engine {
         if let Some(r) = l.undo.last_mut() {
             r.dabs = Some(une(r.dabs));
         }
-        self.marca_ret(x0, y0, x1, y1);
+        self.marca_ret_planos(x0, y0, x1, y1, PLANOS_DO_DAB);
     }
 
     /// O casco dos dabs do registo aberto da camada activa (células finas com o pad, meio-aberto). `None`: sem dabs.

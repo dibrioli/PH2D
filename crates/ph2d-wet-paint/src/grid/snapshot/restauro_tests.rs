@@ -504,3 +504,86 @@ fn o_fluxo_no_pool_da_o_bit_do_fluxo_em_serie() {
         }
     }
 }
+
+/// Corre `f` com toda marca a guardar TODOS os planos (o oráculo da cura 3).
+fn cheia<R>(sim: bool, f: impl FnOnce() -> R) -> R {
+    MASCARA_CHEIA.with(|c| c.set(sim));
+    let r = f();
+    MASCARA_CHEIA.with(|c| c.set(false));
+    r
+}
+
+/// Os tiles que guardam menos que todos os planos, em toda a pilha da camada activa.
+fn tiles_estreitos(e: &Engine) -> usize {
+    let l = &e.layers[e.active_layer];
+    l.undo
+        .iter()
+        .flat_map(|r| r.finos.values())
+        .filter(|t| t.guardados != Planos::TODOS)
+        .count()
+}
+
+/// B18.11 cura 3: o dab marca só os planos que escreve (sem o `bloom`), o passo da água continua a marcar todos — e o
+/// bit é o da máscara cheia (`MASCARA_CHEIA`), nas três leis: o estado a cada passo, undo/redo com o `extra` (o tile
+/// que só o dab marcou junta o `bloom` que o passo guardou depois), um traço direto sem água a meio, a história
+/// inteira desfeita e refeita.
+#[test]
+fn a_mascara_do_dab_da_o_bit_da_mascara_cheia() {
+    for lei in [0, 1, 2] {
+        let mut e = [false, true].map(|c| cheia(c, || monta_lei(700, 420, lei, 1.0)));
+        let mut estreitos = 0;
+        let passos = [
+            "direto", "undo", "redo", "corre", "undo", "undo", "redo", "direto", "corre", "traco",
+            "undo", "redo", "corre", "undo", "redo",
+        ];
+        for (k, passo) in passos.into_iter().enumerate() {
+            for (c, e) in e.iter_mut().enumerate() {
+                cheia(c == 1, || match passo {
+                    "undo" => assert!(e.undo() || !e.can_undo()),
+                    "redo" => assert!(e.redo_sem_zerar_o_fluxo() || !e.can_redo()),
+                    "corre" => corre(e, 2),
+                    "direto" => {
+                        e.capture_history();
+                        e.begin_direct_stroke(0, 200.0, 150.0);
+                        for i in 0..20 {
+                            e.dispatch_pressure_dab(200.0 + 6.0 * f64::from(i), 150.0, 0.6, 9.0);
+                        }
+                        e.end_direct_stroke();
+                    }
+                    _ => traco(e, (300.0, 200.0), (7.0, 2.0), 25),
+                });
+            }
+            estreitos += tiles_estreitos(&e[0]);
+            assert_eq!(tiles_estreitos(&e[1]), 0, "CONTROLO: a cheia guarda tudo");
+            let at = format!("{k}: {passo} (lei {lei})");
+            assert_eq!(
+                estado(e[0].active_grid()),
+                estado(e[1].active_grid()),
+                "{at}"
+            );
+        }
+        assert!(
+            estreitos > 0,
+            "lei {lei}: nenhum tile estreito, o gate não mede a máscara"
+        );
+        let mut n = 0;
+        for desfaz in [true, false] {
+            loop {
+                let [a, b] = &mut e;
+                let fa = if desfaz { a.undo() } else { a.redo() };
+                let fb = cheia(true, || if desfaz { b.undo() } else { b.redo() });
+                assert_eq!(fa, fb);
+                if !fa {
+                    break;
+                }
+                n += 1;
+                assert_eq!(
+                    estado(a.active_grid()),
+                    estado(b.active_grid()),
+                    "volta {n} (lei {lei})"
+                );
+            }
+        }
+        assert!(n >= 4, "a história inteira tinha só {n} passos");
+    }
+}

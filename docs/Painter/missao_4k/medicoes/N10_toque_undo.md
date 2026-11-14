@@ -138,3 +138,21 @@ chamada em `undo_vivo.rs` e deixar o `copia_tile`. (2) Filbert toque, B17.4/B17.
 
 Próximo passo exato (toque Filbert): F2b leva o 1.º dab do Óleo Real para fora do fio do evento; F4d põe `CampoAltura::de_com_em`
 no pool (`EmSerie` → por faixa) para o toque. Medir com `mede_pen_up_4k.sh perf` em load < 5 (`STRIP=none`).
+
+## F1f (14/11) — cura 3 do B18.11, lado do registo
+
+| id | estado | antes → depois | sha | porquê |
+|---|---|---|---|---|
+| B18.11 cura 3 (máscara de planos por tile) | **feita do lado do registo; o ganho a 4K espera a cura 3b** | tile do dab guardava 19 planos → 18 (sem `bloom`, −1 B/célula); troca/cópia/restauro saltam o plano não guardado | este commit | `Planos` (um `bool` por plano do `tile_fino!`; `bits`/`de_bits` no `em_bytes`), `TileFino.guardados`, `Registo::marca_planos` (a 2.ª marca tira os planos novos NESSE instante: `acrescenta`), o `inverso` guarda a união dos planos do par, restauro/`troca` juntam ao tile do registo os planos que só o `extra` guarda (`junta`: a base deles é a do registo; `snapshot/restauro.rs`), `copia_os_outros`/`troca_os_planos`/censo saltam o não guardado; oráculos `ANTIGO` com a mesma junção. Só o `marca_dab` estreita (`PLANOS_DO_DAB` = todos − `bloom`): o `bloom` só o escrevem o passo (`solver/flow_jacobi/backrun.rs`) e acções de tela. `relevo`/`vela` NÃO saem do dab — o depósito escreve-os (`trail/transfer.rs:166-169`, `:286-288`) quando a ponta os traz (o censo 100 % do Wet Flat é dado, não lei). Gate `a_mascara_do_dab_da_o_bit_da_mascara_cheia` (3 leis, traço direto sem água + undo/redo com `extra` + história inteira; oráculo `MASCARA_CHEIA`, ao bit; controlo: há tiles estreitos); os 7 de `grid::snapshot::` verdes; mutação «o dab também sem `wet`» ⇒ vermelho «1: undo (lei 0)», plano `wet`. |
+
+**Cura 3b (o ganho a 4K; pegada do solver, F4f a editar):** o sítio é `painter/historia.rs::marca_do_passo` (chama
+`marca_ret`, máscara cheia) ← `marca_passo`, chamada por estágio em `solver.rs`/`flow_jacobi.rs`. Trocar por
+`self.marca_ret_planos(x0, y0, x1, y1, PLANOS_DO_PASSO)`. Achado estático (grep das escritas na crate): o passo **nunca**
+escreve `relevo` nem `vela` (só `trail/transfer.rs`, `grid/canvas_ops.rs`, `grid/patch.rs`) ⇒ `PLANOS_DO_PASSO` = todos −
+{`relevo`, `vela`} no mínimo (8 B/célula dos ~47 da aguada, ~17 % da troca); confirmar por estágio os preguiçosos/esparsos
+(`altura`…`pigmento`, `material`, `aparencia`, `oleo`) antes de os tirar. O gate desta cura serve tal e qual (o oráculo cobre
+toda marca); depois a s6 A×B com uma chave em execução `PH2D_MASCARA_CHEIA=1` (a criar no `marca_planos`, lida uma vez — hoje
+só o `thread_local` de teste).
+
+Não feitos nesta janela (prazo 45 min): B17.6 resto (`mask.rs:381` + 18 `None`), B17.5 (ler `target/n10/f1/s8.limpo.txt`),
+B17.7, B17.8, B42.4, B42.5.

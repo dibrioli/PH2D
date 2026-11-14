@@ -12,9 +12,9 @@ impl Registo {
             .keys()
             .chain(b.into_iter().flat_map(|b| b.finos.keys()))
         {
-            out.finos
-                .entry(*k)
-                .or_insert_with(|| TileFino::tira(g, ret_do_tile(*k, g.s, g.rows)));
+            out.finos.entry(*k).or_insert_with(|| {
+                TileFino::tira_com(g, ret_do_tile(*k, g.s, g.rows), planos_do_par(a, b, *k))
+            });
         }
         let f = &g.flow;
         for k in a
@@ -37,13 +37,8 @@ impl Registo {
         extra: Option<&Registo>,
         zera_o_fluxo: bool,
     ) -> bool {
-        let tiles = || {
-            self.finos.iter().chain(
-                extra
-                    .into_iter()
-                    .flat_map(|e| e.finos.iter().filter(|(k, _)| !self.finos.contains_key(k))),
-            )
-        };
+        let juntos = tiles_do_restauro(self, extra);
+        let tiles = || juntos.iter().map(|(k, t)| (k, &**t));
         let v = self.base.vazios;
         macro_rules! amostra {
             ($f:ident) => {

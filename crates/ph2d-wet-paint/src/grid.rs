@@ -655,4 +655,4 @@ mod snapshot; // as fotografias do histórico (SPEC §15) — filho por LOC
 pub(crate) use snapshot::PassoEmVoo;
 /// A água parada dorme (B13.3).
 pub mod sono;
-pub use snapshot::{GridSnapshot, Registo, TILE, restore_grid, snapshot_grid};
+pub use snapshot::{GridSnapshot, Planos, Registo, TILE, restore_grid, snapshot_grid};

@@ -2,7 +2,7 @@
 //! (`tinta`, `pigmento`) ele fica como está.
 
 use super::super::celula_bytes::{Celula, de_bytes, para_bytes};
-use super::{Registo, TileFino};
+use super::{Planos, Registo, TileFino};
 
 fn escreve<T: Celula>(v: &[T], s: &mut Vec<u8>) {
     s.extend_from_slice(&(v.len() as u64).to_le_bytes());
@@ -69,7 +69,9 @@ impl Registo {
                 wet,
                 active,
                 bloom,
+                guardados,
             } = t;
+            s.extend_from_slice(&guardados.bits().to_le_bytes());
             for p in [
                 &film, &susp, &sett, &relevo, &altura, &espessura, &crista, &nivelado, &vela,
             ] {
@@ -98,6 +100,9 @@ impl Registo {
         let b = &mut b;
         for _ in 0..le_u64(b) {
             let k = le_u64(b) as u32;
+            let (m, resto) = b.split_at(4);
+            *b = resto;
+            let guardados = Planos::de_bits(u32::from_le_bytes(m.try_into().expect("4 bytes")));
             let (film, susp, sett, relevo, altura, espessura, crista, nivelado, vela) = (
                 le(b),
                 le(b),
@@ -134,6 +139,7 @@ impl Registo {
                     wet,
                     active,
                     bloom,
+                    guardados,
                 },
             );
         }

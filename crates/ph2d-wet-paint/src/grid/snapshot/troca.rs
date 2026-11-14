@@ -205,9 +205,9 @@ macro_rules! planos {
         /// Antes do `ajusta`: os planos que não trocam tiram a cópia do inverso; devolve o do registo, a pôr depois.
         fn copia_os_outros(g: &Grid, r: Ret, t: &mut TileFino, ok: Trocam) -> TileFino {
             let mut pos = TileFino::default();
-            $( if !ok.$f { pos.$f = std::mem::replace(&mut t.$f, Plano::tira_tile(&g.$f, g.s, r)); } )*
+            $( if t.guardados.$f && !ok.$f { pos.$f = std::mem::replace(&mut t.$f, Plano::tira_tile(&g.$f, g.s, r)); } )*
             // O esparso que troca só copia no tile que não o tem (o restauro não lhe punha nada).
-            $( if !ok.$e || t.$e.len() != (r.x1 - r.x0) * (r.y1 - r.y0) {
+            $( if t.guardados.$e && (!ok.$e || t.$e.len() != (r.x1 - r.x0) * (r.y1 - r.y0)) {
                 pos.$e = std::mem::replace(&mut t.$e, Plano::tira_tile(&g.$e, g.s, r));
             } )*
             pos
@@ -223,10 +223,10 @@ macro_rules! planos {
             let mut l = Listas { $($f: Vec::new(),)* $($e: Vec::new(),)* };
             let s = g.s;
             for (r, t) in tiles.iter_mut() {
-                let TileFino { $($f,)* $($e,)* .. } = t;
-                $( if ok.$f { l.$f.push((*r, $f)); } )*
+                let TileFino { $($f,)* $($e,)* guardados } = t;
+                $( if ok.$f && guardados.$f { l.$f.push((*r, $f)); } )*
                 let w = r.x1 - r.x0;
-                $( if ok.$e && $e.len() == w * (r.y1 - r.y0) {
+                $( if ok.$e && guardados.$e && $e.len() == w * (r.y1 - r.y0) {
                     l.$e.extend($e.chunks_mut(w).enumerate().map(|(i, v)| ((r.y0 + i) * s + r.x0, v)));
                 } )*
             }
@@ -272,10 +272,15 @@ impl Registo {
         let (ex_finos, ex_fluxo) = extra.map_or_else(Default::default, |e| {
             (std::mem::take(&mut e.finos), std::mem::take(&mut e.fluxo))
         });
-        let ex_finos: Vec<_> = ex_finos
-            .into_iter()
-            .filter(|(k, _)| !self.finos.contains_key(k))
-            .collect();
+        // O tile que os dois guardam junta os planos que só o `extra` guarda (a base deles é a do registo).
+        let mut so_do_extra = Vec::new();
+        for (k, t) in ex_finos {
+            match self.finos.get_mut(&k) {
+                Some(meu) => meu.junta(t),
+                None => so_do_extra.push((k, t)),
+            }
+        }
+        let ex_finos = so_do_extra;
         let ex_fluxo: Vec<_> = ex_fluxo
             .into_iter()
             .filter(|(k, _)| !self.fluxo.contains_key(k))

@@ -266,7 +266,8 @@ struct K {
     visc_t: f32, brake_bias: f32, brake_reach: f32, dif: f32,
     // `project`: o knob `Projection`. `sedimenta`: fracções por eixo e sentido (−1/0/1).
     projection: f32, sed_ax: f32, sed_ay: f32, _k0: f32,
-    sed_dx: i32, sed_dy: i32, _k1: i32, _k2: i32,
+    // `freio_fino`: 1 = o freio do B13.10 (sonda na grade fina), 0 = o de antes (índice linear).
+    sed_dx: i32, sed_dy: i32, freio_fino: i32, _k2: i32,
 }
 @group(0) @binding(12) var<storage, read> paper: array<f32>;
 @group(0) @binding(13) var<storage, read_write> wet: array<u32>;
@@ -315,13 +316,26 @@ fn campo_v(g: vec3<u32>) -> CampoV {
         ey = 0.2 * ey + 0.2 * (vel_y[i - 1] + vel_y[i + 1] + vel_y[i - u.fs] + vel_y[i + u.fs]);
     }
     // Freio de absorvência por look-ahead.
-    // B13.10 (`flow::sonda_do_freio`): o passo na grade FINA a partir da amostra `(px, fy)`, limites 2D.
-    let s_len = k.brake_reach / (sqrt(ex * ex + ey * ey) + 0.01);
-    let qx = px + i32(trunc(ex * s_len));
-    let qy = flow_probe(c.y, u.h) + i32(trunc(ey * s_len));
-    let rows = i32(arrayLength(&act)) / u.s;
-    let probe_f = qy * u.s + qx;
-    if qx >= 0 && qx < u.s && qy >= 0 && qy < rows {
+    // B13.10 ligado (`flow::sonda_do_freio`): o passo na grade FINA a partir da amostra `(px, fy)`, limites 2D.
+    // Desligado (a omissão, `flow::sonda_do_freio_linear`): o índice linear em células de fluxo.
+    var probe_f: i32;
+    var dentro: bool;
+    if k.freio_fino != 0 {
+        let s_len = k.brake_reach / (sqrt(ex * ex + ey * ey) + 0.01);
+        let qx = px + i32(trunc(ex * s_len));
+        let qy = flow_probe(c.y, u.h) + i32(trunc(ey * s_len));
+        let rows = i32(arrayLength(&act)) / u.s;
+        probe_f = qy * u.s + qx;
+        dentro = qx >= 0 && qx < u.s && qy >= 0 && qy < rows;
+    } else {
+        let s_len = k.brake_reach * k.dif / (sqrt(ex * ex + ey * ey) + 0.01);
+        let dxs = i32(trunc(ex * s_len));
+        let dys = i32(trunc(ey * s_len));
+        let probe = i + dxs + dys * u.fs;
+        probe_f = fi + dxs * u.rf + dys * u.rf * u.s;
+        dentro = probe >= 0 && probe < i32(arrayLength(&flow_x)) && probe_f >= 0 && probe_f < i32(arrayLength(&act));
+    }
+    if dentro {
         let br = clamp(st[probe_f].x + (3.0 / 255.0) * f32(wet[probe_f]) - k.brake_bias, 0.05, 1.0);
         ex *= br;
         ey *= br;

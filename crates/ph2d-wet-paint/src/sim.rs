@@ -112,6 +112,8 @@ pub struct Params {
     pub absorcao: f64,
     /// Os pesos `(x, y)` do emboss pela luz do cartão ([`crate::render::pesos_do_relevo`] de [`Sim::luz_do_relevo`]).
     pub relevo: [f64; 2],
+    /// [`Sim::freio_na_grade_fina`].
+    pub freio_na_grade_fina: bool,
 }
 
 impl Params {
@@ -172,6 +174,12 @@ pub struct Sim {
     /// **A cadência da secagem por tile 64×64** (B13.4, [`crate::drying::por_tile`]): `true` = o tile corre (seca
     /// com `evap_scale`/`rewet_base` a cada `dry_every`), `false` = calmo (o par calmo a cada 6). Vazio = tudo calmo.
     pub corre_tile: Vec<bool>,
+    /// **B13.4 ligado?** `false` = a cadência global de antes (o aprovado; o mapa por tile nem se calcula).
+    /// Omissão: [`crate::drying::por_tile::secagem_por_tile_por_omissao`] (`PH2D_SECAGEM_POR_TILE=1`).
+    pub secagem_por_tile: bool,
+    /// **B13.10 ligado?** `false` = o freio de antes (índice linear em células de fluxo), o aprovado.
+    /// Omissão: [`crate::flow::freio_na_grade_fina_por_omissao`] (`PH2D_FREIO_NA_GRADE_FINA=1`). CPU e placa leem-no.
+    pub freio_na_grade_fina: bool,
     // Gravity: the tilt dial provides direction + magnitude; boots ON
     // pointing straight down at the gravity knob's magnitude.
     pub tilt_on: bool,
@@ -305,6 +313,10 @@ pub struct StepCursor {
     corre: Vec<bool>,
 }
 
+#[path = "sim_escolhas.rs"]
+mod escolhas;
+pub use escolhas::com_escolhas;
+
 impl Default for Sim {
     fn default() -> Self {
         Sim {
@@ -313,6 +325,8 @@ impl Default for Sim {
             evap_scale: 0.001,
             rewet_base: 0.0001,
             corre_tile: Vec::new(),
+            secagem_por_tile: escolhas::de_um_sim_novo().1,
+            freio_na_grade_fina: escolhas::de_um_sim_novo().0,
             tilt_on: true,
             tilt_dir_x: 0.0,
             tilt_dir_y: 1.0,
@@ -370,17 +384,14 @@ impl Sim {
         n: u64,
     ) -> Option<crate::drying::SecaPorTile<'_>> {
         let (nx, ny) = crate::drying::por_tile::tiles_da_grade(g);
-        let global =
-            crate::drying::por_tile::CADENCIA_GLOBAL.load(std::sync::atomic::Ordering::Relaxed);
-        (!global && !self.corre_tile.is_empty() && self.corre_tile.len() == nx * ny).then(|| {
-            crate::drying::SecaPorTile {
+        (self.secagem_por_tile && !self.corre_tile.is_empty() && self.corre_tile.len() == nx * ny)
+            .then(|| crate::drying::SecaPorTile {
                 corre: &self.corre_tile,
                 nx,
                 calmo_seca: n.is_multiple_of(crate::drying::por_tile::CADENCIA_CALMA),
                 evap_calmo: crate::drying::por_tile::EVAP_CALMO * p.k(Knob::Evaporation),
                 rewet_calmo: crate::drying::por_tile::REWET_CALMO * p.k(Knob::Rewet),
-            }
-        })
+            })
     }
 
     /// Troca a lei da tinta em execução (o preset não a toca). Os campos da lei nova nascem no próximo passo.
@@ -504,6 +515,7 @@ impl Sim {
             pigment_mix: self.pigment_mix,
             absorcao: self.absorcao,
             relevo: crate::render::pesos_do_relevo(self.luz_do_relevo),
+            freio_na_grade_fina: self.freio_na_grade_fina,
         }
     }
 }
@@ -642,7 +654,9 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 let a = c.p.sedimenta * (gx * gx + gy * gy).sqrt();
                 crate::solver::sedimenta(g, a, gx, gy, c.p.km_mixing);
             }
-            c.corre = crate::drying::por_tile::corre_por_tile(g, c.vmax);
+            if sim.secagem_por_tile {
+                c.corre = crate::drying::por_tile::corre_por_tile(g, c.vmax);
+            }
             crate::estreito::arredonda(g);
         }
         4 => {

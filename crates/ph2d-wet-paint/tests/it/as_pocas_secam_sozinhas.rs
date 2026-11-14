@@ -13,6 +13,7 @@ const H: usize = 192;
 /// passos «a correr».
 fn sessao(pingo: bool) -> (Vec<u32>, usize, usize) {
     let mut e = Engine::new(W, H);
+    e.sim.secagem_por_tile = true;
     e.color = [40.0, 60.0, 190.0];
     e.sliders.water = 1.0;
     drive_stroke(&mut e, 20.0, 40.0, 44.0, 40.0, 2.0, 0);

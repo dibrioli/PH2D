@@ -1,7 +1,7 @@
 //! **Prancha B13.4**: a cadência da secagem é do TILE 64×64. Duas poças finas nos cantos (sup. esquerdo e
 //! inf. direito), ainda molhadas; depois a gravidade forte (`gravity_override = [0, 1]`, nas três sessões) e um
 //! pingo de água no meio que CORRE ladeira abaixo. «Antes» = a cadência global
-//! ([`ph2d_wet_paint::drying::por_tile::CADENCIA_GLOBAL`]: o pingo muda o ritmo de TODAS as poças), «depois» = a
+//! (`Sim::secagem_por_tile = false`, a omissão: o pingo muda o ritmo de TODAS as poças), «depois» = a
 //! do tile, no mesmo processo; «sem pingo» é a régua: depois × sem pingo nas poças tem de dar 0. PNG em
 //! `docs/Painter/missao_4k/pranchas/B13.4/`: a poça esquerda e a direita | antes | depois | o que muda.
 
@@ -10,7 +10,6 @@ use crate::{PaintMedia, PainterTool};
 use ph2d_editor_core::tool::{
     CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool as _, Tool as _,
 };
-use std::sync::atomic::Ordering::Relaxed;
 
 /// Os centros das duas poças, em fração da folha.
 const POCAS: [[f32; 2]; 2] = [[0.06, 0.2], [0.94, 0.8]];
@@ -142,11 +141,10 @@ fn prancha_b13_4_a_secagem_por_tile() {
     std::fs::create_dir_all(dir).expect("pasta");
     for (w, h, res) in [(1920u32, 1080u32, "1080p"), (3840, 2160, "4k")] {
         for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "papel")] {
-            ph2d_wet_paint::drying::por_tile::CADENCIA_GLOBAL.store(true, Relaxed);
-            let (a, ca) = cena(w, h, qual, true);
-            ph2d_wet_paint::drying::por_tile::CADENCIA_GLOBAL.store(false, Relaxed);
-            let (d, cd) = cena(w, h, qual, true);
-            let (sem, c0) = cena(w, h, qual, false);
+            use ph2d_wet_paint::sim::com_escolhas;
+            let (a, ca) = com_escolhas(false, false, || cena(w, h, qual, true));
+            let (d, cd) = com_escolhas(false, true, || cena(w, h, qual, true));
+            let (sem, c0) = com_escolhas(false, true, || cena(w, h, qual, false));
             let antes = nas_pocas(&a, &d, w, h);
             let regua = nas_pocas(&sem, &d, w, h);
             eprintln!(

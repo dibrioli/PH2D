@@ -235,7 +235,8 @@ pub struct Knobs {
     pub _k0: f32,
     pub sed_dx: i32,
     pub sed_dy: i32,
-    pub _k1: i32,
+    /// `1` = o freio do B13.10 na grade fina ([`ph2d_wet_paint::sim::Params::freio_na_grade_fina`]); `0` = o de antes.
+    pub freio_fino: i32,
     pub _k2: i32,
 }
 
@@ -265,6 +266,7 @@ impl Knobs {
             brake_reach: p.k(Knob::BrakeReach) as f32,
             dif: ph2d_wet_paint::flow::diff_scale(rf) as f32,
             projection: p.k(Knob::Projection) as f32,
+            freio_fino: i32::from(p.freio_na_grade_fina),
             ..Zeroable::zeroed()
         }
     }

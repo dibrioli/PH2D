@@ -46,7 +46,13 @@ fn traco(e: &mut Engine, pts: &[(f64, f64)]) {
 }
 
 fn hash_do_estado(gravidade: bool) -> u64 {
+    hash_do_estado_com(gravidade, false)
+}
+
+/// `freio_fino` = [`crate::sim::Sim::freio_na_grade_fina`] (B13.10), fixado na sessão.
+fn hash_do_estado_com(gravidade: bool, freio_fino: bool) -> u64 {
     let mut e = Engine::new(W, H);
+    e.sim.freio_na_grade_fina = freio_fino;
     e.sliders.water = 1.0;
     e.sliders.size = 0.25;
     traco(&mut e, &[(30.0, 30.0), (270.0, 180.0)]);
@@ -105,9 +111,24 @@ fn flow_step_bits_are_the_recorded_ones() {
 /// `painter/receita.rs` (φ·h) em vez de `PigmentPerDab`/`water²÷pressão` — iguais à pressão de referência até ao
 /// arredondamento (`receita_tests`, < 1e-6 por dab); o passo da água não mudou (as rotas 1 e 2 dão o mesmo par).
 /// Antes (a umidade de hoje, 03/11): `[0x0abe_64da_e119_8a5b, 0xabd1_73df_e10f_26da]`. Doc: `docs/Painter/Arquitetura/FECHO_31_10.md`.
-/// Regravado 14/11 (B13.10): o freio da água nas bordas esquerda/direita deixa de sondar a linha vizinha. Com
-/// `flow::FREIO_LINEAR` ligado a cena dá ao bit o par de antes, `[0x43ec_b6d1_707d_bdb8, 0x8410_5e51_a74c_3aa6]`.
-const GRAVADO: [u64; 2] = [0x2215_5309_2cd2_0899, 0xfde6_3aec_bd3d_86be];
+/// O freio de antes (a omissão do produto, `Sim::freio_na_grade_fina = false`).
+const GRAVADO: [u64; 2] = [0x43ec_b6d1_707d_bdb8, 0x8410_5e51_a74c_3aa6];
+/// 14/11 (B13.10, desligado até o dono aprovar): o freio da água nas bordas esquerda/direita deixa de sondar a
+/// linha vizinha.
+const GRAVADO_FREIO_FINO: [u64; 2] = [0x2215_5309_2cd2_0899, 0xfde6_3aec_bd3d_86be];
+
+#[test]
+fn flow_step_bits_with_the_fine_grid_brake_are_the_b13_10_ones() {
+    let got = [
+        hash_do_estado_com(false, true),
+        hash_do_estado_com(true, true),
+    ];
+    let s = got.iter().map(|h| format!("{h:#018x}")).collect::<Vec<_>>();
+    assert_eq!(
+        got, GRAVADO_FREIO_FINO,
+        "o freio do B13.10 mudou de bits: {s:?}"
+    );
+}
 
 /// Duas faixas largas separadas por linhas SECAS dentro da bbox: as linhas sem faixa viva (`row_lo > row_hi`,
 /// sentinelas `i32::MAX`/`MIN`) são contadas pelo `commit_rows` — `hi − lo + 1` transbordava (30/10, o

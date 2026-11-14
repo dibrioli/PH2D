@@ -1,13 +1,12 @@
 //! **Prancha B13.10**: o freio da água nas bordas da folha. Dois traços Wet Paint (de fábrica) junto às bordas
 //! ESQUERDA e DIREITA, deixados a correr, sobre 3 fundos × 1080p/4K. «Antes» = a sonda linear de antes
-//! ([`ph2d_wet_paint::flow::FREIO_LINEAR`]), «depois» = a sonda fina com limites 2D, no mesmo processo. PNG em
+//! (`Sim::freio_na_grade_fina = false`, a omissão), «depois» = a sonda fina com limites 2D, no mesmo processo. PNG em
 //! `docs/Painter/missao_4k/pranchas/B13.10/`: a borda esquerda e a direita | antes | depois | o que muda.
 
 use crate::{PaintMedia, PainterTool};
 use ph2d_editor_core::tool::{
     CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool as _, Tool as _,
 };
-use std::sync::atomic::Ordering::Relaxed;
 
 #[path = "prancha_b13_4_tests.rs"]
 mod prancha_b13_4;
@@ -101,10 +100,8 @@ fn prancha_b13_10_o_freio_na_borda() {
     std::fs::create_dir_all(dir).expect("pasta");
     for (w, h, res) in [(1920u32, 1080u32, "1080p"), (3840, 2160, "4k")] {
         for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "papel")] {
-            ph2d_wet_paint::flow::FREIO_LINEAR.store(true, Relaxed);
-            let a = cena(w, h, qual);
-            ph2d_wet_paint::flow::FREIO_LINEAR.store(false, Relaxed);
-            let d = cena(w, h, qual);
+            let a = ph2d_wet_paint::sim::com_escolhas(false, false, || cena(w, h, qual));
+            let d = ph2d_wet_paint::sim::com_escolhas(true, false, || cena(w, h, qual));
             let difs = a
                 .as_chunks::<4>()
                 .0

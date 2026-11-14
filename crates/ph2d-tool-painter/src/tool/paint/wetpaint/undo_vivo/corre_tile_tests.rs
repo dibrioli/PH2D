@@ -23,8 +23,12 @@ fn relogio(t: &mut PainterTool) -> (Vec<bool>, u64, u64, u64) {
 
 #[test]
 fn o_undo_depois_de_agua_a_correr_devolve_o_mapa_por_tile_ao_bit() {
-    let mut t = tela(384, 192, AGUADA, 20.0);
-    traco(&mut t, 20.0, 60.0, 40.0);
+    // A secagem por tile (B13.4) vem desligada no produto: a sessão nasce com ela ligada.
+    let mut t = ph2d_wet_paint::sim::com_escolhas(false, true, || {
+        let mut t = tela(384, 192, AGUADA, 20.0);
+        traco(&mut t, 20.0, 60.0, 40.0);
+        t
+    });
     t.wet_bring_home();
     t.paint
         .wetpaint

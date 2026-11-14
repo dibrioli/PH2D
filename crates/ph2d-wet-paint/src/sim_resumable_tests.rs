@@ -57,7 +57,11 @@ fn sim_step_atomic_reference(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bo
         }
     }
     let vmax = advect(g, &p, grav[0], grav[1]);
-    let corre = crate::drying::por_tile::corre_por_tile(g, vmax);
+    let corre = if sim.secagem_por_tile {
+        crate::drying::por_tile::corre_por_tile(g, vmax)
+    } else {
+        Vec::new()
+    };
     apply_boundaries(g, false);
     if n.is_multiple_of(3) {
         project(g, &p);
@@ -127,7 +131,7 @@ fn digest(g: &Grid) -> Vec<u8> {
 /// `vmax`): uma sessão curta não visita todas as combinações.
 const STEPS: usize = 61;
 
-fn run(staged: bool, gravity: Option<[f64; 2]>) -> (Grid, Sim) {
+fn run(staged: bool, gravity: Option<[f64; 2]>, por_tile: bool) -> (Grid, Sim) {
     let mut g = seeded(160, 120);
     let mut sim = Sim {
         gravity_override: gravity,
@@ -137,6 +141,7 @@ fn run(staged: bool, gravity: Option<[f64; 2]>) -> (Grid, Sim) {
         // troca de modelo e perde o que existe para provar. Quem prova o
         // gather é `tests/advect_symmetry.rs` + o fingerprint.
         order_invariant: false,
+        secagem_por_tile: por_tile,
         ..Sim::default()
     };
     let tuning = Tuning::default();
@@ -156,9 +161,13 @@ fn run(staged: bool, gravity: Option<[f64; 2]>) -> (Grid, Sim) {
 fn the_staged_step_is_byte_identical_to_the_frozen_atomic_route() {
     // Sem gravidade e COM: o segundo faz `vmax` cruzar 0,5 e o `dry_every` trocar no meio da
     // sessão — o estado do `Sim` que o cursor NÃO carrega, de propósito.
-    for grav in [None, Some([0.0, 1.0])] {
-        let (ga, sa) = run(false, grav);
-        let (gs, ss) = run(true, grav);
+    // As duas cadências da secagem (B13.4 desligada = a omissão, e ligada).
+    for (grav, por_tile) in [None, Some([0.0, 1.0])]
+        .into_iter()
+        .flat_map(|g| [(g, false), (g, true)])
+    {
+        let (ga, sa) = run(false, grav, por_tile);
+        let (gs, ss) = run(true, grav, por_tile);
         let (da, ds) = (digest(&ga), digest(&gs));
         let at = da.iter().zip(ds.iter()).position(|(a, b)| a != b);
         assert_eq!(

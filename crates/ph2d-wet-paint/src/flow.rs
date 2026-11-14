@@ -218,9 +218,14 @@ pub fn diff_scale(rf: usize) -> f64 {
     1.0 / clamp_ratio(rf) as f64
 }
 
-/// `true` = o freio de antes do B13.10 (passo em células de FLUXO, índice linear) — SÓ a régua da prancha.
-#[doc(hidden)]
-pub static FREIO_LINEAR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// **A omissão do B13.10 no produto** ([`crate::sim::Sim::freio_na_grade_fina`]): `false` = o freio de antes (passo
+/// em células de FLUXO, índice linear), o aprovado; `PH2D_FREIO_NA_GRADE_FINA=1` liga a sonda fina. Lida uma vez.
+/// Fica desligada até o dono aprovar as pranchas `docs/Painter/missao_4k/pranchas/B13.10`.
+#[must_use]
+pub fn freio_na_grade_fina_por_omissao() -> bool {
+    static C: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *C.get_or_init(|| std::env::var("PH2D_FREIO_NA_GRADE_FINA").is_ok_and(|v| v == "1"))
+}
 
 /// **B13.10 — a célula FINA que o freio de absorvência sonda**, ou `None` (fora da folha: sem freio).
 ///
@@ -249,8 +254,8 @@ pub fn sonda_do_freio(
     ((0..s).contains(&x) && (0..rows).contains(&y)).then(|| (y * s + x) as usize)
 }
 
-/// O freio de antes do B13.10 ([`FREIO_LINEAR`]): `(flow_probe, fine_probe)` lineares, `None` fora dos vetores.
-#[doc(hidden)]
+/// O freio de antes do B13.10 (a omissão, [`freio_na_grade_fina_por_omissao`]): `(flow_probe, fine_probe)`
+/// lineares, `None` fora dos vetores.
 #[must_use]
 #[allow(clippy::too_many_arguments)]
 pub fn sonda_do_freio_linear(

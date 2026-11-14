@@ -53,10 +53,16 @@ fn scripted_session(wet_lift: Option<f64>) -> Engine {
 }
 
 fn scripted_session_with(wet_lift: Option<f64>, gather: bool) -> Engine {
+    scripted_session_por_tile(wet_lift, gather, false)
+}
+
+/// `por_tile` = `Sim::secagem_por_tile` (B13.4), fixado na sessão.
+fn scripted_session_por_tile(wet_lift: Option<f64>, gather: bool, por_tile: bool) -> Engine {
     // A session that exercises deposit + trail + drying + flow + advect +
     // projection + a wet pass + drip under tilt.
     let mut e = Engine::new(300, 200);
     e.sim.order_invariant = gather;
+    e.sim.secagem_por_tile = por_tile;
     if let Some(v) = wet_lift {
         e.set_knob(ph2d_wet_paint::tuning::Knob::WetLift, v);
     }
@@ -149,11 +155,31 @@ fn wet_lift_zero_is_the_old_model_to_the_byte() {
 // 0xc6dc_cb4a_3205_0bd3  03/11: a umidade sobe em uma célula e a orla não seca o miolo
 //                        (docs/DevOps/MEDICAO_P1_P4_LARGURA_2026-11-03.md, §D). Os três pinos movem-se juntos; o da cura
 //                        62e7fc8505 nunca foi gravado.
-// 0x6fab_49bb_a2a3_c433  14/11 (B13.4): a cadência da secagem é do TILE 64×64 — o tile calmo seca no ritmo calmo mesmo
-//                        quando outro corre (docs/Painter/missao_4k/medicoes/N10_agua_wet.md). Os três pinos movem-se
-//                        juntos; o controlo «todo tile corre» reproduz os três pinos de antes ao bit (só a lei mudou).
-const PINNED: u64 = 0x6fab_49bb_a2a3_c433;
+//                        Estes três são a omissão do produto (`Sim::secagem_por_tile = false`).
+const PINNED: u64 = 0xc6dc_cb4a_3205_0bd3;
 
 /// O pino da rota serial — o `PINNED` que valia antes da §5.45.
-const PINNED_GAUSS_SEIDEL: u64 = 0x2cce_ea8a_dd8a_352f;
-const PINNED_PRE_DOC23: u64 = 0x1f86_0b43_c379_c36d;
+const PINNED_GAUSS_SEIDEL: u64 = 0x217c_aed8_783d_a46c;
+const PINNED_PRE_DOC23: u64 = 0x32a4_8f31_eab5_9161;
+
+/// 14/11 (B13.4, desligado até o dono aprovar): a cadência da secagem é do TILE 64×64 — o tile calmo seca no ritmo
+/// calmo mesmo quando outro corre (`docs/Painter/missao_4k/medicoes/N10_agua_wet.md`). `(gather, GS, pré-doc23)`.
+const PINNED_POR_TILE: [u64; 3] = [
+    0x6fab_49bb_a2a3_c433,
+    0x2cce_ea8a_dd8a_352f,
+    0x1f86_0b43_c379_c36d,
+];
+
+#[test]
+fn the_per_tile_drying_cadence_reproduces_its_three_pins() {
+    let got = [
+        fingerprint(&scripted_session_por_tile(None, true, true)),
+        fingerprint(&scripted_session_por_tile(None, false, true)),
+        fingerprint(&scripted_session_por_tile(Some(0.0), false, true)),
+    ];
+    let s = got.iter().map(|h| format!("{h:#018x}")).collect::<Vec<_>>();
+    assert_eq!(
+        got, PINNED_POR_TILE,
+        "a secagem por tile mudou de bits: {s:?}"
+    );
+}

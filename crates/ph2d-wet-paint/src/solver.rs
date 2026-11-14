@@ -300,8 +300,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
                 // flooded ground ahead lets flow keep running, dry ground stalls
                 // it. B13.10: the probe walks the FINE grid with 2-D bounds; past
                 // the sheet (pad included) it skips the brake (flow runs off it).
-                let sonda = if crate::flow::FREIO_LINEAR.load(std::sync::atomic::Ordering::Relaxed)
-                {
+                let sonda = if !p.freio_na_grade_fina {
                     crate::flow::sonda_do_freio_linear(
                         (ex, ey),
                         brake_reach * dif,

@@ -512,7 +512,7 @@ impl PassoPlaca {
         // A cadência dos passos seguintes, global e por tile (B13.4): o `Sim::cadencia` da CPU com o leque da placa.
         use ph2d_wet_paint::drying::por_tile::VMAX_CORRE;
         let vmax = f64::from(f32::from_bits(c[15] as u32));
-        let corre = if vmax < VMAX_CORRE {
+        let corre = if vmax < VMAX_CORRE || !sim.secagem_por_tile {
             Vec::new()
         } else {
             let t = |b: &i32| f64::from(f32::from_bits(*b as u32)) >= VMAX_CORRE;

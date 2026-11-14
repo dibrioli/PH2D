@@ -14,10 +14,14 @@ pub const VMAX_CORRE: f64 = 0.5;
 pub const EVAP_CALMO: f64 = 0.001;
 pub const REWET_CALMO: f64 = 0.0001;
 pub const CADENCIA_CALMA: u64 = 6;
-/// A régua da prancha B13.4 (`prancha_b13_4_tests.rs`): ligada, o mapa por tile não se usa e a grade inteira
-/// segue a cadência global — o de antes. Só para medir; nunca ligada no produto.
-pub static CADENCIA_GLOBAL: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+/// **A omissão do B13.4 no produto** ([`crate::sim::Sim::secagem_por_tile`]): `false` = a cadência global de antes
+/// (o aprovado; nem se calcula o mapa por tile); `PH2D_SECAGEM_POR_TILE=1` liga a cadência do tile. Lida uma vez.
+/// Fica desligada até o dono aprovar as pranchas `docs/Painter/missao_4k/pranchas/B13.4`.
+#[must_use]
+pub fn secagem_por_tile_por_omissao() -> bool {
+    static C: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *C.get_or_init(|| std::env::var("PH2D_SECAGEM_POR_TILE").is_ok_and(|v| v == "1"))
+}
 
 /// Os tiles da grade `g` (com pad): `(nx, ny)`.
 #[must_use]

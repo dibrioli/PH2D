@@ -88,6 +88,8 @@ struct FlowConst {
     visc_threshold: f64,
     brake_bias: f64,
     brake_reach: f64,
+    /// [`Params::freio_na_grade_fina`] (B13.10).
+    freio_na_grade_fina: bool,
     dif: f64,
     fingering: bool,
     gnx: f64,
@@ -127,6 +129,7 @@ impl FlowConst {
             visc_threshold: p.k(Knob::Viscosity),
             brake_bias: p.k(Knob::Brake),
             brake_reach: p.k(Knob::BrakeReach),
+            freio_na_grade_fina: p.freio_na_grade_fina,
             dif: crate::flow::diff_scale(geom.rf),
             fingering,
             gnx,
@@ -406,29 +409,28 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     // independência de ordem é ganha, e é a única diferença de
                     // desenho entre este passe e o Gauss-Seidel.
                     // B13.10: a sonda anda na grade FINA, com limites 2D ([`crate::flow::sonda_do_freio`]).
-                    let sonda =
-                        if crate::flow::FREIO_LINEAR.load(std::sync::atomic::Ordering::Relaxed) {
-                            crate::flow::sonda_do_freio_linear(
-                                (ex, ey),
-                                c.brake_reach * c.dif,
-                                i,
-                                fi,
-                                (s, cells as usize),
-                                (fine_s, fine_cells as usize),
-                                rf,
-                            )
-                        } else {
-                            let (px, py) = (i64::from(px), fy_m as i64);
-                            crate::flow::sonda_do_freio(
-                                ex,
-                                ey,
-                                c.brake_reach,
-                                px,
-                                py,
-                                fine_s,
-                                fine_cells as usize,
-                            )
-                        };
+                    let sonda = if !c.freio_na_grade_fina {
+                        crate::flow::sonda_do_freio_linear(
+                            (ex, ey),
+                            c.brake_reach * c.dif,
+                            i,
+                            fi,
+                            (s, cells as usize),
+                            (fine_s, fine_cells as usize),
+                            rf,
+                        )
+                    } else {
+                        let (px, py) = (i64::from(px), fy_m as i64);
+                        crate::flow::sonda_do_freio(
+                            ex,
+                            ey,
+                            c.brake_reach,
+                            px,
+                            py,
+                            fine_s,
+                            fine_cells as usize,
+                        )
+                    };
                     if let Some(pu) = sonda {
                         let mut brake = film_full[pu] as f64 + (3.0 / 255.0) * wet_full[pu] as f64
                             - c.brake_bias;

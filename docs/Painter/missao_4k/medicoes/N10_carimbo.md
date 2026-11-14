@@ -27,3 +27,5 @@ Uma linha por id. A janela principal dobra-as no `BACKLOG.md`.
 | B26.3 | aberto (não coube) | — | — | Piso `t = a·d²`: o corte do B26.1 muda o `d²` efectivo (só a orla convexa); medir com a sonda nova antes |
 | B25.8 cura | não feita (como estava) | — | — | Muda aparência / exige paridade ao bit da placa (RTX proibida) |
 | B17.6 (2 casos) | aberto (não coube) | — | — | Color Fill/Cut sem prova de captura (não abrem passo); `selection.rs:230` sem efeito (o chamador corre com o scratch da máscara) |
+
+**B26.1 medido (janela, load  8,35, 11,03, 7,89):** `sonda_o_carimbo_com_invariantes_icadas_custa_menos` — dab simples flow 0,35: sem corte 0,295 → com corte 0,253 ms/dab (1,17×); cápsula 1,230 → 1,232 (o corte não a cobre, por desenho). Saída `target/n10/w2c/b26_1.txt`.

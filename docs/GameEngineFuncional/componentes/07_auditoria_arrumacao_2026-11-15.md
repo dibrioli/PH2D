@@ -16,11 +16,11 @@
 | Enabled | Está ligado? | 1.ª linha de controlo (cartões: ao lado do Angle) | igual | Godot/Unity: ligar antes de afinar |
 | Angle | Para onde olha? | após Enabled | igual (escondido com mira) | — |
 | Turns with facing | Vira com o personagem? | após Angle | igual (escondido com mira) | é do Angle |
-| Aim at | Para onde olha (alvo)? | após Angle | igual | a outra resposta a «para onde» |
-| Reach | Até onde? | cartões: **ao lado da Layer** | cartões: ao lado da **Shape**; clássico: empilhado | «quão longe» e «com que forma» são a mesma pergunta (como olha); a Layer é outra (com quem colide) |
-| Shape | Com que forma? | linha própria, após Reach\|Layer | ao lado do Reach | idem |
-| Thickness | Quão grosso (Thick)? | por baixo da Shape | igual | só a forma activa mostra número |
-| Cone | Quão aberto (Cone)? | por baixo da Shape | igual | idem |
+| Aim at | Para onde olha (alvo)? | após Angle | cartões: **à direita do Reach** (dono 15/11, 2.ª ordem; conta-gotas dentro da caixa, «…» antes dele); clássico: por baixo do Reach | a outra resposta a «para onde» |
+| Reach | Até onde? | cartões: **ao lado da Layer** | cartões: **Reach \| Aim at** (2.ª ordem do dono 15/11; antes ao lado da Shape); clássico: empilhado, Reach por cima | a Layer é outra pergunta (com quem colide) |
+| Shape | Com que forma? | linha própria, após Reach\|Layer | cartões: **Shape \| Thickness ou Cone**; com Line sozinha na coluna esquerda; clássico: empilhado | a forma e o número dela são uma pergunta só |
+| Thickness | Quão grosso (Thick)? | por baixo da Shape | cartões: à direita da Shape; clássico: por baixo | só a forma activa mostra número |
+| Cone | Quão aberto (Cone)? | por baixo da Shape | cartões: à direita da Shape; clássico: por baixo | idem |
 | Layer | Em que camada está? | cartões: ao lado do Reach; clássico: após Reach | **grupo «Layers»**, 1.ª linha | a camada e o que ela vê são uma pergunta só |
 | Sees (+ Add layer) | Que camadas vê? | cartões: **depois** dos botões, longe da Layer | grupo «Layers», logo **por baixo da Layer** | a queixa do dono: Layer e Sees juntos |
 | «Applies to everything on …» | Isto vale para quem? | por baixo do Sees | igual (dentro do grupo) | é a frase do Sees |

@@ -227,6 +227,20 @@ lia-se como do vizinho por a Layer estar colada; agora o vizinho é Shape. Gate 
 sangrou. Fotos `fotos_07/26_arrumado.png`, `26_arrumado_cards_off.png`, `26_arrumado_cone.png`. 2.ª build:
 ``Finished `smoke` profile [optimized] target(s) in 0.25s``.
 
+**Reach | Aim at e Shape | número (dono 15/11: *«Shape e Cone deveriam estar na mesma linha. Reach e Aim at podem ficar na
+mesma linha nessa ordem»*).** Commit `519d86c987` (código). Cartões: Enabled | Angle · Turns with facing · **Reach | Aim at** ·
+**Shape | Thickness** (Thick) ou **Shape | Cone** (Cone); com Line a Shape fica só na coluna esquerda · Layers · Filter · Signals.
+Clássico: empilhado na mesma sequência. `ray_rumo.rs`: `rumo` → `alcance_e_mira` (colunas iguais, y seguinte = máximo das duas;
+o erro do Aim at só debaixo da caixa dele) e `forma_e_numero` (era `alcance_e_feixe`; POR_FUNCAO do gate de canais actualizado).
+⚠️ Na meia coluna o placeholder «None: the Angle decides» passava POR BAIXO do conta-gotas sem «…»: a linha de texto do cartão
+ignorava a `TextInput::reserva_direita` (o `TextRow` só levava o placeholder). Curado na fundação: `TextRow` ganha o `f32` da
+reserva, `CardCtx.reserva_do_texto` leva-o ao `Widget::Text` (`text_reservando`), e o clássico soma a reserva do chamador à do
+sufixo (antes sobrescrevia); `conta_gotas_row::linha` reserva `lado + inset`. Gates: `o_cartao_ray_esta_arrumado_por_pergunta`
+(Reach à esquerda do Aim at / por cima no clássico; Line ⇒ sem número; conta-gotas dentro da caixa) e o novo
+`a_shape_e_o_seu_numero_partilham_a_linha` (Thick e Cone, dois modos). **Mutação** «Aim at na largura toda» sangrou
+(`lado_a_lado`). Fotos `fotos_07/26_linhas.png`, `26_linhas_cone.png`, `26_linhas_cards_off.png`. 2.ª build:
+``Finished `smoke` profile [optimized] target(s) in 0.29s``.
+
 ## Aberto
 
 - **Smoke do dono das melhorias** (RS-1..RS-12) — pendente.

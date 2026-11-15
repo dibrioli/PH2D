@@ -1,5 +1,6 @@
-//! As juntas de duas pontas: Rope · Chain, Bridge, Hanging — Spring · Trampoline, Soft platform —
-//! Rod · Rigid pendulum — Pulley · Lift.
+//! As juntas de duas pontas: Rope · Chain, Hanging — Spring · Trampoline, Soft platform —
+//! Rod · Rigid pendulum — Pulley · Lift. E a ponte (Pin · Bridge): uma fila entre dois postes, de
+//! Pins desde a medição de 02, por isso na família Pin (a família é o tipo das juntas).
 
 use super::hinges::SWING_ROLES;
 use super::{boxed, rule, template};
@@ -78,7 +79,7 @@ const BRIDGE_JOINTS: &[JointRule] = &[
     .tuned(ONE_CHAIN),
 ];
 pub(super) const BRIDGE: Template =
-    template(8, JointKind::Rope, "Bridge", BRIDGE_ROLES, BRIDGE_JOINTS);
+    template(8, JointKind::Pin, "Bridge", BRIDGE_ROLES, BRIDGE_JOINTS);
 
 const HANGING_ROLES: &[Role] = &[
     boxed("Hook", [0.1, 0.1], [0.0, 2.5]).scenery(),

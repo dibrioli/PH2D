@@ -17,7 +17,7 @@ objetos e com elas por conta do mundo. Código: [`crates/ph2d-joint-templates`](
 | Pin · Pendulum | Bob | 0 | 0 | 0 | nasce em repouso, a prumo |
 | Pin · Flipper | Paddle | −0,062 | −0,245 | −0,500 | o servo leva a palheta ao repouso de −0,5 rad e segura |
 | Rope · Chain | Links 1–6 | 0 | 0 | 0 | pendurada esticada |
-| Rope · Bridge | Plank 4/5 | 0 | −0,083 | ±0,014 | flecha de 8,3 cm no meio com 2 cm de folga entre tábuas |
+| Pin · Bridge | Plank 4/5 | 0 | −0,083 | ±0,014 | flecha de 8,3 cm no meio com 2 cm de folga entre tábuas |
 | Rope · Hanging | Load | 0 | 0 | 0 | pendurada |
 | Slider · Elevator | Platform | 0 | +3,000 | 0 | sobe um andar e para no batente |
 | Slider · Piston | Rod | +0,800 | 0 | 0 | faz o curso inteiro |

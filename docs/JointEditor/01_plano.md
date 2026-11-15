@@ -30,7 +30,7 @@ fonte `fonte_critica/onda3c_juntas.py`, fatos `fatos_juntas.md`, pesquisa `pesqu
 
 ### W1 — Gabaritos e montagem, por baixo (sem tela)
 - Crate nova `ph2d-joint-templates` (dados puros): cada gabarito = papéis (nome, forma-guia, quantos) + juntas entre papéis (tipo, regra de âncora: centro do papel / borda / ponto de contato, eixo, números) + números de fábrica justificados no doc (medidos na física, não inventados).
-  Catálogo inicial: Wheel {Car, Motorbike, Custom} · Pin {Door, Seesaw, Pendulum, Flipper} · Rope {Chain, Bridge, Hanging} · Slider {Elevator, Piston, Sliding door} · Spring {Trampoline, Soft platform} · Weld {Glue, Breakable} · Rod {Rigid pendulum} · Pulley {Lift} · Custom.
+  Catálogo inicial: Wheel {Car, Motorbike, Custom} · Pin {Door, Seesaw, Pendulum, Flipper, Bridge} · Rope {Chain, Hanging} · Slider {Elevator, Piston, Sliding door} · Spring {Trampoline, Soft platform} · Weld {Glue, Breakable} · Rod {Rigid pendulum} · Pulley {Lift} · Custom.
 - Montagem = componente `JointAssembly` (template, papel → `StableId`, «iguais entre si» por grupo) numa entidade própria, nomeada («Car 1»), visível na Hierarchy; cada junta ganha `assembly` + `role` (campos no FIM, serde posicional). Sobe `PROJECT_SCHEMA` (§0.11: sem migração). ADR novo para o modelo.
 - `apply(template, papéis)` usa `create_joint_at` (não duplica criação).
 - **Prova:** testes de física headless — o carro de 3 corpos com motor atrás anda para a frente no chão; a porta gira e para no limite; a ponte de N tábuas aguenta; salvar → abrir devolve a mesma montagem; um Ctrl+Z desfaz a montagem inteira.

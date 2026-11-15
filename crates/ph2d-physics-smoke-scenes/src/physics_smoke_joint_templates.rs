@@ -22,7 +22,7 @@ const LOAD: [f32; 4] = [0.45, 0.80, 0.95, 1.0];
 /// As quatro máquinas: o gabarito, onde fica, e se as peças de cenário ficam por conta do mundo.
 pub const MACHINES: [(JointKind, &str, f32, bool); 4] = [
     (JointKind::Pin, "Door", 2.5, true),
-    (JointKind::Rope, "Bridge", 7.0, false),
+    (JointKind::Pin, "Bridge", 7.0, false),
     (JointKind::Slider, "Elevator", 11.5, false),
     (JointKind::Wheel, "Car", 14.5, false),
 ];

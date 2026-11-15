@@ -15,7 +15,7 @@ fn the_template_ids_are_pinned() {
         (5, JointKind::Pin, "Pendulum"),
         (6, JointKind::Pin, "Flipper"),
         (7, JointKind::Rope, "Chain"),
-        (8, JointKind::Rope, "Bridge"),
+        (8, JointKind::Pin, "Bridge"),
         (9, JointKind::Rope, "Hanging"),
         (10, JointKind::Slider, "Elevator"),
         (11, JointKind::Slider, "Piston"),
@@ -169,7 +169,7 @@ fn the_factory_joint_is_the_kind_default_plus_the_tune() {
         (base.stiffness, base.damping)
     );
 
-    let bridge = by_name(JointKind::Rope, "Bridge").expect("bridge");
+    let bridge = by_name(JointKind::Pin, "Bridge").expect("bridge");
     // A ponte é uma corrente de Pins resolvida de uma vez (a ponte sob carga, doc 02).
     let plank = bridge.joints[1].joint(0.02);
     assert!(plank.kind == JointKind::Pin && plank.one_chain);
@@ -186,6 +186,22 @@ fn the_factory_joint_is_the_kind_default_plus_the_tune() {
 
     let weak = by_name(JointKind::Weld, "Breakable").expect("breakable");
     assert!(weak.joints[0].joint(0.0).break_enabled);
+}
+
+/// **A família de um gabarito é o tipo das juntas dele.** A aba mostra a família no topo («Joint:
+/// …») e os cartões do tipo da 1.ª junta por baixo: uma família que não é o tipo das juntas mostra
+/// «Rope» por cima de cartões de Pin (a ponte, antes de 15/11).
+#[test]
+fn a_template_family_is_the_kind_of_its_joints() {
+    for t in ALL {
+        for r in t.joints {
+            assert_eq!(
+                r.kind, t.kind,
+                "{} is filed under {:?} but its joint «{}» is a {:?}",
+                t.name, t.kind, r.name, r.kind
+            );
+        }
+    }
 }
 
 /// O ponto na peça: frações da caixa, nunca metros.
@@ -209,7 +225,7 @@ fn a_factory_part_is_named_after_the_template_and_the_role() {
     assert_eq!(car.part_name(1, 0), "Car Rear Wheel");
     let door = by_name(JointKind::Pin, "Door").expect("door");
     assert_eq!(door.part_name(1, 0), "Door");
-    let bridge = by_name(JointKind::Rope, "Bridge").expect("bridge");
+    let bridge = by_name(JointKind::Pin, "Bridge").expect("bridge");
     assert_eq!(bridge.part_name(1, 2), "Plank 3");
     assert_eq!(bridge.part_name(2, 0), "Bridge Right Post");
 }

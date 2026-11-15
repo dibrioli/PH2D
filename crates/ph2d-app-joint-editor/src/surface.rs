@@ -12,7 +12,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-use crate::doc::{Hit, JointEditorDoc};
+use crate::doc::{DragBy, Hit, JointEditorDoc};
 
 pub const TAB_ID: u64 = 1;
 /// File ▸ New ▸ Joint Editor… (e na paleta `Ctrl+K`).
@@ -92,12 +92,13 @@ impl DocumentSurface for JointEditorTab {
     fn pointer(
         &mut self,
         _id: u64,
-        _input: PointerInput<'_>,
+        input: PointerInput<'_>,
         kind: PointerKind,
         button: PointerButton,
         x: f32,
         y: f32,
     ) -> bool {
+        self.doc.mods = input.mods;
         match (kind, button) {
             (PointerKind::Down, PointerButton::Primary) => {
                 self.claim = self.doc.press(x, y);
@@ -112,7 +113,8 @@ impl DocumentSurface for JointEditorTab {
         }
     }
 
-    fn pointer_move(&mut self, _id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
+    fn pointer_move(&mut self, _id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
+        self.doc.mods = input.mods;
         self.doc.motion(x, y) && (self.claim || self.doc.area.contains(x, y))
     }
 
@@ -121,7 +123,9 @@ impl DocumentSurface for JointEditorTab {
             return None;
         }
         Some(match self.doc.hit_at(x, y) {
-            _ if self.doc.drag.is_some() => PointerLook::Grabbing,
+            _ if matches!(self.doc.drag, Some(d) if matches!(d.by, DragBy::Handle(_))) => {
+                PointerLook::Grabbing
+            }
             _ if matches!(self.doc.grab, Some(crate::doc::Grab::Split { .. })) => {
                 PointerLook::ResizeEw
             }
@@ -129,6 +133,10 @@ impl DocumentSurface for JointEditorTab {
             Some(Hit::Split) => PointerLook::ResizeEw,
             Some(Hit::Bar) => PointerLook::ResizeNs,
             Some(Hit::Handle(_)) => PointerLook::Grab,
+            _ if matches!(self.doc.drag, Some(d) if matches!(d.by, DragBy::Scrub(_))) => {
+                PointerLook::ResizeEw
+            }
+            Some(Hit::Scrub(_)) => PointerLook::ResizeEw,
             Some(Hit::Field(_)) => PointerLook::Text,
             Some(Hit::OpenMenu(_)) if self.doc.menu.is_some() => PointerLook::Arrow,
             Some(_) => PointerLook::Hand,
@@ -168,11 +176,16 @@ impl DocumentSurface for JointEditorTab {
                 _ => ph2d_a11y::Role::Button,
             };
             let (x, y, w, h) = b(*r);
-            let node = ph2d_a11y::NodeBuilder::new(role)
+            let mut node = ph2d_a11y::NodeBuilder::new(role)
                 .label(label.clone())
                 .bounds(x, y, w, h)
-                .action(ph2d_a11y::Action::Click)
-                .build();
+                .action(ph2d_a11y::Action::Click);
+            if let Hit::Field(f) = hit
+                && let Some((_, v)) = self.doc.shown.iter().find(|(g, _)| g == f)
+            {
+                node = node.value(v.clone());
+            }
+            let node = node.build();
             out.push((node_of(hit), node));
         }
         out
@@ -194,8 +207,8 @@ impl DocumentSurface for JointEditorTab {
         }
     }
 
-    fn compose(&mut self, _id: u64, _c: Compose<'_>) -> bool {
-        false
+    fn compose(&mut self, _id: u64, c: Compose<'_>) -> bool {
+        matches!(c, Compose::Commit(ch) if self.doc.type_char(ch))
     }
 
     fn close(&mut self, _id: u64) {

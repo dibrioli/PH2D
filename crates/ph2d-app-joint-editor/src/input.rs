@@ -3,7 +3,9 @@
 
 use ph2d_editor_core::doc_surface::Key;
 
-use crate::doc::{Drag, Dropping, Edit, Field, Hit, JointEditorDoc};
+use ph2d_editor_core::interaction::field_scrub::FieldScrub;
+
+use crate::doc::{Drag, DragBy, Dropping, Edit, Field, Hit, JointEditorDoc};
 use crate::stage::role_at;
 use crate::widgets::format;
 
@@ -25,10 +27,20 @@ impl JointEditorDoc {
         }
         match hit {
             Some(Hit::Handle(h)) if self.menu.is_none() => {
-                let value = self.value(h.field()).unwrap_or(0.0);
-                self.drag = Some(Drag { handle: h, value });
+                let (field, value) = (h.field(), self.value(h.field()).unwrap_or(0.0));
+                let by = DragBy::Handle(h);
+                self.drag = Some(Drag { field, value, by });
             }
-            Some(Hit::Field(f)) if self.menu.is_none() => {
+            Some(Hit::Scrub(f)) if self.menu.is_none() && self.scrub_law(f).is_some() => {
+                let (v, step, bounds) = self.scrub_law(f).unwrap_or_default();
+                let by = DragBy::Scrub(FieldScrub::new(x, f64::from(v), step, bounds));
+                self.drag = Some(Drag {
+                    field: f,
+                    value: v,
+                    by,
+                });
+            }
+            Some(Hit::Field(f) | Hit::Scrub(f)) if self.menu.is_none() => {
                 if self.typing.is_none() {
                     self.typing = Some((f, String::new()));
                 }
@@ -45,10 +57,23 @@ impl JointEditorDoc {
         }
         let before = (self.hover.clone(), self.drag);
         self.hover = self.hit_at(x, y).cloned();
-        if let Some(d) = self.drag.as_mut()
-            && let Some((_, g)) = self.geo.iter().find(|(h, _)| *h == d.handle)
-        {
-            d.value = g.value_at(x, y);
+        let grain = self.drag.map(|d| self.step_of(d.field).0 as f32);
+        if let Some(d) = self.drag.as_mut() {
+            match &mut d.by {
+                // A alça anda no grão do campo (1 °/s, 1 cm), como o número que o Inspector mostra.
+                DragBy::Handle(h) => {
+                    if let Some((_, g)) = self.geo.iter().find(|(k, _)| k == h) {
+                        let q = grain.unwrap_or(1.0);
+                        d.value = (g.value_at(x, y) / q).round() * q;
+                    }
+                }
+                #[allow(clippy::cast_possible_truncation)] // o número do cartão é f32
+                DragBy::Scrub(s) => {
+                    if let Some(v) = s.motion(x, self.mods) {
+                        d.value = v as f32;
+                    }
+                }
+            }
         }
         before != (self.hover.clone(), self.drag)
     }
@@ -59,7 +84,11 @@ impl JointEditorDoc {
             return true;
         }
         if let Some(d) = self.drag.take() {
-            self.commit(d.handle.field(), d.value);
+            match d.by {
+                // Abaixo do limiar a letra foi um clique: abre a escrita, como no Inspector.
+                DragBy::Scrub(s) if !s.moved() => self.typing = Some((d.field, String::new())),
+                _ => self.commit(d.field, d.value),
+            }
             return true;
         }
         let Some(p) = self.pressed.take() else {
@@ -123,7 +152,7 @@ impl JointEditorDoc {
                 }
             }
             Hit::Fold(k) => self.toggle_fold(k),
-            Hit::Field(_) | Hit::Handle(_) | Hit::Split | Hit::Bar => {}
+            Hit::Field(_) | Hit::Scrub(_) | Hit::Handle(_) | Hit::Split | Hit::Bar => {}
         }
     }
 
@@ -149,10 +178,7 @@ impl JointEditorDoc {
             } else if key == Key::Backspace {
                 buf.pop();
             } else if let Some(t) = text {
-                buf.extend(
-                    t.chars()
-                        .filter(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '-')),
-                );
+                t.chars().for_each(|c| _ = self.type_char(c));
             }
             return true;
         }
@@ -162,6 +188,18 @@ impl JointEditorDoc {
             return true;
         }
         false
+    }
+
+    /// Um carácter escrito, pela tecla ou pelo `Commit` do IME (a shell manda cada um por UM dos dois).
+    /// `true` = havia um campo a ser escrito.
+    pub fn type_char(&mut self, c: char) -> bool {
+        let Some((_, buf)) = self.typing.as_mut() else {
+            return false;
+        };
+        if c.is_ascii_digit() || matches!(c, '.' | ',' | '-') {
+            buf.push(c);
+        }
+        true
     }
 
     /// O papel debaixo de `(x, y)` no desenho.

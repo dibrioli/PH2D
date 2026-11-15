@@ -103,6 +103,8 @@ pub enum Hit {
     World(u16),
     Scope(usize),
     Field(Field),
+    /// A letra do campo: arrastar muda o número, o gesto do cartão do Inspector (`field_scrub`).
+    Scrub(Field),
     Flag(Flag),
     Drive(Drive),
     Handle(Handle),
@@ -172,11 +174,19 @@ pub struct Dropping {
     pub line: String,
 }
 
-/// Uma alça presa.
+/// Um número a ser arrastado: pela alça do desenho ou pela letra do campo. `value` é o vivo, que o
+/// painel e o desenho mostram até ao Up.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Drag {
-    pub handle: Handle,
+    pub field: Field,
     pub value: f32,
+    pub by: DragBy,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DragBy {
+    Handle(Handle),
+    Scrub(ph2d_editor_core::interaction::field_scrub::FieldScrub),
 }
 
 pub struct JointEditorDoc {
@@ -193,6 +203,10 @@ pub struct JointEditorDoc {
     pub(crate) dropping: Option<Dropping>,
     pub(crate) typing: Option<(Field, String)>,
     pub(crate) drag: Option<Drag>,
+    /// O texto que cada caixa pintou neste quadro (o valor acessível do campo).
+    pub(crate) shown: Vec<(Field, String)>,
+    /// As teclas do último evento do rato (Shift ×10 e Alt ×0,1 no arrasto da letra).
+    pub(crate) mods: ph2d_host::Modifiers,
     pub(crate) pending: Vec<Edit>,
     pub(crate) map: Option<StageMap>,
     pub(crate) counts: Vec<u16>,
@@ -232,6 +246,8 @@ impl Default for JointEditorDoc {
             dropping: None,
             typing: None,
             drag: None,
+            shown: Vec::new(),
+            mods: ph2d_host::Modifiers::default(),
             pending: Vec::new(),
             map: None,
             counts: Vec::new(),

@@ -31,6 +31,40 @@ impl JointEditorDoc {
         })
     }
 
+    /// O valor vivo de `f` enquanto se arrasta (pela alça ou pela letra): o que o painel e o desenho mostram.
+    #[must_use]
+    pub fn live(&self, f: Field) -> Option<f32> {
+        self.drag.filter(|d| d.field == f).map(|d| d.value)
+    }
+
+    /// O arrasto da letra de `f`: o valor de partida, o passo por pixel e o intervalo. Os do campo da
+    /// junta no Inspector (`populate_physics`: passo e faixa); em metros, o passo fino de 1 cm.
+    #[must_use]
+    pub fn scrub_law(&self, f: Field) -> Option<(f32, f64, (f64, f64))> {
+        let (step, bounds) = self.step_of(f);
+        Some((self.value(f)?, step, bounds))
+    }
+
+    /// O passo (por pixel do scrub, e o grão da alça do desenho) e o intervalo de `f`.
+    #[must_use]
+    pub fn step_of(&self, f: Field) -> (f64, (f64, f64)) {
+        const WIDE: f64 = 3600.0; // LITERAL-PX-OK: a faixa do Inspector (graus/s ou m/s)
+        const BIG: f64 = 10_000.0; // LITERAL-PX-OK: N, N·m (o tecto do Inspector)
+        const CM: f64 = 0.01; // LITERAL-PX-OK: metros
+        let (lm, mm) = (self.kind.limits_in_metres(), self.kind.motor_in_metres());
+        let fine = |metres: bool| if metres { CM } else { 1.0 };
+        match f {
+            Field::LimitMin | Field::LimitMax => (fine(lm), (-WIDE, WIDE)),
+            Field::MotorSpeed | Field::MotorTarget => (fine(mm), (-WIDE, WIDE)),
+            Field::MotorForce => (0.1, (0.0, BIG)),
+            Field::Stiffness => (1.0, (0.0, BIG * 10.0)),
+            Field::Damping => (0.1, (0.0, BIG / 10.0)),
+            Field::RestLength | Field::Wheelbase => (CM, (0.0, BIG / 10.0)),
+            Field::MaxLength => (CM, (CM / 10.0, BIG / 10.0)),
+            Field::BreakForce | Field::BreakTorque => (1.0, (0.0, BIG)),
+        }
+    }
+
     /// O entre-eixos medido na cena: a distância entre as peças das duas primeiras regras de roda.
     #[must_use]
     pub fn wheelbase(&self) -> Option<f32> {

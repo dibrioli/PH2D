@@ -48,6 +48,7 @@ pub fn paint(
     theme: Theme,
 ) {
     doc.hits.clear();
+    doc.shown.clear();
     doc.area = area;
     let ink = CardInk::of_list(theme);
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));

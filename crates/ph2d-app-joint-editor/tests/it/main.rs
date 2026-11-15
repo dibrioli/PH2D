@@ -2,6 +2,8 @@
 //! pelas portas reais — o pedido do Inspector, o `frame`, a pintura, a queda de um objeto pela porta da
 //! queda entre painéis (`surface_input::drop_hover` / `drop`, a mesma do arrasto da Hierarchy) e o clique.
 
+mod campos;
+
 use ph2d_a11y::NodeId;
 use ph2d_app_joint_editor::{Hit, JointEditorTab, frame, install, smoke};
 use ph2d_ecs::{Name, SimWorld, StableId};

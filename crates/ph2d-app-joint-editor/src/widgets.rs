@@ -14,7 +14,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
-use crate::doc::{Field, Hit, JointEditorDoc};
+use crate::doc::{DragBy, Field, Hit, JointEditorDoc};
 
 /// A coluna das montagens.
 pub const LIST_W: f32 = 220.0;
@@ -199,10 +199,19 @@ impl Ui<'_> {
     /// (ou o que se escreve, com o cursor). A unidade mora no rótulo, como no Inspector; `name` é o acessível.
     pub fn number(&mut self, b: Rect, glyph: Glyph<'_>, name: &str, f: Field) {
         let typing = self.doc.typing_shown(f);
-        let hot = self.hot(&Hit::Field(f));
-        paint_field_frame(self.scene, self.ink, b, hot, typing.is_some());
+        let hot = self.hot(&Hit::Field(f)) || self.hot(&Hit::Scrub(f));
+        let scrubbing = self
+            .doc
+            .drag
+            .is_some_and(|d| d.field == f && matches!(d.by, DragBy::Scrub(s) if s.moved()));
+        paint_field_frame(self.scene, self.ink, b, hot, typing.is_some() || scrubbing);
         let cell = handle_rect(b);
-        let tint = self.c(ColorToken::CardLabel);
+        // A letra no azul do scrub enquanto arrasta, como o `card_field` do Inspector.
+        let tint = self.c(if scrubbing {
+            ColorToken::KanbanBlueBold
+        } else {
+            ColorToken::CardLabel
+        });
         let mut area = value_rect(b);
         match glyph {
             Glyph::Icon(icon) => {
@@ -220,17 +229,21 @@ impl Ui<'_> {
                 area = Rect::new(x, area.y, (area.x + area.w - x).max(0.0), area.h);
             }
         }
+        let now = self.doc.live(f).or_else(|| self.doc.value(f));
         let shown = typing
             .clone()
-            .unwrap_or_else(|| self.doc.value(f).map_or_else(String::new, format));
+            .unwrap_or_else(|| now.map_or_else(String::new, format));
         let c = self.c(ColorToken::Text1);
         text(self.ts, self.scene, &shown, area, m::VALUE_PX, c);
+        self.doc.shown.push((f, shown.clone()));
         if typing.is_some() {
             let vw = self.ts.prefix_width(&shown, m::VALUE_PX).min(area.w);
             let y = area.y + folga_do_texto(area.h, m::VALUE_PX);
             paint_field_caret(self.scene, self.ink, area.x + vw, y, m::VALUE_PX);
         }
         self.hit(b, Hit::Field(f), name);
+        // A letra por cima da caixa: o arrasto dela é o do Inspector (`field_scrub`); sem nome (a caixa já o tem).
+        self.hit(Rect::new(b.x, b.y, area.x - b.x, b.h), Hit::Scrub(f), "");
     }
 
     /// A caixa de marcar do app numa MOLDURA, como a Godot (dono 13/11): caixa e texto dentro do fundo

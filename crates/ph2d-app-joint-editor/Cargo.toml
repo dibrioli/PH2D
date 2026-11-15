@@ -33,5 +33,9 @@ ph2d-vector = { path = "../ph2d-vector" }
 # `libm`: HR-5, a trigonometria bit-idêntica entre OS (o eixo da suspensão no desenho).
 libm = { version = "=0.2.16", default-features = false }
 
+[dev-dependencies]
+# A porta real do texto (`HeroScreen::handle_text_input`) pede a arena do quadro.
+bumpalo = "3"
+
 [lints]
 workspace = true

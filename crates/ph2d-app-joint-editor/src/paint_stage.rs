@@ -14,7 +14,7 @@ use ph2d_physics_ecs::MotorMode;
 use ph2d_tokens::ColorToken;
 use ph2d_vector::Color;
 
-use crate::doc::{Handle, Hit};
+use crate::doc::{DragBy, Handle, Hit};
 use crate::stage::{StageMap, centre_of, rule_ends, shown_count};
 use crate::widgets::{self as w, Ui};
 
@@ -246,7 +246,8 @@ fn pairs(t: &Template, rule: u16, counts: &[u16]) -> Vec<[u16; 2]> {
 }
 
 fn handle(ui: &mut Ui<'_>, at: (f32, f32), h: Handle, geo: Geo, label: &str) {
-    let hot = ui.doc.hover == Some(Hit::Handle(h)) || ui.doc.drag.is_some_and(|d| d.handle == h);
+    let hot = ui.doc.hover == Some(Hit::Handle(h))
+        || ui.doc.drag.is_some_and(|d| d.by == DragBy::Handle(h));
     let rad = if hot { w::HANDLE_R * 1.3 } else { w::HANDLE_R };
     fill_circle(ui.scene, at.0, at.1, rad, ui.c(ColorToken::KanbanCard));
     let ring = ui.c(ColorToken::Accent);
@@ -270,12 +271,9 @@ fn arrow_head(ui: &mut Ui<'_>, tip: (f32, f32), dir: (f32, f32), c: Color) {
     ph2d_editor_core::paint_shapes::fill_polygon(ui.scene, &pts, c);
 }
 
-/// O valor em curso de uma alça presa, ou o guardado.
+/// O valor em curso do número da alça (arrastado aqui ou pela letra do campo), ou o guardado.
 fn live(ui: &Ui<'_>, h: Handle, stored: f32) -> f32 {
-    ui.doc
-        .drag
-        .filter(|d| d.handle == h)
-        .map_or(stored, |d| d.value)
+    ui.doc.live(h.field()).unwrap_or(stored)
 }
 
 fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {

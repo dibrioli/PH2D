@@ -92,7 +92,7 @@
 
 ## Aberto
 
-- ⭐ **Próxima janela começa por:** [plano 18 — Retime por trecho](../18_plano_retime_por_trecho.md) (dono 15/11: a curva de velocidade que não destrói o easing). Nada implementado.
+- ⭐ **Próxima janela começa por:** [plano 18 — Retime por trecho](../18_plano_retime_por_trecho.md) (dono 15/11: a curva de velocidade que não destrói o easing). ✅ Feito: [handoff do Retime](HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-15_RETIME_POR_TRECHO.md).
 
 - Smoke do dono deste pedido e dos acréscimos 13–14 (pontos e tipos de alça da curva Custom), já no main.
 - Inspector: arrastar o ícone «X» de Position regrava a chave na sessão (sonda: −3,00 → −2,52, `fila=1` por passo).

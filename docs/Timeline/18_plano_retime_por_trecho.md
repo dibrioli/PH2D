@@ -2,7 +2,8 @@
 
 > Plano para a próxima janela da `line/TimelinePrincipal`. Estado da linha e o que já está feito hoje:
 > [handoff de 15/11](handoffs/HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-15_AUTOKEY_NA_SESSAO.md).
-> Nada deste plano está implementado.
+> ✅ **Implementado em 15/11** (`1fde042af5`): o que foi feito, o que mudou do desenho e o que fica aberto estão no
+> [handoff do Retime](handoffs/HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-15_RETIME_POR_TRECHO.md).
 
 ## 1. Pedido e decisão do dono (verbatim)
 

@@ -53,7 +53,12 @@ pub fn set_joint_world_axis(world: &mut World, joint: Entity, rotation: f32) -> 
     let Some(at) = joint_world_pose(world, joint) else {
         return false;
     };
-    set_joint_world_pose(world, joint, [at.translation.x, at.translation.y], Some(rotation))
+    set_joint_world_pose(
+        world,
+        joint,
+        [at.translation.x, at.translation.y],
+        Some(rotation),
+    )
 }
 
 /// Onde a junta MORA na Hierarquia: dentro do corpo A — o pivô é um ponto de A, então segue-o sem

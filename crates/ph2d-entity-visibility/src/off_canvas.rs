@@ -154,13 +154,27 @@ mod off_canvas_tests {
     #[test]
     fn hiding_a_folder_hides_what_is_inside() {
         let mut sim = SimWorld::new();
-        let folder = sim.world_mut().spawn((Transform::IDENTITY, Name::new("Car 1"))).id();
-        let body = sim.world_mut().spawn((Transform::IDENTITY, ChildOf(folder))).id();
-        let shape = sim.world_mut().spawn((Transform::IDENTITY, ChildOf(body))).id();
+        let folder = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Car 1")))
+            .id();
+        let body = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, ChildOf(folder)))
+            .id();
+        let shape = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, ChildOf(body)))
+            .id();
         assert!(draws_this_frame(sim.world(), shape, u32::MAX, [0.0, 0.0]));
-        sim.world_mut().entity_mut(folder).insert(Visibility::hidden());
+        sim.world_mut()
+            .entity_mut(folder)
+            .insert(Visibility::hidden());
         assert!(is_off_canvas(sim.world(), body), "the body still drew");
-        assert!(is_off_canvas(sim.world(), shape), "the grandchild still drew");
+        assert!(
+            is_off_canvas(sim.world(), shape),
+            "the grandchild still drew"
+        );
     }
 
     /// ⭐⭐ **O PISCAR da invencibilidade passa pela MESMA porta** (plano 28, W5) — com a marca

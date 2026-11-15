@@ -321,9 +321,9 @@ pub use timer::{
     start as timer_start, stop as timer_stop,
 };
 pub use transform::{
-    GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
-    WorklistBuf, is_locked_for_edit, pick_target, propagate_transforms, LockCoversChildren, locked_by_a_folder,
-    propagate_transforms_into_present,
+    GlobalTransform, GroupedChildren, LockCoversChildren, Locked, SimRef, Transform,
+    TransformPropagationState, WorklistBuf, is_locked_for_edit, locked_by_a_folder, pick_target,
+    propagate_transforms, propagate_transforms_into_present,
 };
 pub use tween::{Escrita, TWEENS_MAX, Tweens};
 pub use vec_path_ref::VecPathRef;

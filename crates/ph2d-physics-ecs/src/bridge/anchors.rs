@@ -203,7 +203,12 @@ impl PhysicsBridge {
             parent,
             Transform::from_translation(ph2d_core::Vec2::new(local[0], local[1])),
         );
-        self.set_joint_anchor_world(sim, joint, JointSide::A, [at.translation.x, at.translation.y])
+        self.set_joint_anchor_world(
+            sim,
+            joint,
+            JointSide::A,
+            [at.translation.x, at.translation.y],
+        )
     }
 
     /// responsible for one number, which is the shape a drift takes. The

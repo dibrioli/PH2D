@@ -340,7 +340,8 @@ pub fn draw(
     }
     // ⚠️ A lista sai do DESENHO e é lida pelo READOUT (W-RopeSays): uma pergunta, não duas.
     // Junta escondida pelo olho (dela ou de uma pasta acima) não se desenha.
-    let hidden = |v: &ph2d_physics_ecs::JointView| ph2d_ecs::is_hidden_in_tree(sim.world(), v.entity);
+    let hidden =
+        |v: &ph2d_physics_ecs::JointView| ph2d_ecs::is_hidden_in_tree(sim.world(), v.entity);
     let shown: Vec<ph2d_physics_ecs::JointView>;
     let joint_views = if joint_views.iter().any(hidden) {
         shown = joint_views.iter().filter(|v| !hidden(v)).cloned().collect();

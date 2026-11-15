@@ -140,13 +140,20 @@ pub(crate) fn band_for(
         .filter(|_| handle_here)
         .and_then(|d| d.range)
         .or_else(|| crate::anchor_drag::frozen_range(state, target));
+    // Retime (dono 15/11): the motion's speed swells as the rhythm is dragged — the frozen range
+    // only GROWS, so the curve stays inside the band and nothing rescales back and forth.
+    let cresce = handle_here && state.speed_view && state.speed_retime;
     let band = match frozen {
+        Some((lo, hi)) if cresce => {
+            let (l, h) = Band::fit(rect, extent).range();
+            Band::from_range(rect, lo.min(l), hi.max(h))
+        }
         Some((lo, hi)) => Band::from_range(rect, lo, hi),
         None => Band::fit(rect, extent),
     };
     if handle_here
         && let Some(d) = state.handle_drag.as_mut()
-        && d.range.is_none()
+        && (d.range.is_none() || cresce)
     {
         d.range = Some(band.range());
     }
@@ -227,14 +234,28 @@ pub(crate) fn resolve_drag(
     let ponto = (view.t(d.x), band.value(d.y));
     let interp = if state.speed_view && state.speed_retime {
         // Retime (plano 18): the same gesture on the RHYTHM — the easing is not touched.
-        let intent = crate::graph_ritmo::intent_do_arrasto((k0, k1), track, d.which, ponto);
+        let span = band.v_max - band.v_min;
+        let px = (
+            view.px_per_s,
+            f64::from(band.rect.h) / span.max(f64::MIN_POSITIVE),
+        );
+        let intent = crate::graph_ritmo::intent_do_arrasto((k0, k1), track, d.which, ponto, px);
         if let Some(i) = intent {
             state::push_intent(i);
         }
         None
     } else if state.speed_view {
         // Speed edit, the AE gesture: vertical = VELOCITY, horizontal =
-        // INFLUENCE (the arm's length) — one tip drags both.
+        // INFLUENCE (the arm's length) — one tip drags both. Override rebuilds: a rhythm the
+        // segment had goes (the new easing already carries the speed that played at the far end).
+        if k0.retime.is_some() {
+            let sem = ph2d_timeline::RetimeIntent::Set {
+                target: track.target,
+                key: k0.id,
+                retime: None,
+            };
+            state::push_intent(TimelineIntent::Retime(sem));
+        }
         Some(weighted_with_speed_handle(
             k0, k1, d.which, ponto.0, ponto.1,
         ))

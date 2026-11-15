@@ -85,30 +85,62 @@ pub fn rhythm_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, 
 /// The warp one rhythm-handle drag writes — the AE gesture on `ref · W'`: the pointer's `t` sets
 /// that side's influence and `v` the speed at that end (`W'(0) = y1/x1`, `W'(1) = (1−y2)/(1−x2)`).
 /// The other side keeps its handle. `None` on a segment with no rhythm (see [`rhythm_reference`]).
+/// `px = (px per second, px per value-per-second)` of the view: where the pointer asks for more
+/// than `W` can give, the tip goes to the NEAREST reachable point ON SCREEN.
 #[must_use]
 pub fn retime_with_speed_handle(
     k0: &KeyView,
     k1: &KeyView,
     which: u8,
-    t: f64,
-    v: f64,
+    (t, v): (f64, f64),
+    px: (f64, f64),
 ) -> Option<Retime> {
     let r = rhythm_reference(k0, k1)?;
     let w = k0.retime.unwrap_or(Retime::LINEAR);
-    let u = (t - k0.t_seconds) / (k1.t_seconds - k0.t_seconds);
+    let span = k1.t_seconds - k0.t_seconds;
+    let u = (t - k0.t_seconds) / span;
     // Monotone: the rate never goes below zero (a speed on the far side of the zero line pauses).
     let s = (v / r).max(0.0);
-    // The arm `a` (influence) and the rate `s` meet `y = s·a`, and `y ≤ 1` keeps `W` monotone. Past
-    // that the SPEED is honoured and the arm shortens to `1/s`: clamping `y` instead left the tip
-    // stuck while the pointer went on — 254/s away from it (auditoria do dono 15/11).
-    let braco = |a: f64| a.min(1.0 / s.max(1.0)).max(MIN_INFLUENCE);
+    let a = if which == 0 { u } else { 1.0 - u };
+    let a = a.clamp(MIN_INFLUENCE, 1.0); // CLAMP-OK: const bounds, min<max
+    let (a, s) = alcancavel((a, s), (span * px.0, r.abs() * px.1));
     Some(if which == 0 {
-        let x1 = braco(u.clamp(MIN_INFLUENCE, 1.0)); // CLAMP-OK: const bounds, min<max
-        Retime::new(x1 as f32, (s * x1) as f32, w.x2, w.y2)
+        Retime::new(a as f32, (s * a) as f32, w.x2, w.y2)
     } else {
-        let a = braco((1.0 - u).clamp(MIN_INFLUENCE, 1.0)); // CLAMP-OK: const bounds, min<max
         Retime::new(w.x1, w.y1, (1.0 - a) as f32, (1.0 - s * a) as f32)
     })
+}
+
+/// The arm `a` (influence) and the rate `s` meet `y = s·a`, and `y ≤ 1` is what keeps `W` monotone:
+/// the reachable tips are `s·a ≤ 1`. A pointer beyond goes to the point of the edge `s = 1/a` NEAREST
+/// to it in screen pixels (`k = px per unit of a, px per unit of s`). Measured on the owner's audit
+/// (15/11): clamping `y` left the tip up to 254/s below the pointer, and shortening the arm at fixed
+/// speed made it run LEFT while the pointer went right.
+fn alcancavel((a, s): (f64, f64), (ka, ks): (f64, f64)) -> (f64, f64) {
+    if s * a <= 1.0 || !(ka > 0.0 && ks > 0.0) {
+        return (a, s.min(1.0 / a));
+    }
+    let custo = |b: f64| (ka * (b - a)).powi(2) + (ks * (1.0 / b - s)).powi(2);
+    // A coarse scan in log space, then a golden-section polish around the best cell: the cost is
+    // not unimodal over the whole edge, and both steps are deterministic.
+    const N: usize = 128;
+    let (lo, hi) = (MIN_INFLUENCE.ln(), a.ln());
+    let em = |i: usize| (lo + (hi - lo) * i as f64 / N as f64).exp();
+    let melhor = (0..=N)
+        .min_by(|&i, &j| custo(em(i)).total_cmp(&custo(em(j))))
+        .unwrap_or(N);
+    let (mut x0, mut x1) = (em(melhor.saturating_sub(1)), em((melhor + 1).min(N)));
+    let g = 0.5 * (5.0f64.sqrt() - 1.0);
+    for _ in 0..60 {
+        let (c, d) = (x1 - g * (x1 - x0), x0 + g * (x1 - x0));
+        if custo(c) < custo(d) {
+            x1 = d;
+        } else {
+            x0 = c;
+        }
+    }
+    let b = 0.5 * (x0 + x1);
+    (b, 1.0 / b)
 }
 
 #[cfg(test)]

@@ -107,9 +107,10 @@ pub(crate) fn intent_do_arrasto(
     (k0, k1): (&KeyView, &KeyView),
     track: &TrackView,
     which: u8,
-    (t, v): (f64, f64),
+    ponto: (f64, f64),
+    px: (f64, f64),
 ) -> Option<TimelineIntent> {
-    let retime = retime_with_speed_handle(k0, k1, which, t, v)?;
+    let retime = retime_with_speed_handle(k0, k1, which, ponto, px)?;
     Some(TimelineIntent::Retime(RetimeIntent::Set {
         target: track.target,
         key: k0.id,

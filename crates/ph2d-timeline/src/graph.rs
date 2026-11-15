@@ -188,8 +188,7 @@ const MIN_INFLUENCE: f64 = 1.0e-3;
 #[must_use]
 pub fn speed_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f64)> {
     let speed = crate::speed::segment_endpoint_speed(k0, k1, which);
-    // A retimed segment whose rhythm STOPS at this end has no easing speed to invert there.
-    if !speed.is_finite() || end_rate(k0, which).is_none() {
+    if !speed.is_finite() {
         return None;
     }
     let [out, inn] = segment_handle_points(k0, k1);
@@ -205,12 +204,6 @@ pub fn speed_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f
 /// must not silently re-ease the far end of the segment.
 #[must_use]
 pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f64) -> Interp {
-    // On a retimed segment the dot sits on the speed that PLAYS (`E'·W'`): the easing gets the
-    // pointer's speed divided by the rhythm's rate at that end, and the rhythm stays.
-    let Some(rate) = end_rate(k0, which) else {
-        return k0.interp;
-    };
-    let v = v / rate;
     let span = k1.t_seconds - k0.t_seconds;
     let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
     let v1 = f64::from(k1.value);
@@ -218,6 +211,17 @@ pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64,
     let mut x1 = if span > 0.0 { (out.0 - t0) / span } else { 0.0 };
     let mut x2 = if span > 0.0 { (inn.0 - t0) / span } else { 1.0 };
     let (mut dy1, mut dy2) = (out.1 - v0, inn.1 - v1);
+    // Override REBUILDS (dono 15/11): a retimed segment comes out without its rhythm (the caller
+    // drops it), so the far side keeps the speed that PLAYS there (`E'·W'`) — nothing jumps.
+    if k0.retime.is_some() {
+        let tocam = [0u8, 1].map(|w| crate::speed::segment_endpoint_speed(k0, k1, w) * span);
+        if tocam[0].is_finite() {
+            dy1 = tocam[0] * x1;
+        }
+        if tocam[1].is_finite() {
+            dy2 = -tocam[1] * (1.0 - x2);
+        }
+    }
     let u = if span > 0.0 { (t - t0) / span } else { 0.0 };
     if which == 0 {
         x1 = u.clamp(MIN_INFLUENCE, 1.0); // CLAMP-OK: const bounds, min<max
@@ -227,12 +231,6 @@ pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64,
         dy2 = -v * (1.0 - x2) * span;
     }
     Interp::bezier_w(x1, dy1, x2, dy2)
-}
-
-/// `W'` at one end of the segment (`1` without a retime), or `None` where it is zero or infinite.
-fn end_rate(k0: &KeyView, which: u8) -> Option<f64> {
-    let s = ph2d_anim::retime::warp_slope(k0.retime, f64::from(which));
-    (s.is_finite() && s > 0.0).then_some(s)
 }
 
 /// The `BezierW` whose handles sit at the absolute points `out` / `inn`.

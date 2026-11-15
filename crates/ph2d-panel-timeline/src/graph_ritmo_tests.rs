@@ -123,14 +123,21 @@ fn em_retime_a_alca_muda_so_o_ritmo_num_passo() {
     );
 }
 
-/// Em Override sobre um trecho JÁ retimado, a alça reescreve o easing e o ritmo fica: a velocidade
-/// que TOCA na ponta (`E'·W'`) é a do ponteiro.
+/// Override RECONSTRÓI (dono 15/11: «exatamente como agora»): sobre um trecho já retimado o arrasto
+/// tira o ritmo, a ponta arrastada toca a velocidade pedida e a OUTRA ponta toca o que tocava antes.
 #[test]
-fn em_override_o_ritmo_fica_e_a_ponta_toca_a_velocidade_pedida() {
+fn em_override_o_arrasto_tira_o_ritmo_e_a_outra_ponta_nao_salta() {
     let tr = track(Interp::Linear, Some(W));
+    let antes_fim = ph2d_timeline::segment_endpoint_speed(&tr.keys[0], &tr.keys[1], 1);
     let band = Band::fit(Rect::new(0.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
     let got = arrasta(false, &tr, &band, (50.0, band.y(20.0)));
-    assert!(!got.iter().any(|i| matches!(i, TimelineIntent::Retime(_))));
+    assert!(
+        got.iter().any(|i| matches!(
+            i,
+            TimelineIntent::Retime(RetimeIntent::Set { retime: None, .. })
+        )),
+        "o ritmo sai: {got:?}"
+    );
     let Some(TimelineIntent::SetInterp { interp, .. }) = got
         .iter()
         .rev()
@@ -139,10 +146,15 @@ fn em_override_o_ritmo_fica_e_a_ponta_toca_a_velocidade_pedida() {
         panic!("nenhum easing em {got:?}")
     };
     let mut depois = tr.keys.clone();
-    depois[0].interp = *interp;
+    (depois[0].interp, depois[0].retime) = (*interp, None);
     let toca = ph2d_timeline::segment_endpoint_speed(&depois[0], &depois[1], 0);
     let pedida = band.value(band.y(20.0));
     assert!((toca - pedida).abs() < 1.0e-3, "{toca} × {pedida}");
+    let fim = ph2d_timeline::segment_endpoint_speed(&depois[0], &depois[1], 1);
+    assert!(
+        (fim - antes_fim).abs() < 1.0e-3,
+        "a outra ponta: {fim} × {antes_fim}"
+    );
 }
 
 /// As duas células mudam o modo; o «Reset timing» repõe o ritmo das seleccionadas.

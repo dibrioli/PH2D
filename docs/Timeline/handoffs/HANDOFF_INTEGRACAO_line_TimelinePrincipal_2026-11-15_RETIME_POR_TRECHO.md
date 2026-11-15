@@ -79,6 +79,22 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
 - Fica (intrínseco, não defeito): a curva azul muda muito com o ritmo num easing complexo (`E'(W)·W'`) e, com o
   enquadramento congelado durante o arrasto, pode sair da banda até se soltar.
 
+## Auditoria do dono, 2.ª volta (15/11) — «não parece bom e parece que piorou o Override»
+
+- **Override:** sem ritmo era (e é) ao bit o de antes; o defeito era num trecho JÁ retimado — o arrasto reescrevia o
+  easing e o ritmo velho ficava por baixo. Lei agora: **Override reconstrói** (o pedido: «funciona exatamente como
+  agora»): o arrasto de velocidade em Override tira o ritmo (`RetimeIntent::Set{None}` no mesmo passo) e o easing novo
+  guarda na OUTRA ponta a velocidade que tocava (`E'·W'`), sem salto. Gate
+  `em_override_o_arrasto_tira_o_ritmo_e_a_outra_ponta_nao_salta`. A `end_rate` (dividir pela taxa do ritmo) saiu.
+- **Retime, filmado quadro a quadro:** a cura da 1.ª volta (braço = `1/s`) fazia a ponta correr para a ESQUERDA com o
+  rato a ir para a direita e para cima; e a escala congelada cortava o pico da curva azul. Curas:
+  - a ponta vai ao ponto ALCANÇÁVEL (`s·a ≤ 1`) **mais perto do rato em pixels** (`retime::alcancavel`: varredura em
+    log + secção áurea; `retime_with_speed_handle` recebe `px` da vista). Gate
+    `a_ponta_do_ritmo_e_o_ponto_alcancavel_mais_perto_do_rato` (contra busca exaustiva de 20 000 pontos, ponta contínua
+    ≤ 2× o passo do rato, W monótona); mutação «y preso» e «braço = 1/s» ⇒ vermelho as duas.
+  - em Retime a escala congelada do arrasto só CRESCE (`graph::band_for`): a curva cabe, nada reescala para trás.
+- [Tira do arrasto, quadro a quadro](../fotos/retime_7_arrasto_quadro_a_quadro.png) (círculo vermelho = rato).
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é

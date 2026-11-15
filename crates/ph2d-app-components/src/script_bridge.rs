@@ -64,6 +64,8 @@ pub struct ScriptDoors<'a, 'd> {
     pub tick: u64,
     /// Os nomes da biblioteca para `sprite.image` ([`crate::script_image`]).
     pub images: crate::script_image::ImageLibrary<'a>,
+    /// A ponte da física (o `ph2d.ray` e o `ph2d.raycast`, RS-7/RS-8); `None` = a cena não tem física.
+    pub physics: Option<&'a ph2d_physics_ecs::PhysicsBridge>,
 }
 
 impl ScriptDoors<'_, '_> {
@@ -156,6 +158,42 @@ impl SceneDoors for ScriptDoors<'_, '_> {
 
     fn property_names(&mut self, sim: &mut SimWorld, entity: Entity) -> Vec<String> {
         crate::script_properties::names(self.registry, sim, entity)
+    }
+
+    fn ray_view(
+        &mut self,
+        sim: &mut SimWorld,
+        e: Entity,
+    ) -> Result<Option<ph2d_script::RayView>, String> {
+        let b = self
+            .physics
+            .ok_or_else(|| ph2d_i18n::tr("app.components.script_bridge.no_physics").to_string())?;
+        Ok(ph2d_ray_sensor::script::ray_view(
+            sim.world(),
+            b,
+            self.tags,
+            e,
+        ))
+    }
+
+    fn raycast(
+        &mut self,
+        sim: &mut SimWorld,
+        by: Option<Entity>,
+        (de, ate): ([f64; 2], [f64; 2]),
+        filtro: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<Vec<ph2d_script::RayHitView>, String> {
+        let b = self
+            .physics
+            .ok_or_else(|| ph2d_i18n::tr("app.components.script_bridge.no_physics").to_string())?;
+        ph2d_ray_sensor::script::raycast(
+            self.registry,
+            sim.world(),
+            b,
+            self.tags,
+            (by, de, ate),
+            filtro,
+        )
     }
 
     /// ⭐ **O script que um script põe numa cópia é um OVERRIDE dela** (ADR-0164): o sync mestre →

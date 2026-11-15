@@ -44,9 +44,14 @@ use ph2d_editor_core::widget::TextInputState;
 /// queixa em vez de lhe impedir a escrita.
 ///
 /// [`RaySensor::default()`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-physics-ecs/src/components/ray_sensor.rs
-const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 2] = [
+///
+/// A espessura tem o tecto do alcance pela mesma razão (o custo é do que o círculo atravessa); o leque
+/// vai de `0` a uma volta inteira, que é geometria e não limite.
+const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 4] = [
     (ids::INSP_RAY_ANGLE, -90.0, -360.0, 360.0, 1.0), // LITERAL-PX-OK: graus, a faixa da Rotation
     (ids::INSP_RAY_REACH, 1.0, 0.0, 1_000.0, 0.1),    // LITERAL-PX-OK: metros — ver o cabeçalho
+    (ids::INSP_RAY_THICKNESS, 0.0, 0.0, 1_000.0, 0.05), // LITERAL-PX-OK: metros, o tecto do alcance
+    (ids::INSP_RAY_CONE, 0.0, 0.0, 360.0, 1.0),       // LITERAL-PX-OK: graus, uma volta
 ];
 
 pub(crate) fn populate_ray(store: &mut WidgetStore) {
@@ -96,6 +101,15 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
             ids::INSP_RAY_FOLD_SIGNALS,
             "panel.inspector.ray.signals_tip",
         ),
+        (ids::INSP_RAY_ENABLED, "panel.inspector.ray.enabled_tip"),
+        (ids::INSP_RAY_THICKNESS, "panel.inspector.ray.thickness_tip"),
+        (ids::INSP_RAY_CONE, "panel.inspector.ray.cone_tip"),
+        (ids::INSP_RAY_AIM, "panel.inspector.ray.aim_tip"),
+        (ids::INSP_RAY_AIM_PICK, "panel.inspector.ray.aim_pick_tip"),
+        (
+            ids::INSP_RAY_IGNORE_PICK,
+            "panel.inspector.ray.ignore_pick_tip",
+        ),
     ] {
         store.set_tooltip(id, ph2d_i18n::tr(dica));
     }
@@ -109,6 +123,9 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
             ids::INSP_RAY_STARTS_INSIDE,
             ids::INSP_RAY_ALL_HITS,
             ids::INSP_RAY_UP_TO_PICK,
+            ids::INSP_RAY_ENABLED,
+            ids::INSP_RAY_AIM_PICK,
+            ids::INSP_RAY_IGNORE_PICK,
         ],
     );
     crate::populate::register_button_ids(store, &ids::INSP_RAY_ONLY_SEE);
@@ -166,6 +183,7 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
         ids::INSP_RAY_ON_ENTER,
         ids::INSP_RAY_ON_EXIT,
         ids::INSP_RAY_UP_TO,
+        ids::INSP_RAY_AIM,
     ] {
         store.register(
             id,

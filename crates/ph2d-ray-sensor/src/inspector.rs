@@ -35,10 +35,10 @@ pub fn build_ray_info(
     bits: u64,
     selected_count: usize,
     clock_playing: bool,
-    vistos: &[(Entity, f32)],
+    vistos: &[(Entity, f32, Entity)],
 ) -> Option<InspectorRayInfo> {
     let e = Entity::from_bits(bits);
-    let r = *world.get::<RaySensor>(e)?;
+    let r = world.get::<RaySensor>(e)?.clone();
     // ⚠️ **Os nomes são OPCIONAIS**, e a ausência lê-se como duas strings vazias — que é
     // exactamente *«ele vê e cala-se»*, a terceira queixa. ⛔ Não há aqui um `?`: um raio sem
     // `RaySignals` é um raio legítimo, e devolver `None` esconderia a secção inteira dele.
@@ -53,14 +53,20 @@ pub fn build_ray_info(
     };
     let (sees, sees_at) = vistos
         .first()
-        .map_or((String::new(), 0.0), |&(alvo, d)| (nome(alvo), d));
-    let sees_all = if r.all_hits {
-        vistos.iter().map(|&(alvo, d)| (nome(alvo), d)).collect()
+        .map_or((String::new(), 0.0), |&(alvo, d, _)| (nome(alvo), d));
+    // RS-4: as tags da FORMA acertada são o «material» dela (o Surface Type do Unreal).
+    let sees_tags = vistos
+        .first()
+        .map(|&(_, _, forma)| crate::gotas::tags_da_forma(world, tree, forma))
+        .unwrap_or_default();
+    let sees_all = if r.all_hits || r.cone > 0.0 {
+        vistos.iter().map(|&(alvo, d, _)| (nome(alvo), d)).collect()
     } else {
         Vec::new()
     };
     let (ignore_up_to, ignore_up_to_off, ignore_up_to_unknown, ignore_up_to_auto) =
-        crate::ray_topo::leitura(world, e, &r);
+        crate::topo::leitura(world, e, &r);
+    let aim = crate::gotas::leitura_da_mira(world, bits, r.aim_at);
     Some(InspectorRayInfo {
         entity_bits: bits,
         angle: r.angle,
@@ -73,7 +79,7 @@ pub fn build_ray_info(
         ignore_up_to_off,
         ignore_up_to_unknown,
         ignore_up_to_auto,
-        up_to_pick_armed: crate::ray_topo::armado(world, Some(bits)),
+        up_to_pick_armed: crate::topo::armado(world, Some(bits)),
         only_see: match r.only_see {
             SeeFilter::Everything => RaySee::Everything,
             SeeFilter::OnlyTag => RaySee::OnlyTag,
@@ -85,6 +91,16 @@ pub fn build_ray_info(
         hit_triggers: r.hit_triggers,
         starts_inside: r.starts_inside,
         all_hits: r.all_hits,
+        enabled: r.enabled,
+        thickness: r.thickness,
+        cone: r.cone,
+        aim_at: aim.0,
+        aim_at_gone: aim.1,
+        aim_at_unknown: aim.2,
+        aim_pick_armed: crate::gotas::armado(world, Some((bits, crate::gotas::Gotas::Mira))),
+        also_ignore: crate::gotas::nomes(world, &r.also_ignore),
+        ignore_pick_armed: crate::gotas::armado(world, Some((bits, crate::gotas::Gotas::Lista))),
+        sees_tags,
         layer_empty: camada_vazia(world, tree, e, &r),
         on_enter: s.map(|s| s.on_enter.clone()).unwrap_or_default(),
         on_exit: s.map(|s| s.on_exit.clone()).unwrap_or_default(),
@@ -133,7 +149,15 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
             return true;
         }
         RayFieldEdit::PickUpTo(arma) => {
-            crate::ray_topo::arma(world, arma.then_some(bits));
+            crate::topo::arma(world, arma.then_some(bits));
+            return false;
+        }
+        RayFieldEdit::PickAimAt(arma) => {
+            crate::gotas::arma(world, arma.then_some((bits, crate::gotas::Gotas::Mira)));
+            return false;
+        }
+        RayFieldEdit::PickIgnore(arma) => {
+            crate::gotas::arma(world, arma.then_some((bits, crate::gotas::Gotas::Lista)));
             return false;
         }
         _ => {}
@@ -141,13 +165,25 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
     // O topo resolve-se ANTES do empréstimo mutável: ele varre a cadeia e a cena.
     let topo = match edit {
         RayFieldEdit::IgnoreUpTo(nome) => {
-            let id = crate::ray_topo::resolve(world, e, nome);
-            crate::ray_topo::escrito(world, bits, id.is_none().then_some(nome.as_str()));
+            let id = crate::topo::resolve(world, e, nome);
+            crate::topo::escrito(world, bits, id.is_none().then_some(nome.as_str()));
             match id {
                 Some(id) => Some(id),
                 None => return false,
             }
         }
+        RayFieldEdit::AimAt(nome) => {
+            let id = crate::gotas::resolve(world, nome);
+            crate::gotas::escrita(world, bits, id.is_none().then_some(nome.as_str()));
+            match id {
+                Some(id) => Some(id),
+                None => return false,
+            }
+        }
+        RayFieldEdit::IgnoreAdd(nome) => match crate::gotas::resolve(world, nome) {
+            Some(id) if id != 0 => Some(id),
+            _ => return false,
+        },
         _ => None,
     };
     let Some(mut r) = world.get_mut::<RaySensor>(e) else {
@@ -175,8 +211,29 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
         RayFieldEdit::HitTriggers(v) => r.hit_triggers = *v,
         RayFieldEdit::StartsInside(v) => r.starts_inside = *v,
         RayFieldEdit::AllHits(v) => r.all_hits = *v,
-        // Os dois nomes já saíram acima.
-        RayFieldEdit::OnEnter(_) | RayFieldEdit::OnExit(_) | RayFieldEdit::PickUpTo(_) => {
+        RayFieldEdit::Enabled(v) => r.enabled = *v,
+        RayFieldEdit::Thickness(v) => r.thickness = *v,
+        RayFieldEdit::Cone(v) => r.cone = *v,
+        RayFieldEdit::AimAt(_) => r.aim_at = topo.unwrap_or(0),
+        RayFieldEdit::IgnoreAdd(_) => {
+            let id = topo.unwrap_or(0);
+            if r.also_ignore.contains(&id) {
+                return false;
+            }
+            r.also_ignore.push(id);
+        }
+        RayFieldEdit::IgnoreRemove(n) => {
+            if *n >= r.also_ignore.len() {
+                return false;
+            }
+            r.also_ignore.remove(*n);
+        }
+        // Os dois nomes e os conta-gotas já saíram acima.
+        RayFieldEdit::OnEnter(_)
+        | RayFieldEdit::OnExit(_)
+        | RayFieldEdit::PickUpTo(_)
+        | RayFieldEdit::PickAimAt(_)
+        | RayFieldEdit::PickIgnore(_) => {
             return false;
         }
     }
@@ -229,8 +286,21 @@ fn camada_vazia(world: &World, tree: &ph2d_tags::TagTree, raio: Entity, r: &RayS
     })
 }
 
-pub(crate) fn sanitize_ray_sensor(r: &mut ph2d_physics_ecs::RaySensor) {
+/// ⭐ **A lei do RAIO**: a camada é um índice da matriz (acima de `MAX_LAYERS` não há coluna); a
+/// espessura não é negativa e o leque vai de `0` a uma volta (`360`). `NaN` = a forma de fábrica.
+pub fn sanitize_ray_sensor(r: &mut ph2d_physics_ecs::RaySensor) {
     r.layer = r.layer.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1);
+    r.thickness = if r.thickness.is_finite() {
+        r.thickness.max(0.0)
+    } else {
+        0.0
+    };
+    r.cone = if r.cone.is_finite() {
+        r.cone.clamp(0.0, 360.0)
+    } else {
+        0.0
+    };
+    r.also_ignore.retain(|&id| id != 0);
 }
 
 /// **Aplica as edições que o painel emitiu neste quadro.** `true` = o documento mudou.
@@ -248,5 +318,5 @@ pub fn apply_all(sim: &mut SimWorld, edits: &[(u64, RayFieldEdit)]) -> bool {
 }
 
 #[cfg(test)]
-#[path = "ray_inspector_tests.rs"]
+#[path = "inspector_tests.rs"]
 mod tests;

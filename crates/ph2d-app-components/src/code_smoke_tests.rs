@@ -145,6 +145,7 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
             },
             tick: n,
             images: crate::script_image::ImageLibrary::none(),
+            physics: None,
         };
         let f = crate::script_bridge::frame(
             &mut host,

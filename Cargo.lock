@@ -5748,6 +5748,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
  "ph2d-projectile",
+ "ph2d-ray-sensor",
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
@@ -11341,6 +11342,20 @@ version = "0.0.0"
 dependencies = [
  "libm",
  "ph2d-sweep",
+]
+
+[[package]]
+name = "ph2d-ray-sensor"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-physics-ecs",
+ "ph2d-script",
+ "ph2d-tags",
+ "serde_json",
 ]
 
 [[package]]

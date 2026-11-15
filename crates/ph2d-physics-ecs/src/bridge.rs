@@ -66,6 +66,7 @@ pub(crate) mod pose_owner;
 /// ⭐⭐⭐ **A ponte do mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dela.
 mod projectile;
 /// ⭐⭐⭐ **O RAIO persistente e autorado** (suplente #21) — ver o cabeçalho dele.
+mod ray_lance;
 mod ray_sensors;
 mod readback;
 mod rewind;
@@ -424,7 +425,7 @@ pub struct PhysicsBridge {
     /// a mesma memória entre tiques do `ray_hits`, e quem a limpa é a mesma descontinuidade.
     ray_hits_all: BTreeMap<Entity, Vec<RayHit>>,
     /// O buffer do motor para `cast_ray_query_all` — reaproveitado, nenhum estado entre tiques.
-    ray_scratch: Vec<ph2d_physics::CastHit>,
+    ray_buffers: ray_lance::Buffers,
     /// ⭐ **A LINHA que cada raio olhou, em mundo** (suplente #21, W5) — o que o canvas desenha,
     /// publicado por quem LANÇOU o raio e nunca re-derivado do lado do desenho (`bridge::ray_sensors`
     /// tem o porquê, e é o mesmo do `player_probes` uma dúzia de campos acima).

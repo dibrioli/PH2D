@@ -41,7 +41,7 @@ use serde::{Deserialize, Serialize};
 /// A origem é a POSIÇÃO do objecto e o rumo é `angle` rodado pela pose dele (e a do pai): dois raios
 /// são dois objectos. ⚠️ `angle` é LOCAL e em GRAUS (a unidade autorada, `FieldKind::Angle`): anima-se
 /// sem passar por `0,707`, e o motor faz o vetor (`dir_local`).
-#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RaySensor {
     /// Para onde aponta, em graus locais: `0` = direita, `90` = cima, `-90` = baixo.
     pub angle: f32,
@@ -73,6 +73,21 @@ pub struct RaySensor {
     pub starts_inside: bool,
     /// «See all hits»: guarda todos os acertos ao longo do alcance, por distância.
     pub all_hits: bool,
+    /// «Enabled» (RS-6): desligado, o raio não olha — sem marca, sem acertos; o que ele via sai
+    /// com On Exit no tique em que se desliga (a regra do Unreal: desligar a meio fecha a aresta).
+    pub enabled: bool,
+    /// «Thickness» (RS-1), em metros: `> 0` varre um CÍRCULO deste diâmetro ao longo do raio (o
+    /// ShapeCast2D do Godot); `0` = a linha.
+    pub thickness: f32,
+    /// «Cone» (RS-2), em graus: a abertura TOTAL do leque à volta do rumo; `0` = a linha. Vê cada
+    /// objecto dentro do leque e não tapado, um acerto por objecto (como «See all hits»).
+    pub cone: f32,
+    /// «Aim at» (RS-3): o `StableId` do objecto para onde o raio aponta, na pose VIVA dele no mesmo
+    /// tique; `0` = o `angle`. Com alvo, o `angle` e o «Turns with facing» não decidem.
+    pub aim_at: u64,
+    /// «Also ignore» (RS-12): os `StableId` dos objectos que ele não vê (com a família de cada um),
+    /// escolhidos pelo conta-gotas — o «Actors to Ignore» do Unreal.
+    pub also_ignore: Vec<u64>,
 }
 
 /// **O filtro de tags do raio** («Only see»): o MODO; a tag é o campo [`RaySensor::see_tag`].
@@ -142,6 +157,11 @@ impl Default for RaySensor {
             hit_triggers: false,
             starts_inside: false,
             all_hits: false,
+            enabled: true,
+            thickness: 0.0,
+            cone: 0.0,
+            aim_at: 0,
+            also_ignore: Vec::new(),
         }
     }
 }
@@ -191,6 +211,9 @@ impl SimComponent for RaySignals {}
 pub struct RayHit {
     /// Quem ele acertou.
     pub body: ph2d_ecs::Entity,
+    /// A FORMA acertada (a «Collision Shape» filha, ou o próprio corpo quando a forma mora nele) —
+    /// as tags dela são o «material» do acerto (RS-4, dono 15/11: o Surface Type do Unreal).
+    pub shape: ph2d_ecs::Entity,
     /// A que distância da origem, em metros.
     pub distance: f32,
     /// Onde, em mundo.

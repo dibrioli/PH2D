@@ -178,7 +178,7 @@ pub(super) fn publish(
     // ⭐ Ver o parâmetro homónimo do [`inspector::publish`] (TOP-20 #14).
     projectile_over: &[u64],
     // ⭐⭐⭐ O que cada RAIO vê (suplente #21) — ver o parâmetro homónimo do publicador.
-    ray_hits: &[(u64, u64, f32)],
+    ray_hits: &[(u64, u64, f32, u64)],
     // ⭐ A Animação por objecto — quem tem clips (o 🎞) e quais (o conteúdo da linha).
     timeline: &ph2d_timeline::TimelineState,
 ) {

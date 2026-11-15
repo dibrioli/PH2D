@@ -150,11 +150,11 @@ pub mod prefab_stage;
 /// ⭐ O instantâneo e o dreno da secção PROJECTILE MOTION (TOP-20 #14).
 pub mod projectile_inspector;
 pub mod projectile_smoke;
-/// ⭐⭐⭐ O instantâneo e o dreno da secção RAY SENSOR (suplente #21).
-pub mod ray_inspector;
+/// ⭐⭐⭐ O instantâneo e o dreno da secção RAY SENSOR — na crate da família (`ph2d-ray-sensor`).
+pub use ph2d_ray_sensor::inspector as ray_inspector;
 /// ⭐⭐⭐ **O smoke do OLHO** (suplente #21, W6) — um poste com dois olhos e uma caixa que chega.
 pub mod ray_smoke;
-pub mod ray_topo;
+pub use ph2d_ray_sensor::topo as ray_topo;
 /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
 pub mod restart_smoke;
 pub mod row_components;

@@ -59,4 +59,79 @@ end"#,
   end
 end"#,
     },
+    // O raio (GEF 07, RS-7/RS-8).
+    ApiHelp {
+        key: "ph2d.ray",
+        params: &[(
+            "entity",
+            "A Ray Sensor object, such as `ph2d.object(\"Eye Ray\")`.",
+        )],
+        returns: "A RayView: `seeing`, the list `hits` (nearest first) and the nearest hit's fields; nil when it is not a Ray Sensor.",
+        more: "It reads the ray as it looked on this frame, with every option of its card (Filter, Thickness, Cone, Aim at). With See all hits or a Cone, `hits` has one entry per object it sees. `tags` are the tags of the collision shape it hit, so a shape tagged \"Ice\" tells the ray what it stands on. An Enabled box that is off reads `seeing = false`.",
+        example: r#"function update(self, dt)
+  local eye = ph2d.ray(ph2d.object("Eye Ray"))
+  if eye and eye.seeing then
+    print("I see", eye.object, "at", eye.distance)
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.raycast",
+        params: &[
+            ("from", "Where the ray starts, such as `ph2d.vec2(0, 1)`."),
+            (
+                "to",
+                "Where it ends: its reach is the distance between the two.",
+            ),
+            (
+                "filter",
+                "The Ray Sensor's options, by the names its card has: `{ only_see = \"only_tag\", tag = \"Enemy\" }`. Leave it out to see everything but yourself.",
+            ),
+        ],
+        returns: "The hits, nearest first; the first one is `[1]`, and an empty list means nothing was hit.",
+        more: "It is the same ray as the Ray Sensor object, answered on the spot: an instant shot (hitscan). It ignores your own body unless `ignore_my_body = false`. Without `see_all_hits` or a `cone` it gives at most one hit. Angles (`cone`) are in radians, like every angle in scripts.",
+        example: r#"function on_signal(self, signal)
+  if signal == "fire" then
+    local from = ph2d.vec2(ph2d.get(self.id, "x"), ph2d.get(self.id, "y"))
+    local hit = ph2d.raycast(from, ph2d.vec2(from.x + 10, from.y), { only_see = "only_tag", tag = "Enemy" })[1]
+    if hit then
+      ph2d.damage(hit.object, 10)
+    end
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "type.RayHit",
+        params: &[],
+        returns: "",
+        more: "`object` is the one with the body; `shape` is the collision shape that was hit, and `tags` are that shape's tags (its «material»). `friction` and `bounce` are the shape's.",
+        example: r#"function update(self, dt)
+  local eye = ph2d.ray(self.id)
+  if eye and eye.seeing and table.find(eye.tags or {}, "Ice") then
+    print("slippery!")
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "type.RayView",
+        params: &[],
+        returns: "",
+        more: "`seeing` is true while the ray sees something; the nearest hit's fields sit at the top so `ph2d.ray(id).object` reads directly.",
+        example: r#"function update(self, dt)
+  local eye = ph2d.ray(self.id)
+  if eye then
+    print(eye.seeing, #eye.hits)
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "type.RayFilter",
+        params: &[],
+        returns: "",
+        more: "Every name is optional and means what the Ray Sensor card's field of the same name means; names of objects and tags go by name.",
+        example: r#"function on_signal(self, signal)
+  local hits = ph2d.raycast(ph2d.vec2(0, 0), ph2d.vec2(0, -5), { see_all_hits = true, also_ignore = { "Crate" } })
+  print(#hits)
+end"#,
+    },
 ];

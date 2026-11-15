@@ -97,7 +97,7 @@ pub(super) fn publish(
     projectile_over: &[u64],
     // ⭐⭐⭐ **O que cada RAIO vê neste quadro** (suplente #21) — `(olha, visto, distância)`, pelo
     // mesmo caminho do vizinho acima e pela mesma razão: o facto vive na PONTE.
-    ray_hits: &[(u64, u64, f32)],
+    ray_hits: &[(u64, u64, f32, u64)],
 ) {
     let (selected_count, inspector_selection) = (alvo.n, alvo.todos.as_slice());
     ph2d_panel_inspector::set_current_inspector_selecionados(selected_count);
@@ -305,7 +305,7 @@ fn late(
     // ⭐ Os projécteis cujo voo acabou (TOP-20 #14) — ver o parâmetro homónimo do [`publish`].
     projectile_over: &[u64],
     // ⭐⭐⭐ O que cada RAIO vê (suplente #21) — ver o parâmetro homónimo do [`publish`].
-    ray_hits: &[(u64, u64, f32)],
+    ray_hits: &[(u64, u64, f32, u64)],
 ) -> LateSections {
     let (sel, selected_count) = (alvo.todos.as_slice(), alvo.n);
     let mut inspector_anim = alvo.bits.and_then(|b| {
@@ -403,7 +403,13 @@ fn late(
         let vistos: Vec<_> = ray_hits
             .iter()
             .filter(|(olha, ..)| *olha == b)
-            .map(|&(_, v, d)| (ph2d_ecs::Entity::from_bits(v), d))
+            .map(|&(_, v, d, f)| {
+                (
+                    ph2d_ecs::Entity::from_bits(v),
+                    d,
+                    ph2d_ecs::Entity::from_bits(f),
+                )
+            })
             .collect();
         ph2d_app_components::ray_inspector::build_ray_info(
             sim.world(),

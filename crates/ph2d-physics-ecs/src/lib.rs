@@ -82,7 +82,7 @@ pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
 pub use bridge::joints::joint_desc;
 pub use bridge::player_view::{
-    MAX_TIQUES_DO_RAIO, MaisAcertos, ProbeKind, ProbeMark, ProbeShape, ProbeState,
+    Feixe, MAX_TIQUES_DO_RAIO, MaisAcertos, ProbeKind, ProbeMark, ProbeShape, ProbeState,
 };
 // **O que a lei do player de facto lê deste corpo** — a resposta que a §14 do
 // Inspector pinta. Ela sai da MESMA porta que decide quem escreve a pose; a

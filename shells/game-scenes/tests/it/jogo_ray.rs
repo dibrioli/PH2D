@@ -45,7 +45,7 @@ fn na_cena_26_o_eye_ray_ve_o_inimigo_atraves_da_caixa() {
         .expect("o Enemy tem tags");
     assert!(ph2d_ecs::tags::belongs(tags, &tree, tag));
     let olho = por_nome(&mut sim, ray::RAIO_OLHO);
-    let r = *sim.world().get::<RaySensor>(olho).expect("Eye Ray");
+    let r = sim.world().get::<RaySensor>(olho).expect("Eye Ray").clone();
     assert_eq!(r.see_tag, tag.0);
     assert!(!r.walls_block);
     assert_eq!(

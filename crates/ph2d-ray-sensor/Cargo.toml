@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-ray-sensor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O objecto «Ray Sensor» do lado da app (GEF 07): o instantâneo e o dreno do cartão, o «Ignore up to»
+# e as listas de objectos pelo conta-gotas, e as leituras do script (`ph2d.ray`, `ph2d.raycast`).
+# Saiu da `ph2d-app-components` (no tecto da catraca, 15/11): a isenção viaja com o código.
+[dependencies]
+bevy_ecs = "0.20"
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-script = { path = "../ph2d-script" }
+serde_json = "1"
+ph2d-tags = { path = "../ph2d-tags" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

@@ -35,9 +35,12 @@ use crate::state::InspectorState;
 fn assinatura(info: &InspectorRayInfo) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
     info.entity_bits.hash(&mut h);
-    for v in [info.angle, info.reach] {
+    for v in [info.angle, info.reach, info.thickness, info.cone] {
         v.to_bits().hash(&mut h);
     }
+    info.enabled.hash(&mut h);
+    info.aim_at.hash(&mut h);
+    info.also_ignore.hash(&mut h);
     info.layer.hash(&mut h);
     info.layer_empty.hash(&mut h);
     info.on_enter.hash(&mut h);
@@ -77,6 +80,19 @@ pub(crate) fn sync(
         return;
     }
     inspector_state.last_ray_sig = Some(sig);
+    // RS-12: um chip por objecto da lista — registado quando a lista muda (a tabela cresce sem tecto).
+    for id in crate::ids::INSP_RAY_IGNORE_CHIP.ids(info.also_ignore.len()) {
+        let store = host.store_mut();
+        if store.get(id).is_none() {
+            store.register(
+                id,
+                ph2d_editor_core::interaction::InteractiveState::Tag {
+                    state: ph2d_editor_core::widget::TagState::Normal,
+                },
+            );
+        }
+        store.set_tooltip(id, ph2d_i18n::tr("panel.inspector.ray.ignore_chip_tip"));
+    }
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
     // ⚠️ **A ORDEM é a do [`super::populate_ray::NUMEROS`]**, e é assim que ela não pode divergir:
@@ -84,6 +100,8 @@ pub(crate) fn sync(
     for (id, v) in [
         (crate::ids::INSP_RAY_ANGLE, info.angle),
         (crate::ids::INSP_RAY_REACH, info.reach),
+        (crate::ids::INSP_RAY_THICKNESS, info.thickness),
+        (crate::ids::INSP_RAY_CONE, info.cone),
     ] {
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo
@@ -94,6 +112,7 @@ pub(crate) fn sync(
         (crate::ids::INSP_RAY_ON_ENTER, info.on_enter.as_str()),
         (crate::ids::INSP_RAY_ON_EXIT, info.on_exit.as_str()),
         (crate::ids::INSP_RAY_UP_TO, info.ignore_up_to.as_str()),
+        (crate::ids::INSP_RAY_AIM, info.aim_at.as_str()),
     ] {
         crate::sync_text_field::escreve_texto(host, focus, id, t);
     }

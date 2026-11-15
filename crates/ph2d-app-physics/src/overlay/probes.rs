@@ -87,6 +87,21 @@ pub fn probe_marks(
                 dir,
                 reach,
                 hit,
+                ..
+            } if m.feixe.meio_cone > 0.0 || m.feixe.largura > 0.0 => {
+                out.push((
+                    feixe_path(origin, dir, reach, hit, m, &to_screen),
+                    Tinta::Sonda {
+                        camada: m.layer,
+                        rgba,
+                    },
+                ));
+            }
+            ProbeShape::Ray {
+                origin,
+                dir,
+                reach,
+                hit,
                 skin,
             } => {
                 let mut p = BezPath::new();
@@ -148,6 +163,100 @@ pub fn probe_marks(
         }
     }
     out
+}
+
+/// Quantos graus mede, no máximo, cada troço de um arco desenhado (o leque e as pontas do círculo).
+const ARCO_PASSO_GRAUS: f32 = 6.0; // LITERAL-PX-OK: finura do desenho do arco
+
+/// Um arco de mundo à volta de `c`, de raio `r`, de `a0` a `a1` (rad), como polilinha de ecrã.
+fn arco(
+    p: &mut BezPath,
+    c: [f32; 2],
+    r: f32,
+    (a0, a1): (f32, f32),
+    to_screen: &impl Fn(f32, f32) -> Point,
+    novo: bool,
+) {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let n = (((a1 - a0).abs().to_degrees() / ARCO_PASSO_GRAUS).ceil() as usize).max(2);
+    for k in 0..=n {
+        #[allow(clippy::cast_precision_loss)]
+        let a = a0 + (a1 - a0) * k as f32 / n as f32;
+        let q = to_screen(c[0] + r * libm::cosf(a), c[1] + r * libm::sinf(a));
+        if k == 0 && novo {
+            p.move_to(q);
+        } else {
+            p.line_to(q);
+        }
+    }
+}
+
+/// ⭐ **O FEIXE de um Ray Sensor com forma** (RS-1, RS-2): o leque como a FATIA que ele vê (as duas bordas
+/// e o arco no alcance), com um tique onde viu cada objecto; o raio grosso como o círculo VARRIDO (os dois
+/// lados e as duas pontas redondas), com o círculo inteiro onde ele tocou — o ShapeCast2D do Godot.
+fn feixe_path(
+    origin: [f32; 2],
+    dir: [f32; 2],
+    reach: f32,
+    hit: Option<f32>,
+    m: &ProbeMark,
+    to_screen: &impl Fn(f32, f32) -> Point,
+) -> BezPath {
+    let mut p = BezPath::new();
+    let base = libm::atan2f(dir[1], dir[0]);
+    let f = &m.feixe;
+    if f.meio_cone > 0.0 {
+        let (a0, a1) = (base - f.meio_cone, base + f.meio_cone);
+        let o = to_screen(origin[0], origin[1]);
+        p.move_to(o);
+        arco(&mut p, origin, reach, (a0, a1), to_screen, false);
+        if f.meio_cone < std::f32::consts::PI {
+            p.line_to(o);
+        }
+        for q in f.pontos() {
+            let at = to_screen(q[0], q[1]);
+            let (vx, vy) = (at.x - o.x, at.y - o.y);
+            let n = (vx * vx + vy * vy).sqrt();
+            if n > f64::EPSILON {
+                let (px, py) = (-vy / n * HIT_TICK_PX, vx / n * HIT_TICK_PX);
+                p.move_to(Point::new(at.x - px, at.y - py));
+                p.line_to(Point::new(at.x + px, at.y + py));
+            }
+        }
+        return p;
+    }
+    let r = f.largura * 0.5;
+    let end = [origin[0] + dir[0] * reach, origin[1] + dir[1] * reach];
+    let nrm = [-dir[1] * r, dir[0] * r];
+    let half = std::f32::consts::FRAC_PI_2;
+    // O contorno da cápsula: um lado, a ponta da frente, o outro lado, a ponta de trás.
+    p.move_to(to_screen(origin[0] + nrm[0], origin[1] + nrm[1]));
+    p.line_to(to_screen(end[0] + nrm[0], end[1] + nrm[1]));
+    arco(&mut p, end, r, (base + half, base - half), to_screen, false);
+    p.line_to(to_screen(origin[0] - nrm[0], origin[1] - nrm[1]));
+    arco(
+        &mut p,
+        origin,
+        r,
+        (base - half, base - 3.0 * half),
+        to_screen,
+        false,
+    );
+    // O eixo, e o círculo inteiro em cada sítio onde ele tocou.
+    p.move_to(to_screen(origin[0], origin[1]));
+    p.line_to(to_screen(end[0], end[1]));
+    for &d in hit.iter().chain(m.more_hits.como_lista()) {
+        let c = [origin[0] + dir[0] * d, origin[1] + dir[1] * d];
+        arco(
+            &mut p,
+            c,
+            r,
+            (0.0, 2.0 * std::f32::consts::PI),
+            to_screen,
+            true,
+        );
+    }
+    p
 }
 
 /// O **PERFIL** do teto: a barra do vão que ele varre, com as células tapadas

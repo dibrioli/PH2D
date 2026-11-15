@@ -45,6 +45,18 @@ pub fn name_of(world: &World, names: RefNames<'_>, target: Target, v: &Value) ->
         ),
         // O script não o alcança (`Hidden::Editor`): o nome do documento é da biblioteca.
         Target::Script => Value::Null,
+        Target::StableSet => Value::Array(
+            v.as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|x| {
+                    id(x)
+                        .and_then(|id| crate::entity_with_stable_id(world, StableId(id)))
+                        .and_then(|e| world.get::<Name>(e))
+                        .map(|n| Value::String(n.as_str().to_owned()))
+                })
+                .collect(),
+        ),
         Target::TagSet => Value::Array(
             v.as_array()
                 .into_iter()
@@ -99,6 +111,26 @@ pub fn id_of(
             .collect::<Result<Vec<_>, _>>()
             .map(Value::Array);
     }
+    if target == Target::StableSet {
+        let items = match v {
+            Value::Array(a) => a,
+            Value::Null => Vec::new(),
+            Value::Object(o) if o.is_empty() => Vec::new(),
+            _ => return Err(wrong()),
+        };
+        let mut ids = Vec::with_capacity(items.len());
+        for x in &items {
+            let wanted = x.as_str().ok_or_else(wrong)?.trim();
+            let id = crate::stable_id_named(world, wanted);
+            if id == 0 {
+                return Err(absent(wanted));
+            }
+            if !ids.contains(&id) {
+                ids.push(id);
+            }
+        }
+        return Ok(Value::Array(ids.into_iter().map(Value::from).collect()));
+    }
     let wanted = match &v {
         Value::Null => "",
         Value::String(s) => s.as_str(),
@@ -124,7 +156,7 @@ pub fn id_of(
             Some((id, _)) => Value::from(id.0),
             None => return Err(absent(wanted)),
         },
-        Target::Name | Target::NameHash | Target::TagSet | Target::Script => {
+        Target::Name | Target::NameHash | Target::TagSet | Target::StableSet | Target::Script => {
             return Err(absent(wanted));
         }
     })

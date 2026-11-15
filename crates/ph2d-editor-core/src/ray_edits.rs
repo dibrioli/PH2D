@@ -50,6 +50,26 @@ pub struct InspectorRayInfo {
     pub starts_inside: bool,
     /// «See all hits».
     pub all_hits: bool,
+    /// «Enabled» (RS-6): desligado não olha nem fala.
+    pub enabled: bool,
+    /// «Thickness» (RS-1), metros; `0` = a linha.
+    pub thickness: f32,
+    /// «Cone» (RS-2), graus; `0` = a linha.
+    pub cone: f32,
+    /// «Aim at» (RS-3): o NOME do alvo (`""` = o `angle` decide).
+    pub aim_at: String,
+    /// O alvo guardado já não existe (a caixa mostra o erro).
+    pub aim_at_gone: bool,
+    /// Ninguém se chama `aim_at` — o texto que o artista escreveu, da sessão.
+    pub aim_at_unknown: bool,
+    /// O conta-gotas do «Aim at» está armado para ESTE raio.
+    pub aim_pick_armed: bool,
+    /// «Also ignore» (RS-12): os NOMES dos objectos da lista (os que sumiram saem da leitura).
+    pub also_ignore: Vec<String>,
+    /// O conta-gotas do «Also ignore» está armado para ESTE raio.
+    pub ignore_pick_armed: bool,
+    /// As tags da FORMA que ele vê agora (RS-4: o «material» do acerto), já juntas; `""` = nenhuma.
+    pub sees_tags: String,
     /// Nenhum objeto com forma está numa camada que esta vê (a matriz): o raio nunca verá nada.
     pub layer_empty: bool,
     /// O nome publicado ao passar a ver — vazio = calado.
@@ -72,6 +92,9 @@ impl InspectorRayInfo {
     /// não `if`s no pintor: o gate mede-a sem pintar.
     #[must_use]
     pub fn queixa(&self) -> Option<RayQueixa> {
+        if !self.enabled {
+            return Some(RayQueixa::Desligado);
+        }
         if self.reach <= 0.0 {
             return Some(RayQueixa::SemAlcance);
         }
@@ -101,6 +124,8 @@ impl InspectorRayInfo {
 /// i18n: a língua não mora numa lei).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RayQueixa {
+    /// «Enabled» desmarcado: não olha, não fala (RS-6).
+    Desligado,
     /// O alcance é zero: ele nasce e morre no mesmo ponto.
     SemAlcance,
     /// «Only see»/«Except» sem tag escolhida: o filtro não filtra ninguém.
@@ -148,6 +173,22 @@ pub enum RayFieldEdit {
     HitTriggers(bool),
     StartsInside(bool),
     AllHits(bool),
+    /// «Enabled» (RS-6).
+    Enabled(bool),
+    /// «Thickness» em metros (RS-1).
+    Thickness(f32),
+    /// «Cone» em graus (RS-2).
+    Cone(f32),
+    /// «Aim at»: o NOME do alvo (`""` = nenhum) (RS-3).
+    AimAt(String),
+    /// Arma ou desarma o conta-gotas do «Aim at» — sessão, sem desfazer.
+    PickAimAt(bool),
+    /// «Also ignore»: junta o objecto com este NOME à lista (RS-12).
+    IgnoreAdd(String),
+    /// Tira o `n`-ésimo da lista (o «×» do chip).
+    IgnoreRemove(usize),
+    /// Arma ou desarma o conta-gotas do «Also ignore» — sessão, sem desfazer.
+    PickIgnore(bool),
     /// ⚠️ Os NOMES, crus — a mesma convenção do alvo do projéctil: quem apara é quem lê.
     OnEnter(String),
     OnExit(String),
@@ -178,6 +219,16 @@ mod tests {
             hit_triggers: false,
             starts_inside: false,
             all_hits: false,
+            enabled: true,
+            thickness: 0.0,
+            cone: 0.0,
+            aim_at: String::new(),
+            aim_at_gone: false,
+            aim_at_unknown: false,
+            aim_pick_armed: false,
+            also_ignore: Vec::new(),
+            ignore_pick_armed: false,
+            sees_tags: String::new(),
             layer_empty: false,
             on_enter: "vi".into(),
             on_exit: String::new(),
@@ -208,14 +259,22 @@ mod tests {
             RayFieldEdit::HitTriggers(false),
             RayFieldEdit::StartsInside(false),
             RayFieldEdit::AllHits(false),
+            RayFieldEdit::Enabled(true),
+            RayFieldEdit::Thickness(0.0),
+            RayFieldEdit::Cone(0.0),
+            RayFieldEdit::AimAt(String::new()),
+            RayFieldEdit::PickAimAt(false),
+            RayFieldEdit::IgnoreAdd(String::new()),
+            RayFieldEdit::IgnoreRemove(0),
+            RayFieldEdit::PickIgnore(false),
             RayFieldEdit::OnEnter(String::new()),
             RayFieldEdit::OnExit(String::new()),
         ];
         assert_eq!(
             variantes.len(),
-            16,
-            "o `RaySensor` tem TREZE campos e o `RaySignals` DOIS (mais o conta-gotas) — se um \
-             nasceu, ele precisa de uma variante aqui e de uma row no painel"
+            24,
+            "o `RaySensor` tem DEZOITO campos (a lista com dois gestos) e o `RaySignals` DOIS, mais \
+             os três conta-gotas — se um nasceu, ele precisa de uma variante aqui e de uma row no painel"
         );
     }
 
@@ -229,6 +288,12 @@ mod tests {
             None,
             "um raio que ve' e fala nao se queixa"
         );
+
+        // RS-6: desligado ganha a todas (ele não corre), mesmo com o alcance a zero.
+        let mut desligado = base();
+        desligado.enabled = false;
+        desligado.reach = 0.0;
+        assert_eq!(desligado.queixa(), Some(RayQueixa::Desligado));
 
         let mut sem_alcance = base();
         sem_alcance.reach = 0.0;

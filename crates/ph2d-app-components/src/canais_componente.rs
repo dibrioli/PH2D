@@ -41,6 +41,7 @@ pub fn campos(reg: &ComponentRegistry, w: &World, e: Entity) -> Vec<FieldKey> {
                         slot_in(&mut v, f.serde_key()).is_some_and(|s| {
                             cc::ler_valor(f, faixa, s).is_some()
                                 || (f.kind == FieldKind::Text && (s.is_string() || s.is_null()))
+                                || (referencia(f) == Some(Target::StableSet) && s.is_array())
                         })
                     })
                 })
@@ -62,7 +63,7 @@ pub fn ler(
     let mut v = (entry.value_of)(w, e).ok()??;
     let s = slot_in(&mut v, f.serde_key())?;
     if let Some(t) = referencia(f) {
-        let nome = property_ref::name_of(w, names, t, s);
+        let nome = lista_em_texto(property_ref::name_of(w, names, t, s));
         return Some(textos.indice(nome.as_str()));
     }
     cc::ler_texto(f, s, textos).or_else(|| cc::ler_valor(f, faixa, s))
@@ -205,8 +206,26 @@ pub fn aplicar(
 /// lê e escreve o NOME, pela conversão do script (`property_ref`) — nunca o número cru.
 fn referencia(f: &FieldDesc) -> Option<Target> {
     match f.view {
-        View::Named(t @ (Target::NameHash | Target::Stable | Target::Tag)) => Some(t),
+        View::Named(t @ (Target::NameHash | Target::Stable | Target::Tag | Target::StableSet)) => {
+            Some(t)
+        }
         _ => None,
+    }
+}
+
+/// O separador do texto de uma lista de objectos no canal («Crate, Box»).
+const LISTA_SEP: &str = ", ";
+
+/// O valor nomeado como TEXTO do canal: um nome fica; uma lista junta-se por [`LISTA_SEP`].
+fn lista_em_texto(v: Value) -> Value {
+    match v {
+        Value::Array(a) => Value::String(
+            a.iter()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join(LISTA_SEP),
+        ),
+        v => v,
     }
 }
 
@@ -221,6 +240,13 @@ fn escrever_ref(
     textos: &TextosDosCanais,
 ) -> bool {
     let nome = match textos.texto(x) {
+        // Uma LISTA de objectos é o texto dos nomes juntos (o `lista_em_texto`), e volta a ser a lista.
+        Some(n) if t == Target::StableSet => Value::Array(
+            n.split(LISTA_SEP)
+                .filter(|p| !p.trim().is_empty())
+                .map(|p| Value::String(p.trim().to_owned()))
+                .collect(),
+        ),
         Some(n) => Value::String(n.to_owned()),
         None if x.round() == 0.0 => Value::Null,
         None => return false,

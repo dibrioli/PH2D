@@ -23,6 +23,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.ray_sensor.10" => "Starts inside",
         "component.field.ray_sensor.11" => "See all hits",
         "component.field.ray_sensor.12" => "Ignore up to",
+        "component.field.ray_sensor.13" => "Enabled",
+        "component.field.ray_sensor.14" => "Thickness",
+        "component.field.ray_sensor.15" => "Cone",
+        "component.field.ray_sensor.16" => "Aim at",
+        "component.field.ray_sensor.17" => "Also ignore",
         _ => return None,
     })
 }

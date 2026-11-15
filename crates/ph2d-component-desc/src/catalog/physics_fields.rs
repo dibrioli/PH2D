@@ -398,6 +398,16 @@ pub(super) const RAY_SENSOR: &[FieldDesc] = &[
     f(12, "component.field.ray_sensor.12", K::Text)
         .named("ignore_up_to")
         .viewed(View::Named(crate::Target::Stable)),
+    // As melhorias (RS, dono 15/11): a caixa, a forma do feixe, o alvo e a lista pelo conta-gotas.
+    f(13, "component.field.ray_sensor.13", K::Toggle).named("enabled"),
+    f(14, "component.field.ray_sensor.14", K::Scalar).named("thickness"),
+    f(15, "component.field.ray_sensor.15", K::Angle).named("cone"),
+    f(16, "component.field.ray_sensor.16", K::Text)
+        .named("aim_at")
+        .viewed(View::Named(crate::Target::Stable)),
+    f(17, "component.field.ray_sensor.17", K::Text)
+        .named("also_ignore")
+        .viewed(View::Named(crate::Target::StableSet)),
 ];
 pub(super) const RAY_SIGNALS: &[FieldDesc] = &[
     f(0, "component.field.ray_signals.0", K::Text).named("on_enter"),

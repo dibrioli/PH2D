@@ -423,6 +423,33 @@ pub fn set(
     res.map(|()| born)
 }
 
+/// ⭐ Como [`set`], dentro de um VALOR do componente que não mora no mundo — o filtro do `ph2d.raycast`
+/// (RS-8): a MESMA conversão do script (a referência pelo nome, a vista, o inteiro), sem escrever.
+pub fn set_in(
+    reg: &ComponentRegistry,
+    world: &World,
+    whole: &mut Value,
+    name: &str,
+    value: Value,
+    names: RefNames<'_>,
+) -> Result<(), PropertyError> {
+    let r = resolve(reg, name)?;
+    if value.is_null() && !in_variant(&r, whole) {
+        return Ok(());
+    }
+    let value = by_id(world, names, &r, name, value)?;
+    enter_variant(&r, whole);
+    let s = slot(&r, whole)?;
+    *s = fit(
+        normalize(
+            r.field.kind,
+            stored_from(r.field.view, value, s, name, partilhado(&r))?,
+        ),
+        s,
+    );
+    Ok(())
+}
+
 /// Uma cor de quatro canais (a do script) num campo de três (sem opacidade) perde a opacidade.
 fn fit(v: Value, stored: &Value) -> Value {
     match (v, stored) {

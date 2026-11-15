@@ -264,10 +264,11 @@ fn o_angle_e_o_reach_do_raio_animam() {
         &mut PreviewDrive::default(),
         &TagTree::default()
     ));
-    let r = *sim
+    let r = sim
         .world()
         .get::<ph2d_physics_ecs::RaySensor>(e)
-        .expect("raio");
+        .expect("raio")
+        .clone();
     assert_eq!((r.angle, r.reach), (45.0, 3.0));
 }
 

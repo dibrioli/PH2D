@@ -51,6 +51,13 @@ pub(crate) fn resumo(i: &InspectorRayInfo) -> String {
     if let (Some(chave), Some(tag)) = (chave_do_modo, nome_da_tag(i.see_tag)) {
         partes.push(tr_with(chave, &[("tag", &tag.as_str())]));
     }
+    if !i.also_ignore.is_empty() {
+        let n = i.also_ignore.len().to_string();
+        partes.push(tr_with(
+            "panel.inspector.ray.filter_also_n",
+            &[("n", &n.as_str())],
+        ));
+    }
     if i.ignore_parts && !i.ignore_up_to.is_empty() {
         partes.push(tr_with(
             "panel.inspector.ray.filter_up_to_x",
@@ -146,6 +153,108 @@ fn linha_da_tag(
     linha.fim(ph2d_tokens::row_pitch_px())
 }
 
+/// ⭐ **«Also ignore» (RS-12)**: um chip por objecto da lista (o «×» tira-o) e o conta-gotas no fim da
+/// primeira linha, que junta mais um — o «Actors to Ignore» do Unreal. Vazia, diz «Nothing else».
+#[allow(clippy::too_many_arguments)]
+fn linha_da_lista(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorRayInfo,
+    seccao: Seccao,
+) -> f32 {
+    use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
+    let rotulo = TextKey::new("component.field.ray_sensor.17");
+    let linha = paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        tr("component.field.ray_sensor.17"),
+        seccao,
+    );
+    let c = linha.control;
+    let lado = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_card_stack::metrics::GRID_CELL
+    } else {
+        (ROW_H_PX * 0.82).min(c.h) // LITERAL-PX-OK: o quadrado compacto da linha (o do conta-gotas)
+    };
+    let inset = (c.h - lado) * 0.5;
+    let botao = Rect::new(c.x + c.w - lado - inset, c.y + inset, lado, lado);
+    paint_icon_button(
+        botao,
+        IconGlyph::Builtin(IconId::Eyedropper),
+        IconButtonStyle::Compact,
+        if i.ignore_pick_armed {
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
+        } else {
+            store.button_visual(crate::ids::INSP_RAY_IGNORE_PICK)
+        },
+        scene,
+        theme,
+    );
+    hit_index.register(crate::ids::INSP_RAY_IGNORE_PICK, botao);
+    let gap = Spacing::Xs.px();
+    let fim_x = botao.x - gap;
+    if i.also_ignore.is_empty() {
+        let corpo = TypeToken::Sm.px();
+        ph2d_editor_core::paint::paint_text_elided(
+            text_system,
+            scene,
+            tr("panel.inspector.ray.ignore_none"),
+            c.x,
+            c.y + ph2d_editor_core::paint::folga_do_texto(c.h, corpo),
+            corpo,
+            (fim_x - c.x).max(0.0),
+            resolve(ColorToken::Text3, theme),
+        );
+    }
+    let ids = crate::ids::INSP_RAY_IGNORE_CHIP.ids(i.also_ignore.len());
+    let (mut cx, mut cy) = (c.x, c.y);
+    for (nome, &id) in i.also_ignore.iter().zip(&ids) {
+        let state = match store.get(id) {
+            Some(InteractiveState::Tag { state }) => *state,
+            _ => TagState::Normal,
+        };
+        let chip = Tag::new(id, nome.clone())
+            .tone(TagTone::Neutral)
+            .removable(true)
+            .visual((state, store.hover_live(id)));
+        // A primeira linha acaba no conta-gotas; as outras usam a largura toda do controlo.
+        let limite = if cy <= c.y { fim_x } else { c.x + c.w };
+        let cw = chip.natural_width(text_system, c.h).min(limite - c.x);
+        if cx > c.x && cx + cw > limite {
+            cx = c.x;
+            cy += c.h + gap;
+        }
+        let rect = Rect::new(cx, cy, cw, c.h);
+        ph2d_editor_core::panel::cards::censo::controlo_maior_que_a_pega(id, rect);
+        paint_tag(&chip, rect, scene, text_system, theme);
+        if let Some(close_r) = chip.close_rect(rect) {
+            hit_index.register(id, close_r);
+        }
+        cx += cw + gap;
+    }
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        linha.dot,
+        &[crate::ids::INSP_RAY_IGNORE_PICK],
+        rotulo.into(),
+    ) {
+        hit_index.register(alvo, linha.dot);
+    }
+    cy + ph2d_tokens::row_pitch_px().max(c.h)
+}
+
 /// Pinta o grupo «Filter». Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn grupo_do_filtro(
@@ -239,6 +348,18 @@ pub(super) fn grupo_do_filtro(
             erro_do_topo(i, store.focus_id() == Some(crate::ids::INSP_RAY_UP_TO)),
         );
     }
+    cur_y = linha_da_lista(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        i,
+        seccao,
+    );
     let nomes: Vec<&str> = MODOS.iter().map(|&(_, k)| tr(k)).collect();
     let segmentos: Vec<(&str, bool, ph2d_a11y::NodeId)> = MODOS
         .iter()
@@ -346,6 +467,16 @@ mod tests {
             hit_triggers: false,
             starts_inside: false,
             all_hits: false,
+            enabled: true,
+            thickness: 0.0,
+            cone: 0.0,
+            aim_at: String::new(),
+            aim_at_gone: false,
+            aim_at_unknown: false,
+            aim_pick_armed: false,
+            also_ignore: Vec::new(),
+            ignore_pick_armed: false,
+            sees_tags: String::new(),
             layer_empty: false,
             on_enter: String::new(),
             on_exit: String::new(),
@@ -392,6 +523,10 @@ mod tests {
         let mut topo = de_fabrica();
         topo.ignore_up_to = "Truck".into();
         assert_eq!(resumo(&topo), "Up to Truck");
+        // RS-12: a lista diz quantos.
+        let mut lista = de_fabrica();
+        lista.also_ignore = vec!["Crate".into(), "Box".into()];
+        assert_eq!(resumo(&lista), "Also ignores 2");
         crate::state::set_current_tag_tree(Vec::new());
     }
 }

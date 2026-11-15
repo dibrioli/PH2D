@@ -58,6 +58,9 @@ fn ray(n: usize) -> NodeId {
 fn action(n: usize) -> NodeId {
     hash_node_id_runtime(&format!("insp_action_tag_opt_{n}"))
 }
+fn ray_ignore(n: usize) -> NodeId {
+    hash_node_id_runtime(&format!("insp_ray_ignore_chip_{n}"))
+}
 fn phys(n: usize) -> NodeId {
     hash_node_id_runtime(&format!("insp_phys_tag_opt_{n}"))
 }
@@ -70,3 +73,5 @@ pub static INSP_RAY_SEE_TAG_OPT: OpcoesDeTag = OpcoesDeTag::new(ray);
 pub static INSP_ACTION_TAG_OPT: OpcoesDeTag = OpcoesDeTag::new(action);
 /// O filtro por tag dos sinais da §11 Physics (o `(any)` à frente tem id próprio).
 pub static INSP_PHYS_TAG_OPT: OpcoesDeTag = OpcoesDeTag::new(phys);
+/// O «×» de cada objecto do «Also ignore» do Ray Sensor (RS-12) — a mesma tabela crescente, uma por item.
+pub static INSP_RAY_IGNORE_CHIP: OpcoesDeTag = OpcoesDeTag::new(ray_ignore);

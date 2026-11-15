@@ -99,7 +99,7 @@ pub struct PhysicsState {
     ///
     /// ⚠️ **Reescrito por quadro**, nunca acumulado — a mesma lei do vizinho. Com «See all hits» um
     /// raio tem VÁRIAS linhas, do mais perto ao mais longe (`ray_sensor_hits_all`).
-    pub ray_hits: Vec<(u64, u64, f32)>,
+    pub ray_hits: Vec<(u64, u64, f32, u64)>,
 
     /// O prólogo da cena de smoke já correu neste processo.
     ///

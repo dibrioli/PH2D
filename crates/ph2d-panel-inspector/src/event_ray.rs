@@ -49,6 +49,22 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             push(host, bits, edit);
             return true;
         }
+        // RS-6 «Enabled» e os conta-gotas do «Aim at» e do «Also ignore»; o «×» de um chip tira-o.
+        let mais = match id {
+            crate::ids::INSP_RAY_ENABLED => Some(RayFieldEdit::Enabled(!info.enabled)),
+            crate::ids::INSP_RAY_AIM_PICK => Some(RayFieldEdit::PickAimAt(!info.aim_pick_armed)),
+            crate::ids::INSP_RAY_IGNORE_PICK => {
+                Some(RayFieldEdit::PickIgnore(!info.ignore_pick_armed))
+            }
+            _ => crate::ids::INSP_RAY_IGNORE_CHIP
+                .posicao(id, info.also_ignore.len())
+                .map(RayFieldEdit::IgnoreRemove),
+        };
+        if let Some(edit) = mais {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            push(host, bits, edit);
+            return true;
+        }
         // O conta-gotas do «Ignore up to» (C8): arma ou desarma; o clique no palco é da app.
         if id == crate::ids::INSP_RAY_UP_TO_PICK {
             ph2d_editor_core::panel::seam_reset_button(host, id);
@@ -71,6 +87,7 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             crate::ids::INSP_RAY_ON_ENTER => RayFieldEdit::OnEnter(nome),
             crate::ids::INSP_RAY_ON_EXIT => RayFieldEdit::OnExit(nome),
             crate::ids::INSP_RAY_UP_TO => RayFieldEdit::IgnoreUpTo(nome),
+            crate::ids::INSP_RAY_AIM => RayFieldEdit::AimAt(nome),
             _ => return false,
         };
         push(host, bits, edit);
@@ -86,6 +103,8 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         let edit = match id {
             crate::ids::INSP_RAY_ANGLE => RayFieldEdit::Angle(f),
             crate::ids::INSP_RAY_REACH => RayFieldEdit::Reach(f),
+            crate::ids::INSP_RAY_THICKNESS => RayFieldEdit::Thickness(f),
+            crate::ids::INSP_RAY_CONE => RayFieldEdit::Cone(f),
             _ => return false,
         };
         push(host, bits, edit);

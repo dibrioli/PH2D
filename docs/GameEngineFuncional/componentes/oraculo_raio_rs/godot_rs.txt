@@ -1,0 +1,10 @@
+# Oraculo GEF 07 RS: Godot RayCast2D/ShapeCast2D/intersect_ray, headless, GodotPhysics2D. Metros, y para cima.
+# Cena: Owner 0,2x0,2 em (0,0) com o raio filho a olhar para baixo 3 m; Floor 4x0,2 em y=-1,1; Floor2 em y=-1,6; Side 0,1x0,1 em (0,25 ; -0,5).
+Godot 4.7.2-stable (arch_linux)
+line | hit=Floor | point=(0.0000, -1.0000) | normal=(0.0000, 1.0000) | dist=1.0000
+disabled | is_colliding=false
+also_ignore_floor | hit=Floor2 | point=(0.0000, -1.5000) | normal=(0.0000, 1.0000) | dist=1.5000
+all_hits | Floor, Floor2
+thick_0.6 | hit=Side | point=(0.2000, -0.4500) | safe=0.2227 | unsafe=0.2402
+raycast_code | hit=Owner | point=(0.0000, 0.1000) | normal=(0.0000, 1.0000)
+target_deleted | hit=Floor2 | point=(0.0000, -1.5000) | normal=(0.0000, 1.0000) | dist=1.5000

@@ -38,9 +38,10 @@ fn no_mundo(sim: &SimWorld, e: Entity) -> Vec2 {
 /// O `RaySensor` de um olho.
 fn sensor(sim: &mut SimWorld, nome: &str) -> RaySensor {
     let e = por_nome(sim, nome);
-    *sim.world()
+    sim.world()
         .get::<RaySensor>(e)
         .unwrap_or_else(|| panic!("«{nome}» perdeu o componente"))
+        .clone()
 }
 
 /// ⭐⭐⭐ **Os olhos são OBJECTOS filhos do poste** (dono 15/11; ADR-0199): todo `RaySensor` da cena

@@ -55,6 +55,7 @@ impl Cena {
             },
             tick: 1,
             images: crate::script_image::ImageLibrary::none(),
+            physics: None,
         };
         frame(
             &mut self.host,

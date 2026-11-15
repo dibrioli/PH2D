@@ -97,6 +97,9 @@ pub enum Target {
     Tag,
     /// Um conjunto de tags (os `Tags` do objecto): uma lista de caminhos.
     TagSet,
+    /// Uma lista de objectos pelos seus `StableId` (`Vec<u64>`): uma lista de NOMES («Also ignore»
+    /// do Ray Sensor, RS-12).
+    StableSet,
     /// Uma camada de ordenação do projecto (`SortingLayers`), pelo nome; guardada pelo índice.
     Layer,
     /// Um script da biblioteca do projecto (`ScriptSource`: `"None"` ou `{"Library": id}`).

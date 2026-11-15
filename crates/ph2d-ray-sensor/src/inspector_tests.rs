@@ -92,7 +92,7 @@ fn a_leitura_viva_vira_um_nome() {
         e.to_bits(),
         1,
         true,
-        &[(parede, 1.75)],
+        &[(parede, 1.75, parede)],
     )
     .expect("ha' seccao");
     assert_eq!(i.sees, "Parede");
@@ -106,7 +106,7 @@ fn a_leitura_viva_vira_um_nome() {
         e.to_bits(),
         1,
         true,
-        &[(parede, 1.75)],
+        &[(parede, 1.75, parede)],
     )
     .expect("ha' seccao");
     assert!(i2.sees.is_empty(), "um alvo apagado nao tem nome a mostrar");

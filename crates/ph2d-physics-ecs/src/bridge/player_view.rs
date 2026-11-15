@@ -197,6 +197,26 @@ impl MaisAcertos {
     }
 }
 
+/// **A forma do feixe de um `RaySensor`** (RS-1, RS-2): largura, leque e onde ele viu cada objecto.
+/// Zeros = a linha de sempre.
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
+pub struct Feixe {
+    /// O DIÂMETRO do círculo varrido, em metros (`thickness`); `0` = a linha.
+    pub largura: f32,
+    /// A MEIA abertura do leque, em radianos (`cone / 2`); `0` = a linha.
+    pub meio_cone: f32,
+    /// Onde ele viu cada objecto, em mundo — os tiques do leque (até [`MAX_TIQUES_DO_RAIO`]).
+    pub pontos: [[f32; 2]; MAX_TIQUES_DO_RAIO],
+    pub n: u8,
+}
+
+impl Feixe {
+    #[must_use]
+    pub fn pontos(&self) -> &[[f32; 2]] {
+        &self.pontos[..usize::from(self.n)]
+    }
+}
+
 /// **Uma marca de sensor** — o que ele olhou e o que respondeu.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ProbeMark {
@@ -205,6 +225,8 @@ pub struct ProbeMark {
     pub shape: ProbeShape,
     /// Com «See all hits»: um tique em CADA acerto depois do primeiro (o `hit` do raio).
     pub more_hits: MaisAcertos,
+    /// A largura e o leque do `RaySensor` (RS-1, RS-2); de fábrica a linha.
+    pub feixe: Feixe,
     /// A camada de quem olha, quando ela é do objecto: o `RaySensor` autorado (o canvas pinta-o na cor dela, emenda 4
     /// da GEF02, dono 08/11). Os sensores do personagem são anatomia dele e não têm camada própria: `None`.
     pub layer: Option<u8>,
@@ -240,6 +262,7 @@ impl ProbeMark {
             },
             layer: None,
             more_hits: MaisAcertos::default(),
+            feixe: Feixe::default(),
         }
     }
 
@@ -264,6 +287,7 @@ impl ProbeMark {
             },
             layer: None,
             more_hits: MaisAcertos::default(),
+            feixe: Feixe::default(),
         }
     }
 
@@ -296,6 +320,7 @@ impl ProbeMark {
             },
             layer: None,
             more_hits: MaisAcertos::default(),
+            feixe: Feixe::default(),
         }
     }
 
@@ -306,6 +331,29 @@ impl ProbeMark {
             more_hits: MaisAcertos::de(todos),
             ..self
         }
+    }
+
+    /// A largura e o leque do raio `r`, e os pontos onde ele viu (do mais perto ao mais longe).
+    #[must_use]
+    pub fn com_feixe(self, r: &crate::RaySensor, vistos: &[[f32; 2]]) -> Self {
+        let mut f = Feixe {
+            largura: if r.thickness.is_finite() {
+                r.thickness.max(0.0)
+            } else {
+                0.0
+            },
+            meio_cone: if r.cone.is_finite() {
+                (r.cone.clamp(0.0, 360.0) * 0.5).to_radians()
+            } else {
+                0.0
+            },
+            ..Feixe::default()
+        };
+        for (slot, p) in f.pontos.iter_mut().zip(vistos) {
+            *slot = *p;
+            f.n += 1;
+        }
+        Self { feixe: f, ..self }
     }
 
     /// A mesma marca, na camada `layer` do objecto que olha.
@@ -330,6 +378,7 @@ impl ProbeMark {
             shape: ProbeShape::Sweep { body, offset },
             layer: None,
             more_hits: MaisAcertos::default(),
+            feixe: Feixe::default(),
         }
     }
 }

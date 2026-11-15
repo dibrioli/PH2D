@@ -80,6 +80,37 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.ray.and_x_at_y_m" => "and {name}, at {dist}",
         "panel.inspector.ray.and_n_more" => "and {n} more",
+        // As melhorias (RS, dono 15/11).
+        "panel.inspector.ray.this_ray_is_off" => {
+            "This ray is off: it sees nothing and sends no signals."
+        }
+        "panel.inspector.ray.enabled_tip" => {
+            "On: the ray looks every frame. Off: it sees nothing and stays silent. Turning it off while it sees something sends On Exit."
+        }
+        "panel.inspector.ray.thickness_tip" => {
+            "How wide the ray is, in meters. 0 is a thin line. More sweeps a ball that wide, like a thick bullet: it cannot slip through gaps."
+        }
+        "panel.inspector.ray.cone_tip" => {
+            "How wide the ray looks, in degrees. 0 is a line. More sees every object inside that slice that nothing hides, each one with its own signals."
+        }
+        "panel.inspector.ray.aim_tip" => {
+            "An object the ray always points at, wherever it moves. Empty: the Angle decides."
+        }
+        "panel.inspector.ray.aim_pick_tip" => "Click the object to aim at. Esc cancels.",
+        "panel.inspector.ray.aim_none" => "None: the Angle decides",
+        "panel.inspector.ray.aim_is_gone" => {
+            "The object it aimed at is gone, so the Angle decides."
+        }
+        "panel.inspector.ray.also_ignore_tip" => {
+            "Objects this ray never sees, with everything under them. Pick them with the dropper."
+        }
+        "panel.inspector.ray.ignore_pick_tip" => {
+            "Click an object to add it to the list. Esc cancels."
+        }
+        "panel.inspector.ray.ignore_none" => "Nothing else",
+        "panel.inspector.ray.ignore_chip_tip" => "Remove it from the list.",
+        "panel.inspector.ray.filter_also_n" => "Also ignores {n}",
+        "panel.inspector.ray.sees_x_on_t_at_y_m" => "Sees {name} ({tags}), at {dist}",
         _ => return None,
     })
 }

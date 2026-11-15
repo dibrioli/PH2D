@@ -187,6 +187,7 @@ impl crate::App {
             },
             tick: self.fixed_step.tick_count(),
             images: ph2d_app_components::script_image::ImageLibrary::of(asset_db, atlas_asset_map),
+            physics: Some(&*physics),
         };
         deaths.extend(motores::correm(
             sim,

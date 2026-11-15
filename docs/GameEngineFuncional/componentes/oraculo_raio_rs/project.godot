@@ -1,0 +1,5 @@
+; Projecto mínimo do oráculo do Ray Sensor (GEF 07 RS) — só para o Godot correr o script headless.
+config_version=5
+
+[application]
+config/name="oraculo_raio_rs"

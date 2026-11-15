@@ -63,3 +63,12 @@ pub const INSP_RAY_WALLS_BLOCK: NodeId = hash_node_id("insp_ray_walls_block");
 pub const INSP_RAY_HIT_TRIGGERS: NodeId = hash_node_id("insp_ray_hit_triggers");
 pub const INSP_RAY_STARTS_INSIDE: NodeId = hash_node_id("insp_ray_starts_inside");
 pub const INSP_RAY_ALL_HITS: NodeId = hash_node_id("insp_ray_all_hits");
+/// As melhorias (RS, dono 15/11): a caixa «Enabled», a forma do feixe, o alvo e a lista pelo conta-gotas.
+pub const INSP_RAY_ENABLED: NodeId = hash_node_id("insp_ray_enabled");
+pub const INSP_RAY_THICKNESS: NodeId = hash_node_id("insp_ray_thickness");
+pub const INSP_RAY_CONE: NodeId = hash_node_id("insp_ray_cone");
+/// «Aim at»: a caixa do nome e o conta-gotas.
+pub const INSP_RAY_AIM: NodeId = hash_node_id("insp_ray_aim");
+pub const INSP_RAY_AIM_PICK: NodeId = hash_node_id("insp_ray_aim_pick");
+/// «Also ignore»: o conta-gotas que junta um objecto; os chips são o [`super::INSP_RAY_IGNORE_CHIP`].
+pub const INSP_RAY_IGNORE_PICK: NodeId = hash_node_id("insp_ray_ignore_pick");

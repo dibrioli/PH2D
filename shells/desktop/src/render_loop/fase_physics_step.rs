@@ -93,9 +93,12 @@ impl crate::App {
             let todos = physics.ray_sensor_hits_all(*e);
             let um = std::slice::from_ref(h);
             for h in if todos.is_empty() { um } else { todos } {
-                self.physics
-                    .ray_hits
-                    .push((e.to_bits(), h.body.to_bits(), h.distance));
+                self.physics.ray_hits.push((
+                    e.to_bits(),
+                    h.body.to_bits(),
+                    h.distance,
+                    h.shape.to_bits(),
+                ));
             }
         }
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do

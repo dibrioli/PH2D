@@ -176,6 +176,22 @@ pub const API_TYPES: &[ApiType] = &[
         definition: "{ __kind: \"color\", r: number, g: number, b: number, a: number }",
         doc: "A linear RGBA colour, as `ph2d.color` builds it and `self` reads it.",
     },
+    // O raio (GEF 07, RS-7/RS-8): o acerto, a leitura de um Ray Sensor e o filtro de um tiro.
+    ApiType {
+        ident: "RayHit",
+        definition: "{ object: Entity, shape: Entity, point: Vec2, normal: Vec2, distance: number, tags: { string }, friction: number?, bounce: number? }",
+        doc: "One thing a ray sees: the object, the collision shape it hit (with that shape's tags), where, the surface normal and how far.",
+    },
+    ApiType {
+        ident: "RayView",
+        definition: "{ seeing: boolean, hits: { RayHit }, object: Entity?, shape: Entity?, point: Vec2?, normal: Vec2?, distance: number?, tags: { string }?, friction: number?, bounce: number? }",
+        doc: "What a Ray Sensor sees now: `seeing`, every hit (nearest first) and the nearest one's fields at the top.",
+    },
+    ApiType {
+        ident: "RayFilter",
+        definition: "{ layer: number?, only_see: string?, tag: string?, walls_block: boolean?, hit_triggers: boolean?, starts_inside: boolean?, see_all_hits: boolean?, thickness: number?, cone: number?, ignore_my_body: boolean?, ignore_my_other_parts: boolean?, ignore_up_to: string?, also_ignore: { string }? }",
+        doc: "The options of a `ph2d.raycast`, named as the Ray Sensor card names them (`ray_sensor.*`).",
+    },
     ApiType {
         ident: "PropertyDefault",
         definition: "number | boolean | string | Vec2 | Color",
@@ -268,6 +284,18 @@ pub const API: &[ApiEntry] = &[
         ident: "spawn",
         luau_type: "(master: string?, x: number?, y: number?) -> Entity",
         doc: "Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "ray",
+        luau_type: "(entity: Entity) -> RayView?",
+        doc: "What a Ray Sensor object sees right now; nil when the object is not a Ray Sensor.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "raycast",
+        luau_type: "(from: Vec2, to: Vec2, filter: RayFilter?) -> { RayHit }",
+        doc: "Casts a ray right now, from one point to another, and gives back what it hits, nearest first (empty = nothing).",
     },
     ApiEntry {
         table: "ph2d",

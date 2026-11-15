@@ -509,6 +509,7 @@ impl PhysicsBridge {
                     },
                     layer: None,
                     more_hits: crate::MaisAcertos::default(),
+                    feixe: crate::Feixe::default(),
                 });
             }
         }

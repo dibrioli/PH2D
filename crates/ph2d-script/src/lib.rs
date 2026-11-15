@@ -71,7 +71,7 @@ pub use console::{
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
 pub use io::{Devices, Edge, EntityWrite, InputSnapshot, QueueFull, WriteQueue, WriteValue};
-pub use lane::{HealthRequest, NoDoors, SceneDoors};
+pub use lane::{HealthRequest, NoDoors, RayHitView, RayView, SceneDoors};
 pub use lateral::{PodKey, PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 pub use module::{ScriptModule, load_module};

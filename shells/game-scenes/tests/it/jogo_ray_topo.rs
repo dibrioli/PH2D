@@ -67,7 +67,7 @@ fn o_ignore_up_to_le_e_escreve_pelo_nome() {
         raio,
         RayFieldEdit::IgnoreUpTo(" Truck ".into())
     ));
-    let r = *sim.world().get::<RaySensor>(raio).expect("raio");
+    let r = sim.world().get::<RaySensor>(raio).expect("raio").clone();
     assert_eq!(r.ignore_up_to, 21, "o StableId do Truck");
     let i = info(&sim, raio, &t);
     assert_eq!(

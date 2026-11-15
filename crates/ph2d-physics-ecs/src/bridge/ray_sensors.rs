@@ -149,7 +149,9 @@ impl PhysicsBridge {
         let (s, c) = (libm::sinf(ang), libm::cosf(ang));
         let v = r.dir_local();
         let v = ph2d_core::Vec2::new(v.x * lado, v.y);
-        let d = [v.x * c - v.y * s, v.x * s + v.y * c];
+        let d = self
+            .mira(world, r.aim_at, [px, py])
+            .unwrap_or([v.x * c - v.y * s, v.x * s + v.y * c]);
         let n = libm::sqrtf(d[0] * d[0] + d[1] * d[1]);
         if !n.is_finite() || n <= f32::EPSILON || !r.reach.is_finite() || r.reach < 0.0 {
             return None;
@@ -160,6 +162,34 @@ impl PhysicsBridge {
             reach: r.reach,
             excluir,
         })
+    }
+
+    /// ⭐ **«Aim at» (RS-3): o rumo para o alvo, na pose VIVA dele neste tique** — a do mundo da
+    /// física quando ele é um corpo, a do `Transform` quando não é. `None` = sem alvo, alvo que sumiu
+    /// ou em cima da origem: o `angle` decide.
+    ///
+    /// ⚠️ Medido antes (15/11): a constraint «Look At» no objecto do raio roda-o, mas corre DEPOIS da
+    /// física no quadro (`fase_skeleton_drives`), logo o raio apontava para onde o alvo estava no quadro
+    /// ANTERIOR, e o `angle` somava-se ao rumo. Um tiro hitscan a um quadro de atraso falha um alvo
+    /// rápido; por isso o campo é do motor.
+    fn mira(&self, world: &World, alvo: u64, origem: [f32; 2]) -> Option<[f32; 2]> {
+        if alvo == 0 {
+            return None;
+        }
+        let t = ph2d_ecs::entity_with_stable_id(world, ph2d_ecs::StableId(alvo))?;
+        let p = match self
+            .bodies
+            .get(&t)
+            .and_then(|b| self.world.body_pose(b.handle))
+        {
+            Some(p) => [p.translation.x, p.translation.y],
+            None => {
+                let w = ph2d_ecs::world_transform(world, t)?;
+                [w.translation.x, w.translation.y]
+            }
+        };
+        let d = [p[0] - origem[0], p[1] - origem[1]];
+        (d[0] * d[0] + d[1] * d[1] > f32::EPSILON).then_some(d)
     }
 
     /// **Lança um raio por sensor e diz o que cada um viu**, acumulando as arestas.
@@ -189,153 +219,84 @@ impl PhysicsBridge {
     ) {
         let mut agora: BTreeMap<Entity, RayHit> = BTreeMap::new();
         // O que cada raio via no tique anterior. Cada sensor tira a SUA entrada; o que sobra no fim é
-        // de quem sumiu (ou não lançou) e sai. ⚠️ Uma lista `all_hits` manda sobre o `ray_hits` do
-        // mesmo raio: é o que deixa trocar «See all hits» a meio sem inventar arestas (auditoria C4).
+        // de quem sumiu, se desligou (RS-6) ou não lançou, e sai. ⚠️ Uma lista (`all_hits`/`cone`)
+        // manda sobre o `ray_hits` do mesmo raio: é o que deixa trocar «See all hits» a meio sem
+        // inventar arestas (auditoria C4).
         let mut velho_todos = std::mem::take(&mut self.ray_hits_all);
         let mut velho = std::mem::take(&mut self.ray_hits);
-        // ⚠️ **A lista descreve UM tique, logo ela é reconstruída e não acumulada** — a frase que o
-        // `player_probes` já escreve. A capacidade do `Vec` fica.
+        // ⚠️ **A lista descreve UM tique, logo ela é reconstruída e não acumulada.**
         self.ray_marks.clear();
+        let pecas: BTreeMap<(u32, u32), Entity> = self
+            .parts
+            .iter()
+            .map(|(e, p)| (p.handle.into_raw_parts(), *e))
+            .collect();
+        let mut buf = std::mem::take(&mut self.ray_buffers);
         {
             let world = sim.world_mut();
             let mut q = world.query::<(Entity, &RaySensor)>();
-            // ⚠️ A lista sai da consulta ANTES do laço: o `cast_ray` empresta `self.world`, e a
-            // consulta empresta o `World` do ECS.
-            let sensores: Vec<(Entity, RaySensor)> = q.iter(world).map(|(e, r)| (e, *r)).collect();
+            // ⚠️ A lista sai da consulta ANTES do laço: o lance empresta `self.world`, e a consulta
+            // empresta o `World` do ECS.
+            let mut sensores: Vec<(Entity, RaySensor)> =
+                q.iter(world).map(|(e, r)| (e, r.clone())).collect();
             let world: &World = world;
+            // ⭐ RS-10: a ordem dos raios é a da IDENTIDADE durável (`StableId`), nunca a do arquétipo —
+            // um `Ctrl+Z` respawna o mundo com bits novos, e as arestas sairiam noutra ordem.
+            let chave = |e: Entity| world.get::<ph2d_ecs::StableId>(e).map(|s| s.0);
+            sensores.sort_by_key(|(e, _)| (chave(*e), e.to_bits()));
             for (e, r) in sensores {
+                if !r.enabled {
+                    continue;
+                }
                 let Some(raio) = self.raio_em_mundo(world, e, &r) else {
                     continue;
                 };
+                let lista_toda = r.all_hits || (r.cone.is_finite() && r.cone > 0.0);
                 let antes_todos = velho_todos.remove(&e);
                 let antes_um = velho.remove(&e);
-                let dono = if self.bodies.contains_key(&e) {
-                    Some(e)
-                } else {
-                    crate::owner_body(world, e)
+                let anterior: Vec<RayHit> =
+                    antes_todos.unwrap_or_else(|| antes_um.into_iter().collect());
+                let mut vistos: Vec<RayHit> = Vec::new();
+                let fim = {
+                    let m = super::ray_lance::Mundo {
+                        fisica: &self.world,
+                        world,
+                        by_handle,
+                        pecas: &pecas,
+                        bodies: &self.bodies,
+                        tree: &self.nav.arvore,
+                    };
+                    super::ray_lance::lanca(&m, Some(e), &raio, &r, &mut buf, &mut vistos)
                 };
-                let topo = if r.ignore_parts {
-                    crate::topo_da_familia(world, e, r.ignore_up_to)
-                } else {
-                    None
-                };
-                let tree = &self.nav.arvore;
-                let entidade = |c: Option<RigidBodyHandle>| {
-                    c.and_then(|b| by_handle.get(&b.into_raw_parts()).copied())
-                };
-                let passa = |b: Option<Entity>| {
-                    r.only_see.passes(
-                        r.see_tag,
-                        tree,
-                        b.and_then(|b| world.get::<ph2d_ecs::tags::Tags>(b)),
-                    )
-                };
-                let aceita = |c: Option<RigidBodyHandle>, dentro: bool| {
-                    let b = entidade(c);
-                    if let (Some(topo), Some(b)) = (topo, b)
-                        && Some(b) != dono
-                        && crate::na_familia(world, topo, b)
-                    {
-                        return false;
-                    }
-                    if dentro {
-                        return r.walls_block && b != dono && !passa(b);
-                    }
-                    r.walls_block || passa(b)
-                };
-                let consulta = ph2d_physics::RayQuery {
-                    exclude_body: if r.ignore_body { raio.excluir } else { None },
-                    layer: r.layer,
-                    hit_sensors: r.hit_triggers,
-                    hit_from_inside: r.starts_inside,
-                };
-                let ent_de = |h: &ph2d_physics::CastHit| entidade(h.body);
-                let para_ray_hit = |alvo: Entity, h: &ph2d_physics::CastHit| RayHit {
-                    body: alvo,
-                    distance: h.distance,
-                    point: h.point,
-                    normal: h.normal,
-                };
-                // O primeiro acerto que o raio VÊ (o `hit` da marca) e onde a linha acaba: no alcance,
-                // ou na parede que tapa — que não é um acerto (auditoria C3).
-                let mut fim = raio.reach;
-                let mut mais = crate::MaisAcertos::default();
-                let tinha_todos = antes_todos.is_some();
-                let mut lista = antes_todos.unwrap_or_default();
-                let anterior_todos = std::mem::take(&mut lista);
-                let anterior: &[RayHit] = if tinha_todos {
-                    &anterior_todos
-                } else {
-                    antes_um.as_slice()
-                };
-                let um: Option<RayHit> = if r.all_hits {
-                    self.world.cast_ray_query_all(
-                        raio.origem,
-                        raio.dir,
-                        raio.reach,
-                        consulta,
-                        &aceita,
-                        &mut self.ray_scratch,
-                    );
-                    for h in &self.ray_scratch {
-                        let b = ent_de(h);
-                        if !passa(b) {
-                            fim = h.distance;
-                            break;
-                        }
-                        if let Some(b) = b
-                            && !lista.iter().any(|x| x.body == b)
-                        {
-                            lista.push(para_ray_hit(b, h));
-                        }
-                    }
-                    for (slot, h) in mais.d.iter_mut().zip(lista.iter().skip(1)) {
-                        *slot = h.distance;
-                        mais.n += 1;
-                    }
-                    None
-                } else {
-                    let achou = self.world.cast_ray_query(
-                        raio.origem,
-                        raio.dir,
-                        raio.reach,
-                        consulta,
-                        &aceita,
-                    );
-                    achou.and_then(|h| match ent_de(&h) {
-                        Some(alvo) if passa(Some(alvo)) => Some(para_ray_hit(alvo, &h)),
-                        _ => {
-                            fim = h.distance;
-                            None
-                        }
-                    })
-                };
-                let vistos: &[RayHit] = if r.all_hits { &lista } else { um.as_slice() };
-                let parou = vistos.first().map(|h| h.distance);
-                for h in anterior {
+                for h in &anterior {
                     if !vistos.iter().any(|x| x.body == h.body) {
                         self.ray_exits.push((e, h.body));
                     }
                 }
-                for h in vistos {
+                for h in &vistos {
                     if !anterior.iter().any(|x| x.body == h.body) {
                         self.ray_enters.push((e, h.body));
                     }
                 }
+                let parou = vistos.first().map(|h| h.distance);
+                let mais: Vec<f32> = vistos.iter().skip(1).map(|h| h.distance).collect();
+                let pontos: Vec<[f32; 2]> = vistos.iter().map(|h| h.point).collect();
+                self.ray_marks.push(
+                    ProbeMark::ray(ProbeKind::Sensor, raio.origem, raio.dir, fim, parou, 0.0)
+                        .com_mais_acertos(&mais)
+                        .com_feixe(&r, &pontos)
+                        .na_camada(r.layer),
+                );
                 if let Some(h) = vistos.first() {
                     agora.insert(e, *h);
                 }
-                if r.all_hits {
-                    self.ray_hits_all.insert(e, lista);
+                if lista_toda {
+                    self.ray_hits_all.insert(e, vistos);
                 }
-                self.ray_marks.push(
-                    ProbeMark::ray(ProbeKind::Sensor, raio.origem, raio.dir, fim, parou, 0.0)
-                        .com_mais_acertos(mais.como_lista())
-                        .na_camada(r.layer),
-                );
             }
         }
-        // Quem sumiu (ou não lançou neste tique) deixa de ver tudo o que via.
+        self.ray_buffers = buf;
+        // Quem sumiu, se desligou ou não lançou neste tique deixa de ver tudo o que via.
         for (e, lista) in &velho_todos {
             for h in lista {
                 self.ray_exits.push((*e, h.body));
@@ -373,13 +334,18 @@ impl PhysicsBridge {
         let Some(mut q) = world.try_query::<(Entity, &RaySensor)>() else {
             return;
         };
-        let sensores: Vec<(Entity, RaySensor)> = q.iter(world).map(|(e, r)| (e, *r)).collect();
+        let sensores: Vec<(Entity, RaySensor)> =
+            q.iter(world).map(|(e, r)| (e, r.clone())).collect();
         for (e, r) in sensores {
+            if !r.enabled {
+                continue;
+            }
             let Some(raio) = self.raio_em_mundo(world, e, &r) else {
                 continue;
             };
             self.ray_marks.push(
                 ProbeMark::idle_ray(ProbeKind::Sensor, raio.origem, raio.dir, raio.reach, 0.0)
+                    .com_feixe(&r, &[])
                     .na_camada(r.layer),
             );
         }

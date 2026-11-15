@@ -69,6 +69,7 @@ impl Cena {
             },
             tick: 1,
             images: ImageLibrary::fixed(nomes),
+            physics: None,
         };
         let f = frame(
             &mut self.host,

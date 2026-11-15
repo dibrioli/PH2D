@@ -90,29 +90,36 @@ pub trait SceneDoors {
     fn property_names(&mut self, _sim: &mut SimWorld, _entity: Entity) -> Vec<String> {
         Vec::new()
     }
+
+    /// ⭐ `ph2d.ray(e)` (RS-7): o que o Ray Sensor `e` vê AGORA; `Ok(None)` = não é um Ray Sensor.
+    ///
+    /// # Errors
+    /// A cena não tem física.
+    fn ray_view(&mut self, _sim: &mut SimWorld, _e: Entity) -> Result<Option<RayView>, String> {
+        ray::sem_fisica()
+    }
+
+    /// ⭐ `ph2d.raycast(de, até, filtro)` (RS-8): um tiro com os filtros do Ray Sensor (os nomes das
+    /// propriedades dele); `by` é quem dispara (a família que «Ignore my body» tira).
+    ///
+    /// # Errors
+    /// A cena não tem física, ou um nome do filtro que o Ray Sensor não tem.
+    fn raycast(
+        &mut self,
+        _sim: &mut SimWorld,
+        _by: Option<Entity>,
+        _de_ate: ([f64; 2], [f64; 2]),
+        _filtro: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<Vec<RayHitView>, String> {
+        ray::sem_fisica()
+    }
 }
 
 const NO_PROPERTIES: &str = "this scene cannot reach component properties";
 
-/// O que `ph2d.damage`/`ph2d.heal` pedem (pontos finitos `> 0`).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum HealthRequest {
-    Damage(f64),
-    Heal(f64),
-}
-
-/// Sem portas: um objecto vazio nasce, uma cópia de mestre não.
-pub struct NoDoors;
-
-impl SceneDoors for NoDoors {
-    fn instantiate(&mut self, _: &mut SimWorld, _: Entity, _: Entity) -> Result<Entity, String> {
-        Err("this scene cannot copy masters".into())
-    }
-
-    fn tick(&self) -> u64 {
-        0
-    }
-}
+#[path = "lane_ray.rs"]
+mod ray;
+pub use ray::{HealthRequest, NoDoors, RayHitView, RayView};
 
 /// A tabela (no registo da VM) onde a pista põe as suas funções.
 pub(crate) const LANE_KEY: &str = "ph2d.lane";
@@ -553,6 +560,10 @@ pub(crate) fn with_lane<R>(
         let connect = scope.create_function(|_, (id, name, f): (f64, String, Function)| {
             cell.borrow_mut().connect(id, name, f)
         })?;
+        let ray = scope.create_function(|lua, id: f64| cell.borrow_mut().ray(lua, id))?;
+        let raycast = scope.create_function(|lua, a: (Value, Value, Option<Table>)| {
+            cell.borrow_mut().raycast(lua, a)
+        })?;
         for (k, v) in [
             ("get", get),
             ("find_by_name", find),
@@ -565,6 +576,8 @@ pub(crate) fn with_lane<R>(
             ("properties", properties),
             ("damage", damage),
             ("heal", heal),
+            ("ray", ray),
+            ("raycast", raycast),
         ] {
             table.raw_set(k, v)?;
         }
@@ -581,6 +594,8 @@ pub(crate) fn with_lane<R>(
             "properties",
             "damage",
             "heal",
+            "ray",
+            "raycast",
         ] {
             table.raw_set(k, Value::Nil)?;
         }
@@ -645,6 +660,8 @@ ph2d.connect = through("connect")
 ph2d.properties = through("properties")
 ph2d.damage = through("damage")
 ph2d.heal = through("heal")
+ph2d.ray = through("ray")
+ph2d.raycast = through("raycast")
 -- Uma propriedade (`componente.campo`, ou o curto `gravity_scale`) vai pela pista; a pose, ou um
 -- nome que não existe, pela fila do `ph2d.set` de sempre — a mesma lei do `ph2d.get` (Rust).
 local set_pose = ph2d.set

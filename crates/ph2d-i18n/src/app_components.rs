@@ -99,6 +99,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // CodeEditor item 6 — porque `ph2d.spawn("Mestre")` não deu uma cópia (o console do script).
         "app.components.script_bridge.it_is_not_a_master" => "it is not a master",
+        "app.components.script_bridge.no_physics" => "this scene has no physics to cast rays in",
         // O `ph2d.set` de uma propriedade com o valor errado (doc CodeEditor 08 §3.4).
         "app.components.script_property.takes_number" => "'{name}' takes a number",
         "app.components.script_property.takes_whole_number" => "'{name}' takes a whole number",

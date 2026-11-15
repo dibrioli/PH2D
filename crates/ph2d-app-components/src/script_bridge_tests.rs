@@ -291,6 +291,7 @@ end
         },
         tick: 5,
         images: crate::script_image::ImageLibrary::none(),
+        physics: None,
     };
     let f = frame(
         &mut host,

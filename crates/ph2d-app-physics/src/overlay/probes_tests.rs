@@ -399,6 +399,7 @@ fn uma_parede_da_area_andavel_nao_leva_tiques() {
             skin: 0.0,
         },
         more_hits: ph2d_physics_ecs::MaisAcertos::default(),
+        feixe: ph2d_physics_ecs::Feixe::default(),
         layer: None,
     };
     let caminho = ProbeMark::ray(ProbeKind::Path, [0.0, 0.0], [1.0, 0.0], 2.0, None, 0.0);

@@ -37,6 +37,7 @@ use ph2d_i18n::{tr, tr_with};
 #[must_use]
 const fn chave_da_queixa(q: RayQueixa) -> &'static str {
     match q {
+        RayQueixa::Desligado => "panel.inspector.ray.this_ray_is_off",
         RayQueixa::SemAlcance => "panel.inspector.ray.the_reach_is_zero",
         RayQueixa::EscolhaATag => "panel.inspector.ray.pick_a_tag",
         RayQueixa::TagApagada => "panel.inspector.ray.tag_is_gone",
@@ -67,6 +68,23 @@ fn leitura(
     if i.sees_all.len() > 1 {
         return todos_os_acertos(scene, text_system, theme, x, w, y, &i.sees_all);
     }
+    let dist = crate::unidade_mundo::distancia_na_frase(i.sees_at);
+    // RS-4: as tags da forma acertada (o «material») entre parênteses, quando ela as tem.
+    let frase = if i.sees_tags.is_empty() {
+        tr_with(
+            "panel.inspector.ray.sees_x_at_y_m",
+            &[("name", &i.sees.as_str()), ("dist", &dist)],
+        )
+    } else {
+        tr_with(
+            "panel.inspector.ray.sees_x_on_t_at_y_m",
+            &[
+                ("name", &i.sees.as_str()),
+                ("tags", &i.sees_tags.as_str()),
+                ("dist", &dist),
+            ],
+        )
+    };
     super::rows::aviso(
         scene,
         text_system,
@@ -74,13 +92,7 @@ fn leitura(
         x,
         w,
         y,
-        &tr_with(
-            "panel.inspector.ray.sees_x_at_y_m",
-            &[
-                ("name", &i.sees.as_str()),
-                ("dist", &crate::unidade_mundo::distancia_na_frase(i.sees_at)),
-            ],
-        ),
+        &frase,
         ColorToken::Text1,
     )
 }
@@ -190,10 +202,171 @@ fn corpo(
             tr("component.field.ray_sensor.6"),
             tr("component.field.ray_sensor.7"),
             tr("component.field.ray_sensor.12"),
+            tr("component.field.ray_sensor.13"),
+            tr("component.field.ray_sensor.14"),
+            tr("component.field.ray_sensor.15"),
+            tr("component.field.ray_sensor.16"),
+            tr("component.field.ray_sensor.17"),
             tr("component.field.ray_signals.0"),
             tr("component.field.ray_signals.1"),
         ],
     );
+    // RS-6: a caixa «Enabled» é a primeira linha (a do Godot e do Unity: ligar vem antes de afinar).
+    cur_y = ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_RAY_ENABLED,
+            TextKey::new("component.field.ray_sensor.13"),
+            i.enabled,
+        ),
+        seccao,
+    );
+    cur_y = rumo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        i,
+        seccao,
+    );
+    cur_y = alcance_e_feixe(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        i,
+        seccao,
+    );
+    let mut t = super::physics_cartao::Tinta {
+        scene,
+        text: text_system,
+        theme,
+        hit: hit_index,
+        store,
+        x,
+        w,
+    };
+    let camada = u8::try_from(i.layer)
+        .ok()
+        .filter(|&c| usize::from(c) < crate::ids::INSP_PHYS_LAYERS)
+        .unwrap_or_default();
+    cur_y = botoes_do_raio(&mut t, cur_y, usize::from(camada));
+    // O QUEM ele vê (versão C, dono 15/11): nasce fechado, com o resumo.
+    cur_y = super::ray_filtro::grupo_do_filtro(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        i,
+        seccao,
+    );
+    sinais(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        seccao,
+    )
+}
+
+/// Para onde ele aponta: o «Angle» e o «Turns with facing» — que só decidem sem alvo — e o «Aim at» (RS-3).
+#[allow(clippy::too_many_arguments)]
+fn rumo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorRayInfo,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let mut cur_y = y;
+    let mirado = !i.aim_at.is_empty() && !i.aim_at_unknown && !i.aim_at_gone;
+    if !mirado {
+        cur_y = angulo(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            i,
+            seccao,
+        );
+    }
+    let erro = if i.aim_at_unknown {
+        (store.focus_id() != Some(crate::ids::INSP_RAY_AIM) && !i.aim_at.is_empty()).then_some((
+            "panel.inspector.ray.up_to_nobody_called_x",
+            i.aim_at.as_str(),
+        ))
+    } else {
+        i.aim_at_gone
+            .then_some(("panel.inspector.ray.aim_is_gone", ""))
+    };
+    super::conta_gotas_row::linha(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            TextKey::new("component.field.ray_sensor.16"),
+            crate::ids::INSP_RAY_AIM,
+            TextInput::new(crate::ids::INSP_RAY_AIM, "")
+                .placeholder(tr("panel.inspector.ray.aim_none")),
+        ),
+        (crate::ids::INSP_RAY_AIM_PICK, i.aim_pick_armed),
+        seccao,
+        erro,
+    )
+}
+
+/// O «Angle» (graus locais) e o «Turns with facing».
+#[allow(clippy::too_many_arguments)]
+fn angulo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorRayInfo,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let mut cur_y = y;
     // GEF 07 (versão B): um ângulo no lugar de Direction X·Y; a origem é a posição do objeto.
     cur_y = super::rows::fields_row(
         scene,
@@ -227,6 +400,24 @@ fn corpo(
         ),
         seccao,
     );
+    cur_y
+}
+
+/// «Reach» | «Layer», e «Thickness» | «Cone» (RS-1, RS-2) — dois a dois em cartões.
+#[allow(clippy::too_many_arguments)]
+fn alcance_e_feixe(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorRayInfo,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let cur_y = y;
     let [(xa, wa), (xb, wb)] = if crate::cards::active() {
         ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w)
     } else {
@@ -275,22 +466,59 @@ fn corpo(
         rotulo.into(),
         seccao,
     );
-    cur_y = depois_do_alcance.max(depois_da_camada);
-    (t.x, t.w) = (x, w);
-    cur_y = botoes_do_raio(&mut t, cur_y, usize::from(camada));
-    // O QUEM ele vê (versão C, dono 15/11): nasce fechado, com o resumo.
-    cur_y = super::ray_filtro::grupo_do_filtro(
+    let cur_y = depois_do_alcance.max(depois_da_camada);
+    let depois_da_espessura = super::rows::fields_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
+        xa,
+        wa,
         cur_y,
-        i,
+        TextKey::new("component.field.ray_sensor.14"),
+        &[crate::ids::INSP_RAY_THICKNESS],
+        0.05, // LITERAL-PX-OK: passo de arrasto em METROS
+        Some(ph2d_editor_core::widget::Unit::Meters),
         seccao,
     );
+    let topo_do_cone = if crate::cards::active() {
+        cur_y
+    } else {
+        depois_da_espessura
+    };
+    let depois_do_cone = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        xb,
+        wb,
+        topo_do_cone,
+        TextKey::new("component.field.ray_sensor.15"),
+        &[crate::ids::INSP_RAY_CONE],
+        1.0, // LITERAL-PX-OK: passo de arrasto em GRAUS
+        Some(ph2d_editor_core::widget::Unit::Degrees),
+        seccao,
+    );
+    depois_da_espessura.max(depois_do_cone)
+}
+
+/// O grupo «Signals» (B): ligam-se noutro lugar, e a caixa diz quem ouve.
+#[allow(clippy::too_many_arguments)]
+fn sinais(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let mut cur_y = y;
     // Os sinais num grupo próprio (B): ligam-se noutro lugar, e a caixa diz quem ouve.
     let g = super::grupo_dobravel::grupo_dobravel(
         scene,

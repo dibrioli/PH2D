@@ -71,6 +71,7 @@ impl Corrida {
                 },
                 tick: self.tick,
                 images: ImageLibrary::of(&self.db, &self.atlas),
+                physics: None,
             };
             let f = frame(
                 &mut self.host,

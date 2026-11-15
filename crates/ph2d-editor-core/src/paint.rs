@@ -12,10 +12,8 @@
 //! **Color resolution** goes through `ph2d_tokens::ColorToken::resolve(theme)`
 //! so swapping Dark↔Light flips the entire UI.
 //!
-//! **Text rendering** uses [`paint_text`] / [`paint_text_centered`] —
-//! parley layout → `vello::Scene::draw_glyphs` per parley `GlyphRun`.
-//! Tabs / actions / button labels / toast messages all render visibly
-//! with the system sans-serif fallback chain.
+//! **Text rendering** uses [`paint_text`] / [`paint_text_centered`] — parley layout →
+//! `vello::Scene::draw_glyphs` per `GlyphRun`, with the system sans-serif fallback chain.
 
 // `FloatingPanel` paint impl retired 2026-05-17 — struct itself
 // remains in `crate::floating_panel` for tool event dispatch but no
@@ -90,16 +88,14 @@ pub use icons_paint::{
     icon_glyph_side, icon_pad, icon_side_for_glyph, paint_icon, paint_icon_nitido, paint_icon_path,
     paint_icon_rotated, paint_icon_toned,
 };
-pub use text::{
-    folga_do_texto, label_column_width, paint_text, paint_text_block, paint_text_block_in_weight,
-    paint_text_block_spans, paint_text_elided, paint_text_elided_in_weight,
-    paint_text_elided_weighted, paint_text_in_weight, paint_text_rotated_ccw, paint_text_title,
-    paint_text_title_elided, paint_text_title_elided_tracked, title_tracked_width,
-};
 pub(crate) use text::paint_text_weighted;
-/// O ouvinte do texto pintado: público para os testes de outras crates lerem o texto e o rect que
-/// um pintor escreveu (o portão `a_dica_de_quem_ouve_nao_cobre_o_nome`).
-pub use text::{OuvinteDoTexto, ouve_o_texto};
+pub use text::{
+    OuvinteDoTexto, folga_do_texto, label_column_width, ouve_o_texto, paint_text, paint_text_block,
+    paint_text_block_in_weight, paint_text_block_spans, paint_text_elided,
+    paint_text_elided_in_weight, paint_text_elided_weighted, paint_text_in_weight,
+    paint_text_rotated_ccw, paint_text_title, paint_text_title_elided,
+    paint_text_title_elided_tracked, title_tracked_width,
+};
 
 /// Convert a `ph2d_tokens::Color` (sRGB 8-bit + alpha) to Vello's
 /// `peniko::Color`. Vello stores its native palette as `[r,g,b,a]`

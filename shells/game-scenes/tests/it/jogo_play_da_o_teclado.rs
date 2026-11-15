@@ -72,8 +72,11 @@ fn ordem_do_quadro() -> Vec<Passo> {
     let chrome = ler("render_loop/fase_bus_chrome.rs");
     let topbar = &chrome[em(&chrome, "fn fase_bus_topbar(", "fase_bus_chrome.rs")..];
     assert!(
-        em(topbar, "ph2d_transport::toma_o_teclado(cmd", "fase_bus_topbar")
-            < em(topbar, "ph2d_transport::apply(cmd", "fase_bus_topbar"),
+        em(
+            topbar,
+            "ph2d_transport::toma_o_teclado(cmd",
+            "fase_bus_topbar"
+        ) < em(topbar, "ph2d_transport::apply(cmd", "fase_bus_topbar"),
         "o Play larga o campo antes de aplicar o comando"
     );
     let mut fases = vec![
@@ -293,7 +296,10 @@ fn a_posse_do_teclado_segue_a_ordem_do_quadro() {
                 m.ordem
             );
             if lei_antiga {
-                assert!(!tem, "{caso}: controlo — a lei antiga perde o teclado nesta ordem");
+                assert!(
+                    !tem,
+                    "{caso}: controlo — a lei antiga perde o teclado nesta ordem"
+                );
             } else {
                 assert!(tem, "{caso}: a sessão de antes do Play tapou a corrida");
                 assert!(m.a_seta_chega_ao_jogo(), "{caso}: a seta não chega ao jogo");

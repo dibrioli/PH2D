@@ -62,8 +62,10 @@ pub fn escolher_topo(world: &mut World, bus: &mut ActionBus, debaixo: &[u64]) ->
     let topo = debaixo.iter().find_map(|&b| {
         let clicado = Entity::from_bits(b);
         world.get_entity(clicado).ok()?;
-        std::iter::successors(Some(clicado), |&c| world.get::<ChildOf>(c).map(ChildOf::parent))
-            .find(|c| cadeia.contains(c))
+        std::iter::successors(Some(clicado), |&c| {
+            world.get::<ChildOf>(c).map(ChildOf::parent)
+        })
+        .find(|c| cadeia.contains(c))
     });
     if let Some(n) = topo.and_then(|t| nome(world, t)) {
         desarma(world);

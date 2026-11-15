@@ -50,6 +50,8 @@ pub mod component_attach;
 pub mod component_palette;
 pub mod component_seed;
 pub mod component_smoke;
+/// Os conta-gotas do Inspector que escolhem um objecto no palco (bala, raio).
+pub mod conta_gotas;
 /// ⭐⭐⭐ **A PONTE da FÁBRICA e da MORTE** (TOP-20 #11 e #12) — os factos que a lei pura devolve
 /// viram objectos no mundo.
 pub mod counter_watch_bridge;
@@ -137,8 +139,6 @@ pub mod particles_bridge;
 pub mod particles_inspector;
 /// ⭐⭐⭐ O smoke do EMISSOR DE PARTÍCULAS (TOP-20 #18) — ver o cabeçalho.
 pub mod particles_smoke;
-/// Os conta-gotas do Inspector que escolhem um objecto no palco (bala, raio).
-pub mod conta_gotas;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — onde o nome vira curva; ver o cabeçalho.
 pub mod path_follow_bridge;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o instantâneo e o dreno da secção.
@@ -152,9 +152,9 @@ pub mod projectile_inspector;
 pub mod projectile_smoke;
 /// ⭐⭐⭐ O instantâneo e o dreno da secção RAY SENSOR (suplente #21).
 pub mod ray_inspector;
-pub mod ray_topo;
 /// ⭐⭐⭐ **O smoke do OLHO** (suplente #21, W6) — um poste com dois olhos e uma caixa que chega.
 pub mod ray_smoke;
+pub mod ray_topo;
 /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
 pub mod restart_smoke;
 pub mod row_components;

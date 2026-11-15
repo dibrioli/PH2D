@@ -65,8 +65,6 @@ pub(crate) mod anim_card;
 pub(crate) mod anim_cartao;
 pub(crate) mod anim_markers;
 pub(crate) mod anim_rows;
-/// A linha de texto com o conta-gotas (Target da bala, «Ignore up to» do raio).
-pub(crate) mod conta_gotas_row;
 /// A lista de regras do cartão «Animation» (plano GameEngineFuncional 08).
 pub(crate) mod anim_rules;
 /// ⭐⭐⭐ O SOM de um objecto (TOP-20 #4) — a fonte e as orelhas.
@@ -83,6 +81,8 @@ mod constraint_add;
 mod constraint_alvo;
 mod constraint_cola;
 pub(crate) mod constraint_valor;
+/// A linha de texto com o conta-gotas (Target da bala, «Ignore up to» do raio).
+pub(crate) mod conta_gotas_row;
 pub(crate) mod counter_watch;
 /// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no
 /// tecto de LOC.

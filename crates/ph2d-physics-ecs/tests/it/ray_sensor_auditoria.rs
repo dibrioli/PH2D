@@ -43,14 +43,21 @@ fn walls_block_com_a_origem_dentro_de_uma_parede_tapa() {
         };
         let (visto, (fim, hit, _), _) = cena(olho(&tree, true, all_hits));
         assert_eq!(visto, None, "all_hits = {all_hits}: a parede tapa");
-        assert!(fim.abs() < 1.0e-3 && hit.is_none(), "a linha pára na origem: {fim} {hit:?}");
+        assert!(
+            fim.abs() < 1.0e-3 && hit.is_none(),
+            "a linha pára na origem: {fim} {hit:?}"
+        );
         let (visto, _, alvo) = cena(olho(&tree, false, all_hits));
         assert_eq!(visto, Some(alvo), "sem Walls block atravessa");
         let (visto, _, alvo) = cena(RaySensor {
             all_hits,
             ..para(0.0)
         });
-        assert_eq!(visto, Some(alvo), "Everything: a parede que o contém é ignorada");
+        assert_eq!(
+            visto,
+            Some(alvo),
+            "Everything: a parede que o contém é ignorada"
+        );
     }
 }
 
@@ -73,7 +80,10 @@ fn a_marca_bloqueada_nao_e_um_acerto() {
         b.dispatch(&mut sim, true, 1);
         assert_eq!(b.ray_sensor_hits().get(&e), None, "all_hits = {all_hits}");
         let (fim, hit, _) = marca(&b);
-        assert!((fim - 1.75).abs() < 1.0e-3, "a linha acaba na parede: {fim}");
+        assert!(
+            (fim - 1.75).abs() < 1.0e-3,
+            "a linha acaba na parede: {fim}"
+        );
         assert_eq!(hit, None, "all_hits = {all_hits}: sem acerto no desenho");
         assert_eq!(
             b.ray_marks()[0].state,
@@ -119,10 +129,17 @@ fn trocar_all_hits_no_meio_nao_inventa_arestas() {
     assert!(b.ray_enters().is_empty(), "desligar: ninguém entra");
     assert_eq!(b.ray_sensor_hits().get(&r).map(|h| h.body), Some(perto));
     b.dispatch(&mut sim, true, 3);
-    assert!(b.ray_exits().is_empty() && b.ray_enters().is_empty(), "parado: nada");
+    assert!(
+        b.ray_exits().is_empty() && b.ray_enters().is_empty(),
+        "parado: nada"
+    );
     troca(&mut sim, true);
     b.dispatch(&mut sim, true, 4);
-    assert_eq!(b.ray_enters(), &[(r, longe)], "religar: entra só a de longe");
+    assert_eq!(
+        b.ray_enters(),
+        &[(r, longe)],
+        "religar: entra só a de longe"
+    );
     assert!(b.ray_exits().is_empty(), "religar: ninguém sai");
 }
 
@@ -168,9 +185,17 @@ fn o_raio_debaixo_da_espada_vira_com_o_heroi() {
             );
             bridge.dispatch(&mut sim, true, t);
         }
-        assert_eq!(bridge.player_view(p).map(|v| v.facing), Some(-1.0), "fixtura");
+        assert_eq!(
+            bridge.player_view(p).map(|v| v.facing),
+            Some(-1.0),
+            "fixtura"
+        );
         let visto = bridge.ray_sensor_hits().get(&r).map(|h| h.body);
-        assert_eq!(visto, Some(if ligada { esq } else { dir }), "ligada = {ligada}");
+        assert_eq!(
+            visto,
+            Some(if ligada { esq } else { dir }),
+            "ligada = {ligada}"
+        );
     }
 }
 
@@ -215,7 +240,11 @@ fn veiculo(up_to: impl Fn(&SimWorld, [Entity; 4]) -> u64) -> (Option<Entity>, [E
 #[test]
 fn a_familia_para_no_personagem_e_no_topo_nomeado() {
     let (visto, [_, cabine, _, _]) = veiculo(|_, _| 0);
-    assert_eq!(visto, Some(cabine), "automático: pára no herói, vê a cabine");
+    assert_eq!(
+        visto,
+        Some(cabine),
+        "automático: pára no herói, vê a cabine"
+    );
     let (visto, [_, _, _, muro]) = veiculo(|_, _| 11);
     assert_eq!(visto, Some(muro), "até ao veículo: a cabine é família");
     let (visto, [_, cabine, _, _]) = veiculo(|_, _| 13);

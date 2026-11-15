@@ -60,7 +60,11 @@ pub(crate) fn nos_dois_modos(f: impl Fn(bool)) {
     set_cards_on(false);
 }
 
-pub(crate) fn pinta(h: &mut MockPanelHost, st: &mut InspectorState, cartoes: bool) -> Vec<(NodeId, Rect)> {
+pub(crate) fn pinta(
+    h: &mut MockPanelHost,
+    st: &mut InspectorState,
+    cartoes: bool,
+) -> Vec<(NodeId, Rect)> {
     if cartoes {
         crate::o_cartao_da_fisica::pinta(h, st)
     } else {

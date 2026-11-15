@@ -123,7 +123,9 @@ impl PhysicsBridge {
                 // (corpo próprio) vira com o herói (auditoria C5).
                 let lado = if r.turns_with_facing {
                     std::iter::successors(Some(c), |&x| {
-                        world.get::<ph2d_ecs::ChildOf>(x).map(ph2d_ecs::ChildOf::parent)
+                        world
+                            .get::<ph2d_ecs::ChildOf>(x)
+                            .map(ph2d_ecs::ChildOf::parent)
                     })
                     .find_map(|x| self.player_state.get(&x))
                     .map_or(1.0, |st| st.facing.signum())
@@ -175,7 +177,7 @@ impl PhysicsBridge {
     /// | `ignore_parts` | o predicado: o corpo da forma está na família de [`topo_da_familia`](crate::topo_da_familia) e não é o dono |
     /// | `only_see` sem `walls_block` | o predicado: quem não passa é transparente |
     /// | `only_see` com `walls_block` | DEPOIS: o primeiro acerto só conta se passa (a parede tapa); a marca pára nela SEM acerto |
-/// | origem DENTRO de uma forma | ignorada (Godot), salvo uma parede que tapa e não é do dono: ela tapa a `0` (C1) |
+    /// | origem DENTRO de uma forma | ignorada (Godot), salvo uma parede que tapa e não é do dono: ela tapa a `0` (C1) |
     /// | `hit_triggers` / `starts_inside` | o [`RayQuery`](ph2d_physics::RayQuery) |
     /// | `all_hits` | `cast_ray_query_all`; com `walls_block` a lista pára no primeiro que não passa |
     ///
@@ -256,7 +258,6 @@ impl PhysicsBridge {
                 };
                 // O primeiro acerto que o raio VÊ (o `hit` da marca) e onde a linha acaba: no alcance,
                 // ou na parede que tapa — que não é um acerto (auditoria C3).
-                let parou: Option<f32>;
                 let mut fim = raio.reach;
                 let mut mais = crate::MaisAcertos::default();
                 let tinha_todos = antes_todos.is_some();
@@ -267,8 +268,7 @@ impl PhysicsBridge {
                 } else {
                     antes_um.as_slice()
                 };
-                let um: Option<RayHit>;
-                if r.all_hits {
+                let um: Option<RayHit> = if r.all_hits {
                     self.world.cast_ray_query_all(
                         raio.origem,
                         raio.dir,
@@ -293,7 +293,7 @@ impl PhysicsBridge {
                         *slot = h.distance;
                         mais.n += 1;
                     }
-                    um = None;
+                    None
                 } else {
                     let achou = self.world.cast_ray_query(
                         raio.origem,
@@ -302,16 +302,16 @@ impl PhysicsBridge {
                         consulta,
                         &aceita,
                     );
-                    um = achou.and_then(|h| match ent_de(&h) {
+                    achou.and_then(|h| match ent_de(&h) {
                         Some(alvo) if passa(Some(alvo)) => Some(para_ray_hit(alvo, &h)),
                         _ => {
                             fim = h.distance;
                             None
                         }
-                    });
-                }
+                    })
+                };
                 let vistos: &[RayHit] = if r.all_hits { &lista } else { um.as_slice() };
-                parou = vistos.first().map(|h| h.distance);
+                let parou = vistos.first().map(|h| h.distance);
                 for h in anterior {
                     if !vistos.iter().any(|x| x.body == h.body) {
                         self.ray_exits.push((e, h.body));
@@ -329,16 +329,9 @@ impl PhysicsBridge {
                     self.ray_hits_all.insert(e, lista);
                 }
                 self.ray_marks.push(
-                    ProbeMark::ray(
-                        ProbeKind::Sensor,
-                        raio.origem,
-                        raio.dir,
-                        fim,
-                        parou,
-                        0.0,
-                    )
-                    .com_mais_acertos(mais.como_lista())
-                    .na_camada(r.layer),
+                    ProbeMark::ray(ProbeKind::Sensor, raio.origem, raio.dir, fim, parou, 0.0)
+                        .com_mais_acertos(mais.como_lista())
+                        .na_camada(r.layer),
                 );
             }
         }

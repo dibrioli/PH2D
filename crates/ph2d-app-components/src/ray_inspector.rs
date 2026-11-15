@@ -59,7 +59,8 @@ pub fn build_ray_info(
     } else {
         Vec::new()
     };
-    let (ignore_up_to, ignore_up_to_off, ignore_up_to_auto) = crate::ray_topo::leitura(world, e, &r);
+    let (ignore_up_to, ignore_up_to_off, ignore_up_to_auto) =
+        crate::ray_topo::leitura(world, e, &r);
     Some(InspectorRayInfo {
         entity_bits: bits,
         angle: r.angle,

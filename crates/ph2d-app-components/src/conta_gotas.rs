@@ -12,7 +12,8 @@ pub fn armado(world: &World) -> bool {
 
 /// Desarma todos (o `Esc`); `true` = algum estava armado.
 pub fn desarma(world: &mut World) -> bool {
-    crate::projectile_inspector::desarma(world).is_some() | crate::ray_topo::desarma(world).is_some()
+    crate::projectile_inspector::desarma(world).is_some()
+        | crate::ray_topo::desarma(world).is_some()
 }
 
 /// O clique no palco com `debaixo` (de cima para baixo); `true` = um conta-gotas consumiu-o.

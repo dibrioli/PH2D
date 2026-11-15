@@ -4,7 +4,6 @@
 
 use crate::o_cartao_da_fisica::{achado, clica};
 use crate::seam_ray::{assente_com, edicoes, nos_dois_modos, raio};
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::ray_edits::{RayFieldEdit, RaySee};
 use ph2d_editor_core::widget::key_mark;
 use ph2d_panel_inspector::ids as i;
@@ -21,7 +20,10 @@ fn o_ignore_up_to_escreve_pelo_nome_e_pelo_conta_gotas() {
         let mut sem = raio();
         sem.ignore_parts = false;
         let (_, _, r) = assente_com(&sem, c, true);
-        assert!(achado(&r, i::INSP_RAY_UP_TO).is_none(), "sem a caixa, a linha não existe ({c})");
+        assert!(
+            achado(&r, i::INSP_RAY_UP_TO).is_none(),
+            "sem a caixa, a linha não existe ({c})"
+        );
         set_current_inspector_ray(None);
 
         for armado in [false, true] {
@@ -122,7 +124,10 @@ fn toda_linha_do_cartao_ray_tem_dica() {
         i::INSP_RAY_FOLD_SIGNALS,
     ]);
     for id in ids {
-        assert!(h.store().tooltip_for(id).is_some_and(|t| !t.is_empty()), "{id:?} sem dica");
+        assert!(
+            h.store().tooltip_for(id).is_some_and(|t| !t.is_empty()),
+            "{id:?} sem dica"
+        );
     }
     set_current_inspector_ray(None);
     ph2d_panel_inspector::set_cards_on(false);

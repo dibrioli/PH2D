@@ -67,9 +67,8 @@ pub fn owner_body(world: &World, e: Entity) -> Option<Entity> {
 /// ⚠️ Uma junta entre dois corpos irmãos NÃO os faz da mesma família: a família é a ÁRVORE.
 #[must_use]
 pub fn topo_da_familia(world: &World, e: Entity, ate: u64) -> Option<Entity> {
-    let cadeia = || {
-        std::iter::successors(Some(e), |&c| world.get::<ChildOf>(c).map(ChildOf::parent))
-    };
+    let cadeia =
+        || std::iter::successors(Some(e), |&c| world.get::<ChildOf>(c).map(ChildOf::parent));
     if ate != 0
         && let Some(a) = cadeia().find(|&c| world.get::<StableId>(c).is_some_and(|s| s.0 == ate))
     {
@@ -80,7 +79,9 @@ pub fn topo_da_familia(world: &World, e: Entity, ate: u64) -> Option<Entity> {
             || world.get::<crate::TopDownPlayer>(c).is_some()
     };
     let corpos = || cadeia().filter(|&c| world.get::<RigidBody>(c).is_some());
-    corpos().find(|&c| personagem(c)).or_else(|| corpos().last())
+    corpos()
+        .find(|&c| personagem(c))
+        .or_else(|| corpos().last())
 }
 
 /// `b` pertence à família de topo `topo` (é ele ou desce dele)?

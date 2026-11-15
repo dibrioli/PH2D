@@ -78,7 +78,10 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
         (ids::INSP_RAY_ALL_HITS, "panel.inspector.ray.all_hits_tip"),
         (ids::INSP_RAY_SEE_TAG, "panel.inspector.ray.see_tag_tip"),
         (ids::INSP_RAY_UP_TO, "panel.inspector.ray.up_to_tip"),
-        (ids::INSP_RAY_UP_TO_PICK, "panel.inspector.ray.up_to_pick_tip"),
+        (
+            ids::INSP_RAY_UP_TO_PICK,
+            "panel.inspector.ray.up_to_pick_tip",
+        ),
         // U2: toda linha do cartão tem dica (regra do dono para os cartões novos).
         (ids::INSP_RAY_REACH, "panel.inspector.ray.reach_tip"),
         (ids::INSP_RAY_LAYER, "panel.inspector.ray.layer_tip"),
@@ -89,7 +92,10 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
             "panel.inspector.ray.rename_layers_tip",
         ),
         (ids::INSP_RAY_FOLD_FILTER, "panel.inspector.ray.filter_tip"),
-        (ids::INSP_RAY_FOLD_SIGNALS, "panel.inspector.ray.signals_tip"),
+        (
+            ids::INSP_RAY_FOLD_SIGNALS,
+            "panel.inspector.ray.signals_tip",
+        ),
     ] {
         store.set_tooltip(id, ph2d_i18n::tr(dica));
     }

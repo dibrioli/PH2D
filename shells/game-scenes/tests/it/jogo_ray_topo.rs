@@ -26,13 +26,22 @@ fn cena() -> (SimWorld, [Entity; 4]) {
         ))
         .id();
     let raio = w
-        .spawn((Name::new("Ray Sensor"), RaySensor::default(), StableId(23), ChildOf(hero)))
+        .spawn((
+            Name::new("Ray Sensor"),
+            RaySensor::default(),
+            StableId(23),
+            ChildOf(hero),
+        ))
         .id();
     let caixa = w.spawn((Name::new("Crate"), corpo, StableId(24))).id();
     (sim, [truck, hero, raio, caixa])
 }
 
-fn info(sim: &SimWorld, raio: Entity, tree: &TagTree) -> ph2d_editor_core::ray_edits::InspectorRayInfo {
+fn info(
+    sim: &SimWorld,
+    raio: Entity,
+    tree: &TagTree,
+) -> ph2d_editor_core::ray_edits::InspectorRayInfo {
     ray_inspector::build_ray_info(sim.world(), tree, raio.to_bits(), 1, true, &[]).expect("o raio")
 }
 
@@ -49,21 +58,53 @@ fn o_ignore_up_to_le_e_escreve_pelo_nome() {
     let (mut sim, [truck, _, raio, _]) = cena();
     let t = TagTree::new();
     let i = info(&sim, raio, &t);
-    assert_eq!((i.ignore_up_to.as_str(), i.ignore_up_to_auto.as_str()), ("", "Hero"));
-    assert!(escreve(&mut sim, raio, RayFieldEdit::IgnoreUpTo(" Truck ".into())));
+    assert_eq!(
+        (i.ignore_up_to.as_str(), i.ignore_up_to_auto.as_str()),
+        ("", "Hero")
+    );
+    assert!(escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo(" Truck ".into())
+    ));
     let r = *sim.world().get::<RaySensor>(raio).expect("raio");
     assert_eq!(r.ignore_up_to, 21, "o StableId do Truck");
     let i = info(&sim, raio, &t);
-    assert_eq!((i.ignore_up_to.as_str(), i.ignore_up_to_off), ("Truck", false));
-    assert_ne!(i.queixa(), Some(RayQueixa::TopoFora), "o topo certo não se queixa");
-    assert!(!escreve(&mut sim, raio, RayFieldEdit::IgnoreUpTo("Nobody".into())));
-    assert_eq!(sim.world().get::<RaySensor>(raio).map(|r| r.ignore_up_to), Some(21));
-    assert!(escreve(&mut sim, raio, RayFieldEdit::IgnoreUpTo("Crate".into())));
+    assert_eq!(
+        (i.ignore_up_to.as_str(), i.ignore_up_to_off),
+        ("Truck", false)
+    );
+    assert_ne!(
+        i.queixa(),
+        Some(RayQueixa::TopoFora),
+        "o topo certo não se queixa"
+    );
+    assert!(!escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo("Nobody".into())
+    ));
+    assert_eq!(
+        sim.world().get::<RaySensor>(raio).map(|r| r.ignore_up_to),
+        Some(21)
+    );
+    assert!(escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo("Crate".into())
+    ));
     let i = info(&sim, raio, &t);
     assert!(i.ignore_up_to_off, "a Crate não está acima do raio");
     assert_eq!(i.queixa(), Some(RayQueixa::TopoFora));
-    assert!(escreve(&mut sim, raio, RayFieldEdit::IgnoreUpTo(String::new())));
-    assert_eq!(sim.world().get::<RaySensor>(raio).map(|r| r.ignore_up_to), Some(0));
+    assert!(escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo(String::new())
+    ));
+    assert_eq!(
+        sim.world().get::<RaySensor>(raio).map(|r| r.ignore_up_to),
+        Some(0)
+    );
     let _ = truck;
 }
 
@@ -75,13 +116,30 @@ fn o_ignore_up_to_le_e_escreve_pelo_nome() {
 fn o_conta_gotas_do_ignore_up_to_escolhe_um_pai() {
     let (mut sim, [truck, _, raio, caixa]) = cena();
     let mut bus = ActionBus::default();
-    assert!(!conta_gotas::escolher(sim.world_mut(), &mut bus, &[truck.to_bits()]), "desarmado");
-    assert!(!escreve(&mut sim, raio, RayFieldEdit::PickUpTo(true)), "armar não muda o documento");
+    assert!(
+        !conta_gotas::escolher(sim.world_mut(), &mut bus, &[truck.to_bits()]),
+        "desarmado"
+    );
+    assert!(
+        !escreve(&mut sim, raio, RayFieldEdit::PickUpTo(true)),
+        "armar não muda o documento"
+    );
     assert!(info(&sim, raio, &TagTree::new()).up_to_pick_armed);
-    assert!(conta_gotas::escolher(sim.world_mut(), &mut bus, &[caixa.to_bits()]));
-    assert!(conta_gotas::armado(sim.world()), "a Crate não está acima: continua armado");
+    assert!(conta_gotas::escolher(
+        sim.world_mut(),
+        &mut bus,
+        &[caixa.to_bits()]
+    ));
+    assert!(
+        conta_gotas::armado(sim.world()),
+        "a Crate não está acima: continua armado"
+    );
     assert_eq!(bus.drain().count(), 0);
-    assert!(conta_gotas::escolher(sim.world_mut(), &mut bus, &[caixa.to_bits(), truck.to_bits()]));
+    assert!(conta_gotas::escolher(
+        sim.world_mut(),
+        &mut bus,
+        &[caixa.to_bits(), truck.to_bits()]
+    ));
     assert!(!conta_gotas::armado(sim.world()));
     let esperado = EditorAction::InspectorComponentEdit {
         entity_bits: raio.to_bits(),
@@ -89,7 +147,10 @@ fn o_conta_gotas_do_ignore_up_to_escolhe_um_pai() {
     };
     assert_eq!(bus.drain().collect::<Vec<_>>(), vec![esperado]);
     ray_topo::arma(sim.world_mut(), Some(raio.to_bits()));
-    assert!(conta_gotas::desarma(sim.world_mut()) && !conta_gotas::armado(sim.world()), "o Esc");
+    assert!(
+        conta_gotas::desarma(sim.world_mut()) && !conta_gotas::armado(sim.world()),
+        "o Esc"
+    );
 }
 
 /// ⭐ **C2 — a tag por escolher e a tag apagada falam antes da camada.** «Only tag» sem tag: «Pick a tag»;
@@ -104,8 +165,17 @@ fn a_tag_do_filtro_por_escolher_ou_apagada_queixa_se() {
     if let Some(mut r) = sim.world_mut().get_mut::<RaySensor>(raio) {
         r.only_see = SeeFilter::OnlyTag;
     }
-    assert_eq!(info(&sim, raio, &tree).queixa(), Some(RayQueixa::EscolhaATag));
+    assert_eq!(
+        info(&sim, raio, &tree).queixa(),
+        Some(RayQueixa::EscolhaATag)
+    );
     assert!(escreve(&mut sim, raio, RayFieldEdit::SeeTag(enemy.0)));
-    assert_ne!(info(&sim, raio, &tree).queixa(), Some(RayQueixa::TagApagada));
-    assert_eq!(info(&sim, raio, &TagTree::new()).queixa(), Some(RayQueixa::TagApagada));
+    assert_ne!(
+        info(&sim, raio, &tree).queixa(),
+        Some(RayQueixa::TagApagada)
+    );
+    assert_eq!(
+        info(&sim, raio, &TagTree::new()).queixa(),
+        Some(RayQueixa::TagApagada)
+    );
 }

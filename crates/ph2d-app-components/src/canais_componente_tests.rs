@@ -286,8 +286,10 @@ fn um_canal_de_referencia_le_e_escreve_pelo_nome() {
     let mut t = TextosDosCanais::default();
     let mut sim = SimWorld::new();
     // (a) O «Only see» do raio: uma tag.
-    let mut raio = ph2d_physics_ecs::RaySensor::default();
-    raio.see_tag = enemy;
+    let raio = ph2d_physics_ecs::RaySensor {
+        see_tag: enemy,
+        ..Default::default()
+    };
     let e = sim.world_mut().spawn(raio).id();
     let k = chave("ph2d::physics::RaySensor", 7, 0).expect("cabe");
     let lido = ler(&reg, sim.world(), e, k, &mut t, names).expect("canal");

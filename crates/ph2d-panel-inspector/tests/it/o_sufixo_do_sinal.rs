@@ -157,13 +157,13 @@ fn a_dica_de_quem_ouve_nao_cobre_o_nome() {
             .iter()
             .filter(|(s, _)| s == "1 listens")
             .map(|(_, r)| *r)
-            .last()
+            .next_back()
             .unwrap_or_else(|| panic!("sem «1 listens» (cartões {c}): {t:?}"));
         let nome = t
             .iter()
             .filter(|(s, r)| s.starts_with("enemy_") && (r[1] - dica[1]).abs() < dica[3])
             .map(|(s, r)| (s.clone(), *r))
-            .last()
+            .next_back()
             .unwrap_or_else(|| panic!("sem o nome na linha da dica (cartões {c}): {t:?}"));
         assert!(
             nome.0.ends_with('…'),

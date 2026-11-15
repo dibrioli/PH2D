@@ -106,12 +106,11 @@ Commits `412699ec58` (curas C1–C9, U1, U2, U6, U7) · `63372c90b3` (U4, U5, ca
   passam pelo NOME em `canais_componente` (ler/escrever/publicar/aplicar levam `RefNames`/`TagTree`).
 - **C9:** o doc 06 estava errado (Space é o preview da Timeline, não o Play). `a_posse_do_teclado_segue_a_ordem_do_quadro`
   lê a ordem real do quadro no código da shell e corre as peças nessa ordem; o gate por texto fica só para `posse_do_jogo.rs` pôr `corrida` em Tapa.
-- **U5 PARCIAL:** as 4 listas de tags (Nav, Ray, Action, Physics) mantêm 64 linhas (um ecrã cheio do popover, medido por
-  `a_lista_de_tags_cobre_um_ecra_cheio`) e mostram «…and N more» em vez do corte calado. A tag #65+ é nomeada mas NÃO escolhível:
-  escolher exige ids de runtime registados no store de widgets, que se enche no `populate`.
+- **U5 curado (`89a8c277fd`):** as 4 listas de tags (Nav, Ray, Action, Physics) oferecem TODAS as tags, sem tecto; ids por índice,
+  o popover regista as linhas preguiçosamente ao abrir; «…and N more» saiu. (Antes, `63372c90b3`: 64 linhas + «…and N more», #65+ não escolhível.)
 - **Cura achada nas fotos:** a caixa de texto do Inspector clássico em repouso pintava o valor com largura infinita (cortado seco sob a dica «1 listens»);
   agora `paint_text_elided` até à reserva da direita (`paint_text_input_with_buffer`, `text_input/mod.rs`); gate `a_dica_de_quem_ouve_nao_cobre_o_nome`.
-  Notado, NÃO tocado: no clássico (cards off) as checkboxes desligadas parecem quadrados escuros com moldura fraca (aspecto clássico anterior).
+  Notado aqui: no clássico (cards off) as checkboxes desligadas pareciam quadrados escuros de moldura fraca — curado em `05742878d4` (ver Aberto).
 - **Gates novos:** `ray_sensor_auditoria` (5: `walls_block_com_a_origem_dentro_de_uma_parede_tapa`, `a_marca_bloqueada_nao_e_um_acerto`,
   `trocar_all_hits_no_meio_nao_inventa_arestas`, `o_raio_debaixo_da_espada_vira_com_o_heroi`, `a_familia_para_no_personagem_e_no_topo_nomeado`) ·
   `seam_ray_auditoria` (3: `o_ignore_up_to_escreve_pelo_nome_e_pelo_conta_gotas`, `cada_campo_do_catalogo_pintado_tem_o_rotulo`, `toda_linha_do_cartao_ray_tem_dica`) ·
@@ -130,17 +129,17 @@ Commits `412699ec58` (curas C1–C9, U1, U2, U6, U7) · `63372c90b3` (U4, U5, ca
 
 ## Aberto
 
-- ~~Smoke do dono das curas da auditoria~~ — **OK 15/11** (com as duas ordens seguintes).
-- **Ordens do dono depois da auditoria (15/11), feitas:** `940e347c1f` — conta-gotas armado não muda a seleção
-  (a Hierarquia alimenta o conta-gotas pela `conta_gotas::pela_hierarquia`; gate `o_conta_gotas_nao_muda_a_selecao`);
-  `37675a0959` — a caixa «Ignore up to» identifica o objeto fora da cadeia e mostra o erro na própria caixa
-  (moldura de erro + linha; `TopoEscrito` para o nome de ninguém; `RayQueixa::TopoFora` saiu). Gates
-  `a_caixa_do_ignore_up_to_mostra_o_erro`, `um_nome_fora_da_cadeia_ou_de_ninguem_mostra_o_erro`.
-- O clique do conta-gotas no CANVAS só está provado por leitura de código (a shell não tem harness com placa);
-  a Hierarquia tem gate de clique real. O smoke do dono passou nos dois.
-- Visto nas fotos, não tocado: nos cartões OFF a caixa de marcar desmarcada é um quadrado escuro de moldura ténue
-  (o visual clássico de antes).
-- **U5 parcial:** tag #65+ nomeada mas não escolhível (ver acima).
-- `PH2D_RAY_SMOKE=1` refeita 15/11: os olhos são filhos «Ray Sensor» do «Post» (`pendura_raio`), nomes em inglês, cartão aberto como na 26; gate `a_cena_do_olho_pendura_os_raios_como_filhos` (mutação: um olho na raiz ⇒ vermelho).
+- ~~Smoke do dono das curas da auditoria~~ — **OK 15/11** (com as duas ordens seguintes: `940e347c1f` conta-gotas não muda a
+  seleção, gate `o_conta_gotas_nao_muda_a_selecao`; `37675a0959` erro do «Ignore up to» na própria caixa, gates
+  `a_caixa_do_ignore_up_to_mostra_o_erro`, `um_nome_fora_da_cadeia_ou_de_ninguem_mostra_o_erro`).
+- **Quinta onda (15/11), feita, à espera do smoke do dono (as quatro):**
+  - `05742878d4` — caixa de marcar clássica (cartões OFF) desmarcada com moldura visível e centrada no «On»; gate
+    `a_caixa_desmarcada_classica_tem_moldura_visivel`. Os 4 temas da família clássica (Forge/Workshop/Sunstone/Blueprint)
+    ficaram de propósito inalterados — o dono decide.
+  - `e603bd9860` — `PH2D_RAY_SMOKE=1` refeita: os olhos são filhos «Ray Sensor» do «Post» (`pendura_raio`), nomes em inglês,
+    cartão aberto como na 26; gate `a_cena_do_olho_pendura_os_raios_como_filhos`.
+  - `1bc3e76db8` — clique do conta-gotas no CANVAS com gate de clique real `o_clique_no_canvas_do_conta_gotas_nao_seleciona`.
+  - `89a8c277fd` — U5 curado (ver acima).
+  - Fecho da onda: fmt limpo, clippy `-D warnings` exit 0 nas 8 crates, gates por nome verdes na árvore combinada.
 - Próximo item da fila: **Motion Input** (`23_refundacao_plano.md`, «Corpo e movimento»).
-- Fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md: na integração.
+- Integração: só por ordem do dono; fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md nela.

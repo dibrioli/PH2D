@@ -496,7 +496,7 @@
 ///
 /// # `243 → 244` — **o raio é um objeto** (`line/GameEngineFuncional`, GEF 07, 2026-11-15)
 ///
-/// `RaySensor { origin, dir, reach, layer }` → `{ angle, reach, layer }`: a origem é a posição do objeto «Ray
-/// Sensor» (filho, como a forma do ADR-0199) e o rumo é um ângulo em graus. SEM leitura dos anteriores (§0.11).
+/// `RaySensor { origin, dir, reach, layer }` → `{ angle, reach, layer, turns_with_facing }`: a origem é a posição do
+/// objeto «Ray Sensor» (filho, como a forma do ADR-0199), o rumo é um ângulo em graus e a opção espelha com o lado. SEM leitura dos anteriores (§0.11).
 /// Gate: `um_raio_filho_exclui_o_corpo_dono_e_segue_a_pose_viva`. ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 244;

@@ -39,11 +39,20 @@ fecha, dica do Angle), `o_angle_e_o_reach_do_raio_animam` (canal do catálogo, K
 
 **Mutação:** 10/10 sangram (a 10, `K::Angle`→`K::Scalar`, sobrevivia e ganhou o assert do tipo do campo).
 
+## Segunda onda (15/11, pedidos do dono)
+
+- **«Turns with facing»** (opção, desligada; ligada na cena 26), commit `1320f0fa5c`: campo 4 do `RaySensor`; o raio
+  espelha ângulo, desvio e rotação relativa pelo `PlayerState::facing` do corpo dono (`player_state`, escrito antes
+  do `cast_ray_sensors` no mesmo tique). Gates `com_a_opcao_o_raio_vira_com_o_lado_do_personagem`,
+  `a_caixa_turns_with_facing_escreve_o_contrario_do_ecra`.
+- **Play no editor dá o teclado ao jogo**, commit `7606874292`: a sessão Animating da Timeline tapava a cena no quadro
+  da subida do relógio (a corrida só a fecha depois, no mesmo quadro). Cura: `Tapa::corrida`
+  (`ph2d_transport::corrida`) e `toma_o_teclado` (o Play solta o campo focado). Gates em
+  `shells/game-scenes/tests/it/jogo_play_da_o_teclado.rs` (4), mutação 3/3. Doc 06 §9.
+
 ## Aberto
 
 - Smoke do dono da cena 26 (passos na conversa de 15/11).
-- O raio não vira com o lado para onde o herói olha (o `Wall Ray` aponta sempre para +X): o Character espelha a
-  sprite, não o `Transform`. Pergunta de produto se o dono pedir.
 - `PH2D_RAY_SMOKE=1` (cena antiga) segue com olhos na raiz; não foi refeita como filhos.
 - Próximo item da fila: **Motion Input** (`23_refundacao_plano.md`, «Corpo e movimento»).
 - Fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md: na integração.

@@ -268,6 +268,9 @@ mod tests {
             .iter()
             .filter_map(|c| ph2d_editor_core::screens::hero::document_tabs::doc_menu_kind(c.menu))
             .collect();
-        assert_eq!(kinds, vec![ph2d_editor_core::interaction::ContextMenuKind::MenuBarView]);
+        assert_eq!(
+            kinds,
+            vec![ph2d_editor_core::interaction::ContextMenuKind::MenuBarView]
+        );
     }
 }

@@ -366,12 +366,15 @@ fn text_de_fora(
     rotulo: Rotulo<'_>,
     id: NodeId,
     placeholder: &str,
+    reserva: f32,
 ) -> f32 {
     let ids = [id];
     let cell = Cell::new(Widget::Text { id, placeholder })
         .label(rotulo.texto)
         .key(&ids);
-    ctx(scene, text_system, store, hit_index, ink, x, w).row(&[cell], y)
+    let mut c = ctx(scene, text_system, store, hit_index, ink, x, w);
+    c.reserva_do_texto = reserva;
+    c.row(&[cell], y)
 }
 
 /// ⭐ O rótulo EM CIMA de um controlo que o chamador constrói (T29, os 11 `property_label_row`): as
@@ -579,6 +582,7 @@ pub(super) fn ctx<'s>(
         x,
         w,
         first: false,
+        reserva_do_texto: 0.0,
     }
 }
 

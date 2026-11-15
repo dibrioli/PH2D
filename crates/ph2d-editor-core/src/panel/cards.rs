@@ -179,6 +179,8 @@ pub struct CardCtx<'s> {
     pub x: f32,
     pub w: f32,
     first: bool,
+    /// A ponta direita que os campos `Widget::Text` guardam para um botão do chamador por cima (o conta-gotas).
+    reserva_do_texto: f32,
 }
 
 /// ⭐ A moldura e os controlos em fila de um painel-banda (Timeline).

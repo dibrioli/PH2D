@@ -534,6 +534,7 @@ pub fn paint_text_row<'a>(
             label,
             id,
             exemplo,
+            input.reserva_direita,
         );
     }
     let (row, _, linhas, cw) =
@@ -552,9 +553,10 @@ pub fn paint_text_row<'a>(
         _ => (crate::widget::TextInputState::Normal, None, 0, None),
     };
     let sufixo = crate::widget::field_suffix::de(id, text.unwrap_or(""));
-    let reserva = sufixo.as_ref().map_or(0.0, |s| {
-        crate::widget::field_suffix::largura(text_system, s)
-    });
+    let reserva = input.reserva_direita
+        + sufixo.as_ref().map_or(0.0, |s| {
+            crate::widget::field_suffix::largura(text_system, s)
+        });
     let input = input
         .visual((state, store.hover_live(id)))
         .reserva_direita(reserva);

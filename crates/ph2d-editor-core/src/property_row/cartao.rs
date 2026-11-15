@@ -55,7 +55,8 @@ pub type CheckRow = fn(
     CheckboxValue,
     bool,
 ) -> f32;
-/// Uma linha de texto pedida de fora do cartão: rótulo em cima, a caixa do cartão por baixo.
+/// Uma linha de texto pedida de fora do cartão: rótulo em cima, a caixa do cartão por baixo; o último
+/// `f32` é a ponta direita guardada para um botão do chamador ([`crate::widget::TextInput::reserva_direita`]).
 pub type TextRow = fn(
     &mut VectorScene,
     &mut TextSystem,
@@ -68,6 +69,7 @@ pub type TextRow = fn(
     Rotulo<'_>,
     NodeId,
     &str,
+    f32,
 ) -> f32;
 /// O rótulo em cima de um controlo que o chamador constrói: devolve as colunas da linha.
 pub type LabelRow = fn(

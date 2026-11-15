@@ -758,14 +758,20 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/ray_rumo.rs::alcance_e_feixe",
+        "sections/ray_rumo.rs::alcance_e_mira",
+        Canal,
+        &["component.field.ray_sensor.1"],
+        "Reach (ao lado do Aim at, dono 15/11): o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ray_rumo.rs::forma_e_numero",
         Canal,
         &[
-            "component.field.ray_sensor.1",
             "component.field.ray_sensor.14",
             "component.field.ray_sensor.15",
         ],
-        "Reach, Thickness e Cone: o rótulo do catálogo vem da tabela da secção (F27 B2, RS-1/RS-2)",
+        "Thickness e Cone (ao lado da Shape, dono 15/11): o rótulo do catálogo vem da tabela da secção (F27 B2, RS-2)",
     ),
     (
         "ph2d-panel-inspector",

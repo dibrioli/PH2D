@@ -80,6 +80,7 @@ pub(in crate::panel) fn corpo(
                 x: ix,
                 w,
                 first: true,
+                reserva_do_texto: 0.0,
             };
             super::censo::na_secao(Some(card.section));
             let fim = crate::widget::card_ink::com(ink, || {

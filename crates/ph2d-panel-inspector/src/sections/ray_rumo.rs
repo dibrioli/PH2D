@@ -1,13 +1,14 @@
-//! **Para onde o Ray Sensor aponta e a forma do feixe** (GEF 07 RS): o «Angle», o «Turns with facing», o «Aim at»
-//! (RS-3), o «Reach» | «Shape» (Line · Thick · Cone, dono 15/11) e o número da forma activa — irmão de [`super::ray`] pelo tecto de 600
-//! linhas dos painéis.
+//! **Para onde o Ray Sensor aponta e a forma do feixe** (GEF 07 RS): o «Angle», o «Turns with facing», o «Reach» |
+//! «Aim at» (RS-3) e a «Shape» (Line · Thick · Cone) | o número da forma activa (dono 15/11) — irmão de
+//! [`super::ray`] pelo tecto de 600 linhas dos painéis.
 
 use super::*;
 use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayShapeKind};
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_i18n::tr;
 
-/// Para onde ele aponta: o «Angle» e o «Turns with facing» — que só decidem sem alvo — e o «Aim at» (RS-3).
+/// Para onde ele aponta: o «Angle» e o «Turns with facing» — que só decidem sem alvo — e o «Reach» | «Aim at»
+/// (RS-3; dono 15/11: na mesma linha, nessa ordem, em cartões; empilhados fora deles).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn rumo(
     scene: &mut VectorScene,
@@ -37,6 +38,60 @@ pub(super) fn rumo(
             seccao,
         );
     }
+    alcance_e_mira(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        (x, w, cur_y),
+        i,
+        seccao,
+    )
+}
+
+/// As duas colunas de uma linha emparelhada: iguais em cartões; a largura toda (empilhadas) fora deles.
+fn colunas(x: f32, w: f32) -> [(f32, f32); 2] {
+    if crate::cards::active() {
+        ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w)
+    } else {
+        [(x, w), (x, w)]
+    }
+}
+
+/// «Reach» | «Aim at»: o conta-gotas dentro da caixa da coluna e o erro só debaixo dela.
+#[allow(clippy::too_many_arguments)]
+fn alcance_e_mira(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    (x, w, y): (f32, f32, f32),
+    i: &InspectorRayInfo,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let [(xa, wa), (xb, wb)] = colunas(x, w);
+    let depois_do_alcance = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        xa,
+        wa,
+        y,
+        TextKey::new("component.field.ray_sensor.1"),
+        &[crate::ids::INSP_RAY_REACH],
+        0.1, // LITERAL-PX-OK: passo de arrasto em METROS
+        Some(ph2d_editor_core::widget::Unit::Meters),
+        seccao,
+    );
+    let topo_da_mira = if crate::cards::active() {
+        y
+    } else {
+        depois_do_alcance
+    };
     let erro = if i.aim_at_unknown {
         (store.focus_id() != Some(crate::ids::INSP_RAY_AIM) && !i.aim_at.is_empty()).then_some((
             "panel.inspector.ray.up_to_nobody_called_x",
@@ -46,15 +101,15 @@ pub(super) fn rumo(
         i.aim_at_gone
             .then_some(("panel.inspector.ray.aim_is_gone", ""))
     };
-    super::conta_gotas_row::linha(
+    let depois_da_mira = super::conta_gotas_row::linha(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
-        cur_y,
+        xb,
+        wb,
+        topo_da_mira,
         (
             TextKey::new("component.field.ray_sensor.16"),
             crate::ids::INSP_RAY_AIM,
@@ -64,7 +119,8 @@ pub(super) fn rumo(
         (crate::ids::INSP_RAY_AIM_PICK, i.aim_pick_armed),
         seccao,
         erro,
-    )
+    );
+    depois_do_alcance.max(depois_da_mira)
 }
 
 /// O «Angle» (graus locais) e o «Turns with facing».
@@ -118,9 +174,10 @@ fn angulo(
     cur_y
 }
 
-/// «Reach» | «Shape» (dois a dois em cartões) e, por baixo, SÓ o número da forma activa.
+/// «Shape» | o número da forma activa (dono 15/11: na mesma linha em cartões; empilhados fora deles). Com «Line»
+/// não há número: a «Shape» fica sozinha na coluna da esquerda (um campo que não decide nada seria um controlo morto).
 #[allow(clippy::too_many_arguments)]
-pub(super) fn alcance_e_feixe(
+pub(super) fn forma_e_numero(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -132,47 +189,19 @@ pub(super) fn alcance_e_feixe(
     i: &InspectorRayInfo,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let cur_y = y;
-    let [(xa, wa), (xb, wb)] = if crate::cards::active() {
-        ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w)
-    } else {
-        [(x, w), (x, w)]
-    };
-    let depois_do_alcance = super::rows::fields_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        xa,
-        wa,
-        cur_y,
-        TextKey::new("component.field.ray_sensor.1"),
-        &[crate::ids::INSP_RAY_REACH],
-        0.1, // LITERAL-PX-OK: passo de arrasto em METROS
-        Some(ph2d_editor_core::widget::Unit::Meters),
-        seccao,
-    );
-    // A «Shape» ao lado do «Reach» em cartões (as duas dizem COMO o raio olha); empilhada fora deles.
-    let topo_da_forma = if crate::cards::active() {
-        cur_y
-    } else {
-        depois_do_alcance
-    };
+    let [(xa, wa), (xb, wb)] = colunas(x, w);
     let depois_da_forma = linha_da_forma(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        (xb, wb, topo_da_forma),
+        (xa, wa, y),
         i.shape,
         seccao,
     );
-    let cur_y = depois_do_alcance.max(depois_da_forma);
-    // Só o número da forma activa: um campo que não decide nada seria um controlo morto.
     let (rotulo, id, passo, unidade) = match i.shape {
-        RayShapeKind::Line => return cur_y,
+        RayShapeKind::Line => return depois_da_forma,
         RayShapeKind::Thick => (
             "component.field.ray_sensor.14",
             crate::ids::INSP_RAY_THICKNESS,
@@ -186,21 +215,27 @@ pub(super) fn alcance_e_feixe(
             ph2d_editor_core::widget::Unit::Degrees,
         ),
     };
-    super::rows::fields_row(
+    let topo_do_numero = if crate::cards::active() {
+        y
+    } else {
+        depois_da_forma
+    };
+    let depois_do_numero = super::rows::fields_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
-        cur_y,
+        xb,
+        wb,
+        topo_do_numero,
         TextKey::new(rotulo),
         &[id],
         passo,
         Some(unidade),
         seccao,
-    )
+    );
+    depois_da_forma.max(depois_do_numero)
 }
 
 /// As opções da «Shape», na ordem do [`RayShapeKind::ALL`] (e dos ids).

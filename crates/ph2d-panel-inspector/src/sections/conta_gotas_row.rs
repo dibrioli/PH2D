@@ -25,6 +25,20 @@ pub(crate) fn linha(
     seccao: Seccao,
     erro: Erro<'_>,
 ) -> f32 {
+    // O quadrado do conta-gotas e a folga dele, medidos antes de pintar: o texto (e o «…») acaba antes do botão.
+    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let alto = if em_cartao {
+        ph2d_card_stack::metrics::FIELD_H
+    } else {
+        ROW_H_PX
+    };
+    let lado = if em_cartao {
+        ph2d_card_stack::metrics::GRID_CELL
+    } else {
+        (ROW_H_PX * 0.82).min(alto) // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da câmera)
+    };
+    let inset = (alto - lado) * 0.5;
+    let input = input.reserva_direita(lado + inset);
     let fim = super::anim_rows::text_row(
         scene,
         text_system,
@@ -40,11 +54,7 @@ pub(crate) fn linha(
         seccao,
     );
     let caixa = ph2d_editor_core::property_row::caixa_da_linha_pintada(x, w, y, fim, seccao);
-    let lado = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        ph2d_card_stack::metrics::GRID_CELL
-    } else {
-        (ROW_H_PX * 0.82).min(caixa.h) // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da câmera)
-    };
+    let lado = lado.min(caixa.h);
     let inset = (caixa.h - lado) * 0.5;
     let botao = Rect::new(
         caixa.x + caixa.w - lado - inset,

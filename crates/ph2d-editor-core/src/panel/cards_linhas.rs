@@ -25,6 +25,7 @@ impl<'s> CardCtx<'s> {
             x,
             w,
             first: true,
+            reserva_do_texto: 0.0,
         }
     }
 
@@ -84,7 +85,9 @@ impl<'s> CardCtx<'s> {
                     text,
                 ),
                 Widget::Button { id, text, primary } => self.button(r, id, text, primary),
-                Widget::Text { id, placeholder } => self.text(r, id, placeholder),
+                Widget::Text { id, placeholder } => {
+                    self.text_reservando(r, id, placeholder, self.reserva_do_texto);
+                }
                 Widget::Search { id, placeholder } => self.search(r, id, placeholder),
                 Widget::Badge(icon) => {
                     fill_rounded_rect(

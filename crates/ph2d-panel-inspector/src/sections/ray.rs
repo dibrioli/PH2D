@@ -241,7 +241,7 @@ fn corpo(
         i,
         seccao,
     );
-    cur_y = super::ray_rumo::alcance_e_feixe(
+    cur_y = super::ray_rumo::forma_e_numero(
         scene,
         text_system,
         theme,

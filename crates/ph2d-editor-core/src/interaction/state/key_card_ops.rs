@@ -15,6 +15,9 @@ pub struct BezArea {
     pub rect: Rect,
     pub y_min: f32,
     pub y_max: f32,
+    /// O valor DESCE da chave à seguinte: o gráfico vira de pernas para o ar, para a curva ter a
+    /// cara que tem na timeline (dono 15/11). A curva gravada não muda — só o desenho e o clique.
+    pub desce: bool,
 }
 
 impl BezArea {
@@ -24,6 +27,7 @@ impl BezArea {
         let r = self.rect;
         let u = ((px - r.x) / r.w).clamp(0.0, 1.0);
         let t = ((r.y + r.h - py) / r.h).clamp(0.0, 1.0);
+        let t = if self.desce { 1.0 - t } else { t };
         (u, self.y_min + t * (self.y_max - self.y_min))
     }
 
@@ -31,10 +35,9 @@ impl BezArea {
     #[must_use]
     pub fn tela(&self, u: f32, y: f32) -> (f32, f32) {
         let r = self.rect;
-        (
-            r.x + u * r.w,
-            r.y + r.h - (y - self.y_min) / (self.y_max - self.y_min) * r.h,
-        )
+        let f = (y - self.y_min) / (self.y_max - self.y_min);
+        let f = if self.desce { 1.0 - f } else { f };
+        (r.x + u * r.w, r.y + r.h - f * r.h)
     }
 }
 
@@ -52,6 +55,7 @@ pub(in crate::interaction) struct KeyCardState {
     grab: Option<(f32, f32)>,
     sampler: Option<EaseSampler>,
     curva: Option<EaseSpline>,
+    desce: bool,
     area: core::cell::Cell<Option<BezArea>>,
     alvo: Option<BezAlvo>,
     escolhido: Option<usize>,
@@ -87,6 +91,17 @@ impl WidgetStore {
     /// Custom ou não tem forma normalizável.
     pub fn set_key_card_curve(&mut self, curva: Option<EaseSpline>) {
         self.key_card.curva = curva;
+    }
+
+    /// Publicado com a curva: o valor da chave DESCE até à seguinte ([`BezArea::desce`]).
+    pub fn set_key_card_desce(&mut self, desce: bool) {
+        self.key_card.desce = desce;
+    }
+
+    /// Ver [`Self::set_key_card_desce`].
+    #[must_use]
+    pub fn key_card_desce(&self) -> bool {
+        self.key_card.desce
     }
 
     /// A curva que o editor desenha: a da edição em curso, senão a publicada.

@@ -174,3 +174,31 @@ fn the_store_hands_the_edit_over_in_batches() {
     let c = store.take_key_card_bez_edit().unwrap();
     assert!(c.begin && c.end && c.curve.points().is_empty());
 }
+
+/// Dono 15/11: «a mesma curva aparece invertida em y no editor de easing custom». Com o valor a
+/// DESCER até à chave seguinte, a timeline publica `desce` e o cartão vira o gráfico; a subir, não.
+#[test]
+fn a_chave_que_desce_publica_o_cartao_virado() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    let curva = Interp::bezier(0.2, 0.0, 0.3, 1.0);
+    for (v1, desce) in [(-10.0, true), (10.0, false)] {
+        let mut store = WidgetStore::default();
+        store.open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::TimelineSegment {
+                scope: S::Key { target: 9, key: 1 },
+            },
+        });
+        let keys = vec![
+            chave(1, 0.0, 0.0, curva, true),
+            chave(2, 1.0, v1, Interp::Linear, false),
+        ];
+        publica_e_drena(&mut store, &snap(vec![faixa(9, keys)]));
+        assert_eq!(store.key_card_desce(), desce, "v1 = {v1}");
+        assert!(
+            store.key_card_curve().is_some(),
+            "a curva publica-se nos dois sentidos"
+        );
+    }
+}

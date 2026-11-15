@@ -19,6 +19,7 @@ const AREA: BezArea = BezArea {
     },
     y_min: -0.5,
     y_max: 1.5,
+    desce: false,
 };
 const FORA: Rect = Rect {
     x: 0.0,

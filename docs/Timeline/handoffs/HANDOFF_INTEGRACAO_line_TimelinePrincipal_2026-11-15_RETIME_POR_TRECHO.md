@@ -199,6 +199,20 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   puxada anda · direito apaga; o Summary fica com as duas chaves. Ctrl+Z não conferido no Xvfb (o teclado não chega,
   como no handoff anterior) — coberto pelos testes do passo de undo; conferir no smoke.
 
+## O cartão da chave desenha a curva com a cara da timeline (dono 15/11)
+
+- **Pedido:** «a mesma curva aparece invertida em y no editor de easing custom. permita que no editor de easing fique
+  sempre como na timeline». Mecanismo: o editor desenha a `EaseSpline` normalizada (sempre de (0,0) a (1,1), a subir);
+  a timeline desenha `v0 + y·Δv` — com `Δv < 0` a mesma curva DESCE.
+- **Cura:** `BezArea.desce` (editor-core): `tela`/`unidade` viram o eixo vertical — tudo o que o editor pinta e clica
+  passa por essas duas (pintura, `alvo_em`, `na_curva`, arrasto). A curva gravada não muda. A timeline publica-o com a
+  curva (`cartao_bezier::publica_e_drena`: a 1.ª chave do alcance, valor da seguinte menor) por
+  `WidgetStore::set_key_card_desce`. As miniaturas dos presets ficam como estão (são a forma, não esta chave).
+- **Provas:** editor-core `key_card` 7 (ida e volta nos dois sentidos; com `desce` o início (0,0) fica em `(100, 90)` e o
+  fim (1,1) em `(300, 170)`, conta à mão) · painel `cartao_bezier` 4 (novo `a_chave_que_desce_publica_o_cartao_virado`,
+  desce e sobe). App: [antes × depois](../fotos/cartao_curva_desce_antes_e_depois.png) — chave do quadro 24 de
+  Position X (o trecho desce), Custom; em cima o binário com `desce` desligado, embaixo a cura.
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é

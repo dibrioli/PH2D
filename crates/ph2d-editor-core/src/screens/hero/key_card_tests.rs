@@ -164,12 +164,28 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
         rect: Rect::new(100.0, 50.0, 200.0, 160.0),
         y_min: -0.5,
         y_max: 1.5,
+        desce: false,
     };
-    for (u, y) in [(0.0, 0.0), (0.3, 1.2), (1.0, -0.5)] {
-        let (px, py) = area.tela(u, y);
-        let (u2, y2) = area.unidade(px, py);
-        assert!((u - u2).abs() < 1e-5 && (y - y2).abs() < 1e-5);
+    let virada = crate::interaction::state::BezArea {
+        desce: true,
+        ..area
+    };
+    for a in [area, virada] {
+        for (u, y) in [(0.0, 0.0), (0.3, 1.2), (1.0, -0.5)] {
+            let (px, py) = a.tela(u, y);
+            let (u2, y2) = a.unidade(px, py);
+            assert!((u - u2).abs() < 1e-5 && (y - y2).abs() < 1e-5, "{a:?}");
+        }
     }
+    // Dono 15/11: com o valor a DESCER a curva desce no cartão como na timeline — o início (0,0)
+    // fica ACIMA do fim (1,1). À mão: y = 0 é 1/4 da faixa −0,5..1,5 ⇒ 40 px de 160 a partir de cima.
+    assert_eq!(virada.tela(0.0, 0.0), (100.0, 90.0));
+    assert_eq!(virada.tela(1.0, 1.0), (300.0, 170.0));
+    assert_eq!(
+        area.tela(0.0, 0.0),
+        (100.0, 170.0),
+        "a subir fica como sempre"
+    );
     // Fora da área prende-se à borda (uma alça nunca sai do gráfico).
     assert_eq!(area.unidade(0.0, 1000.0), (0.0, -0.5));
     // Um clique em cima da curva cria um ponto ali; perto de um ponto/alça agarra-o; longe, nada.

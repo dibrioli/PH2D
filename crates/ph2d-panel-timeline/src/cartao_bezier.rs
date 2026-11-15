@@ -68,10 +68,13 @@ pub(crate) fn publica_e_drena(store: &mut WidgetStore, snap: &TimelineViewSnapsh
         ph2d_editor_core::interaction::ContextMenuKind::TimelineSegment { scope } => Some(scope),
         _ => None,
     });
-    let publicada = aberto
-        .and_then(|scope| chaves(scope, snap).first().copied())
-        .and_then(|(t, i)| normalizada(t, i));
+    let primeira = aberto.and_then(|scope| chaves(scope, snap).first().copied());
+    let publicada = primeira.and_then(|(t, i)| normalizada(t, i));
     store.set_key_card_curve(publicada);
+    // O valor desce até à chave seguinte: o cartão desenha a curva virada, como a timeline (dono 15/11).
+    let desce =
+        primeira.is_some_and(|(t, i)| t.keys.get(i + 1).is_some_and(|k| k.value < t.keys[i].value));
+    store.set_key_card_desce(desce);
     if let Some(edit) = store.take_key_card_bez_edit() {
         for i in intents(edit, snap) {
             crate::state::push_intent(i);

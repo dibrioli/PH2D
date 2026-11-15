@@ -61,6 +61,7 @@ pub(super) fn paint(
         ),
         y_min: Y_MIN,
         y_max: Y_MAX,
+        desce: store.key_card_desce(),
     };
     store.set_key_card_bez_area(Some(area));
 

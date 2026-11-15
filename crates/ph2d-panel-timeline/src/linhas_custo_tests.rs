@@ -28,6 +28,7 @@ fn cena(n: usize, objetos: u64) -> TimelineViewSnapshot {
                 missing: false,
                 keys: (0..2)
                     .map(|j| KeyView {
+                        retime: None,
                         id: KeyId::new(target * 10 + j),
                         t_seconds: j as f64,
                         value: 0.0,

@@ -27,6 +27,7 @@ fn snap_selected(times: &[f64]) -> TimelineViewSnapshot {
                 .iter()
                 .enumerate()
                 .map(|(i, &t)| KeyView {
+                    retime: None,
                     id: KeyId::new(i as u64),
                     t_seconds: t,
                     value: 0.0,

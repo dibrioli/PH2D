@@ -10,11 +10,13 @@ use ph2d_timeline::{SpriteAnimation, SpriteProp, apply_sprite_animations};
 fn ramp(a: f32, b: f32, secs: f64) -> Track {
     Track::new(vec![
         Key {
+            retime: None,
             t: RationalTime::from_seconds(0.0),
             value: AnimValue::Float(a),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: RationalTime::from_seconds(secs),
             value: AnimValue::Float(b),
             interp: Interp::Hold,

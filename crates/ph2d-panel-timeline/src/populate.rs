@@ -167,6 +167,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for (id, _) in crate::tab::TABS {
         button(store, id);
     }
+    // Override · Retime and «Reset timing» on the speed view (plano 18).
+    for id in [
+        ids::TIMELINE_SPEED_OVERRIDE,
+        ids::TIMELINE_SPEED_RETIME,
+        ids::TIMELINE_RESET_TIMING,
+    ] {
+        button(store, id);
+    }
     button(store, ids::TIMELINE_DUP_CLIP);
     button(store, ids::TIMELINE_REVERSE_CLIP);
 

@@ -161,7 +161,8 @@ pub(crate) fn paint_barras(
         }
         let cor = crate::folha_tinta::tinta(cor_da_barra(par[0].interp), theme);
         let valores = (par[0].value, par[1].value);
-        pinta_curva(ctx, cor, par[0].interp, valores, (a, b), visivel, faixa);
+        let segmento = (par[0].interp, par[0].retime);
+        pinta_curva(ctx, cor, segmento, valores, (a, b), visivel, faixa);
     }
 }
 
@@ -183,7 +184,7 @@ const MAX_AMOSTRAS: f32 = 256.0; // LITERAL-PX-OK: tecto de amostras por barra (
 pub(crate) fn pinta_curva(
     ctx: &mut PaintCtx,
     cor: ph2d_vector::Color,
-    interp: ph2d_anim::Interp,
+    (interp, ritmo): (ph2d_anim::Interp, Option<ph2d_anim::Retime>),
     valores: (f32, f32),
     ab: (f32, f32),
     visivel: (f32, f32),
@@ -193,15 +194,16 @@ pub(crate) fn pinta_curva(
         pinta_barra(ctx, cor, true, visivel, faixa.cy - BARRA_TH * 0.5);
         return;
     }
-    let pts = pontos_da_curva(interp, valores, ab, visivel, faixa);
+    let pts = pontos_da_curva((interp, ritmo), valores, ab, visivel, faixa);
     ph2d_editor_core::paint::stroke_polyline(ctx.scene, &pts, BARRA_TH, cor);
 }
 
 /// Os pontos de tela da curva de uma barra. A fração é a do documento (`Interp::value`); sobe quando
 /// o valor sobe e desce quando desce (parada sobe: mostra a forma escolhida). A Bézier de tangentes
-/// absolutas (`BezierW`) só tem forma com o valor a mudar — parada, é a linha do centro.
+/// absolutas (`BezierW`) só tem forma com o valor a mudar — parada, é a linha do centro. O RITMO do
+/// trecho (plano 18) entra antes do easing, como no `Track`.
 pub(crate) fn pontos_da_curva(
-    interp: ph2d_anim::Interp,
+    (interp, ritmo): (ph2d_anim::Interp, Option<ph2d_anim::Retime>),
     (v0, v1): (f32, f32),
     (a, b): (f32, f32),
     (x0, x1): (f32, f32),
@@ -213,10 +215,10 @@ pub(crate) fn pontos_da_curva(
     }
     let (v0, v1) = (f64::from(v0), f64::from(v1));
     let dv = v1 - v0;
-    let fracao = |u: f64| match interp {
-        ph2d_anim::Interp::BezierW { .. } if dv.abs() <= f64::EPSILON => 0.5,
-        ph2d_anim::Interp::BezierW { .. } => (interp.value(v0, v1, u) - v0) / dv,
-        _ => interp.value(0.0, 1.0, u),
+    let fracao = |u: f64| match (interp, ph2d_anim::retime::warp(ritmo, u)) {
+        (ph2d_anim::Interp::BezierW { .. }, _) if dv.abs() <= f64::EPSILON => 0.5,
+        (ph2d_anim::Interp::BezierW { .. }, u) => (interp.value(v0, v1, u) - v0) / dv,
+        (_, u) => interp.value(0.0, 1.0, u),
     };
     let desce = dv < 0.0;
     let n = ph2d_editor_core::math::safe_clamp(((x1 - x0) / PASSO_PX).ceil(), 1.0, MAX_AMOSTRAS)
@@ -292,26 +294,26 @@ mod curva_tests {
     #[test]
     fn the_bar_between_two_keys_draws_the_chosen_easing() {
         let ab = (0.0, 100.0);
-        let reta = pontos_da_curva(Interp::Linear, (0.0, 5.0), ab, ab, FX);
+        let reta = pontos_da_curva((Interp::Linear, None), (0.0, 5.0), ab, ab, FX);
         assert_eq!((reta[0].1, reta.last().unwrap().1), (56.0, 44.0));
         assert!((y_em(&reta, 50.0) - 50.0).abs() < 0.1);
         // Quad In: no meio fez só um quarto do caminho (mais perto da ponta de baixo).
         let quad = Interp::Eased(Easing::new(F::Quad, M::In));
-        let q = pontos_da_curva(quad, (0.0, 5.0), ab, ab, FX);
+        let q = pontos_da_curva((quad, None), (0.0, 5.0), ab, ab, FX);
         assert!((y_em(&q, 50.0) - (56.0 - 12.0 * 0.25)).abs() < 0.1);
         // Valor a descer: a mesma forma, de cima para baixo.
-        let d = pontos_da_curva(quad, (5.0, 0.0), ab, ab, FX);
+        let d = pontos_da_curva((quad, None), (5.0, 0.0), ab, ab, FX);
         assert_eq!((d[0].1, d.last().unwrap().1), (44.0, 56.0));
         // O Elastic passa do 1 e fica preso ao limite da linha, nunca fora dela.
         let elastic = Interp::Eased(Easing::new(F::Elastic, M::Out));
-        let b = pontos_da_curva(elastic, (0.0, 5.0), ab, ab, FX);
+        let b = pontos_da_curva((elastic, None), (0.0, 5.0), ab, ab, FX);
         assert!(b.iter().all(|p| p.1 >= FX.lim.0 && p.1 <= FX.lim.1));
         assert!(
             b.iter().any(|p| p.1 < 44.0),
             "o Elastic passa da chave de chegada"
         );
         // Só o trecho visível é pintado, com a fração do segmento inteiro.
-        let meio = pontos_da_curva(Interp::Linear, (0.0, 5.0), ab, (50.0, 100.0), FX);
+        let meio = pontos_da_curva((Interp::Linear, None), (0.0, 5.0), ab, (50.0, 100.0), FX);
         assert!((meio[0].1 - 50.0).abs() < 1e-3);
     }
 }

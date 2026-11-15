@@ -39,11 +39,13 @@ fn constant_track_is_constant() {
 fn linear_midpoint_is_exact_float() {
     let track = Track::new(vec![
         Key {
+            retime: None,
             t: RationalTime::from_seconds(0.0),
             value: AnimValue::Float(0.0),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: RationalTime::from_seconds(1.0),
             value: AnimValue::Float(10.0),
             interp: Interp::Hold,
@@ -57,11 +59,13 @@ fn linear_midpoint_is_exact_float() {
 fn linear_midpoint_is_exact_vec2() {
     let track = Track::new(vec![
         Key {
+            retime: None,
             t: RationalTime::from_seconds(0.0),
             value: AnimValue::Vec2(Vec2::new(0.0, 0.0)),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: RationalTime::from_seconds(1.0),
             value: AnimValue::Vec2(Vec2::new(10.0, 20.0)),
             interp: Interp::Hold,
@@ -118,11 +122,13 @@ fn determinism_flag_matches_family_class() {
 fn hold_is_stepped() {
     let track = Track::new(vec![
         Key {
+            retime: None,
             t: RationalTime::from_seconds(0.0),
             value: AnimValue::Float(0.0),
             interp: Interp::Hold,
         },
         Key {
+            retime: None,
             t: RationalTime::from_seconds(1.0),
             value: AnimValue::Float(10.0),
             interp: Interp::Hold,
@@ -140,11 +146,13 @@ fn hold_is_stepped() {
 fn ends_are_clamped() {
     let track = Track::new(vec![
         Key {
+            retime: None,
             t: RationalTime::from_seconds(0.0),
             value: AnimValue::Float(2.0),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: RationalTime::from_seconds(1.0),
             value: AnimValue::Float(8.0),
             interp: Interp::Hold,
@@ -159,11 +167,13 @@ fn ends_are_clamped() {
 fn color_track_takes_short_hue_arc() {
     let track = Track::new(vec![
         Key {
+            retime: None,
             t: RationalTime::from_seconds(0.0),
             value: AnimValue::Color(OklchColor::new(0.5, 0.1, 350.0, 1.0)),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: RationalTime::from_seconds(1.0),
             value: AnimValue::Color(OklchColor::new(0.5, 0.1, 10.0, 1.0)),
             interp: Interp::Hold,
@@ -229,11 +239,13 @@ fn clip_samples_per_target() {
             rotation,
             Track::new(vec![
                 Key {
+                    retime: None,
                     t: RationalTime::from_seconds(0.0),
                     value: AnimValue::Float(0.0),
                     interp: Interp::Linear,
                 },
                 Key {
+                    retime: None,
                     t: RationalTime::from_seconds(1.0),
                     value: AnimValue::Float(90.0),
                     interp: Interp::Hold,

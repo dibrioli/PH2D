@@ -130,7 +130,9 @@ fn continue_value(track: &Track, side: ExtrapSide, t: f64) -> AnimValue {
     };
     let span = keys[seg + 1].t.to_seconds() - keys[seg].t.to_seconds();
     let slope = if span > 0.0 {
-        keys[seg].interp.value_slope(f64::from(a), f64::from(b), u) / span
+        keys[seg].interp.value_slope(f64::from(a), f64::from(b), u)
+            * crate::retime::warp_slope(keys[seg].retime, u)
+            / span
     } else {
         0.0
     };

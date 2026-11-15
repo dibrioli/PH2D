@@ -37,6 +37,8 @@ pub fn sample_keys(keys: &[KeyView], t: f64) -> Option<f32> {
     } else {
         0.0
     };
+    // The segment's rhythm first (plano 18), exactly where `Track::segment_value` applies it.
+    let u = ph2d_anim::retime::warp(k0.retime, u);
     // Lockstep with `ph2d_anim::curve::interpolate` (the golden below pins the
     // pair bit-for-bit): a weighted segment's `dy` is absolute, so the scalar
     // evaluates through `Interp::value`; the normalized variants keep the
@@ -186,7 +188,8 @@ const MIN_INFLUENCE: f64 = 1.0e-3;
 #[must_use]
 pub fn speed_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f64)> {
     let speed = crate::speed::segment_endpoint_speed(k0, k1, which);
-    if !speed.is_finite() {
+    // A retimed segment whose rhythm STOPS at this end has no easing speed to invert there.
+    if !speed.is_finite() || end_rate(k0, which).is_none() {
         return None;
     }
     let [out, inn] = segment_handle_points(k0, k1);
@@ -202,6 +205,12 @@ pub fn speed_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f
 /// must not silently re-ease the far end of the segment.
 #[must_use]
 pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f64) -> Interp {
+    // On a retimed segment the dot sits on the speed that PLAYS (`E'·W'`): the easing gets the
+    // pointer's speed divided by the rhythm's rate at that end, and the rhythm stays.
+    let Some(rate) = end_rate(k0, which) else {
+        return k0.interp;
+    };
+    let v = v / rate;
     let span = k1.t_seconds - k0.t_seconds;
     let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
     let v1 = f64::from(k1.value);
@@ -218,6 +227,12 @@ pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64,
         dy2 = -v * (1.0 - x2) * span;
     }
     Interp::bezier_w(x1, dy1, x2, dy2)
+}
+
+/// `W'` at one end of the segment (`1` without a retime), or `None` where it is zero or infinite.
+fn end_rate(k0: &KeyView, which: u8) -> Option<f64> {
+    let s = ph2d_anim::retime::warp_slope(k0.retime, f64::from(which));
+    (s.is_finite() && s > 0.0).then_some(s)
 }
 
 /// The `BezierW` whose handles sit at the absolute points `out` / `inn`.
@@ -275,6 +290,7 @@ mod tests {
 
     fn key(t: f64, v: f32, interp: Interp) -> KeyView {
         KeyView {
+            retime: None,
             id: ph2d_anim::KeyId::new(0),
             t_seconds: t,
             value: v,

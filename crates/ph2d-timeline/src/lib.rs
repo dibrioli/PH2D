@@ -56,6 +56,10 @@ mod intent_apply_fade;
 mod intent_apply_path;
 mod intent_seek;
 pub mod nest;
+pub mod retime;
+pub use retime::{
+    RetimeIntent, retime_with_speed_handle, rhythm_handle_tip, rhythm_reference, segment_rhythm,
+};
 pub mod nest_map;
 mod no_lugar;
 pub mod onion;
@@ -165,6 +169,7 @@ pub use track_values::{Palavra, TrackValues};
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.
 pub use ph2d_anim::{
     AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Extrap, ExtrapSide, Interp, KeyId,
+    Retime,
 };
 pub use sprite::{SpriteAnimation, SpriteProp, apply_sprite_animations};
 pub use state::{SelectedKey, Selection, TimelineFlags, TimelineState};

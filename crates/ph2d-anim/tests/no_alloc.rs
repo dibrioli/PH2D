@@ -21,6 +21,7 @@ fn f_track() -> Track {
     Track::new(
         (0..12)
             .map(|i| Key {
+                retime: None,
                 t: RationalTime::from_frame(i, 24),
                 value: AnimValue::Float(i as f32),
                 interp: Interp::bezier(0.25, 0.1, 0.25, 1.0),
@@ -33,6 +34,7 @@ fn v_track() -> Track {
     Track::new(
         (0..12)
             .map(|i| Key {
+                retime: None,
                 t: RationalTime::from_frame(i, 24),
                 value: AnimValue::Vec2(Vec2::new(i as f32, -(i as f32))),
                 interp: Interp::Linear,
@@ -45,6 +47,7 @@ fn c_track() -> Track {
     Track::new(
         (0..12)
             .map(|i| Key {
+                retime: None,
                 t: RationalTime::from_frame(i, 24),
                 value: AnimValue::Color(OklchColor::new(0.5, 0.1, i as f32 * 30.0, 1.0)),
                 interp: Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),

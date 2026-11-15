@@ -6,6 +6,7 @@ use ph2d_timeline::{AnimTarget, KeyId, KeyView, PropKind, TrackView};
 
 fn chave(id: u64, t: f64, interp: Interp) -> KeyView {
     KeyView {
+        retime: None,
         id: KeyId::new(id),
         t_seconds: t,
         value: 0.0,

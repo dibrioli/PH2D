@@ -18,6 +18,8 @@ use crate::state::SelectedKey;
 pub enum TimelineIntent {
     /// A animação de um objecto: mostrar, dar, tirar (`animation_view.rs`).
     Animation(crate::AnimationIntent),
+    /// O RITMO de um trecho, à parte do easing (plano 18): [`crate::RetimeIntent`].
+    Retime(crate::RetimeIntent),
     // ── transport (drives the Playhead) ─────────────────────────────────────
     /// Start playback.
     Play,
@@ -43,10 +45,9 @@ pub enum TimelineIntent {
     /// Set (or clear) the ACTIVE CLIP's loop: its `[start, end)` range in seconds
     /// and whether it **ping-pongs** (plays back and forth) instead of wrapping.
     ///
-    /// One intent carries both because they are ONE thing — a loop is a span PLUS
-    /// what happens at its end. That also makes the two toggles that drive it
-    /// (Loop / PingPong) mutually exclusive **by construction**: there is no value
-    /// that is both, so no rule anyone can forget to enforce.
+    /// One intent carries both because they are ONE thing — a loop is a span PLUS what happens
+    /// at its end. That also makes the two toggles that drive it (Loop / PingPong) mutually
+    /// exclusive **by construction**: no value is both, so no rule to forget.
     SetLoop {
         /// `[start, end)` in seconds; `None` clears the loop.
         range: Option<(f64, f64)>,

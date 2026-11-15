@@ -19,6 +19,7 @@ fn band() -> Band {
 /// Two keys at `t = 0, v = 0` and `t = 1, v = 10`; `selected` per argument.
 fn snap(sel0: bool, sel1: bool) -> TimelineViewSnapshot {
     let mk = |id: u64, t: f64, v: f32, selected: bool| KeyView {
+        retime: None,
         id: KeyId::new(id),
         t_seconds: t,
         value: v,

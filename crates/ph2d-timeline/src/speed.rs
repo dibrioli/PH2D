@@ -43,11 +43,7 @@ pub fn sample_speed(keys: &[KeyView], t: f64) -> Option<f32> {
         return Some(0.0);
     }
     let u = ((t - k0.t_seconds) / span).clamp(0.0, 1.0); // CLAMP-OK: normalized u
-    Some(
-        (k0.interp
-            .value_slope(f64::from(k0.value), f64::from(k1.value), u)
-            / span) as f32,
-    )
+    Some((warped_slope(k0, k1, k0.retime, u) / span) as f32)
 }
 
 /// The velocity at one end of a segment — where the speed graph pins that
@@ -66,9 +62,17 @@ pub fn segment_endpoint_speed(k0: &KeyView, k1: &KeyView, which: u8) -> f64 {
         return 0.0;
     }
     let u = if which == 0 { 0.0 } else { 1.0 };
-    k0.interp
-        .value_slope(f64::from(k0.value), f64::from(k1.value), u)
-        / span
+    warped_slope(k0, k1, k0.retime, u) / span
+}
+
+/// `d value / du` of `E(W(u))` = `E'(W(u)) · W'(u)` (the chain rule; `W = id` without a retime).
+fn warped_slope(k0: &KeyView, k1: &KeyView, w: Option<ph2d_anim::Retime>, u: f64) -> f64 {
+    let (v0, v1) = (f64::from(k0.value), f64::from(k1.value));
+    let e = k0.interp.value_slope(v0, v1, ph2d_anim::retime::warp(w, u));
+    match w {
+        Some(w) => e * w.slope(u),
+        None => e,
+    }
 }
 
 /// The `(min, max)` velocity the speed graph draws across `[t0, t1]`: the
@@ -117,6 +121,7 @@ mod tests {
 
     fn key(t: f64, v: f32, interp: Interp) -> KeyView {
         KeyView {
+            retime: None,
             id: ph2d_anim::KeyId::new(0),
             t_seconds: t,
             value: v,

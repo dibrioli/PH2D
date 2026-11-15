@@ -28,6 +28,7 @@ fn track(target: u64, entity: u64, prop: PropKind, ts: &[f64]) -> TrackView {
             .iter()
             .enumerate()
             .map(|(n, &t)| KeyView {
+                retime: None,
                 id: KeyId::new(target * 100 + n as u64),
                 t_seconds: t,
                 value: 0.0,

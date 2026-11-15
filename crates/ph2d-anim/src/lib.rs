@@ -61,6 +61,7 @@ pub mod curve_prep;
 pub mod curve_spline;
 pub(crate) mod curve_weighted;
 pub mod easing;
+pub mod retime;
 pub mod time;
 pub mod track;
 
@@ -76,6 +77,7 @@ pub use curve_fit::{FitKey, fit_fcurve, fit_fcurve_at, smooth_values};
 pub use curve_prep::{FitChannel, prepare, unwrap_angles};
 pub use curve_spline::{EaseSpline, HandleKind, SPLINE_MAX_POINTS, SplinePoint, SplineSide};
 pub use easing::{Easing, EasingFamily, EasingMode};
+pub use retime::Retime;
 pub use time::RationalTime;
 pub use track::{CurveSnapshot, Extrap, ExtrapSide, Key, KeyId, RangeSamples, Track};
 

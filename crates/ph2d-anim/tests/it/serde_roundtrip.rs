@@ -21,36 +21,43 @@ fn s(t: f64) -> RationalTime {
 fn sample_track() -> Track {
     Track::new(vec![
         Key {
+            retime: None,
             t: s(0.0),
             value: AnimValue::Float(1.0),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: RationalTime::from_frame(24, 24),
             value: AnimValue::Vec2(Vec2::new(3.0, -4.0)),
             interp: Interp::Hold,
         },
         Key {
+            retime: None,
             t: s(2.0),
             value: AnimValue::Color(OklchColor::new(0.5, 0.1, 120.0, 1.0)),
             interp: Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
         },
         Key {
+            retime: None,
             t: s(3.0),
             value: AnimValue::Vec3(Vec3::new(1.0, 2.0, 3.0)),
             interp: Interp::bezier(0.42, 0.0, 0.58, 1.0),
         },
         Key {
+            retime: None,
             t: s(3.5),
             value: AnimValue::Float(2.5),
             interp: Interp::bezier_w(0.25, 3.0, 0.75, -1.5),
         },
         Key {
+            retime: None,
             t: s(4.0),
             value: AnimValue::Bool(true),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: s(5.0),
             value: AnimValue::Enum(7),
             interp: Interp::Hold,

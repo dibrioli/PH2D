@@ -5,6 +5,7 @@ use ph2d_timeline::{AnimTarget, Extrap, KeyId, PropKind};
 
 fn chave(id: u64, t: f64, value: f32, interp: Interp, selected: bool) -> KeyView {
     KeyView {
+        retime: None,
         id: KeyId::new(id),
         t_seconds: t,
         value,

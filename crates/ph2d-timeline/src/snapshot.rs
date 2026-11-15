@@ -26,6 +26,8 @@ pub struct KeyView {
     pub value: f32,
     /// Outgoing interpolation (drives the diamond glyph / graph handles).
     pub interp: Interp,
+    /// The rhythm of the outgoing segment ([`ph2d_anim::Retime`]) — `None` = as the easing plays.
+    pub retime: Option<ph2d_anim::Retime>,
     /// Whether this key is in the current selection.
     pub selected: bool,
     /// Whether this key roves (its time is derived, not authored) — drawn as a
@@ -83,6 +85,7 @@ fn key_view(k: &Key, id: KeyId, roving: bool, selected: bool) -> KeyView {
             _ => 0.0,
         },
         interp: k.interp,
+        retime: k.retime,
         selected,
         roving,
     }

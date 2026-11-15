@@ -14,11 +14,13 @@ fn ramp_clip() -> (Clip, AnimTarget) {
         target,
         Track::new(vec![
             Key {
+                retime: None,
                 t: RationalTime::from_seconds(0.0),
                 value: AnimValue::Float(0.0),
                 interp: Interp::Linear,
             },
             Key {
+                retime: None,
                 t: RationalTime::from_seconds(2.0),
                 value: AnimValue::Float(10.0),
                 interp: Interp::Hold,

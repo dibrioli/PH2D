@@ -199,6 +199,7 @@ fn scalar_track(n: usize) -> Track {
     Track::new(
         (0..n)
             .map(|i| Key {
+                retime: None,
                 t: RationalTime::from_seconds(i as f64 * 0.25),
                 value: AnimValue::Float(i as f32 * 10.0),
                 interp: Interp::Linear,

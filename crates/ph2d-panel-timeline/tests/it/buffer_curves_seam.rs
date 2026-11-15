@@ -29,6 +29,7 @@ const TGT: u64 = 7;
 
 fn kv(id: u64, t: f64, v: f32) -> KeyView {
     KeyView {
+        retime: None,
         id: KeyId::new(id),
         t_seconds: t,
         value: v,

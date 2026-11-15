@@ -101,6 +101,7 @@ mod tests {
         ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
         use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, TrackView};
         let key = |id: u64, t: f64| KeyView {
+            retime: None,
             id: KeyId::new(id),
             t_seconds: t,
             value: 0.0,

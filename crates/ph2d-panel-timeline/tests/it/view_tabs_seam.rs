@@ -43,6 +43,7 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
             expr: None,
             keys: vec![
                 KeyView {
+                    retime: None,
                     id: KeyId::new(1),
                     t_seconds: 0.0,
                     value: -3.0,
@@ -51,6 +52,7 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
                     roving: false,
                 },
                 KeyView {
+                    retime: None,
                     id: KeyId::new(2),
                     t_seconds: 3.0,
                     value: 3.0,

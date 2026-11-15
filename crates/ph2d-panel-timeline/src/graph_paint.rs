@@ -16,7 +16,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
     KeyView, TrackValues, TrackView, drawn_extent, sample_keys, sample_speed,
-    segment_handle_points, speed_extent, speed_handle_tip,
+    segment_handle_points, speed_extent,
 };
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -83,7 +83,7 @@ pub(crate) fn paint_track(
     // the value view to what the curve+handles draw. A drag freezes the fit (see
     // `graph::band_for`).
     let extent = if state.speed_view {
-        speed_extent_of(&band_rect, view, track)
+        crate::graph_ritmo::extent(state, speed_extent_of(&band_rect, view, track), track)
     } else {
         drawn_extent_of(&band_rect, view, track)
     };
@@ -106,9 +106,14 @@ pub(crate) fn paint_track(
     if state.speed_view {
         // Speed graph (W5): the velocity curve over a zero-velocity reference,
         // with each selected segment's endpoints as editable speed handles.
+        // Retime (plano 18): the motion's speed in the curve colour, the rhythm in amber with
+        // ITS handles; Override: the speed in the accent with the easing's handles, as always.
         paint_zero_line(ctx, theme, &band);
-        paint_speed_curve(ctx, theme, &band, view, &track.keys);
-        paint_speed_handles(ctx, theme, state, &band, view, track);
+        let (cor, tip) = crate::graph_ritmo::curva_e_alcas(state);
+        let speed = |t| sample_speed(&track.keys, t);
+        paint_speed_curve(ctx, &band, view, speed, resolve(cor, theme));
+        crate::graph_ritmo::paint_rhythm(ctx, theme, state, &band, view, track);
+        paint_speed_handles(ctx, theme, state, &band, view, (track, tip));
     } else {
         // The buffered-curve GHOST first (fainter, thinner), so the live curve
         // draws on top of its A/B reference. `buffer_ghost` is `Some` only for the
@@ -129,6 +134,9 @@ pub(crate) fn paint_track(
     resolve_drag(state, &band, view, track);
     if !state.speed_view {
         anchor_drag::resolve_drag(state, &band, track);
+    }
+    if state.speed_view && !track.prop.nomeia() {
+        crate::graph_ritmo::paint_switch(ctx, theme, state, (rect, band_rect), label_w);
     }
     paint_height_grip(ctx, theme, state, rect, target);
     graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track);
@@ -453,12 +461,12 @@ fn paint_zero_line(ctx: &mut PaintCtx, theme: Theme, band: &Band) {
 /// The velocity curve `d(value)/dt`, sampled every [`CURVE_STEP_PX`] through the
 /// same easing the runtime plays (see [`ph2d_timeline::sample_speed`]). Drawn in
 /// the accent, so it never reads as the value curve it replaces.
-fn paint_speed_curve(
+pub(crate) fn paint_speed_curve(
     ctx: &mut PaintCtx,
-    theme: Theme,
     band: &Band,
     view: TimeView,
-    keys: &[KeyView],
+    sample: impl Fn(f64) -> Option<f32>,
+    color: ph2d_vector::Color,
 ) {
     let (left, right) = (band.rect.x, band.rect.x + band.rect.w);
     if right <= left {
@@ -470,18 +478,13 @@ fn paint_speed_curve(
         let x = (left + i as f32 * CURVE_STEP_PX).min(right);
         // A vertical tangent samples ±∞ — skip it (one-pixel gap at the spike)
         // rather than feed the polyline a non-finite y.
-        if let Some(s) = sample_speed(keys, view.t(x))
+        if let Some(s) = sample(view.t(x))
             && s.is_finite()
         {
             points.push((x, band.y(f64::from(s))));
         }
     }
-    stroke_polyline(
-        ctx.scene,
-        &points,
-        CURVE_W,
-        resolve(ColorToken::Accent, theme),
-    );
+    stroke_polyline(ctx.scene, &points, CURVE_W, color);
 }
 
 /// Each selected segment's speed handle as AE draws it: an ANCHOR dot at the
@@ -499,7 +502,7 @@ fn paint_speed_handles(
     state: &TimelinePanelState,
     band: &Band,
     view: TimeView,
-    track: &TrackView,
+    (track, tip): (&TrackView, crate::graph_ritmo::Ponta),
 ) {
     let target = track.target.get();
     for w in track.keys.windows(2) {
@@ -508,7 +511,7 @@ fn paint_speed_handles(
             continue;
         }
         for which in [0u8, 1u8] {
-            let Some((tip_t, speed)) = speed_handle_tip(k0, k1, which) else {
+            let Some((tip_t, speed)) = tip(k0, k1, which) else {
                 continue;
             };
             let key_t = if which == 0 {

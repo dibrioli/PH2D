@@ -52,6 +52,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
     let host = state.edit_host();
     match intent {
         I::Animation(a) => crate::animation_view::apply(state, playhead, a),
+        I::Retime(r) => crate::retime::apply(state, r),
         // transport
         I::Play => playhead.play(),
         I::Pause => playhead.pause(),
@@ -253,7 +254,11 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                     // A track the copy came from may have been unbound since —
                     // skip it rather than resurrecting a dead binding.
                     if let Some(track) = doc.active_clip_mut().track_mut(ck.target) {
-                        let key = track.upsert_key(t, ck.value, ck.interp);
+                        let whole = ph2d_anim::Key::new(t, ck.value, ck.interp);
+                        let key = track.upsert_whole(ph2d_anim::Key {
+                            retime: ck.retime,
+                            ..whole
+                        });
                         sel.add(SelectedKey {
                             target: ck.target,
                             key,

@@ -17,11 +17,13 @@ fn s(t: f64) -> RationalTime {
 fn ramp() -> Track {
     Track::new(vec![
         Key {
+            retime: None,
             t: s(0.0),
             value: AnimValue::Float(0.0),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: s(2.0),
             value: AnimValue::Float(10.0),
             interp: Interp::Linear,
@@ -123,11 +125,13 @@ fn continue_holds_when_the_last_segment_is_stepped() {
     // no velocity to extend along and holds — a defensible, finite answer.
     let mut t = Track::new(vec![
         Key {
+            retime: None,
             t: s(0.0),
             value: AnimValue::Float(0.0),
             interp: Interp::Hold, // governs the segment [0, 2]
         },
         Key {
+            retime: None,
             t: s(2.0),
             value: AnimValue::Float(10.0),
             interp: Interp::Linear, // no segment after the last key — irrelevant
@@ -143,11 +147,13 @@ fn a_zero_width_range_holds() {
     // non-Hold mode degrades to the boundary value rather than dividing by zero.
     let mut t = Track::new(vec![
         Key {
+            retime: None,
             t: s(1.0),
             value: AnimValue::Float(3.0),
             interp: Interp::Linear,
         },
         Key {
+            retime: None,
             t: s(1.0),
             value: AnimValue::Float(7.0),
             interp: Interp::Linear,

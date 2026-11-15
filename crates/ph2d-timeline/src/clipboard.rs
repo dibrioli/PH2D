@@ -9,7 +9,7 @@
 //! A sibling module of `history`/`state` (append-only extension point), so other
 //! lines can grow `TimelineState` without colliding here.
 
-use ph2d_anim::{AnimTarget, AnimValue, Interp};
+use ph2d_anim::{AnimTarget, AnimValue, Interp, Key, Retime};
 
 /// One key on the clipboard: which track it came from, its offset from the copy
 /// anchor (the earliest copied key), and the value/interp to re-create it.
@@ -23,6 +23,8 @@ pub struct ClipboardKey {
     pub value: AnimValue,
     /// The key's outgoing interpolation.
     pub interp: Interp,
+    /// The rhythm of its outgoing segment ([`Retime`]).
+    pub retime: Option<Retime>,
 }
 
 /// The copied keys, time-rebased to the earliest one.
@@ -61,14 +63,13 @@ impl TimelineClipboard {
         self.keys.clear();
     }
 
-    /// Replace the contents from `(target, absolute_seconds, value, interp)`
-    /// tuples, re-basing every time so the earliest key sits at offset `0`.
-    /// An empty input clears the clipboard.
-    pub fn set_from_absolute(&mut self, keys: &[(AnimTarget, f64, AnimValue, Interp)]) {
+    /// Replace the contents from `(target, key)` pairs, re-basing every time so the earliest key
+    /// sits at offset `0`. An empty input clears the clipboard.
+    pub fn set_from_absolute(&mut self, keys: &[(AnimTarget, Key)]) {
         self.keys.clear();
         let Some(anchor) = keys
             .iter()
-            .map(|(_, t, _, _)| *t)
+            .map(|(_, k)| k.t.to_seconds())
             .fold(None, |acc: Option<f64>, t| {
                 Some(acc.map_or(t, |a| a.min(t)))
             })
@@ -76,11 +77,12 @@ impl TimelineClipboard {
             return;
         };
         self.keys
-            .extend(keys.iter().map(|(target, t, value, interp)| ClipboardKey {
+            .extend(keys.iter().map(|(target, k)| ClipboardKey {
                 target: *target,
-                offset_seconds: t - anchor,
-                value: *value,
-                interp: *interp,
+                offset_seconds: k.t.to_seconds() - anchor,
+                value: k.value,
+                interp: k.interp,
+                retime: k.retime,
             }));
     }
 }
@@ -93,13 +95,18 @@ mod tests {
         AnimTarget::new(n)
     }
 
+    fn k(at: u64, s: f64, v: f32, interp: Interp) -> (AnimTarget, Key) {
+        let t_ = ph2d_anim::RationalTime::from_seconds(s);
+        (t(at), Key::new(t_, AnimValue::Float(v), interp))
+    }
+
     #[test]
     fn set_from_absolute_rebases_to_the_earliest_key() {
         let mut c = TimelineClipboard::new();
         c.set_from_absolute(&[
-            (t(1), 2.0, AnimValue::Float(20.0), Interp::Linear),
-            (t(1), 0.5, AnimValue::Float(5.0), Interp::Hold),
-            (t(2), 1.0, AnimValue::Float(10.0), Interp::Linear),
+            k(1, 2.0, 20.0, Interp::Linear),
+            k(1, 0.5, 5.0, Interp::Hold),
+            k(2, 1.0, 10.0, Interp::Linear),
         ]);
         assert_eq!(c.len(), 3);
         // Earliest (0.5 s) becomes the anchor; the rest keep their spacing.
@@ -113,7 +120,7 @@ mod tests {
     #[test]
     fn empty_input_clears_the_clipboard() {
         let mut c = TimelineClipboard::new();
-        c.set_from_absolute(&[(t(1), 1.0, AnimValue::Float(1.0), Interp::Linear)]);
+        c.set_from_absolute(&[k(1, 1.0, 1.0, Interp::Linear)]);
         assert!(!c.is_empty());
         c.set_from_absolute(&[]);
         assert!(c.is_empty(), "an empty copy clears, never panics");

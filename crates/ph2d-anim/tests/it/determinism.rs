@@ -17,6 +17,7 @@ fn ramp() -> Vec<Key> {
     // A non-trivial multi-segment ramp with mixed interpolation.
     (0..17)
         .map(|i| Key {
+            retime: None,
             t: RationalTime::from_frame(i, 24),
             value: AnimValue::Float((i * i) as f32 * 0.13 - 4.0),
             interp: if i % 3 == 0 {

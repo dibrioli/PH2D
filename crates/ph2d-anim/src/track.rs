@@ -28,6 +28,7 @@ use ph2d_vector_traits::{AnimValue, AttributeEvaluator};
 use serde::{Deserialize, Serialize};
 
 use crate::curve::{Interp, interpolate};
+use crate::retime::{Retime, warp};
 use crate::time::RationalTime;
 
 #[path = "extrap.rs"]
@@ -36,6 +37,8 @@ mod extrap;
 mod track_buffer;
 #[path = "track_fit.rs"]
 mod track_fit;
+#[path = "track_retime.rs"]
+mod track_retime;
 #[path = "track_reverse.rs"]
 mod track_reverse;
 pub use extrap::{Extrap, ExtrapSide};
@@ -83,6 +86,22 @@ pub struct Key {
     pub value: AnimValue,
     /// Interpolation from this key toward the next.
     pub interp: Interp,
+    /// The RHYTHM of the segment leaving this key, apart from its easing ([`Retime`]): the
+    /// segment plays `E(W(u))`. `None` = `W(u) = u`, sampled byte-identical to a key without it.
+    pub retime: Option<Retime>,
+}
+
+impl Key {
+    /// A key with no retime — the plain `(t, value, interp)` literal.
+    #[must_use]
+    pub const fn new(t: RationalTime, value: AnimValue, interp: Interp) -> Self {
+        Self {
+            t,
+            value,
+            interp,
+            retime: None,
+        }
+    }
 }
 
 /// A keyframe store for a single animated parameter.
@@ -204,11 +223,7 @@ impl Track {
     /// A track that holds `value` for all time (single stepped key at `t = 0`).
     #[must_use]
     pub fn constant(value: AnimValue) -> Self {
-        Self::new(vec![Key {
-            t: RationalTime::ZERO,
-            value,
-            interp: Interp::Hold,
-        }])
+        Self::new(vec![Key::new(RationalTime::ZERO, value, Interp::Hold)])
     }
 
     /// Set the value returned when the track is empty.
@@ -298,7 +313,7 @@ impl Track {
         let idx = self.keys.partition_point(|k| k.t <= t);
         let id = KeyId(self.next_id);
         self.next_id += 1;
-        self.keys.insert(idx, Key { t, value, interp });
+        self.keys.insert(idx, Key::new(t, value, interp));
         self.ids.insert(idx, id);
         self.roving.insert(idx, false);
         self.invalidate_cursor();
@@ -533,9 +548,7 @@ impl Track {
                 ..k
             })
             .collect();
-        dups.into_iter()
-            .map(|k| self.upsert_key(k.t, k.value, k.interp))
-            .collect()
+        dups.into_iter().map(|k| self.upsert_whole(k)).collect()
     }
 
     // ─── Internals ──────────────────────────────────────────────────────────
@@ -593,7 +606,7 @@ impl Track {
         let t1 = k1.t.to_seconds();
         let span = t1 - t0;
         let u = if span > 0.0 { (t - t0) / span } else { 0.0 };
-        interpolate(k0.value, k1.value, k0.interp, u)
+        interpolate(k0.value, k1.value, k0.interp, warp(k0.retime, u))
     }
 
     /// The value at `t`, assuming `t` lies WITHIN the keyed range — the sampler

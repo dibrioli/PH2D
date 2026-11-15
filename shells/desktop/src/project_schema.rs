@@ -487,4 +487,10 @@
 /// `PaintedDocument.fator_aparencia: f32` no FIM (lado curto ÷ 1080, nunca < 1; nasce com o documento e viaja com
 /// ele): a base de «a aparência acompanha o tamanho da tela» (decisão 6 do dono). SEM leitura dos anteriores
 /// (§0.11). Gate: `o_fator_nasce_do_tamanho_e_viaja_com_o_documento`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 242;
+///
+/// # `242 → 243` — **o ritmo por trecho** (`line/TimelinePrincipal`, plano 18, 2026-11-15)
+///
+/// `ph2d_anim::Key` ganha `retime: Option<Retime>` no FIM (o tempo do trecho reajustado antes do easing,
+/// `E(W(u))`; `None` = como o easing toca). SEM leitura dos anteriores (§0.11). Gates: `ph2d-anim retime::`,
+/// `ph2d-timeline retime::`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 243;

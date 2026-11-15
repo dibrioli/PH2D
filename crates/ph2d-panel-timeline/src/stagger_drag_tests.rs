@@ -105,6 +105,7 @@ fn an_alt_click_without_dragging_collapses_a_preserved_group() {
             post: ph2d_timeline::Extrap::Hold,
             expr: None,
             keys: vec![KeyView {
+                retime: None,
                 id: KeyId::new(0),
                 t_seconds: 0.0,
                 value: 0.0,

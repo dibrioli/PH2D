@@ -11,6 +11,7 @@ use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind, TrackView};
 /// So the column at 0 spans both tracks, and the column at 1 is a lone key.
 fn snap(sel: &[(u64, u64)]) -> TimelineViewSnapshot {
     let mk = |target: u64, id: u64, t: f64| KeyView {
+        retime: None,
         id: KeyId::new(id),
         t_seconds: t,
         value: 0.0,

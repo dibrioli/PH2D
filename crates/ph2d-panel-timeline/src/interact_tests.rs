@@ -51,6 +51,7 @@ fn a_selection_time_handle_routes_to_scale_not_a_strip_stretch() {
     // Default already parks the view at t=0.
     let mut st = TimelinePanelState::default();
     let key = |i: u64, t: f64| KeyView {
+        retime: None,
         id: KeyId::new(i),
         t_seconds: t,
         value: 0.0,
@@ -319,6 +320,7 @@ fn collapsing_a_row_mid_drag_closes_the_handles_undo_bracket() {
 fn two_key_column() -> TimelineViewSnapshot {
     use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind, TrackView};
     let k = |id: u64| KeyView {
+        retime: None,
         id: KeyId::new(id),
         t_seconds: 0.0,
         value: 0.0,

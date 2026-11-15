@@ -179,6 +179,9 @@ pub struct TimelinePanelState {
     /// (`d(value)/dt`) instead of the value curve, toggled from the transport
     /// bar. Panel-local view state — never undoable, never saved.
     pub speed_view: bool,
+    /// Override · Retime of the speed view (plano 18): `true` = a speed handle retimes the segment
+    /// (the easing stays). Session view state — never undoable, never saved.
+    pub speed_retime: bool,
     /// «Edit curves on canvas» (dono 10/11): the canvas shows handles that bend the object's path.
     /// Session state — never saved, never undoable; published to the shell only on the Keys tab
     /// ([`curves_on_canvas`]).
@@ -347,6 +350,7 @@ impl Default for TimelinePanelState {
             expanded: Vec::new(),
             grupos_abertos: Vec::new(),
             speed_view: false,
+            speed_retime: false,
             curves_on_canvas: false,
             clips_as_list: false,
             tab: crate::tab::Tab::default(),

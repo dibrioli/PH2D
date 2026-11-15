@@ -28,6 +28,7 @@ fn track(target: u64, prop: PropKind) -> TrackView {
         entity: 9,
         missing: false,
         keys: vec![KeyView {
+            retime: None,
             id: KeyId::new(target * 100),
             t_seconds: 0.0,
             value: 0.0,

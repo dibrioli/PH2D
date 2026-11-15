@@ -189,6 +189,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escrevia no fonte).
         "panel.timeline.buffer.swap" => "Swap",
         "panel.timeline.buffer.store" => "Store",
+        // Plano 18 (dono 15/11): a vista de velocidade escolhe o que a alça muda.
+        "panel.timeline.speed_mode.override" => "Override",
+        "panel.timeline.speed_mode.retime" => "Retime",
+        "panel.timeline.speed_mode.override.tip" => "The handles reshape the easing itself",
+        "panel.timeline.speed_mode.retime.tip" => {
+            "The handles change only the timing; the easing keeps its shape"
+        }
+        "panel.timeline.reset_timing" => "Reset timing",
+        "panel.timeline.reset_timing.tip" => {
+            "Selected keys play their easing at its own timing again"
+        }
         // Dono 10/11 — a caixa da aba Keys (no lugar da vista Curves); nome curto «Edit Path» (dono 12/11).
         "panel.timeline.curves_on_canvas" => "Edit Path",
         // A pílula da sessão de animar (doc 17 item 9): «Animating jump» + «Done».

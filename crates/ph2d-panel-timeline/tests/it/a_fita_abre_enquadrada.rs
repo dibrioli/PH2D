@@ -15,6 +15,7 @@ const VIEWPORT: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
 
 fn cena(t: f64) -> TimelineViewSnapshot {
     let chave = |n: u64, t: f64| KeyView {
+        retime: None,
         id: KeyId::new(n),
         t_seconds: t,
         value: 0.0,

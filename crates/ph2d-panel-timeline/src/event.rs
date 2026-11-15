@@ -97,6 +97,9 @@ pub(crate) fn apply_event(
         return out;
     }
     // As portas da barra em cartões (engrenagem, «⋯», o fim do clipe); uma linha do menu fecha-o e segue.
+    if let Some(out) = crate::graph_ritmo::apply_event(state, ev) {
+        return out;
+    }
     if let Some(out) = crate::barra_menus::apply_event(state, host, ev) {
         return out;
     }

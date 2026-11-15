@@ -15,5 +15,6 @@ mod easing;
 mod extrapolation;
 mod golden;
 mod playhead_drive;
+mod retime;
 mod reverse;
 mod serde_roundtrip;

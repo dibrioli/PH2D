@@ -16,6 +16,7 @@ const BAND: Rect = Rect::new(100.0, 50.0, 400.0, 100.0);
 fn key(t: f64, v: f32) -> ph2d_timeline::KeyView {
     use ph2d_timeline::KeyView;
     KeyView {
+        retime: None,
         id: ph2d_timeline::KeyId::new(0),
         t_seconds: t,
         value: v,

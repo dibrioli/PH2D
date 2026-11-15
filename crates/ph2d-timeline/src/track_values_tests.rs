@@ -82,6 +82,7 @@ fn a_text_row_carries_its_texts_and_a_number_row_none() {
     mundo.insert_resource(tabela);
     let mut texto = row(1, 7, PropKind::Field(conteudo));
     texto.keys.push(crate::KeyView {
+        retime: None,
         id: crate::KeyId::new(1),
         t_seconds: 0.0,
         value: b,

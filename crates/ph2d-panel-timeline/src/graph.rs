@@ -224,19 +224,31 @@ pub(crate) fn resolve_drag(
     // drawn at (a lossless conversion for any interp), and a flat segment
     // finally takes the drag (its `dy` is absolute, the gap the normalized form
     // could not express).
-    let interp = if state.speed_view {
+    let ponto = (view.t(d.x), band.value(d.y));
+    let interp = if state.speed_view && state.speed_retime {
+        // Retime (plano 18): the same gesture on the RHYTHM — the easing is not touched.
+        let intent = crate::graph_ritmo::intent_do_arrasto((k0, k1), track, d.which, ponto);
+        if let Some(i) = intent {
+            state::push_intent(i);
+        }
+        None
+    } else if state.speed_view {
         // Speed edit, the AE gesture: vertical = VELOCITY, horizontal =
         // INFLUENCE (the arm's length) — one tip drags both.
-        weighted_with_speed_handle(k0, k1, d.which, view.t(d.x), band.value(d.y))
+        Some(weighted_with_speed_handle(
+            k0, k1, d.which, ponto.0, ponto.1,
+        ))
     } else {
         // Value edit: the dragged handle follows the pointer in (time, value).
-        weighted_with_handle(k0, k1, d.which, view.t(d.x), band.value(d.y))
+        Some(weighted_with_handle(k0, k1, d.which, ponto.0, ponto.1))
     };
-    state::push_intent(TimelineIntent::SetInterp {
-        target: track.target,
-        key: k0.id,
-        interp,
-    });
+    if let Some(interp) = interp {
+        state::push_intent(TimelineIntent::SetInterp {
+            target: track.target,
+            key: k0.id,
+            interp,
+        });
+    }
     if d.ending {
         state::push_intent(TimelineIntent::EndEdit);
         state.handle_drag = None;

@@ -70,7 +70,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect, evita: Option
     for ((interp, chave), tw) in ENTRADAS.iter().zip(larguras) {
         let cor = crate::folha_tinta::tinta(cor_da_barra(*interp), theme);
         let ab = (x, x + AMOSTRA_W);
-        pinta_curva(ctx, cor, *interp, (0.0, 1.0), ab, ab, faixa);
+        pinta_curva(ctx, cor, (*interp, None), (0.0, 1.0), ab, ab, faixa);
         x += AMOSTRA_W + gap;
         paint_text_elided(
             ctx.text_system,

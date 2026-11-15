@@ -25,6 +25,7 @@ const FIM_S: f64 = 4.0;
 
 fn documento() -> TimelineViewSnapshot {
     let chave = |n: u64, t: f64| KeyView {
+        retime: None,
         id: KeyId::new(n),
         t_seconds: t,
         value: 0.0,

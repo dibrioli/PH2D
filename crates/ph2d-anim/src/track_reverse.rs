@@ -7,6 +7,7 @@
 
 use super::{KeyId, Track};
 use crate::curve::Interp;
+use crate::retime::Retime;
 use crate::time::RationalTime;
 
 impl Track {
@@ -34,16 +35,13 @@ impl Track {
         }
         // Hand each segment's shape to the key that will own it after the flip. The
         // walk is over the OLD order, so read the interps out first.
-        let old: Vec<Interp> = self.keys.iter().map(|k| k.interp).collect();
+        let old: Vec<(Interp, Option<Retime>)> =
+            self.keys.iter().map(|k| (k.interp, k.retime)).collect();
         for i in 0..n {
             // Key `i` ends up at position `n-1-i`; the segment leaving it there is
             // the OLD segment leaving key `n-2-(n-1-i)` = `i-1`, played backwards.
-            self.keys[i].interp = if i == 0 {
-                // The new LAST key: no outgoing segment. Keep it inert.
-                Interp::Linear
-            } else {
-                old[i - 1].reversed()
-            };
+            // The new LAST key (`i == 0`) has no outgoing segment: keep it inert.
+            (self.keys[i].interp, self.keys[i].retime) = reversed_segment(&old, i);
         }
         self.keys.reverse();
         self.ids.reverse();
@@ -84,7 +82,10 @@ impl Track {
             return;
         }
         // Read the selected keys' outgoing interps in selected order BEFORE moving.
-        let old: Vec<Interp> = sel.iter().map(|&i| self.keys[i].interp).collect();
+        let old: Vec<(Interp, Option<Retime>)> = sel
+            .iter()
+            .map(|&i| (self.keys[i].interp, self.keys[i].retime))
+            .collect();
         for &i in &sel {
             let t = self.keys[i].t.to_seconds();
             self.keys[i].t = RationalTime::from_seconds(2.0 * pivot_seconds - t);
@@ -93,13 +94,18 @@ impl Track {
             // Same rule as `reverse_about`, restricted to the selected sequence:
             // the key formerly at selected position `j` ends up carrying the OLD
             // segment leaving `j−1`, reversed; the formerly-earliest goes inert.
-            self.keys[i].interp = if j == 0 {
-                Interp::Linear
-            } else {
-                old[j - 1].reversed()
-            };
+            (self.keys[i].interp, self.keys[i].retime) = reversed_segment(&old, j);
         }
         self.resort();
         self.invalidate_cursor();
+    }
+}
+
+/// The segment the key at position `j` carries after a flip: the OLD segment leaving `j − 1`, played
+/// backwards — its easing AND its rhythm (`W_rev(u) = 1 − W(1 − u)`). Position `0` goes inert.
+fn reversed_segment(old: &[(Interp, Option<Retime>)], j: usize) -> (Interp, Option<Retime>) {
+    match j.checked_sub(1).and_then(|p| old.get(p)) {
+        Some(&(interp, retime)) => (interp.reversed(), retime.map(Retime::reversed)),
+        None => (Interp::Linear, None),
     }
 }

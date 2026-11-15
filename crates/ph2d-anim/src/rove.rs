@@ -119,6 +119,7 @@ mod tests {
 
     fn key(t: f64, v: f32) -> Key {
         Key {
+            retime: None,
             t: s(t),
             value: AnimValue::Float(v),
             interp: Interp::Linear,

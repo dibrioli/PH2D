@@ -42,6 +42,7 @@ fn assinatura(info: &InspectorRayInfo) -> u64 {
     info.layer_empty.hash(&mut h);
     info.on_enter.hash(&mut h);
     info.on_exit.hash(&mut h);
+    info.ignore_up_to.hash(&mut h);
     h.finish()
 }
 
@@ -92,6 +93,7 @@ pub(crate) fn sync(
     for (id, t) in [
         (crate::ids::INSP_RAY_ON_ENTER, info.on_enter.as_str()),
         (crate::ids::INSP_RAY_ON_EXIT, info.on_exit.as_str()),
+        (crate::ids::INSP_RAY_UP_TO, info.ignore_up_to.as_str()),
     ] {
         crate::sync_text_field::escreve_texto(host, focus, id, t);
     }

@@ -12,11 +12,14 @@
 //! | campo | `false` | `true` |
 //! |---|---|---|
 //! | `hit_sensors` | um sensor/gatilho é transparente (a lei do `cast`) | ele responde como matéria |
-//! | `hit_from_inside` | a forma que CONTÉM a origem é ignorada (Godot `hit_from_inside = false`) | ela responde a `0` (o `solid` do `cast`) |
+//! | `hit_from_inside` | a forma que CONTÉM a origem chega ao `accept` com `dentro = true` | ela responde a `0` como qualquer outra (`dentro = false`) |
 //!
-//! O `accept` é o predicado do chamador sobre o CORPO da forma candidata (a família do dono, o filtro
-//! de tags): ele corre DENTRO da consulta do rapier — nenhuma alocação, e nenhum tipo do rapier além
-//! do handle na superfície.
+//! O `accept(corpo, dentro)` é o predicado do chamador sobre o CORPO da forma candidata (a família do
+//! dono, o filtro de tags) e corre DENTRO da consulta do rapier — nenhuma alocação, e nenhum tipo do
+//! rapier além do handle na superfície. ⚠️ `dentro` é dele e não daqui (auditoria C1, 15/11): uma forma
+//! que contém a origem é ignorada (Godot `hit_from_inside = false`) SALVO quando ela é uma parede que
+//! TAPA («Walls block» e fora do filtro) — o olho enterrado numa parede não vê através dela. Aceite
+//! assim, ela responde a `0` (o `solid` do raio).
 
 use crate::rmath::Vector;
 use rapier2d::dynamics::RigidBodyHandle;
@@ -49,7 +52,7 @@ impl PhysicsWorld {
         dir: [f32; 2],
         max_dist: f32,
         q: RayQuery,
-        accept: &dyn Fn(Option<RigidBodyHandle>) -> bool,
+        accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
     ) -> Option<CastHit> {
         let (ray, max) = raio(origin, dir, max_dist)?;
         let mut achou = None;
@@ -69,7 +72,7 @@ impl PhysicsWorld {
         dir: [f32; 2],
         max_dist: f32,
         q: RayQuery,
-        accept: &dyn Fn(Option<RigidBodyHandle>) -> bool,
+        accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
         out: &mut Vec<CastHit>,
     ) {
         out.clear();
@@ -94,7 +97,7 @@ impl PhysicsWorld {
         &self,
         origin: [f32; 2],
         q: RayQuery,
-        accept: &dyn Fn(Option<RigidBodyHandle>) -> bool,
+        accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
         f: impl FnOnce(&QueryPipeline<'_>),
     ) {
         let asker = super::layer_override::asker_of(q.layer, None);
@@ -102,8 +105,10 @@ impl PhysicsWorld {
         let o = Vector::new(origin[0], origin[1]);
         let pred = |h: ColliderHandle, c: &Collider| {
             sees(h, c)
-                && (q.hit_from_inside || !c.shape().contains_point(c.position(), o))
-                && accept(c.parent())
+                && accept(
+                    c.parent(),
+                    !q.hit_from_inside && c.shape().contains_point(c.position(), o),
+                )
         };
         let filter = QueryFilter {
             groups: Some(super::layer_override::query_groups(

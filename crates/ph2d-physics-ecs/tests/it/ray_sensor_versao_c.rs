@@ -13,7 +13,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_tags::TagTree;
 
-fn caixa(sim: &mut SimWorld, nome: &str, x: f32, half_x: f32, sensor: bool) -> Entity {
+pub(crate) fn caixa(sim: &mut SimWorld, nome: &str, x: f32, half_x: f32, sensor: bool) -> Entity {
     sim.world_mut()
         .spawn((
             Name::new(nome),
@@ -33,7 +33,7 @@ fn caixa(sim: &mut SimWorld, nome: &str, x: f32, half_x: f32, sensor: bool) -> E
         .id()
 }
 
-fn parede(sim: &mut SimWorld, nome: &str, x: f32) -> Entity {
+pub(crate) fn parede(sim: &mut SimWorld, nome: &str, x: f32) -> Entity {
     caixa(sim, nome, x, 0.25, false)
 }
 
@@ -44,7 +44,7 @@ fn parte(sim: &mut SimWorld, nome: &str, pai: Entity, x: f32) -> Entity {
     e
 }
 
-fn raio(sim: &mut SimWorld, em: Vec2, pai: Option<Entity>, r: RaySensor) -> Entity {
+pub(crate) fn raio(sim: &mut SimWorld, em: Vec2, pai: Option<Entity>, r: RaySensor) -> Entity {
     let e = sim
         .world_mut()
         .spawn((Name::new("Ray Sensor"), Transform::from_translation(em), r))
@@ -55,7 +55,7 @@ fn raio(sim: &mut SimWorld, em: Vec2, pai: Option<Entity>, r: RaySensor) -> Enti
     e
 }
 
-fn para(angle: f32) -> RaySensor {
+pub(crate) fn para(angle: f32) -> RaySensor {
     RaySensor {
         angle,
         reach: 20.0,
@@ -63,7 +63,7 @@ fn para(angle: f32) -> RaySensor {
     }
 }
 
-fn ve(sim: &mut SimWorld, e: Entity, tree: &TagTree) -> Option<Entity> {
+pub(crate) fn ve(sim: &mut SimWorld, e: Entity, tree: &TagTree) -> Option<Entity> {
     let mut b = PhysicsBridge::new();
     b.set_tag_tree(tree);
     b.dispatch(sim, true, 1);
@@ -154,7 +154,7 @@ fn versao_c_raio_debaixo_da_espada_ignora_o_heroi() {
     }
 }
 
-fn com_tag(sim: &mut SimWorld, e: Entity, id: u64, tag: ph2d_tags::TagId) {
+pub(crate) fn com_tag(sim: &mut SimWorld, e: Entity, id: u64, tag: ph2d_tags::TagId) {
     sim.world_mut()
         .entity_mut(e)
         .insert((StableId(id), ph2d_ecs::tags::Tags::from_ids([tag])));
@@ -358,7 +358,7 @@ fn versao_c_all_hits_duas_paredes_e_arestas_por_objecto() {
 }
 
 /// A marca do raio `r` (o que o canvas desenha): `(alcance desenhado, primeiro acerto, os outros)`.
-fn marca(b: &PhysicsBridge) -> (f32, Option<f32>, Vec<f32>) {
+pub(crate) fn marca(b: &PhysicsBridge) -> (f32, Option<f32>, Vec<f32>) {
     let m = b.ray_marks().first().expect("a marca do raio");
     match m.shape {
         ph2d_physics_ecs::ProbeShape::Ray { reach, hit, .. } => {

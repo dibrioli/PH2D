@@ -38,6 +38,9 @@ use ph2d_i18n::{tr, tr_with};
 const fn chave_da_queixa(q: RayQueixa) -> &'static str {
     match q {
         RayQueixa::SemAlcance => "panel.inspector.ray.the_reach_is_zero",
+        RayQueixa::EscolhaATag => "panel.inspector.ray.pick_a_tag",
+        RayQueixa::TagApagada => "panel.inspector.ray.tag_is_gone",
+        RayQueixa::TopoFora => "panel.inspector.ray.up_to_is_off",
         RayQueixa::CamadaVazia => "panel.inspector.ray.nothing_in_this_layer",
         RayQueixa::Mudo => "panel.inspector.ray.this_ray_says_nothing",
         RayQueixa::NaoVeNada => "panel.inspector.ray.sees_nothing_right_now",
@@ -185,6 +188,9 @@ fn corpo(
             tr("component.field.ray_sensor.1"),
             tr("component.field.ray_sensor.2"),
             tr("component.field.ray_sensor.3"),
+            tr("component.field.ray_sensor.6"),
+            tr("component.field.ray_sensor.7"),
+            tr("component.field.ray_sensor.12"),
             tr("component.field.ray_signals.0"),
             tr("component.field.ray_signals.1"),
         ],

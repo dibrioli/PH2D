@@ -77,6 +77,19 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
         ),
         (ids::INSP_RAY_ALL_HITS, "panel.inspector.ray.all_hits_tip"),
         (ids::INSP_RAY_SEE_TAG, "panel.inspector.ray.see_tag_tip"),
+        (ids::INSP_RAY_UP_TO, "panel.inspector.ray.up_to_tip"),
+        (ids::INSP_RAY_UP_TO_PICK, "panel.inspector.ray.up_to_pick_tip"),
+        // U2: toda linha do cartão tem dica (regra do dono para os cartões novos).
+        (ids::INSP_RAY_REACH, "panel.inspector.ray.reach_tip"),
+        (ids::INSP_RAY_LAYER, "panel.inspector.ray.layer_tip"),
+        (ids::INSP_RAY_ON_ENTER, "panel.inspector.ray.on_enter_tip"),
+        (ids::INSP_RAY_ON_EXIT, "panel.inspector.ray.on_exit_tip"),
+        (
+            ids::INSP_RAY_LAYER_RENAME,
+            "panel.inspector.ray.rename_layers_tip",
+        ),
+        (ids::INSP_RAY_FOLD_FILTER, "panel.inspector.ray.filter_tip"),
+        (ids::INSP_RAY_FOLD_SIGNALS, "panel.inspector.ray.signals_tip"),
     ] {
         store.set_tooltip(id, ph2d_i18n::tr(dica));
     }
@@ -89,6 +102,7 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
             ids::INSP_RAY_HIT_TRIGGERS,
             ids::INSP_RAY_STARTS_INSIDE,
             ids::INSP_RAY_ALL_HITS,
+            ids::INSP_RAY_UP_TO_PICK,
         ],
     );
     crate::populate::register_button_ids(store, &ids::INSP_RAY_ONLY_SEE);
@@ -143,7 +157,11 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
     );
     // ⚠️ **Os dois NOMES são TEXTO**, e vazio = calado — a regra do `SignalOnHit`, palavra por
     // palavra. Registá-los é o que os torna clicáveis; sem isto eles pintam e morrem sob o dedo.
-    for id in [ids::INSP_RAY_ON_ENTER, ids::INSP_RAY_ON_EXIT] {
+    for id in [
+        ids::INSP_RAY_ON_ENTER,
+        ids::INSP_RAY_ON_EXIT,
+        ids::INSP_RAY_UP_TO,
+    ] {
         store.register(
             id,
             InteractiveState::TextInput {

@@ -20,6 +20,7 @@ impl crate::App {
             flip,
             component_registry,
             physics,
+            tags,
             ..
         } = FrameGfx::of(gfx);
         let feito = ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
@@ -27,11 +28,8 @@ impl crate::App {
             crate::vec_text_ride::recook(sim, vec_scene, &self.vec.entities, id, e);
         }
         ph2d_app_components::canais_objeto::aplicar(sim, &mut self.preview_drive);
-        ph2d_app_components::canais_componente::aplicar(
-            sim,
-            component_registry,
-            &mut self.preview_drive,
-        );
+        let pd = &mut self.preview_drive;
+        ph2d_app_components::canais_componente::aplicar(sim, component_registry, pd, tags);
         let dd = (&mut self.preview_drive, &self.timeline.doc);
         let st = &mut self.physics;
         ph2d_app_physics::aplicar_canais(sim, component_registry, physics, st, dd);

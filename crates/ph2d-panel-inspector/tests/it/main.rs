@@ -120,6 +120,7 @@ mod seam_projectile;
 mod seam_properties;
 mod seam_px_m;
 mod seam_ray;
+mod seam_ray_auditoria;
 mod seam_render_source;
 mod seam_shake;
 mod seam_texture_slot;

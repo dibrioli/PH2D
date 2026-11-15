@@ -26,10 +26,20 @@ pub struct InspectorRayInfo {
     pub ignore_body: bool,
     /// «Ignore my other parts» — os outros corpos da família do dono.
     pub ignore_parts: bool,
+    /// «Ignore up to»: o NOME do topo da família guardado (`""` = automático).
+    pub ignore_up_to: String,
+    /// O topo guardado já não existe ou não está ACIMA do raio (o cartão queixa-se).
+    pub ignore_up_to_off: bool,
+    /// O nome do topo AUTOMÁTICO (o personagem, senão o corpo mais alto) — o fantasma da caixa.
+    pub ignore_up_to_auto: String,
+    /// O conta-gotas do «Ignore up to» está armado para ESTE raio.
+    pub up_to_pick_armed: bool,
     /// «Only see» — o modo do filtro de tags.
     pub only_see: RaySee,
     /// A tag do filtro (`TagId.0`; `0` = por escolher).
     pub see_tag: u64,
+    /// A `see_tag` ainda existe na árvore do projecto (`true` com `0`).
+    pub see_tag_exists: bool,
     /// «Walls block» — a primeira matéria tapa quem não passa no filtro.
     pub walls_block: bool,
     /// «Hit triggers».
@@ -63,6 +73,18 @@ impl InspectorRayInfo {
         if self.reach <= 0.0 {
             return Some(RayQueixa::SemAlcance);
         }
+        // A tag vem antes da camada: com a tag apagada ninguém passa, e a culpa não é da camada (C2).
+        if self.only_see != RaySee::Everything {
+            if self.see_tag == 0 {
+                return Some(RayQueixa::EscolhaATag);
+            }
+            if !self.see_tag_exists {
+                return Some(RayQueixa::TagApagada);
+            }
+        }
+        if self.ignore_parts && self.ignore_up_to_off {
+            return Some(RayQueixa::TopoFora);
+        }
         if self.layer_empty {
             return Some(RayQueixa::CamadaVazia);
         }
@@ -82,6 +104,12 @@ impl InspectorRayInfo {
 pub enum RayQueixa {
     /// O alcance é zero: ele nasce e morre no mesmo ponto.
     SemAlcance,
+    /// «Only see»/«Except» sem tag escolhida: o filtro não filtra ninguém.
+    EscolhaATag,
+    /// A tag do filtro foi apagada do projecto.
+    TagApagada,
+    /// O «Ignore up to» nomeia um objecto que já não existe ou não está acima do raio.
+    TopoFora,
     /// Nenhum objeto com forma numa camada que esta vê: ele nunca verá nada.
     CamadaVazia,
     /// Ele vê, e não conta a ninguém.
@@ -115,6 +143,10 @@ pub enum RayFieldEdit {
     OnlySee(RaySee),
     /// O `TagId.0` escolhido (`0` = nenhum).
     SeeTag(u64),
+    /// «Ignore up to»: o NOME do topo (`""` = automático), resolvido pela cadeia do raio.
+    IgnoreUpTo(String),
+    /// Arma (`true`) ou desarma o conta-gotas do «Ignore up to» — sessão, sem desfazer.
+    PickUpTo(bool),
     WallsBlock(bool),
     HitTriggers(bool),
     StartsInside(bool),
@@ -137,8 +169,13 @@ mod tests {
             turns_with_facing: false,
             ignore_body: true,
             ignore_parts: true,
+            ignore_up_to: String::new(),
+            ignore_up_to_off: false,
+            ignore_up_to_auto: String::new(),
+            up_to_pick_armed: false,
             only_see: RaySee::Everything,
             see_tag: 0,
+            see_tag_exists: true,
             walls_block: true,
             hit_triggers: false,
             starts_inside: false,
@@ -167,6 +204,8 @@ mod tests {
             RayFieldEdit::IgnoreParts(true),
             RayFieldEdit::OnlySee(RaySee::Everything),
             RayFieldEdit::SeeTag(0),
+            RayFieldEdit::IgnoreUpTo(String::new()),
+            RayFieldEdit::PickUpTo(false),
             RayFieldEdit::WallsBlock(true),
             RayFieldEdit::HitTriggers(false),
             RayFieldEdit::StartsInside(false),
@@ -176,9 +215,9 @@ mod tests {
         ];
         assert_eq!(
             variantes.len(),
-            14,
-            "o `RaySensor` tem DOZE campos e o `RaySignals` DOIS — se um nasceu, ele precisa de \
-             uma variante aqui e de uma row no painel"
+            16,
+            "o `RaySensor` tem TREZE campos e o `RaySignals` DOIS (mais o conta-gotas) — se um \
+             nasceu, ele precisa de uma variante aqui e de uma row no painel"
         );
     }
 
@@ -224,5 +263,27 @@ mod tests {
         let mut cego = base();
         cego.sees = String::new();
         assert_eq!(cego.queixa(), Some(RayQueixa::NaoVeNada));
+
+        // C2: a tag por escolher e a tag apagada vêm ANTES da camada (com ela apagada ninguém passa).
+        let mut sem_tag = base();
+        sem_tag.only_see = RaySee::OnlyTag;
+        sem_tag.layer_empty = true;
+        assert_eq!(sem_tag.queixa(), Some(RayQueixa::EscolhaATag));
+        let mut apagada = sem_tag.clone();
+        apagada.see_tag = 7;
+        apagada.see_tag_exists = false;
+        assert_eq!(apagada.queixa(), Some(RayQueixa::TagApagada));
+        let mut tudo = apagada.clone();
+        tudo.only_see = RaySee::Everything;
+        tudo.layer_empty = false;
+        assert_eq!(tudo.queixa(), None, "«Sees everything» não olha para a tag");
+
+        // C8: o topo fora da cadeia só se queixa com «Ignore my other parts» ligado.
+        let mut fora = base();
+        fora.ignore_up_to = "Truck".into();
+        fora.ignore_up_to_off = true;
+        assert_eq!(fora.queixa(), Some(RayQueixa::TopoFora));
+        fora.ignore_parts = false;
+        assert_eq!(fora.queixa(), None);
     }
 }

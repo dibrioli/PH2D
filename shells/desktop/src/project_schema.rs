@@ -498,7 +498,8 @@
 ///
 /// `RaySensor { origin, dir, reach, layer }` → `{ angle, reach, layer, turns_with_facing }`: a origem é a posição do
 /// objeto «Ray Sensor» (filho, como a forma do ADR-0199), o rumo é um ângulo em graus e a opção espelha com o lado. No
-/// MESMO degrau (versão C, dono 15/11), no FIM: `ignore_body`, `ignore_parts`, `only_see: SeeFilter`, `walls_block`,
+/// MESMO degrau (versão C, dono 15/11), no FIM: `ignore_body`, `ignore_parts`, `ignore_up_to: u64` (o `StableId` do
+/// topo da família, `0` = automático; C8 da auditoria), `only_see: SeeFilter`, `see_tag: u64`, `walls_block`,
 /// `hit_triggers`, `starts_inside`, `all_hits`. SEM leitura dos anteriores (§0.11).
 /// Gates: `um_raio_filho_exclui_o_corpo_dono_e_segue_a_pose_viva` e os `ray_sensor::versao_c_*`. ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 244;

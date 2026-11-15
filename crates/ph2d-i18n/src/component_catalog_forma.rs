@@ -13,7 +13,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.shape_look.5" => "Dashed",
         "component.field.shape_look.6" => "Dash and Gap",
         "component.field.shape_look.7" => "Own Stroke",
-        // O filtro do Ray Sensor (GEF 07, versão C): os canais 4..11, pelo mesmo tecto.
+        // O filtro do Ray Sensor (GEF 07, versão C): os canais 4..12, pelo mesmo tecto.
         "component.field.ray_sensor.4" => "Ignore my body",
         "component.field.ray_sensor.5" => "Ignore my other parts",
         "component.field.ray_sensor.6" => "Only see",
@@ -22,6 +22,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.ray_sensor.9" => "Hit triggers",
         "component.field.ray_sensor.10" => "Starts inside",
         "component.field.ray_sensor.11" => "See all hits",
+        "component.field.ray_sensor.12" => "Ignore up to",
         _ => return None,
     })
 }

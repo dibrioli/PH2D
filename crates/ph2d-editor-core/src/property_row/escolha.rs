@@ -155,6 +155,9 @@ pub fn paint_choice_row<'a>(
 ) -> f32 {
     let rotulo = label.into();
     let label = rotulo.texto;
+    // Os segmentos SÃO o campo: registá-los sob o rótulo do catálogo antes de qualquer porta (U1).
+    let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
+    crate::widget::key_mark::regista_rotulo(&ids, rotulo);
     if let Some((ink, rows)) = super::cartao::card_rows() {
         return (rows.choices)(
             scene,
@@ -203,7 +206,6 @@ pub fn paint_choice_row<'a>(
         // O losango da paleta senta na coluna do decorator da linha do CABEÇALHO — só quando o
         // campo tem canal: a paleta nunca teve o ponto, e um ponto novo na ponta do nome dela
         // mudaria a linha de quem não anima nada.
-        let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
         let tem_marca = crate::widget::key_mark::key_mark_of(&ids).is_some();
         // Sem nome E sem losango não há cabeçalho: a fila continua a de cima (o 2 + 2 do
         // Dithering do Pixel). Com losango o cabeçalho fica, mesmo sem nome — é a linha DELE (a

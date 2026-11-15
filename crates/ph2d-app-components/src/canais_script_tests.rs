@@ -3,8 +3,12 @@
 
 use super::*;
 use crate::component_registry_for_tests::registo;
+use ph2d_ecs::scene::property_ref::RefNames;
 use ph2d_script::props::PropHint;
 use ph2d_script::{ScriptLibrary, ScriptValue as V};
+
+/// Sem árvore de tags: os campos destes gates não guardam referências.
+const SEM: RefNames<'static> = RefNames { tags: None };
 
 fn decl(name: &str, default: V) -> PropDecl {
     PropDecl {
@@ -87,15 +91,19 @@ fn o_corte_de_script_so_aponta_o_que_a_biblioteca_tem() {
     let textos = TextosDosCanais::default();
     let fonte = |sim: &SimWorld| sim.world().get::<LuauScript>(e).unwrap().source.clone();
     assert!(
-        crate::canais_componente::escrever(&reg, sim.world_mut(), e, k, 9.0, &textos).is_none()
+        crate::canais_componente::escrever(&reg, sim.world_mut(), e, k, 9.0, &textos, SEM)
+            .is_none()
     );
     assert_eq!(fonte(&sim), ScriptSource::Library(id));
     assert!(
-        crate::canais_componente::escrever(&reg, sim.world_mut(), e, k, 0.0, &textos).is_some()
+        crate::canais_componente::escrever(&reg, sim.world_mut(), e, k, 0.0, &textos, SEM)
+            .is_some()
     );
     assert_eq!(fonte(&sim), ScriptSource::None);
     #[expect(clippy::cast_precision_loss, reason = "um id pequeno")]
     let x = id.0 as f32;
-    assert!(crate::canais_componente::escrever(&reg, sim.world_mut(), e, k, x, &textos).is_some());
+    assert!(
+        crate::canais_componente::escrever(&reg, sim.world_mut(), e, k, x, &textos, SEM).is_some()
+    );
     assert_eq!(fonte(&sim), ScriptSource::Library(id));
 }

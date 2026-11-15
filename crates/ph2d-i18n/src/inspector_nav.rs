@@ -27,7 +27,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.target_tag" => "Tag",
         "panel.inspector.nav.target_patrol" => "Patrol",
         "panel.inspector.nav.shape_name_u" => "shape name\u{2026}",
-        "panel.inspector.nav.pick_a_tag_u" => "pick a tag\u{2026}",
+        "panel.inspector.nav.pick_a_tag_u" => "Pick a tag\u{2026}",
         "panel.inspector.nav.that_tag_was_deleted" => {
             "That tag was deleted \u{2014} it chases nobody."
         }

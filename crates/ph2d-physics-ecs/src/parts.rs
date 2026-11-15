@@ -32,7 +32,7 @@
 //! formas de uma peça dentro de uma pasta de organização não pode desligá-las do
 //! corpo. O walk pula todo ancestral que não seja corpo.
 
-use ph2d_ecs::{ChildOf, Entity, World};
+use ph2d_ecs::{ChildOf, Entity, StableId, World};
 
 use crate::{Collider, RigidBody};
 
@@ -53,27 +53,41 @@ pub fn owner_body(world: &World, e: Entity) -> Option<Entity> {
     None
 }
 
-/// ⭐ **A RAIZ da família de corpos de `e`** (Ray Sensor «Ignore my other parts», dono 15/11).
+/// ⭐ **O TOPO da família de corpos de `e`** (Ray Sensor «Ignore my other parts», dono 15/11, C8).
 ///
-/// **A família** de um objecto é o conjunto dos objectos com [`RigidBody`] que partilham a mesma
-/// raiz, e a **raiz** é o corpo MAIS ALTO na cadeia de ancestrais de `e` (contando o próprio `e`),
-/// atravessando quem não tem corpo (pastas, a forma, o raio). Exemplos: o herói com uma espada filha
-/// com corpo próprio — a raiz das duas é o herói; um raio debaixo da espada — a raiz dele também é o
-/// herói, não a espada. Um corpo sem corpo acima é a raiz de si mesmo; `None` = nenhum corpo na
-/// cadeia (um olho solto não tem família).
+/// A família é a SUBÁRVORE do topo: todo corpo que é o topo ou desce dele ([`na_familia`]). O topo:
 ///
+/// 1. o objecto de `StableId` `ate` (`0` = automático), quando ele é `e` ou um antepassado de `e`
+///    (o campo «Ignore up to»); fora da cadeia, não conta;
+/// 2. senão, o primeiro corpo de PERSONAGEM na cadeia (`PlatformPlayer`/`TopDownPlayer`): o herói
+///    montado num veículo ignora a espada, não o veículo;
+/// 3. senão, o corpo MAIS ALTO da cadeia (contando `e`), atravessando quem não tem corpo.
+///
+/// `None` = nenhum corpo na cadeia e nenhum `ate` válido (um olho solto não tem família).
 /// ⚠️ Uma junta entre dois corpos irmãos NÃO os faz da mesma família: a família é a ÁRVORE.
 #[must_use]
-pub fn familia_raiz(world: &World, e: Entity) -> Option<Entity> {
-    let mut raiz = world.get::<RigidBody>(e).is_some().then_some(e);
-    let mut cur = world.get::<ChildOf>(e).map(ChildOf::parent);
-    while let Some(p) = cur {
-        if world.get::<RigidBody>(p).is_some() {
-            raiz = Some(p);
-        }
-        cur = world.get::<ChildOf>(p).map(ChildOf::parent);
+pub fn topo_da_familia(world: &World, e: Entity, ate: u64) -> Option<Entity> {
+    let cadeia = || {
+        std::iter::successors(Some(e), |&c| world.get::<ChildOf>(c).map(ChildOf::parent))
+    };
+    if ate != 0
+        && let Some(a) = cadeia().find(|&c| world.get::<StableId>(c).is_some_and(|s| s.0 == ate))
+    {
+        return Some(a);
     }
-    raiz
+    let personagem = |c: Entity| {
+        world.get::<crate::PlatformPlayer>(c).is_some()
+            || world.get::<crate::TopDownPlayer>(c).is_some()
+    };
+    let corpos = || cadeia().filter(|&c| world.get::<RigidBody>(c).is_some());
+    corpos().find(|&c| personagem(c)).or_else(|| corpos().last())
+}
+
+/// `b` pertence à família de topo `topo` (é ele ou desce dele)?
+#[must_use]
+pub fn na_familia(world: &World, topo: Entity, b: Entity) -> bool {
+    std::iter::successors(Some(b), |&c| world.get::<ChildOf>(c).map(ChildOf::parent))
+        .any(|c| c == topo)
 }
 
 /// `e` é um corpo ou mora debaixo de um (opção B: a forma filha tem corpo pelo pai).

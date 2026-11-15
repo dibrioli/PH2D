@@ -119,10 +119,14 @@ impl PhysicsBridge {
                 let a = p.rotation.angle();
                 let (s, co) = (libm::sinf(a), libm::cosf(a));
                 // O lado do personagem dono (a mesma fonte que a física usa), só com a opção ligada.
+                // O lado é do PERSONAGEM da cadeia, não do corpo dono: um raio debaixo da espada
+                // (corpo próprio) vira com o herói (auditoria C5).
                 let lado = if r.turns_with_facing {
-                    self.player_state
-                        .get(&c)
-                        .map_or(1.0, |st| st.facing.signum())
+                    std::iter::successors(Some(c), |&x| {
+                        world.get::<ph2d_ecs::ChildOf>(x).map(ph2d_ecs::ChildOf::parent)
+                    })
+                    .find_map(|x| self.player_state.get(&x))
+                    .map_or(1.0, |st| st.facing.signum())
                 } else {
                     1.0
                 };
@@ -168,9 +172,10 @@ impl PhysicsBridge {
     ///
     /// | opção | onde |
     /// |---|---|
-    /// | `ignore_parts` | o predicado: o corpo da forma tem a mesma [`familia_raiz`](crate::familia_raiz) e não é o dono |
+    /// | `ignore_parts` | o predicado: o corpo da forma está na família de [`topo_da_familia`](crate::topo_da_familia) e não é o dono |
     /// | `only_see` sem `walls_block` | o predicado: quem não passa é transparente |
-    /// | `only_see` com `walls_block` | DEPOIS: o primeiro acerto só conta se passa (a parede tapa) |
+    /// | `only_see` com `walls_block` | DEPOIS: o primeiro acerto só conta se passa (a parede tapa); a marca pára nela SEM acerto |
+/// | origem DENTRO de uma forma | ignorada (Godot), salvo uma parede que tapa e não é do dono: ela tapa a `0` (C1) |
     /// | `hit_triggers` / `starts_inside` | o [`RayQuery`](ph2d_physics::RayQuery) |
     /// | `all_hits` | `cast_ray_query_all`; com `walls_block` a lista pára no primeiro que não passa |
     ///
@@ -181,9 +186,11 @@ impl PhysicsBridge {
         by_handle: &BTreeMap<(u32, u32), Entity>,
     ) {
         let mut agora: BTreeMap<Entity, RayHit> = BTreeMap::new();
-        // Os raios `all_hits` deste tique — vazio (sem alocar) no caminho comum.
-        let mut todos: Vec<Entity> = Vec::new();
+        // O que cada raio via no tique anterior. Cada sensor tira a SUA entrada; o que sobra no fim é
+        // de quem sumiu (ou não lançou) e sai. ⚠️ Uma lista `all_hits` manda sobre o `ray_hits` do
+        // mesmo raio: é o que deixa trocar «See all hits» a meio sem inventar arestas (auditoria C4).
         let mut velho_todos = std::mem::take(&mut self.ray_hits_all);
+        let mut velho = std::mem::take(&mut self.ray_hits);
         // ⚠️ **A lista descreve UM tique, logo ela é reconstruída e não acumulada** — a frase que o
         // `player_probes` já escreve. A capacidade do `Vec` fica.
         self.ray_marks.clear();
@@ -198,13 +205,15 @@ impl PhysicsBridge {
                 let Some(raio) = self.raio_em_mundo(world, e, &r) else {
                     continue;
                 };
+                let antes_todos = velho_todos.remove(&e);
+                let antes_um = velho.remove(&e);
                 let dono = if self.bodies.contains_key(&e) {
                     Some(e)
                 } else {
                     crate::owner_body(world, e)
                 };
-                let raiz = if r.ignore_parts {
-                    crate::familia_raiz(world, e)
+                let topo = if r.ignore_parts {
+                    crate::topo_da_familia(world, e, r.ignore_up_to)
                 } else {
                     None
                 };
@@ -219,13 +228,16 @@ impl PhysicsBridge {
                         b.and_then(|b| world.get::<ph2d_ecs::tags::Tags>(b)),
                     )
                 };
-                let aceita = |c: Option<RigidBodyHandle>| {
+                let aceita = |c: Option<RigidBodyHandle>, dentro: bool| {
                     let b = entidade(c);
-                    if let (Some(raiz), Some(b)) = (raiz, b)
+                    if let (Some(topo), Some(b)) = (topo, b)
                         && Some(b) != dono
-                        && crate::familia_raiz(world, b) == Some(raiz)
+                        && crate::na_familia(world, topo, b)
                     {
                         return false;
+                    }
+                    if dentro {
+                        return r.walls_block && b != dono && !passa(b);
                     }
                     r.walls_block || passa(b)
                 };
@@ -242,10 +254,20 @@ impl PhysicsBridge {
                     point: h.point,
                     normal: h.normal,
                 };
+                // O primeiro acerto que o raio VÊ (o `hit` da marca) e onde a linha acaba: no alcance,
+                // ou na parede que tapa — que não é um acerto (auditoria C3).
                 let parou: Option<f32>;
-                // Com «See all hits» a linha vai até ao BLOQUEIO (ou ao alcance inteiro), com um tique em cada acerto.
                 let mut fim = raio.reach;
                 let mut mais = crate::MaisAcertos::default();
+                let tinha_todos = antes_todos.is_some();
+                let mut lista = antes_todos.unwrap_or_default();
+                let anterior_todos = std::mem::take(&mut lista);
+                let anterior: &[RayHit] = if tinha_todos {
+                    &anterior_todos
+                } else {
+                    antes_um.as_slice()
+                };
+                let um: Option<RayHit>;
                 if r.all_hits {
                     self.world.cast_ray_query_all(
                         raio.origem,
@@ -255,14 +277,10 @@ impl PhysicsBridge {
                         &aceita,
                         &mut self.ray_scratch,
                     );
-                    let mut lista = velho_todos.remove(&e).unwrap_or_default();
-                    let anterior = std::mem::take(&mut lista);
-                    let mut bloqueio = None;
                     for h in &self.ray_scratch {
                         let b = ent_de(h);
                         if !passa(b) {
-                            // Só chega aqui com `walls_block` (sem ele o predicado já o tirou).
-                            bloqueio = Some(h.distance);
+                            fim = h.distance;
                             break;
                         }
                         if let Some(b) = b
@@ -271,28 +289,11 @@ impl PhysicsBridge {
                             lista.push(para_ray_hit(b, h));
                         }
                     }
-                    parou = lista.first().map(|h| h.distance);
-                    fim = bloqueio.unwrap_or(raio.reach);
                     for (slot, h) in mais.d.iter_mut().zip(lista.iter().skip(1)) {
                         *slot = h.distance;
                         mais.n += 1;
                     }
-                    // As ARESTAS por objecto: entra quem passa a estar na lista, sai quem deixa.
-                    for h in &lista {
-                        if !anterior.iter().any(|x| x.body == h.body) {
-                            self.ray_enters.push((e, h.body));
-                        }
-                    }
-                    for h in &anterior {
-                        if !lista.iter().any(|x| x.body == h.body) {
-                            self.ray_exits.push((e, h.body));
-                        }
-                    }
-                    if let Some(h) = lista.first() {
-                        agora.insert(e, *h);
-                    }
-                    self.ray_hits_all.insert(e, lista);
-                    todos.push(e);
+                    um = None;
                 } else {
                     let achou = self.world.cast_ray_query(
                         raio.origem,
@@ -301,15 +302,32 @@ impl PhysicsBridge {
                         consulta,
                         &aceita,
                     );
-                    parou = achou.map(|h| h.distance);
-                    if let Some(h) = achou {
-                        // ⭐ Com `walls_block` a primeira matéria TAPA: só se vê se ela passa.
-                        if let Some(alvo) = ent_de(&h).filter(|&b| passa(Some(b))) {
-                            agora.insert(e, para_ray_hit(alvo, &h));
+                    um = achou.and_then(|h| match ent_de(&h) {
+                        Some(alvo) if passa(Some(alvo)) => Some(para_ray_hit(alvo, &h)),
+                        _ => {
+                            fim = h.distance;
+                            None
                         }
+                    });
+                }
+                let vistos: &[RayHit] = if r.all_hits { &lista } else { um.as_slice() };
+                parou = vistos.first().map(|h| h.distance);
+                for h in anterior {
+                    if !vistos.iter().any(|x| x.body == h.body) {
+                        self.ray_exits.push((e, h.body));
                     }
                 }
-                // ⭐ **A marca sai do CAST, acerte ele ou não** — ver o cabeçalho.
+                for h in vistos {
+                    if !anterior.iter().any(|x| x.body == h.body) {
+                        self.ray_enters.push((e, h.body));
+                    }
+                }
+                if let Some(h) = vistos.first() {
+                    agora.insert(e, *h);
+                }
+                if r.all_hits {
+                    self.ray_hits_all.insert(e, lista);
+                }
                 self.ray_marks.push(
                     ProbeMark::ray(
                         ProbeKind::Sensor,
@@ -317,7 +335,6 @@ impl PhysicsBridge {
                         raio.dir,
                         fim,
                         parou,
-                        // ⛔ **Sem `skin`, e a ausência é a lei:** a origem é **autorada**.
                         0.0,
                     )
                     .com_mais_acertos(mais.como_lista())
@@ -325,32 +342,15 @@ impl PhysicsBridge {
                 );
             }
         }
-        // Um raio que deixou de ser `all_hits` (ou de existir) solta o que via.
+        // Quem sumiu (ou não lançou neste tique) deixa de ver tudo o que via.
         for (e, lista) in &velho_todos {
             for h in lista {
                 self.ray_exits.push((*e, h.body));
             }
         }
-        // As ARESTAS dos raios de um só alvo, contra o que cada um via no tique anterior.
-        //
-        // ⚠️ **Trocar de alvo é uma SAÍDA e uma ENTRADA**, não um silêncio.
-        let fora = |e: &Entity| todos.contains(e) || velho_todos.contains_key(e);
-        for (&e, h) in &agora {
-            if fora(&e) {
-                continue;
-            }
-            match self.ray_hits.get(&e) {
-                Some(anterior) if anterior.body == h.body => {}
-                Some(anterior) => {
-                    self.ray_exits.push((e, anterior.body));
-                    self.ray_enters.push((e, h.body));
-                }
-                None => self.ray_enters.push((e, h.body)),
-            }
-        }
-        for (&e, anterior) in &self.ray_hits {
-            if !agora.contains_key(&e) && !fora(&e) {
-                self.ray_exits.push((e, anterior.body));
+        for (e, h) in &velho {
+            if !velho_todos.contains_key(e) {
+                self.ray_exits.push((*e, h.body));
             }
         }
         self.ray_hits = agora;

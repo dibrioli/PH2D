@@ -2,6 +2,7 @@
 //! real (dreno, curva, gesto pela porta do Inspector, publicar, Auto Key armado) sobre um tocador de verdade.
 
 use super::*;
+use ph2d_app_components::canais_componente as canais;
 use ph2d_app_sprite_anim::{inspector::apply_anim_edit, previa, tick};
 use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
@@ -64,14 +65,14 @@ fn gesto(c: &mut Cena, edits: &[Ed]) {
         &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     let mut drive = ph2d_preview_drive::PreviewDrive::default();
-    let _ = ph2d_app_components::canais_componente::aplicar(&mut c.sim, &c.reg, &mut drive);
+    let _ = canais::aplicar(&mut c.sim, &c.reg, &mut drive, &Default::default());
     for edit in edits {
         let q = EditorCommandQueue::new();
         previa::nota_o_gesto(c.sim.world_mut(), c.e, edit);
         let _ = apply_anim_edit(&c.sim, c.e, edit, &q, &c.reg);
         apply_editor_commands(c.sim.world_mut(), &q, &c.reg).expect("o commit aplica");
     }
-    ph2d_app_components::canais_componente::publicar(&mut c.sim, &c.reg, &[c.e]);
+    canais::publicar(&mut c.sim, &c.reg, &[c.e], &Default::default());
     let samples = vec![(c.e, sample_pose(c.sim.world(), c.e))];
     c.ak.campos = samples
         .iter()

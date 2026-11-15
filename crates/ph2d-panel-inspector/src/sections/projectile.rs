@@ -230,8 +230,7 @@ fn ricochete(p: &mut Pj<'_>, y: f32) -> f32 {
 
 /// O campo Target com o conta-gotas DENTRO da ponta direita da caixa (o molde do Target da câmera, GEF 20 C2).
 fn alvo(p: &mut Pj<'_>, y: f32) -> f32 {
-    let armado = p.info.target_pick_armed;
-    let fim = super::anim_rows::text_row(
+    super::conta_gotas_row::linha(
         p.scene,
         p.text,
         p.theme,
@@ -240,39 +239,15 @@ fn alvo(p: &mut Pj<'_>, y: f32) -> f32 {
         p.x,
         p.w,
         y,
-        TextKey::new("component.field.projectile_motion.9"),
-        ids::INSP_PJ_HOMING_TARGET,
-        TextInput::new(ids::INSP_PJ_HOMING_TARGET, "")
-            .placeholder(tr("panel.inspector.projectile.target_object_name_u")),
+        (
+            TextKey::new("component.field.projectile_motion.9"),
+            ids::INSP_PJ_HOMING_TARGET,
+            TextInput::new(ids::INSP_PJ_HOMING_TARGET, "")
+                .placeholder(tr("panel.inspector.projectile.target_object_name_u")),
+        ),
+        (ids::INSP_PJ_TARGET_PICK, p.info.target_pick_armed),
         p.seccao,
-    );
-    let caixa = ph2d_editor_core::property_row::caixa_da_linha_pintada(p.x, p.w, y, fim, p.seccao);
-    let lado = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        ph2d_card_stack::metrics::GRID_CELL
-    } else {
-        (ROW_H_PX * 0.82).min(caixa.h) // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da câmera)
-    };
-    let inset = (caixa.h - lado) * 0.5;
-    let gotas = Rect::new(
-        caixa.x + caixa.w - lado - inset,
-        caixa.y + inset,
-        lado,
-        lado,
-    );
-    paint_icon_button(
-        gotas,
-        IconGlyph::Builtin(IconId::Eyedropper),
-        IconButtonStyle::Compact,
-        if armado {
-            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
-        } else {
-            p.store.button_visual(ids::INSP_PJ_TARGET_PICK)
-        },
-        p.scene,
-        p.theme,
-    );
-    p.hit.register(ids::INSP_PJ_TARGET_PICK, gotas);
-    fim
+    )
 }
 
 /// A caixa Homing e, ligada, Target (com o aviso do nome que ninguém tem) e Pull.

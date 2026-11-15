@@ -219,6 +219,17 @@ pub fn paint_decorator_campo(
     if !rotulo.coluna {
         return None;
     }
+    regista_rotulo(fields, rotulo);
+    paint_decorator_for(scene, theme, r, fields)
+}
+
+/// Só o REGISTO de [`paint_decorator_campo`]: cada campo sob o rótulo do catálogo, sem pintar. É o que
+/// uma linha cujo losango é pintado por OUTRA porta (a célula do cartão, a paleta) chama — sem ele o
+/// losango nunca nasce (auditoria GEF 07 U1: a marca depende de [`rotulos_pintados`], que só nascia aqui).
+pub fn regista_rotulo(fields: &[NodeId], rotulo: Rotulo<'_>) {
+    if !rotulo.coluna {
+        return;
+    }
     let de = |k: &'static str| Some(k).filter(|k| k.starts_with(ROTULO_DO_CATALOGO));
     ROTULOS.with(|m| {
         let mut m = m.borrow_mut();
@@ -231,7 +242,6 @@ pub fn paint_decorator_campo(
             m.extend(pares.filter_map(|(&f, k)| Some((f, de(k.key())?))));
         }
     });
-    paint_decorator_for(scene, theme, r, fields)
 }
 
 /// Os campos pintados desde o último [`set_key_marks`] com o rótulo do catálogo de cada um.

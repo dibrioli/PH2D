@@ -21,7 +21,7 @@ const VIEWPORT: Rect = Rect {
     h: 3200.0,
 };
 
-fn raio() -> InspectorRayInfo {
+pub(crate) fn raio() -> InspectorRayInfo {
     InspectorRayInfo {
         entity_bits: 0x0BAD_CAFE,
         angle: 0.0,
@@ -31,8 +31,13 @@ fn raio() -> InspectorRayInfo {
         turns_with_facing: false,
         ignore_body: true,
         ignore_parts: true,
+        ignore_up_to: String::new(),
+        ignore_up_to_off: false,
+        ignore_up_to_auto: "Hero".into(),
+        up_to_pick_armed: false,
         only_see: RaySee::Everything,
         see_tag: 0,
+        see_tag_exists: true,
         walls_block: true,
         hit_triggers: false,
         starts_inside: false,
@@ -47,7 +52,7 @@ fn raio() -> InspectorRayInfo {
     }
 }
 
-fn nos_dois_modos(f: impl Fn(bool)) {
+pub(crate) fn nos_dois_modos(f: impl Fn(bool)) {
     for on in [true, false] {
         set_cards_on(on);
         f(on);
@@ -55,7 +60,7 @@ fn nos_dois_modos(f: impl Fn(bool)) {
     set_cards_on(false);
 }
 
-fn pinta(h: &mut MockPanelHost, st: &mut InspectorState, cartoes: bool) -> Vec<(NodeId, Rect)> {
+pub(crate) fn pinta(h: &mut MockPanelHost, st: &mut InspectorState, cartoes: bool) -> Vec<(NodeId, Rect)> {
     if cartoes {
         crate::o_cartao_da_fisica::pinta(h, st)
     } else {
@@ -73,7 +78,7 @@ fn assente(
 }
 
 /// Como [`assente`], e com o grupo «Filter» aberto quando `filtro`.
-fn assente_com(
+pub(crate) fn assente_com(
     info: &InspectorRayInfo,
     cartoes: bool,
     filtro: bool,
@@ -90,7 +95,7 @@ fn assente_com(
     (h, st, r)
 }
 
-fn edicoes(a: Vec<EditorAction>) -> Vec<RayFieldEdit> {
+pub(crate) fn edicoes(a: Vec<EditorAction>) -> Vec<RayFieldEdit> {
     a.into_iter()
         .filter_map(|a| match a {
             EditorAction::InspectorComponentEdit {

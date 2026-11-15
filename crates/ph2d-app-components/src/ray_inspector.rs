@@ -59,6 +59,7 @@ pub fn build_ray_info(
     } else {
         Vec::new()
     };
+    let (ignore_up_to, ignore_up_to_off, ignore_up_to_auto) = crate::ray_topo::leitura(world, e, &r);
     Some(InspectorRayInfo {
         entity_bits: bits,
         angle: r.angle,
@@ -67,12 +68,17 @@ pub fn build_ray_info(
         turns_with_facing: r.turns_with_facing,
         ignore_body: r.ignore_body,
         ignore_parts: r.ignore_parts,
+        ignore_up_to,
+        ignore_up_to_off,
+        ignore_up_to_auto,
+        up_to_pick_armed: crate::ray_topo::armado(world, Some(bits)),
         only_see: match r.only_see {
             SeeFilter::Everything => RaySee::Everything,
             SeeFilter::OnlyTag => RaySee::OnlyTag,
             SeeFilter::ExceptTag => RaySee::ExceptTag,
         },
         see_tag: r.see_tag,
+        see_tag_exists: r.see_tag == 0 || tree.get(ph2d_tags::TagId(r.see_tag)).is_some(),
         walls_block: r.walls_block,
         hit_triggers: r.hit_triggers,
         starts_inside: r.starts_inside,
@@ -124,8 +130,20 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
             world.entity_mut(e).insert(s.unwrap_or_default());
             return true;
         }
+        RayFieldEdit::PickUpTo(arma) => {
+            crate::ray_topo::arma(world, arma.then_some(bits));
+            return false;
+        }
         _ => {}
     }
+    // O topo resolve-se ANTES do empréstimo mutável: ele varre a cadeia e a cena.
+    let topo = match edit {
+        RayFieldEdit::IgnoreUpTo(nome) => match crate::ray_topo::resolve(world, e, nome) {
+            Some(id) => Some(id),
+            None => return false,
+        },
+        _ => None,
+    };
     let Some(mut r) = world.get_mut::<RaySensor>(e) else {
         return false;
     };
@@ -146,12 +164,15 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
             }
         }
         RayFieldEdit::SeeTag(v) => r.see_tag = *v,
+        RayFieldEdit::IgnoreUpTo(_) => r.ignore_up_to = topo.unwrap_or(0),
         RayFieldEdit::WallsBlock(v) => r.walls_block = *v,
         RayFieldEdit::HitTriggers(v) => r.hit_triggers = *v,
         RayFieldEdit::StartsInside(v) => r.starts_inside = *v,
         RayFieldEdit::AllHits(v) => r.all_hits = *v,
         // Os dois nomes já saíram acima.
-        RayFieldEdit::OnEnter(_) | RayFieldEdit::OnExit(_) => return false,
+        RayFieldEdit::OnEnter(_) | RayFieldEdit::OnExit(_) | RayFieldEdit::PickUpTo(_) => {
+            return false;
+        }
     }
     sanitize_ray_sensor(&mut r);
     true
@@ -174,8 +195,8 @@ fn camada_vazia(world: &World, tree: &ph2d_tags::TagTree, raio: Entity, r: &RayS
         }
     };
     let meu = dono(raio);
-    let raiz = if r.ignore_parts {
-        ph2d_physics_ecs::familia_raiz(world, raio)
+    let topo = if r.ignore_parts {
+        ph2d_physics_ecs::topo_da_familia(world, raio, r.ignore_up_to)
     } else {
         None
     };
@@ -189,9 +210,10 @@ fn camada_vazia(world: &World, tree: &ph2d_tags::TagTree, raio: Entity, r: &RayS
         let ve = excecao || linha & (1u32 << u32::from(c.layer).min(31)) != 0;
         let corpo = dono(e);
         let excluido = (r.ignore_body && meu.is_some() && corpo == meu)
-            || (raiz.is_some()
-                && corpo != meu
-                && corpo.and_then(|b| ph2d_physics_ecs::familia_raiz(world, b)) == raiz);
+            || (corpo != meu
+                && topo
+                    .zip(corpo)
+                    .is_some_and(|(t, b)| ph2d_physics_ecs::na_familia(world, t, b)));
         let passa = r.only_see.passes(
             r.see_tag,
             tree,

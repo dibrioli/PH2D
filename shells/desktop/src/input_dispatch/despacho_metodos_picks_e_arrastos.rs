@@ -70,14 +70,14 @@ impl crate::App {
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
         let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
         let Some((joint, slot_b)) = self.joint_body_pick else {
-            // GEF 20 C2 / GEF 06 — o Eyedropper do Target (câmera ou bala): escolhe e desarma (o vazio também).
+            // GEF 20 C2 / GEF 06 — o Eyedropper do Target (câmera, bala ou raio): escolhe e desarma (o vazio também).
             if let Some(hero) = gfx.hero_screen.as_mut() {
                 if let Some(cam) = hero.view.camera_canvas.escolhe_alvo.take() {
                     ph2d_camera_frame::escolhe_alvo(gfx.sim.world(), &mut hero.bus, cam, &debaixo);
                     return;
                 }
-                use ph2d_app_components::projectile_inspector::escolher_alvo;
-                if escolher_alvo(gfx.sim.world_mut(), &mut hero.bus, &debaixo) {
+                use ph2d_app_components::conta_gotas::escolher;
+                if escolher(gfx.sim.world_mut(), &mut hero.bus, &debaixo) {
                     return;
                 }
             }

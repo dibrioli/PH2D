@@ -775,6 +775,16 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/conta_gotas_row.rs::linha",
+        Canal,
+        &[
+            "component.field.projectile_motion.9",
+            "component.field.ray_sensor.12",
+        ],
+        "a linha de texto com o conta-gotas: o rótulo do catálogo vem do chamador (o Target da bala, o «Ignore up to» do raio)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/ray_filtro.rs::linha_da_tag",
         Canal,
         &["component.field.ray_sensor.7"],

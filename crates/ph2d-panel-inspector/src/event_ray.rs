@@ -35,7 +35,6 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         if crate::sections::physics_colide::clique_da_fila(host, id, quem, a, true) {
             return true;
         }
-        // «Open in tab…»: a aba central na camada do RAIO (emenda 4).
         if id == crate::ids::INSP_RAY_TURNS {
             ph2d_editor_core::panel::seam_reset_button(host, id);
             push(
@@ -50,6 +49,13 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             push(host, bits, edit);
             return true;
         }
+        // O conta-gotas do «Ignore up to» (C8): arma ou desarma; o clique no palco é da app.
+        if id == crate::ids::INSP_RAY_UP_TO_PICK {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            push(host, bits, RayFieldEdit::PickUpTo(!info.up_to_pick_armed));
+            return true;
+        }
+        // «Open in tab…»: a aba central na camada do RAIO (emenda 4).
         if id == crate::ids::INSP_RAY_EDIT_MATRIX {
             ph2d_editor_core::panel::seam_reset_button(host, id);
             host.bus_mut()
@@ -64,6 +70,7 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         let edit = match id {
             crate::ids::INSP_RAY_ON_ENTER => RayFieldEdit::OnEnter(nome),
             crate::ids::INSP_RAY_ON_EXIT => RayFieldEdit::OnExit(nome),
+            crate::ids::INSP_RAY_UP_TO => RayFieldEdit::IgnoreUpTo(nome),
             _ => return false,
         };
         push(host, bits, edit);

@@ -202,6 +202,7 @@ mod pulley_route_floor;
 mod pulley_wheel_snap;
 mod ray_gizmo;
 mod ray_sensor;
+mod ray_sensor_auditoria;
 mod ray_sensor_versao_c;
 mod readback_order;
 mod resting_pose;

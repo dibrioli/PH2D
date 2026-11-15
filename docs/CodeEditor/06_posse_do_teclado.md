@@ -54,6 +54,10 @@ foco é do jogo**. **Tapar a cena LIMPA o foco** (e larga as teclas): destapar n
 - **O foco do jogo:** o Play (qualquer porta: botão, Espaço, F5, grafo, cena de smoke) dá-o ao jogo se a cena está à
   vista (Godot: o F5 dá o foco); um clique **na cena** dá-o; um clique **fora** (painel, barra, linha do tempo, aba)
   tira-o. Detectado por quadro (a subida do `is_playing`), nunca por porta — as portas do Play são cinco.
+  ⚠️ O **Espaço** não é o Play de cima: alterna só o relógio (`alterna_o_relogio`), sem pedir a corrida nem largar
+  campo. Com um campo de texto focado nunca chega lá (o campo fica com ele, `handle_editor_key`); com a sessão
+  «Animating» aberta é a prévia da Timeline e a cena continua tapada (sem `corrida`) — só dá o foco onde a cena está à
+  vista. Quem quer dar o teclado ao jogo a partir da sessão usa o Play de cima ou o F5 (§9).
 - **Teclas, com o jogo a ter o teclado:** a tecla nua desce **só** no jogo (nenhum atalho do editor a vê);
   um acorde (Ctrl/Alt/Super) é **só** do editor (a lei de sempre: *«os players pulam sozinhos»* com Ctrl+Z);
   F5/Shift+F5 são **só** do transporte; o autorepeat do F5 é ignorado (só a 1.ª pressão alterna).
@@ -132,3 +136,8 @@ tira a moldura e as setas deixam de mover o círculo; clicar na cena devolve-a; 
   da cena no Play, o bus, a posse, `take_runtime`), botão e F5, com e sem campo focado, e a composição da shell por
   fonte. Mutação: 3/3 sangram (`corrida` só com o `runtime`; `toma_o_teclado` mudo; `a_vista` sem a `corrida`);
   controlo: sem a sessão, o código antigo passa.
+- **Auditoria 07 C9:** a mesa passou a correr os passos (posse · `take_runtime` · fim da sessão · bus) pela ordem que a
+  shell compõe, lida de `run_render_frame`/`fase_frame_simulation`/`fase_bus_topbar`
+  (`a_posse_do_teclado_segue_a_ordem_do_quadro`); o gate pede o fenómeno (a posse do N+1 vê a subida com a sessão
+  ainda aberta) e o controlo (a lei de antes da cura perde o teclado nessa ordem). Mutação: `a_vista` sem a `corrida`
+  e `corrida` só com o `runtime` sangram-no; posse deslocada na ordem lida sangra-o (o fenómeno some).

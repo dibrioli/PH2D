@@ -25,38 +25,41 @@ pub(crate) fn opcoes_da_tag() -> Vec<DropdownOption<u64>> {
     super::nav_tag_row::opcoes_da_arvore(&crate::ids::INSP_RAY_SEE_TAG_OPT)
 }
 
-/// O nome da tag do filtro; «no tag» quando está por escolher ou foi apagada.
-fn nome_da_tag(tag: u64) -> String {
-    crate::state::current_tag_tree()
-        .into_iter()
-        .find(|r| tag != 0 && r.id == tag)
-        .map_or_else(
-            || tr("panel.inspector.ray.filter_no_tag").to_string(),
-            |r| r.label,
-        )
+/// O nome da tag do filtro; `None` quando está por escolher (o filtro não filtra: C2) e «a deleted tag»
+/// quando foi apagada (com «Only» ninguém passa).
+fn nome_da_tag(tag: u64) -> Option<String> {
+    (tag != 0).then(|| {
+        crate::state::current_tag_tree()
+            .into_iter()
+            .find(|r| r.id == tag)
+            .map_or_else(
+                || tr("panel.inspector.ray.filter_tag_gone").to_string(),
+                |r| r.label,
+            )
+    })
 }
 
 /// ⭐ **O resumo do grupo fechado** — só o que foge do de fábrica; de fábrica diz «Ignores me».
 #[must_use]
 pub(crate) fn resumo(i: &InspectorRayInfo) -> String {
     let mut partes: Vec<String> = Vec::new();
-    match i.only_see {
-        RaySee::Everything => {}
-        RaySee::OnlyTag => partes.push(tr_with(
-            "panel.inspector.ray.filter_only_x",
-            &[("tag", &nome_da_tag(i.see_tag).as_str())],
-        )),
-        RaySee::ExceptTag => partes.push(tr_with(
-            "panel.inspector.ray.filter_not_x",
-            &[("tag", &nome_da_tag(i.see_tag).as_str())],
-        )),
+    let chave_do_modo = match i.only_see {
+        RaySee::Everything => None,
+        RaySee::OnlyTag => Some("panel.inspector.ray.filter_only_x"),
+        RaySee::ExceptTag => Some("panel.inspector.ray.filter_not_x"),
+    };
+    if let (Some(chave), Some(tag)) = (chave_do_modo, nome_da_tag(i.see_tag)) {
+        partes.push(tr_with(chave, &[("tag", &tag.as_str())]));
+    }
+    if i.ignore_parts && !i.ignore_up_to.is_empty() {
+        partes.push(tr_with(
+            "panel.inspector.ray.filter_up_to_x",
+            &[("name", &i.ignore_up_to.as_str())],
+        ));
     }
     for (liga, chave) in [
         (!i.ignore_body, "panel.inspector.ray.filter_sees_me"),
-        (
-            i.ignore_body && !i.ignore_parts,
-            "panel.inspector.ray.filter_sees_my_parts",
-        ),
+        (!i.ignore_parts, "panel.inspector.ray.filter_sees_my_parts"),
         (i.hit_triggers, "panel.inspector.ray.filter_sees_triggers"),
         (i.starts_inside, "panel.inspector.ray.filter_from_inside"),
         (i.all_hits, "panel.inspector.ray.filter_all_hits"),
@@ -189,6 +192,34 @@ pub(super) fn grupo_do_filtro(
         ],
         seccao,
     );
+    // «Ignore up to» (C8, dono 15/11) só com «Ignore my other parts»: sem ela não decide nada.
+    if i.ignore_parts {
+        let fantasma = if i.ignore_up_to_auto.is_empty() {
+            tr("panel.inspector.ray.up_to_auto").to_string()
+        } else {
+            tr_with(
+                "panel.inspector.ray.up_to_auto_x",
+                &[("name", &i.ignore_up_to_auto.as_str())],
+            )
+        };
+        cur_y = super::conta_gotas_row::linha(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            (
+                TextKey::new("component.field.ray_sensor.12"),
+                crate::ids::INSP_RAY_UP_TO,
+                TextInput::new(crate::ids::INSP_RAY_UP_TO, "").placeholder(&fantasma),
+            ),
+            (crate::ids::INSP_RAY_UP_TO_PICK, i.up_to_pick_armed),
+            seccao,
+        );
+    }
     let nomes: Vec<&str> = MODOS.iter().map(|&(_, k)| tr(k)).collect();
     let segmentos: Vec<(&str, bool, ph2d_a11y::NodeId)> = MODOS
         .iter()
@@ -284,8 +315,13 @@ mod tests {
             turns_with_facing: false,
             ignore_body: true,
             ignore_parts: true,
+            ignore_up_to: String::new(),
+            ignore_up_to_off: false,
+            ignore_up_to_auto: String::new(),
+            up_to_pick_armed: false,
             only_see: RaySee::Everything,
             see_tag: 0,
+            see_tag_exists: true,
             walls_block: true,
             hit_triggers: false,
             starts_inside: false,
@@ -323,7 +359,19 @@ mod tests {
         r.hit_triggers = false;
         r.ignore_body = false;
         r.all_hits = true;
-        assert_eq!(resumo(&r), "Not no tag, Sees me, All hits");
+        // C2: sem tag o filtro não filtra ninguém — o resumo não promete um «Not …» (a queixa pede a tag).
+        assert_eq!(resumo(&r), "Sees me, All hits");
+        r.only_see = RaySee::OnlyTag;
+        r.see_tag = 9;
+        assert_eq!(resumo(&r), "Only a deleted tag, Sees me, All hits");
+        // C8: «Sees my parts» depende só da sua caixa; com ambas desligadas dizem-se as duas.
+        let mut p = de_fabrica();
+        p.ignore_body = false;
+        p.ignore_parts = false;
+        assert_eq!(resumo(&p), "Sees me, Sees my parts");
+        let mut topo = de_fabrica();
+        topo.ignore_up_to = "Truck".into();
+        assert_eq!(resumo(&topo), "Up to Truck");
         crate::state::set_current_tag_tree(Vec::new());
     }
 }

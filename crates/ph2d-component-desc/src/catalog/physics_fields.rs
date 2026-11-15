@@ -394,6 +394,10 @@ pub(super) const RAY_SENSOR: &[FieldDesc] = &[
     f(9, "component.field.ray_sensor.9", K::Toggle).named("hit_triggers"),
     f(10, "component.field.ray_sensor.10", K::Toggle).named("starts_inside"),
     f(11, "component.field.ray_sensor.11", K::Toggle).named_as("see_all_hits", "all_hits"),
+    // «Ignore up to» (C8): o `StableId` do topo, lido e escrito pelo NOME do objecto.
+    f(12, "component.field.ray_sensor.12", K::Text)
+        .named("ignore_up_to")
+        .viewed(View::Named(crate::Target::Stable)),
 ];
 pub(super) const RAY_SIGNALS: &[FieldDesc] = &[
     f(0, "component.field.ray_signals.0", K::Text).named("on_enter"),

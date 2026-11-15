@@ -5,13 +5,15 @@
 //! do ledger), passa pela lei do componente (`property_laws::sanitize`) e declara a escrita ao
 //! `FieldDrive` — o que a curva escreve vê-se, não se guarda, como o que um script escreve.
 
-use ph2d_component_desc::{FieldKind, Target, View};
+use ph2d_component_desc::{FieldDesc, FieldKind, Target, View};
 use ph2d_ecs::canal::familia::COMPONENTE;
 use ph2d_ecs::canal_componente as cc;
 use ph2d_ecs::scene::property::slot_in;
+use ph2d_ecs::scene::property_ref::{self, RefNames};
 use ph2d_ecs::scene::registry::{ComponentRegistry, ComponentTypeEntry};
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, TextosDosCanais, World};
 use ph2d_preview_drive::{FieldRef, PreviewDrive};
+use ph2d_tags::TagTree;
 use serde_json::Value;
 
 /// A entrada do registo e o campo que a chave nomeia.
@@ -54,10 +56,15 @@ pub fn ler(
     e: Entity,
     k: FieldKey,
     textos: &mut TextosDosCanais,
+    names: RefNames<'_>,
 ) -> Option<f32> {
     let (entry, f, faixa) = alvo(reg, k)?;
     let mut v = (entry.value_of)(w, e).ok()??;
     let s = slot_in(&mut v, f.serde_key())?;
+    if let Some(t) = referencia(f) {
+        let nome = property_ref::name_of(w, names, t, s);
+        return Some(textos.indice(nome.as_str()));
+    }
     cc::ler_texto(f, s, textos).or_else(|| cc::ler_valor(f, faixa, s))
 }
 
@@ -77,6 +84,7 @@ pub fn escrever(
     k: FieldKey,
     x: f32,
     textos: &TextosDosCanais,
+    names: RefNames<'_>,
 ) -> Option<Escrita> {
     let (entry, f, faixa) = alvo(reg, k)?;
     if f.view == View::Named(Target::Script) && !script_existe(w, x) {
@@ -86,7 +94,9 @@ pub fn escrever(
     let guardado = |v: &mut Value| slot_in(v, f.stored_key()).cloned();
     let antes = guardado(&mut inteiro)?;
     let slot = slot_in(&mut inteiro, f.serde_key())?;
-    let mudou = if f.kind == FieldKind::Text {
+    let mudou = if let Some(t) = referencia(f) {
+        escrever_ref(w, names, (t, f.name), slot, x, textos)
+    } else if f.kind == FieldKind::Text {
         cc::escrever_texto(f, slot, x, textos)
     } else {
         cc::escrever_valor(f, faixa, slot, x)
@@ -105,7 +115,8 @@ pub fn escrever(
 }
 
 /// Publica o valor de cada canal das `entidades` (o que o Auto Key e o losango comparam).
-pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) {
+pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64], tags: &TagTree) {
+    let names = RefNames { tags: Some(tags) };
     let mut textos = tirar_textos(sim);
     let lotes: Vec<(u64, Vec<(FieldKey, f32)>)> = entidades
         .iter()
@@ -115,7 +126,7 @@ pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) 
             w.get_entity(e).ok()?;
             let v = campos(reg, w, e)
                 .into_iter()
-                .filter_map(|k| Some((k, ler(reg, w, e, k, &mut textos)?)))
+                .filter_map(|k| Some((k, ler(reg, w, e, k, &mut textos, names)?)))
                 .collect();
             Some((b, v))
         })
@@ -138,7 +149,13 @@ pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) 
 
 /// ⭐ **Aplica o que a curva mandou neste quadro**, regista o eco e declara a escrita à
 /// pré-visualização. Devolve `true` se algum componente mudou.
-pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewDrive) -> bool {
+pub fn aplicar(
+    sim: &mut SimWorld,
+    reg: &ComponentRegistry,
+    drive: &mut PreviewDrive,
+    tags: &TagTree,
+) -> bool {
+    let names = RefNames { tags: Some(tags) };
     let Some(mut escritas) = sim
         .world_mut()
         .get_resource_mut::<CanaisEscritos>()
@@ -157,7 +174,7 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        if let Some(esc) = escrever(reg, sim.world_mut(), e, k, x, &textos) {
+        if let Some(esc) = escrever(reg, sim.world_mut(), e, k, x, &textos, names) {
             // Uma cópia da corrida não é documento: não há autorado a guardar por baixo dela.
             if !ph2d_ecs::is_transient(sim.world(), e) {
                 drive
@@ -166,7 +183,7 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
             }
             mudou = true;
         }
-        if let Some(ficou) = ler(reg, sim.world(), e, k, &mut textos) {
+        if let Some(ficou) = ler(reg, sim.world(), e, k, &mut textos, names) {
             ecos.push((b, k, x, ficou));
         }
     }
@@ -182,6 +199,39 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
         lidos.eco(b, k, x, f);
     }
     mudou
+}
+
+/// O alvo de um campo que guarda uma IDENTIDADE (o hash do nome, o `StableId`, a `TagId`): o canal
+/// lê e escreve o NOME, pela conversão do script (`property_ref`) — nunca o número cru.
+fn referencia(f: &FieldDesc) -> Option<Target> {
+    match f.view {
+        View::Named(t @ (Target::NameHash | Target::Stable | Target::Tag)) => Some(t),
+        _ => None,
+    }
+}
+
+/// Guarda a identidade do alvo que o índice `x` nomeia (`0` = ninguém); um índice que a tabela
+/// não tem, ou um nome sem alvo, não escreve.
+fn escrever_ref(
+    w: &World,
+    names: RefNames<'_>,
+    (t, campo): (Target, &str),
+    slot: &mut Value,
+    x: f32,
+    textos: &TextosDosCanais,
+) -> bool {
+    let nome = match textos.texto(x) {
+        Some(n) => Value::String(n.to_owned()),
+        None if x.round() == 0.0 => Value::Null,
+        None => return false,
+    };
+    match property_ref::id_of(w, names, t, campo, nome) {
+        Ok(id) if *slot != id => {
+            *slot = id;
+            true
+        }
+        _ => false,
+    }
 }
 
 /// O script `x` existe na biblioteca do projeto (`0` = nenhum, que existe sempre) — a curva não

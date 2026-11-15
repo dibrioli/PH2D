@@ -55,8 +55,11 @@ pub struct RaySensor {
     /// O corpo dono sai do raio («Ignore my body»). Falso = ele vê o próprio dono.
     pub ignore_body: bool,
     /// Os outros corpos da FAMÍLIA do dono também saem («Ignore my other parts») — ver
-    /// [`familia_raiz`](crate::familia_raiz): a espada e o escudo com corpo próprio do herói.
+    /// [`topo_da_familia`](crate::topo_da_familia): a espada e o escudo com corpo próprio do herói.
     pub ignore_parts: bool,
+    /// «Ignore up to»: o `StableId` do objecto do TOPO da família (um antepassado do raio); `0` =
+    /// automático (o personagem, senão o corpo mais alto). Dono 15/11 (C8): campo + conta-gotas.
+    pub ignore_up_to: u64,
     /// O que ele aceita ver, pelas tags do corpo acertado («Only see»).
     pub only_see: SeeFilter,
     /// A tag do `only_see` (`TagId.0`; `0` = por escolher).
@@ -132,6 +135,7 @@ impl Default for RaySensor {
             turns_with_facing: false,
             ignore_body: true,
             ignore_parts: true,
+            ignore_up_to: 0,
             only_see: SeeFilter::Everything,
             see_tag: 0,
             walls_block: true,

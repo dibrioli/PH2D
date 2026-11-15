@@ -5,6 +5,9 @@ use crate::component_registry_for_tests::registo;
 use ph2d_ecs::GameCamera;
 use ph2d_ecs::canal_componente::chave;
 
+/// Sem árvore de tags: os campos destes gates não guardam referências.
+const SEM: RefNames<'static> = RefNames { tags: None };
+
 const CAMERA: &str = "ph2d::ecs::GameCamera";
 
 fn cena() -> (SimWorld, Entity) {
@@ -53,9 +56,13 @@ fn cada_campo_le_o_que_escreveu() {
         (k(3, 0), 0.0),
         (k(5, 0), 0.25),
     ] {
-        let esc = escrever(&reg, sim.world_mut(), e, kk, x, &t).expect("mudou");
+        let esc = escrever(&reg, sim.world_mut(), e, kk, x, &t, SEM).expect("mudou");
         assert_ne!(esc.antes, esc.depois);
-        assert_eq!(ler(&reg, sim.world(), e, kk, &mut t), Some(x), "{kk:?}");
+        assert_eq!(
+            ler(&reg, sim.world(), e, kk, &mut t, SEM),
+            Some(x),
+            "{kk:?}"
+        );
     }
     let c = sim.world().get::<GameCamera>(e).expect("câmera");
     assert_eq!(
@@ -63,7 +70,7 @@ fn cada_campo_le_o_que_escreveu() {
         (12.5, -3.0, 4, false)
     );
     assert!(
-        escrever(&reg, sim.world_mut(), e, k(0, 0), 12.5, &t).is_none(),
+        escrever(&reg, sim.world_mut(), e, k(0, 0), 12.5, &t, SEM).is_none(),
         "o mesmo valor não é escrita"
     );
 }
@@ -78,7 +85,7 @@ fn a_lei_da_camera_vale_para_a_curva() {
         .get_resource_or_insert_with(CanaisEscritos::default)
         .escrever(e.to_bits(), k(0, 0), -5.0);
     let mut drive = PreviewDrive::default();
-    assert!(aplicar(&mut sim, &reg, &mut drive));
+    assert!(aplicar(&mut sim, &reg, &mut drive, &TagTree::default()));
     let h = sim
         .world()
         .get::<GameCamera>(e)
@@ -101,7 +108,7 @@ fn a_curva_chega_ao_componente_e_nao_ao_documento() {
         .get_resource_or_insert_with(CanaisEscritos::default)
         .escrever(e.to_bits(), k(0, 0), antes + 7.0);
     let mut drive = PreviewDrive::default();
-    assert!(aplicar(&mut sim, &reg, &mut drive));
+    assert!(aplicar(&mut sim, &reg, &mut drive, &TagTree::default()));
     assert_eq!(
         sim.world()
             .get::<GameCamera>(e)
@@ -119,7 +126,7 @@ fn a_curva_chega_ao_componente_e_nao_ao_documento() {
         "a captura não repôs o autorado"
     );
     PreviewDrive::restore(&mut sim, &vivo);
-    publicar(&mut sim, &reg, &[e.to_bits()]);
+    publicar(&mut sim, &reg, &[e.to_bits()], &TagTree::default());
     let l = sim.world().resource::<CanaisLidos>();
     assert_eq!(l.valor(e.to_bits(), k(0, 0)), Some(antes + 7.0));
 }
@@ -145,10 +152,15 @@ fn o_alvo_da_camera_anima_por_nome() {
     sim.world_mut()
         .get_resource_or_insert_with(CanaisEscritos::default)
         .escrever(e.to_bits(), alvo, heroi);
-    assert!(aplicar(&mut sim, &reg, &mut PreviewDrive::default()));
+    assert!(aplicar(
+        &mut sim,
+        &reg,
+        &mut PreviewDrive::default(),
+        &TagTree::default()
+    ));
     let segue = sim.world().get::<ph2d_ecs::CameraFollow>(e).expect("segue");
     assert_eq!(segue.target, "Heroi");
-    publicar(&mut sim, &reg, &[e.to_bits()]);
+    publicar(&mut sim, &reg, &[e.to_bits()], &TagTree::default());
     assert_eq!(
         sim.world()
             .resource::<CanaisLidos>()
@@ -190,7 +202,7 @@ fn o_rebobinar_dos_scripts_nao_devolve_o_campo_que_a_curva_conduz() {
         sim.world_mut()
             .get_resource_or_insert_with(CanaisEscritos::default)
             .escrever(e.to_bits(), k(0, 0), x);
-        aplicar(sim, &reg, drive);
+        aplicar(sim, &reg, drive, &TagTree::default());
         drive.fields.observe(sim);
     };
     curva(&mut sim, &mut drive, 12.0);
@@ -236,7 +248,7 @@ fn o_angle_e_o_reach_do_raio_animam() {
     }
     let mut t = TextosDosCanais::default();
     assert_eq!(
-        ler(&reg, sim.world(), e, kr(0), &mut t),
+        ler(&reg, sim.world(), e, kr(0), &mut t, SEM),
         Some(-90.0),
         "o Angle de fábrica"
     );
@@ -246,10 +258,71 @@ fn o_angle_e_o_reach_do_raio_animam() {
     sim.world_mut()
         .get_resource_or_insert_with(CanaisEscritos::default)
         .escrever(e.to_bits(), kr(1), 3.0);
-    assert!(aplicar(&mut sim, &reg, &mut PreviewDrive::default()));
+    assert!(aplicar(
+        &mut sim,
+        &reg,
+        &mut PreviewDrive::default(),
+        &TagTree::default()
+    ));
     let r = *sim
         .world()
         .get::<ph2d_physics_ecs::RaySensor>(e)
         .expect("raio");
     assert_eq!((r.angle, r.reach), (45.0, 3.0));
+}
+
+/// ⭐⭐ **Um canal de REFERÊNCIA lê e escreve pelo NOME** (auditoria C6): o campo guarda a identidade
+/// (a `TagId`, o `stable_name_id`) e a curva o índice do nome na tabela — como o script. Lido cru, o
+/// hash de 64 bits perdia bits no `f32`; escrito como texto, nada voltava ao componente.
+///
+/// **Mutações que devem sangrar:** o `escrever` voltar ao caminho do texto · o `ler` devolver o cru.
+#[test]
+fn um_canal_de_referencia_le_e_escreve_pelo_nome() {
+    let reg = registo();
+    let mut tags = TagTree::new();
+    let enemy = tags.create("Enemy").expect("tag").0;
+    let friend = tags.create("Friend").expect("tag").0;
+    let names = RefNames { tags: Some(&tags) };
+    let mut t = TextosDosCanais::default();
+    let mut sim = SimWorld::new();
+    // (a) O «Only see» do raio: uma tag.
+    let mut raio = ph2d_physics_ecs::RaySensor::default();
+    raio.see_tag = enemy;
+    let e = sim.world_mut().spawn(raio).id();
+    let k = chave("ph2d::physics::RaySensor", 7, 0).expect("cabe");
+    let lido = ler(&reg, sim.world(), e, k, &mut t, names).expect("canal");
+    assert_eq!(t.texto(lido), Some("Enemy"), "o canal lê o NOME da tag");
+    let x = t.indice(Some("Friend"));
+    assert!(escrever(&reg, sim.world_mut(), e, k, x, &t, names).is_some());
+    let r = sim
+        .world()
+        .get::<ph2d_physics_ecs::RaySensor>(e)
+        .expect("raio");
+    assert_eq!(r.see_tag, friend, "a curva escreve a IDENTIDADE da tag");
+    // (b) A saída do atalho: um objecto pelo hash do nome, inteiro (64 bits).
+    let longe = "Far Away Exit Door";
+    sim.world_mut().spawn(ph2d_ecs::Name::new(longe));
+    sim.world_mut().spawn(ph2d_ecs::Name::new("Near Door"));
+    let hash = ph2d_ecs::stable_name_id(longe);
+    assert!(hash > 1 << 24, "o hash não cabe num f32");
+    let link = ph2d_physics_ecs::NavLink {
+        to: ph2d_ecs::stable_name_id("Near Door"),
+        two_way: false,
+        teleport: true,
+        cost: 0.0,
+        on_crossed: String::new(),
+    };
+    let e = sim.world_mut().spawn(link).id();
+    let k = chave("ph2d::physics::NavLink", 0, 0).expect("cabe");
+    let lido = ler(&reg, sim.world(), e, k, &mut t, names).expect("canal");
+    assert_eq!(t.texto(lido), Some("Near Door"));
+    let x = t.indice(Some(longe));
+    assert!(escrever(&reg, sim.world_mut(), e, k, x, &t, names).is_some());
+    let l = sim
+        .world()
+        .get::<ph2d_physics_ecs::NavLink>(e)
+        .expect("atalho");
+    assert_eq!(l.to, hash, "o u64 exacto, sem passar por f32");
+    let lido = ler(&reg, sim.world(), e, k, &mut t, names).expect("canal");
+    assert_eq!(t.texto(lido), Some(longe), "e lê-se de volta pelo nome");
 }

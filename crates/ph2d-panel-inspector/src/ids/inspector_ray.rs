@@ -20,7 +20,7 @@ pub const INSP_RAY_TURNS: NodeId = hash_node_id("insp_ray_turns");
 /// Até onde ele enxerga, em metros.
 pub const INSP_RAY_REACH: NodeId = hash_node_id("insp_ray_reach");
 /// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê. É a lista suspensa
-/// da camada (a mesma do collider) e o canal do losango (`component.field.ray_sensor.3`).
+/// da camada (a mesma do collider) e o canal do losango (`component.field.ray_sensor.2`).
 pub const INSP_RAY_LAYER: NodeId = hash_node_id("insp_ray_layer");
 /// As opções da lista da camada, uma por camada.
 pub static INSP_RAY_LAYER_OPTS: [NodeId; super::INSP_PHYS_LAYERS] =
@@ -48,6 +48,9 @@ pub use ph2d_editor_core::ids::{INSP_RAY_FOLD_FILTER, INSP_RAY_FOLD_SIGNALS};
 /// O grupo «Filter» (GEF 07, versão C): as caixas, a escolha «Only see» e a tag.
 pub const INSP_RAY_IGNORE_BODY: NodeId = hash_node_id("insp_ray_ignore_body");
 pub const INSP_RAY_IGNORE_PARTS: NodeId = hash_node_id("insp_ray_ignore_parts");
+/// «Ignore up to» (C8): a caixa do nome e o conta-gotas.
+pub const INSP_RAY_UP_TO: NodeId = hash_node_id("insp_ray_up_to");
+pub const INSP_RAY_UP_TO_PICK: NodeId = hash_node_id("insp_ray_up_to_pick");
 /// «Only see»: Everything · Only tag · All except tag (a ordem do `RaySee`).
 pub const INSP_RAY_ONLY_SEE: [NodeId; 3] = [
     hash_node_id("insp_ray_see_everything"),

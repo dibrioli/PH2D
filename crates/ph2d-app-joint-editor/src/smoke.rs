@@ -98,7 +98,7 @@ pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) -> Option<u64> {
     };
     let car = find(sim, "Car 1")?;
     tab.smoke_done = true;
-    if n >= 10 {
+    if n == 10 || n == 11 {
         return scene_tab(sim, n);
     }
     tab.open();
@@ -120,7 +120,7 @@ pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) -> Option<u64> {
         4 | 8 => find(sim, "Door 1").unwrap_or(car),
         _ => 0,
     };
-    if n >= 8 {
+    if n == 8 || n == 9 {
         tab.doc.set_panel_width(0.1);
     }
     tab.doc.set_snapshot(crate::model::read(sim));

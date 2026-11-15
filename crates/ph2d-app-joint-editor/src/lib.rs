@@ -23,6 +23,7 @@ mod widgets;
 pub use apply::{Outcome, apply};
 pub use doc::{Edit, Focus, Hit, JointEditorDoc};
 pub use surface::{CMD_OPEN, JointEditorTab, TAB_ID};
+pub use widgets::MOTOR_PREVIEW_S;
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
@@ -64,8 +65,9 @@ pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
         let mut made = None;
         for e in tab.doc.take_pending() {
             let o = apply(sim, e);
-            if o.made.is_some() {
-                made = o.made.zip(o.line.clone());
+            // A montagem nova abre-se SEMPRE (com ou sem frase): o gesto seguinte cai nela.
+            if let Some(sid) = o.made {
+                made = Some((sid, o.line.clone().unwrap_or_default()));
             } else if let Some(l) = o.line {
                 tab.doc.note = Some(l);
             }
@@ -86,8 +88,10 @@ pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
             hero.panel_visibility.insert("inspector", true);
             hero.panel_visibility.insert("physics", false);
             // A dobra «Joint» do cartão Body (o mesmo slug do `ids::INSP_PHYS_FOLD_JOINT` do Inspector).
-            hero.store
-                .set_collapsed(ph2d_editor_core::registry::hash_node_id("insp_phys_fold_joint"), false);
+            hero.store.set_collapsed(
+                ph2d_editor_core::registry::hash_node_id("insp_phys_fold_joint"),
+                false,
+            );
         }
     }
 }

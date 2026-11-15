@@ -582,3 +582,80 @@ fn a_lista_template_e_uma_grelha_de_tres_com_o_custom_por_ultimo() {
         );
     }
 }
+
+/// ⭐ **A ponta da seta do motor é uma alça** (W4j): no carro, o arco da roda de trás mostra o giro em
+/// `MOTOR_PREVIEW_S`; arrastar a ponta para cima (rumo ao topo, o zero) abranda o motor na cena, sem
+/// mudar o sentido.
+/// **Mutações que sangram:** `Handle::MotorSpeed` a escrever outro campo · a alça fora do arco ·
+/// `Geo::Spin` sem dividir por `MOTOR_PREVIEW_S`.
+#[test]
+fn a_ponta_da_seta_do_motor_muda_a_velocidade() {
+    use ph2d_app_joint_editor::doc::Handle;
+    let mut m = Mesa::carro();
+    let before = m.joints()[0];
+    assert!(before.motor_enabled, "a roda de trás puxa");
+    let tip = m.rect(&Hit::Handle(Handle::MotorSpeed));
+    let rear = m.rect(&Hit::Shape(1, 0));
+    assert!(
+        tip.x + tip.w * 0.5 > rear.x + rear.w * 0.5,
+        "−360°/s é um quarto de volta horário: a ponta à direita do eixo"
+    );
+    m.drag(&Hit::Handle(Handle::MotorSpeed), 0.0, -12.0);
+    let after = m.joints()[0];
+    assert!(
+        after.motor_speed < 0.0 && after.motor_speed > before.motor_speed,
+        "abranda sem virar: {} → {}",
+        before.motor_speed,
+        after.motor_speed
+    );
+    // O valor é o ângulo da ponta largada, a contar do topo, lido como o giro em MOTOR_PREVIEW_S.
+    let (cx, cy) = (rear.x + rear.w * 0.5, rear.y + rear.h * 0.5);
+    let (ex, ey) = (tip.x + tip.w * 0.5, tip.y + tip.h * 0.5 - 12.0);
+    let deg = (libm::atan2f(cy - ey, ex - cx) - std::f32::consts::FRAC_PI_2).to_degrees();
+    let want = (deg / ph2d_app_joint_editor::MOTOR_PREVIEW_S).to_radians();
+    assert!(
+        (after.motor_speed - want).abs() < 1e-2,
+        "{} ≠ {want}",
+        after.motor_speed
+    );
+}
+
+/// ⭐ **O servo mostra o ALVO, não a velocidade** (W4j): o Flipper com a base presa ao cenário por «Pin to
+/// the scene» e a palheta solta; o cartão Motor diz «Target» (a velocidade não é lida por um servo) e o
+/// ponteiro no desenho arrasta o alvo na cena.
+/// **Mutações que sangram:** `Handle::MotorTarget` a escrever a velocidade · o cartão sem olhar o modo ·
+/// «Pin to the scene» sem pedido.
+#[test]
+fn o_servo_do_flipper_mostra_e_arrasta_o_alvo() {
+    use ph2d_app_joint_editor::doc::{Field, Handle, Menu};
+    let mut m = Mesa::aberta();
+    m.click(&Hit::OpenMenu(Menu::Kind));
+    m.click(&Hit::Kind(JointKind::Pin));
+    m.click(&Hit::OpenMenu(Menu::Template));
+    let flipper = ph2d_joint_templates::by_name(JointKind::Pin, "Flipper").expect("flipper");
+    m.click(&Hit::Template(flipper.id.0));
+    m.click(&Hit::World(0));
+    let (ok, line) = m.drop("Kart Body", 1);
+    assert!(ok, "a palheta aceita: {line}");
+    let j = m.joints();
+    assert_eq!(j.len(), 1, "a junta nasce com a base no cenário");
+    assert!(j[0].motor_enabled && j[0].motor_mode == ph2d_physics_ecs::MotorMode::Position);
+    let doc = &m.tab().doc;
+    assert!(
+        doc.hits_for(&Hit::Field(Field::MotorTarget)).is_some(),
+        "o cartão diz Target"
+    );
+    assert!(
+        doc.hits_for(&Hit::Field(Field::MotorSpeed)).is_none(),
+        "e não Speed"
+    );
+    let before = j[0].motor_target;
+    m.drag(&Hit::Handle(Handle::MotorTarget), 0.0, -30.0);
+    let after = m.joints()[0];
+    assert!(
+        (after.motor_target - before).abs() > 0.05,
+        "o ponteiro move o alvo: {before} → {}",
+        after.motor_target
+    );
+    assert_eq!(after.motor_speed, j[0].motor_speed, "a velocidade fica");
+}

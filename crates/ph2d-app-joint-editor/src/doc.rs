@@ -34,6 +34,8 @@ pub enum Field {
     LimitMin,
     LimitMax,
     MotorSpeed,
+    /// O alvo do servo (motor em «Position»): graus na dobradiça, metros no trilho.
+    MotorTarget,
     MotorForce,
     Stiffness,
     Damping,
@@ -67,6 +69,10 @@ pub enum Handle {
     LimitMin,
     LimitMax,
     Wheelbase,
+    /// A ponta da seta do motor: até onde ele leva a peça em [`crate::widgets::MOTOR_PREVIEW_S`].
+    MotorSpeed,
+    /// O ponteiro do servo: o alvo onde o motor em «Position» segura a peça.
+    MotorTarget,
 }
 
 impl Handle {
@@ -76,6 +82,8 @@ impl Handle {
             Self::LimitMin => Field::LimitMin,
             Self::LimitMax => Field::LimitMax,
             Self::Wheelbase => Field::Wheelbase,
+            Self::MotorSpeed => Field::MotorSpeed,
+            Self::MotorTarget => Field::MotorTarget,
         }
     }
 }

@@ -104,6 +104,15 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
                 joint_assembly::dissolve(sim, asm);
                 return out;
             }
+            let name = sim
+                .world()
+                .get::<ph2d_ecs::Name>(asm)
+                .map_or_else(String::new, |n| n.as_str().to_owned());
+            let role_name = t.role(role).map_or("", |r| r.name);
+            out.line = Some(tr_with(
+                "joint_editor.placed_world",
+                &[("role", &role_name), ("assembly", &name)],
+            ));
             if new {
                 out.made = Some(sid_of(sim, asm));
             }
@@ -305,7 +314,10 @@ mod tests {
         set_wheelbase(&mut sim, e, 2.0);
         let x = |sim: &mut SimWorld, n: &str| {
             let e = body_named(sim, n).expect("peça");
-            ph2d_ecs::world_transform(sim.world(), e).expect("t").translation.x
+            ph2d_ecs::world_transform(sim.world(), e)
+                .expect("t")
+                .translation
+                .x
         };
         assert!(
             (x(&mut sim, "Front") - 1.3).abs() < 1e-4,

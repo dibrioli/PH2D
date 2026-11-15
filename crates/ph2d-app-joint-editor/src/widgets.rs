@@ -39,6 +39,9 @@ pub const MENU_ROW_H: f32 = 48.0;
 pub const MENU_CELL_MIN_W: f32 = 200.0;
 /// As colunas da grelha dos gabaritos (maquete B1).
 pub const MENU_COLS: usize = 3;
+/// A seta do motor mostra até onde ele leva a peça neste tempo (s): o carro de fábrica, −360°/s, vira um
+/// quarto de volta, e o arco cabe nos ±180° que a alça lê (até ±720°/s; acima disso, o número do cartão).
+pub const MOTOR_PREVIEW_S: f32 = 0.25;
 /// O texto pequeno (pés, papéis).
 pub const SMALL_PX: f32 = 10.5;
 /// O valor mais largo que um campo escreve, «-0.000» (sinal, três casas), medido no `TextSystem` a

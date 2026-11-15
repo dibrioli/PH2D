@@ -16,6 +16,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "joint_editor.templates_n" => "{n} templates",
         "joint_editor.templates_1" => "1 template",
+        "joint_editor.handle.motor" => "Drag to set the motor speed",
+        "joint_editor.handle.target" => "Drag to set where the motor holds it",
         "joint_editor.custom" => "Custom",
         "joint_editor.custom_parts" => "You draw the parts",
         "joint_editor.scope.both_wheels" => "Both wheels",
@@ -44,6 +46,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.placed" => {
             "{role} of {assembly}: {n} {n?part|parts} in, {joints} {joints?joint|joints} made. The objects stay where they are."
         }
+        "joint_editor.placed_world" => {
+            "{role} of {assembly}: pinned to the scene. Now drop the other parts in."
+        }
         "joint_editor.shape_a11y" => "{role}: {name}",
         "joint_editor.handle.min" => "Drag to set the lowest point",
         "joint_editor.handle.max" => "Drag to set the highest point",
@@ -61,6 +66,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.glyph.stiffness" => "S",
         "joint_editor.glyph.damping" => "D",
         "joint_editor.glyph.speed" => "V",
+        "joint_editor.glyph.target" => "P",
         "joint_editor.glyph.force" => "F",
         "joint_editor.glyph.torque" => "T",
         "joint_editor.glyph.wheelbase" => "W",
@@ -95,6 +101,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.label.min_distance" => "Min distance",
         "joint_editor.label.max_distance" => "Max distance",
         "joint_editor.label.speed" => "Speed",
+        "joint_editor.label.target" => "Target",
         "joint_editor.label.force" => "Force",
         "joint_editor.label.rest_length" => "Rest length",
         "joint_editor.label.max_length" => "Max length",

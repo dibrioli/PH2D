@@ -10,6 +10,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_joint_templates::{Guide, JointKind, Link, Template};
+use ph2d_physics_ecs::MotorMode;
 use ph2d_tokens::ColorToken;
 use ph2d_vector::Color;
 
@@ -28,6 +29,8 @@ pub enum Geo {
     },
     /// O ângulo em volta de `centre`, em graus, a contar de `zero` (rad, no ecrã com y para cima).
     Angular { centre: (f32, f32), zero: f32 },
+    /// O motor que gira: o ângulo como em `Angular`, lido como o giro em [`w::MOTOR_PREVIEW_S`] (°/s).
+    Spin { centre: (f32, f32), zero: f32 },
 }
 
 impl Geo {
@@ -42,6 +45,9 @@ impl Geo {
                 let a = libm::atan2f(centre.1 - y, x - centre.0) - zero;
                 let a = libm::atan2f(libm::sinf(a), libm::cosf(a));
                 a.to_degrees()
+            }
+            Self::Spin { centre, zero } => {
+                Self::Angular { centre, zero }.value_at(x, y) / w::MOTOR_PREVIEW_S
             }
         }
     }
@@ -302,6 +308,15 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
         let speed = info
             .as_ref()
             .map_or(deg(fab.motor_speed, mm), |i| i.motor_speed_ui);
+        // O servo segura um ALVO (na unidade do cartão); a seta da velocidade não diz nada dele.
+        let servo = info
+            .as_ref()
+            .map_or(fab.motor_mode == MotorMode::Position, |i| {
+                i.motor_mode_tag == crate::panel::SERVO
+            });
+        let target = info
+            .as_ref()
+            .map_or(deg(fab.motor_target, mm), |i| i.motor_target_ui);
         let editable = row.is_some() && targets.contains(&ri);
         for n in pairs(t, ri, counts) {
             let Some((ea, eb)) = rule_ends(t, ri, n) else {
@@ -350,17 +365,39 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                     }
                     let wheel_r = t.role(rule.b).map_or(0.3, |r| r.guide.half()[0]) * map.scale;
                     let motor = motor && row.is_some();
-                    if motor && rule.kind == JointKind::Wheel {
-                        motor_arc(ui, pa, wheel_r * 0.6, speed, ok);
+                    let grip = editable && first;
+                    if motor && servo {
+                        let geo = Geo::Linear {
+                            origin: pa,
+                            dir,
+                            scale: map.scale,
+                        };
+                        let at = live(ui, Handle::MotorTarget, target);
+                        servo_pointer(ui, pa, add(pa, dir, at * map.scale), geo, grip);
+                    } else if motor && rule.kind == JointKind::Wheel {
+                        motor_arc(ui, pa, wheel_r * 0.6, speed, ok, grip);
                     } else if motor {
-                        let tip = add(pa, dir, reach * speed.signum());
+                        // O trilho: a seta reta até onde o motor leva a peça em MOTOR_PREVIEW_S.
+                        let speed = live(ui, Handle::MotorSpeed, speed);
+                        let scale = map.scale * w::MOTOR_PREVIEW_S;
+                        let tip = add(pa, dir, speed * scale);
+                        let sign = if speed < 0.0 { -1.0 } else { 1.0 };
                         stroke_polyline(ui.scene, &[pa, tip], w::LINE, ok);
-                        arrow_head(
-                            ui,
-                            tip,
-                            (dir.0 * speed.signum(), dir.1 * speed.signum()),
-                            ok,
-                        );
+                        arrow_head(ui, tip, (dir.0 * sign, dir.1 * sign), ok);
+                        if grip {
+                            let geo = Geo::Linear {
+                                origin: pa,
+                                dir,
+                                scale,
+                            };
+                            handle(
+                                ui,
+                                tip,
+                                Handle::MotorSpeed,
+                                geo,
+                                tr("joint_editor.handle.motor"),
+                            );
+                        }
                     }
                     fill_circle(ui.scene, pa.0, pa.1, w::HANDLE_R * 0.5, warn);
                 }
@@ -404,8 +441,13 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                             );
                         }
                     }
-                    if motor && row.is_some() {
-                        motor_arc(ui, pa, rad * 0.6, speed, ok);
+                    if motor && row.is_some() && servo {
+                        let at = live(ui, Handle::MotorTarget, target).to_radians();
+                        let tip = add(pa, screen_dir(zero + at), rad);
+                        let geo = Geo::Angular { centre: pa, zero };
+                        servo_pointer(ui, pa, tip, geo, editable && first);
+                    } else if motor && row.is_some() {
+                        motor_arc(ui, pa, rad * 0.6, speed, ok, editable && first);
                     }
                 }
                 _ => {
@@ -441,19 +483,56 @@ fn dashed_line(ui: &mut Ui<'_>, [a, b]: [(f32, f32); 2], c: Color) {
 }
 
 /// A seta curva do motor: o sentido é o da velocidade (negativo = para a frente, `+x`).
-fn motor_arc(ui: &mut Ui<'_>, c: (f32, f32), rad: f32, speed: f32, col: Color) {
+/// O ponteiro do servo: do eixo até o alvo onde o motor segura a peça, com a alça na ponta quando `grip`.
+fn servo_pointer(ui: &mut Ui<'_>, from: (f32, f32), tip: (f32, f32), geo: Geo, grip: bool) {
+    let ok = ui.c(ColorToken::Success);
+    stroke_polyline(ui.scene, &[from, tip], w::LINE, ok);
+    fill_circle(ui.scene, tip.0, tip.1, w::HANDLE_R * 0.5, ok);
+    if grip {
+        handle(
+            ui,
+            tip,
+            Handle::MotorTarget,
+            geo,
+            tr("joint_editor.handle.target"),
+        );
+    }
+}
+
+/// O arco do motor que gira, a partir do topo: o giro em [`w::MOTOR_PREVIEW_S`] (negativo = horário), e
+/// a alça na ponta quando `grip`.
+fn motor_arc(ui: &mut Ui<'_>, c: (f32, f32), rad: f32, speed: f32, col: Color, grip: bool) {
+    let speed = live(ui, Handle::MotorSpeed, speed);
     let dir = if speed < 0.0 { -1.0 } else { 1.0 };
-    let (a0, span) = (
-        std::f32::consts::FRAC_PI_2,
-        std::f32::consts::PI * 1.2 * dir,
-    );
+    let a0 = std::f32::consts::FRAC_PI_2;
+    let span = (speed * w::MOTOR_PREVIEW_S)
+        .to_radians()
+        .clamp(-std::f32::consts::PI, std::f32::consts::PI);
     let pts: Vec<(f32, f32)> = (0..=20)
         .map(|k| add(c, screen_dir(a0 + span * k as f32 / 20.0), rad))
         .collect();
     stroke_polyline(ui.scene, &pts, w::LINE, col);
     let end = a0 + span;
-    let tangent = screen_dir(end + std::f32::consts::FRAC_PI_2 * dir);
-    arrow_head(ui, pts[pts.len() - 1], tangent, col);
+    let tip = pts[pts.len() - 1];
+    arrow_head(
+        ui,
+        tip,
+        screen_dir(end + std::f32::consts::FRAC_PI_2 * dir),
+        col,
+    );
+    if grip {
+        let geo = Geo::Spin {
+            centre: c,
+            zero: a0,
+        };
+        handle(
+            ui,
+            tip,
+            Handle::MotorSpeed,
+            geo,
+            tr("joint_editor.handle.motor"),
+        );
+    }
 }
 
 /// A cota do entre-eixos (Wheel com duas rodas): a distância medida na CENA, com a alça na roda da frente.

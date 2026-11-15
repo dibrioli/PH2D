@@ -38,6 +38,9 @@ enum Item {
 /// Um cartão: o título (chave i18n, também a chave do recolhido) e os controlos.
 struct Group(&'static str, Vec<Item>);
 
+/// O `motor_mode_tag` do motor que segura um alvo (`MotorMode::Position`).
+pub(crate) const SERVO: u8 = 1;
+
 /// Os cartões do tipo `k`, lidos da 1.ª junta do alcance. Uma tabela: um controlo por linha.
 #[rustfmt::skip]
 fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJointInfo, wheelbase: bool, drive: Vec<(String, Hit, bool)>) -> Vec<Group> {
@@ -85,8 +88,10 @@ fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJoin
             }
             out.push(Group("joint_editor.group.limits", limits));
             let mut motor = vec![Check(Flag::Motor, "component.field.joint.7", info.motor_enabled)];
+            // O servo («Position») segura um alvo; a velocidade não é lida por ele.
+            let target = Num(Field::MotorTarget, Key("joint_editor.glyph.target"), "joint_editor.label.target", lim);
             if info.motor_enabled {
-                motor.extend([speed(), force()]);
+                motor.extend([if info.motor_mode_tag == SERVO { target } else { speed() }, force()]);
             }
             out.push(Group("joint_editor.group.motor", motor));
         }

@@ -2,11 +2,12 @@
 //! sem destruir o easing. A lei mora em [`ph2d_anim::Retime`] (`valor(u) = lerp(v0, v1, E(W(u)))`);
 //! aqui ficam o comando e a matemática da vista.
 //!
-//! **A curva do ritmo** que a vista desenha (a segunda cor, com as alças) é `ref · W'(u)`, com
-//! `ref = (v1 − v0) / span` — a velocidade que um movimento LINEAR teria com este ritmo: sem retime é
-//! a recta horizontal da velocidade média, e cada alça é a do AE (comprimento = influência, altura =
-//! velocidade na ponta). Um trecho parado (`v0 == v1`) não tem `ref`: não mostra alças de ritmo.
-
+//! **A caixa do tempo** (pesquisa 19, dono 15/11 «vamos tentar A»): em Retime a vista desenha o
+//! próprio `W` — de canto a canto de uma caixa do tamanho do trecho, como a curva *Retime Frame* do
+//! Resolve e o editor de `cubic-bezier` do CSS — e cada alça é o ponto `(x1, y1)`/`(x2, y2)` dentro
+//! dela. A caixa É o limite da monotonia (`[0,1]⁴`): o gesto além da borda fica na borda, debaixo do
+//! rato. Medido e recusado: a alça AE sobre `ref · W'` (o limite era a hipérbole `s = 1/a`, invisível,
+//! e a ponta escorregava — `docs/Timeline/19_pesquisa_retime.md` §5).
 use ph2d_anim::{AnimTarget, KeyId, Retime};
 
 use crate::intent_apply::edit;
@@ -50,10 +51,8 @@ pub(crate) fn apply(state: &mut TimelineState, intent: RetimeIntent) {
     }
 }
 
-/// AE's minimum influence (0.1 %) — the same floor as the Override speed handle.
-const MIN_INFLUENCE: f64 = 1.0e-3;
-
-/// `ref = (v1 − v0) / span` of the segment, or `None` for a zero-span or a still segment.
+/// `ref = (v1 − v0) / span` of the segment, or `None` for a zero-span or a still segment (a still
+/// segment plays the same value under any rhythm: it shows no time box).
 #[must_use]
 pub fn rhythm_reference(k0: &KeyView, k1: &KeyView) -> Option<f64> {
     let span = k1.t_seconds - k0.t_seconds;
@@ -61,86 +60,45 @@ pub fn rhythm_reference(k0: &KeyView, k1: &KeyView) -> Option<f64> {
     (span > 0.0 && dv.abs() > f64::from(f32::EPSILON)).then(|| dv / span)
 }
 
-/// The rhythm curve `ref · W'(u)` at `t` seconds, inside the segment `k0 → k1`.
+/// The time-box handle TIP of one side (`which`: `0` = start, `1` = end), in the segment's unit
+/// square: `(u, W)` = `(x1, y1)` or `(x2, y2)`. `None` on a segment with no rhythm.
 #[must_use]
-pub fn segment_rhythm(k0: &KeyView, k1: &KeyView, t: f64) -> Option<f64> {
-    let r = rhythm_reference(k0, k1)?;
-    let u = (t - k0.t_seconds) / (k1.t_seconds - k0.t_seconds);
-    let s = ph2d_anim::retime::warp_slope(k0.retime, u);
-    s.is_finite().then_some(r * s)
-}
-
-/// The rhythm handle TIP of one side (`which`: `0` = start, `1` = end): `(time, speed)`.
-#[must_use]
-pub fn rhythm_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f64)> {
-    let r = rhythm_reference(k0, k1)?;
+pub fn time_handle_tip(k0: &KeyView, k1: &KeyView, which: u8) -> Option<(f64, f64)> {
+    rhythm_reference(k0, k1)?;
     let w = k0.retime.unwrap_or(Retime::LINEAR);
-    let span = k1.t_seconds - k0.t_seconds;
-    let (x, u) = if which == 0 { (w.x1, 0.0) } else { (w.x2, 1.0) };
-    let s = w.slope(u);
-    s.is_finite()
-        .then(|| (k0.t_seconds + f64::from(x) * span, r * s))
+    let (x, y) = if which == 0 {
+        (w.x1, w.y1)
+    } else {
+        (w.x2, w.y2)
+    };
+    Some((f64::from(x), f64::from(y)))
 }
 
-/// The warp one rhythm-handle drag writes — the AE gesture on `ref · W'`: the pointer's `t` sets
-/// that side's influence and `v` the speed at that end (`W'(0) = y1/x1`, `W'(1) = (1−y2)/(1−x2)`).
-/// The other side keeps its handle. `None` on a segment with no rhythm (see [`rhythm_reference`]).
-/// `px = (px per second, px per value-per-second)` of the view: where the pointer asks for more
-/// than `W` can give, the tip goes to the NEAREST reachable point ON SCREEN.
+/// The warp one time-box drag writes: the pointer `(u, W)` in the unit square becomes that side's
+/// handle; beyond the box it goes to the box's nearest point — per axis, so the same at any pixel
+/// scale, and a function of the pointer alone (never of the path). The other side keeps its handle.
 #[must_use]
-pub fn retime_with_speed_handle(
+pub fn retime_with_time_handle(
     k0: &KeyView,
     k1: &KeyView,
     which: u8,
-    (t, v): (f64, f64),
-    px: (f64, f64),
+    (u, y): (f64, f64),
 ) -> Option<Retime> {
-    let r = rhythm_reference(k0, k1)?;
+    rhythm_reference(k0, k1)?;
     let w = k0.retime.unwrap_or(Retime::LINEAR);
-    let span = k1.t_seconds - k0.t_seconds;
-    let u = (t - k0.t_seconds) / span;
-    // Monotone: the rate never goes below zero (a speed on the far side of the zero line pauses).
-    let s = (v / r).max(0.0);
-    let a = if which == 0 { u } else { 1.0 - u };
-    let a = a.clamp(MIN_INFLUENCE, 1.0); // CLAMP-OK: const bounds, min<max
-    let (a, s) = alcancavel((a, s), (span * px.0, r.abs() * px.1));
-    Some(if which == 0 {
-        Retime::new(a as f32, (s * a) as f32, w.x2, w.y2)
-    } else {
-        Retime::new(w.x1, w.y1, (1.0 - a) as f32, (1.0 - s * a) as f32)
-    })
-}
-
-/// The arm `a` (influence) and the rate `s` meet `y = s·a`, and `y ≤ 1` is what keeps `W` monotone:
-/// the reachable tips are `s·a ≤ 1`. A pointer beyond goes to the point of the edge `s = 1/a` NEAREST
-/// to it in screen pixels (`k = px per unit of a, px per unit of s`). Measured on the owner's audit
-/// (15/11): clamping `y` left the tip up to 254/s below the pointer, and shortening the arm at fixed
-/// speed made it run LEFT while the pointer went right.
-fn alcancavel((a, s): (f64, f64), (ka, ks): (f64, f64)) -> (f64, f64) {
-    if s * a <= 1.0 || !(ka > 0.0 && ks > 0.0) {
-        return (a, s.min(1.0 / a));
-    }
-    let custo = |b: f64| (ka * (b - a)).powi(2) + (ks * (1.0 / b - s)).powi(2);
-    // A coarse scan in log space, then a golden-section polish around the best cell: the cost is
-    // not unimodal over the whole edge, and both steps are deterministic.
-    const N: usize = 128;
-    let (lo, hi) = (MIN_INFLUENCE.ln(), a.ln());
-    let em = |i: usize| (lo + (hi - lo) * i as f64 / N as f64).exp();
-    let melhor = (0..=N)
-        .min_by(|&i, &j| custo(em(i)).total_cmp(&custo(em(j))))
-        .unwrap_or(N);
-    let (mut x0, mut x1) = (em(melhor.saturating_sub(1)), em((melhor + 1).min(N)));
-    let g = 0.5 * (5.0f64.sqrt() - 1.0);
-    for _ in 0..60 {
-        let (c, d) = (x1 - g * (x1 - x0), x0 + g * (x1 - x0));
-        if custo(c) < custo(d) {
-            x1 = d;
+    let na_caixa = |v: f64| {
+        if v.is_finite() {
+            v.clamp(0.0, 1.0) as f32 // CLAMP-OK: the unit square, NaN handled
         } else {
-            x0 = c;
+            0.0
         }
-    }
-    let b = 0.5 * (x0 + x1);
-    (b, 1.0 / b)
+    };
+    let (u, y) = (na_caixa(u), na_caixa(y));
+    Some(if which == 0 {
+        Retime::new(u, y, w.x2, w.y2)
+    } else {
+        Retime::new(w.x1, w.y1, u, y)
+    })
 }
 
 #[cfg(test)]

@@ -234,12 +234,13 @@ pub(crate) fn resolve_drag(
     let ponto = (view.t(d.x), band.value(d.y));
     let interp = if state.speed_view && state.speed_retime {
         // Retime (plano 18): the same gesture on the RHYTHM — the easing is not touched.
-        let span = band.v_max - band.v_min;
-        let px = (
-            view.px_per_s,
-            f64::from(band.rect.h) / span.max(f64::MIN_POSITIVE),
+        let intent = crate::graph_ritmo::intent_do_arrasto(
+            (k0, k1),
+            track,
+            d.which,
+            (d.x, d.y),
+            (band.rect, view),
         );
-        let intent = crate::graph_ritmo::intent_do_arrasto((k0, k1), track, d.which, ponto, px);
         if let Some(i) = intent {
             state::push_intent(i);
         }

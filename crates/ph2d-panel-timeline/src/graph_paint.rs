@@ -27,21 +27,21 @@ use crate::state::TimelinePanelState;
 
 /// Horizontal spacing of the polyline samples. Two pixels is below the eye's
 /// resolution for a smooth curve and keeps a wide band under ~500 samples.
-const CURVE_STEP_PX: f32 = 2.0; // LITERAL-PX-OK: curve polyline sample spacing
-const CURVE_W: f32 = 1.5; // LITERAL-PX-OK: curve stroke width
+pub(crate) const CURVE_STEP_PX: f32 = 2.0; // LITERAL-PX-OK: curve polyline sample spacing
+pub(crate) const CURVE_W: f32 = 1.5; // LITERAL-PX-OK: curve stroke width
 const GHOST_W: f32 = 1.0; // LITERAL-PX-OK: buffered-curve ghost stroke width (thinner than live)
 
 // The §5 Buffer-Curves chips (Store/Swap) live in a child module under the panel
 // LOC cap; `paint_track` calls its one entry point below.
 #[path = "graph_buffer.rs"]
 mod graph_buffer;
-const ANCHOR_R: f32 = 3.0; // LITERAL-PX-OK: key anchor dot radius
+pub(crate) const ANCHOR_R: f32 = 3.0; // LITERAL-PX-OK: key anchor dot radius
 /// A roving key's anchor draws smaller — its time is derived, not authored
 /// (the dope-sheet strip makes the same distinction with a dot vs a diamond).
 const ROVE_ANCHOR_R: f32 = 1.8; // LITERAL-PX-OK: roving key anchor radius
 const ANCHOR_HIT_R: f32 = 7.0; // LITERAL-PX-OK: key anchor grab radius
-const HANDLE_R: f32 = 3.5; // LITERAL-PX-OK: bezier handle dot radius
-const HANDLE_HIT_R: f32 = 7.0; // LITERAL-PX-OK: bezier handle grab radius
+pub(crate) const HANDLE_R: f32 = 3.5; // LITERAL-PX-OK: bezier handle dot radius
+pub(crate) const HANDLE_HIT_R: f32 = 7.0; // LITERAL-PX-OK: bezier handle grab radius
 const BAND_INSET: f32 = 2.0; // LITERAL-PX-OK: gap between the strip and its graph band
 /// Height of the grab strip along the band bottom (the vertical resize grip).
 const GRIP_H: f32 = 6.0; // LITERAL-PX-OK: graph-height grip strip height
@@ -83,7 +83,7 @@ pub(crate) fn paint_track(
     // the value view to what the curve+handles draw. A drag freezes the fit (see
     // `graph::band_for`).
     let extent = if state.speed_view {
-        crate::graph_ritmo::extent(state, speed_extent_of(&band_rect, view, track), track)
+        speed_extent_of(&band_rect, view, track)
     } else {
         drawn_extent_of(&band_rect, view, track)
     };
@@ -109,11 +109,15 @@ pub(crate) fn paint_track(
         // Retime (plano 18): the motion's speed in the curve colour, the rhythm in amber with
         // ITS handles; Override: the speed in the accent with the easing's handles, as always.
         paint_zero_line(ctx, theme, &band);
-        let (cor, tip) = crate::graph_ritmo::curva_e_alcas(state);
+        let cor = crate::graph_ritmo::cor_da_curva(state);
         let speed = |t| sample_speed(&track.keys, t);
         paint_speed_curve(ctx, &band, view, speed, resolve(cor, theme));
-        crate::graph_ritmo::paint_rhythm(ctx, theme, state, &band, view, track);
-        paint_speed_handles(ctx, theme, state, &band, view, (track, tip));
+        if state.speed_retime {
+            crate::graph_ritmo::paint_caixas(ctx, theme, state, &band, view, track);
+        } else {
+            let tip = ph2d_timeline::speed_handle_tip;
+            paint_speed_handles(ctx, theme, state, &band, view, (track, tip));
+        }
     } else {
         // The buffered-curve GHOST first (fainter, thinner), so the live curve
         // draws on top of its A/B reference. `buffer_ghost` is `Some` only for the

@@ -28,9 +28,6 @@ fn kv(t: f64, v: f32, interp: Interp, retime: Option<Retime>) -> KeyView {
     }
 }
 
-/// A vista das provas: 400 px por segundo, 1 px por unidade/s.
-const PX: (f64, f64) = (400.0, 1.0);
-
 /// Um ritmo que arranca devagar e acaba depressa — longe da identidade nas duas pontas.
 const LENTO_DEPOIS_RAPIDO: Retime = Retime {
     x1: 0.6,
@@ -117,54 +114,65 @@ fn a_velocidade_de_um_bounce_retimado_e_a_derivada_do_que_toca() {
     }
 }
 
-/// O arrasto da alça do ritmo é o inverso da sua ponta: pôr a ponta onde ela já está não muda o
-/// ritmo, e subir a ponta de saída acelera o arranque (`W'(0)` = a velocidade ÷ `ref`).
+/// A alça da caixa do tempo é a inversa da sua ponta: pôr a ponta onde ela já está não muda o
+/// ritmo; o ponteiro dentro da caixa É a alça; um trecho parado não tem caixa.
 #[test]
-fn a_alca_do_ritmo_e_a_ponta_dela_sao_inversas() {
+fn a_alca_do_tempo_e_a_ponta_dela_sao_inversas() {
     let (k0, k1) = (
         kv(1.0, 0.0, bounce(), Some(LENTO_DEPOIS_RAPIDO)),
         kv(3.0, 100.0, Interp::Linear, None),
     );
     for which in [0u8, 1u8] {
-        let (t, v) = rhythm_handle_tip(&k0, &k1, which).unwrap();
-        let w = retime_with_speed_handle(&k0, &k1, which, (t, v), PX).unwrap();
-        let d = |a: f32, b: f32| (a - b).abs() < 1.0e-5;
-        let o = LENTO_DEPOIS_RAPIDO;
-        assert!(
-            d(w.x1, o.x1) && d(w.y1, o.y1) && d(w.x2, o.x2) && d(w.y2, o.y2),
-            "{which}: {w:?}"
-        );
+        let ponta = time_handle_tip(&k0, &k1, which).unwrap();
+        let w = retime_with_time_handle(&k0, &k1, which, ponta).unwrap();
+        assert_eq!(w, LENTO_DEPOIS_RAPIDO, "{which}");
     }
-    let r = rhythm_reference(&k0, &k1).unwrap();
-    assert!((r - 50.0).abs() < 1.0e-9, "ref = 100 / 2 s");
-    let (t, _) = rhythm_handle_tip(&k0, &k1, 0).unwrap();
-    let w = retime_with_speed_handle(&k0, &k1, 0, (t, 75.0), PX).unwrap();
-    assert!(
-        (w.slope(0.0) - 1.5).abs() < 1.0e-4,
-        "W'(0) = 75 / 50: {w:?}"
+    let w = retime_with_time_handle(&k0, &k1, 0, (0.25, 0.75)).unwrap();
+    assert_eq!((w.x1, w.y1), (0.25, 0.75), "o ponteiro é a alça");
+    assert_eq!(
+        (w.x2, w.y2),
+        (LENTO_DEPOIS_RAPIDO.x2, LENTO_DEPOIS_RAPIDO.y2),
+        "a outra fica"
     );
     let parado = kv(3.0, 0.0, Interp::Linear, None);
     assert_eq!(
-        rhythm_handle_tip(&k0, &parado, 0),
+        time_handle_tip(&k0, &parado, 0),
         None,
-        "trecho parado: sem ritmo"
+        "trecho parado: sem caixa"
     );
+    assert_eq!(retime_with_time_handle(&k0, &parado, 0, (0.5, 0.5)), None);
 }
 
-/// Uma alça puxada para baixo do zero pára o trecho nessa ponta — nunca o anda para trás.
+/// ⭐ Pesquisa 19 (dono 15/11, «vamos tentar A»): além da borda a alça fica no ponto da caixa MAIS
+/// PERTO do rato (por eixo: o mesmo a qualquer escala de pixels), e o tempo nunca anda para trás.
 #[test]
-fn o_ritmo_nunca_anda_para_tras() {
+fn alem_da_borda_a_alca_fica_na_borda_e_o_tempo_nunca_volta() {
     let (k0, k1) = (
-        kv(0.0, 0.0, Interp::Linear, None),
+        kv(0.0, 0.0, bounce(), None),
         kv(1.0, 10.0, Interp::Linear, None),
     );
-    let w = retime_with_speed_handle(&k0, &k1, 0, (0.3, -40.0), PX).unwrap();
-    assert_eq!(w.y1, 0.0);
-    let mut antes = 0.0;
-    for i in 0..=1000 {
-        let v = w.eval(f64::from(i) / 1000.0);
-        assert!(v >= antes - 1.0e-9, "W desceu em {i}");
-        antes = v;
+    let casos = [
+        ((0.4, 1.7), (0.4, 1.0)),
+        ((-0.3, 0.6), (0.0, 0.6)),
+        ((1.4, -2.0), (1.0, 0.0)),
+        ((0.3, f64::NAN), (0.3, 0.0)),
+    ];
+    for which in [0u8, 1u8] {
+        for ((u, y), (eu, ey)) in casos {
+            let w = retime_with_time_handle(&k0, &k1, which, (u, y)).unwrap();
+            let got = if which == 0 {
+                (w.x1, w.y1)
+            } else {
+                (w.x2, w.y2)
+            };
+            assert_eq!(got, (eu as f32, ey as f32), "{which} ({u}, {y})");
+            let mut antes = 0.0;
+            for i in 0..=1000 {
+                let v = w.eval(f64::from(i) / 1000.0);
+                assert!(v >= antes - 1.0e-9, "{which} ({u}, {y}): W desceu em {i}");
+                antes = v;
+            }
+        }
     }
 }
 
@@ -255,61 +263,52 @@ fn copiar_colar_e_duplicar_levam_o_ritmo() {
     );
 }
 
-/// ⭐ Auditoria do dono (15/11): «o arrastar das alças em Retime treme e dá pulos». Medido: além do
-/// tecto `s·a ≤ 1` (W monótona) a ponta ficava até 254/s longe do rato (y preso), e depois, com o braço
-/// a encurtar à velocidade pedida, corria para a ESQUERDA enquanto o rato ia para a direita. Agora a
-/// ponta é o ponto ALCANÇÁVEL mais perto do rato no ecrã: confere-se contra uma busca exaustiva, a
-/// ponta anda contínua (nunca mais do que o dobro do rato por quadro), e W continua monótona.
+/// ⭐ Auditoria do dono (15/11): «o arrastar das alças em Retime treme e dá pulos», «consistente e
+/// reprodutível como no Override». Na caixa do tempo a alça é função SÓ do ponteiro: três caminhos
+/// diferentes (por dentro, por fora da caixa, em zigue-zague) que acabam no mesmo ponto dão o mesmo
+/// ritmo, ao bit; e a ponta nunca anda mais do que o rato (nem pulo nem escorrego).
 #[test]
-fn a_ponta_do_ritmo_e_o_ponto_alcancavel_mais_perto_do_rato() {
+fn o_mesmo_ponto_do_rato_da_sempre_o_mesmo_ritmo() {
     let k1 = kv(1.0, 100.0, Interp::Linear, None);
-    let (kx, ks) = (PX.0, 100.0 * PX.1); // px por unidade de braço e de ritmo (span 1, ref 100)
+    let fim = (0.7, 1.4);
+    let caminhos: [&dyn Fn(f64) -> (f64, f64); 3] = [
+        &|f| (0.2 + 0.5 * f, 0.1 + 1.3 * f),
+        &|f| (1.6 - 0.9 * f, -0.8 + 2.2 * f * f),
+        &|f| {
+            (
+                0.7 + 0.4 * (f * 37.0).sin() * (1.0 - f),
+                1.4 * f + 0.5 * (f * 23.0).cos() * (1.0 - f),
+            )
+        },
+    ];
     for which in [0u8, 1u8] {
-        let mut w = None;
-        let mut antes_x = None::<(f64, f64)>;
-        for i in 0..=200 {
-            let f = f64::from(i) / 200.0;
-            let t = if which == 0 {
-                0.2 + 0.6 * f
-            } else {
-                0.8 - 0.6 * f
-            };
-            let v = 100.0 + 400.0 * f;
-            let k0 = kv(0.0, 0.0, bounce(), w);
-            w = Some(retime_with_speed_handle(&k0, &k1, which, (t, v), PX).unwrap());
-            let (tip_t, tip_v) = rhythm_handle_tip(&kv(0.0, 0.0, bounce(), w), &k1, which).unwrap();
-            let a_rato = if which == 0 { t } else { 1.0 - t };
-            let a_ponta = if which == 0 { tip_t } else { 1.0 - tip_t };
-            let d = |a: f64, s: f64| {
-                ((kx * (a - a_rato)).powi(2) + (ks * (s - v / 100.0)).powi(2)).sqrt()
-            };
-            let meu = d(a_ponta, tip_v / 100.0);
-            let busca = (1..=20_000)
-                .map(|j| f64::from(j) / 20_000.0)
-                .map(|a| d(a, (v / 100.0).min(1.0 / a)))
-                .fold(f64::MAX, f64::min);
-            assert!(
-                meu <= busca + 0.5,
-                "{which} {i}: ponta a {meu:.2} px, o melhor é {busca:.2} px"
-            );
-            // Contínua: a ponta anda no ecrã no máximo o dobro do que o rato andou (o pulo era isso).
-            let rato_px = ((kx * 0.6 / 200.0).powi(2) + (ks * 4.0 / 200.0).powi(2)).sqrt();
-            if let Some((x, s_)) = antes_x {
-                let passo =
-                    ((kx * (a_ponta - x)).powi(2) + (ks * (tip_v / 100.0 - s_)).powi(2)).sqrt();
-                assert!(
-                    passo <= 2.0 * rato_px + 0.5,
-                    "{which} {i}: a ponta saltou {passo:.1} px"
-                );
+        let mut finais = Vec::new();
+        for caminho in caminhos {
+            let mut w = Some(LENTO_DEPOIS_RAPIDO);
+            let mut antes: Option<((f64, f64), (f64, f64))> = None;
+            for i in 0..=200 {
+                let rato = if i == 200 {
+                    fim
+                } else {
+                    caminho(f64::from(i) / 200.0)
+                };
+                let k0 = kv(0.0, 0.0, bounce(), w);
+                w = retime_with_time_handle(&k0, &k1, which, rato);
+                let ponta = time_handle_tip(&kv(0.0, 0.0, bounce(), w), &k1, which).unwrap();
+                if let Some((r0, p0)) = antes {
+                    let d = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).hypot(a.1 - b.1);
+                    assert!(
+                        d(ponta, p0) <= d(rato, r0) + 1.0e-6,
+                        "{which} {i}: a ponta andou mais do que o rato"
+                    );
+                }
+                antes = Some((rato, ponta));
             }
-            antes_x = Some((a_ponta, tip_v / 100.0));
-            let w = w.unwrap();
-            let mut antes = 0.0;
-            for j in 0..=100 {
-                let y = w.eval(f64::from(j) / 100.0);
-                assert!(y >= antes - 1.0e-6, "{which} {i}: W desceu");
-                antes = y;
-            }
+            finais.push(w.unwrap());
         }
+        assert!(
+            finais.windows(2).all(|p| p[0] == p[1]),
+            "{which}: {finais:?}"
+        );
     }
 }

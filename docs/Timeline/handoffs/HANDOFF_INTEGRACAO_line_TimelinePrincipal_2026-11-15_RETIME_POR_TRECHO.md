@@ -95,6 +95,30 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   - em Retime a escala congelada do arrasto só CRESCE (`graph::band_for`): a curva cabe, nada reescala para trás.
 - [Tira do arrasto, quadro a quadro](../fotos/retime_7_arrasto_quadro_a_quadro.png) (círculo vermelho = rato).
 
+## Retime = caixa do tempo (dono 15/11, «vamos tentar A» — pesquisa 19 §5)
+
+- **Lei do gesto:** em Retime a alça é o ponto `(x1, y1)`/`(x2, y2)` de `W` dentro de uma caixa do tamanho do trecho
+  (`graph_ritmo::caixa`: de chave a chave, a altura da banda menos `Spacing::Sm` em cima e em baixo, presa ao RECTÂNGULO
+  da banda, nunca à escala da velocidade). Além da borda, o ponto da caixa mais perto do rato (por eixo) —
+  `ph2d_timeline::retime_with_time_handle`, função só do ponteiro. Formato e lei `E(W(u))` intactos; Override intacto.
+- **Desenho:** a velocidade do movimento na cor da curva (só lê); por cima, a caixa tracejada (`Border`), `W` em âmbar
+  (`Warn`) de canto a canto e as duas alças (braço do canto à ponta, ponta âmbar, `CurveHandle` de sempre). A curva
+  âmbar de velocidade `ref·W'` saiu (duas âmbar confundiam); a banda enquadra só a velocidade do movimento.
+- **Saiu:** `retime_with_speed_handle`, `alcancavel`, `rhythm_handle_tip`, `segment_rhythm`, `graph_ritmo::{extent,
+  paint_rhythm, curva_e_alcas}` e os três testes deles (o modelo foi recusado na pesquisa 19).
+- **Provas por nome:** `ph2d-timeline retime::tests` 7 ✓ — novos `a_alca_do_tempo_e_a_ponta_dela_sao_inversas`,
+  `alem_da_borda_a_alca_fica_na_borda_e_o_tempo_nunca_volta`, `o_mesmo_ponto_do_rato_da_sempre_o_mesmo_ritmo` (3
+  caminhos, por dentro/por fora/zigue-zague, dão o mesmo ritmo ao bit; a ponta nunca anda mais do que o rato) ·
+  `ph2d-panel-timeline graph_ritmo` 4 ✓ — novos `em_retime_a_alca_e_o_ponto_da_caixa_num_passo`,
+  `alem_da_caixa_a_alca_fica_na_borda_debaixo_do_rato` (duas escalas de velocidade, a mesma alça).
+- **Mutações:** `W` virado no arrasto (`(y − c.y)/c.h`) ⇒ as 2 do painel vermelhas · projecção RADIAL em vez da caixa ⇒
+  as 2 da lei vermelhas · folga da caixa = 0 sobrevive (cosmética, equivalente: o teste lê a mesma `caixa`). Restaurado.
+- **App (Xvfb, cliques reais, `PH2D_ANIMACAO_SMOKE=1`, roteiro [`fotos_retime_caixa.sh`](../ferramentas/fotos_retime_caixa.sh)):**
+  [caixa do tempo](../fotos/retime_10_caixa_do_tempo.png) · [alça puxada acima da caixa, a meio](../fotos/retime_11_alca_presa_na_borda_a_meio.png)
+  (fica na borda de cima, na coluna do rato) · [a outra para baixo e à direita, a meio](../fotos/retime_12_outra_alca_no_canto_a_meio.png)
+  (fica no canto) · [depois de soltar](../fotos/retime_13_depois_de_soltar.png). A borda era `Border` e não se via na
+  1.ª foto — passou a `Text3`. fmt ✓ · clippy `-D warnings --all-targets` (timeline, panel-timeline) ✓.
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é
@@ -113,7 +137,8 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   - **Pesquisa FEITA (15/11):** [19 §5](../19_pesquisa_retime.md#5-resultado-1511--medido-fixtures-em-oraculosretime)
     (Blender, Godot e Natron corridos por script; AE/Premiere/Resolve pela documentação), [folha lado a lado](../fotos/retime_8_pesquisa_lado_a_lado.png).
     Recomendação: em Retime editar a curva do TEMPO numa caixa (alça presa à borda sob o rato), velocidade só para ler;
-    alternativas B/C/D no §5. ⛔ **Aguarda a escolha do dono** — nenhum código do Retime mudou.
+    alternativas B/C/D no §5.
+  - **Dono 15/11: «vamos tentar A» — FEITO** (ver «Retime = caixa do tempo» abaixo). Aguarda o smoke do dono.
 
 - Smoke do dono depois da cura da auditoria (o arrasto além do tecto).
 - Na vista de VALOR as alças continuam as do easing (sobre um trecho retimado não ficam em cima da curva desenhada).

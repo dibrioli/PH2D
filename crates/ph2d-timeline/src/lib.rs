@@ -57,9 +57,7 @@ mod intent_apply_path;
 mod intent_seek;
 pub mod nest;
 pub mod retime;
-pub use retime::{
-    RetimeIntent, retime_with_speed_handle, rhythm_handle_tip, rhythm_reference, segment_rhythm,
-};
+pub use retime::{RetimeIntent, retime_with_time_handle, rhythm_reference, time_handle_tip};
 pub mod nest_map;
 mod no_lugar;
 pub mod onion;

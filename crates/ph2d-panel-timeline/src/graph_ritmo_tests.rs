@@ -89,21 +89,8 @@ fn arrasta(
     state::drain_intents()
 }
 
-/// ⭐ Em Retime a alça escreve SÓ o ritmo da chave — nenhum `SetInterp`, o Bounce fica —, num passo
-/// de desfazer, e o ritmo dá a velocidade pedida na ponta (`ref · W'(0)`, `ref` = 10 /s).
-#[test]
-fn em_retime_a_alca_muda_so_o_ritmo_num_passo() {
-    let tr = track(bounce(), None);
-    let band = Band::fit(Rect::new(0.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
-    let y = band.y(20.0);
-    let got = arrasta(true, &tr, &band, (50.0, y));
-    assert_eq!(got.first(), Some(&TimelineIntent::BeginEdit));
-    assert_eq!(got.last(), Some(&TimelineIntent::EndEdit));
-    assert!(
-        !got.iter()
-            .any(|i| matches!(i, TimelineIntent::SetInterp { .. })),
-        "o easing não se toca: {got:?}"
-    );
+/// O ritmo que um arrasto deixou (o último `Retime::Set` da lista).
+fn ritmo_de(got: &[TimelineIntent]) -> Retime {
     let Some(TimelineIntent::Retime(RetimeIntent::Set {
         retime: Some(w), ..
     })) = got
@@ -113,13 +100,54 @@ fn em_retime_a_alca_muda_so_o_ritmo_num_passo() {
     else {
         panic!("nenhum ritmo em {got:?}")
     };
+    *w
+}
+
+/// ⭐ Em Retime (pesquisa 19, opção A) a alça é um ponto da CAIXA DO TEMPO: o ponteiro dentro dela é
+/// a alça; o arrasto escreve SÓ o ritmo da chave — nenhum `SetInterp`, o Bounce fica —, num passo de
+/// desfazer.
+#[test]
+fn em_retime_a_alca_e_o_ponto_da_caixa_num_passo() {
+    let tr = track(bounce(), None);
+    let band = Band::fit(Rect::new(0.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
+    let c = caixa(band.rect, VIEW, &tr.keys[0], &tr.keys[1]);
+    let (x, y) = (c.x + 0.5 * c.w, c.y + c.h - 0.8 * c.h);
+    let got = arrasta(true, &tr, &band, (x, y));
+    assert_eq!(got.first(), Some(&TimelineIntent::BeginEdit));
+    assert_eq!(got.last(), Some(&TimelineIntent::EndEdit));
     assert!(
-        (w.x1 - 0.5).abs() < 1.0e-6,
-        "a influência é o x do ponteiro: {w:?}"
+        !got.iter()
+            .any(|i| matches!(i, TimelineIntent::SetInterp { .. })),
+        "o easing não se toca: {got:?}"
     );
+    let w = ritmo_de(&got);
     assert!(
-        (10.0 * w.slope(0.0) - 20.0).abs() < 1.0e-2,
-        "a velocidade pedida: {w:?}"
+        (w.x1 - 0.5).abs() < 1.0e-5 && (w.y1 - 0.8).abs() < 1.0e-5,
+        "{w:?}"
+    );
+}
+
+/// O rato acima e à direita da caixa: a alça fica na BORDA, debaixo do rato na coluna dele; e a
+/// caixa é do rectângulo da banda, não da escala da velocidade — outra escala, a mesma alça.
+#[test]
+fn alem_da_caixa_a_alca_fica_na_borda_debaixo_do_rato() {
+    let tr = track(bounce(), None);
+    let rect = Rect::new(0.0, 0.0, 400.0, 100.0);
+    let mut alcas = Vec::new();
+    for escala in [(0.0, 40.0), (-300.0, 900.0)] {
+        let band = Band::fit(rect, Some(escala));
+        let c = caixa(band.rect, VIEW, &tr.keys[0], &tr.keys[1]);
+        let got = arrasta(true, &tr, &band, (c.x + 0.3 * c.w, c.y - 40.0));
+        alcas.push(ritmo_de(&got));
+    }
+    let w = alcas[0];
+    assert!(
+        (w.x1 - 0.3).abs() < 1.0e-5 && w.y1 == 1.0,
+        "na borda de cima: {w:?}"
+    );
+    assert_eq!(
+        alcas[0], alcas[1],
+        "a escala da velocidade não move a caixa"
     );
 }
 

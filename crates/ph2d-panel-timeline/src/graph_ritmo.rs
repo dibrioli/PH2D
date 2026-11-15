@@ -1,44 +1,45 @@
 //! ⭐ **Override · Retime na vista de velocidade** (plano 18, dono 15/11).
 //!
 //! **Override** (como sempre): a curva da velocidade no acento, com as alças do EASING — arrastar
-//! reescreve o easing. **Retime**: duas curvas — a velocidade do movimento na cor da curva (os quiques
-//! do Bounce ficam) e o RITMO em âmbar, com as alças DELE: arrastar muda só quando cada parte do
-//! easing acontece ([`ph2d_timeline::retime_with_speed_handle`]). A escolha é da sessão, na coluna à
-//! esquerda da banda, com «Reset timing» por baixo em Retime.
+//! reescreve o easing. **Retime** (pesquisa 19, opção A): a velocidade do movimento na cor da curva
+//! (os quiques do Bounce ficam, só para ler) e, sobre cada trecho seleccionado, a CAIXA DO TEMPO em
+//! âmbar: a curva `W` de canto a canto e as duas alças dela; a borda tracejada é o limite, e o
+//! arrasto além dela fica na borda ([`ph2d_timeline::retime_with_time_handle`]). A escolha é da
+//! sessão, na coluna à esquerda da banda, com «Reset timing» por baixo em Retime.
 
-use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, WidgetEvent};
+use ph2d_editor_core::paint::{
+    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
+};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx};
 use ph2d_editor_core::widget::{TabItem, Tabs, TabsVariant, paint_tabs_with_hover};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    KeyView, RetimeIntent, TimelineIntent, TrackView, retime_with_speed_handle, rhythm_handle_tip,
-    segment_rhythm, speed_handle_tip,
+    KeyView, RetimeIntent, TimelineIntent, TrackView, retime_with_time_handle, time_handle_tip,
 };
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::{Band, TimeView};
+use crate::graph_paint::{ANCHOR_R, CURVE_STEP_PX, CURVE_W, HANDLE_HIT_R, HANDLE_R};
 use crate::ids;
 use crate::state::{self, TimelinePanelState};
 
 /// Onde a alça de um lado de um trecho se pinta: `(tempo, velocidade)`.
 pub(crate) type Ponta = fn(&KeyView, &KeyView, u8) -> Option<(f64, f64)>;
 
-/// Amostras por trecho para o enquadramento da curva do ritmo.
-const AMOSTRAS: usize = 32;
 /// A altura do «Reset timing».
 const RESET_H: f32 = 15.0; // LITERAL-PX-OK: a altura do chip do Buffer, o vizinho da banda
 
-/// A cor da curva da velocidade e as alças que a vista mostra, pelo modo.
-pub(crate) fn curva_e_alcas(state: &TimelinePanelState) -> (ColorToken, Ponta) {
+/// A cor da curva da velocidade, pelo modo: em Retime ela só se lê (o âmbar é o tempo).
+pub(crate) fn cor_da_curva(state: &TimelinePanelState) -> ColorToken {
     if state.speed_retime {
-        (ColorToken::TimelineCurve, rhythm_handle_tip)
+        ColorToken::TimelineCurve
     } else {
-        (ColorToken::Accent, speed_handle_tip)
+        ColorToken::Accent
     }
 }
 
-/// Os trechos que mostram o ritmo: os que tocam uma chave seleccionada (os mesmos das alças).
+/// Os trechos que mostram a caixa: os que tocam uma chave seleccionada (os mesmos das alças).
 fn trechos(track: &TrackView) -> impl Iterator<Item = (&KeyView, &KeyView)> {
     track
         .keys
@@ -47,9 +48,51 @@ fn trechos(track: &TrackView) -> impl Iterator<Item = (&KeyView, &KeyView)> {
         .filter(|(a, b)| a.selected || b.selected)
 }
 
-/// A curva do ritmo (`ref · W'`) de cada trecho seleccionado, em âmbar — só em Retime: a curva do
-/// movimento já é azul, e duas curvas do mesmo azul não se distinguem (foto de 15/11).
-pub(crate) fn paint_rhythm(
+/// A caixa do tempo de um trecho no ecrã: de chave a chave na horizontal, a altura da banda menos a
+/// folga de uma alça em cima e em baixo (`W = 0` no fundo, `W = 1` no topo). Presa ao RECTÂNGULO da
+/// banda, nunca à escala da velocidade: o reenquadramento de um arrasto não a move.
+pub(crate) fn caixa(band_rect: Rect, view: TimeView, k0: &KeyView, k1: &KeyView) -> Rect {
+    let folga = Spacing::Sm.px();
+    let (x0, x1) = (view.x(k0.t_seconds), view.x(k1.t_seconds));
+    Rect::new(
+        x0,
+        band_rect.y + folga,
+        (x1 - x0).max(0.0),
+        (band_rect.h - folga * 2.0).max(0.0),
+    )
+}
+
+/// O ponto `(u, W)` da caixa no ecrã.
+fn no_ecra(c: Rect, (u, w): (f64, f64)) -> (f32, f32) {
+    (c.x + u as f32 * c.w, c.y + c.h - w as f32 * c.h)
+}
+
+/// A borda da caixa, tracejada: o limite que o gesto não passa.
+fn tracejado(ctx: &mut PaintCtx, c: Rect, cor: ph2d_vector::Color) {
+    let (traco, vazio) = (Spacing::Xs.px(), Spacing::Xs.px());
+    let cantos = [
+        (c.x, c.y),
+        (c.x + c.w, c.y),
+        (c.x + c.w, c.y + c.h),
+        (c.x, c.y + c.h),
+        (c.x, c.y),
+    ];
+    for par in cantos.windows(2) {
+        let ((ax, ay), (bx, by)) = (par[0], par[1]);
+        let comp = (bx - ax).hypot(by - ay);
+        let mut d = 0.0;
+        while d < comp {
+            let e = (d + traco).min(comp);
+            let p = |f: f32| (ax + (bx - ax) * f / comp, ay + (by - ay) * f / comp);
+            stroke_polyline(ctx.scene, &[p(d), p(e)], StrokeToken::Thin.px(), cor);
+            d = e + vazio;
+        }
+    }
+}
+
+/// Em Retime, sobre cada trecho seleccionado com ritmo: a caixa do tempo, a curva `W` em âmbar e as
+/// duas alças (braço do canto à ponta), registadas no MESMO `CurveHandle` das alças de sempre.
+pub(crate) fn paint_caixas(
     ctx: &mut PaintCtx,
     theme: Theme,
     state: &TimelinePanelState,
@@ -57,60 +100,86 @@ pub(crate) fn paint_rhythm(
     view: TimeView,
     track: &TrackView,
 ) {
-    if !state.speed_retime {
-        return;
-    }
-    let cor = resolve(ColorToken::Warn, theme);
+    let ambar = resolve(ColorToken::Warn, theme);
+    let target = track.target.get();
     for (k0, k1) in trechos(track) {
-        let dentro = |t: f64| (k0.t_seconds..=k1.t_seconds).contains(&t);
-        let amostra = |t: f64| {
-            dentro(t)
-                .then(|| segment_rhythm(k0, k1, t))
-                .flatten()
-                .map(|v| v as f32)
-        };
-        crate::graph_paint::paint_speed_curve(ctx, band, view, amostra, cor);
-    }
-}
-
-/// O enquadramento da banda de velocidade: em Retime, a curva do ritmo e as pontas entram também.
-pub(crate) fn extent(
-    state: &TimelinePanelState,
-    base: Option<(f32, f32)>,
-    track: &TrackView,
-) -> Option<(f32, f32)> {
-    if !state.speed_retime {
-        return base;
-    }
-    let (mut lo, mut hi) = base?;
-    let mut inclui = |v: f64| {
-        if v.is_finite() {
-            lo = lo.min(v as f32);
-            hi = hi.max(v as f32);
-        }
-    };
-    for (k0, k1) in trechos(track) {
-        let span = k1.t_seconds - k0.t_seconds;
-        let curva = (0..=AMOSTRAS).filter_map(|i| {
-            segment_rhythm(k0, k1, k0.t_seconds + span * (i as f64 / AMOSTRAS as f64))
-        });
-        let pontas = [0u8, 1u8]
+        let c = caixa(band.rect, view, k0, k1);
+        let Some(pontas) = [0u8, 1u8]
             .into_iter()
-            .filter_map(|which| rhythm_handle_tip(k0, k1, which).map(|(_, v)| v));
-        curva.chain(pontas).for_each(&mut inclui);
+            .map(|which| time_handle_tip(k0, k1, which))
+            .collect::<Option<Vec<_>>>()
+        else {
+            continue; // trecho parado: o ritmo não muda o que toca
+        };
+        if c.w < HANDLE_HIT_R * 2.0 || c.h <= 0.0 {
+            continue;
+        }
+        tracejado(ctx, c, resolve(ColorToken::Text3, theme));
+        let n = (c.w / CURVE_STEP_PX).ceil().max(1.0) as usize;
+        let curva: Vec<_> = (0..=n)
+            .map(|i| {
+                let u = i as f64 / n as f64;
+                no_ecra(c, (u, ph2d_anim::retime::warp(k0.retime, u)))
+            })
+            .collect();
+        stroke_polyline(ctx.scene, &curva, CURVE_W, ambar);
+        for (which, ponta) in pontas.into_iter().enumerate() {
+            let which = which as u8;
+            let canto = no_ecra(c, if which == 0 { (0.0, 0.0) } else { (1.0, 1.0) });
+            let (px, py) = no_ecra(c, ponta);
+            let linha = resolve(ColorToken::TimelineHandleLine, theme);
+            stroke_polyline(ctx.scene, &[canto, (px, py)], StrokeToken::Thin.px(), linha);
+            let chave = resolve(ColorToken::TimelineKey, theme);
+            fill_circle(ctx.scene, canto.0, canto.1, ANCHOR_R, chave);
+            let arrastada = state
+                .handle_drag
+                .is_some_and(|d| d.target == target && d.key == k0.id.get() && d.which == which);
+            let tok = if arrastada {
+                ColorToken::TimelineKeyActive
+            } else {
+                ColorToken::Warn
+            };
+            fill_circle(ctx.scene, px, py, HANDLE_R, resolve(tok, theme));
+            let id = ids::timeline_handle_hit_id(target, k0.id.get(), which);
+            let hit = Rect::new(
+                px - HANDLE_HIT_R,
+                py - HANDLE_HIT_R,
+                HANDLE_HIT_R * 2.0,
+                HANDLE_HIT_R * 2.0,
+            );
+            ctx.host.store_mut().register(
+                id,
+                InteractiveState::TimelineSurface {
+                    parent: ph2d_editor_core::ids::TIMELINE_PANEL,
+                    kind: TimelineHitKind::CurveHandle {
+                        target,
+                        key: k0.id.get(),
+                        which,
+                    },
+                    canvas: band.rect,
+                },
+            );
+            ctx.host.hit_index_mut().register(id, hit);
+        }
     }
-    Some((lo, hi))
 }
 
-/// Um frame do arrasto de uma alça de ritmo, como o comando do documento. `None` num trecho parado.
+/// Um frame do arrasto de uma alça da caixa, como o comando do documento: o ponteiro no ecrã vira
+/// `(u, W)` da caixa do trecho. `None` num trecho parado ou numa caixa sem área.
 pub(crate) fn intent_do_arrasto(
     (k0, k1): (&KeyView, &KeyView),
     track: &TrackView,
     which: u8,
-    ponto: (f64, f64),
-    px: (f64, f64),
+    (x, y): (f32, f32),
+    (band_rect, view): (Rect, TimeView),
 ) -> Option<TimelineIntent> {
-    let retime = retime_with_speed_handle(k0, k1, which, ponto, px)?;
+    let c = caixa(band_rect, view, k0, k1);
+    if c.w <= 0.0 || c.h <= 0.0 {
+        return None;
+    }
+    let u = f64::from((x - c.x) / c.w);
+    let w = f64::from((c.y + c.h - y) / c.h);
+    let retime = retime_with_time_handle(k0, k1, which, (u, w))?;
     Some(TimelineIntent::Retime(RetimeIntent::Set {
         target: track.target,
         key: k0.id,

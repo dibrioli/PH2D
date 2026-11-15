@@ -96,7 +96,10 @@ pub use text::{
     paint_text_elided_weighted, paint_text_in_weight, paint_text_rotated_ccw, paint_text_title,
     paint_text_title_elided, paint_text_title_elided_tracked, title_tracked_width,
 };
-pub(crate) use text::{ouve_o_texto, paint_text_weighted};
+pub(crate) use text::paint_text_weighted;
+/// O ouvinte do texto pintado: público para os testes de outras crates lerem o texto e o rect que
+/// um pintor escreveu (o portão `a_dica_de_quem_ouve_nao_cobre_o_nome`).
+pub use text::{OuvinteDoTexto, ouve_o_texto};
 
 /// Convert a `ph2d_tokens::Color` (sRGB 8-bit + alpha) to Vello's
 /// `peniko::Color`. Vello stores its native palette as `[r,g,b,a]`

@@ -61,6 +61,8 @@ pub const INSP_RAY_ONLY_SEE: [NodeId; 3] = [
 pub const INSP_RAY_SEE_TAG: NodeId = hash_node_id("insp_ray_see_tag");
 pub static INSP_RAY_SEE_TAG_OPT: [NodeId; 64] =
     super::inspector_physics_body::tabela(b"insp_ray_see_tag_opt_");
+/// A última linha, apagada, da lista da tag («…and N more»).
+pub const INSP_RAY_SEE_TAG_MORE: NodeId = hash_node_id("insp_ray_see_tag_more");
 pub const INSP_RAY_WALLS_BLOCK: NodeId = hash_node_id("insp_ray_walls_block");
 pub const INSP_RAY_HIT_TRIGGERS: NodeId = hash_node_id("insp_ray_hit_triggers");
 pub const INSP_RAY_STARTS_INSIDE: NodeId = hash_node_id("insp_ray_starts_inside");

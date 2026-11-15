@@ -222,7 +222,7 @@ pub(super) const fn tabela_por_camada(prefixo: &[u8]) -> [NodeId; INSP_PHYS_LAYE
     tabela(prefixo)
 }
 
-/// Uma tabela de `N < 100` ids `prefixo00..`, como a das camadas.
+/// Uma tabela de `N < 100` ids `prefixo0`, `prefixo1`, … `prefixo{N-1}` (decimal, sem zero à esquerda), como a das camadas; o `node_id_collisions` gera os mesmos slugs (forma 5).
 pub(super) const fn tabela<const N: usize>(prefixo: &[u8]) -> [NodeId; N] {
     let mut t = [NodeId(0); N];
     let mut n = 0;

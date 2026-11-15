@@ -7,7 +7,7 @@
 //! M13). The data shape here exists so widgets that compose
 //! TextInput (NumberInput, Combobox) have a stable contract.
 
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_text_elided, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
@@ -355,14 +355,14 @@ pub fn paint_text_input_with_buffer(
     }
 
     if displayed.is_empty() && !input.placeholder.is_empty() {
-        paint_text(
+        paint_text_elided(
             text_system,
             scene,
             &input.placeholder,
             inner_x,
             inner_y,
             font_size,
-            f32::INFINITY,
+            inner_w,
             crate::widget::card_ink::tinta(ColorToken::Text3, theme),
         );
     } else if !displayed.is_empty() {
@@ -371,14 +371,17 @@ pub fn paint_text_input_with_buffer(
         } else {
             ColorToken::Text1
         };
-        paint_text(
+        // ⭐ Sem foco o nome que não cabe acaba em «…» ANTES da reserva direita (o sufixo de sinal,
+        //    um botão): a regra do dono «uma linha, com reticências». Com foco, rola atrás do caret.
+        let largura = if focused { f32::INFINITY } else { inner_w };
+        paint_text_elided(
             text_system,
             scene,
             displayed,
             text_x,
             inner_y,
             font_size,
-            f32::INFINITY,
+            largura,
             resolve(color, theme),
         );
     }

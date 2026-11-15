@@ -30,7 +30,14 @@
 //!    registo (ferramentas, nós, componentes) e sementes; estes **listam-se um a um** em
 //!    [`FORMAS_NAO_LITERAIS`], cada um com quem o cobre, e a tabela tem a metade «já não descreve
 //!    nada»;
-//! 4. **a FNV à mão** que devolve `NodeId` — idem, na mesma tabela.
+//! 4. **a FNV à mão** que devolve `NodeId` — idem, na mesma tabela;
+//! 5. ⭐ **a tabela GERADA** `static X: [NodeId; LEN] = tabela…(b"prefixo")` — o laço `const` sobre
+//!    `hash_node_id_bytes` que soletra `prefixo0`, `prefixo1`, … `prefixo{LEN-1}` (decimal, SEM zero à
+//!    esquerda: `por_camada`/`escreve_numero`). O censo gera os MESMOS slugs e eles entram como
+//!    literais de produto (U4, auditoria GEF 07: `INSP_RAY_SEE_TAG_OPT`, `INSP_RAY_LAYER_OPTS`,
+//!    `INSP_RAY_SEES` e as irmãs passavam ao lado). `LEN` é um inteiro ou um `const …: usize` da
+//!    workspace (`A * B` incluído). Todo `hash_node_id_bytes` de produto fora de uma função que recebe
+//!    o `prefixo` do chamador tem de estar nomeado em [`FORMAS_NAO_LITERAIS`] (espécie `BytesAMao`).
 //!
 //! E o `NodeId(<inteiro>)` de um `const` (as linhas-fixture da hierarquia, 400..411, que ficam
 //! numéricas de propósito pela conta dos bits de companheiro) entra nas réguas de raiz e de
@@ -69,6 +76,24 @@ const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[];
 /// mover a função de casa torna a entrada obsoleta, e a metade [`every_non_literal_hash_is_named`]
 /// obriga a reescrevê-la — é essa a prova de que alguém olhou para a forma no sítio novo.
 const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
+    (
+        "crates/ph2d-tool-registry/src/node_id.rs",
+        "hash_node_id",
+        Especie::BytesAMao,
+        "a própria porta: `hash_node_id(s)` = `hash_node_id_bytes(s.as_bytes())` — é o literal da forma 1",
+    ),
+    (
+        "crates/ph2d-panel-physics/src/ids/physics.rs",
+        "id_da_celula",
+        Especie::BytesAMao,
+        "célula `physics.layer_<a>_<b>` da matriz triangular (dois números, a forma 5 não a soletra); a unicidade e o clique são os testes do próprio physics.rs e o seam que CLICA células",
+    ),
+    (
+        "crates/ph2d-panel-physics/src/ids/physics.rs",
+        "tabela_dos_nomes",
+        Especie::BytesAMao,
+        "o nome de cada camada `physics_layer_name_<n>` (prefixo no corpo, não no chamador); a unicidade é o teste do próprio physics.rs",
+    ),
     (
         "crates/ph2d-app-components/src/smoke_tipos.rs",
         "step",
@@ -225,6 +250,8 @@ enum Especie {
     HashDeExpressao,
     /// Uma função que devolve `NodeId` e mistura o primo FNV à mão.
     FnvAMao,
+    /// `hash_node_id_bytes` sobre bytes que NÃO vêm de um `prefixo` do chamador (forma 5).
+    BytesAMao,
 }
 
 #[derive(Debug)]
@@ -252,6 +279,9 @@ struct Censo {
     moldes: Vec<Molde>,
     formas: BTreeSet<(String, String, Especie)>,
     ficheiros_lidos: usize,
+    /// Quantos slugs vieram de tabelas GERADAS (forma 5), e de quantas tabelas.
+    gerados: usize,
+    tabelas_geradas: usize,
 }
 
 /// ⚠️ Os pisos: medidos em 2026-09-12 sobre o `main` da `line/editor-core`, com folga para baixo só
@@ -263,6 +293,9 @@ const PISO_CRATES_COM_LITERAL: usize = 15;
 const PISO_MOLDES: usize = 150;
 /// Nomes distintos de `const …: NodeId` de produto — medido **2 452** na integração de 13/09.
 const PISO_NOMES: usize = 2_000;
+/// Slugs de tabelas geradas (forma 5) — medido **640** em 15/11 (13 tabelas: Ray 128, corpo físico 96,
+/// aba da física 416).
+const PISO_GERADOS: usize = 600;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -286,6 +319,7 @@ fn varrer() -> Censo {
     // As crates que declaram OUTRO `NodeId` (o grafo de nós tem o seu): uma FNV à mão lá não é um
     // id de widget. Medido: só a `ph2d-nodegraph`; derivado, não escrito.
     let mut outro_node_id: BTreeSet<String> = BTreeSet::new();
+    let mut usizes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
     let mut textos: Vec<(PathBuf, String, String, String)> = Vec::new();
     for p in &ficheiros {
         let Ok(src) = std::fs::read_to_string(p) else {
@@ -297,6 +331,12 @@ fn varrer() -> Censo {
             .to_string_lossy()
             .replace('\\', "/");
         let (com, cod) = limpar(&src);
+        for (nome, expr) in consts_usize(&cod) {
+            usizes
+                .entry(nome)
+                .or_default()
+                .push((crate_dir(&rel), expr));
+        }
         if cod.contains("struct NodeId") && !rel.starts_with("crates/ph2d-a11y/") {
             outro_node_id.insert(crate_dir(&rel));
         }
@@ -311,6 +351,8 @@ fn varrer() -> Censo {
     let mut nomes = Vec::new();
     let mut moldes = Vec::new();
     let mut formas = BTreeSet::new();
+    let mut gerados = 0usize;
+    let mut tabelas_geradas = 0usize;
     for (abs, rel, com, cod) in &textos {
         let ficheiro_de_teste = caminho_de_teste(rel)
             || ((com.contains("hash_node_id") || tem_primo_fnv(cod))
@@ -370,6 +412,29 @@ fn varrer() -> Censo {
                 }
             }
         }
+        for (off, _) in chamadas(cod, "hash_node_id_bytes") {
+            if produto(off) && !assinatura_de(cod, off).contains("prefixo: &[u8]") {
+                formas.insert((rel.clone(), funcao_em(cod, off), Especie::BytesAMao));
+            }
+        }
+        for (prefixo, len, off) in tabelas_geradas_em(com, cod) {
+            let n = avalia_usize(&len, rel, cod, &usizes).unwrap_or_else(|| {
+                panic!(
+                    "{rel}:{}: o tamanho `{len}` da tabela gerada não se resolve",
+                    linha(com, off)
+                )
+            });
+            tabelas_geradas += 1;
+            for i in 0..n {
+                gerados += 1;
+                literais.push(Literal {
+                    slug: format!("{prefixo}{i}"),
+                    file: rel.clone(),
+                    line: linha(com, off),
+                    produto: produto(off),
+                });
+            }
+        }
         for (nome, valor, off) in consts_de_node_id(com, cod) {
             if produto(off) {
                 nomes.push((nome, valor, rel.clone()));
@@ -396,7 +461,16 @@ fn varrer() -> Censo {
         moldes,
         formas,
         ficheiros_lidos: ficheiros.len(),
+        gerados,
+        tabelas_geradas,
     };
+    assert!(
+        c.gerados >= PISO_GERADOS,
+        "o varrimento gerou {} slugs de {} tabelas `[NodeId; N] = tabela…(b\"…\")` e esperava >= \
+         {PISO_GERADOS} — o leitor da forma 5 cegou",
+        c.gerados,
+        c.tabelas_geradas
+    );
     assert!(
         c.ficheiros_lidos >= PISO_FICHEIROS,
         "o varrimento leu {} ficheiros .rs e esperava >= {PISO_FICHEIROS} — perdeu um directório",
@@ -820,6 +894,139 @@ fn consts_de_node_id(com: &str, cod: &str) -> Vec<(String, Valor, usize)> {
     out
 }
 
+/// `const NOME: usize = EXPR;` — `(nome, expr)`, para resolver o tamanho de uma tabela gerada.
+fn consts_usize(cod: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for (a, _) in cod.match_indices("const ") {
+        if a > 0 && ident(cod.as_bytes()[a - 1]) {
+            continue;
+        }
+        let r = &cod[a + 6..];
+        let fim = r.find(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'));
+        let Some(fim) = fim.filter(|&f| f > 0) else {
+            continue;
+        };
+        let Some(e) = r[fim..]
+            .trim_start()
+            .strip_prefix(':')
+            .and_then(|x| x.trim_start().strip_prefix("usize"))
+            .and_then(|x| x.trim_start().strip_prefix('='))
+        else {
+            continue;
+        };
+        if let Some(e) = e.split(';').next() {
+            out.push((r[..fim].to_owned(), e.trim().to_owned()));
+        }
+    }
+    out
+}
+
+/// As tabelas GERADAS do ficheiro (forma 5): `(prefixo, LEN, offset)` de cada
+/// `static|const X: [NodeId; LEN] = caminho::fn(b"prefixo")`.
+fn tabelas_geradas_em(com: &str, cod: &str) -> Vec<(String, String, usize)> {
+    let mut out = Vec::new();
+    for kw in ["static ", "const "] {
+        for (a, _) in cod.match_indices(kw) {
+            if a > 0 && ident(cod.as_bytes()[a - 1]) {
+                continue;
+            }
+            let r = &cod[a + kw.len()..];
+            let Some(dois) = r.find(':') else { continue };
+            if !r[..dois]
+                .trim()
+                .bytes()
+                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+            {
+                continue;
+            }
+            let t = r[dois + 1..].trim_start();
+            let Some(t) = t.strip_prefix('[').map(str::trim_start) else {
+                continue;
+            };
+            let t = t.strip_prefix("ph2d_a11y::").unwrap_or(t);
+            let Some(t) = t
+                .strip_prefix("NodeId")
+                .and_then(|x| x.trim_start().strip_prefix(';'))
+            else {
+                continue;
+            };
+            let Some(fecho) = t.find(']') else { continue };
+            let len = t[..fecho].trim().to_owned();
+            let Some(depois) = t[fecho + 1..].trim_start().strip_prefix('=') else {
+                continue;
+            };
+            let chamada = depois.trim_start();
+            let Some(par) = chamada.find('(') else {
+                continue;
+            };
+            if !chamada[..par]
+                .bytes()
+                .all(|b| ident(b) || b == b':' || b == b'<' || b == b'>')
+            {
+                continue;
+            }
+            let off = cod.len() - chamada.len() + par + 1;
+            let arg = com[off..].trim_start();
+            if let Some(p) = arg.strip_prefix("b\"").and_then(|x| x.split('"').next()) {
+                out.push((p.to_owned(), len, a));
+            }
+        }
+    }
+    out
+}
+
+/// O valor de `LEN`: um inteiro, ou `A * B` de inteiros e `const …: usize`. O nome resolve-se no
+/// próprio ficheiro, depois na crate, depois na workspace; com dois valores na workspace, vale a
+/// crate cujo nome é prefixo da raiz do `use` do ficheiro (`ph2d_physics_ecs::MAX_LAYERS` → `ph2d-physics`).
+fn avalia_usize(
+    expr: &str,
+    rel: &str,
+    cod: &str,
+    usizes: &BTreeMap<String, Vec<(String, String)>>,
+) -> Option<usize> {
+    let mut v = 1usize;
+    for termo in expr.split('*') {
+        let termo = termo.trim();
+        let termo = termo.rsplit("::").next().unwrap_or(termo);
+        let n = if let Ok(n) = termo.replace('_', "").parse::<usize>() {
+            n
+        } else {
+            let locais: Vec<(String, String)> = consts_usize(cod)
+                .into_iter()
+                .filter(|(n, _)| n == termo)
+                .collect();
+            let defs = usizes.get(termo)?;
+            let cr = crate_dir(rel);
+            let raiz_do_use = cod
+                .match_indices("use ")
+                .map(|(a, _)| &cod[a + 4..])
+                .find(|u| {
+                    u.split(';')
+                        .next()
+                        .is_some_and(|l| l.trim_end().ends_with(termo))
+                })
+                .and_then(|u| u.split("::").next())
+                .map(|r| r.trim().replace('_', "-"));
+            let escolha = locais
+                .first()
+                .map(|(_, e)| e.clone())
+                .or_else(|| defs.iter().find(|(c, _)| *c == cr).map(|(_, e)| e.clone()))
+                .or_else(|| (defs.len() == 1).then(|| defs[0].1.clone()))
+                .or_else(|| {
+                    let raiz = raiz_do_use?;
+                    let cand: Vec<_> = defs
+                        .iter()
+                        .filter(|(c, _)| raiz.contains(c.rsplit('/').next().unwrap_or(c)))
+                        .collect();
+                    (cand.len() == 1).then(|| cand[0].1.clone())
+                })?;
+            avalia_usize(&escolha, rel, cod, usizes)?
+        };
+        v *= n;
+    }
+    Some(v)
+}
+
 fn h(slug: &str) -> u64 {
     hash_node_id_runtime(slug).0
 }
@@ -988,6 +1195,18 @@ fn the_repeated_slug_ratchet_still_describes_the_tree() {
 #[test]
 fn the_census_sees_the_whole_workspace() {
     let c = censo();
+    println!(
+        "censo: {} literais, dos quais {} gerados por {} tabelas (forma 5)",
+        c.literais.len(),
+        c.gerados,
+        c.tabelas_geradas
+    );
+    assert!(
+        c.literais
+            .iter()
+            .any(|l| l.slug == "insp_ray_see_tag_opt_63" && l.produto),
+        "controlo: a última opção gerada do `INSP_RAY_SEE_TAG_OPT` não foi achada — a forma 5 cegou"
+    );
     // Um slug da fundação, um de uma crate de ferramenta, um molde da família vectorial: três
     // directórios diferentes, e nenhum deles se apaga numa limpeza de rotina.
     for slug in [

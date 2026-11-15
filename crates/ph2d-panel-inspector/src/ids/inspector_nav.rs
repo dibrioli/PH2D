@@ -40,6 +40,8 @@ pub const INSP_NAV_TAG_PICK: NodeId = hash_node_id("insp_nav_tag_pick");
 /// (W6) As opções da tag — ⛔ ids PRÓPRIOS (a lei do `INSP_PHYS_TAG_OPT`: o despacho resolve a opção
 /// por `position()` sobre o array, e com o mesmo array dois braços casariam). `64` = o mesmo tecto
 /// das outras duas listas de tags do Inspector.
+/// A última linha, apagada, quando a árvore passa das 64 («…and N more»: `opcoes_da_arvore`).
+pub const INSP_NAV_TAG_MORE: NodeId = hash_node_id("insp_nav_tag_more");
 pub const INSP_NAV_TAG_OPT: [NodeId; 64] = [
     hash_node_id("insp_nav_tag_opt_00"),
     hash_node_id("insp_nav_tag_opt_01"),

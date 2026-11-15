@@ -91,15 +91,10 @@ pub(crate) fn phys_tag_options() -> Vec<DropdownOption<u64>> {
         0u64,
         String::from(tr("panel.inspector.physics.any")),
     )];
-    out.extend(
-        crate::state::current_tag_tree()
-            .iter()
-            .zip(ids::INSP_PHYS_TAG_OPT.iter())
-            .map(|(row, &id)| {
-                let recuo = "    ".repeat(row.depth);
-                DropdownOption::new(id, row.id, format!("{recuo}{}", row.label))
-            }),
-    );
+    out.extend(super::nav_tag_row::opcoes_da_arvore(
+        &ids::INSP_PHYS_TAG_OPT,
+        ids::INSP_PHYS_TAG_MORE,
+    ));
     out
 }
 

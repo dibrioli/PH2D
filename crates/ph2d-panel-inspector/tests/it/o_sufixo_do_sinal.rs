@@ -119,3 +119,61 @@ fn cada_caixa_de_sinal_tem_o_seu_sufixo() {
         esperado.difference(&nas_seccoes).collect::<Vec<_>>()
     );
 }
+
+thread_local! {
+    static TEXTOS: std::cell::RefCell<Vec<(String, [f32; 4])>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn ouve(t: &str, r: [f32; 4], _px: f32) {
+    TEXTOS.with(|v| v.borrow_mut().push((t.to_owned(), r)));
+}
+
+/// ⭐ Foto 26 com `PH2D_CARDS=0` (15/11): o nome «enemy_seen» saía cortado a seco, «enemy_se», junto do
+/// «1 listens». Um nome que não cabe acaba em «…» e o texto PINTADO termina antes do sufixo — nos dois
+/// modos.
+///
+/// **Mutação que deve sangrar:** no `paint_text_input_with_buffer` (editor-core), pintar o valor sem
+/// foco com largura `f32::INFINITY` (o corte a seco do recorte).
+#[test]
+fn a_dica_de_quem_ouve_nao_cobre_o_nome() {
+    use crate::seam_ray::{assente_com, nos_dois_modos, raio};
+    use ph2d_panel_inspector::set_current_inspector_ray;
+    const NOME: &str = "enemy_seen_far_away_behind_the_crate";
+    nos_dois_modos(|c| {
+        let mut censo = SignalCensus::default();
+        censo.add(NOME, Role::Emit);
+        censo.add(NOME, Role::Listen);
+        set_signal_census(censo);
+        let mut info = raio();
+        info.on_enter = NOME.into();
+        TEXTOS.with(|v| v.borrow_mut().clear());
+        ph2d_editor_core::paint::ouve_o_texto(Some(ouve));
+        let _ = assente_com(&info, c, false);
+        ph2d_editor_core::paint::ouve_o_texto(None);
+        set_signal_census(SignalCensus::default());
+        set_current_inspector_ray(None);
+        let t = TEXTOS.with(|v| v.borrow().clone());
+        let dica = t
+            .iter()
+            .filter(|(s, _)| s == "1 listens")
+            .map(|(_, r)| *r)
+            .last()
+            .unwrap_or_else(|| panic!("sem «1 listens» (cartões {c}): {t:?}"));
+        let nome = t
+            .iter()
+            .filter(|(s, r)| s.starts_with("enemy_") && (r[1] - dica[1]).abs() < dica[3])
+            .map(|(s, r)| (s.clone(), *r))
+            .last()
+            .unwrap_or_else(|| panic!("sem o nome na linha da dica (cartões {c}): {t:?}"));
+        assert!(
+            nome.0.ends_with('…'),
+            "o nome que não cabe não acaba em «…» (cartões {c}): «{}»",
+            nome.0
+        );
+        assert!(
+            nome.1[0] + nome.1[2] <= dica[0],
+            "o nome pintado ({:?}) passa por baixo da dica ({dica:?}) (cartões {c})",
+            nome.1
+        );
+    });
+}

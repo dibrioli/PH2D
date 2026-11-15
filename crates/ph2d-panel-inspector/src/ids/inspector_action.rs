@@ -222,6 +222,10 @@ pub const INSP_ACTION_CLIP: [NodeId; 16] = [
     hash_node_id("insp_action_clip_15"),
 ];
 
+/// A última linha, apagada, das listas de tags da Action e da Physics («…and N more»).
+pub const INSP_ACTION_TAG_MORE: NodeId = hash_node_id("insp_action_tag_more");
+pub const INSP_PHYS_TAG_MORE: NodeId = hash_node_id("insp_phys_tag_more");
+
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).
 ///
 /// ⛔ **Ids PRÓPRIOS**, pela razão que o [`INSP_ACTION_TAG_OPT`] já escreve: o despacho resolve a

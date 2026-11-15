@@ -6,7 +6,7 @@
 //! tem curva editável?» são as únicas que o painel precisa — o resto (criar, mover, apagar, tipos de
 //! alça) é a MESMA `EaseSpline` que o cartão da chave edita.
 
-use ph2d_anim::{EaseSpline, Interp, Retime};
+use ph2d_anim::{EaseSpline, Interp, Retime, SplineSide};
 
 use crate::snapshot::KeyView;
 
@@ -114,6 +114,102 @@ pub fn spline_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v
         sp.with_end_handles(out, f(x, 1.0 - declive * (1.0 - x)))
     };
     Interp::Spline(nova)
+}
+
+/// O braço de VELOCIDADE de um lado de um ponto do meio de uma Custom (dono 15/11: «os pontos
+/// criados não deveriam ganhar alça de velocidade em override?»): o ponto é uma chave sem chave,
+/// e cada lado dele tem a velocidade que a alça desse lado dá à curva que TOCA.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PointSpeedArm {
+    /// O nó da `EaseSpline` (1..n−1).
+    pub node: usize,
+    /// `1` = chegada (alça de entrada), `2` = saída.
+    pub part: u8,
+    /// O instante do ponto (onde o braço nasce).
+    pub t: f64,
+    /// O instante da ponta do braço: a alça desse lado pelo mapa do ritmo (o comprimento é a
+    /// influência, como nas chaves).
+    pub tip_t: f64,
+    /// A velocidade que toca desse lado (valor por segundo): `E'·W'·Δv/Δt`.
+    pub speed: f64,
+}
+
+/// `W'` no instante em que o nó `p` do easing toca (`u = W⁻¹(x)`).
+fn ritmo_no_no(k0: &KeyView, k1: &KeyView, p: [f32; 2]) -> f64 {
+    let span = k1.t_seconds - k0.t_seconds;
+    let u = (unit_to_plane(k0, k1, p).0 - k0.t_seconds) / span;
+    ph2d_anim::retime::warp_slope(k0.retime, u)
+}
+
+/// Os braços de velocidade dos pontos do meio do trecho (nenhum sem pontos). Um lado com a alça
+/// vertical (sem influência) ou o ritmo parado/infinito no ponto não tem braço.
+#[must_use]
+pub fn point_speed_arms(k0: &KeyView, k1: &KeyView) -> Vec<PointSpeedArm> {
+    let Some(c) = segment_curve(k0, k1).filter(|_| matches!(k0.interp, Interp::Spline(_))) else {
+        return Vec::new();
+    };
+    let (span, dv) = (k1.t_seconds - k0.t_seconds, f64::from(k1.value - k0.value));
+    let mut out = Vec::new();
+    for node in 1..c.node_count() - 1 {
+        let n = c.node(node);
+        let ws = ritmo_no_no(k0, k1, n.p);
+        if !(ws.is_finite() && ws > 0.0) {
+            continue;
+        }
+        let t = unit_to_plane(k0, k1, n.p).0;
+        for (part, h) in [(1u8, n.h_in), (2, n.h_out)] {
+            let dx = f64::from(n.p[0] - h[0]);
+            if dx.abs() <= f64::EPSILON {
+                continue;
+            }
+            let declive = f64::from(n.p[1] - h[1]) / dx;
+            out.push(PointSpeedArm {
+                node,
+                part,
+                t,
+                tip_t: unit_to_plane(k0, k1, h).0,
+                speed: declive * dv * ws / span,
+            });
+        }
+    }
+    out
+}
+
+/// O gesto do braço de velocidade de um ponto (o do AE: horizontal = influência, vertical =
+/// velocidade): a alça desse lado vai para o `x` do rato (pelo ritmo) com a inclinação que dá a
+/// velocidade `v`. O tipo do ponto manda no outro lado (Smooth: a mesma velocidade; Corner:
+/// livre), como no gráfico de valor. `None` onde o ponto não tem braço.
+#[must_use]
+pub fn spline_with_point_speed(
+    k0: &KeyView,
+    k1: &KeyView,
+    (node, part): (usize, u8),
+    t: f64,
+    v: f64,
+) -> Option<EaseSpline> {
+    let mut c = segment_curve(k0, k1).filter(|_| matches!(k0.interp, Interp::Spline(_)))?;
+    if node == 0 || node + 1 >= c.node_count() {
+        return None;
+    }
+    let (span, dv) = (k1.t_seconds - k0.t_seconds, f64::from(k1.value - k0.value));
+    let p = c.node(node).p;
+    let ws = ritmo_no_no(k0, k1, p);
+    if !(ws.is_finite() && ws > 0.0) {
+        return None;
+    }
+    let m = crate::graph::MIN_INFLUENCE as f32;
+    let x = plane_to_unit(k0, k1, t, 0.0)[0];
+    let (lado, x) = if part == 1 {
+        let antes = c.node(node - 1).p[0];
+        (SplineSide::In, x.clamp(antes, p[0] - m)) // CLAMP-OK: entre o nó anterior e este
+    } else {
+        let depois = c.node(node + 1).p[0];
+        (SplineSide::Out, x.clamp(p[0] + m, depois)) // CLAMP-OK: entre este e o seguinte
+    };
+    let declive = v * span / (ws * dv);
+    let y = f64::from(p[1]) + declive * f64::from(x - p[0]);
+    c.move_handle(node, lado, x, y as f32);
+    Some(c)
 }
 
 /// Onde a vista de VALOR desenha (e agarra) os dois braços do trecho: os de
@@ -369,6 +465,79 @@ mod tests {
             &sem,
             &key(2.0, 10.0, Interp::Linear)
         ));
+    }
+
+    /// Os pontos da Custom ganham braços de VELOCIDADE (dono 15/11): cada lado diz a velocidade que
+    /// TOCA ali (oráculo: diferença finita de um lado sobre `sample_keys`, com e sem ritmo); puxar o
+    /// braço leva a ponta ao rato (influência e velocidade); Smooth arrasta a outra velocidade
+    /// junto, Corner deixa-a onde estava.
+    #[test]
+    fn os_pontos_tem_bracos_de_velocidade_que_tocam_e_se_puxam() {
+        let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        let i = sp.insert(0.5).expect("cabe");
+        for retime in [None, Some(RITMO)] {
+            let (mut k0, k1) = (
+                key(0.0, 0.0, Interp::Spline(sp)),
+                key(2.0, 10.0, Interp::Linear),
+            );
+            k0.retime = retime;
+            let arms = point_speed_arms(&k0, &k1);
+            assert_eq!(arms.len(), 2, "{retime:?}: chegada e saída");
+            let keys = [k0.clone(), k1.clone()];
+            let s = |t: f64| f64::from(sample_keys(&keys, t).unwrap());
+            let h = 1e-4;
+            for a in &arms {
+                let fd = if a.part == 1 {
+                    (s(a.t) - s(a.t - h)) / h
+                } else {
+                    (s(a.t + h) - s(a.t)) / h
+                };
+                assert!(
+                    (fd - a.speed).abs() < 0.02 * a.speed.abs().max(1.0),
+                    "{retime:?} {a:?}: toca {fd}"
+                );
+            }
+            let saida = arms.iter().find(|a| a.part == 2).unwrap();
+            let alvo_t = saida.t + 0.6 * (saida.tip_t - saida.t) + 0.05;
+            let c = spline_with_point_speed(&k0, &k1, (i, 2), alvo_t, 3.0).expect("tem braço");
+            assert_eq!(c.points().len(), 1);
+            let mut novo = k0.clone();
+            novo.interp = Interp::Spline(c);
+            let depois = point_speed_arms(&novo, &k1);
+            let (ent, sai) = (
+                depois.iter().find(|a| a.part == 1).unwrap(),
+                depois.iter().find(|a| a.part == 2).unwrap(),
+            );
+            assert!(
+                (sai.speed - 3.0).abs() < 1e-3,
+                "{retime:?}: saída {}",
+                sai.speed
+            );
+            assert!(
+                (sai.tip_t - alvo_t).abs() < 1e-3,
+                "{retime:?}: ponta {}",
+                sai.tip_t
+            );
+            assert!(
+                (ent.speed - 3.0).abs() < 1e-3,
+                "{retime:?}: Smooth — a chegada acompanha"
+            );
+            // Corner: a outra velocidade fica.
+            let mut cc = c;
+            assert!(cc.set_kind(i, ph2d_anim::HandleKind::Corner));
+            novo.interp = Interp::Spline(cc);
+            let antes = point_speed_arms(&novo, &k1)[0].speed;
+            let c2 = spline_with_point_speed(&novo, &k1, (i, 2), alvo_t, 6.0).unwrap();
+            novo.interp = Interp::Spline(c2);
+            let d2 = point_speed_arms(&novo, &k1);
+            assert!(
+                (d2[0].speed - antes).abs() < 1e-3,
+                "{retime:?}: Corner mexeu na chegada"
+            );
+            assert!((d2[1].speed - 6.0).abs() < 1e-3);
+        }
+        let sem = key(0.0, 0.0, Interp::Linear);
+        assert!(point_speed_arms(&sem, &key(2.0, 10.0, Interp::Linear)).is_empty());
     }
 
     #[test]

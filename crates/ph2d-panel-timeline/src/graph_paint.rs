@@ -117,6 +117,7 @@ pub(crate) fn paint_track(
         } else {
             let tip = ph2d_timeline::speed_handle_tip;
             paint_speed_handles(ctx, theme, state, &band, view, (track, tip));
+            crate::graph_pontos::paint_speed_arms(ctx, theme, state, &band, view, track);
         }
     } else {
         // The buffered-curve GHOST first (fainter, thinner), so the live curve
@@ -141,6 +142,8 @@ pub(crate) fn paint_track(
     if !state.speed_view {
         anchor_drag::resolve_drag(state, &band, track);
         crate::graph_pontos::resolve_drag(state, &band, view, track);
+    } else if !state.speed_retime {
+        crate::graph_pontos::resolve_speed_drag(state, &band, view, track);
     }
     if state.speed_view && !track.prop.nomeia() {
         crate::graph_ritmo::paint_switch(ctx, theme, state, (rect, band_rect), label_w);

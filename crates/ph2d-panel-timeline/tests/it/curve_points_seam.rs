@@ -293,3 +293,53 @@ fn na_vista_de_velocidade_o_braco_da_custom_com_pontos_nao_apaga_nada() {
         set_current_timeline(None);
     }
 }
+
+/// Os pontos ganham braços de VELOCIDADE no Override (dono 15/11): pintados de verdade, o braço de
+/// saída do ponto agarra-se e puxa-se pelo despacho real — a curva continua com o ponto e o ritmo;
+/// no Retime (edita-se o ritmo) os braços dos pontos não existem.
+#[test]
+fn no_override_o_ponto_tem_braco_de_velocidade_que_se_puxa() {
+    for retime in [None, Some(RITMO)] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState {
+            speed_view: true,
+            ..TimelinePanelState::default()
+        };
+        let regs = pinta_r(&mut host, &mut st, com_ponto(), retime);
+        let (x, y) = centro(&regs, ids::timeline_curve_point_hit_id(TGT, 1, 1, 2));
+        let _ = drain_intents();
+        let _ = host.drag_at(x, y, x, y - 25.0);
+        let _ = pinta_r(&mut host, &mut st, com_ponto(), retime);
+        let got = drain_intents();
+        assert!(!tirou_o_ritmo(&got), "{retime:?}: {got:?}");
+        let Some(Interp::Spline(c)) = got.into_iter().rev().find_map(|i| match i {
+            TimelineIntent::SetInterp { interp, .. } => Some(interp),
+            _ => None,
+        }) else {
+            panic!("{retime:?}: o braço de velocidade do ponto não gravou nada");
+        };
+        assert_eq!(c.points().len(), 1);
+        let Interp::Spline(base) = com_ponto() else {
+            unreachable!()
+        };
+        assert_ne!(
+            c.node(1).h_out,
+            base.node(1).h_out,
+            "{retime:?}: a alça não andou"
+        );
+        set_current_timeline(None);
+    }
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut st = TimelinePanelState {
+        speed_view: true,
+        speed_retime: true,
+        ..TimelinePanelState::default()
+    };
+    let regs = pinta_r(&mut host, &mut st, com_ponto(), Some(RITMO));
+    let id = ids::timeline_curve_point_hit_id(TGT, 1, 1, 2);
+    assert!(
+        !regs.iter().any(|(w, _)| *w == id),
+        "no Retime não há braços de pontos"
+    );
+    set_current_timeline(None);
+}

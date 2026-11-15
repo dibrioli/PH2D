@@ -110,6 +110,10 @@ pub fn speed_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
         for which in [0u8, 1u8] {
             include(segment_endpoint_speed(k0, k1, which) as f32);
         }
+        // The speed dots of a Custom's points (their arms are horizontal: the dot is the reach).
+        for a in crate::graph_pontos::point_speed_arms(k0, k1) {
+            include(a.speed as f32);
+        }
     }
     Some((lo, hi))
 }

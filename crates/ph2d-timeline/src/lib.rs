@@ -50,8 +50,9 @@ mod frame_solve;
 pub mod graph;
 mod graph_pontos;
 pub use graph_pontos::{
-    end_handle_keeps_points, end_handle_keeps_rhythm, interp_of_curve, plane_to_unit,
-    segment_curve, spline_with_speed_handle, unit_to_plane, value_handle_points,
+    PointSpeedArm, end_handle_keeps_points, end_handle_keeps_rhythm, interp_of_curve,
+    plane_to_unit, point_speed_arms, segment_curve, spline_with_point_speed,
+    spline_with_speed_handle, unit_to_plane, value_handle_points,
 };
 pub mod history;
 mod instancia_acompanha;

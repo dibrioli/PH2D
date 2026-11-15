@@ -82,6 +82,12 @@ foto pontos_rv1_velocidade_override
 arrasta 815 575 785 598
 foto pontos_rv2_braco_de_velocidade_puxado
 confere "$(difere pontos_rv1_velocidade_override pontos_rv2_braco_de_velocidade_puxado && echo s)" "puxar o braço de velocidade não mudou nada"
+# O braço de velocidade do PONTO (dono 15/11): a ponta de saída puxada para cima ⇒ o ponto sai mais rápido;
+# em Smooth a chegada acompanha (a velocidade não salta no ponto).
+arrasta 829 604 829 594
+foto pontos_rv2b_braco_de_velocidade_do_ponto
+confere "$(difere pontos_rv2_braco_de_velocidade_puxado pontos_rv2b_braco_de_velocidade_do_ponto && echo s)" "puxar o braço de velocidade do ponto não mudou nada"
+para vc
 c 1211 351; c 981 619; xdotool key Escape; sleep 0.6; c 567 479
 foto pontos_rv3_de_volta_ao_valor_os_pontos_ficaram
 para v

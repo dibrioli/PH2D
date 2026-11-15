@@ -240,10 +240,12 @@ sufixo (antes sobrescrevia); `conta_gotas_row::linha` reserva `lado + inset`. Ga
 `a_shape_e_o_seu_numero_partilham_a_linha` (Thick e Cone, dois modos). **Mutação** «Aim at na largura toda» sangrou
 (`lado_a_lado`). Fotos `fotos_07/26_linhas.png`, `26_linhas_cone.png`, `26_linhas_cards_off.png`. 2.ª build:
 ``Finished `smoke` profile [optimized] target(s) in 0.29s``.
+Commit `6f540005d8`: o fantasma do Aim at é «None» (na meia coluna «None: the Angle decides» cortava; a dica já diz que o Angle decide).
 
 ## Aberto
 
-- **Smoke do dono das melhorias** (RS-1..RS-12) — pendente.
+- **Smoke do dono das melhorias** (RS-1..RS-12, dropdown Shape, arrumação por pergunta, Reach | Aim at e Shape | número; commits `5757ddd28f` … `6f540005d8`) — **OK 15/11**.
+- Este handoff passa do alvo de 15 KB: cortar com `python3 scripts/doc-split.py`.
 - **`oraculo_lsp` G5b** (os exemplos de `ph2d.ray`/`ph2d.raycast` no luau-lsp) NÃO correu: `luau-lsp` não está instalado nesta máquina.
 - Próximo item da fila: **Motion Input** ([`23_refundacao_plano.md`](../23_refundacao_plano.md)), começando pela TABELA DE CAPACIDADES antes das maquetes.
 - Integração: só por ordem do dono; fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md nela. (Smokes anteriores — auditoria curada e a quinta onda — já fechados/registados acima.)

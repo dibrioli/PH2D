@@ -130,7 +130,16 @@ Commits `412699ec58` (curas C1–C9, U1, U2, U6, U7) · `63372c90b3` (U4, U5, ca
 
 ## Aberto
 
-- Smoke do dono das curas da auditoria (cena 26: Ignore up to, «…and N more», caixa de texto com a dica «listens»); o smoke anterior (15/11) foi OK.
+- ~~Smoke do dono das curas da auditoria~~ — **OK 15/11** (com as duas ordens seguintes).
+- **Ordens do dono depois da auditoria (15/11), feitas:** `940e347c1f` — conta-gotas armado não muda a seleção
+  (a Hierarquia alimenta o conta-gotas pela `conta_gotas::pela_hierarquia`; gate `o_conta_gotas_nao_muda_a_selecao`);
+  `37675a0959` — a caixa «Ignore up to» identifica o objeto fora da cadeia e mostra o erro na própria caixa
+  (moldura de erro + linha; `TopoEscrito` para o nome de ninguém; `RayQueixa::TopoFora` saiu). Gates
+  `a_caixa_do_ignore_up_to_mostra_o_erro`, `um_nome_fora_da_cadeia_ou_de_ninguem_mostra_o_erro`.
+- O clique do conta-gotas no CANVAS só está provado por leitura de código (a shell não tem harness com placa);
+  a Hierarquia tem gate de clique real. O smoke do dono passou nos dois.
+- Visto nas fotos, não tocado: nos cartões OFF a caixa de marcar desmarcada é um quadrado escuro de moldura ténue
+  (o visual clássico de antes).
 - **U5 parcial:** tag #65+ nomeada mas não escolhível (ver acima).
 - `PH2D_RAY_SMOKE=1` (cena antiga) segue com olhos na raiz; não foi refeita como filhos.
 - Próximo item da fila: **Motion Input** (`23_refundacao_plano.md`, «Corpo e movimento»).

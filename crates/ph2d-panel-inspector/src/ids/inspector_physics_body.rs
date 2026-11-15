@@ -219,7 +219,12 @@ const fn por_camada(prefixo: &[u8], n: usize) -> NodeId {
 }
 
 pub(super) const fn tabela_por_camada(prefixo: &[u8]) -> [NodeId; INSP_PHYS_LAYERS] {
-    let mut t = [NodeId(0); INSP_PHYS_LAYERS];
+    tabela(prefixo)
+}
+
+/// Uma tabela de `N < 100` ids `prefixo00..`, como a das camadas.
+pub(super) const fn tabela<const N: usize>(prefixo: &[u8]) -> [NodeId; N] {
+    let mut t = [NodeId(0); N];
     let mut n = 0;
     while n < t.len() {
         t[n] = por_camada(prefixo, n);

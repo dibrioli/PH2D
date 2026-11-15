@@ -761,6 +761,27 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/ray_filtro.rs::grupo_do_filtro",
+        Canal,
+        &[
+            "component.field.ray_sensor.4",
+            "component.field.ray_sensor.5",
+            "component.field.ray_sensor.8",
+            "component.field.ray_sensor.9",
+            "component.field.ray_sensor.10",
+            "component.field.ray_sensor.11",
+        ],
+        "as caixas do grupo Filter: o rótulo do catálogo vem pelo `caixa(..)` da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ray_filtro.rs::linha_da_tag",
+        Canal,
+        &["component.field.ray_sensor.7"],
+        "a tag do filtro do Ray Sensor: o rótulo do catálogo vem numa variável (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/shake.rs::corpo",
         Canal,
         &[

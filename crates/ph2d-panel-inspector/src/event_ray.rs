@@ -45,6 +45,11 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             );
             return true;
         }
+        if let Some(edit) = clique_do_filtro(id, &info) {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            push(host, bits, edit);
+            return true;
+        }
         if id == crate::ids::INSP_RAY_EDIT_MATRIX {
             ph2d_editor_core::panel::seam_reset_button(host, id);
             host.bus_mut()
@@ -80,6 +85,34 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         return true;
     }
     false
+}
+
+/// O grupo «Filter»: cada caixa escreve o CONTRÁRIO do snapshot; as peças, o modo; as opções, a tag.
+fn clique_do_filtro(
+    id: ph2d_a11y::NodeId,
+    i: &ph2d_editor_core::ray_edits::InspectorRayInfo,
+) -> Option<RayFieldEdit> {
+    use crate::ids as d;
+    let caixa = match id {
+        d::INSP_RAY_IGNORE_BODY => RayFieldEdit::IgnoreBody(!i.ignore_body),
+        d::INSP_RAY_IGNORE_PARTS => RayFieldEdit::IgnoreParts(!i.ignore_parts),
+        d::INSP_RAY_WALLS_BLOCK => RayFieldEdit::WallsBlock(!i.walls_block),
+        d::INSP_RAY_HIT_TRIGGERS => RayFieldEdit::HitTriggers(!i.hit_triggers),
+        d::INSP_RAY_STARTS_INSIDE => RayFieldEdit::StartsInside(!i.starts_inside),
+        d::INSP_RAY_ALL_HITS => RayFieldEdit::AllHits(!i.all_hits),
+        _ => {
+            if let Some(n) = d::INSP_RAY_ONLY_SEE.iter().position(|&o| o == id) {
+                return Some(RayFieldEdit::OnlySee(
+                    crate::sections::ray_filtro::MODOS[n].0,
+                ));
+            }
+            let n = d::INSP_RAY_SEE_TAG_OPT.iter().position(|&o| o == id)?;
+            return crate::sections::ray_filtro::opcoes_da_tag()
+                .get(n)
+                .map(|o| RayFieldEdit::SeeTag(o.value));
+        }
+    };
+    Some(caixa)
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: RayFieldEdit) {

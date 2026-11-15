@@ -62,6 +62,9 @@ fn leitura(
     if i.sees.is_empty() {
         return y;
     }
+    if i.sees_all.len() > 1 {
+        return todos_os_acertos(scene, text_system, theme, x, w, y, &i.sees_all);
+    }
     super::rows::aviso(
         scene,
         text_system,
@@ -78,6 +81,56 @@ fn leitura(
         ),
         ColorToken::Text1,
     )
+}
+
+/// Quantos acertos a leitura lista antes do «and N more» (o resto conta-se, não se pinta).
+const ACERTOS_NA_LEITURA: usize = 4;
+
+/// ⭐ Com «See all hits»: uma linha por acerto, do mais perto ao mais longe (a lista de acertos do
+/// depurador de física do Godot), e «and N more» quando passam de [`ACERTOS_NA_LEITURA`].
+fn todos_os_acertos(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    todos: &[(String, f32)],
+) -> f32 {
+    let mut cur_y = y;
+    for (n, (nome, d)) in todos.iter().take(ACERTOS_NA_LEITURA).enumerate() {
+        let chave = if n == 0 {
+            "panel.inspector.ray.sees_x_at_y_m"
+        } else {
+            "panel.inspector.ray.and_x_at_y_m"
+        };
+        let dist = crate::unidade_mundo::distancia_na_frase(*d);
+        let frase = tr_with(chave, &[("name", &nome.as_str()), ("dist", &dist)]);
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &frase,
+            ColorToken::Text1,
+        );
+    }
+    if todos.len() > ACERTOS_NA_LEITURA {
+        let resto = (todos.len() - ACERTOS_NA_LEITURA).to_string();
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &tr_with("panel.inspector.ray.and_n_more", &[("n", &resto.as_str())]),
+            ColorToken::Text3,
+        );
+    }
+    cur_y
 }
 
 /// O corpo da secção — os CONTROLOS.
@@ -220,6 +273,19 @@ fn corpo(
     cur_y = depois_do_alcance.max(depois_da_camada);
     (t.x, t.w) = (x, w);
     cur_y = botoes_do_raio(&mut t, cur_y, usize::from(camada));
+    // O QUEM ele vê (versão C, dono 15/11): nasce fechado, com o resumo.
+    cur_y = super::ray_filtro::grupo_do_filtro(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        i,
+        seccao,
+    );
     // Os sinais num grupo próprio (B): ligam-se noutro lugar, e a caixa diz quem ouve.
     let g = super::grupo_dobravel::grupo_dobravel(
         scene,

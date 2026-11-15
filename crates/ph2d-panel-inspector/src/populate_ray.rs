@@ -51,6 +51,59 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 2] = [
 
 pub(crate) fn populate_ray(store: &mut WidgetStore) {
     store.mark_collapsible_section(ids::INSP_RAY_FOLD_SIGNALS);
+    store.mark_collapsible_section(ids::INSP_RAY_FOLD_FILTER);
+    store.set_collapsed_if_unchosen(ids::INSP_RAY_FOLD_FILTER, true);
+    // O grupo «Filter» (versão C): caixas e peças são botões; a tag é uma lista com opções próprias.
+    for (id, dica) in [
+        (
+            ids::INSP_RAY_IGNORE_BODY,
+            "panel.inspector.ray.ignore_body_tip",
+        ),
+        (
+            ids::INSP_RAY_IGNORE_PARTS,
+            "panel.inspector.ray.ignore_parts_tip",
+        ),
+        (
+            ids::INSP_RAY_WALLS_BLOCK,
+            "panel.inspector.ray.walls_block_tip",
+        ),
+        (
+            ids::INSP_RAY_HIT_TRIGGERS,
+            "panel.inspector.ray.hit_triggers_tip",
+        ),
+        (
+            ids::INSP_RAY_STARTS_INSIDE,
+            "panel.inspector.ray.starts_inside_tip",
+        ),
+        (ids::INSP_RAY_ALL_HITS, "panel.inspector.ray.all_hits_tip"),
+        (ids::INSP_RAY_SEE_TAG, "panel.inspector.ray.see_tag_tip"),
+    ] {
+        store.set_tooltip(id, ph2d_i18n::tr(dica));
+    }
+    crate::populate::register_button_ids(
+        store,
+        &[
+            ids::INSP_RAY_IGNORE_BODY,
+            ids::INSP_RAY_IGNORE_PARTS,
+            ids::INSP_RAY_WALLS_BLOCK,
+            ids::INSP_RAY_HIT_TRIGGERS,
+            ids::INSP_RAY_STARTS_INSIDE,
+            ids::INSP_RAY_ALL_HITS,
+        ],
+    );
+    crate::populate::register_button_ids(store, &ids::INSP_RAY_ONLY_SEE);
+    for id in ids::INSP_RAY_ONLY_SEE {
+        store.set_tooltip(id, ph2d_i18n::tr("panel.inspector.ray.only_see_tip"));
+    }
+    crate::populate::register_button_ids(store, &ids::INSP_RAY_SEE_TAG_OPT);
+    store.register(
+        ids::INSP_RAY_SEE_TAG,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     crate::populate::register_button_ids(store, &[ids::INSP_RAY_TURNS]);
     store.set_tooltip(
         ids::INSP_RAY_TURNS,

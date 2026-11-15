@@ -154,6 +154,7 @@ pub(crate) mod player;
 pub(crate) mod projectile;
 pub(crate) mod properties;
 pub(crate) mod ray;
+pub(crate) mod ray_filtro;
 mod render_source;
 /// O par `Format` — irmão do `render_source` pelo cap de LOC.
 mod render_source_precision;

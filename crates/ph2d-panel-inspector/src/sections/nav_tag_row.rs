@@ -83,9 +83,15 @@ pub(super) fn tag_row(
 ///
 /// ⚠️ `pub(crate)` porque o passe diferido e o despacho a re-derivam — a lei do popover.
 pub(crate) fn nav_tag_options() -> Vec<DropdownOption<u64>> {
+    opcoes_da_arvore(&ids::INSP_NAV_TAG_OPT)
+}
+
+/// A árvore das tags como opções, uma por id de `opts` (cada lista tem os SEUS ids: o despacho
+/// resolve a opção por `position()`). Também a do filtro do Ray Sensor.
+pub(crate) fn opcoes_da_arvore(opts: &[ph2d_a11y::NodeId]) -> Vec<DropdownOption<u64>> {
     crate::state::current_tag_tree()
         .iter()
-        .zip(ids::INSP_NAV_TAG_OPT.iter())
+        .zip(opts.iter())
         .map(|(row, &id)| {
             let recuo = "    ".repeat(row.depth);
             DropdownOption::new(id, row.id, format!("{recuo}{}", row.label))

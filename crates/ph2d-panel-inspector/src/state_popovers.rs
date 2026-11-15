@@ -80,6 +80,10 @@ thread_local! {
     pub(crate) static PENDING_NAV_TAG_DD:
         std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
 
+    /// RAY SENSOR: o chip da tag do grupo «Filter» (GEF 07, versão C).
+    pub(crate) static PENDING_RAY_TAG_DD:
+        std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
+
     /// AUDIO: quando o seletor do BARRAMENTO está aberto, a seção guarda aqui
     /// `(tag escolhida, rect do chip)`. ⚠️ Mesma assimetria do irmão: a tag vem no slot, os
     /// rótulos rederivam-se do snapshot.
@@ -268,6 +272,14 @@ pub(crate) fn set_pending_nav_tag_dd(chip: Option<ph2d_editor_core::zones::Rect>
 
 pub(crate) fn take_pending_nav_tag_dd() -> Option<ph2d_editor_core::zones::Rect> {
     PENDING_NAV_TAG_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_ray_tag_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
+    PENDING_RAY_TAG_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_ray_tag_dd() -> Option<ph2d_editor_core::zones::Rect> {
+    PENDING_RAY_TAG_DD.with(|c| c.take())
 }
 
 thread_local! {

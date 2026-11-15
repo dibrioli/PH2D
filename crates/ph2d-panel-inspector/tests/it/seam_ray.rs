@@ -6,7 +6,7 @@ use crate::o_cartao_da_fisica::{achado, clica};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayFieldEdit, RayQueixa};
+use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayFieldEdit, RayQueixa, RaySee};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::ids as i;
 use ph2d_panel_inspector::{
@@ -29,6 +29,15 @@ fn raio() -> InspectorRayInfo {
         layer: 0,
         layer_empty: false,
         turns_with_facing: false,
+        ignore_body: true,
+        ignore_parts: true,
+        only_see: RaySee::Everything,
+        see_tag: 0,
+        walls_block: true,
+        hit_triggers: false,
+        starts_inside: false,
+        all_hits: false,
+        sees_all: Vec::new(),
         on_enter: "wall_ahead".into(),
         on_exit: "wall_gone".into(),
         sees: "Wall".into(),
@@ -60,9 +69,21 @@ fn assente(
     info: &InspectorRayInfo,
     cartoes: bool,
 ) -> (MockPanelHost, InspectorState, Vec<(NodeId, Rect)>) {
+    assente_com(info, cartoes, false)
+}
+
+/// Como [`assente`], e com o grupo «Filter» aberto quando `filtro`.
+fn assente_com(
+    info: &InspectorRayInfo,
+    cartoes: bool,
+    filtro: bool,
+) -> (MockPanelHost, InspectorState, Vec<(NodeId, Rect)>) {
     let mut h = crate::host_em_metros();
     h.store_mut()
         .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION, false);
+    if filtro {
+        h.store_mut().set_collapsed(i::INSP_RAY_FOLD_FILTER, false);
+    }
     let mut st = InspectorState::default();
     set_current_inspector_ray(Some(info.clone()));
     let r = pinta(&mut h, &mut st, cartoes);
@@ -191,4 +212,163 @@ fn a_caixa_turns_with_facing_escreve_o_contrario_do_ecra() {
             set_current_inspector_ray(None);
         }
     });
+}
+
+/// ⭐ O grupo «Filter» nasce FECHADO (as caixas não existem), e o clique no cabeçalho abre-o e fecha-o.
+///
+/// **Mutação que deve sangrar:** o `set_collapsed_if_unchosen(.., true)` do `populate_ray` a `false`.
+#[test]
+fn o_grupo_filter_nasce_fechado_e_abre_pelo_clique() {
+    nos_dois_modos(|c| {
+        let (mut h, mut st, mut r) = assente(&raio(), c);
+        assert!(
+            achado(&r, i::INSP_RAY_IGNORE_BODY).is_none(),
+            "Filter aberto de fábrica (cartões {c})"
+        );
+        for aberto in [true, false] {
+            let cab = achado(&r, i::INSP_RAY_FOLD_FILTER).expect("o cabeçalho Filter");
+            let _ = clica(&mut h, &mut st, cab);
+            r = pinta(&mut h, &mut st, c);
+            for id in [i::INSP_RAY_IGNORE_BODY, i::INSP_RAY_ALL_HITS] {
+                assert_eq!(
+                    achado(&r, id).is_some(),
+                    aberto,
+                    "{id:?} com Filter aberto={aberto} (cartões {c})"
+                );
+            }
+        }
+        set_current_inspector_ray(None);
+    });
+}
+
+/// ⭐ Cada caixa do Filter: o clique REAL no rect pintado escreve o CONTRÁRIO do snapshot, ligada e
+/// desligada, nos cartões e fora deles; cada uma tem dica de hover.
+///
+/// **Mutação que deve sangrar:** tirar o `!` de qualquer braço do `clique_do_filtro`.
+#[test]
+fn as_caixas_do_filter_escrevem_o_contrario_do_ecra() {
+    type Caixa = (
+        NodeId,
+        fn(&mut InspectorRayInfo, bool),
+        fn(bool) -> RayFieldEdit,
+    );
+    let caixas: [Caixa; 6] = [
+        (
+            i::INSP_RAY_IGNORE_BODY,
+            |r, v| r.ignore_body = v,
+            RayFieldEdit::IgnoreBody,
+        ),
+        (
+            i::INSP_RAY_IGNORE_PARTS,
+            |r, v| r.ignore_parts = v,
+            RayFieldEdit::IgnoreParts,
+        ),
+        (
+            i::INSP_RAY_WALLS_BLOCK,
+            |r, v| r.walls_block = v,
+            RayFieldEdit::WallsBlock,
+        ),
+        (
+            i::INSP_RAY_HIT_TRIGGERS,
+            |r, v| r.hit_triggers = v,
+            RayFieldEdit::HitTriggers,
+        ),
+        (
+            i::INSP_RAY_STARTS_INSIDE,
+            |r, v| r.starts_inside = v,
+            RayFieldEdit::StartsInside,
+        ),
+        (
+            i::INSP_RAY_ALL_HITS,
+            |r, v| r.all_hits = v,
+            RayFieldEdit::AllHits,
+        ),
+    ];
+    nos_dois_modos(|c| {
+        for (id, poe, edicao) in caixas {
+            for ligada in [false, true] {
+                let mut info = raio();
+                info.only_see = RaySee::OnlyTag;
+                poe(&mut info, ligada);
+                let (mut h, mut st, r) = assente_com(&info, c, true);
+                assert!(h.store().tooltip_for(id).is_some(), "{id:?} sem dica");
+                let rect =
+                    achado(&r, id).unwrap_or_else(|| panic!("{id:?} não pintado (cartões {c})"));
+                let saiu = edicoes(clica(&mut h, &mut st, rect));
+                assert_eq!(
+                    saiu,
+                    vec![edicao(!ligada)],
+                    "{id:?} cartões {c}, ligada {ligada}"
+                );
+                set_current_inspector_ray(None);
+            }
+        }
+    });
+}
+
+/// ⭐ «Only see»: o clique em cada peça escreve o modo dela; a tag e «Walls block» só existem fora de
+/// Everything (com controlo: com Everything somem).
+///
+/// **Mutação que deve sangrar:** pintar a tag e Walls block sem o `if i.only_see != Everything`.
+#[test]
+fn only_see_escolhe_e_a_tag_so_existe_com_filtro() {
+    nos_dois_modos(|c| {
+        for (n, modo) in [RaySee::Everything, RaySee::OnlyTag, RaySee::ExceptTag]
+            .into_iter()
+            .enumerate()
+        {
+            let mut info = raio();
+            info.only_see = modo;
+            let (mut h, mut st, r) = assente_com(&info, c, true);
+            let com_filtro = modo != RaySee::Everything;
+            for id in [i::INSP_RAY_SEE_TAG, i::INSP_RAY_WALLS_BLOCK] {
+                assert_eq!(
+                    achado(&r, id).is_some(),
+                    com_filtro,
+                    "{id:?} com {modo:?} (cartões {c})"
+                );
+            }
+            let outro = (n + 1) % 3;
+            let peca = achado(&r, i::INSP_RAY_ONLY_SEE[outro]).expect("a peça pintada");
+            let saiu = edicoes(clica(&mut h, &mut st, peca));
+            let esperado = [RaySee::Everything, RaySee::OnlyTag, RaySee::ExceptTag][outro];
+            assert_eq!(saiu, vec![RayFieldEdit::OnlySee(esperado)], "cartões {c}");
+            set_current_inspector_ray(None);
+        }
+    });
+}
+
+/// ⭐ A tag: o clique no chip abre a lista da árvore, e o clique numa opção escreve o `TagId` dela.
+///
+/// **Mutação que deve sangrar:** o despacho resolver a opção pela lista do Nav (`INSP_NAV_TAG_OPT`).
+#[test]
+fn a_tag_do_filtro_escolhe_se_na_lista_da_arvore() {
+    use ph2d_editor_core::screens::hero::InspectorTagRow;
+    ph2d_panel_inspector::set_current_tag_tree(vec![
+        InspectorTagRow {
+            id: 11,
+            path: "Enemy".into(),
+            label: "Enemy".into(),
+            depth: 0,
+        },
+        InspectorTagRow {
+            id: 22,
+            path: "Coin".into(),
+            label: "Coin".into(),
+            depth: 0,
+        },
+    ]);
+    nos_dois_modos(|c| {
+        let mut info = raio();
+        info.only_see = RaySee::OnlyTag;
+        let (mut h, mut st, r) = assente_com(&info, c, true);
+        let chip = achado(&r, i::INSP_RAY_SEE_TAG).expect("o chip da tag");
+        let _ = clica(&mut h, &mut st, chip);
+        let r = pinta(&mut h, &mut st, c);
+        let opcao = achado(&r, i::INSP_RAY_SEE_TAG_OPT[1]).expect("a lista aberta, com Coin");
+        let saiu = edicoes(clica(&mut h, &mut st, opcao));
+        assert_eq!(saiu, vec![RayFieldEdit::SeeTag(22)], "cartões {c}");
+        set_current_inspector_ray(None);
+    });
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }

@@ -43,4 +43,22 @@ pub const INSP_RAY_LAYER_RENAMING: NodeId = hash_node_id("insp_ray_layer_renamin
 pub const INSP_RAY_LAYER_RENAME_DONE: NodeId = hash_node_id("insp_ray_layer_rename_done");
 pub const INSP_RAY_EDIT_MATRIX: NodeId = hash_node_id("insp_ray_edit_matrix");
 
-pub use ph2d_editor_core::ids::INSP_RAY_FOLD_SIGNALS;
+pub use ph2d_editor_core::ids::{INSP_RAY_FOLD_FILTER, INSP_RAY_FOLD_SIGNALS};
+
+/// O grupo «Filter» (GEF 07, versão C): as caixas, a escolha «Only see» e a tag.
+pub const INSP_RAY_IGNORE_BODY: NodeId = hash_node_id("insp_ray_ignore_body");
+pub const INSP_RAY_IGNORE_PARTS: NodeId = hash_node_id("insp_ray_ignore_parts");
+/// «Only see»: Everything · Only tag · All except tag (a ordem do `RaySee`).
+pub const INSP_RAY_ONLY_SEE: [NodeId; 3] = [
+    hash_node_id("insp_ray_see_everything"),
+    hash_node_id("insp_ray_see_only_tag"),
+    hash_node_id("insp_ray_see_except_tag"),
+];
+/// O chip da tag do filtro — opções PRÓPRIAS (a lei do `INSP_NAV_TAG_OPT`).
+pub const INSP_RAY_SEE_TAG: NodeId = hash_node_id("insp_ray_see_tag");
+pub static INSP_RAY_SEE_TAG_OPT: [NodeId; 64] =
+    super::inspector_physics_body::tabela(b"insp_ray_see_tag_opt_");
+pub const INSP_RAY_WALLS_BLOCK: NodeId = hash_node_id("insp_ray_walls_block");
+pub const INSP_RAY_HIT_TRIGGERS: NodeId = hash_node_id("insp_ray_hit_triggers");
+pub const INSP_RAY_STARTS_INSIDE: NodeId = hash_node_id("insp_ray_starts_inside");
+pub const INSP_RAY_ALL_HITS: NodeId = hash_node_id("insp_ray_all_hits");

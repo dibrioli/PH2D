@@ -17,6 +17,7 @@ mod input_map;
 mod jogo_arte;
 mod jogo_camara;
 mod jogo_camera_intuitiva;
+mod jogo_conta_gotas_canvas;
 mod jogo_conta_gotas_selecao;
 mod jogo_encaixe;
 mod jogo_miniatura;

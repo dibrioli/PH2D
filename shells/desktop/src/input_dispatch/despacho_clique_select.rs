@@ -83,13 +83,23 @@ impl crate::App {
     ) -> bool {
         // **O eyedropper do palco** — o corpo de uma junta (§12) ou o alvo de uma constraint:
         // armado, o próximo Down no canvas escolhe o que está sob o cursor. Precede o gizmo.
-        if self.conta_gotas_armado()
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Down
-            && !menu_open_before
-            && self.over_canvas_or_gizmo(evt.x, evt.y)
+        let press = ph2d_app_components::conta_gotas::PressNoCanvas {
+            armado: self.conta_gotas_armado(),
+            primario_desce: mapped_button == ph2d_host::PointerButton::Primary
+                && kind == PointerKind::Down,
+            menu_aberto: menu_open_before,
+            sobre_canvas: kind == PointerKind::Down && self.over_canvas_or_gizmo(evt.x, evt.y),
+            cursor: (evt.x, evt.y),
+        };
+        if let Some(g) = self.gfx.as_mut()
+            && let Some((p, debaixo)) = ph2d_app_components::conta_gotas::premir_no_canvas(
+                press,
+                g.scene_window(),
+                &g.camera,
+                g.present.world_mut(),
+            )
         {
-            self.joint_body_pick_click(evt.x, evt.y);
+            self.conta_gotas_clique(debaixo, p);
             return true;
         }
         // A pega do gizmo das constraints (arco, raio) ganha ao gizmo do objecto.

@@ -31,6 +31,37 @@ pub fn pela_hierarquia(armado: bool, clique: impl FnOnce()) -> Option<u64> {
     linha
 }
 
+/// O press do rato visto pelos conta-gotas do canvas (os campos são as guardas do despacho da shell).
+#[derive(Clone, Copy, Debug)]
+pub struct PressNoCanvas {
+    /// Algum conta-gotas de OBJECTO está armado (`App::conta_gotas_armado`).
+    pub armado: bool,
+    /// Botão primário a descer (`Down`).
+    pub primario_desce: bool,
+    /// Um menu (ou modal) estava aberto antes do clique: é dele.
+    pub menu_aberto: bool,
+    /// O cursor está sobre o canvas (aceita o gizmo por cima), nunca sobre um painel.
+    pub sobre_canvas: bool,
+    /// O cursor em píxeis da janela.
+    pub cursor: (f32, f32),
+}
+
+/// ⭐⭐ **O press no canvas com um conta-gotas armado é DELE** (dono 15/11): `Some((ponto, debaixo))` = consumido —
+/// o despacho entrega-o ao conta-gotas e pára, logo o pick de selecção (e o Up que o fecharia) nunca o vê. `debaixo` é
+/// o que está sob o cursor, de cima para baixo (`pick_sprites_at_world` no mundo de apresentação). `None` = segue.
+pub fn premir_no_canvas(
+    p: PressNoCanvas,
+    window: ph2d_host::WindowSize,
+    camera: &ph2d_render::Camera2d,
+    present: &mut World,
+) -> Option<([f32; 2], Vec<u64>)> {
+    if !(p.armado && p.primario_desce && !p.menu_aberto && p.sobre_canvas) {
+        return None;
+    }
+    let ponto = camera.screen_to_world(p.cursor, window);
+    Some((ponto, ph2d_render::pick_sprites_at_world(present, ponto)))
+}
+
 /// O ponto de mundo do objecto `bits` — o «onde» de um clique que veio da Hierarchy (a cola prende ali).
 #[must_use]
 pub fn ponto_de(world: &World, bits: u64) -> [f32; 2] {

@@ -370,7 +370,7 @@ fn the_guide_gesture_runs_before_any_tool_claims_the_pointer() {
         // nada sobre ordem de despacho, e a primeira versão deste gate reprovou por comparar
         // com a declaração — um oráculo que não podia estar certo.
         ("self.vec_path_pick_click(", "o picker do Vector"),
-        ("self.joint_body_pick_click(", "o picker de corpo do joint"),
+        ("conta_gotas::premir_no_canvas(", "o conta-gotas do canvas"),
     ] {
         if let Some(other) = src.find(needle) {
             assert!(

@@ -55,16 +55,6 @@ impl crate::App {
             || (self.gfx.as_ref()).is_some_and(|g| ph2d_app_constraints::inspector::armado(&g.sim))
     }
 
-    /// O clique no canvas com um conta-gotas armado: o que está sob o cursor vai a [`Self::conta_gotas_clique`].
-    pub(super) fn joint_body_pick_click(&mut self, sx: f32, sy: f32) {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        let world_pos = gfx.camera.screen_to_world((sx, sy), gfx.scene_window());
-        let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
-        self.conta_gotas_clique(debaixo, world_pos);
-    }
-
     /// ⭐ **O clique de um conta-gotas** (`debaixo` de cima para baixo: o canvas, ou a linha da Hierarchy). O corpo da
     /// junta (§12): o primeiro CORPO religa aquela ponta; o vazio desiste; a outra ponta é RECUSADA e segue armado.
     /// Os outros escolhem pela lei de cada um. Nunca selecciona: o dono do conta-gotas fica no Inspector.

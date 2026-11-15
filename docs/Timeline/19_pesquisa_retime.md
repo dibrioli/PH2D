@@ -43,3 +43,32 @@ de velocidade lado a lado); AE pela documentação (é o produto de referência 
 - Uma tabela «modelo × o que resolve no nosso problema §1» e UMA recomendação; o dono escolhe (maquete/fotos lado a lado
   antes, `feedback_a_mockup_is_compared_side_by_side_before_the_smoke`).
 - Só depois: mudar `retime_with_speed_handle`/a pintura; a lei `E(W(u))` e o formato ficam salvo prova em contrário.
+
+## 5. Resultado (15/11) — medido; fixtures em [`oraculos/retime/`](oraculos/retime/README.md)
+
+[Folha lado a lado](fotos/retime_8_pesquisa_lado_a_lado.png) · [Blender, foto do Graph Editor](fotos/retime_9_blender_tempo_volta.png).
+
+| App | Fonte | O que a alça é | O gesto além do possível | Curva que se vê |
+|---|---|---|---|---|
+| Blender 5.2.3 | corrida (`blender.json`) + foto | ponto `(t, tempo)` na F-Curve do *Strip Time* | Y sem tecto: alça `(0,9; 2×)` ⇒ o tempo vai a **1,051** e volta (não monótono); X além do trecho é encurtado na avaliação, mantendo a direção | o mapa de tempo (valor) |
+| Godot 4.7.2 | corrida (`godot.json`) | ponto relativo `(Δt, Δv)` da chave Bezier | **o mesmo número do Blender** nos 8 gestos (ex.: `(1,5; 2×)` ⇒ máx 1,552) | o valor |
+| Natron 2.5 | corrida (`natron.json`) + ajuda dos parâmetros | `speed` animável, **integrado** desde o início; `warp` = curva extra entrada→saída | velocidade 1→3: o clip acaba no quadro **50** (não 100) e congela; 1→−1: **toca para trás** (13 → 1) | velocidade, ou o warp |
+| After Effects | documentação (Keyframe Velocity, speed graph) | velocidade + influência (o nosso modelo de hoje) | o speed graph cruza o zero = o valor passa e volta (Time Remap anda para trás) | velocidade ou valor |
+| Premiere / Resolve (Speed) | documentação | velocidade do trecho (faixa de borracha) | **a duração do clip muda** (ripple ou sobrescreve) | velocidade |
+| Resolve (Retime **Frame**) | documentação | Bézier sobre a diagonal quadro-de-origem × tempo | o limite é a própria caixa; segmento invertido = para trás | o mapa de tempo, com a de velocidade ao lado |
+| OpenToonz 1.8 | **não corrido** (sem via de script nas curvas) | — | — | — |
+
+**Achado que decide.** Ninguém tem ao mesmo tempo *chaves fixas* + *tempo nunca para trás* + *alça de velocidade sem
+tecto* — é impossível (área 1, §1). Cada um larga uma: Blender/Godot/AE largam «nunca para trás»; Natron/Premiere/Resolve
+Speed largam «chaves fixas». Os que mantêm as duas mostram a **curva do tempo** numa caixa (Resolve Frame; o editor de
+`cubic-bezier` do CSS). E o nosso dado JÁ É esse: `Retime{x1,y1,x2,y2} ∈ [0,1]⁴`, `y1 = s·x1`. O tecto `s·a ≤ 1` é só a
+borda de cima da caixa vista no espaço errado — na vista de velocidade vira a hipérbole `s = 1/a`, invisível, e a ponta
+«escorrega» (handoff, 2.ª volta).
+
+**Recomendação (UMA, para o dono escolher):** em Retime, a curva âmbar passa a ser o **tempo do trecho**, de chave a
+chave numa caixa tracejada; as duas alças são pontos dentro dela e, além da borda, ficam **na borda, debaixo do rato**
+(projeção na caixa: o mesmo ponto do rato dá sempre o mesmo resultado, sem depender do caminho). A velocidade âmbar
+continua desenhada, só para ler. Formato e lei `E(W(u))` **intactos**; muda só o gesto e o desenho em Retime
+(`retime_with_speed_handle`/`alcancavel` saem, a pintura de `graph_ritmo.rs` troca de espaço). Override não muda.
+Alternativas que o dono pode preferir: (B) ficar como está; (C) Natron/Premiere: velocidade livre e a chave seguinte
+anda; (D) Blender/AE: sem tecto, o tempo pode voltar (o Bounce tocaria de trás para a frente por um instante).

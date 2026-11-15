@@ -110,6 +110,10 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
 - ⭐ **Dono 15/11: «Override OK. Retime precisa ser pesquisado em quem faz isso corretamente.»** A próxima janela
   começa por [19 — pesquisa do Retime](../19_pesquisa_retime.md). O Retime atual fica no código (funciona, provas
   verdes), mas o dono NÃO o aprovou como gesto.
+  - **Pesquisa FEITA (15/11):** [19 §5](../19_pesquisa_retime.md#5-resultado-1511--medido-fixtures-em-oraculosretime)
+    (Blender, Godot e Natron corridos por script; AE/Premiere/Resolve pela documentação), [folha lado a lado](../fotos/retime_8_pesquisa_lado_a_lado.png).
+    Recomendação: em Retime editar a curva do TEMPO numa caixa (alça presa à borda sob o rato), velocidade só para ler;
+    alternativas B/C/D no §5. ⛔ **Aguarda a escolha do dono** — nenhum código do Retime mudou.
 
 - Smoke do dono depois da cura da auditoria (o arrasto além do tecto).
 - Na vista de VALOR as alças continuam as do easing (sobre um trecho retimado não ficam em cima da curva desenhada).

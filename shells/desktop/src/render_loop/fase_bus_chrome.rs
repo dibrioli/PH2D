@@ -156,6 +156,7 @@ impl crate::App {
                 }
             }
             EditorAction::Transport(cmd) => {
+                ph2d_transport::toma_o_teclado(cmd, hero_screen.as_mut());
                 ph2d_transport::apply(cmd, &mut self.playhead);
                 // ⭐ O Play de CIMA põe a cena a CORRER (a Animação de cada objecto, em qualquer aba —
                 // o Autoplay do Godot); o Reset de cima sai. O Pause só pausa (onda 4, item 1).

@@ -46,6 +46,28 @@ pub fn runtime_intent(cmd: TransportCmd) -> Option<ph2d_timeline::TimelineIntent
     }
 }
 
+/// ⭐ **A corrida ligada, ou já pedida neste quadro** (defeito do dono 15/11, `docs/CodeEditor/06_posse_do_teclado.md`
+/// §9): o bus pede-a no fim de um quadro e o dreno (`take_runtime`) só a liga no seguinte, DEPOIS da posse do teclado
+/// ver a subida do relógio. A posse pergunta aqui, não ao `runtime` sozinho.
+#[must_use]
+pub fn corrida(
+    timeline: &ph2d_timeline::TimelineState,
+    pedidos: &[ph2d_timeline::TimelineIntent],
+) -> bool {
+    timeline.runtime || pedidos.contains(&ph2d_timeline::TimelineIntent::RunScene)
+}
+
+/// ⭐ **E o que o comando faz ao teclado:** o Play (botão, Run ▸, F5 — todas as portas passam pelo bus) dá-o ao jogo, e o
+/// campo de texto que o segurava larga-o, comprometendo o valor (Godot; defeito do dono 15/11).
+pub fn toma_o_teclado(
+    cmd: TransportCmd,
+    hero: Option<&mut ph2d_editor_core::screens::hero::HeroScreen>,
+) {
+    if let (TransportCmd::Play, Some(h)) = (cmd, hero) {
+        h.solta_o_teclado();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

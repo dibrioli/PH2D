@@ -114,3 +114,21 @@ tira a moldura e as setas deixam de mover o círculo; clicar na cena devolve-a; 
 - Fora de jogo nenhum `keydown` chega ao `InputState` (o jogador não lê as setas ao avançar quadro a quadro com a física armada).
 - Uma cena que começa a correr tapada precisa de um clique.
 - A mão da física, a explosão e a atração mantêm-se (decisão 4).
+
+## 9. Defeito do dono 15/11 — «Play in editor não dá foco ao game»
+
+- **Mecanismo:** com os cartões e a aba Keys da Timeline (a fábrica), a sessão «Animating» está ligada antes do Play
+  e `Tapa::animar` tapa a cena. O Play do bus liga o relógio no fim do quadro N; a subida vê-se no início do N+1
+  (`quadro_do_foco_do_jogo`), mas a corrida só é ligada depois, na `fase_frame_simulation` (`take_runtime`), e só
+  então o dreno acaba a sessão (`vista_keys = false`). A subida via a sessão VELHA ⇒ `focado = false`, e destapar não
+  devolve o foco: só o clique na cena. O mesmo para o F5 e o Run ▸ (todas as portas passam pelo bus).
+  Irmão: o F5 com um campo do Inspector focado deixava o campo com o teclado (`texto` tapava a subida).
+- **Cura (na fonte, Godot: o Play dá o foco ao jogo):** `Tapa::corrida` = a corrida ligada OU já pedida neste quadro
+  (`ph2d_transport::corrida`) — a corrida acaba a sessão, logo a sessão de antes do Play não a tapa; e o braço do
+  `Transport` no bus larga o campo de texto no Play (`ph2d_transport::toma_o_teclado` → `solta_o_teclado`, que
+  compromete o valor). Mantidos: aba, texto e modos continuam a tapar; um clique fora tira o foco; fora da corrida a
+  sessão volta a tapar.
+- **Gates:** `shells/game-scenes/tests/it/jogo_play_da_o_teclado.rs` — a sequência real do quadro (clique Down/Up fora
+  da cena no Play, o bus, a posse, `take_runtime`), botão e F5, com e sem campo focado, e a composição da shell por
+  fonte. Mutação: 3/3 sangram (`corrida` só com o `runtime`; `toma_o_teclado` mudo; `a_vista` sem a `corrida`);
+  controlo: sem a sessão, o código antigo passa.

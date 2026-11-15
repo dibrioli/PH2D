@@ -50,14 +50,18 @@ pub struct Tapa {
     /// A Timeline anima a cena (sessão «Animating», doc 17 item 11): a agulha a tocar é a prévia do
     /// editor, e o rato na cena é das curvas e das chaves, não do jogo.
     pub animar: bool,
+    /// O Play de cima pôs a cena a CORRER, ou pediu-o neste quadro: a corrida ACABA a sessão «Animating» (o dreno da
+    /// Timeline só a vê no quadro seguinte ao da subida do relógio).
+    pub corrida: bool,
 }
 
 impl Tapa {
     /// ⭐ No palco as abas ficam ATRÁS do jogo e não o tapam (report do dono 25/10: com o editor de
     /// animações aberto a janela do jogo e o ecrã cheio não recebiam teclas); o texto e os modos tapam sempre.
+    /// ⭐ A sessão «Animating» de ANTES do Play não tapa a corrida (defeito do dono 15/11, doc 06 §9).
     #[must_use]
     pub fn a_vista(self) -> bool {
-        (self.palco || !self.aba) && !self.texto && !self.modo && !self.animar
+        (self.palco || !self.aba) && !self.texto && !self.modo && !(self.animar && !self.corrida)
     }
 }
 

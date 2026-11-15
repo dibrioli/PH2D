@@ -17,6 +17,7 @@ impl crate::App {
                 texto: h.text_entry_focused(),
                 modo: self.menu_aberto() || self.command_palette_open() || self.morph_preview,
                 animar: self.timeline.animating.0,
+                corrida: ph2d_transport::corrida(&self.timeline, &self.timeline_intents),
             }
             .a_vista()
         });

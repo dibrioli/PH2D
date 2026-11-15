@@ -157,9 +157,9 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
     (Blender, Godot e Natron corridos por script; AE/Premiere/Resolve pela documentação), [folha lado a lado](../fotos/retime_8_pesquisa_lado_a_lado.png).
     Recomendação: em Retime editar a curva do TEMPO numa caixa (alça presa à borda sob o rato), velocidade só para ler;
     alternativas B/C/D no §5.
-  - **Dono 15/11: «vamos tentar A» — FEITO** (ver «Retime = caixa do tempo» abaixo). Aguarda o smoke do dono.
+  - **Dono 15/11: «vamos tentar A» — FEITO** (ver «Retime = caixa do tempo» abaixo) e a auditoria das 2 lentes curada.
+    **Smoke do dono 15/11: OK** («Muito bom! Parece ótimo!»; depois da auditoria: «smoke OK»).
 
-- Smoke do dono depois da cura da auditoria (o arrasto além do tecto).
 - Na vista de VALOR as alças continuam as do easing (sobre um trecho retimado não ficam em cima da curva desenhada).
 - O «Reset timing» mora ao lado da pílula, não no menu da chave (o plano dizia «menu da chave/linha»); se o dono o quiser
   também lá, é uma linha no cartão da chave.

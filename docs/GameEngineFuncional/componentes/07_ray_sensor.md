@@ -24,7 +24,7 @@ O texto «Como está» abaixo é o estado de PARTIDA.
   que transforma uma sonda em corpo.
 - **Cena** `PH2D_GAME_SMOKE=26` (`ph2d-physics-scene/src/cena_ray.rs`): Hero (Character do Add) com «Wall Ray»
   (frente, 6 m) e «Ledge Ray» (pés, para baixo, 1,2 m), luzes «Wall Light» e «Edge Light», chão que acaba
-  antes da parede e um poço. Fotos em `fotos_07/26_*`. O `PH2D_RAY_SMOKE=1` antigo segue, com ângulos 0/180.
+  antes da parede e um poço. Fotos em `fotos_07/26_*`. O `PH2D_RAY_SMOKE=1` (ângulos 0/180) tem os dois olhos como filhos «Front Ray»/«Back Ray» do «Post» desde 15/11.
 
 Estudos lidos:
 - crítica `critica_ph2d.html#raysensor`, §1–§7, com o «Vale rever?» da Origin na C.
@@ -71,8 +71,8 @@ Base do estudo: `main` `7b3dd983f7`.
 - **Um sensor por objeto**: `RaySensor` é componente único por entidade. Dois raios = dois objetos (filhos).
 - **Quem ouve o sinal**: a contagem existe (`ph2d-signal-census/src/lib.rs:224`, `listeners`) e o Timeline já a mostra
   (`ph2d-panel-timeline/src/signal_ouvintes.rs:436`). O cartão do Ray não a usa.
-- **Smoke de hoje** `PH2D_RAY_SMOKE=1` (`ph2d-app-components/src/ray_smoke.rs`): dois olhos (frente/trás), caixa, duas
-  luzes. Próxima cena do Game Engine: `PH2D_GAME_SMOKE=26`.
+- **Smoke de hoje** `PH2D_RAY_SMOKE=1` (`ph2d-app-components/src/ray_smoke.rs`): dois olhos filhos do poste (`Front Ray`/`Back Ray`, gate
+  `a_cena_do_olho_pendura_os_raios_como_filhos`), caixa, duas luzes, cartão Ray Sensor aberto. Próxima cena do Game Engine: `PH2D_GAME_SMOKE=26`.
 
 ![hoje](fotos_07/hoje_ray.png)
 

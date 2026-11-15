@@ -1,38 +1,11 @@
 //! ⭐⭐⭐ **Smoke do OLHO** (suplente #21, W6). `PH2D_RAY_SMOKE=1`.
 //!
-//! # A cena: **um poste com DOIS olhos, e uma caixa que chega**
-//!
-//! Os dois olhos têm o **mesmo componente** e **uma** diferença — o `Angle`. Uma caixa vem da
-//! direita:
-//!
-//! | olho | `Angle` | o que acontece |
-//! |---|---|---|
-//! | **o de cima** | `0`, para a direita | vê a caixa, a luz da **direita** acende, e a leitura viva do painel conta a distância |
-//! | **o de baixo** (o CONTROLO) | `180`, para trás | fica **calado** o tempo todo |
-//!
-//! ⭐⭐⭐ **É a coluna que a composição não exprime, desenhada.** A sonda
-//! [`mede_o_que_a_composicao_ja_da_ao_raio`] mediu a melhor alternativa que a casa tem — um colisor
-//! `is_sensor` fino deitado ao longo da linha — e ela **não distingue frente de trás**, porque *uma
-//! FORMA é simétrica por construção*. As outras duas colunas (**ordem** e **métrica**) aparecem no
-//! mesmo gesto: o tracinho do acerto marca **onde** ele encontrou e o painel diz **a que distância**.
-//!
-//! # ⚠️ Os dois olhos gritam nomes DIFERENTES, e não é a diferença que se demonstra
-//!
-//! Com o mesmo nome as duas luzes acendiam juntas, porque um sinal é um **nome global** — a lição
-//! que a cena do golpe já pagou. *O nome isola as duas experiências; o que se mede é a direcção.*
-//!
-//! # ⚠️ A caixa começa FORA do alcance, e isso é MEDIDO
-//!
-//! Ela nasce a `+5` e viaja `7` m até parar em `−2`; a linha do olho acaba em `x = 0`. ⇒ o passo (2)
-//! mostra o **alcance a ser um limite a sério** — o olho tem a caixa à vista e diz *«Sees nothing
-//! right now.»* — e só depois é que ela entra. ⛔ Uma cena em que a caixa já nascesse dentro do
-//! alcance perdia metade da lição, que é a espécie de cena que o `CLAUDE.md` §5.0 nomeia.
-//!
-//! ⭐ **E ela PÁRA dentro do alcance, em vez de atravessar:** um projéctil que o artista pôs na cena
-//! à mão é **documento**, logo o fim do alcance dele não o apaga — ele fica. É isso que dá ao dono
-//! uma leitura **estável** para ler no painel e um alvo parado para o passo (6) do `Reach`.
-//!
-//! ⚠️ Se a linha `[ray-smoke]` não aparecer, **PARE**: a cena não montou.
+//! Um poste com DOIS olhos — dois objectos filhos «Ray Sensor» (`Front Ray`, `Back Ray`), a lei de
+//! 15/11 (ADR-0199) — e uma caixa que chega da direita. Mesmo componente, UMA diferença: o `Angle`
+//! (`0` vê a caixa e acende a luz da direita; `180`, o CONTROLO, fica calado). Uma forma `is_sensor`
+//! é simétrica e não distingue frente de trás; o raio distingue. Os nomes dos sinais diferem porque um
+//! sinal é um nome global. A caixa nasce FORA do alcance (o alcance é um limite a sério) e PÁRA dentro
+//! (um projéctil autorado é documento). Se `[ray-smoke]` não aparecer, a cena não montou.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -48,40 +21,17 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 /// ⭐⭐ **Quantas cenas este roteador serve** — CONTADO do [`montar`].
 pub const CENAS: u32 = 1;
 
-/// **Até onde cada olho enxerga, em metros** — e ele é a régua da cena inteira.
-///
-/// ⚠️ **A geometria toda é derivada dele** ([`X_POSTE`], [`X_CAIXA`], [`VIAGEM`]), para o passo (2)
-/// e o passo (6) do roteiro continuarem verdadeiros se alguém mexer no número. O gate
-/// `a_caixa_comeca_fora_do_alcance_e_acaba_dentro` mede as duas pontas.
+/// Até onde cada olho enxerga (m); a geometria toda deriva dele.
 pub const ALCANCE: f32 = 6.0;
 
-/// ⭐⭐⭐ **A JANELA ÚTIL do canvas, em metros `(x0, x1, y0, y1)` — MEDIDA na foto de 19/09.**
-///
-/// A câmera de omissão (`height_world = 10`, centro na origem) sobre a superfície `1930×1012` dá um
-/// mundo visível de `x ∈ [−9,54; +9,54]` e `y ∈ [−5; +5]`, **e os painéis TAPAM-NO**: a Hierarquia
-/// até `x ≈ −7,3`, o Inspector a partir de `x ≈ +6,8`, e a régua da timeline a partir de
-/// `y ≈ −1,3`.
-///
-/// ⚠️⚠️ **É a régua que a cena `=45` da escultura pagou com um report do dono** (*«resultado bem
-/// bizarro»*): ali `d/R` lia `5,70`–`7,85` em todo o ecrã e **nenhuma** posição produzia o efeito.
-/// Aqui a pergunta é a mesma — *o dono VÊ o que o roteiro manda ver?* —, e a 1.ª redacção desta
-/// cena reprovava: a luz do CONTROLO ficava atrás da Hierarquia.
-///
-/// ⛔ **Ela é de UMA superfície e diz-se assim.** Um número derivado da câmera em runtime seria mais
-/// geral e não é alcançável de um gate sem device; o que a torna honesta é a medição estar escrita
-/// ao lado dela, e o gate `a_cena_inteira_cabe_na_janela_util` nomear cada peça que ela abriga.
-///
-/// ⚠️ **`pub` como o [`ALCANCE`], e pela mesma razão:** ela é um FACTO medido sobre esta cena, e o
-/// único consumidor dela é um gate — ⛔ escondê-la atrás de `#[cfg(test)]` poria uma medição num
-/// sítio onde nenhum leitor da família a encontra.
+/// A janela útil do canvas `(x0, x1, y0, y1)`, MEDIDA na foto de 19/09 (1930×1012, câmera de
+/// omissão): a Hierarquia tapa até `x ≈ −7,3`, o Inspector a partir de `+6,8`, a timeline abaixo de
+/// `y ≈ −1,3`. Gate `a_cena_inteira_cabe_na_janela_util`.
 pub const JANELA_UTIL: (f32, f32, f32, f32) = (-7.3, 6.8, -1.3, 5.0);
 
-/// Onde o poste está.
-///
-/// ⚠️ **MEDIDO na foto e não escolhido:** a 1.ª redacção pô-lo em `−6`, e a luz do CONTROLO (que
-/// vive `1,6` m à esquerda dele) caía **fora do canvas útil**, tapada pela Hierarquia — *um controlo
-/// que não se vê não é um controlo*, e o passo (5) do roteiro afirma que ele está na tela. Ver
-/// [`JANELA_UTIL`] e o gate `a_cena_inteira_cabe_na_janela_util`.
+/// O centro do poste (`y`), pai dos dois olhos.
+const Y_POSTE: f32 = -0.25;
+/// Onde o poste está (medido na foto: em `−6` a luz do CONTROLO caía atrás da Hierarquia).
 const X_POSTE: f32 = -4.0;
 /// Onde a caixa nasce — **além** da ponta da linha (`X_POSTE + ALCANCE = 2`).
 const X_CAIXA: f32 = 6.0;
@@ -107,6 +57,14 @@ const PERDI: &str = "perdi";
 const VIU_ATRAS: &str = "vi-atras";
 const PERDI_ATRAS: &str = "perdi-atras";
 
+/// Os nomes da cena (a Hierarquia é do app: inglês).
+pub const POSTE: &str = "Post";
+pub const OLHO_FRENTE: &str = "Front Ray";
+pub const OLHO_TRAS: &str = "Back Ray";
+pub const LUZ_FRENTE: &str = "Front Light";
+pub const LUZ_TRAS: &str = "Back Light";
+pub const CAIXA: &str = "Box";
+
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
 const POSTE_RGBA: [f32; 4] = [0.45, 0.47, 0.52, 1.0];
 const LUZ_RGBA: [f32; 4] = [0.98, 0.82, 0.25, 1.0];
@@ -127,19 +85,11 @@ fn linha(on: &str, verb: SignalVerb) -> SignalAction {
     }
 }
 
-/// **Uma luz que acende ao ouvir e apaga ao deixar de ouvir**, com o SUPORTE por baixo dela.
-///
-/// ⚠️ **Ela fica do LADO para onde o olho dela olha**, e isso é o que torna a cena legível sem ler
-/// um nome: a luz que acende está na direcção da linha que acendeu.
-///
-/// ⛔⛔⛔ **O SUPORTE não é enfeite, e a FOTO é que o exigiu (19/09).** Os verbos que existem são
-/// `Show` e `Hide`, logo uma luz apagada **não está lá** — e o passo (5) do roteiro afirma *«a luz
-/// da ESQUERDA nunca acende»*. Sem o suporte, *«não acendeu»* e *«não há luz nenhuma deste lado»*
-/// dão ao dono exactamente o mesmo ecrã, e o CONTROLO deixa de provar o que quer que seja.
-/// ⇒ um quadrado ESCURO, sempre visível, no mesmo sítio: a luz acende **por cima** dele.
+/// Uma luz do lado para onde o olho dela olha, acende e apaga pelos sinais, sobre um SUPORTE escuro
+/// sempre visível (foto de 19/09: sem ele «não acendeu» e «não há luz» davam o mesmo ecrã).
 fn luz(world: &mut World, nome: &str, x: f32, acende: &str, apaga: &str) -> Entity {
     world.spawn((
-        Name::new(format!("Suporte: {nome}")),
+        Name::new(format!("Stand: {nome}")),
         Transform::from_translation(Vec2::new(x, Y_LUZ)),
         Visibility::visible(),
         Sprite::atlas(
@@ -162,65 +112,66 @@ fn luz(world: &mut World, nome: &str, x: f32, acende: &str, apaga: &str) -> Enti
         .id()
 }
 
-/// **Um olho** — o componente e a voz, e **NADA MAIS**.
+/// **Um olho**: o objecto filho «Ray Sensor» do poste (`pendura_raio`, a porta do Add ▸ Ray Sensor;
+/// a lei de 15/11: o raio é um OBJECTO na Hierarquia, como a Collision Shape, ADR-0199).
 ///
-/// ⛔⛔⛔ **Ele NÃO tem `Sprite`, e a ausência foi MEDIDA pela foto (19/09).** A 1.ª redacção deu-lhe
-/// um, pelo argumento certo do `#15` (*«o que tem cérebro tem CORPO»*, senão o dedo do dono não lhe
-/// chega) — e a foto mostrou o preço: um `Sprite` traz ao Inspector as secções **RENDER SOURCE**,
-/// **COLOR & TINT** e **SPRITE SHEET**, e a secção `Ray Sensor` que o roteiro manda ler caía
-/// **três ecrãs abaixo** da dobra. *Um passo que manda procurar uma linha AFIRMA que ela está na
-/// tela, e o dono aprova o smoke com a afirmação dentro.*
-///
-/// ⭐ **A premissa do `#15` não se aplica aqui, e a diferença é o ROTEIRO:** lá o passo era *carregue
-/// na porta*, e aqui **nenhum passo pede um clique de canvas** — o olho da frente nasce ESCOLHIDO e
-/// o de baixo tem linha própria na Hierarquia. O que o dono vê no canvas são as **duas linhas** e as
-/// **duas luzes**, que é exactamente a lição.
-///
-/// ⛔ **E ele não tem colisor**, também de propósito: com um, o raio do olho de baixo acertaria no de
-/// cima e o CONTROLO deixava de estar calado — por uma razão que não é a direcção.
-fn olho(world: &mut World, nome: &str, angle: f32, y: f32, voz: RaySignals) -> Entity {
-    world
-        .spawn((
-            Name::new(nome),
-            Transform::from_translation(Vec2::new(X_POSTE, y)),
-            Visibility::visible(),
-            RaySensor {
-                angle,
-                reach: ALCANCE,
-                layer: 0,
-                turns_with_facing: false,
-                ..RaySensor::default()
-            },
-            voz,
-        ))
-        .id()
+/// ⛔ Sem `Sprite` (a foto de 19/09: as secções do Sprite enterravam o cartão Ray Sensor abaixo da
+/// dobra) e sem colisor nem corpo (o raio de baixo acertaria no de cima e o CONTROLO falaria por
+/// outra razão que não a direcção). `y` é o do MUNDO; a pose local é relativa ao poste.
+fn olho(
+    world: &mut World,
+    poste: Entity,
+    nome: &str,
+    angle: f32,
+    y: f32,
+    voz: RaySignals,
+) -> Entity {
+    let e = world.spawn((Name::new(nome), Visibility::visible())).id();
+    ph2d_physics_ecs::pendura_raio(world, e, Some(poste));
+    let mut em = world.entity_mut(e);
+    em.insert((
+        Transform::from_translation(Vec2::new(0.0, y - Y_POSTE)),
+        RaySensor {
+            angle,
+            reach: ALCANCE,
+            layer: 0,
+            turns_with_facing: false,
+            ..RaySensor::default()
+        },
+        voz,
+    ));
+    e
 }
 
-/// A cena `=1`. Devolve **quem nasce ESCOLHIDO** — o olho que vê, porque o roteiro fala da secção
+/// A cena `=1`. Devolve **quem nasce ESCOLHIDO** — o olho que vê, porque o roteiro fala do cartão
 /// dele.
 fn cena_um(world: &mut World) -> Entity {
-    // ⚠️⚠️ **O CHÃO PRIMEIRO**, e isto não é estilo: a ordem das raízes é a de CRIAÇÃO, logo quem
-    // nasce primeiro desenha por baixo (a cura de 15/09).
+    // ⚠️ **O CHÃO PRIMEIRO**: a ordem das raízes é a de CRIAÇÃO, e quem nasce primeiro desenha por
+    // baixo (a cura de 15/09).
     world.spawn((
         Name::new("Ground"),
         Sprite::atlas(WHITE_TILE_KEY, [24.0, 12.0], CHAO_RGBA),
         Transform::from_translation(Vec2::ZERO),
     ));
-    // ⚠️ **A altura e o centro do poste também saem da foto:** a régua da timeline tapa o canvas a
-    // partir de `y = −1,3`, e um poste mais comprido aparecia CORTADO pela borda de baixo.
-    world.spawn((
-        Name::new("Poste"),
-        Sprite::atlas(WHITE_TILE_KEY, [0.5, 1.8], POSTE_RGBA),
-        Transform::from_translation(Vec2::new(X_POSTE, -0.25)),
-    ));
+    // ⚠️ A altura e o centro do poste saem da foto: a régua da timeline tapa o canvas abaixo de
+    // `y = −1,3`.
+    let poste = world
+        .spawn((
+            Name::new(POSTE),
+            Sprite::atlas(WHITE_TILE_KEY, [0.5, 1.8], POSTE_RGBA),
+            Transform::from_translation(Vec2::new(X_POSTE, Y_POSTE)),
+            Visibility::visible(),
+        ))
+        .id();
 
     // As duas luzes, cada uma do lado para onde o olho dela olha.
-    luz(world, "Luz da frente", X_POSTE + 1.6, VIU, PERDI);
-    luz(world, "Luz de tras", X_POSTE - 1.6, VIU_ATRAS, PERDI_ATRAS);
+    luz(world, LUZ_FRENTE, X_POSTE + 1.6, VIU, PERDI);
+    luz(world, LUZ_TRAS, X_POSTE - 1.6, VIU_ATRAS, PERDI_ATRAS);
 
     let ve = olho(
         world,
-        "Olho que ve",
+        poste,
+        OLHO_FRENTE,
         0.0,
         Y_OLHO,
         RaySignals {
@@ -230,7 +181,8 @@ fn cena_um(world: &mut World) -> Entity {
     );
     olho(
         world,
-        "Olho que olha para tras",
+        poste,
+        OLHO_TRAS,
         180.0,
         -Y_OLHO,
         RaySignals {
@@ -245,7 +197,7 @@ fn cena_um(world: &mut World) -> Entity {
     // ⚠️ **`face_velocity: false`**: a rotação é o RUMO do lançamento (`π` = para a esquerda) e tem
     // de ficar quieta — uma caixa a rodar não muda nada na lei e distrai de onde está a lição.
     world.spawn((
-        Name::new("Caixa"),
+        Name::new(CAIXA),
         Transform {
             translation: Vec2::new(X_CAIXA, 0.0),
             rotation: std::f32::consts::PI,
@@ -292,24 +244,27 @@ pub struct Montada {
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
     ph2d_physics_ecs::migra_formas_para_filhos(world);
+    ph2d_ecs::assign_missing_stable_ids(world);
+    ph2d_ecs::assign_missing_root_order(world);
     println!(
-        "[ray-smoke] cena=1  alcance={ALCANCE} m\n\
-         (1) o poste da esquerda tem DOIS olhos, e de cada um sai uma linha fina — uma para a \
+        "[ray-smoke] cena=1  alcance={ALCANCE} m (600 px no painel)\n\
+         (1) o poste da esquerda (`Post`) tem DOIS olhos, os dois `Ray Sensor` FILHOS dele na \
+         Hierarquia (`Front Ray` e `Back Ray`), e de cada um sai uma linha fina — uma para a \
          DIREITA e outra para a ESQUERDA. Cada linha e' o alcance de um olho, e o tracinho na PONTA \
          marca onde ele acaba. Por cima do poste estao as DUAS luzes deles, as duas apagadas\n\
          (2) a caixa clara vem da direita. Enquanto ela estiver ALEM da ponta da linha nao acontece \
-         nada, e no painel da direita a seccao `Ray Sensor` diz `Sees nothing right now.` — o \
+         nada, e no painel da direita o cartao `Ray Sensor` diz `Sees nothing right now.` — o \
          alcance e' um limite a serio\n\
          (3) quando ela ENTRA na linha: aparece um segundo tracinho SOBRE a linha, no ponto em que \
          o olho a encontrou, e a luz da DIREITA acende. A caixa continua a vir e o tracinho desliza \
          com ela ate' a caixa parar\n\
-         (4) o olho da frente ja' nasce escolhido: no painel, a linha por baixo do titulo passa a \
-         dizer `Sees Caixa` com a distancia em metros, e o numero MUDA enquanto ela se aproxima\n\
+         (4) o `Front Ray` ja' nasce escolhido: no painel, a linha por baixo do titulo passa a \
+         dizer `Sees Box` com a distancia em px, e o numero MUDA enquanto ela se aproxima\n\
          (5) a luz da ESQUERDA fica APAGADA o tempo todo, e esse e' o CONTROLO: o olho de baixo \
          tem o MESMO componente com UMA diferenca — o `Angle` esta' ao contrario (0 e 180). Uma forma nao \
          distingue a frente de tras; um raio distingue\n\
-         (6) agora mude o `Reach` do olho escolhido para 2: a linha ENCOLHE no canvas na hora e a \
-         luz da direita APAGA, porque o olho deixou de alcancar a caixa. Ponha 6 outra vez e ela \
+         (6) agora mude o `Reach` do olho escolhido para 200: a linha ENCOLHE no canvas na hora e a \
+         luz da direita APAGA, porque o olho deixou de alcancar a caixa. Ponha 600 outra vez e ela \
          volta a acender\n\
          (7) deu errado se: as linhas nao aparecem · o tracinho do encontro nao desliza com a caixa \
          · a luz da esquerda acende · a distancia do painel nao muda · ou mudar o `Reach` nao muda \
@@ -319,6 +274,15 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
         nivel: 1,
         escolhido: escolhido.to_bits(),
     }
+}
+
+/// O cartão Ray Sensor e o grupo Signals abertos no olho escolhido, como na cena 26.
+pub fn arruma_o_inspector(store: &mut ph2d_editor_core::interaction::WidgetStore, raio: u64) {
+    use ph2d_editor_core::ids;
+    for id in [ids::INSP_LIVE_RAY_SECTION, ids::INSP_RAY_FOLD_SIGNALS] {
+        store.set_collapsed(id, false);
+    }
+    store.request_inspector_section(ids::INSP_LIVE_RAY_SECTION, raio);
 }
 
 #[cfg(test)]

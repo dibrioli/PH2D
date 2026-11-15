@@ -283,15 +283,12 @@ impl crate::App {
         self.show_colliders = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.panel_visibility.insert("inspector", true);
-            // ⚠️ A régua abre junto — os passos (2) e (3) falam do relógio a andar, e *uma
-            // instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* (a
-            // lição da cena 67 da física).
+            // ⚠️ A régua abre junto: os passos (2) e (3) falam do relógio a andar (lição da 67).
             crate::components_scenes::abre_a_regua_da_corrida(hero);
-            // ⛔ **O OLHO DA FRENTE nasce ESCOLHIDO** — o roteiro manda ler a secção `Ray Sensor`
-            // no painel da direita, e com ninguém escolhido o Inspector diz *«Select an entity in
-            // the Hierarchy»*.
+            // ⛔ O «Front Ray» nasce ESCOLHIDO, com o cartão Ray Sensor aberto como na cena 26.
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();
+            ph2d_app_components::ray_smoke::arruma_o_inspector(&mut hero.store, montada.escolhido);
         }
         // ⛔⛔ **E o Inspector tem de SUBIR durante alguns quadros, não só ficar visível** — a
         // `panel_visibility` diz *«existe»* e não *«está à frente»*. O `reconcile_z` acrescenta os

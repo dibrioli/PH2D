@@ -141,6 +141,6 @@ Commits `412699ec58` (curas C1–C9, U1, U2, U6, U7) · `63372c90b3` (U4, U5, ca
 - Visto nas fotos, não tocado: nos cartões OFF a caixa de marcar desmarcada é um quadrado escuro de moldura ténue
   (o visual clássico de antes).
 - **U5 parcial:** tag #65+ nomeada mas não escolhível (ver acima).
-- `PH2D_RAY_SMOKE=1` (cena antiga) segue com olhos na raiz; não foi refeita como filhos.
+- `PH2D_RAY_SMOKE=1` refeita 15/11: os olhos são filhos «Ray Sensor» do «Post» (`pendura_raio`), nomes em inglês, cartão aberto como na 26; gate `a_cena_do_olho_pendura_os_raios_como_filhos` (mutação: um olho na raiz ⇒ vermelho).
 - Próximo item da fila: **Motion Input** (`23_refundacao_plano.md`, «Corpo e movimento»).
 - Fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md: na integração.

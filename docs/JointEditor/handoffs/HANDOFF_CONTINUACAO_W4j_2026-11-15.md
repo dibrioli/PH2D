@@ -77,6 +77,16 @@ O dono fez o smoke da W4h e da W4i: OK. A W4j ainda não tem smoke do dono (§5)
 
 ## 4. ABERTO (por ordem)
 
+> **Smoke do dono da W4j (15/11): OK.** E ele respondeu o item «ajustes do painel» com TRÊS defeitos dos campos do
+> painel da aba — mesma família (o campo do painel não é o campo do Inspector), resolver num bloco só, ANTES do Make the parts:
+> - **A.** As caixas de texto do painel não aceitam entrada (clicar e digitar não escreve o número). Ver `Hit::Field` →
+>   `doc.typing` em `input.rs` e quem entrega as teclas à aba (`surface.rs` `key()` devolve `KeyOutcome` — confira se consome o texto).
+> - **B.** Arrastar as alças no desenho não atualiza o painel em tempo real (o número só muda no Up: `motion()` mexe só `drag.value`;
+>   o painel lê `doc.value()` do snapshot). O cartão tem de mostrar o valor vivo do arrasto (`live()` já existe no palco).
+> - **C.** Fora do padrão da casa: arrastar a LETRA do campo (a pega/glifo, `card_field::handle_rect`) não muda o número, como no
+>   Inspector. Use o mesmo gesto do cartão do Inspector (procure o scrub do glifo em `ph2d-editor-core` `widget/card_field`), não um novo.
+> Prova: costura `ph2d-ui-testkit`/`tests/it` que DIRIGE o evento real (tecla, arrasto) e lê o número pintado; foto de cada um.
+
 1. **W4 «Make the parts»** (plano 01 §W4): objetos reais nomeados (`part_name`), forma de colisão filha por `nasce_com_forma` (ADR-0199),
    aparência simples, no centro da vista, selecionados, aviso «Made N objects: …», UM passo de desfazer; Bridge/Chain: N peças de UMA solta
    com o campo «Planks». Reaproveitar o construtor dos testes (`joint_assembly_tests.rs` `body`/`parts_of`) e o da cena 123

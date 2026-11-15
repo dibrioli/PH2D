@@ -82,7 +82,7 @@ pub(crate) fn info(
     }
 }
 
-fn host(i: InspectorNavInfo) -> (MockPanelHost, InspectorState) {
+pub(crate) fn host(i: InspectorNavInfo) -> (MockPanelHost, InspectorState) {
     let h = crate::host_em_metros();
     set_current_inspector_nav(Some(i));
     (h, InspectorState::default())
@@ -264,7 +264,7 @@ fn cada_seccao_so_existe_para_quem_tem_o_componente() {
     );
 }
 
-fn edicoes(h: &mut MockPanelHost) -> Vec<E> {
+pub(crate) fn edicoes(h: &mut MockPanelHost) -> Vec<E> {
     h.drained_actions()
         .into_iter()
         .filter_map(|a| match a {
@@ -428,7 +428,7 @@ fn escolher_uma_tag_com_o_ponteiro_pede_essa_tag() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let r = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_NAV_TAG_OPT[1])
+        .find(|(n, _)| *n == ids::INSP_NAV_TAG_OPT.id(1))
         .map(|(_, r)| *r)
         .expect("a lista aberta não pintou a 2.ª tag");
     for ev in h.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {

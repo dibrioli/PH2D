@@ -113,7 +113,7 @@ fn clique_do_filtro(
                     crate::sections::ray_filtro::MODOS[n].0,
                 ));
             }
-            let n = d::INSP_RAY_SEE_TAG_OPT.iter().position(|&o| o == id)?;
+            let n = d::INSP_RAY_SEE_TAG_OPT.posicao(id, crate::state::current_tag_tree_len())?;
             return crate::sections::ray_filtro::opcoes_da_tag()
                 .get(n)
                 .map(|o| RayFieldEdit::SeeTag(o.value));

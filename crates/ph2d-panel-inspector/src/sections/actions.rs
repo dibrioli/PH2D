@@ -430,7 +430,7 @@ fn tag_pick_row(
 ///
 /// ⚠️ `pub(crate)` porque o passe diferido a re-deriva — a lei do popover.
 pub(crate) fn tag_options() -> Vec<DropdownOption<u64>> {
-    super::nav_tag_row::opcoes_da_arvore(&ids::INSP_ACTION_TAG_OPT, ids::INSP_ACTION_TAG_MORE)
+    super::nav_tag_row::opcoes_da_arvore(&ids::INSP_ACTION_TAG_OPT)
 }
 
 #[path = "actions_editor.rs"]

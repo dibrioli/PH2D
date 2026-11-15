@@ -35,7 +35,6 @@ pub(crate) fn populate_action(store: &mut WidgetStore) {
             crate::ids::INSP_ACTION_FROM_MYSELF,
         ],
     );
-    register_button_ids(store, &crate::ids::INSP_ACTION_TAG_OPT);
     store.register(
         crate::ids::INSP_ACTION_TAG_PICK,
         InteractiveState::Dropdown {

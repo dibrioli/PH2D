@@ -375,7 +375,7 @@ fn a_tag_do_filtro_escolhe_se_na_lista_da_arvore() {
         let chip = achado(&r, i::INSP_RAY_SEE_TAG).expect("o chip da tag");
         let _ = clica(&mut h, &mut st, chip);
         let r = pinta(&mut h, &mut st, c);
-        let opcao = achado(&r, i::INSP_RAY_SEE_TAG_OPT[1]).expect("a lista aberta, com Coin");
+        let opcao = achado(&r, i::INSP_RAY_SEE_TAG_OPT.id(1)).expect("a lista aberta, com Coin");
         let saiu = edicoes(clica(&mut h, &mut st, opcao));
         assert_eq!(saiu, vec![RayFieldEdit::SeeTag(22)], "cartões {c}");
         set_current_inspector_ray(None);

@@ -67,7 +67,6 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
     for id in ids::INSP_NAV_LAYERS
         .into_iter()
         .chain(ids::INSP_NAV_TARGET_MODE)
-        .chain(ids::INSP_NAV_TAG_OPT)
         .chain(ids::INSP_NAV_OFF_BODY)
     {
         store.register(

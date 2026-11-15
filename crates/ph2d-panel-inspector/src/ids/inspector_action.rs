@@ -47,85 +47,11 @@ pub const INSP_ACTION_FROM_ANYONE: NodeId = hash_node_id("insp_action_from_anyon
 /// precisa do id dela para o clique saber qual foi.
 pub const INSP_ACTION_FROM_MYSELF: NodeId = hash_node_id("insp_action_from_myself");
 
-/// **A tag alvo — o CHIP do seletor.** As entradas dele são [`INSP_ACTION_TAG_OPT`].
+/// **A tag alvo — o CHIP do seletor.** As entradas dele são [`super::INSP_ACTION_TAG_OPT`].
 ///
 /// ⚠️ **Não é o `INSP_TAGS_PICK` da secção Tags**: dois chips com o mesmo id em duas secções do
 /// MESMO painel partilhariam o estado `open`, e abrir um abriria o outro.
 pub const INSP_ACTION_TAG_PICK: NodeId = hash_node_id("insp_action_tag_pick");
-
-/// **As opções da tag alvo** — o mesmo tecto MEDIDO do `INSP_TAGS_OPT` (64 linhas, o ecrã maior
-/// mais dois; ver o doc de lá para a tabela).
-/// ⛔⛔ **Ids PRÓPRIOS, e não os do `INSP_TAGS_OPT`.** Os dois selectores nunca estão abertos ao
-/// mesmo tempo, mas o DESPACHO não sabe isso: ele resolve a opção por `position()` sobre o array,
-/// e com o mesmo array os dois braços casariam — o da secção *Tags* corre primeiro no router, logo
-/// escolher uma tag AQUI marcaria o objecto em vez de apontar a acção. *Dois gestos diferentes com
-/// o mesmo id é um deles a comer o outro, em silêncio.*
-pub const INSP_ACTION_TAG_OPT: [NodeId; 64] = [
-    hash_node_id("insp_action_tag_opt_00"),
-    hash_node_id("insp_action_tag_opt_01"),
-    hash_node_id("insp_action_tag_opt_02"),
-    hash_node_id("insp_action_tag_opt_03"),
-    hash_node_id("insp_action_tag_opt_04"),
-    hash_node_id("insp_action_tag_opt_05"),
-    hash_node_id("insp_action_tag_opt_06"),
-    hash_node_id("insp_action_tag_opt_07"),
-    hash_node_id("insp_action_tag_opt_08"),
-    hash_node_id("insp_action_tag_opt_09"),
-    hash_node_id("insp_action_tag_opt_10"),
-    hash_node_id("insp_action_tag_opt_11"),
-    hash_node_id("insp_action_tag_opt_12"),
-    hash_node_id("insp_action_tag_opt_13"),
-    hash_node_id("insp_action_tag_opt_14"),
-    hash_node_id("insp_action_tag_opt_15"),
-    hash_node_id("insp_action_tag_opt_16"),
-    hash_node_id("insp_action_tag_opt_17"),
-    hash_node_id("insp_action_tag_opt_18"),
-    hash_node_id("insp_action_tag_opt_19"),
-    hash_node_id("insp_action_tag_opt_20"),
-    hash_node_id("insp_action_tag_opt_21"),
-    hash_node_id("insp_action_tag_opt_22"),
-    hash_node_id("insp_action_tag_opt_23"),
-    hash_node_id("insp_action_tag_opt_24"),
-    hash_node_id("insp_action_tag_opt_25"),
-    hash_node_id("insp_action_tag_opt_26"),
-    hash_node_id("insp_action_tag_opt_27"),
-    hash_node_id("insp_action_tag_opt_28"),
-    hash_node_id("insp_action_tag_opt_29"),
-    hash_node_id("insp_action_tag_opt_30"),
-    hash_node_id("insp_action_tag_opt_31"),
-    hash_node_id("insp_action_tag_opt_32"),
-    hash_node_id("insp_action_tag_opt_33"),
-    hash_node_id("insp_action_tag_opt_34"),
-    hash_node_id("insp_action_tag_opt_35"),
-    hash_node_id("insp_action_tag_opt_36"),
-    hash_node_id("insp_action_tag_opt_37"),
-    hash_node_id("insp_action_tag_opt_38"),
-    hash_node_id("insp_action_tag_opt_39"),
-    hash_node_id("insp_action_tag_opt_40"),
-    hash_node_id("insp_action_tag_opt_41"),
-    hash_node_id("insp_action_tag_opt_42"),
-    hash_node_id("insp_action_tag_opt_43"),
-    hash_node_id("insp_action_tag_opt_44"),
-    hash_node_id("insp_action_tag_opt_45"),
-    hash_node_id("insp_action_tag_opt_46"),
-    hash_node_id("insp_action_tag_opt_47"),
-    hash_node_id("insp_action_tag_opt_48"),
-    hash_node_id("insp_action_tag_opt_49"),
-    hash_node_id("insp_action_tag_opt_50"),
-    hash_node_id("insp_action_tag_opt_51"),
-    hash_node_id("insp_action_tag_opt_52"),
-    hash_node_id("insp_action_tag_opt_53"),
-    hash_node_id("insp_action_tag_opt_54"),
-    hash_node_id("insp_action_tag_opt_55"),
-    hash_node_id("insp_action_tag_opt_56"),
-    hash_node_id("insp_action_tag_opt_57"),
-    hash_node_id("insp_action_tag_opt_58"),
-    hash_node_id("insp_action_tag_opt_59"),
-    hash_node_id("insp_action_tag_opt_60"),
-    hash_node_id("insp_action_tag_opt_61"),
-    hash_node_id("insp_action_tag_opt_62"),
-    hash_node_id("insp_action_tag_opt_63"),
-];
 
 /// **O verbo — o CHIP do seletor.** As entradas dele são [`INSP_ACTION_VERB`].
 ///
@@ -220,80 +146,4 @@ pub const INSP_ACTION_CLIP: [NodeId; 16] = [
     hash_node_id("insp_action_clip_13"),
     hash_node_id("insp_action_clip_14"),
     hash_node_id("insp_action_clip_15"),
-];
-
-/// A última linha, apagada, das listas de tags da Action e da Physics («…and N more»).
-pub const INSP_ACTION_TAG_MORE: NodeId = hash_node_id("insp_action_tag_more");
-pub const INSP_PHYS_TAG_MORE: NodeId = hash_node_id("insp_phys_tag_more");
-
-/// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).
-///
-/// ⛔ **Ids PRÓPRIOS**, pela razão que o [`INSP_ACTION_TAG_OPT`] já escreve: o despacho resolve a
-/// opção por `position()` sobre o array, e com o mesmo array dois braços casariam — o primeiro do
-/// router comeria o clique do outro.
-pub const INSP_PHYS_TAG_OPT: [NodeId; 64] = [
-    hash_node_id("insp_phys_tag_opt_00"),
-    hash_node_id("insp_phys_tag_opt_01"),
-    hash_node_id("insp_phys_tag_opt_02"),
-    hash_node_id("insp_phys_tag_opt_03"),
-    hash_node_id("insp_phys_tag_opt_04"),
-    hash_node_id("insp_phys_tag_opt_05"),
-    hash_node_id("insp_phys_tag_opt_06"),
-    hash_node_id("insp_phys_tag_opt_07"),
-    hash_node_id("insp_phys_tag_opt_08"),
-    hash_node_id("insp_phys_tag_opt_09"),
-    hash_node_id("insp_phys_tag_opt_10"),
-    hash_node_id("insp_phys_tag_opt_11"),
-    hash_node_id("insp_phys_tag_opt_12"),
-    hash_node_id("insp_phys_tag_opt_13"),
-    hash_node_id("insp_phys_tag_opt_14"),
-    hash_node_id("insp_phys_tag_opt_15"),
-    hash_node_id("insp_phys_tag_opt_16"),
-    hash_node_id("insp_phys_tag_opt_17"),
-    hash_node_id("insp_phys_tag_opt_18"),
-    hash_node_id("insp_phys_tag_opt_19"),
-    hash_node_id("insp_phys_tag_opt_20"),
-    hash_node_id("insp_phys_tag_opt_21"),
-    hash_node_id("insp_phys_tag_opt_22"),
-    hash_node_id("insp_phys_tag_opt_23"),
-    hash_node_id("insp_phys_tag_opt_24"),
-    hash_node_id("insp_phys_tag_opt_25"),
-    hash_node_id("insp_phys_tag_opt_26"),
-    hash_node_id("insp_phys_tag_opt_27"),
-    hash_node_id("insp_phys_tag_opt_28"),
-    hash_node_id("insp_phys_tag_opt_29"),
-    hash_node_id("insp_phys_tag_opt_30"),
-    hash_node_id("insp_phys_tag_opt_31"),
-    hash_node_id("insp_phys_tag_opt_32"),
-    hash_node_id("insp_phys_tag_opt_33"),
-    hash_node_id("insp_phys_tag_opt_34"),
-    hash_node_id("insp_phys_tag_opt_35"),
-    hash_node_id("insp_phys_tag_opt_36"),
-    hash_node_id("insp_phys_tag_opt_37"),
-    hash_node_id("insp_phys_tag_opt_38"),
-    hash_node_id("insp_phys_tag_opt_39"),
-    hash_node_id("insp_phys_tag_opt_40"),
-    hash_node_id("insp_phys_tag_opt_41"),
-    hash_node_id("insp_phys_tag_opt_42"),
-    hash_node_id("insp_phys_tag_opt_43"),
-    hash_node_id("insp_phys_tag_opt_44"),
-    hash_node_id("insp_phys_tag_opt_45"),
-    hash_node_id("insp_phys_tag_opt_46"),
-    hash_node_id("insp_phys_tag_opt_47"),
-    hash_node_id("insp_phys_tag_opt_48"),
-    hash_node_id("insp_phys_tag_opt_49"),
-    hash_node_id("insp_phys_tag_opt_50"),
-    hash_node_id("insp_phys_tag_opt_51"),
-    hash_node_id("insp_phys_tag_opt_52"),
-    hash_node_id("insp_phys_tag_opt_53"),
-    hash_node_id("insp_phys_tag_opt_54"),
-    hash_node_id("insp_phys_tag_opt_55"),
-    hash_node_id("insp_phys_tag_opt_56"),
-    hash_node_id("insp_phys_tag_opt_57"),
-    hash_node_id("insp_phys_tag_opt_58"),
-    hash_node_id("insp_phys_tag_opt_59"),
-    hash_node_id("insp_phys_tag_opt_60"),
-    hash_node_id("insp_phys_tag_opt_61"),
-    hash_node_id("insp_phys_tag_opt_62"),
-    hash_node_id("insp_phys_tag_opt_63"),
 ];

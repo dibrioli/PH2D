@@ -22,10 +22,7 @@ pub(crate) const MODOS: [(RaySee, &str); 3] = [
 
 /// As opções da tag: a árvore inteira do projecto (a mesma porta do Nav Agent e do filtro dos sinais).
 pub(crate) fn opcoes_da_tag() -> Vec<DropdownOption<u64>> {
-    super::nav_tag_row::opcoes_da_arvore(
-        &crate::ids::INSP_RAY_SEE_TAG_OPT,
-        crate::ids::INSP_RAY_SEE_TAG_MORE,
-    )
+    super::nav_tag_row::opcoes_da_arvore(&crate::ids::INSP_RAY_SEE_TAG_OPT)
 }
 
 /// O nome da tag do filtro; `None` quando está por escolher (o filtro não filtra: C2) e «a deleted tag»

@@ -308,7 +308,8 @@ fn click_controle(
             .has_collider
             .then_some(PhysicsFieldEdit::SignalTagFilter(0));
     }
-    if let Some(i) = crate::ids::INSP_PHYS_TAG_OPT.iter().position(|&o| o == id) {
+    if let Some(i) = crate::ids::INSP_PHYS_TAG_OPT.posicao(id, crate::state::current_tag_tree_len())
+    {
         // ⚠️ A lista é a MESMA que o pintor derivou, e o `(any)` ocupa a posição `0` dela.
         return crate::sections::physics_rows::phys_tag_options()
             .get(i + 1)

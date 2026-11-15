@@ -451,7 +451,7 @@ fn escolher_a_tag_alvo_aponta_a_accao_e_nao_marca_o_objecto() {
     // A 1.ª opção é a `Boss` — aqui a lista é a árvore INTEIRA, sem tirar nada.
     let r = rect_de(
         &rects,
-        ph2d_panel_inspector::ids::INSP_ACTION_TAG_OPT[0],
+        ph2d_panel_inspector::ids::INSP_ACTION_TAG_OPT.id(0),
         "a 1.a opcao da tag alvo",
     );
     let acoes = carrega(&mut h, &mut st, r, "a 1.a opcao da tag alvo");

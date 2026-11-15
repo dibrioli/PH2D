@@ -481,6 +481,7 @@ fn constraint_prop_popover(
 /// ⭐ **Os três popovers de TAG** — irmão por `#[path]`; ver a chamada acima.
 #[path = "popovers_tags.rs"]
 mod tags;
+pub(crate) use tags::publica;
 
 /// ⭐ **Os dois selectores das secções do TOP-20** — irmão por `#[path]`; ver a chamada acima.
 #[path = "popovers_top20.rs"]

@@ -42,3 +42,7 @@ pub fn set_current_tag_tree(rows: Vec<InspectorTagRow>) {
 pub(crate) fn current_tag_tree() -> Vec<InspectorTagRow> {
     CURRENT_TAG_TREE.with(|c| c.borrow().clone())
 }
+
+pub(crate) fn current_tag_tree_len() -> usize {
+    CURRENT_TAG_TREE.with(|c| c.borrow().len())
+}

@@ -88,7 +88,24 @@ const NOT_LANGUAGE: &[(&str, &str, &str)] = &[
         "o construtor que o artista escreveu no .luau dele; traduzi-lo mostra uma forma que ele \
          não pode escrever, e um órfão existe para ser reconhecido no ficheiro",
     ),
+    // O molde do id de uma opção de tag (U5): o `format!` dentro do `hash_node_id_runtime` é um
+    // slug que se hasheia, nunca texto pintado (o censo `node_id_collisions` lê-o como molde).
+    ("ids/inspector_tag_opts.rs", "insp_nav_tag_opt_{n}", MOLDE),
+    (
+        "ids/inspector_tag_opts.rs",
+        "insp_ray_see_tag_opt_{n}",
+        MOLDE,
+    ),
+    (
+        "ids/inspector_tag_opts.rs",
+        "insp_action_tag_opt_{n}",
+        MOLDE,
+    ),
+    ("ids/inspector_tag_opts.rs", "insp_phys_tag_opt_{n}", MOLDE),
 ];
+
+const MOLDE: &str = "o molde `format!` de um NodeId dentro do `hash_node_id_runtime`: o texto é \
+                     hasheado para id, nunca pintado";
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

@@ -93,7 +93,6 @@ pub(crate) fn phys_tag_options() -> Vec<DropdownOption<u64>> {
     )];
     out.extend(super::nav_tag_row::opcoes_da_arvore(
         &ids::INSP_PHYS_TAG_OPT,
-        ids::INSP_PHYS_TAG_MORE,
     ));
     out
 }

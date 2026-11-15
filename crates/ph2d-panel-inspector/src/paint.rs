@@ -158,7 +158,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             );
         });
         if let Some(painted) = state_popovers::take_painted_popover() {
-            ctx.host.store_mut().publish_dropdown_popover(painted);
+            crate::popovers::publica(ctx.host.store_mut(), painted);
         }
         return;
     }
@@ -220,7 +220,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     // ⚠️ **As duas alturas viajam com o rect** (`publish_dropdown_popover`): um popover clampado
     // mais curto que a lista, publicado sem elas, fica cortado e IMÓVEL.
     if let Some(painted) = state_popovers::take_painted_popover() {
-        store.publish_dropdown_popover(painted);
+        crate::popovers::publica(store, painted);
     }
     // O pedido da Hierarquia (doc 01 §7.1) ANTES do clamp, que o prende à altura do conteúdo —
     // casado pela ENTIDADE que os retratos deste quadro pintaram, nunca pelo nome da selecção.

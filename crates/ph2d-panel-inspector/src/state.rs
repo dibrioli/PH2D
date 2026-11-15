@@ -576,7 +576,7 @@ pub fn texture_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
 /// adiar com juros.
 #[path = "state_tags.rs"]
 mod tags;
-pub(crate) use tags::{current_inspector_tags, current_tag_tree};
+pub(crate) use tags::{current_inspector_tags, current_tag_tree, current_tag_tree_len};
 pub use tags::{set_current_inspector_tags, set_current_tag_tree};
 
 /// O menu do «Add Constraint»: fechado, aberto, ou aberto com o submenu dos *Behaviours*.

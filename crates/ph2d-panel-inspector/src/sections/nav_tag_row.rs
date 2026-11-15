@@ -83,51 +83,35 @@ pub(super) fn tag_row(
 ///
 /// ⚠️ `pub(crate)` porque o passe diferido e o despacho a re-derivam — a lei do popover.
 pub(crate) fn nav_tag_options() -> Vec<DropdownOption<u64>> {
-    opcoes_da_arvore(&ids::INSP_NAV_TAG_OPT, ids::INSP_NAV_TAG_MORE)
+    opcoes_da_arvore(&ids::INSP_NAV_TAG_OPT)
 }
 
-/// A árvore das tags como opções, uma por id de `opts` (cada lista tem os SEUS ids: o despacho
-/// resolve a opção por `position()`). A do Nav, do filtro do Ray Sensor, da Action e da Physics.
+/// A árvore das tags como opções, uma por tag e um id de `opts` por posição (cada lista tem os SEUS
+/// ids: o despacho resolve a opção pela posição). A do Nav, do filtro do Ray Sensor, da Action e da
+/// Physics.
 ///
-/// ⛔ **O que não coube é DITO** (U5, auditoria GEF 07): a árvore não tem tecto (`9 344` tags medidas
-/// na W1) e os ids têm `opts.len()` — o tecto MEDIDO de um ecrã cheio (a tabela do
-/// `a_lista_de_tags_cobre_um_ecra_cheio`, `64`: o recurso é o POPOVER, não o modelo). A sobra vira a
-/// última linha, apagada, com o id `mais`: «…and N more». *Um chooser que corta em silêncio ensina que
-/// a tag não existe.* Gate: `a_lista_de_tags_nao_corta_calada`.
-pub(crate) fn opcoes_da_arvore(
-    opts: &[ph2d_a11y::NodeId],
-    mais: ph2d_a11y::NodeId,
-) -> Vec<DropdownOption<u64>> {
+/// ⛔ **Sem tecto** (U5, auditoria GEF 07): a árvore não tem tecto (`9 344` tags medidas na W1), os ids
+/// nascem pelo índice e o popover rola. Gates: `a_lista_de_tags_nao_corta_calada`, `a_tag_numero_70_*`.
+pub(crate) fn opcoes_da_arvore(opts: &ids::OpcoesDeTag) -> Vec<DropdownOption<u64>> {
     let arvore = crate::state::current_tag_tree();
-    let mut out: Vec<DropdownOption<u64>> = arvore
+    arvore
         .iter()
-        .zip(opts.iter())
-        .map(|(row, &id)| {
+        .zip(opts.ids(arvore.len()))
+        .map(|(row, id)| {
             let recuo = "    ".repeat(row.depth);
             DropdownOption::new(id, row.id, format!("{recuo}{}", row.label))
         })
-        .collect();
-    let sobra = arvore.len().saturating_sub(opts.len());
-    if sobra > 0 {
-        let mut linha = DropdownOption::new(
-            mais,
-            0u64,
-            ph2d_i18n::tr_with("panel.inspector.tags.and_n_more", &[("n", &sobra)]),
-        );
-        linha.disabled = true;
-        out.push(linha);
-    }
-    out
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use ph2d_editor_core::screens::hero::InspectorTagRow;
 
-    /// ⛔ **As quatro listas de tags sem busca nunca cortam caladas** (U5, auditoria GEF 07): com
-    /// mais tags na árvore que ids, ou cada tag é alcançável, ou a última linha DIZ quantas ficaram.
+    /// ⛔ **As quatro listas de tags sem busca oferecem a árvore INTEIRA** (U5, auditoria GEF 07):
+    /// cada tag é uma opção escolhível, com um id próprio.
     ///
-    /// **Mutação que deve sangrar:** tirar a linha «…and N more» de [`super::opcoes_da_arvore`].
+    /// **Mutação que deve sangrar:** um tecto em [`super::opcoes_da_arvore`] (`.take(64)`).
     #[test]
     fn a_lista_de_tags_nao_corta_calada() {
         const N: usize = 70;
@@ -153,18 +137,7 @@ mod tests {
                 .filter(|o| !o.disabled && o.value != 0)
                 .map(|o| o.value)
                 .collect();
-            let faltam = N - escolhiveis.len();
-            if faltam == 0 {
-                continue;
-            }
-            let ultima = opcoes.last().expect("a lista tem linhas");
-            assert!(
-                ultima.disabled && ultima.label.contains(&faltam.to_string()),
-                "a lista de tags do {nome} mostra {} de {N} e corta {faltam} calada \
-                 (última linha {:?})",
-                escolhiveis.len(),
-                ultima.label
-            );
+            assert_eq!(escolhiveis, (1..=N as u64).collect::<Vec<_>>(), "{nome}");
             let ids: std::collections::BTreeSet<_> = opcoes.iter().map(|o| o.id).collect();
             assert_eq!(ids.len(), opcoes.len(), "{nome}: dois ids numa lista");
         }

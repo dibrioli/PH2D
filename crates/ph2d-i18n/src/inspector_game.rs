@@ -274,7 +274,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tags.showing_of_type_to_narrow" => {
             "Showing {n} of {achadas} \u{b7} type to narrow."
         }
-        "panel.inspector.tags.and_n_more" => "\u{2026}and {n} more",
         "panel.inspector.tags.create_named" => "+ Create \u{201c}{nome}\u{201d}",
         // ⭐⭐⭐ A CUTSCENE (TOP-20 #19) — o selector e as sete razões de ela não correr.
         "panel.inspector.sequence.no_cutscenes" => "No cutscenes yet",

@@ -15,8 +15,8 @@
 
 use super::paint_open_popover;
 use crate::state_popovers;
-use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::widget::Dropdown;
+use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::widget::{Dropdown, PaintedPopover};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
@@ -160,6 +160,35 @@ pub(super) fn paint_deferred_tag_popovers(
             text_system,
             theme,
             hit_index,
+        );
+    }
+}
+
+/// Publica o popover pintado e, se é uma das quatro listas de tags, regista as opções dela — os ids
+/// nascem pelo índice ([`crate::ids::OpcoesDeTag`]), um por tag da árvore, sem tecto.
+///
+/// ⚠️ `register_if_absent` (a lei do `asset_cell_id`: um `register` apagaria o `Pressed`) e só quando
+/// a ÚLTIMA falta: o registo é contíguo, então o quadro seguinte custa uma consulta.
+pub(crate) fn publica(store: &mut WidgetStore, painted: PaintedPopover) {
+    store.publish_dropdown_popover(painted);
+    use crate::ids as d;
+    let opts = match painted.id {
+        d::INSP_NAV_TAG_PICK => &d::INSP_NAV_TAG_OPT,
+        d::INSP_RAY_SEE_TAG => &d::INSP_RAY_SEE_TAG_OPT,
+        d::INSP_ACTION_TAG_PICK => &d::INSP_ACTION_TAG_OPT,
+        d::INSP_PHYS_SIGNAL_TAG => &d::INSP_PHYS_TAG_OPT,
+        _ => return,
+    };
+    let len = crate::state::current_tag_tree_len();
+    if len == 0 || store.get(opts.id(len - 1)).is_some() {
+        return;
+    }
+    for id in opts.ids(len) {
+        store.register_if_absent(
+            id,
+            InteractiveState::Button {
+                state: Default::default(),
+            },
         );
     }
 }

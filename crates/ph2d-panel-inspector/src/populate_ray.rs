@@ -115,7 +115,6 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
     for id in ids::INSP_RAY_ONLY_SEE {
         store.set_tooltip(id, ph2d_i18n::tr("panel.inspector.ray.only_see_tip"));
     }
-    crate::populate::register_button_ids(store, &ids::INSP_RAY_SEE_TAG_OPT);
     store.register(
         ids::INSP_RAY_SEE_TAG,
         InteractiveState::Dropdown {

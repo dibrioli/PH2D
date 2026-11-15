@@ -92,9 +92,8 @@ pub(crate) fn apply_action_event(
         // Uma opção da caixa da tag alvo. ⚠️ **A lista é a MESMA que o pintor derivou**
         // (`tag_options`), e ela é a árvore inteira — aqui não se tira nada, ao contrário da
         // secção *Tags*.
-        if let Some(i) = crate::ids::INSP_ACTION_TAG_OPT
-            .iter()
-            .position(|&o| o == id)
+        if let Some(i) =
+            crate::ids::INSP_ACTION_TAG_OPT.posicao(id, crate::state::current_tag_tree_len())
             && let Some(opt) = crate::sections::actions::tag_options().get(i)
         {
             push(

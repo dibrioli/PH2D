@@ -34,7 +34,7 @@
 //! 5. ⭐ **a tabela GERADA** `static X: [NodeId; LEN] = tabela…(b"prefixo")` — o laço `const` sobre
 //!    `hash_node_id_bytes` que soletra `prefixo0`, `prefixo1`, … `prefixo{LEN-1}` (decimal, SEM zero à
 //!    esquerda: `por_camada`/`escreve_numero`). O censo gera os MESMOS slugs e eles entram como
-//!    literais de produto (U4, auditoria GEF 07: `INSP_RAY_SEE_TAG_OPT`, `INSP_RAY_LAYER_OPTS`,
+//!    literais de produto (U4, auditoria GEF 07: `INSP_RAY_LAYER_OPTS`,
 //!    `INSP_RAY_SEES` e as irmãs passavam ao lado). `LEN` é um inteiro ou um `const …: usize` da
 //!    workspace (`A * B` incluído). Todo `hash_node_id_bytes` de produto fora de uma função que recebe
 //!    o `prefixo` do chamador tem de estar nomeado em [`FORMAS_NAO_LITERAIS`] (espécie `BytesAMao`).
@@ -293,9 +293,9 @@ const PISO_CRATES_COM_LITERAL: usize = 15;
 const PISO_MOLDES: usize = 150;
 /// Nomes distintos de `const …: NodeId` de produto — medido **2 452** na integração de 13/09.
 const PISO_NOMES: usize = 2_000;
-/// Slugs de tabelas geradas (forma 5) — medido **640** em 15/11 (13 tabelas: Ray 128, corpo físico 96,
-/// aba da física 416).
-const PISO_GERADOS: usize = 600;
+/// Slugs de tabelas geradas (forma 5) — medido **576** em 15/11 (12 tabelas: Ray 64, corpo físico 96,
+/// aba da física 416), depois de a lista de tags do Ray passar a molde (U5).
+const PISO_GERADOS: usize = 550;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1204,8 +1204,8 @@ fn the_census_sees_the_whole_workspace() {
     assert!(
         c.literais
             .iter()
-            .any(|l| l.slug == "insp_ray_see_tag_opt_63" && l.produto),
-        "controlo: a última opção gerada do `INSP_RAY_SEE_TAG_OPT` não foi achada — a forma 5 cegou"
+            .any(|l| l.slug == "insp_ray_layer_opt_31" && l.produto),
+        "controlo: a última opção gerada do `INSP_RAY_LAYER_OPTS` não foi achada — a forma 5 cegou"
     );
     // Um slug da fundação, um de uma crate de ferramenta, um molde da família vectorial: três
     // directórios diferentes, e nenhum deles se apaga numa limpeza de rotina.
@@ -1219,6 +1219,12 @@ fn the_census_sees_the_whole_workspace() {
             "controlo: o slug de produto {slug:?} não foi achado — o varrimento cegou para o sítio dele"
         );
     }
+    assert!(
+        c.moldes
+            .iter()
+            .any(|m| m.molde == "insp_ray_see_tag_opt_{n}"),
+        "controlo: o molde das opções da tag do Ray (U5) não foi achado — o leitor de moldes cegou"
+    );
     assert!(
         c.moldes
             .iter()

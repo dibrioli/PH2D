@@ -59,7 +59,7 @@ pub fn build_ray_info(
     } else {
         Vec::new()
     };
-    let (ignore_up_to, ignore_up_to_off, ignore_up_to_auto) =
+    let (ignore_up_to, ignore_up_to_off, ignore_up_to_unknown, ignore_up_to_auto) =
         crate::ray_topo::leitura(world, e, &r);
     Some(InspectorRayInfo {
         entity_bits: bits,
@@ -71,6 +71,7 @@ pub fn build_ray_info(
         ignore_parts: r.ignore_parts,
         ignore_up_to,
         ignore_up_to_off,
+        ignore_up_to_unknown,
         ignore_up_to_auto,
         up_to_pick_armed: crate::ray_topo::armado(world, Some(bits)),
         only_see: match r.only_see {
@@ -139,10 +140,14 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
     }
     // O topo resolve-se ANTES do empréstimo mutável: ele varre a cadeia e a cena.
     let topo = match edit {
-        RayFieldEdit::IgnoreUpTo(nome) => match crate::ray_topo::resolve(world, e, nome) {
-            Some(id) => Some(id),
-            None => return false,
-        },
+        RayFieldEdit::IgnoreUpTo(nome) => {
+            let id = crate::ray_topo::resolve(world, e, nome);
+            crate::ray_topo::escrito(world, bits, id.is_none().then_some(nome.as_str()));
+            match id {
+                Some(id) => Some(id),
+                None => return false,
+            }
+        }
         _ => None,
     };
     let Some(mut r) = world.get_mut::<RaySensor>(e) else {

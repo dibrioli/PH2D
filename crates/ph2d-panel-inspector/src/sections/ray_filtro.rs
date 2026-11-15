@@ -77,6 +77,24 @@ pub(crate) fn resumo(i: &InspectorRayInfo) -> String {
     partes.join(tr("panel.inspector.ray.filter_sep"))
 }
 
+/// ⭐ **O erro da caixa «Ignore up to»** (dono 15/11): um nome de ninguém (não durante a escrita: cada letra seria um
+/// erro), um objecto fora da cadeia, ou um que sumiu. `None` = a caixa está certa.
+pub(crate) fn erro_do_topo(
+    i: &InspectorRayInfo,
+    a_escrever: bool,
+) -> super::conta_gotas_row::Erro<'_> {
+    let nome = i.ignore_up_to.as_str();
+    if i.ignore_up_to_unknown {
+        return (!a_escrever && !nome.is_empty())
+            .then_some(("panel.inspector.ray.up_to_nobody_called_x", nome));
+    }
+    match (i.ignore_up_to_off, nome.is_empty()) {
+        (false, _) => None,
+        (true, false) => Some(("panel.inspector.ray.up_to_not_above_x", nome)),
+        (true, true) => Some(("panel.inspector.ray.up_to_is_gone", "")),
+    }
+}
+
 /// A linha da tag: o chip e a lista da árvore do projecto, num popover diferido.
 #[allow(clippy::too_many_arguments)]
 fn linha_da_tag(
@@ -221,6 +239,7 @@ pub(super) fn grupo_do_filtro(
             ),
             (crate::ids::INSP_RAY_UP_TO_PICK, i.up_to_pick_armed),
             seccao,
+            erro_do_topo(i, store.focus_id() == Some(crate::ids::INSP_RAY_UP_TO)),
         );
     }
     let nomes: Vec<&str> = MODOS.iter().map(|&(_, k)| tr(k)).collect();
@@ -320,6 +339,7 @@ mod tests {
             ignore_parts: true,
             ignore_up_to: String::new(),
             ignore_up_to_off: false,
+            ignore_up_to_unknown: false,
             ignore_up_to_auto: String::new(),
             up_to_pick_armed: false,
             only_see: RaySee::Everything,

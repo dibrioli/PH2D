@@ -114,7 +114,8 @@ fn nao_seleccionou(h: &mut MockPanelHost, onde: &str) {
 }
 
 /// ⭐⭐ **Ray «Ignore up to» e Target da bala, pela Hierarchy**: armado, o clique numa linha alimenta o conta-gotas e a
-/// selecção fica no dono. A Cena e a Crate (fora da cadeia do raio) não seleccionam e o raio continua armado.
+/// selecção fica no dono. A Cena não selecciona nem escreve; a Crate (fora da cadeia do raio, dono 15/11) escreve «Crate»
+/// e desarma — a caixa mostra o erro —, o Truck escreve «Truck»; nenhuma muda a selecção.
 ///
 /// **Mutações que sangram:** `pela_hierarquia` não armar (a shell de antes da cura) · o painel sem a guarda da Cena.
 #[test]
@@ -139,7 +140,7 @@ fn o_conta_gotas_nao_muda_a_selecao() {
     let [l_truck, l_caixa] = [NodeId(1), NodeId(3)];
     let mut bus = ActionBus::default();
 
-    // O raio: a Cena e a Crate não seleccionam e não escrevem; o Truck escreve e desarma.
+    // O raio: a Cena não selecciona nem escreve; a Crate e o Truck escrevem e desarmam, sem seleccionar.
     ray_topo::arma(sim.world_mut(), Some(raio.to_bits()));
     assert_eq!(clica(&sim, &mut h, &mut st, CENA), None);
     nao_seleccionou(&mut h, "a Cena com o raio armado");
@@ -147,10 +148,15 @@ fn o_conta_gotas_nao_muda_a_selecao() {
     nao_seleccionou(&mut h, "a Crate com o raio armado");
     assert!(conta_gotas::escolher(sim.world_mut(), &mut bus, &[b]));
     assert!(
-        conta_gotas::armado(sim.world()),
-        "fora da cadeia: continua armado"
+        !conta_gotas::armado(sim.world()),
+        "fora da cadeia: escreve e desarma"
     );
-    assert_eq!(bus.drain().count(), 0);
+    let crate_ = EditorAction::InspectorComponentEdit {
+        entity_bits: raio.to_bits(),
+        edit: ComponentEdit::Ray(RayFieldEdit::IgnoreUpTo("Crate".into())),
+    };
+    assert_eq!(bus.drain().collect::<Vec<_>>(), vec![crate_]);
+    ray_topo::arma(sim.world_mut(), Some(raio.to_bits()));
     let b = clica(&sim, &mut h, &mut st, l_truck).expect("a linha do Truck");
     nao_seleccionou(&mut h, "o Truck com o raio armado");
     assert!(conta_gotas::escolher(sim.world_mut(), &mut bus, &[b]));

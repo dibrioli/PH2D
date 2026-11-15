@@ -1035,6 +1035,7 @@ fn arma_o_top20() {
         ignore_parts: true,
         ignore_up_to: String::new(),
         ignore_up_to_off: false,
+        ignore_up_to_unknown: false,
         ignore_up_to_auto: String::new(),
         up_to_pick_armed: false,
         only_see: ph2d_editor_core::ray_edits::RaySee::Everything,

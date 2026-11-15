@@ -132,3 +132,96 @@ fn toda_linha_do_cartao_ray_tem_dica() {
     set_current_inspector_ray(None);
     ph2d_panel_inspector::set_cards_on(false);
 }
+
+thread_local! {
+    static TEXTOS: std::cell::RefCell<Vec<(String, [f32; 4])>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn ouve(t: &str, r: [f32; 4], _: f32) {
+    TEXTOS.with(|v| v.borrow_mut().push((t.to_owned(), r)));
+}
+
+/// Pinta `info` e devolve (a caixa do «Ignore up to», os textos pintados, quantos traços a cena emite).
+fn pinta_o_topo(
+    info: &ph2d_editor_core::ray_edits::InspectorRayInfo,
+    c: bool,
+) -> (
+    ph2d_editor_core::zones::Rect,
+    Vec<(String, [f32; 4])>,
+    usize,
+) {
+    TEXTOS.with(|v| v.borrow_mut().clear());
+    ph2d_editor_core::paint::ouve_o_texto(Some(ouve));
+    let (mut h, mut st, r) = assente_com(info, c, true);
+    ph2d_editor_core::paint::ouve_o_texto(None);
+    let caixa = achado(&r, i::INSP_RAY_UP_TO).expect("a caixa do Ignore up to");
+    let cena = h.paint_vector_scene::<InspectorPanel>(&mut st, crate::seam_ray::VIEWPORT);
+    set_current_inspector_ray(None);
+    (
+        caixa,
+        TEXTOS.with(|v| v.borrow().clone()),
+        cena.probe_strokes().0.len(),
+    )
+}
+
+/// ⭐⭐ **O erro mora na CAIXA do «Ignore up to»** (dono 15/11), nos dois modos: um nome fora da cadeia (ou que
+/// ninguém tem) pinta UMA linha logo abaixo da caixa a dizer porquê, e a caixa ganha a moldura de erro do tema
+/// (um traço a mais); um nome válido não pinta nenhuma das duas.
+///
+/// **Mutações que sangram:** o painel não pintar a linha do erro · não pintar a moldura.
+#[test]
+fn a_caixa_do_ignore_up_to_mostra_o_erro() {
+    nos_dois_modos(|c| {
+        let mut certo = raio();
+        certo.ignore_up_to = "Truck".into();
+        let (_, t, tracos_certo) = pinta_o_topo(&certo, c);
+        assert!(
+            !t.iter()
+                .any(|(s, _)| s.contains("not above") || s.starts_with("No object")),
+            "um nome válido não se queixa ({c}): {t:?}"
+        );
+
+        let mut fora = certo.clone();
+        fora.ignore_up_to = "Crate".into();
+        fora.ignore_up_to_off = true;
+        let (caixa, t, tracos_fora) = pinta_o_topo(&fora, c);
+        let frase = "Crate is not above this ray, so it is ignored.";
+        let onde = t
+            .iter()
+            .rev()
+            .find(|(s, _)| s == frase)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("a linha do erro ({c}): {t:?}"));
+        assert!(
+            onde[1] >= caixa.y + caixa.h - 0.5 && onde[1] <= caixa.y + caixa.h * 3.0,
+            "logo abaixo da caixa ({c}): {onde:?} sob {caixa:?}"
+        );
+        assert!(
+            tracos_fora > tracos_certo,
+            "a moldura de erro na caixa ({c}): {tracos_fora} contra {tracos_certo}"
+        );
+
+        let mut ninguem = certo.clone();
+        ninguem.ignore_up_to = "Nobody".into();
+        ninguem.ignore_up_to_unknown = true;
+        let (_, t, tracos_ninguem) = pinta_o_topo(&ninguem, c);
+        assert!(
+            t.iter().any(|(s, _)| s == "No object is called Nobody."),
+            "o nome de ninguém ({c}): {t:?}"
+        );
+        assert!(tracos_ninguem > tracos_certo, "a moldura ({c})");
+
+        let mut longo = fora.clone();
+        longo.ignore_up_to = "A truck with a very long name that never ends at all".repeat(3);
+        let (_, t, _) = pinta_o_topo(&longo, c);
+        let (s, r) = t
+            .iter()
+            .rev()
+            .find(|(s, _)| s.ends_with("is not above this ray, so it is ignored."))
+            .unwrap_or_else(|| panic!("a frase inteira, com o nome elidido ({c}): {t:?}"));
+        assert!(
+            s.contains('…') && (r[3] - onde[3]).abs() < 0.5,
+            "uma linha ({c}): {s} {r:?} contra {onde:?}"
+        );
+    });
+}

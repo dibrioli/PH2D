@@ -247,6 +247,7 @@ fn alvo(p: &mut Pj<'_>, y: f32) -> f32 {
         ),
         (ids::INSP_PJ_TARGET_PICK, p.info.target_pick_armed),
         p.seccao,
+        None,
     )
 }
 

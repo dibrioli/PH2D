@@ -14,7 +14,7 @@ use ph2d_panel_inspector::{
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-const VIEWPORT: Rect = Rect {
+pub(crate) const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
@@ -33,6 +33,7 @@ pub(crate) fn raio() -> InspectorRayInfo {
         ignore_parts: true,
         ignore_up_to: String::new(),
         ignore_up_to_off: false,
+        ignore_up_to_unknown: false,
         ignore_up_to_auto: "Hero".into(),
         up_to_pick_armed: false,
         only_see: RaySee::Everything,

@@ -28,8 +28,10 @@ pub struct InspectorRayInfo {
     pub ignore_parts: bool,
     /// «Ignore up to»: o NOME do topo da família guardado (`""` = automático).
     pub ignore_up_to: String,
-    /// O topo guardado já não existe ou não está ACIMA do raio (o cartão queixa-se).
+    /// O topo guardado já não existe ou não está ACIMA do raio (a caixa mostra o erro).
     pub ignore_up_to_off: bool,
+    /// Ninguém se chama `ignore_up_to` — o texto que o artista ESCREVEU, mantido pela sessão; o documento não mudou.
+    pub ignore_up_to_unknown: bool,
     /// O nome do topo AUTOMÁTICO (o personagem, senão o corpo mais alto) — o fantasma da caixa.
     pub ignore_up_to_auto: String,
     /// O conta-gotas do «Ignore up to» está armado para ESTE raio.
@@ -82,9 +84,6 @@ impl InspectorRayInfo {
                 return Some(RayQueixa::TagApagada);
             }
         }
-        if self.ignore_parts && self.ignore_up_to_off {
-            return Some(RayQueixa::TopoFora);
-        }
         if self.layer_empty {
             return Some(RayQueixa::CamadaVazia);
         }
@@ -108,8 +107,6 @@ pub enum RayQueixa {
     EscolhaATag,
     /// A tag do filtro foi apagada do projecto.
     TagApagada,
-    /// O «Ignore up to» nomeia um objecto que já não existe ou não está acima do raio.
-    TopoFora,
     /// Nenhum objeto com forma numa camada que esta vê: ele nunca verá nada.
     CamadaVazia,
     /// Ele vê, e não conta a ninguém.
@@ -171,6 +168,7 @@ mod tests {
             ignore_parts: true,
             ignore_up_to: String::new(),
             ignore_up_to_off: false,
+            ignore_up_to_unknown: false,
             ignore_up_to_auto: String::new(),
             up_to_pick_armed: false,
             only_see: RaySee::Everything,
@@ -278,12 +276,11 @@ mod tests {
         tudo.layer_empty = false;
         assert_eq!(tudo.queixa(), None, "«Sees everything» não olha para a tag");
 
-        // C8: o topo fora da cadeia só se queixa com «Ignore my other parts» ligado.
+        // C8: o topo fora da cadeia queixa-se NA CAIXA (dono 15/11), nunca no topo do cartão.
         let mut fora = base();
         fora.ignore_up_to = "Truck".into();
         fora.ignore_up_to_off = true;
-        assert_eq!(fora.queixa(), Some(RayQueixa::TopoFora));
-        fora.ignore_parts = false;
+        fora.ignore_up_to_unknown = true;
         assert_eq!(fora.queixa(), None);
     }
 }

@@ -55,9 +55,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Pick a tag: without one, this filter lets everything through."
         }
         "panel.inspector.ray.tag_is_gone" => "This tag no longer exists. Pick another one.",
-        "panel.inspector.ray.up_to_is_off" => {
-            "Ignore up to names an object that is not above this ray."
+        "panel.inspector.ray.up_to_not_above_x" => {
+            "{name} is not above this ray, so it is ignored."
         }
+        "panel.inspector.ray.up_to_nobody_called_x" => "No object is called {name}.",
+        "panel.inspector.ray.up_to_is_gone" => "The object it named is gone, so it is ignored.",
         // U2: a dica de toda linha do cartão.
         "panel.inspector.ray.reach_tip" => "How far the ray looks, in meters.",
         "panel.inspector.ray.layer_tip" => {

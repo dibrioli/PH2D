@@ -50,7 +50,7 @@ fn escreve(sim: &mut SimWorld, raio: Entity, edit: RayFieldEdit) -> bool {
 }
 
 /// ⭐⭐ **O nome nos dois sentidos**: vazio = automático (o fantasma diz «Hero», o personagem); «Truck»
-/// guarda o `StableId` dele; um nome de ninguém não escreve; «Crate» (fora da cadeia) guarda e queixa-se.
+/// guarda o `StableId` dele; um nome de ninguém não escreve; «Crate» (fora da cadeia) guarda e a caixa mostra o erro.
 ///
 /// **Mutações que sangram:** `resolve` guardar 0 para um nome · a leitura não ver a cadeia (`fora` sempre falso).
 #[test]
@@ -74,11 +74,7 @@ fn o_ignore_up_to_le_e_escreve_pelo_nome() {
         (i.ignore_up_to.as_str(), i.ignore_up_to_off),
         ("Truck", false)
     );
-    assert_ne!(
-        i.queixa(),
-        Some(RayQueixa::TopoFora),
-        "o topo certo não se queixa"
-    );
+    assert!(!i.ignore_up_to_unknown, "o topo certo não tem erro");
     assert!(!escreve(
         &mut sim,
         raio,
@@ -95,7 +91,11 @@ fn o_ignore_up_to_le_e_escreve_pelo_nome() {
     ));
     let i = info(&sim, raio, &t);
     assert!(i.ignore_up_to_off, "a Crate não está acima do raio");
-    assert_eq!(i.queixa(), Some(RayQueixa::TopoFora));
+    assert_eq!(
+        i.queixa(),
+        Some(RayQueixa::CamadaVazia),
+        "o erro mora na caixa: o topo do cartão diz a queixa seguinte"
+    );
     assert!(escreve(
         &mut sim,
         raio,
@@ -108,13 +108,14 @@ fn o_ignore_up_to_le_e_escreve_pelo_nome() {
     let _ = truck;
 }
 
-/// ⭐⭐ **O conta-gotas**: armar não toca no documento; um clique fora da cadeia (a Crate) não escreve e
-/// CONTINUA armado; um clique no Truck escreve «Truck» pela porta do Inspector e desarma; o `Esc` desarma.
+/// ⭐⭐ **O conta-gotas** (dono 15/11): armar não toca no documento; um clique num objecto com nome escreve e
+/// DESARMA — o Truck (acima) escreve «Truck»; a Crate (fora da cadeia) escreve «Crate» e a caixa mostra o erro;
+/// um clique sem nome nenhum continua armado; o `Esc` desarma.
 ///
-/// **Mutações que sangram:** desarmar no clique errado · aceitar o clicado sem subir à cadeia.
+/// **Mutações que sangram:** o clique fora da cadeia não escrever (o de antes) · aceitar o clicado sem subir à cadeia.
 #[test]
 fn o_conta_gotas_do_ignore_up_to_escolhe_um_pai() {
-    let (mut sim, [truck, _, raio, caixa]) = cena();
+    let (mut sim, [truck, hero, raio, caixa]) = cena();
     let mut bus = ActionBus::default();
     assert!(
         !conta_gotas::escolher(sim.world_mut(), &mut bus, &[truck.to_bits()]),
@@ -125,31 +126,121 @@ fn o_conta_gotas_do_ignore_up_to_escolhe_um_pai() {
         "armar não muda o documento"
     );
     assert!(info(&sim, raio, &TagTree::new()).up_to_pick_armed);
+    let sem_nome = sim.world_mut().spawn(StableId(25)).id();
     assert!(conta_gotas::escolher(
         sim.world_mut(),
         &mut bus,
-        &[caixa.to_bits()]
+        &[sem_nome.to_bits()]
     ));
     assert!(
         conta_gotas::armado(sim.world()),
-        "a Crate não está acima: continua armado"
+        "sem nome: continua armado"
     );
     assert_eq!(bus.drain().count(), 0);
+    let topo = |n: &str| EditorAction::InspectorComponentEdit {
+        entity_bits: raio.to_bits(),
+        edit: ComponentEdit::Ray(RayFieldEdit::IgnoreUpTo(n.into())),
+    };
+    // Um clique sobre a Crate e o Hero: quem está na cadeia ganha, mesmo por baixo.
     assert!(conta_gotas::escolher(
         sim.world_mut(),
         &mut bus,
         &[caixa.to_bits(), truck.to_bits()]
     ));
     assert!(!conta_gotas::armado(sim.world()));
-    let esperado = EditorAction::InspectorComponentEdit {
-        entity_bits: raio.to_bits(),
-        edit: ComponentEdit::Ray(RayFieldEdit::IgnoreUpTo("Truck".into())),
-    };
-    assert_eq!(bus.drain().collect::<Vec<_>>(), vec![esperado]);
+    assert_eq!(bus.drain().collect::<Vec<_>>(), vec![topo("Truck")]);
+    // A Crate sozinha: escreve o nome dela, desarma, e a leitura diz que está fora.
+    ray_topo::arma(sim.world_mut(), Some(raio.to_bits()));
+    assert!(conta_gotas::escolher(
+        sim.world_mut(),
+        &mut bus,
+        &[caixa.to_bits()]
+    ));
+    assert!(
+        !conta_gotas::armado(sim.world()),
+        "a Crate tem nome: escreve e desarma"
+    );
+    let saiu: Vec<_> = bus.drain().collect();
+    assert_eq!(saiu, vec![topo("Crate")]);
+    assert!(escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo("Crate".into())
+    ));
+    let i = info(&sim, raio, &TagTree::new());
+    assert_eq!(
+        (i.ignore_up_to.as_str(), i.ignore_up_to_off),
+        ("Crate", true)
+    );
     ray_topo::arma(sim.world_mut(), Some(raio.to_bits()));
     assert!(
         conta_gotas::desarma(sim.world_mut()) && !conta_gotas::armado(sim.world()),
         "o Esc"
+    );
+    let _ = hero;
+}
+
+/// ⭐⭐ **O erro mora na CAIXA** (dono 15/11): um nome fora da cadeia guarda-se e a leitura diz quem e que está
+/// fora; um nome de ninguém NÃO toca no documento, mas a caixa continua a mostrar o que o artista escreveu, com
+/// o erro, até ele mudar; uma edição válida apaga-o; e o texto é DESTE raio.
+///
+/// **Mutações que sangram:** o texto de ninguém não ficar (a caixa volta ao que era) · o válido não o apagar.
+#[test]
+fn um_nome_fora_da_cadeia_ou_de_ninguem_mostra_o_erro() {
+    let (mut sim, [_, _, raio, _]) = cena();
+    let t = TagTree::new();
+    assert!(escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo("Crate".into())
+    ));
+    let i = info(&sim, raio, &t);
+    assert_eq!(
+        (
+            i.ignore_up_to.as_str(),
+            i.ignore_up_to_off,
+            i.ignore_up_to_unknown
+        ),
+        ("Crate", true, false)
+    );
+    assert!(!escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo("Nobody".into())
+    ));
+    assert_eq!(
+        sim.world().get::<RaySensor>(raio).map(|r| r.ignore_up_to),
+        Some(24),
+        "o documento não muda"
+    );
+    let i = info(&sim, raio, &t);
+    assert_eq!(
+        (i.ignore_up_to.as_str(), i.ignore_up_to_unknown),
+        ("Nobody", true),
+        "a caixa guarda o que o artista escreveu"
+    );
+    let outro = sim
+        .world_mut()
+        .spawn((Name::new("Other ray"), RaySensor::default(), StableId(26)))
+        .id();
+    let o = info(&sim, outro, &t);
+    assert!(
+        !o.ignore_up_to_unknown && o.ignore_up_to.is_empty(),
+        "é deste raio só"
+    );
+    assert!(escreve(
+        &mut sim,
+        raio,
+        RayFieldEdit::IgnoreUpTo("Truck".into())
+    ));
+    let i = info(&sim, raio, &t);
+    assert_eq!(
+        (
+            i.ignore_up_to.as_str(),
+            i.ignore_up_to_off,
+            i.ignore_up_to_unknown
+        ),
+        ("Truck", false, false)
     );
 }
 

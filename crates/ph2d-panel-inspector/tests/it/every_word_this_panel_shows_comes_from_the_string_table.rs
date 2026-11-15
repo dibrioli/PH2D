@@ -39,6 +39,8 @@ const TABLES: &[&str] = &[
     //    chaves, e escrevê-las na `inspector.rs` levava-a de `559` a mais de `900` — acima do
     //    tecto de 700 da workspace. O corte é por ASSUNTO, que é o que esse tecto pede.
     "crates/ph2d-i18n/src/inspector_game.rs",
+    // O grupo «Filter» do Ray Sensor (GEF 07, versão C), pela mesma lei do tecto.
+    "crates/ph2d-i18n/src/inspector_ray.rs",
     // ⭐ **A QUARTA, pela mesma lei:** as secções HEALTH e DAMAGE (plano 28, W3) somam as
     //    chaves de vinte e seis campos mais os avisos, e a `inspector_game.rs` já está perto do
     //    tecto. O corte é por ASSUNTO outra vez.

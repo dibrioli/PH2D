@@ -147,6 +147,8 @@ mod inspector_macro;
 mod inspector_motion_input;
 mod inspector_nav;
 mod inspector_player;
+/// O grupo «Filter» do cartão Ray Sensor (GEF 07, versão C): irmão da `inspector_game`, que está no tecto.
+mod inspector_ray;
 mod inspector_vida;
 /// ⭐ As palavras da LUZ 2D (W4) — a secção do Inspector e os avisos da luz do quadro.
 mod luz2d;
@@ -582,6 +584,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| object_add::tr(k))
             .or_else(|| component_add::tr(k))
             .or_else(|| component_catalog_forma::tr(k))
+            .or_else(|| inspector_ray::tr(k))
             .or_else(|| object_mode::tr(k))
             .or_else(|| hier_rows::tr(k))
             .or_else(|| board::tr(k))

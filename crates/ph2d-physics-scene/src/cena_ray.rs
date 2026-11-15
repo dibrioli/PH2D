@@ -105,8 +105,11 @@ fn bloco(
     let e = (p.estatico)(sim);
     arruma(sim, e, nome, c);
     let w = sim.world_mut();
-    w.entity_mut(e)
-        .insert(Sprite::atlas(WHITE_TILE_KEY, [2.0 * h[0], 2.0 * h[1]], rgba));
+    w.entity_mut(e).insert(Sprite::atlas(
+        WHITE_TILE_KEY,
+        [2.0 * h[0], 2.0 * h[1]],
+        rgba,
+    ));
     let f = ph2d_physics_ecs::forma_para_editar(w, e).unwrap_or(e);
     if let Some(mut col) = w.get_mut::<Collider>(f) {
         col.shape = ColliderShape::Cuboid {
@@ -286,11 +289,9 @@ mod tests {
         let o = [HEROI_EM[0] + d[0], HEROI_EM[1] + d[1]];
         let (s, c) = ang.to_radians().sin_cos();
         let entra = |(cen, h): ([f32; 2], [f32; 2])| {
-            (0..=700)
-                .map(|i| i as f32 * alcance / 700.0)
-                .find(|t| {
-                    ((o[0] + c * t) - cen[0]).abs() <= h[0] && ((o[1] + s * t) - cen[1]).abs() <= h[1]
-                })
+            (0..=700).map(|i| i as f32 * alcance / 700.0).find(|t| {
+                ((o[0] + c * t) - cen[0]).abs() <= h[0] && ((o[1] + s * t) - cen[1]).abs() <= h[1]
+            })
         };
         let caixa = entra(CAIXA_EM).expect("a caixa está no caminho");
         let inimigo = entra(INIMIGO_EM).expect("o inimigo está no alcance");

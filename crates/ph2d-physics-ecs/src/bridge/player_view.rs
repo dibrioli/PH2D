@@ -299,8 +299,6 @@ impl ProbeMark {
         }
     }
 
-    /// A mesma marca, na camada `layer` do objecto que olha.
-    #[must_use]
     /// Os acertos a mais de um raio «See all hits».
     #[must_use]
     pub fn com_mais_acertos(self, todos: &[f32]) -> Self {
@@ -310,6 +308,8 @@ impl ProbeMark {
         }
     }
 
+    /// A mesma marca, na camada `layer` do objecto que olha.
+    #[must_use]
     pub fn na_camada(self, layer: u8) -> Self {
         Self {
             layer: Some(layer),

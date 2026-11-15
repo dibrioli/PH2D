@@ -21,7 +21,7 @@
 use crate::rmath::Vector;
 use rapier2d::dynamics::RigidBodyHandle;
 use rapier2d::geometry::{Collider, ColliderHandle, Ray};
-use rapier2d::parry::query::{DefaultQueryDispatcher, PointQuery};
+use rapier2d::parry::query::DefaultQueryDispatcher;
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
 use super::PhysicsWorld;

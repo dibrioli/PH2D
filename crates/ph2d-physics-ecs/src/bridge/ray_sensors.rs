@@ -221,10 +221,11 @@ impl PhysicsBridge {
                 };
                 let aceita = |c: Option<RigidBodyHandle>| {
                     let b = entidade(c);
-                    if let (Some(raiz), Some(b)) = (raiz, b) {
-                        if Some(b) != dono && crate::familia_raiz(world, b) == Some(raiz) {
-                            return false;
-                        }
+                    if let (Some(raiz), Some(b)) = (raiz, b)
+                        && Some(b) != dono
+                        && crate::familia_raiz(world, b) == Some(raiz)
+                    {
+                        return false;
                     }
                     r.walls_block || passa(b)
                 };
@@ -264,10 +265,10 @@ impl PhysicsBridge {
                             bloqueio = Some(h.distance);
                             break;
                         }
-                        if let Some(b) = b {
-                            if !lista.iter().any(|x| x.body == b) {
-                                lista.push(para_ray_hit(b, h));
-                            }
+                        if let Some(b) = b
+                            && !lista.iter().any(|x| x.body == b)
+                        {
+                            lista.push(para_ray_hit(b, h));
                         }
                     }
                     parou = lista.first().map(|h| h.distance);

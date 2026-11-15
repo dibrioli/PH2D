@@ -227,6 +227,21 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
 
 ## Aberto
 
+- ⭐ **Dono 15/11 (smoke OK de tudo): «vamos resolver tudo antes de fechar»** — as três escolhas desta janela viram
+  feitas, num bloco só (CLAUDE.md §0.10), ANTES de `/pd-linha-fechar`:
+  1. **Pontos da Custom num trecho RETIMADO** (hoje `segment_curve` devolve `None`): desenhar cada nó e alça em
+     `u = W⁻¹(x)` (o inverso da Bézier de `W` = a mesma com as coordenadas trocadas: `Retime::new(y1,x1,y2,x2).eval(x)`),
+     valor `v0 + y·Δv` ⇒ o ponto fica EM CIMA de `E(W(u))`; o arrasto lê `x = W(u_rato)` e MANTÉM o ritmo; o toque na
+     linha insere em `W(u)`. Prova: o ponto desenhado = `sample_keys` no tempo desenhado. ⚠️ Decidir e escrever: o braço
+     da PONTA num trecho retimado com pontos hoje é Override (tira o ritmo e vira `BezierW` ⇒ APAGA os pontos) — na
+     Spline retimada o braço da ponta deve editar a alça de ponta da Spline pelo mesmo mapa e manter ritmo e pontos.
+  2. **«Reset timing» no cartão da chave**, só quando o trecho da chave tem ritmo (a timeline publica `retimado` com a
+     curva, como o `desce`; a linha não existe sem ritmo — nada de botão morto); clique ⇒ `RetimeIntent::Set{retime:
+     None}` nas chaves do alcance, um passo de undo. Gate de costura com o despacho real (como `curve_points_seam`).
+  3. **Miniaturas do cartão viradas quando o valor desce** (`key_card.rs`, botões Curve/Straight/…/formas: o mesmo
+     `store.key_card_desce()` que o editor já usa). Foto antes × depois.
+  Depois: fotos no app de cada um (roteiros em `docs/Timeline/ferramentas/`), smoke do dono, e então fechar a linha.
+
 - ⭐ **Dono 15/11: «Override OK. Retime precisa ser pesquisado em quem faz isso corretamente.»** A próxima janela
   começa por [19 — pesquisa do Retime](../19_pesquisa_retime.md). O Retime atual fica no código (funciona, provas
   verdes), mas o dono NÃO o aprovou como gesto.

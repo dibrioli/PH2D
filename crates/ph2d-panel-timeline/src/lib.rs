@@ -66,6 +66,7 @@ mod faixas_coluna;
 mod geom;
 mod graph;
 mod graph_paint;
+mod graph_pontos;
 mod graph_ritmo;
 pub mod hier;
 mod history_band;

@@ -145,7 +145,8 @@ pub(crate) fn band_for(
         .handle_drag
         .filter(|_| handle_here)
         .and_then(|d| d.range)
-        .or_else(|| crate::anchor_drag::frozen_range(state, target));
+        .or_else(|| crate::anchor_drag::frozen_range(state, target))
+        .or_else(|| crate::graph_pontos::frozen_range(state, target));
     // Retime (dono 15/11): the motion's speed swells as the rhythm is dragged — the frozen range
     // only GROWS, so the curve stays inside the band and nothing rescales back and forth.
     let cresce = handle_here && state.speed_view && state.speed_retime;
@@ -164,7 +165,18 @@ pub(crate) fn band_for(
         d.range = Some(band.range());
     }
     crate::anchor_drag::freeze_range(state, target, band.range());
+    crate::graph_pontos::freeze_range(state, target, band.range());
     band
+}
+
+/// The graph band's own buttons, through one door: Override · Retime and «Reset timing» (speed
+/// view), the handle kinds of the chosen Custom-curve point (value view).
+pub(crate) fn apply_event(
+    state: &mut TimelinePanelState,
+    ev: ph2d_editor_core::interaction::WidgetEvent,
+) -> Option<ph2d_editor_core::panel::EventOutcome> {
+    crate::graph_ritmo::apply_event(state, ev)
+        .or_else(|| crate::graph_pontos::apply_event(state, ev))
 }
 
 /// Interpret one gesture on a bézier handle. Geometry-free: the pointer position

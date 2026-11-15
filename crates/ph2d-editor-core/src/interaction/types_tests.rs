@@ -35,6 +35,13 @@ fn exactly_the_container_bar_wants_a_double_click() {
             key: 0,
             which: 0,
         },
+        K::CurvePoint {
+            target: 0,
+            key: 0,
+            node: 1,
+            part: 0,
+        },
+        K::CurveLine { target: 0, key: 0 },
         K::GraphResize,
         K::LoopBrace { edge: 0 },
         K::Strip {

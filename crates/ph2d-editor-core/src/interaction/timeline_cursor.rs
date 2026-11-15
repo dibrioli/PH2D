@@ -39,7 +39,11 @@ impl TimelineHitKind {
             | Self::MacroStep { .. }
             | Self::Marker { .. }
             | Self::CurveAnchor { .. }
-            | Self::CurveHandle { .. } => mao,
+            | Self::CurveHandle { .. }
+            | Self::CurvePoint { .. } => mao,
+            // Na linha da curva o clique CRIA um ponto: a mão de «clicar aqui» (o ponto nasce agarrado).
+            Self::CurveLine { .. } if apertado => PointerLook::Grabbing,
+            Self::CurveLine { .. } => PointerLook::Hand,
             // O chip da barra é um botão: a seta parado, a mão FECHADA só no arrasto (doc 17 item 6).
             Self::SourceChip { .. } if apertado => PointerLook::Grabbing,
             Self::SourceChip { .. } => return None,

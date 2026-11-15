@@ -90,8 +90,7 @@ pub(crate) fn process(
             // Middle-drag pans both axes, anywhere in the dope sheet (Blender).
             PointerButton::Middle => view::apply_pan_drag(state, px_per_s, g),
             PointerButton::Primary => dispatch_primary(state, time_x, px_per_s, snap, g),
-            // Secondary is reserved (future context menu).
-            PointerButton::Secondary => {}
+            PointerButton::Secondary => dispatch_secondary(state, g),
         }
     }
     crate::chip_drag::publica(state);
@@ -99,6 +98,20 @@ pub(crate) fn process(
         ctx.host
             .bus_mut()
             .push(ph2d_editor_core::action_bus::EditorAction::Macro(r));
+    }
+}
+
+/// The Secondary gestures that reach the panel: the menus open in dispatch, so only the right
+/// click on a Custom-curve point arrives here (it deletes the point, as in the key card).
+pub(crate) fn dispatch_secondary(state: &mut TimelinePanelState, g: TimelineGesture) {
+    if let TimelineHitKind::CurvePoint {
+        target,
+        key,
+        node,
+        part,
+    } = g.kind
+    {
+        crate::graph_pontos::apply_point_gesture(state, (target, key, node, part), g);
     }
 }
 
@@ -224,6 +237,15 @@ pub(crate) fn dispatch_primary(
         }
         TimelineHitKind::CurveHandle { target, key, which } => {
             crate::graph::apply_handle_gesture(state, target, key, which, g);
+        }
+        TimelineHitKind::CurvePoint {
+            target,
+            key,
+            node,
+            part,
+        } => crate::graph_pontos::apply_point_gesture(state, (target, key, node, part), g),
+        TimelineHitKind::CurveLine { target, key } => {
+            crate::graph_pontos::apply_line_gesture(state, (target, key), g);
         }
         TimelineHitKind::Lane => {
             // O clique no vazio da faixa larga a peça escolhida (doc 17 item 1).

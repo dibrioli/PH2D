@@ -172,6 +172,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::TIMELINE_SPEED_OVERRIDE,
         ids::TIMELINE_SPEED_RETIME,
         ids::TIMELINE_RESET_TIMING,
+        // The handle kinds of the chosen Custom-curve point in the graph (dono 15/11).
+        ids::TIMELINE_POINT_CORNER,
+        ids::TIMELINE_POINT_SMOOTH,
+        ids::TIMELINE_POINT_SYMM,
     ] {
         button(store, id);
     }

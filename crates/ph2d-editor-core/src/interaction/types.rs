@@ -393,6 +393,20 @@ pub enum TimelineHitKind {
         key: u64,
         which: u8,
     },
+    /// A point of a segment's Custom curve in the graph (dono 15/11), or one of its handles:
+    /// `node` is the `EaseSpline` node, `part` `0` = the point, `1` = in handle, `2` = out handle.
+    /// A Secondary press on the point reaches the panel too (it deletes the point).
+    CurvePoint {
+        target: u64,
+        key: u64,
+        node: u8,
+        part: u8,
+    },
+    /// The curve line itself of a segment that can take points: pressing it creates a point there.
+    CurveLine {
+        target: u64,
+        key: u64,
+    },
     /// The grip along the bottom of an expanded track's graph band — dragging it
     /// vertically sets the height of every graph band.
     GraphResize,

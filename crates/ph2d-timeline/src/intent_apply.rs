@@ -254,11 +254,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                     // A track the copy came from may have been unbound since —
                     // skip it rather than resurrecting a dead binding.
                     if let Some(track) = doc.active_clip_mut().track_mut(ck.target) {
-                        let whole = ph2d_anim::Key::new(t, ck.value, ck.interp);
-                        let key = track.upsert_whole(ph2d_anim::Key {
-                            retime: ck.retime,
-                            ..whole
-                        });
+                        let mut whole = ph2d_anim::Key::new(t, ck.value, ck.interp);
+                        whole.retime = ck.retime;
+                        let key = track.upsert_whole(whole);
                         sel.add(SelectedKey {
                             target: ck.target,
                             key,

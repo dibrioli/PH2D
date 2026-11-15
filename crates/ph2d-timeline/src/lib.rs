@@ -48,6 +48,8 @@ pub mod expr_owed;
 mod expr_pass;
 mod frame_solve;
 pub mod graph;
+mod graph_pontos;
+pub use graph_pontos::{interp_of_curve, plane_to_unit, segment_curve, unit_to_plane};
 pub mod history;
 mod instancia_acompanha;
 pub mod intent;

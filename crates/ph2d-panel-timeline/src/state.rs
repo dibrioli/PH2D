@@ -213,6 +213,12 @@ pub struct TimelinePanelState {
     pub column_lock: bool,
     /// In-progress bézier-handle drag in an expanded track's graph.
     pub handle_drag: Option<HandleDrag>,
+    /// Um ponto da curva Custom no gráfico: o gesto em curso, o escolhido `(target, key, nó)`, o
+    /// que o botão direito pediu para apagar e o tipo de alça pedido (dono 15/11).
+    pub ponto_drag: Option<crate::graph_pontos::PontoDrag>,
+    pub ponto_escolhido: Option<(u64, u64, usize)>,
+    pub ponto_apaga: Option<(u64, u64, usize)>,
+    pub ponto_tipo: Option<ph2d_anim::HandleKind>,
     /// In-progress anchor drag in an expanded track's graph (W3.E5) — the
     /// gesture that retunes a key's VALUE.
     pub anchor_drag: Option<AnchorDrag>,
@@ -358,6 +364,10 @@ impl Default for TimelinePanelState {
             source_clip: None,
             column_lock: false,
             handle_drag: None,
+            ponto_drag: None,
+            ponto_escolhido: None,
+            ponto_apaga: None,
+            ponto_tipo: None,
             anchor_drag: None,
             summary_press: None,
             loop_drag: None,
@@ -402,6 +412,10 @@ impl TimelinePanelState {
             self.expanded.remove(i);
             if self.handle_drag.is_some_and(|d| d.target == target) {
                 self.handle_drag = None;
+                push_intent(TimelineIntent::EndEdit);
+            }
+            if self.ponto_drag.is_some_and(|d| d.target == target) {
+                self.ponto_drag = None;
                 push_intent(TimelineIntent::EndEdit);
             }
             if self
@@ -454,7 +468,7 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
     // One pointer means at most one of these is armed, but take all three
     // before testing: `||` would short-circuit and strand the others.
     let key = state.key_drag.take().is_some();
-    let handle = state.handle_drag.take().is_some();
+    let handle = state.handle_drag.take().is_some() | state.ponto_drag.take().is_some();
     let anchor = state.anchor_drag.take().is_some();
     let scale = state.scale_drag.take().is_some();
     state.scale_markers.clear();

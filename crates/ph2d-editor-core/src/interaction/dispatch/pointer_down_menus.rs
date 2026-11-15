@@ -33,6 +33,24 @@ pub(super) fn handle_down_menus(
     // path below. A right-click on a non-panel area closes any
     // currently-open menu.
     if event.button == ph2d_host::PointerButton::Secondary {
+        // O botão direito num ponto da curva Custom do gráfico APAGA-o (como no cartão da chave):
+        // vai ao painel como um Click secundário, antes de qualquer menu.
+        if let Some((id, _)) = hit
+            && let Some((surface, kind)) = store.timeline_surface_at_id(id)
+            && let crate::interaction::TimelineHitKind::CurvePoint { part: 0, .. } = kind
+        {
+            let mods = store.gesture_mods();
+            store.push_timeline_gesture(crate::interaction::TimelineGesture {
+                surface,
+                kind,
+                phase: crate::interaction::GesturePhase::Click,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            return true;
+        }
         // Secondary click INSIDE the BlenderColorPicker belongs to the picker's own
         // dispatch — right-click on a palette swatch REMOVES it (see `apply_blender_hit`).
         // The picker publishes its outer rect to `panel_rects`, so without this guard the

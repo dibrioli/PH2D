@@ -167,12 +167,46 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
 - **Não feito, por decisão:** «Reset timing» no cartão da chave — seria um botão inerte em quase toda chave (só serve a
   trecho retimado); fica ao lado da pílula. Se o dono o pedir, é uma linha na tabela do menu + o resolvedor.
 
+## Pontos da curva Custom no gráfico (dono 15/11, depois do smoke OK de tudo)
+
+- **Pedido (verbatim):** «Os pontos da curva custo não aparecem no gráfica da timeline. Permita criar pontos no gráfico da
+  timeline e editar sem criar keyframes, exatamente igual é feito no easing custom».
+- **Lei** (`ph2d-timeline/src/graph_pontos.rs`): `segment_curve(k0,k1)` = a `EaseSpline` do trecho (Spline · Bezier ·
+  BezierW normalizada · **Linear = Bézier (⅓,⅓)(⅔,⅔) exata**); `None` em trecho RETIMADO (a curva desenhada é `E(W(u))`,
+  os pontos ficariam fora dela — recusado mostrá-los), parado (`Δv = 0`), sem duração e famílias sem Bézier exata.
+  `unit_to_plane`/`plane_to_unit` (`t = t0 + x·Δt`, `v = v0 + y·Δv`), `interp_of_curve` (sem pontos ⇒ `Bezier`).
+- **Painel** (`ph2d-panel-timeline/src/graph_pontos.rs`): na vista de VALOR, trechos de chave seleccionada. Hits novos
+  `TimelineHitKind::{CurvePoint{target,key,node,part}, CurveLine{target,key}}` (editor-core). A linha regista pedaços de
+  6 px com ±8 px (o `CURVA_HIT` do cartão) ANTES das âncoras/alças (o último registado ganha); alças antes dos pontos.
+  Gestos = os do cartão: carregar na linha cria e agarra (`insert`, de Casteljau); arrastar ponto/alça (`move_point`/
+  `move_handle`); Alt ao agarrar alça = Corner; Corner · Smooth · Symmetric (chaves i18n do Vector) na coluna da
+  esquerda com um ponto escolhido; botão direito no ponto apaga. Um passo de undo por gesto, só `SetInterp` — nenhuma
+  chave. A faixa da banda congela no gesto (`band_for`).
+- **Duas costuras que a 1.ª volta deixou mortas (fotos do app, antes do commit):** o painel DESCARTAVA todo gesto
+  Secondary (`interact.rs`, «reserved») ⇒ `dispatch_secondary`; o botão direito num `CurvePoint{part:0}` sai do
+  `handle_down_menus` como Click secundário ANTES de qualquer menu; os três tipos não estavam no `populate` ⇒ pedra.
+  Os testes unitários chamavam as funções direto e ficaram verdes — por isso `tests/it/curve_points_seam.rs` (painel
+  pintado, despacho real, a curva que o shell recebe).
+- **Provas:** timeline `graph_pontos` 3 · painel `graph_pontos` 7 + `curve_points_seam` 3 · editor-core `curve_point` 2
+  (+ `types` com as variantes novas) · vizinhos por nome verdes (graph 44, graph_ritmo 9, interact 12, timeline 45,
+  context_menu 31, pointer 24, key_card 7…) · `cargo check -p ph2d-host-desktop` ✓ · LOC: `apply_event` do painel voltou
+  a ≤ 200 (porta única `graph::apply_event`), `intent_apply.rs` 702 → 700 (vinha do commit do Retime).
+- **Mutações (8, uma a uma, `cmp` ao restaurar):** sem o braço Secondary · sem o Corner no `populate` · sem os hits da
+  linha · `part: 9` no despacho · `move_point(x, x)` · toque na linha não cria · retimado com pontos · `BezierW` sem o
+  `1 +` ⇒ **as 8 vermelhas** (o teste de clique do ponto não vê a 3.ª — esperado, pinta os hits direto).
+- **App** ([`fotos_pontos_no_grafico.sh`](../ferramentas/fotos_pontos_no_grafico.sh), conferências por passo):
+  [sequência](../fotos/pontos_6_sequencia.png) — toque cria · arrastar dobra · Corner (ponto quadrado) · só a alça
+  puxada anda · direito apaga; o Summary fica com as duas chaves. Ctrl+Z não conferido no Xvfb (o teclado não chega,
+  como no handoff anterior) — coberto pelos testes do passo de undo; conferir no smoke.
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é
   `Key::new(..)` ou `retime: None`. Idem `KeyView` (`ph2d-timeline`) — o censo de literais desta árvore está todo feito.
 - `ph2d_timeline::TimelineClipboard::set_from_absolute` mudou de assinatura (`&[(AnimTarget, Key)]`).
 - `TimelineIntent` ganhou a variante `Retime` (um `match` exaustivo fora da timeline reprova).
+- `ph2d_editor_core::interaction::TimelineHitKind` ganhou `CurvePoint` e `CurveLine` (os `match` exaustivos desta árvore —
+  `timeline_cursor.rs`, `interact.rs` — estão feitos; um de outra linha reprova).
 - `crates/ph2d-panel-timeline/src/{graph,graph_paint,event,populate,state,lib,ids,linhas_maquete,legenda}.rs` (aditivo/pequeno) ·
   `crates/ph2d-i18n/src/timeline.rs` (+7 chaves) · `shells/desktop/src/project_schema{,_tests}.rs` (degrau).
 - Tectos: `track.rs` 696/700, `intent.rs` 700/700, `intent_apply.rs` ≤ 700 — os verbos novos foram para ficheiros filhos.

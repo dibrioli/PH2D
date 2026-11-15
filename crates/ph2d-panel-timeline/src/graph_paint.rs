@@ -128,8 +128,10 @@ pub(crate) fn paint_track(
         }
         let cor = resolve(ColorToken::TimelineCurve, theme);
         paint_curve(ctx, &band, view, &track.keys, CURVE_W, cor);
+        crate::graph_pontos::paint_line_hits(ctx, &band, view, track);
         paint_anchors(ctx, theme, state, &band, view, (track, values));
         paint_handles(ctx, theme, state, &band, view, track);
+        crate::graph_pontos::paint_points(ctx, theme, state, &band, view, track);
     }
     ctx.scene.pop_layer();
     // A handle drag resolves against the band it can finally see — `resolve_drag`
@@ -138,9 +140,13 @@ pub(crate) fn paint_track(
     resolve_drag(state, &band, view, track);
     if !state.speed_view {
         anchor_drag::resolve_drag(state, &band, track);
+        crate::graph_pontos::resolve_drag(state, &band, view, track);
     }
     if state.speed_view && !track.prop.nomeia() {
         crate::graph_ritmo::paint_switch(ctx, theme, state, (rect, band_rect), label_w);
+    } else if !state.speed_view {
+        let corpo = (label_w, track);
+        crate::graph_pontos::paint_kinds(ctx, theme, state, (rect, band_rect), corpo);
     }
     paint_height_grip(ctx, theme, state, rect, target);
     graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track);

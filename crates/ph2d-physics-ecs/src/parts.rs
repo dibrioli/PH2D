@@ -53,6 +53,29 @@ pub fn owner_body(world: &World, e: Entity) -> Option<Entity> {
     None
 }
 
+/// ⭐ **A RAIZ da família de corpos de `e`** (Ray Sensor «Ignore my other parts», dono 15/11).
+///
+/// **A família** de um objecto é o conjunto dos objectos com [`RigidBody`] que partilham a mesma
+/// raiz, e a **raiz** é o corpo MAIS ALTO na cadeia de ancestrais de `e` (contando o próprio `e`),
+/// atravessando quem não tem corpo (pastas, a forma, o raio). Exemplos: o herói com uma espada filha
+/// com corpo próprio — a raiz das duas é o herói; um raio debaixo da espada — a raiz dele também é o
+/// herói, não a espada. Um corpo sem corpo acima é a raiz de si mesmo; `None` = nenhum corpo na
+/// cadeia (um olho solto não tem família).
+///
+/// ⚠️ Uma junta entre dois corpos irmãos NÃO os faz da mesma família: a família é a ÁRVORE.
+#[must_use]
+pub fn familia_raiz(world: &World, e: Entity) -> Option<Entity> {
+    let mut raiz = world.get::<RigidBody>(e).is_some().then_some(e);
+    let mut cur = world.get::<ChildOf>(e).map(ChildOf::parent);
+    while let Some(p) = cur {
+        if world.get::<RigidBody>(p).is_some() {
+            raiz = Some(p);
+        }
+        cur = world.get::<ChildOf>(p).map(ChildOf::parent);
+    }
+    raiz
+}
+
 /// `e` é um corpo ou mora debaixo de um (opção B: a forma filha tem corpo pelo pai).
 #[must_use]
 pub fn tem_corpo(world: &World, e: Entity) -> bool {

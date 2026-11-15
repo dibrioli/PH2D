@@ -212,6 +212,7 @@ impl PhysicsBridge {
         // com o raio a «já ver» o que via no fim da primeira, logo a entrada **não** volta a soar —
         // uma porta que abriu ao ver o herói fica calada para sempre depois do primeiro Reset.
         self.ray_hits.clear();
+        self.ray_hits_all.clear();
         // ⭐ **E a LINHA DESENHADA junto** (W5): ela descreve o último tique da corrida que acabou de
         // deixar de existir, e o replay abaixo **não casta** — sem esta linha o canvas ficaria a
         // desenhar os raios onde os corpos ESTAVAM, que é a única coisa pior do que não desenhar

@@ -14,6 +14,8 @@ mod bridge_chain_probe;
 pub mod buoyancy;
 /// Consultas de cena (raio/forma) — a perna da cápsula flutuante (docs dele).
 pub mod cast;
+/// O raio AUTORADO (Ray Sensor): as opções do artista (docs dele).
+pub mod cast_query;
 pub mod chains;
 pub mod character;
 /// ⚠️ **SONDA `#[ignore]`** do plano 10 (TOP-20 #13) — o par do

@@ -78,7 +78,7 @@ pub(super) struct NavWorld {
     /// ⭐ A RONDA de cada agente em patrulha (W6) — ⚠️ entra no anel. Ver [`alvo`].
     pub(super) rondas: BTreeMap<Entity, alvo::Ronda>,
     /// A árvore das tags do documento (para *a tag mais perto*), entregue pela shell.
-    arvore: ph2d_tags::TagTree,
+    pub(super) arvore: ph2d_tags::TagTree,
     /// (W7) Quem é cada atalho pelo `id` que a lei devolve (o índice da entidade) — do último tique.
     pub(super) atalhos: BTreeMap<u32, Entity>,
     /// Os buffers da procura (reaproveitados; nenhum estado entre consultas).

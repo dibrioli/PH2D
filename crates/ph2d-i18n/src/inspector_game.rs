@@ -147,6 +147,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Nothing in the layers this ray sees. It can never see anything."
         }
         "panel.inspector.ray.signals" => "Signals",
+        "panel.inspector.ray.see_everything" => "Everything",
+        "panel.inspector.ray.see_only_tag" => "Only tag",
+        "panel.inspector.ray.see_except_tag" => "All except tag",
         "panel.inspector.ray.turns_tip" => {
             "When the character looks left, the ray flips to the other side with it. Off: the ray keeps its angle."
         }

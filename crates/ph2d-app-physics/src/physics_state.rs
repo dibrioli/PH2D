@@ -97,7 +97,8 @@ pub struct PhysicsState {
     /// *«vê a Parede, a 1,75 m»* não cabe. O facto vive na PONTE (`ray_sensor_hits`, que é onde a
     /// corrida vive), e o Inspector não a alcança.
     ///
-    /// ⚠️ **Reescrito por quadro**, nunca acumulado — a mesma lei do vizinho.
+    /// ⚠️ **Reescrito por quadro**, nunca acumulado — a mesma lei do vizinho. Com «See all hits» um
+    /// raio tem VÁRIAS linhas, do mais perto ao mais longe (`ray_sensor_hits_all`).
     pub ray_hits: Vec<(u64, u64, f32)>,
 
     /// O prólogo da cena de smoke já correu neste processo.

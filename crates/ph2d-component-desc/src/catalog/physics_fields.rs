@@ -377,6 +377,23 @@ pub(super) const RAY_SENSOR: &[FieldDesc] = &[
     f(1, "component.field.ray_sensor.1", K::Scalar).named("reach"),
     f(2, "component.field.ray_sensor.2", K::Int).named("layer"),
     f(3, "component.field.ray_sensor.3", K::Toggle).named("turns_with_facing"),
+    f(4, "component.field.ray_sensor.4", K::Toggle).named_as("ignore_my_body", "ignore_body"),
+    f(5, "component.field.ray_sensor.5", K::Toggle)
+        .named_as("ignore_my_other_parts", "ignore_parts"),
+    f(6, "component.field.ray_sensor.6", K::Enum)
+        .named("only_see")
+        .viewed(crate::options![
+            "everything" => Everything @ "panel.inspector.ray.see_everything",
+            "only_tag" => OnlyTag @ "panel.inspector.ray.see_only_tag",
+            "except_tag" => ExceptTag @ "panel.inspector.ray.see_except_tag",
+        ]),
+    f(7, "component.field.ray_sensor.7", K::Text)
+        .named_as("tag", "see_tag")
+        .viewed(View::Named(crate::Target::Tag)),
+    f(8, "component.field.ray_sensor.8", K::Toggle).named("walls_block"),
+    f(9, "component.field.ray_sensor.9", K::Toggle).named("hit_triggers"),
+    f(10, "component.field.ray_sensor.10", K::Toggle).named("starts_inside"),
+    f(11, "component.field.ray_sensor.11", K::Toggle).named_as("see_all_hits", "all_hits"),
 ];
 pub(super) const RAY_SIGNALS: &[FieldDesc] = &[
     f(0, "component.field.ray_signals.0", K::Text).named("on_enter"),

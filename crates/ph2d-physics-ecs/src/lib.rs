@@ -109,8 +109,8 @@ pub use components::{
     MassOverride, MaterialCombine, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow,
     NavRegion, NavRoute, NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift,
     PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX,
-    RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
-    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, anim_target,
+    RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops, SeeFilter, SignalOnHit,
+    SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, anim_target,
     clip_de_entrada, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
     segura_regra,
 };
@@ -126,9 +126,9 @@ pub use joint::{
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use parts::{
-    auto_mass_with_parts, corpo_da_forma, count_parts, dono_do_campo, forma_desligada,
-    forma_do_player, forma_para_editar, governing_kind, is_part, is_part_of, main_shape,
-    owner_body, pendura_forma, pendura_raio, shapes_in_order, tem_corpo, tem_forma,
+    auto_mass_with_parts, corpo_da_forma, count_parts, dono_do_campo, familia_raiz,
+    forma_desligada, forma_do_player, forma_para_editar, governing_kind, is_part, is_part_of,
+    main_shape, owner_body, pendura_forma, pendura_raio, shapes_in_order, tem_corpo, tem_forma,
 };
 /// A geometria do LIMITADOR (W-RopeStop) — a marca, e a inversa dela.
 ///

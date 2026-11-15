@@ -38,8 +38,15 @@ fn um_raio_sem_voz_tem_seccao() {
     let mut sim = SimWorld::new();
     forma(&mut sim, 0, None); // algo para ver: senão a queixa é a camada vazia
     let e = olho(&mut sim, false);
-    let i = build_ray_info(sim.world(), e.to_bits(), 1, true, None)
-        .expect("um raio sem voz tem de ter seccao");
+    let i = build_ray_info(
+        sim.world(),
+        &ph2d_tags::TagTree::new(),
+        e.to_bits(),
+        1,
+        true,
+        &[],
+    )
+    .expect("um raio sem voz tem de ter seccao");
     assert!(i.on_enter.is_empty() && i.on_exit.is_empty());
     assert_eq!(
         i.queixa(),
@@ -52,9 +59,16 @@ fn um_raio_sem_voz_tem_seccao() {
     let mut sim2 = SimWorld::new();
     let e2 = olho(&mut sim2, true);
     assert_ne!(
-        build_ray_info(sim2.world(), e2.to_bits(), 1, true, None)
-            .expect("com voz tambem ha' seccao")
-            .queixa(),
+        build_ray_info(
+            sim2.world(),
+            &ph2d_tags::TagTree::new(),
+            e2.to_bits(),
+            1,
+            true,
+            &[]
+        )
+        .expect("com voz tambem ha' seccao")
+        .queixa(),
         Some(ph2d_editor_core::ray_edits::RayQueixa::Mudo)
     );
 }
@@ -72,15 +86,29 @@ fn a_leitura_viva_vira_um_nome() {
         .world_mut()
         .spawn((Name::new("Parede"), Transform::from_translation(Vec2::ZERO)))
         .id();
-    let i = build_ray_info(sim.world(), e.to_bits(), 1, true, Some((parede, 1.75)))
-        .expect("ha' seccao");
+    let i = build_ray_info(
+        sim.world(),
+        &ph2d_tags::TagTree::new(),
+        e.to_bits(),
+        1,
+        true,
+        &[(parede, 1.75)],
+    )
+    .expect("ha' seccao");
     assert_eq!(i.sees, "Parede");
     assert!((i.sees_at - 1.75).abs() < 1.0e-6);
 
     // Um alvo que já saiu da cena: nome vazio, e nada estoura.
     sim.world_mut().despawn(parede);
-    let i2 = build_ray_info(sim.world(), e.to_bits(), 1, true, Some((parede, 1.75)))
-        .expect("ha' seccao");
+    let i2 = build_ray_info(
+        sim.world(),
+        &ph2d_tags::TagTree::new(),
+        e.to_bits(),
+        1,
+        true,
+        &[(parede, 1.75)],
+    )
+    .expect("ha' seccao");
     assert!(i2.sees.is_empty(), "um alvo apagado nao tem nome a mostrar");
 }
 
@@ -134,9 +162,16 @@ fn a_camada_vazia_so_fala_quando_e_certo() {
         .entity_mut(raio)
         .insert(ph2d_ecs::ChildOf(corpo));
     let vazia = |sim: &SimWorld| {
-        build_ray_info(sim.world(), raio.to_bits(), 1, true, None)
-            .expect("seccao")
-            .layer_empty
+        build_ray_info(
+            sim.world(),
+            &ph2d_tags::TagTree::new(),
+            raio.to_bits(),
+            1,
+            true,
+            &[],
+        )
+        .expect("seccao")
+        .layer_empty
     };
     assert!(
         vazia(&sim),

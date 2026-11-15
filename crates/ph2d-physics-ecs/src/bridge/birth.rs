@@ -72,6 +72,8 @@ impl PhysicsBridge {
             steps_taken: 0,
             triggers: BTreeMap::new(),
             ray_hits: BTreeMap::new(),
+            ray_hits_all: BTreeMap::new(),
+            ray_scratch: Vec::new(),
             ray_marks: Vec::new(),
             ray_enters: Vec::new(),
             ray_exits: Vec::new(),

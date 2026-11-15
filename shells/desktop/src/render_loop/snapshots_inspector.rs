@@ -400,16 +400,18 @@ fn late(
     // ⚠️ Ela pede a LEITURA VIVA, que é o que a distingue das irmãs: sem *«vê a Parede, a 1,75 m»*
     // ela seria seis campos numa tabela, e o artista não teria como afinar um alcance a olhar.
     let inspector_ray = alvo.bits.and_then(|b| {
-        let visto = ray_hits
+        let vistos: Vec<_> = ray_hits
             .iter()
-            .find(|(olha, ..)| *olha == b)
-            .map(|&(_, v, d)| (ph2d_ecs::Entity::from_bits(v), d));
+            .filter(|(olha, ..)| *olha == b)
+            .map(|&(_, v, d)| (ph2d_ecs::Entity::from_bits(v), d))
+            .collect();
         ph2d_app_components::ray_inspector::build_ray_info(
             sim.world(),
+            tags,
             b,
             selected_count,
             clock_playing,
-            visto,
+            &vistos,
         )
     });
 

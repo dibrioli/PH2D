@@ -420,6 +420,11 @@ pub struct PhysicsBridge {
     /// `rebuild_from_rest`, e não o dispatch. *É a família que o smoke do #14 expôs por report:
     /// três mapas de controlador foram esquecidos ali, um de cada vez.*
     ray_hits: BTreeMap<Entity, RayHit>,
+    /// ⭐ **TODOS os acertos** de cada raio com `all_hits` («See all hits», versão C), por distância —
+    /// a mesma memória entre tiques do `ray_hits`, e quem a limpa é a mesma descontinuidade.
+    ray_hits_all: BTreeMap<Entity, Vec<RayHit>>,
+    /// O buffer do motor para `cast_ray_query_all` — reaproveitado, nenhum estado entre tiques.
+    ray_scratch: Vec<ph2d_physics::CastHit>,
     /// ⭐ **A LINHA que cada raio olhou, em mundo** (suplente #21, W5) — o que o canvas desenha,
     /// publicado por quem LANÇOU o raio e nunca re-derivado do lado do desenho (`bridge::ray_sensors`
     /// tem o porquê, e é o mesmo do `player_probes` uma dúzia de campos acima).

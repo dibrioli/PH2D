@@ -88,12 +88,16 @@ impl crate::App {
         // ⚠️ **Reescrito**, nunca acumulado, pela mesma razão do vizinho: uma lista que crescesse
         // faria o painel dizer que o raio vê uma coisa que ele deixou de ver há dez quadros.
         self.physics.ray_hits.clear();
-        self.physics.ray_hits.extend(
-            physics
-                .ray_sensor_hits()
-                .iter()
-                .map(|(e, h)| (e.to_bits(), h.body.to_bits(), h.distance)),
-        );
+        // ⭐ Com «See all hits» vão TODOS, do mais perto ao mais longe; sem ela, o mais perto.
+        for (e, h) in physics.ray_sensor_hits() {
+            let todos = physics.ray_sensor_hits_all(*e);
+            let um = std::slice::from_ref(h);
+            for h in if todos.is_empty() { um } else { todos } {
+                self.physics
+                    .ray_hits
+                    .push((e.to_bits(), h.body.to_bits(), h.distance));
+            }
+        }
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
         // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo

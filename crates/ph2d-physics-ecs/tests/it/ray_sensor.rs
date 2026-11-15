@@ -42,6 +42,7 @@ fn olho(sim: &mut SimWorld, em: Vec2, dir: Vec2, reach: f32) -> Entity {
                 reach,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
         ))
         .id()
@@ -166,6 +167,7 @@ fn um_raio_roda_com_o_objecto() {
                 reach: 5.0,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
         ))
         .id();
@@ -225,6 +227,7 @@ fn um_raio_nao_se_ve_a_si_mesmo() {
                 reach: 20.0,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
         ))
         .id();
@@ -471,6 +474,7 @@ fn um_raio_filho_exclui_o_corpo_dono_e_segue_a_pose_viva() {
                 reach: 20.0,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
         ))
         .id();
@@ -533,6 +537,7 @@ fn com_a_opcao_o_raio_vira_com_o_lado_do_personagem() {
                     reach: 20.0,
                     layer: 0,
                     turns_with_facing: ligada,
+                    ..RaySensor::default()
                 },
             ))
             .id();

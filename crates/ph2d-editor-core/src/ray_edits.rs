@@ -22,6 +22,22 @@ pub struct InspectorRayInfo {
     pub layer: u32,
     /// Espelha com o lado do personagem dono.
     pub turns_with_facing: bool,
+    /// «Ignore my body».
+    pub ignore_body: bool,
+    /// «Ignore my other parts» — os outros corpos da família do dono.
+    pub ignore_parts: bool,
+    /// «Only see» — o modo do filtro de tags.
+    pub only_see: RaySee,
+    /// A tag do filtro (`TagId.0`; `0` = por escolher).
+    pub see_tag: u64,
+    /// «Walls block» — a primeira matéria tapa quem não passa no filtro.
+    pub walls_block: bool,
+    /// «Hit triggers».
+    pub hit_triggers: bool,
+    /// «Starts inside».
+    pub starts_inside: bool,
+    /// «See all hits».
+    pub all_hits: bool,
     /// Nenhum objeto com forma está numa camada que esta vê (a matriz): o raio nunca verá nada.
     pub layer_empty: bool,
     /// O nome publicado ao passar a ver — vazio = calado.
@@ -32,6 +48,8 @@ pub struct InspectorRayInfo {
     pub sees: String,
     /// A que distância, quando vê.
     pub sees_at: f32,
+    /// ⭐ Com `all_hits`: TODOS os que ele vê, por distância (nome, metros) — vazio sem a opção.
+    pub sees_all: Vec<(String, f32)>,
     /// O relógio está a andar?
     pub clock_playing: bool,
     pub selected_count: usize,
@@ -72,6 +90,18 @@ pub enum RayQueixa {
     NaoVeNada,
 }
 
+/// O modo do «Only see» (o espelho do `SeeFilter` da física, sem a dependência).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum RaySee {
+    /// «Everything».
+    #[default]
+    Everything,
+    /// «Only tag».
+    OnlyTag,
+    /// «All except tag».
+    ExceptTag,
+}
+
 /// Uma edição de um campo da secção RAY SENSOR.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RayFieldEdit {
@@ -80,6 +110,15 @@ pub enum RayFieldEdit {
     Reach(f32),
     TurnsWithFacing(bool),
     Layer(u32),
+    IgnoreBody(bool),
+    IgnoreParts(bool),
+    OnlySee(RaySee),
+    /// O `TagId.0` escolhido (`0` = nenhum).
+    SeeTag(u64),
+    WallsBlock(bool),
+    HitTriggers(bool),
+    StartsInside(bool),
+    AllHits(bool),
     /// ⚠️ Os NOMES, crus — a mesma convenção do alvo do projéctil: quem apara é quem lê.
     OnEnter(String),
     OnExit(String),
@@ -96,11 +135,20 @@ mod tests {
             reach: 1.0,
             layer: 0,
             turns_with_facing: false,
+            ignore_body: true,
+            ignore_parts: true,
+            only_see: RaySee::Everything,
+            see_tag: 0,
+            walls_block: true,
+            hit_triggers: false,
+            starts_inside: false,
+            all_hits: false,
             layer_empty: false,
             on_enter: "vi".into(),
             on_exit: String::new(),
             sees: "Chao".into(),
             sees_at: 0.5,
+            sees_all: Vec::new(),
             clock_playing: true,
             selected_count: 1,
         }
@@ -115,13 +163,21 @@ mod tests {
             RayFieldEdit::Reach(0.0),
             RayFieldEdit::TurnsWithFacing(false),
             RayFieldEdit::Layer(0),
+            RayFieldEdit::IgnoreBody(true),
+            RayFieldEdit::IgnoreParts(true),
+            RayFieldEdit::OnlySee(RaySee::Everything),
+            RayFieldEdit::SeeTag(0),
+            RayFieldEdit::WallsBlock(true),
+            RayFieldEdit::HitTriggers(false),
+            RayFieldEdit::StartsInside(false),
+            RayFieldEdit::AllHits(false),
             RayFieldEdit::OnEnter(String::new()),
             RayFieldEdit::OnExit(String::new()),
         ];
         assert_eq!(
             variantes.len(),
-            6,
-            "o `RaySensor` tem QUATRO campos e o `RaySignals` DOIS — se um nasceu, ele precisa de \
+            14,
+            "o `RaySensor` tem DOZE campos e o `RaySignals` DOIS — se um nasceu, ele precisa de \
              uma variante aqui e de uma row no painel"
         );
     }

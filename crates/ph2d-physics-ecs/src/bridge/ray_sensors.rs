@@ -158,83 +158,177 @@ impl PhysicsBridge {
 
     /// **Lança um raio por sensor e diz o que cada um viu**, acumulando as arestas.
     ///
-    /// ⚠️ **O corpo dono é EXCLUÍDO**, e o gate `the_caster_can_exclude_itself` do motor mede o que
-    /// acontece sem isso: *«um personagem acha-se no chão para sempre»*. ⭐ Um sensor num objecto
-    /// **sem corpo** não tem o que excluir, e a resposta certa ali é não excluir nada — está medido
-    /// no gate `um_raio_sem_corpo_nao_exclui_ninguem`, não suposto.
+    /// ⚠️ **O corpo dono é EXCLUÍDO por omissão** (`ignore_body`), e o gate
+    /// `the_caster_can_exclude_itself` do motor mede o que acontece sem isso: *«um personagem acha-se
+    /// no chão para sempre»*. ⭐ Um sensor num objecto **sem corpo** não tem o que excluir — gate
+    /// `um_raio_sem_corpo_nao_exclui_ninguem`.
     ///
-    /// ⚠️ **O mapa `handle → entidade` vem de FORA**, como o do canal de contactos: construí-lo
-    /// dentro custaria uma travessia de todos os corpos **por tique**, e quem chama já o tem.
+    /// As opções da versão C (dono 15/11) correm DENTRO da consulta do motor
+    /// ([`cast_ray_query`](ph2d_physics::PhysicsWorld::cast_ray_query)), por forma candidata:
+    ///
+    /// | opção | onde |
+    /// |---|---|
+    /// | `ignore_parts` | o predicado: o corpo da forma tem a mesma [`familia_raiz`](crate::familia_raiz) e não é o dono |
+    /// | `only_see` sem `walls_block` | o predicado: quem não passa é transparente |
+    /// | `only_see` com `walls_block` | DEPOIS: o primeiro acerto só conta se passa (a parede tapa) |
+    /// | `hit_triggers` / `starts_inside` | o [`RayQuery`](ph2d_physics::RayQuery) |
+    /// | `all_hits` | `cast_ray_query_all`; com `walls_block` a lista pára no primeiro que não passa |
+    ///
+    /// ⚠️ **O mapa `handle → entidade` vem de FORA**, como o do canal de contactos.
     pub(super) fn cast_ray_sensors(
         &mut self,
         sim: &mut SimWorld,
         by_handle: &BTreeMap<(u32, u32), Entity>,
     ) {
         let mut agora: BTreeMap<Entity, RayHit> = BTreeMap::new();
+        // Os raios `all_hits` deste tique — vazio (sem alocar) no caminho comum.
+        let mut todos: Vec<Entity> = Vec::new();
+        let mut velho_todos = std::mem::take(&mut self.ray_hits_all);
         // ⚠️ **A lista descreve UM tique, logo ela é reconstruída e não acumulada** — a frase que o
-        // `player_probes` já escreve: um dispatch que deve vários tiques desenharia o rasto de todos
-        // eles, e o artista leria como *«o sensor está a tremer»* aquilo que é só a história a
-        // somar-se. A capacidade do `Vec` fica.
+        // `player_probes` já escreve. A capacidade do `Vec` fica.
         self.ray_marks.clear();
         {
             let world = sim.world_mut();
             let mut q = world.query::<(Entity, &RaySensor)>();
             // ⚠️ A lista sai da consulta ANTES do laço: o `cast_ray` empresta `self.world`, e a
-            // consulta empresta o `World` do ECS — separá-los é o que mantém os dois empréstimos
-            // disjuntos sem uma cópia do mundo.
+            // consulta empresta o `World` do ECS.
             let sensores: Vec<(Entity, RaySensor)> = q.iter(world).map(|(e, r)| (e, *r)).collect();
+            let world: &World = world;
             for (e, r) in sensores {
                 let Some(raio) = self.raio_em_mundo(world, e, &r) else {
                     continue;
                 };
-                let achou =
-                    self.world
-                        .cast_ray(raio.origem, raio.dir, raio.reach, raio.excluir, r.layer);
-                // ⭐ **A marca sai do CAST, acerte ele ou não** — ver o cabeçalho. A distância é a
-                // que o motor devolveu; quem a resolve em ENTIDADE é o bloco abaixo, e são duas
-                // perguntas: o desenho responde *onde ele parou* e o painel *o que ele viu*.
+                let dono = if self.bodies.contains_key(&e) {
+                    Some(e)
+                } else {
+                    crate::owner_body(world, e)
+                };
+                let raiz = if r.ignore_parts {
+                    crate::familia_raiz(world, e)
+                } else {
+                    None
+                };
+                let tree = &self.nav.arvore;
+                let entidade = |c: Option<RigidBodyHandle>| {
+                    c.and_then(|b| by_handle.get(&b.into_raw_parts()).copied())
+                };
+                let passa = |b: Option<Entity>| {
+                    r.only_see.passes(
+                        r.see_tag,
+                        tree,
+                        b.and_then(|b| world.get::<ph2d_ecs::tags::Tags>(b)),
+                    )
+                };
+                let aceita = |c: Option<RigidBodyHandle>| {
+                    let b = entidade(c);
+                    if let (Some(raiz), Some(b)) = (raiz, b) {
+                        if Some(b) != dono && crate::familia_raiz(world, b) == Some(raiz) {
+                            return false;
+                        }
+                    }
+                    r.walls_block || passa(b)
+                };
+                let consulta = ph2d_physics::RayQuery {
+                    exclude_body: if r.ignore_body { raio.excluir } else { None },
+                    layer: r.layer,
+                    hit_sensors: r.hit_triggers,
+                    hit_from_inside: r.starts_inside,
+                };
+                let ent_de = |h: &ph2d_physics::CastHit| entidade(h.body);
+                let para_ray_hit = |alvo: Entity, h: &ph2d_physics::CastHit| RayHit {
+                    body: alvo,
+                    distance: h.distance,
+                    point: h.point,
+                    normal: h.normal,
+                };
+                let parou: Option<f32>;
+                if r.all_hits {
+                    self.world.cast_ray_query_all(
+                        raio.origem,
+                        raio.dir,
+                        raio.reach,
+                        consulta,
+                        &aceita,
+                        &mut self.ray_scratch,
+                    );
+                    let mut lista = velho_todos.remove(&e).unwrap_or_default();
+                    let anterior = std::mem::take(&mut lista);
+                    let mut bloqueio = None;
+                    for h in &self.ray_scratch {
+                        let b = ent_de(h);
+                        if !passa(b) {
+                            // Só chega aqui com `walls_block` (sem ele o predicado já o tirou).
+                            bloqueio = Some(h.distance);
+                            break;
+                        }
+                        if let Some(b) = b {
+                            if !lista.iter().any(|x| x.body == b) {
+                                lista.push(para_ray_hit(b, h));
+                            }
+                        }
+                    }
+                    parou = bloqueio.or(self.ray_scratch.first().map(|h| h.distance));
+                    // As ARESTAS por objecto: entra quem passa a estar na lista, sai quem deixa.
+                    for h in &lista {
+                        if !anterior.iter().any(|x| x.body == h.body) {
+                            self.ray_enters.push((e, h.body));
+                        }
+                    }
+                    for h in &anterior {
+                        if !lista.iter().any(|x| x.body == h.body) {
+                            self.ray_exits.push((e, h.body));
+                        }
+                    }
+                    if let Some(h) = lista.first() {
+                        agora.insert(e, *h);
+                    }
+                    self.ray_hits_all.insert(e, lista);
+                    todos.push(e);
+                } else {
+                    let achou = self.world.cast_ray_query(
+                        raio.origem,
+                        raio.dir,
+                        raio.reach,
+                        consulta,
+                        &aceita,
+                    );
+                    parou = achou.map(|h| h.distance);
+                    if let Some(h) = achou {
+                        // ⭐ Com `walls_block` a primeira matéria TAPA: só se vê se ela passa.
+                        if let Some(alvo) = ent_de(&h).filter(|&b| passa(Some(b))) {
+                            agora.insert(e, para_ray_hit(alvo, &h));
+                        }
+                    }
+                }
+                // ⭐ **A marca sai do CAST, acerte ele ou não** — ver o cabeçalho.
                 self.ray_marks.push(
                     ProbeMark::ray(
                         ProbeKind::Sensor,
                         raio.origem,
                         raio.dir,
                         raio.reach,
-                        achou.map(|h| h.distance),
-                        // ⛔ **Sem `skin`, e a ausência é a lei:** o sensor do personagem nasce no
-                        // CENTRO do corpo porque o `exclude_body` precisa disso, e desenhá-lo dali
-                        // enterraria metade da linha sob o contorno. Aqui a origem é **autorada** — o
-                        // artista escolheu-a, e encolher o desenho esconderia justamente o número que
-                        // ele mexe.
+                        parou,
+                        // ⛔ **Sem `skin`, e a ausência é a lei:** a origem é **autorada**.
                         0.0,
                     )
                     .na_camada(r.layer),
                 );
-                let Some(h) = achou else {
-                    continue;
-                };
-                let Some(alvo) = h
-                    .body
-                    .and_then(|b| by_handle.get(&b.into_raw_parts()).copied())
-                else {
-                    continue;
-                };
-                agora.insert(
-                    e,
-                    RayHit {
-                        body: alvo,
-                        distance: h.distance,
-                        point: h.point,
-                        normal: h.normal,
-                    },
-                );
             }
         }
-        // As ARESTAS, contra o que cada um via no tique anterior.
+        // Um raio que deixou de ser `all_hits` (ou de existir) solta o que via.
+        for (e, lista) in &velho_todos {
+            for h in lista {
+                self.ray_exits.push((*e, h.body));
+            }
+        }
+        // As ARESTAS dos raios de um só alvo, contra o que cada um via no tique anterior.
         //
-        // ⚠️ **Trocar de alvo é uma SAÍDA e uma ENTRADA**, não um silêncio: quem escuta
-        // `viu_inimigo` tem de ouvir de novo quando o inimigo passa a ser outro, senão a porta
-        // reage ao primeiro e ignora todos os seguintes.
+        // ⚠️ **Trocar de alvo é uma SAÍDA e uma ENTRADA**, não um silêncio.
+        let fora = |e: &Entity| todos.contains(e) || velho_todos.contains_key(e);
         for (&e, h) in &agora {
+            if fora(&e) {
+                continue;
+            }
             match self.ray_hits.get(&e) {
                 Some(anterior) if anterior.body == h.body => {}
                 Some(anterior) => {
@@ -245,7 +339,7 @@ impl PhysicsBridge {
             }
         }
         for (&e, anterior) in &self.ray_hits {
-            if !agora.contains_key(&e) {
+            if !agora.contains_key(&e) && !fora(&e) {
                 self.ray_exits.push((e, anterior.body));
             }
         }
@@ -297,6 +391,7 @@ impl PhysicsBridge {
     /// `hold` já escreve para o contacto e para o gatilho.
     pub(super) fn discard_ray_history(&mut self) {
         self.ray_hits.clear();
+        self.ray_hits_all.clear();
         self.ray_enters.clear();
         self.ray_exits.clear();
     }
@@ -305,6 +400,13 @@ impl PhysicsBridge {
     #[must_use]
     pub fn ray_sensor_hits(&self) -> &BTreeMap<Entity, RayHit> {
         &self.ray_hits
+    }
+
+    /// **TODOS os acertos de um raio `all_hits`**, por distância — vazio para os outros (o mais
+    /// perto deles é o [`ray_sensor_hits`](Self::ray_sensor_hits)).
+    #[must_use]
+    pub fn ray_sensor_hits_all(&self, e: Entity) -> &[RayHit] {
+        self.ray_hits_all.get(&e).map_or(&[], Vec::as_slice)
     }
 
     /// **A LINHA que cada raio olhou** — o que o canvas desenha (W5).

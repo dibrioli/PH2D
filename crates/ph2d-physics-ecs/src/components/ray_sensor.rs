@@ -14,17 +14,16 @@
 //!
 //! ⇒ *o motor está pago e é rico; o que faltava era um componente autorável que lhe chegue.*
 //!
-//! # ⚠️⚠️ A nota da porta do motor, RECONFERIDA (§0.0)
+//! # ⚠️⚠️ A nota da porta do motor, RECONFERIDA de novo (§0.0, dono 15/11, versão C)
 //!
-//! O [`cast_ray`](ph2d_physics::PhysicsWorld::cast_ray) põe `EXCLUDE_SENSORS` **dentro dele**, e
-//! justifica-o com *«os cinco consumidores querem matéria; um parâmetro seria uma escolha oferecida
-//! a ninguém»*. Este componente é o **sexto** consumidor e o primeiro **autorável**, logo o §0.0
-//! obriga a reconferir a nota em vez de a herdar.
-//!
-//! **Veredito: ela continua de pé, e por uma razão mais forte.** As três perguntas que este
-//! componente serve — *há chão por baixo? · há parede à frente? · a arma aponta para quê?* — são
-//! todas sobre **matéria**, e um volume de gatilho que bloqueasse a linha de visão seria um defeito
-//! e não uma opção. ⇒ **nenhum parâmetro novo na porta.**
+//! O [`cast_ray`](ph2d_physics::PhysicsWorld::cast_ray) põe `EXCLUDE_SENSORS` e `solid = true`
+//! **dentro dele** — *«os cinco consumidores querem matéria»*. A primeira leitura deste componente
+//! herdou a nota. **A versão C revoga-a para este consumidor só:** o artista pode querer um raio que
+//! acerta gatilhos (`hit_triggers`) ou que nasce dentro da própria forma sem se achar
+//! (`starts_inside`), e a porta dele é outra — [`cast_ray_query`](ph2d_physics::PhysicsWorld::cast_ray_query),
+//! com um [`RayQuery`](ph2d_physics::RayQuery). Os cinco sensores do personagem não mudam (gate
+//! `the_caster_can_exclude_itself` e os do `player_probes`). Os dois defaults (`false`) dão a resposta de
+//! antes para os gatilhos; `starts_inside = false` é a de Godot (`hit_from_inside = false`).
 //!
 //! # ⚠️ É CONFIG, nunca estado vivo
 //!
@@ -53,6 +52,65 @@ pub struct RaySensor {
     /// Espelha com o lado para onde o personagem dono olha (`PlayerState::facing`): a olhar para a
     /// esquerda, o ângulo e o desvio do raio trocam de lado. Opção do artista (dono 15/11), desligada.
     pub turns_with_facing: bool,
+    /// O corpo dono sai do raio («Ignore my body»). Falso = ele vê o próprio dono.
+    pub ignore_body: bool,
+    /// Os outros corpos da FAMÍLIA do dono também saem («Ignore my other parts») — ver
+    /// [`familia_raiz`](crate::familia_raiz): a espada e o escudo com corpo próprio do herói.
+    pub ignore_parts: bool,
+    /// O que ele aceita ver, pelas tags do corpo acertado («Only see»).
+    pub only_see: SeeFilter,
+    /// A tag do `only_see` (`TagId.0`; `0` = por escolher).
+    pub see_tag: u64,
+    /// «Walls block»: o raio pára na primeira matéria e só VÊ se ela passa no `only_see` (uma parede
+    /// sem a tag TAPA o alvo — linha de visão). Falso = ele atravessa quem não passa.
+    pub walls_block: bool,
+    /// «Hit triggers»: os sensores/gatilhos também respondem.
+    pub hit_triggers: bool,
+    /// «Starts inside»: a forma que contém a origem responde a `0`. Falso = ignorada.
+    pub starts_inside: bool,
+    /// «See all hits»: guarda todos os acertos ao longo do alcance, por distância.
+    pub all_hits: bool,
+}
+
+/// **O filtro de tags do raio** («Only see»): o MODO; a tag é o campo [`RaySensor::see_tag`].
+///
+/// ⚠️ **Variantes SEM dados, e a tag num campo ao lado:** o catálogo (`FieldKind::Enum` + opções) e o
+/// script leem uma variante pelo NOME serde de unidade; um `OnlyTag(u64)` seria um valor composto que
+/// nenhum dos dois sabe ler. O id é o mesmo do [`SignalTagFilter`](crate::SignalTagFilter)
+/// (`ph2d_tags::TagId.0`); `0` = por escolher, e passa todos (como lá).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SeeFilter {
+    /// Vê tudo.
+    #[default]
+    Everything,
+    /// Só quem pertence à tag (com a subárvore). Uma tag apagada não deixa passar ninguém.
+    OnlyTag,
+    /// Todos menos quem pertence à tag.
+    ExceptTag,
+}
+
+impl SeeFilter {
+    /// `other` passa, com a tag `id`? `tags` = as tags dele (ou `None`).
+    #[must_use]
+    pub fn passes(
+        self,
+        id: u64,
+        tree: &ph2d_tags::TagTree,
+        tags: Option<&ph2d_ecs::tags::Tags>,
+    ) -> bool {
+        let so = match self {
+            Self::Everything => return true,
+            Self::OnlyTag => true,
+            Self::ExceptTag => false,
+        };
+        if id == 0 {
+            return true;
+        }
+        let q = ph2d_tags::TagId(id);
+        let pertence =
+            tree.get(q).is_some() && tags.is_some_and(|t| ph2d_ecs::tags::belongs(t, tree, q));
+        pertence == so
+    }
 }
 
 impl RaySensor {
@@ -72,6 +130,14 @@ impl Default for RaySensor {
             reach: 1.0,
             layer: 0,
             turns_with_facing: false,
+            ignore_body: true,
+            ignore_parts: true,
+            only_see: SeeFilter::Everything,
+            see_tag: 0,
+            walls_block: true,
+            hit_triggers: false,
+            starts_inside: false,
+            all_hits: false,
         }
     }
 }

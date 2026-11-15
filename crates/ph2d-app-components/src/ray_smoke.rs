@@ -189,6 +189,7 @@ fn olho(world: &mut World, nome: &str, angle: f32, y: f32, voz: RaySignals) -> E
                 reach: ALCANCE,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
             voz,
         ))

@@ -52,6 +52,7 @@ fn olho(sim: &mut SimWorld, em: Vec2, dir: Vec2, reach: f32) -> Entity {
                 reach,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
         ))
         .id()
@@ -115,6 +116,7 @@ fn a_linha_desenhada_e_o_raio_que_foi_lancado() {
                 reach: 5.0,
                 layer: 0,
                 turns_with_facing: false,
+                ..RaySensor::default()
             },
         ))
         .id();

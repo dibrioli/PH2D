@@ -411,7 +411,7 @@ pub use overrides::{
 };
 pub use player::{PlatformLift, PlatformPlayer, PlayerMode};
 pub use projectile::ProjectileMotion;
-pub use ray_sensor::{RayHit, RaySensor, RaySignals};
+pub use ray_sensor::{RayHit, RaySensor, RaySignals, SeeFilter};
 pub use rope::{
     ComprimentoDaRota, PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle,
     reseat_wheel_geometry, rope_joint_of,

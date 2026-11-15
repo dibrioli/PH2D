@@ -59,6 +59,10 @@ ph2d-timeline = { path = "../../crates/ph2d-timeline" }
 ph2d-transport = { path = "../../crates/ph2d-transport" }
 # O Target da bala recebe o objeto arrastado (`jogo_projectile`): o instantâneo do Inspector e os ids.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector" }
+# A Hierarchy com um conta-gotas armado, clicada pelo rato (`jogo_conta_gotas_selecao`).
+ph2d-panel-hierarchy = { path = "../../crates/ph2d-panel-hierarchy" }
+ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
+ph2d-component-desc = { path = "../../crates/ph2d-component-desc" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
 ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }

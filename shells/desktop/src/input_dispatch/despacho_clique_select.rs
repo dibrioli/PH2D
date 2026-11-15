@@ -83,12 +83,7 @@ impl crate::App {
     ) -> bool {
         // **O eyedropper do palco** — o corpo de uma junta (§12) ou o alvo de uma constraint:
         // armado, o próximo Down no canvas escolhe o que está sob o cursor. Precede o gizmo.
-        let constraint = self
-            .gfx
-            .as_ref()
-            .is_some_and(|g| ph2d_app_constraints::inspector::armado(&g.sim))
-            || self.camera_target_armed();
-        if (self.joint_body_pick.is_some() || constraint)
+        if self.conta_gotas_armado()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before

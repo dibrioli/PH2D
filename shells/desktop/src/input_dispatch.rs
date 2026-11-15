@@ -36,6 +36,7 @@ use crate::forwarding::{
     cursor_over_hero_panel, forward_blur_to_hero, forward_text_to_hero, forward_to_hero,
     forward_wheel_to_hero, resolve_live_entry,
 };
+use ph2d_app_components::conta_gotas;
 use ph2d_tool_vector::params::MarqueeShape;
 
 // `impl App` is split across sibling modules (see the eyedropper /
@@ -470,13 +471,16 @@ impl App {
             return;
         }
 
-        // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
-        // PanelRowReparent (família PainterLayer) no Up de um arrasto activo; encaminha-o para
-        // the active PainterTool, which reverses NodeId→LayerId and applies
-        // move_into_group / reorder. The concrete-tool downcast lives in the
-        // allowlisted painter bridge so central dispatch stays downcast-free
-        // (architecture_no_downcast_to_concrete_tool_in_shell gate).
-        if let Some((dragged, drop)) = forward_to_hero(self.gfx.as_mut(), evt)
+        // Com um conta-gotas armado, a linha da Hierarchy é dele e não selecciona (dono 15/11). O `largado` é o
+        // reparent de camadas do Painter (W3 T3.8), pela ponte da lista (sem downcast na shell).
+        let (mut largado, armado) = (None, self.conta_gotas_armado());
+        let f = || largado = forward_to_hero(self.gfx.as_mut(), evt);
+        if let Some(b) = conta_gotas::pela_hierarquia(armado, f)
+            && let Some(p) = (self.gfx.as_ref()).map(|g| conta_gotas::ponto_de(g.sim.world(), b))
+        {
+            self.conta_gotas_clique(vec![b], p);
+        }
+        if let Some((dragged, drop)) = largado
             && let Some(gfx) = self.gfx.as_mut()
         {
             ph2d_app_painter::painter_bridge_queries::apply_layer_reparent(

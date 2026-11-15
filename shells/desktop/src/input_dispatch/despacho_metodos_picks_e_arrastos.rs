@@ -5,16 +5,8 @@ use super::*;
 use ph2d_i18n::tr_with;
 
 impl crate::App {
-    /// **O press das ferramentas de PONTO** (W-Hand: explosão e atração).
-    ///
-    /// `true` = consumiu o gesto. A decisão inteira (relógio andando · física
-    /// armada · a ferramenta é de ponto) mora em `body_grab::poke_at`, que é
-    /// testável sem janela; aqui fica só a projeção tela→mundo e a marca que o
-    /// overlay desenha.
-    ///
-    /// ⚠️ **Recusa quando não há mundo sob o cursor** (`vec_world_at` = `None`,
-    /// que é o caso fora do canvas): estourar num ponto que não existe é o gesto
-    /// caindo em silêncio, e sem esta linha ele seria consumido de qualquer jeito.
+    /// **O press das ferramentas de PONTO** (W-Hand: explosão e atração); `true` = consumiu. A decisão mora em
+    /// `body_grab::poke_at` (testável sem janela); aqui, a projecção tela→mundo e a marca do overlay.
     pub(super) fn poke_press(&mut self, sx: f32, sy: f32) -> bool {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
@@ -55,20 +47,32 @@ impl crate::App {
         true
     }
 
-    /// **O clique do eyedropper de corpo do joint** (§12): com um pick armado,
-    /// resolve o CORPO sob o cursor e religa aquela ponta do joint. Clique no
-    /// vazio (ou num não-corpo) desiste; clicar o corpo que já está na outra
-    /// ponta é RECUSADO e mantém o pick armado (um self-joint fica dormente,
-    /// `set_joint_body`). Consome o press (o guard já filtrou por
-    /// `joint_body_pick.is_some()`), então nunca cai no picking/gizmo.
+    /// Algum conta-gotas que escolhe um OBJECTO está armado: o corpo da junta, a constraint, o Target da câmera, da
+    /// bala ou o «Ignore up to» do raio. O clique no canvas ou numa linha da Hierarchy é dele, nunca da selecção.
+    pub(crate) fn conta_gotas_armado(&self) -> bool {
+        self.joint_body_pick.is_some()
+            || self.camera_target_armed()
+            || (self.gfx.as_ref()).is_some_and(|g| ph2d_app_constraints::inspector::armado(&g.sim))
+    }
+
+    /// O clique no canvas com um conta-gotas armado: o que está sob o cursor vai a [`Self::conta_gotas_clique`].
     pub(super) fn joint_body_pick_click(&mut self, sx: f32, sy: f32) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let world_pos = gfx.camera.screen_to_world((sx, sy), gfx.scene_window());
+        let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
+        self.conta_gotas_clique(debaixo, world_pos);
+    }
+
+    /// ⭐ **O clique de um conta-gotas** (`debaixo` de cima para baixo: o canvas, ou a linha da Hierarchy). O corpo da
+    /// junta (§12): o primeiro CORPO religa aquela ponta; o vazio desiste; a outra ponta é RECUSADA e segue armado.
+    /// Os outros escolhem pela lei de cada um. Nunca selecciona: o dono do conta-gotas fica no Inspector.
+    pub(crate) fn conta_gotas_clique(&mut self, debaixo: Vec<u64>, world_pos: [f32; 2]) {
         self.any_input_this_frame = true;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let window_size = gfx.scene_window();
-        let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
-        let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
         let Some((joint, slot_b)) = self.joint_body_pick else {
             // GEF 20 C2 / GEF 06 — o Eyedropper do Target (câmera, bala ou raio): escolhe e desarma (o vazio também).
             if let Some(hero) = gfx.hero_screen.as_mut() {
@@ -92,14 +96,11 @@ impl crate::App {
                 ph2d_app_physics::joint_drop::is_bindable_body(gfx.sim.world(), joint, bits)
             })
             .map(ph2d_ecs::Entity::from_bits);
-        match target {
-            Some(t) => {
-                if ph2d_app_physics::joint::set_joint_body(&mut gfx.sim, joint, slot_b, t) {
-                    self.joint_body_pick = None; // religado — pronto
-                }
-                // senão: self-joint recusado, segue armado para outro clique
-            }
-            None => self.joint_body_pick = None, // vazio / não-corpo = desiste
+        // Religado, ou vazio / não-corpo (desiste): desarma; o self-joint recusado segue armado.
+        if target
+            .is_none_or(|t| ph2d_app_physics::joint::set_joint_body(&mut gfx.sim, joint, slot_b, t))
+        {
+            self.joint_body_pick = None;
         }
     }
 

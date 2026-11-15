@@ -35,7 +35,13 @@ fn click(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> Option<Even
         host.store_mut().toggle_hierarchy_content_open(row);
         return Some(EventOutcome::Consumed);
     }
-    if let Some((row, category, entry)) = component_icon_at(id) {
+    let icone = component_icon_at(id);
+    // Um conta-gotas armado: o ícone, a Cena e o conteúdo também não seleccionam (a linha é de `event`).
+    let row = icone.as_ref().map_or(id, |(row, ..)| *row);
+    if state::live_entries_contains(row) && state::guarda_escolha(row) {
+        return Some(EventOutcome::Consumed);
+    }
+    if let Some((row, category, entry)) = icone {
         return component_click(host, row, category, &entry);
     }
     let entry = state::live_entry_for(id)?;

@@ -92,6 +92,21 @@ pub fn value_handle_points(k0: &KeyView, k1: &KeyView) -> [(f64, f64); 2] {
     crate::graph::segment_handle_points(k0, k1)
 }
 
+/// Os valores de tudo o que a vista de valor desenha de uma Custom com pontos: cada nó e as duas
+/// alças dele (as das pontas são os braços das chaves). A faixa da banda tem de os conter.
+pub(crate) fn custom_drawn_values(k0: &KeyView, k1: &KeyView) -> Vec<f64> {
+    let Some(c) = segment_curve(k0, k1) else {
+        return Vec::new();
+    };
+    (0..c.node_count())
+        .flat_map(|i| {
+            let n = c.node(i);
+            [n.p, n.h_in, n.h_out]
+        })
+        .map(|p| unit_to_plane(k0, k1, p).1)
+        .collect()
+}
+
 /// A `Interp` de uma curva editada: sem pontos volta a ser a `Bezier` de duas alças.
 #[must_use]
 pub fn interp_of_curve(c: EaseSpline) -> Interp {
@@ -251,6 +266,34 @@ mod tests {
         let mut sem = k0.clone();
         sem.interp = Interp::bezier(0.3, 0.1, 0.6, 0.9);
         assert!(!end_handle_keeps_rhythm(&sem, &k1), "sem pontos = Override");
+    }
+
+    /// Smoke do dono 15/11: a ponta do braço de uma Custom com pontos acima da curva (`y = 1,3`)
+    /// ficava FORA da banda — nem se via nem se agarrava. A faixa que o gráfico ajusta contém
+    /// cada nó e cada alça, com ou sem ritmo.
+    #[test]
+    fn a_faixa_contem_cada_alca_da_custom_com_pontos() {
+        let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        let i = sp.insert(0.5).expect("cabe");
+        sp.move_handle(i, ph2d_anim::SplineSide::Out, 0.7, -0.4);
+        let sp = sp.with_end_handles([0.06, 1.3], sp.end_handles().1);
+        for retime in [None, Some(RITMO)] {
+            let (mut k0, k1) = (
+                key(0.0, 0.0, Interp::Spline(sp)),
+                key(2.0, 10.0, Interp::Linear),
+            );
+            k0.selected = true;
+            k0.retime = retime;
+            let (lo, hi) = crate::drawn_extent(&[k0.clone(), k1.clone()], 0.0, 2.0, 64).unwrap();
+            for v in custom_drawn_values(&k0, &k1) {
+                assert!(
+                    v as f32 >= lo - 1e-4 && v as f32 <= hi + 1e-4,
+                    "{retime:?}: {v} fora de {lo}..{hi}"
+                );
+            }
+            assert!(hi >= 12.9, "{retime:?}: a ponta do braço (13) fora: {hi}");
+            assert!(lo <= -3.9, "{retime:?}: a alça do ponto (−4) fora: {lo}");
+        }
     }
 
     #[test]

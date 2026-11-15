@@ -69,6 +69,11 @@ arrasta 583 590 583 555
 foto pontos_r3_braco_da_ponta
 confere "$(difere pontos_r2_ponto_arrastado pontos_r3_braco_da_ponta && echo s)" "puxar o braço da ponta não mudou nada"
 para 3
+# Smoke do dono 15/11: a ponta do braço puxada ACIMA da curva tem de continuar à vista (a banda cresce ao largar).
+arrasta 583 555 590 478
+foto pontos_r3b_braco_acima_da_curva_a_vista
+confere "$(difere pontos_r3_braco_da_ponta pontos_r3b_braco_acima_da_curva_a_vista && echo s)" "puxar o braço para cima não mudou nada"
+para 3b
 # (2) O cartão da chave: «Reset timing» ao lado do Done.
 c 567 479 3
 import -window root -crop 560x420+560+470 +repage "$SAIDA/pontos_r4_cartao_com_reset_timing.png"

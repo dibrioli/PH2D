@@ -236,3 +236,32 @@ fn num_trecho_retimado_com_pontos_o_braco_da_ponta_mantem_ritmo_e_pontos() {
     );
     set_current_timeline(None);
 }
+
+/// Smoke do dono 15/11 (passo 3): a ponta do braço da 1.ª chave, puxada acima da curva, ficou fora
+/// da banda — escondida e sem alvo. Pintado de verdade: o alvo do braço existe, dentro da banda.
+#[test]
+fn a_ponta_do_braco_acima_da_curva_continua_a_vista_e_agarravel() {
+    let Interp::Spline(c) = com_ponto() else {
+        unreachable!()
+    };
+    let alta = Interp::Spline(c.with_end_handles([0.06, 1.3], c.end_handles().1));
+    for retime in [None, Some(RITMO)] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState::default();
+        let regs = pinta_r(&mut host, &mut st, alta, retime);
+        let braco = regs
+            .iter()
+            .find(|(w, _)| *w == ids::timeline_handle_hit_id(TGT, 1, 0))
+            .map(|(_, r)| *r);
+        let linha = regs
+            .iter()
+            .find(|(w, _)| *w == ids::timeline_curve_line_hit_id(TGT, 1, 0))
+            .map(|(_, r)| *r);
+        assert!(
+            braco.is_some(),
+            "{retime:?}: o braço acima da curva ficou sem alvo (fora da banda)"
+        );
+        assert!(linha.is_some(), "{retime:?}: a curva não se pintou");
+        set_current_timeline(None);
+    }
+}

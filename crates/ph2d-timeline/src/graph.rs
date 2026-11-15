@@ -112,6 +112,14 @@ pub fn drawn_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
         // steep preset (Expo, Back) would drag the whole band's fit out to
         // meet a hint, squashing the curve the author came to look at. Those
         // get clipped instead.
+        // A Custom with points draws every node and handle (retimed or not, through the rhythm
+        // map): each tip must be inside the band, or it can be neither seen nor grabbed (dono 15/11).
+        if let Interp::Spline(_) = k0.interp {
+            for v in crate::graph_pontos::custom_drawn_values(k0, k1) {
+                include(v as f32);
+            }
+            continue;
+        }
         // A retimed segment's handles are derived and already inside its played values.
         if k0.retime.is_some()
             || !matches!(k0.interp, Interp::Bezier { .. } | Interp::BezierW { .. })

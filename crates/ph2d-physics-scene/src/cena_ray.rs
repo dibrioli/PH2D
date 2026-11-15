@@ -13,9 +13,9 @@
 //!
 //! **As melhorias (RS, dono 15/11):** um «Guard» no alto, à direita, com o «Guard Eye» — um raio em LEQUE
 //! (Cone 50°) a olhar para baixo e para a esquerda, só para a tag «Player» do herói: a «Alarm Light» acende
-//! quando o herói entra no leque (perto da beirada) e apaga quando sai. E uma «Turret» no tecto, com um
-//! script que dá um TIRO instantâneo a cada quadro (`ph2d.raycast`, reto para baixo, só para o «Player»): a
-//! «Shot Light» acende enquanto o herói passa por baixo dela.
+//! quando o herói entra no leque (perto da beirada) e apaga quando sai. E uma «Turret» no ar, acima do chão, com
+//! um script que dá um TIRO instantâneo a cada quadro (`ph2d.raycast`, reto para baixo, 0,5 m de largura, só para
+//! o «Player»): a «Shot Light» acende enquanto o herói está por baixo dela.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -46,19 +46,19 @@ pub const TAG_HEROI: &str = "Player";
 pub const GUARDA_EM: [f32; 2] = [4.5, 1.2];
 /// `(ângulo, abertura, alcance)` do «Guard Eye».
 pub const LEQUE_DO_GUARDA: (f32, f32, f32) = (211.0, 50.0, 6.5);
-/// A torreta no tecto, sobre o chão: o tiro desce 3 m.
+/// A torreta no ar, sobre o chão: o tiro desce 3 m.
 pub const TORRETA_EM: [f32; 2] = [0.6, 0.8];
 /// O nome do script da torreta na biblioteca do projecto.
 pub const SCRIPT_DA_TORRETA: &str = "turret.luau";
 /// ⭐ O script da torreta: um tiro por quadro, a resposta na hora; diz-se só quando muda.
 pub const TORRETA_LUAU: &str = r#"-- Turret: an instant shot straight down every frame (ph2d.raycast).
--- The Shot Light shows while the hero is under it.
+-- A shot 0.5 m wide; the Shot Light shows while the hero is under it.
 local seen = false
 
 function update(self, dt)
   local x = ph2d.get(self.id, "x") or 0
   local y = ph2d.get(self.id, "y") or 0
-  local hit = ph2d.raycast(ph2d.vec2(x, y), ph2d.vec2(x, y - 3), { only_see = "only_tag", tag = "Player" })[1]
+  local hit = ph2d.raycast(ph2d.vec2(x, y), ph2d.vec2(x, y - 3), { only_see = "only_tag", tag = "Player", thickness = 0.5 })[1]
   local now = hit ~= nil
   if now ~= seen then
     seen = now
@@ -261,7 +261,7 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
         "[game-smoke] =26 o Hero tem três Ray Sensor como filhos na Hierarchy: «Wall Ray» olha para a frente \
          (selecionado), «Ledge Ray» olha para baixo, à frente dos pés, e «Eye Ray» olha para o alto, só para a \
          tag Enemy e sem Walls block — vê o Enemy através da Crate. O Guard (alto, à direita) tem o «Guard Eye», \
-         um leque de 50°; a Turret (no tecto) dá um tiro por script a cada quadro. Play (F5): a luz do meio \
+         um leque de 50°; a Turret (no ar) dá um tiro por script a cada quadro. Play (F5): a luz do meio \
          acende já; seta para a direita: a Shot Light pisca ao passar sob a Turret, a Alarm Light acende quando \
          o herói entra no leque do Guard, a Wall Light com a parede e a Edge Light quando o chão acaba."
     );

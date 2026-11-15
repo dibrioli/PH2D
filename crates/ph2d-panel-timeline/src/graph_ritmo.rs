@@ -90,8 +90,17 @@ fn tracejado(ctx: &mut PaintCtx, c: Rect, cor: ph2d_vector::Color) {
     }
 }
 
+/// Uma alça da caixa no ecrã: o id do clique, a chave dona do trecho, o lado e a ponta.
+struct Alca {
+    key: u64,
+    which: u8,
+    ponta: (f32, f32),
+}
+
 /// Em Retime, sobre cada trecho seleccionado com ritmo: a caixa do tempo, a curva `W` em âmbar e as
 /// duas alças (braço do canto à ponta), registadas no MESMO `CurveHandle` das alças de sempre.
+/// Auditoria 15/11: um trecho estreito continua a mostrar as alças; o clique só existe DENTRO da
+/// banda; e alças próximas partem a área de clique ao meio — o clique vai à mais perto do rato.
 pub(crate) fn paint_caixas(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -102,6 +111,7 @@ pub(crate) fn paint_caixas(
 ) {
     let ambar = resolve(ColorToken::Warn, theme);
     let target = track.target.get();
+    let mut alcas = Vec::new();
     for (k0, k1) in trechos(track) {
         let c = caixa(band.rect, view, k0, k1);
         let Some(pontas) = [0u8, 1u8]
@@ -111,7 +121,7 @@ pub(crate) fn paint_caixas(
         else {
             continue; // trecho parado: o ritmo não muda o que toca
         };
-        if c.w < HANDLE_HIT_R * 2.0 || c.h <= 0.0 {
+        if c.w <= 0.0 || c.h <= 0.0 {
             continue;
         }
         tracejado(ctx, c, resolve(ColorToken::Text3, theme));
@@ -140,28 +150,72 @@ pub(crate) fn paint_caixas(
                 ColorToken::Warn
             };
             fill_circle(ctx.scene, px, py, HANDLE_R, resolve(tok, theme));
-            let id = ids::timeline_handle_hit_id(target, k0.id.get(), which);
-            let hit = Rect::new(
-                px - HANDLE_HIT_R,
-                py - HANDLE_HIT_R,
-                HANDLE_HIT_R * 2.0,
-                HANDLE_HIT_R * 2.0,
-            );
-            ctx.host.store_mut().register(
-                id,
-                InteractiveState::TimelineSurface {
-                    parent: ph2d_editor_core::ids::TIMELINE_PANEL,
-                    kind: TimelineHitKind::CurveHandle {
-                        target,
-                        key: k0.id.get(),
-                        which,
-                    },
-                    canvas: band.rect,
-                },
-            );
-            ctx.host.hit_index_mut().register(id, hit);
+            alcas.push(Alca {
+                key: k0.id.get(),
+                which,
+                ponta: (px, py),
+            });
         }
     }
+    for a in &alcas {
+        let Some(hit) = area_de_clique(a.ponta, alcas.iter().map(|o| o.ponta), band.rect) else {
+            continue;
+        };
+        let id = ids::timeline_handle_hit_id(target, a.key, a.which);
+        ctx.host.store_mut().register(
+            id,
+            InteractiveState::TimelineSurface {
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
+                kind: TimelineHitKind::CurveHandle {
+                    target,
+                    key: a.key,
+                    which: a.which,
+                },
+                canvas: band.rect,
+            },
+        );
+        ctx.host.hit_index_mut().register(id, hit);
+    }
+}
+
+/// A área de clique de uma alça: o quadrado do raio de clique, cortado à banda (fora dela não há
+/// alça visível, logo não há clique) e, contra cada outra ponta a menos de dois raios, cortado na
+/// mediana pelo eixo de maior afastamento — o rato apanha a alça MAIS PERTO. Duas pontas no mesmo
+/// pixel não se distinguem: as duas ficam com a área inteira e vence a última registada (o arrasto
+/// tira-a de cima e a outra fica à mão). `None` com a ponta fora da banda.
+fn area_de_clique(
+    (px, py): (f32, f32),
+    outras: impl Iterator<Item = (f32, f32)>,
+    banda: Rect,
+) -> Option<Rect> {
+    let dentro = |v: f32, lo: f32, len: f32| v >= lo && v <= lo + len;
+    if !dentro(px, banda.x, banda.w) || !dentro(py, banda.y, banda.h) {
+        return None;
+    }
+    let r = HANDLE_HIT_R;
+    let (mut x0, mut y0) = (px - r, py - r);
+    let (mut x1, mut y1) = (px + r, py + r);
+    for (qx, qy) in outras {
+        let (dx, dy) = (qx - px, qy - py);
+        if (dx == 0.0 && dy == 0.0) || dx.abs() >= 2.0 * r || dy.abs() >= 2.0 * r {
+            continue;
+        }
+        let (mx, my) = (px + dx * 0.5, py + dy * 0.5);
+        if dx.abs() >= dy.abs() {
+            if dx > 0.0 {
+                x1 = x1.min(mx)
+            } else {
+                x0 = x0.max(mx)
+            }
+        } else if dy > 0.0 {
+            y1 = y1.min(my);
+        } else {
+            y0 = y0.max(my);
+        }
+    }
+    let (x0, y0) = (x0.max(banda.x), y0.max(banda.y));
+    let (x1, y1) = (x1.min(banda.x + banda.w), y1.min(banda.y + banda.h));
+    (x1 > x0 && y1 > y0).then(|| Rect::new(x0, y0, x1 - x0, y1 - y0))
 }
 
 /// Um frame do arrasto de uma alça da caixa, como o comando do documento: o ponteiro no ecrã vira
@@ -222,8 +276,16 @@ const CELULAS: [(ph2d_a11y::NodeId, &str, &str); 2] = [
     ),
 ];
 
+/// A altura de banda que a pílula, o «Reset timing» e as duas escalas pedem — e o mínimo a que a
+/// banda se deixa encolher (`graph::clamp_graph_h`): auditoria 15/11, uma banda baixa escondia a
+/// pílula e não havia como mudar de modo.
+pub(crate) fn altura_do_seletor() -> f32 {
+    let pad = Spacing::Xs.px();
+    TypeToken::Xs.px() * 2.0 + pad * 2.0 + ROW_H_PX + RESET_H + pad
+}
+
 /// A pílula Override · Retime no meio da coluna da esquerda da banda, e o «Reset timing» por baixo
-/// em Retime. Uma banda baixa demais para os dois e as duas escalas não pinta nada.
+/// em Retime. A banda nunca é mais baixa do que [`altura_do_seletor`]; sem coluna de rótulo não pinta.
 pub(crate) fn paint_switch(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -233,8 +295,7 @@ pub(crate) fn paint_switch(
 ) {
     let pad = Spacing::Xs.px();
     let w = label_w - pad * 2.0;
-    let escalas = TypeToken::Xs.px() * 2.0 + pad * 2.0;
-    if w <= 0.0 || band_rect.h < escalas + ROW_H_PX + RESET_H + pad {
+    if w <= 0.0 || band_rect.h < altura_do_seletor() {
         return;
     }
     let y = band_rect.y + (band_rect.h - ROW_H_PX - RESET_H - pad) * 0.5;

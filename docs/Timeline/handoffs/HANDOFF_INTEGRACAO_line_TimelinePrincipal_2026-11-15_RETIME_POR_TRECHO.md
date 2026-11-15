@@ -119,6 +119,25 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   (fica no canto) · [depois de soltar](../fotos/retime_13_depois_de_soltar.png). A borda era `Border` e não se via na
   1.ª foto — passou a `Text3`. fmt ✓ · clippy `-D warnings --all-targets` (timeline, panel-timeline) ✓.
 
+## Auditoria da caixa (15/11, 2 lentes independentes) — «vamos corrigir todos até os antigos»
+
+| # | Achado (mecanismo) | Gate que faltava · por que o verde não via | Cura |
+|---|---|---|---|
+| 1 | Alça com a ponta fora da banda (zoom/rolagem) registava clique: `paint_caixas` não tinha o guarda horizontal que `paint_speed_handles` tem | nenhum teste pintava a caixa | `area_de_clique`: ponta fora da banda ⇒ sem clique; área cortada à banda. `a_alca_fora_da_banda_nao_deixa_clique` (ponta 3 px fora) |
+| 2 | Os dois testes do painel calculavam o rato com a própria `caixa` — ida e volta pela função sob teste; `paint_caixas` nunca corria | oráculo = função sob teste | `o_clique_no_centro_da_alca_desenhada_apanha_essa_alca`: pinta no `MockPanelHost`, posição esperada por conta à mão |
+| 3 | Duas alças no mesmo sítio: vencia a última registada (`hit.rs` itera ao contrário), mesma cor | — | as áreas partem-se na mediana pelo eixo de maior afastamento: vence a MAIS PERTO do rato. `com_duas_alcas_juntas_o_clique_vai_a_mais_perto` |
+| 4 | Trecho com < 14 px: nem caixa nem alças, nenhuma forma de editar | — | o corte saiu (só caixa sem área). `um_trecho_estreito_ainda_tem_as_duas_alcas` |
+| 5 | (antigo, onda 18) Banda < ~71 px escondia a pílula Override · Retime e o Reset; o mínimo arrastável era 64 | — | `graph::graph_h_min()` = máx(64, `graph_ritmo::altura_do_seletor()` + 2·inset) — uma função para a pílula e para o mínimo. `na_banda_mais_baixa_a_pilula_e_o_reset_continuam_clicaveis` |
+| 6 | (antigo) roteiro de fotos com píxeis fixos, sem conferência: layout mudado ⇒ fotos erradas sem erro | — | o roteiro confere a janela 1600×900, âmbar ausente ANTES do Retime (controlo) e presente depois, e que cada arrasto muda a foto; senão `RECUSA` |
+
+- **Mutações** (uma a uma, restauradas): sem o guarda da banda · sem a mediana · corte de 14 px de volta · mínimo 64 de
+  volta · pintura com `W` espelhado ⇒ **as 5 vermelhas**. O guarda da banda sobreviveu à 1.ª versão do teste (ponta 17 px
+  fora: o corte à banda já a matava) — o teste passou a pôr a ponta 3 px fora.
+- **Descartados ao conferir:** «a vista de VALOR não mostra o ritmo» (falso: `graph::sample_keys` aplica `W`,
+  `ph2d-timeline/src/graph.rs:41`) · «falta pt-BR» (o app é só inglês) · «o clique invade a linha vizinha» (`Spacing::Sm`
+  6 + inset 2 ≥ raio 7) · «NaN vai ao canto» (só com evento de rato inválido) · arrasto aberto ao rolar (anterior, não medido).
+- Provas: `graph_ritmo` 9 ✓ · `graph::tests` 23 ✓ · `resize` 7 ✓.
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é

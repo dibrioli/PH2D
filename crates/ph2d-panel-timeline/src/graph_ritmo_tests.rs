@@ -205,3 +205,156 @@ fn as_celulas_mudam_o_modo_e_o_reset_repoe() {
         "o resto não é comigo"
     );
 }
+
+// ── Auditoria 15/11 (lente da costura): a caixa PINTADA e o clique que ela regista ──────────────
+
+/// Pinta as caixas de `tr` numa banda e devolve o que ficou registado no índice de clique.
+fn pinta_caixas(tr: &TrackView, band: &Band, view: TimeView) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+    use ph2d_editor_core::screens::hero::HeroLayout;
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+    let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 800.0, 400.0));
+    let st = TimelinePanelState {
+        speed_view: true,
+        speed_retime: true,
+        ..TimelinePanelState::default()
+    };
+    host.paint_fn(&layout, |ctx| {
+        paint_caixas(ctx, Theme::Forge, &st, band, view, tr);
+    })
+}
+
+/// Quem apanha o clique em `(x, y)`: o ÚLTIMO registo que o contém (a regra do índice de clique).
+fn apanha(regs: &[(ph2d_a11y::NodeId, Rect)], x: f32, y: f32) -> Option<ph2d_a11y::NodeId> {
+    regs.iter()
+        .rev()
+        .find(|(_, r)| r.contains(x, y))
+        .map(|(id, _)| *id)
+}
+
+fn alca(which: u8) -> ph2d_a11y::NodeId {
+    ids::timeline_handle_hit_id(9, 1, which)
+}
+
+/// ⭐ O clique no centro da alça DESENHADA apanha essa alça. A posição esperada sai da conta à mão
+/// (100 px/s, caixa com a folga `Spacing::Sm`), não da `caixa`/`no_ecra` sob teste — a 1.ª volta
+/// tinha só testes que usavam a própria `caixa` como oráculo.
+#[test]
+fn o_clique_no_centro_da_alca_desenhada_apanha_essa_alca() {
+    let tr = track(bounce(), Some(W));
+    let band = Band::fit(Rect::new(0.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
+    let regs = pinta_caixas(&tr, &band, VIEW);
+    let sm = Spacing::Sm.px();
+    let ecra = |u: f32, w: f32| (u * 100.0, sm + (1.0 - w) * (100.0 - 2.0 * sm));
+    for (which, (u, w)) in [(0u8, (W.x1, W.y1)), (1, (W.x2, W.y2))] {
+        let (x, y) = ecra(u, w);
+        assert_eq!(
+            apanha(&regs, x, y),
+            Some(alca(which)),
+            "{which} em ({x}, {y})"
+        );
+    }
+    assert_eq!(regs.len(), 2, "duas alças, nada mais");
+}
+
+/// A alça cuja ponta sai da banda (zoom/rolagem com a chave fora) não deixa clique fantasma, e a
+/// área de clique da outra nunca passa da borda da banda.
+#[test]
+fn a_alca_fora_da_banda_nao_deixa_clique() {
+    let tr = track(bounce(), None);
+    let band = Band::fit(Rect::new(50.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
+    let view = TimeView {
+        time_x: 50.0,
+        view_start: 1.0 / 3.0 + 0.03, // a ponta de saída 3 px à esquerda da banda: o círculo
+        ..VIEW                        // ainda pinga para dentro, mas a alça não está lá
+    };
+    let regs = pinta_caixas(&tr, &band, view);
+    let ids: Vec<_> = regs.iter().map(|(id, _)| *id).collect();
+    assert_eq!(ids, vec![alca(1)], "a de u = 1/3 está à esquerda da banda");
+    assert_eq!(
+        apanha(&regs, 51.0, 50.0),
+        None,
+        "sem clique fantasma rente à borda"
+    );
+    for (_, r) in &regs {
+        assert!(
+            r.x >= band.rect.x && r.x + r.w <= band.rect.x + band.rect.w,
+            "{r:?}"
+        );
+        assert!(
+            r.y >= band.rect.y && r.y + r.h <= band.rect.y + band.rect.h,
+            "{r:?}"
+        );
+    }
+}
+
+/// Duas alças quase no mesmo ponto: o clique vai à mais perto do rato — de cada lado da mediana.
+#[test]
+fn com_duas_alcas_juntas_o_clique_vai_a_mais_perto() {
+    let junto = Retime {
+        x1: 0.5,
+        y1: 0.5,
+        x2: 0.56,
+        y2: 0.5,
+    };
+    let tr = track(bounce(), Some(junto));
+    let band = Band::fit(Rect::new(0.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
+    let regs = pinta_caixas(&tr, &band, VIEW);
+    let y = 50.0;
+    assert_eq!(apanha(&regs, 51.0, y), Some(alca(0)), "perto da de saída");
+    assert_eq!(apanha(&regs, 55.0, y), Some(alca(1)), "perto da de entrada");
+    assert_eq!(
+        apanha(&regs, 45.0, y),
+        Some(alca(0)),
+        "do lado de fora da de saída"
+    );
+}
+
+/// Um trecho de 8 px ainda mostra as duas alças (a 1.ª volta não pintava nada abaixo de 14 px).
+#[test]
+fn um_trecho_estreito_ainda_tem_as_duas_alcas() {
+    let tr = track(bounce(), None);
+    let band = Band::fit(Rect::new(0.0, 0.0, 400.0, 100.0), Some((0.0, 40.0)));
+    let view = TimeView {
+        px_per_s: 8.0,
+        ..VIEW
+    };
+    let regs = pinta_caixas(&tr, &band, view);
+    let mut ids: Vec<_> = regs.iter().map(|(id, _)| *id).collect();
+    ids.sort_by_key(|id| id.0);
+    let mut esperado = vec![alca(0), alca(1)];
+    esperado.sort_by_key(|id| id.0);
+    assert_eq!(ids, esperado);
+}
+
+/// A banda mais baixa que o artista consegue arrastar ainda pinta e regista a pílula Override ·
+/// Retime e o «Reset timing» (a 1.ª volta escondia-os abaixo de ~71 px, com mínimo de 64).
+#[test]
+fn na_banda_mais_baixa_a_pilula_e_o_reset_continuam_clicaveis() {
+    use ph2d_editor_core::screens::hero::HeroLayout;
+    let inset = crate::graph_paint::BAND_INSET;
+    let h = crate::graph::clamp_graph_h(0.0);
+    let row = Rect::new(0.0, 0.0, 600.0, h);
+    let band_rect = Rect::new(150.0, inset, 450.0, h - 2.0 * inset);
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+    let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 800.0, 400.0));
+    let st = TimelinePanelState {
+        speed_view: true,
+        speed_retime: true,
+        ..TimelinePanelState::default()
+    };
+    let regs = host.paint_fn(&layout, |ctx| {
+        paint_switch(ctx, Theme::Forge, &st, (row, band_rect), 150.0);
+    });
+    for id in [
+        ids::TIMELINE_SPEED_OVERRIDE,
+        ids::TIMELINE_SPEED_RETIME,
+        ids::TIMELINE_RESET_TIMING,
+    ] {
+        let r = regs.iter().find(|(i, _)| *i == id).map(|(_, r)| *r);
+        let r = r.unwrap_or_else(|| panic!("{id:?} não registado a {h} px"));
+        assert!(
+            r.y >= row.y && r.y + r.h <= row.y + row.h,
+            "{id:?} fora da linha: {r:?}"
+        );
+    }
+}

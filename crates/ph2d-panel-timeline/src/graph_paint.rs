@@ -42,7 +42,7 @@ const ROVE_ANCHOR_R: f32 = 1.8; // LITERAL-PX-OK: roving key anchor radius
 const ANCHOR_HIT_R: f32 = 7.0; // LITERAL-PX-OK: key anchor grab radius
 pub(crate) const HANDLE_R: f32 = 3.5; // LITERAL-PX-OK: bezier handle dot radius
 pub(crate) const HANDLE_HIT_R: f32 = 7.0; // LITERAL-PX-OK: bezier handle grab radius
-const BAND_INSET: f32 = 2.0; // LITERAL-PX-OK: gap between the strip and its graph band
+pub(crate) const BAND_INSET: f32 = 2.0; // LITERAL-PX-OK: gap between the strip and its graph band
 /// Height of the grab strip along the band bottom (the vertical resize grip).
 const GRIP_H: f32 = 6.0; // LITERAL-PX-OK: graph-height grip strip height
 /// Length of the visible grabber drawn in the middle of that strip.

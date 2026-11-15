@@ -32,7 +32,13 @@ const GRAPH_H_MAX: f32 = 640.0; // LITERAL-PX-OK: max graph band height
 
 /// Hold a dragged graph height inside its bounds.
 pub(crate) fn clamp_graph_h(h: f32) -> f32 {
-    h.clamp(GRAPH_H_MIN, GRAPH_H_MAX) // CLAMP-OK: const bounds, min<max, non-NaN
+    h.clamp(graph_h_min(), GRAPH_H_MAX) // CLAMP-OK: min ≤ 640 (tokens), non-NaN
+}
+
+/// The shortest graph: a readable curve, and never shorter than the speed view's mode switch
+/// needs (auditoria 15/11: a short band hid «Override · Retime» with no other way to switch).
+pub(crate) fn graph_h_min() -> f32 {
+    GRAPH_H_MIN.max(crate::graph_ritmo::altura_do_seletor() + 2.0 * crate::graph_paint::BAND_INSET)
 }
 /// Breathing room above and below the fitted range, as a fraction of it.
 const V_PAD_FRAC: f64 = 0.1; // LITERAL-PX-OK: vertical fit margin, fraction of the drawn range

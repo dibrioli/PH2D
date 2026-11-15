@@ -107,6 +107,10 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
 
 ## Aberto
 
+- ⭐ **Dono 15/11: «Override OK. Retime precisa ser pesquisado em quem faz isso corretamente.»** A próxima janela
+  começa por [19 — pesquisa do Retime](../19_pesquisa_retime.md). O Retime atual fica no código (funciona, provas
+  verdes), mas o dono NÃO o aprovou como gesto.
+
 - Smoke do dono depois da cura da auditoria (o arrasto além do tecto).
 - Na vista de VALOR as alças continuam as do easing (sobre um trecho retimado não ficam em cima da curva desenhada).
 - O «Reset timing» mora ao lado da pílula, não no menu da chave (o plano dizia «menu da chave/linha»); se o dono o quiser

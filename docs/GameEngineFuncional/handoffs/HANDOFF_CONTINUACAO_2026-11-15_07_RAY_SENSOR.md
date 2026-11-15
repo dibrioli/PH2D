@@ -214,6 +214,19 @@ curado no catálogo (o canal da Timeline não usa a vista). Gates: `a_forma_esco
 tem gancho de foto (`26_shape_aberto` não feita). 2.ª build: ``Finished `smoke` profile [optimized] target(s) in 0.25s``.
 ⚠️ `ph2d-panel-registry-init/tests/it/o_inspector_armado.rs` monta um `InspectorRayInfo` literal sem os campos RS (já antes desta onda).
 
+**Arrumação do cartão (dono 15/11).** Commits `a2de76c4a8` (código + auditoria) · `e45d3baf0e` (fotos). Pedido: *«Layers e Sees
+deveriam ficar numa seção própria mais próximos»*. Ordem por pergunta (molde `RayCast2D` do Godot), nos dois modos: queixa ·
+leitura · relógio · Enabled | Angle · Turns with facing · Aim at · **Reach | Shape** (lado a lado em cartões; a Layer saiu
+dali) · Thickness/Cone · grupo novo **«Layers»** (`INSP_RAY_FOLD_LAYERS` em `ph2d_editor_core::ids`, aberto por omissão,
+resumo fechado «Default · sees Default, Ground»; `sections/ray_camadas.rs`): Layer, logo por baixo Sees + frase, depois
+Rename layers… | Open in tab… (renomeando: campos + Done) · Filter · Signals. Só o lugar: ids, eventos e canais iguais.
+Auditoria linha a linha: [`07_auditoria_arrumacao_2026-11-15.md`](../componentes/07_auditoria_arrumacao_2026-11-15.md) — o
+losango que o dono apontou entre «Reach» e «Layer» é o do canal do Reach, no canto do PRÓPRIO campo (padrão da casa);
+lia-se como do vizinho por a Layer estar colada; agora o vizinho é Shape. Gate `seam_ray_arrumacao::o_cartao_ray_esta_arrumado_por_pergunta`
+(cliques reais, dois modos: ordem, Layer e Sees vizinhos, cabeçalho dobra/desdobra). **Mutação** «botões antes do Sees»
+sangrou. Fotos `fotos_07/26_arrumado.png`, `26_arrumado_cards_off.png`, `26_arrumado_cone.png`. 2.ª build:
+``Finished `smoke` profile [optimized] target(s) in 0.25s``.
+
 ## Aberto
 
 - **Smoke do dono das melhorias** (RS-1..RS-12) — pendente.

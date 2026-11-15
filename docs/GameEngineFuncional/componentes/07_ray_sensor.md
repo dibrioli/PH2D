@@ -61,6 +61,7 @@ Mecanismo, números e gates: [handoff, sexta onda](../handoffs/HANDOFF_CONTINUAC
   Also ignore (lista de objetos por conta-gotas, chips com ×).
 - **Shape (dono 15/11):** lista Line · Thick · Cone; por baixo só o número da forma (Thickness ou Cone); o leque olha por linhas finas.
   Fotos: [Line](fotos_07/26_shape_cartao.png) · [Cone](fotos_07/26_shape_cone.png).
+- **Arrumação (dono 15/11):** Reach | Shape lado a lado; grupo «Layers» com Layer, Sees e os botões juntos — [auditoria](07_auditoria_arrumacao_2026-11-15.md) · [foto](fotos_07/26_arrumado.png).
 - **O acerto diz a forma tocada** (Collision Shape filha): as tags dela são o material, mais fricção/restituição — «Sees Ground (Ice), at …».
 - **Script:** `ph2d.ray(id)` (lê o sensor, `seeing`) e `ph2d.raycast(from, to, filter)` (o tiro vê o mesmo que o raio com o mesmo filtro).
 - **Canvas:** o feixe é desenhado como fatia (leque), cápsula (grosso) e círculo no acerto; o conta-gotas de Aim at / Also ignore clica no canvas.

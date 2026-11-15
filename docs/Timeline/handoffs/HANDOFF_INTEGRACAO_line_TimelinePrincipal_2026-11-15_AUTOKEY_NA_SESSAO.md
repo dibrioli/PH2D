@@ -67,12 +67,28 @@
   tem faixa nem trajetória). `cargo check --workspace --all-targets` ✓ · timeline snapshot 20 · panel-timeline
   menu_marcas 4 · clippy `-D warnings --all-targets` (timeline, panel-timeline) ✓ · fmt ✓.
 
+## Acréscimo — «Show speed in the curves»: a escala na unidade da linha (dono 15/11)
+
+- **Pedido** (verbatim): «Aparentemente show curve velocity não está mostrando a curva de velocidade. No caso de
+  position x, mudou o gráfico da posição. Confira se isso está correto».
+- **Medido no app** (Xvfb; ▶ da linha Position X, engrenagem → «Show speed in the curves»): a vista de velocidade
+  FUNCIONA e é por desenho que SUBSTITUI o gráfico do valor (o *Speed Graph* do AE, `graph_paint::paint_track`). Na
+  cena do smoke as chaves são Linear ⇒ a velocidade é um DEGRAU (constante até 1 s, negativa na volta), não uma curva —
+  o que o dono leu como «mudou o gráfico da posição».
+- **Defeito real achado:** a escala da banda na vista de velocidade saía em unidades de MUNDO sem sufixo («2.40») ao lado
+  de uma linha em px; `paint_frame` só convertia com `speed_view` desligado. Cura: `paint_frame` recebe
+  `(PropKind, velocidade)` e formata pela mesma `tracks_value::com_unidade` (a derivada de um comprimento converte igual)
+  + i18n `panel.timeline.graph.per_second` = «{value}/s» ⇒ «240 px/s». [Foto](../fotos/39_velocidade_em_px_por_s.png).
+- Provas: i18n tests 10 · panel-timeline graph 27, every_key 3 · app (foto). Sem teste de pintura novo (o rótulo é
+  texto pintado; a foto é a prova).
+
 ## Superfície de colisão
 
 - `crates/ph2d-preview-drive/src/{lib.rs,consultas.rs}` (aditivo: um campo privado e um método público).
 - `crates/ph2d-timeline-preview/src/held_tests.rs` (um teste).
 - `shells/desktop/src/render_loop/autokey_amostra.rs` (uma linha + uma de doc).
 - `crates/ph2d-panel-timeline/src/menu_marcas{,_tests}.rs` · `crates/ph2d-timeline/src/snapshot.rs` (campo novo `auto_orient_on`, aditivo).
+- `crates/ph2d-panel-timeline/src/graph_paint.rs` (assinatura privada de `paint_frame`) · `crates/ph2d-i18n/src/timeline.rs` (uma chave).
 
 ## Aberto
 

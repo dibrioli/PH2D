@@ -83,6 +83,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.physics" => "Run physics during Play",
         "panel.timeline.card.motion_path" => "A position key is a point on the path",
         "panel.timeline.card.speed" => "Show speed in the curves",
+        "panel.timeline.graph.per_second" => "{value}/s",
         "panel.timeline.card.clips_as_list" => "Show clips as a list",
         "panel.timeline.card.onion" => "Ghosts",
         "panel.timeline.card.onion_keys" => "Only at keys",

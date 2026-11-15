@@ -95,7 +95,7 @@ pub(crate) fn paint_track(
         label_w,
         &band,
         track.prop.nomeia(),
-        (!state.speed_view).then_some(track.prop),
+        (track.prop, state.speed_view),
     );
     if track.keys.is_empty() {
         return;
@@ -199,7 +199,7 @@ fn paint_frame(
     label_w: f32,
     band: &Band,
     texto: bool,
-    grandeza: Option<ph2d_timeline::PropKind>,
+    (grandeza, velocidade): (ph2d_timeline::PropKind, bool),
 ) {
     // ⭐ Raio e moldura pela porta do TEMA: a banda é plana num tema moderno.
     let band_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
@@ -225,12 +225,17 @@ fn paint_frame(
     let x = row.x + Spacing::Xs.px();
     let color = resolve(ColorToken::Text3, theme);
     let u = crate::tracks_value::Unidades::of(ctx.host.project());
+    // A velocidade (dono 15/11) na MESMA unidade da linha, por segundo: `240 px/s`, nunca o `2.40`
+    // de mundo — a derivada de um comprimento é comprimento por segundo, a conversão é a mesma.
     let texto_de = |v: f64| {
-        grandeza
-            .and_then(|p| crate::tracks_value::com_unidade(p, v, u))
-            .unwrap_or_else(|| {
-                ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
-            })
+        let n = crate::tracks_value::com_unidade(grandeza, v, u).unwrap_or_else(|| {
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
+        });
+        if velocidade {
+            ph2d_i18n::tr_with("panel.timeline.graph.per_second", &[("value", &n)])
+        } else {
+            n
+        }
     };
     let rotulos = [
         (texto_de(band.v_max), band_rect.y),

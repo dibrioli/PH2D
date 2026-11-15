@@ -39,6 +39,7 @@ fn assinatura(info: &InspectorRayInfo) -> u64 {
         v.to_bits().hash(&mut h);
     }
     info.enabled.hash(&mut h);
+    info.shape.hash(&mut h);
     info.aim_at.hash(&mut h);
     info.also_ignore.hash(&mut h);
     info.layer.hash(&mut h);

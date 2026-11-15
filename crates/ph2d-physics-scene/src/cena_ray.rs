@@ -12,10 +12,10 @@
 //! block» apaga-a (a caixa tapa o inimigo).
 //!
 //! **As melhorias (RS, dono 15/11):** um «Guard» no alto, à direita, com o «Guard Eye» — um raio em LEQUE
-//! (Cone 50°) a olhar para baixo e para a esquerda, só para a tag «Player» do herói: a «Alarm Light» acende
+//! (Shape Cone, 50°) a olhar para baixo e para a esquerda, só para a tag «Player» do herói: a «Alarm Light» acende
 //! quando o herói entra no leque (perto da beirada) e apaga quando sai. E uma «Turret» no ar, acima do chão, com
-//! um script que dá um TIRO instantâneo a cada quadro (`ph2d.raycast`, reto para baixo, 0,5 m de largura, só para
-//! o «Player»): a «Shot Light» acende enquanto o herói está por baixo dela.
+//! um script que dá um TIRO instantâneo a cada quadro (`ph2d.raycast`, reto para baixo, `shape = "thick"` de 0,5 m, só
+//! para o «Player»): a «Shot Light» acende enquanto o herói está por baixo dela.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -24,7 +24,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::{NodeId, ids};
-use ph2d_physics_ecs::{Collider, ColliderShape, RaySensor, RaySignals, SeeFilter};
+use ph2d_physics_ecs::{Collider, ColliderShape, RaySensor, RayShape, RaySignals, SeeFilter};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 pub const CENA: u32 = 26;
@@ -58,7 +58,7 @@ local seen = false
 function update(self, dt)
   local x = ph2d.get(self.id, "x") or 0
   local y = ph2d.get(self.id, "y") or 0
-  local hit = ph2d.raycast(ph2d.vec2(x, y), ph2d.vec2(x, y - 3), { only_see = "only_tag", tag = "Player", thickness = 0.5 })[1]
+  local hit = ph2d.raycast(ph2d.vec2(x, y), ph2d.vec2(x, y - 3), { only_see = "only_tag", tag = "Player", shape = "thick", thickness = 0.5 })[1]
   local now = hit ~= nil
   if now ~= seen then
     seen = now
@@ -281,6 +281,7 @@ fn guarda(sim: &mut SimWorld, p: &Pecas<'_>, jogador: u64) -> Entity {
     let w = sim.world_mut();
     if let Some(mut s) = w.get_mut::<RaySensor>(r) {
         s.angle = angle;
+        s.shape = RayShape::Cone;
         s.cone = cone;
         s.reach = reach;
         s.only_see = SeeFilter::OnlyTag;

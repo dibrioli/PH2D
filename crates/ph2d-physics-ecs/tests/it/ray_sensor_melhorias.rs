@@ -9,7 +9,7 @@ use crate::ray_sensor_versao_c::{caixa, com_tag, parede, raio};
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, StableId, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, PhysicsBridge, RaySensor, RigidBody, SeeFilter,
+    BodyKind, Collider, ColliderShape, PhysicsBridge, RaySensor, RayShape, RigidBody, SeeFilter,
 };
 use ph2d_tags::TagTree;
 
@@ -126,6 +126,7 @@ fn desligar_a_ver_emite_on_exit_e_cala() {
 #[test]
 fn o_circulo_ve_todos_os_acertos_por_distancia() {
     let mut c = cena(RaySensor {
+        shape: RayShape::Thick,
         thickness: 0.6,
         all_hits: true,
         ..RaySensor::default()
@@ -143,6 +144,54 @@ fn o_circulo_ve_todos_os_acertos_por_distancia() {
         (m.feixe.largura - 0.6).abs() < 1.0e-6,
         "o desenho sabe a largura"
     );
+}
+
+/// ⭐⭐⭐ **A «Shape» escolhe qual número conta** (dono 15/11: *«thickness e cone são conflitantes»*). Na cena do
+/// oráculo, com `thickness = 0,6` E `cone = 90` nos três: Line vê só o Floor (a linha passa ao lado do Side) e o
+/// desenho é a linha; Thick vê o Side primeiro, um acerto só (o cone não conta), desenho de 0,6 m sem leque; Cone vê
+/// o Side e o Floor por linhas de vista FINAS — o Side à distância do ponto mais perto dele (0,49 m; um círculo de
+/// 0,3 m tocava-o a ~0,2 m) — e o desenho é o leque sem largura.
+///
+/// **Mutações que sangram:** o `lanca` usar `thickness` sem olhar a forma (Line vê o Side) · o leque com o
+/// círculo da `thickness` (o Side mais perto) · o `com_feixe` ignorar a forma (o desenho com os dois números).
+#[test]
+fn a_forma_escolhe_qual_numero_conta() {
+    for forma in [RayShape::Line, RayShape::Thick, RayShape::Cone] {
+        let mut c = cena(RaySensor {
+            shape: forma,
+            thickness: 0.6,
+            cone: 90.0,
+            ..RaySensor::default()
+        });
+        let mut b = PhysicsBridge::new();
+        b.dispatch(&mut c.sim, true, 1);
+        let hits = b.ray_sensor_hits_all(c.raio).to_vec();
+        let corpos: Vec<Entity> = hits.iter().map(|h| h.body).collect();
+        let m = &b.ray_marks()[0];
+        let (quer, largura, leque) = match forma {
+            RayShape::Line => (vec![c.floor], 0.0, false),
+            RayShape::Thick => (vec![c.side], 0.6, false),
+            RayShape::Cone => (vec![c.side, c.floor], 0.0, true),
+        };
+        assert_eq!(corpos, quer, "{forma:?}");
+        assert!(
+            (m.feixe.largura - largura).abs() < 1.0e-6,
+            "{forma:?}: o desenho com a largura {}",
+            m.feixe.largura
+        );
+        assert_eq!(
+            m.feixe.meio_cone > 0.0,
+            leque,
+            "{forma:?}: o leque desenhado"
+        );
+        if forma == RayShape::Cone {
+            assert!(
+                hits[0].distance > 0.45,
+                "o leque olha por linhas finas, não pelo círculo: {}",
+                hits[0].distance
+            );
+        }
+    }
 }
 
 /// Um alvo com tag no plano, para o leque.
@@ -201,6 +250,7 @@ fn o_leque_ve_quem_esta_dentro_e_nao_tapado() {
             RaySensor {
                 angle: 0.0,
                 reach: 6.0,
+                shape: RayShape::Cone,
                 cone: 60.0,
                 only_see: SeeFilter::OnlyTag,
                 see_tag: inimigo.0,
@@ -485,6 +535,7 @@ fn o_tiro_ve_o_mesmo_que_o_raio_com_o_mesmo_filtro() {
             ..RaySensor::default()
         },
         RaySensor {
+            shape: RayShape::Thick,
             thickness: 0.8,
             all_hits: true,
             ..RaySensor::default()

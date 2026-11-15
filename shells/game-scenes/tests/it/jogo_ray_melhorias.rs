@@ -143,3 +143,55 @@ fn na_cena_26_a_torreta_atira_por_script() {
         f.failed
     );
 }
+
+/// ⭐⭐ **O filtro do script escolhe a forma pelo nome** (dono 15/11): do olho do guarda, a 12° do herói perto da beirada,
+/// `ph2d.raycast(.., { shape = "cone", cone = 50° })` vê o herói; o mesmo `cone` SEM `shape` é a linha e não o vê (o
+/// número da forma inactiva não conta); `shape = "line"` também não. (Mutação: o `lanca` ler o `cone` sem olhar a forma
+/// ⇒ o sem-`shape` vê ⇒ RED.)
+#[test]
+fn o_filtro_do_script_escolhe_a_forma_pelo_nome() {
+    use ph2d_script::SceneDoors;
+    let (mut sim, tree, heroi) = com_o_heroi_em(0.8);
+    let reg = crate::comp::registo();
+    let (mut vec, mut mapa) = ph2d_app_components::instance_docs::empty_docs();
+    let mut b = PhysicsBridge::new();
+    b.set_tag_tree(&tree);
+    b.dispatch(&mut sim, true, 1);
+    let (angulo, cone, alcance) = ray::LEQUE_DO_GUARDA;
+    // 12° ao lado do herói (que está no eixo do olho): dentro do leque de 50°, fora da linha.
+    let r = (angulo - 12.0).to_radians();
+    let de = [f64::from(ray::GUARDA_EM[0]), f64::from(ray::GUARDA_EM[1])];
+    let ate = [
+        de[0] + f64::from(alcance * r.cos()),
+        de[1] + f64::from(alcance * r.sin()),
+    ];
+    let mut portas = ScriptDoors {
+        registry: &reg,
+        tags: &tree,
+        docs: ph2d_app_components::instance_docs::OwnedDocs {
+            vec_scene: &mut vec,
+            vec_entities: &mut mapa,
+        },
+        tick: 1,
+        images: ph2d_app_components::script_image::ImageLibrary::none(),
+        physics: Some(&b),
+    };
+    for (forma, ve) in [(Some("cone"), true), (None, false), (Some("line"), false)] {
+        let mut filtro = serde_json::Map::new();
+        filtro.insert("only_see".into(), "only_tag".into());
+        filtro.insert("tag".into(), ray::TAG_HEROI.into());
+        filtro.insert("cone".into(), f64::from(cone.to_radians()).into());
+        if let Some(f) = forma {
+            filtro.insert("shape".into(), f.into());
+        }
+        let hits = portas
+            .raycast(&mut sim, None, (de, ate), &filtro)
+            .unwrap_or_else(|e| panic!("{forma:?}: {e}"));
+        assert_eq!(
+            hits.iter().any(|h| h.object == heroi),
+            ve,
+            "shape {forma:?}: {} acertos",
+            hits.len()
+        );
+    }
+}

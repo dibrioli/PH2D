@@ -207,6 +207,7 @@ fn corpo(
             tr("component.field.ray_sensor.15"),
             tr("component.field.ray_sensor.16"),
             tr("component.field.ray_sensor.17"),
+            tr("component.field.ray_sensor.18"),
             tr("component.field.ray_signals.0"),
             tr("component.field.ray_signals.1"),
         ],

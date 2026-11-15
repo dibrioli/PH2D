@@ -85,11 +85,11 @@ end"#,
             ),
             (
                 "filter",
-                "The Ray Sensor's options, by the names its card has: `{ only_see = \"only_tag\", tag = \"Enemy\" }`. Leave it out to see everything but yourself.",
+                "The Ray Sensor's options, by the names its card has: `{ only_see = \"only_tag\", tag = \"Enemy\" }`. A thick shot is `shape = \"thick\", thickness = 0.5`; a cone is `shape = \"cone\", cone = math.rad(50)`. Leave it out to see everything but yourself.",
             ),
         ],
         returns: "The hits, nearest first; the first one is `[1]`, and an empty list means nothing was hit.",
-        more: "It is the same ray as the Ray Sensor object, answered on the spot: an instant shot (hitscan). It ignores your own body unless `ignore_my_body = false`. Without `see_all_hits` or a `cone` it gives at most one hit. Angles (`cone`) are in radians, like every angle in scripts.",
+        more: "It is the same ray as the Ray Sensor object, answered on the spot: an instant shot (hitscan). It ignores your own body unless `ignore_my_body = false`. `shape` is `\"line\"` (the default), `\"thick\"` or `\"cone\"`; only that shape's number counts. Without `see_all_hits` or `shape = \"cone\"` it gives at most one hit. Angles (`cone`) are in radians, like every angle in scripts.",
         example: r#"function on_signal(self, signal)
   if signal == "fire" then
     local from = ph2d.vec2(ph2d.get(self.id, "x"), ph2d.get(self.id, "y"))

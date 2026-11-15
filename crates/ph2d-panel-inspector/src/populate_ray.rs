@@ -104,6 +104,19 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
         (ids::INSP_RAY_ENABLED, "panel.inspector.ray.enabled_tip"),
         (ids::INSP_RAY_THICKNESS, "panel.inspector.ray.thickness_tip"),
         (ids::INSP_RAY_CONE, "panel.inspector.ray.cone_tip"),
+        (ids::INSP_RAY_SHAPE, "panel.inspector.ray.shape_tip"),
+        (
+            ids::INSP_RAY_SHAPE_OPTS[0],
+            "panel.inspector.ray.shape_line_tip",
+        ),
+        (
+            ids::INSP_RAY_SHAPE_OPTS[1],
+            "panel.inspector.ray.shape_thick_tip",
+        ),
+        (
+            ids::INSP_RAY_SHAPE_OPTS[2],
+            "panel.inspector.ray.shape_cone_tip",
+        ),
         (ids::INSP_RAY_AIM, "panel.inspector.ray.aim_tip"),
         (ids::INSP_RAY_AIM_PICK, "panel.inspector.ray.aim_pick_tip"),
         (
@@ -159,6 +172,16 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
         },
     );
     crate::populate::register_button_ids(store, &ids::INSP_RAY_LAYER_OPTS);
+    // «Shape» (dono 15/11): a lista e as três opções.
+    store.register(
+        ids::INSP_RAY_SHAPE,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
+    crate::populate::register_button_ids(store, &ids::INSP_RAY_SHAPE_OPTS);
     crate::populate::register_button_ids(store, &ids::INSP_RAY_SEES);
     crate::populate::register_button_ids(
         store,

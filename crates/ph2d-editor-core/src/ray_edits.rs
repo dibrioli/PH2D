@@ -56,6 +56,8 @@ pub struct InspectorRayInfo {
     pub thickness: f32,
     /// «Cone» (RS-2), graus; `0` = a linha.
     pub cone: f32,
+    /// «Shape» (dono 15/11): qual dos dois números conta — o cartão só pinta o da forma activa.
+    pub shape: RayShapeKind,
     /// «Aim at» (RS-3): o NOME do alvo (`""` = o `angle` decide).
     pub aim_at: String,
     /// O alvo guardado já não existe (a caixa mostra o erro).
@@ -152,6 +154,23 @@ pub enum RaySee {
     ExceptTag,
 }
 
+/// A «Shape» do raio (o espelho do `RayShape` da física, sem a dependência): Line · Thick · Cone.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub enum RayShapeKind {
+    /// «Line».
+    #[default]
+    Line,
+    /// «Thick»: o círculo de `thickness`.
+    Thick,
+    /// «Cone»: o leque de `cone`.
+    Cone,
+}
+
+impl RayShapeKind {
+    /// As três, na ordem do dropdown (e dos ids das opções).
+    pub const ALL: [Self; 3] = [Self::Line, Self::Thick, Self::Cone];
+}
+
 /// Uma edição de um campo da secção RAY SENSOR.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RayFieldEdit {
@@ -179,6 +198,8 @@ pub enum RayFieldEdit {
     Thickness(f32),
     /// «Cone» em graus (RS-2).
     Cone(f32),
+    /// «Shape» (dono 15/11): Line · Thick · Cone.
+    Shape(RayShapeKind),
     /// «Aim at»: o NOME do alvo (`""` = nenhum) (RS-3).
     AimAt(String),
     /// Arma ou desarma o conta-gotas do «Aim at» — sessão, sem desfazer.
@@ -222,6 +243,7 @@ mod tests {
             enabled: true,
             thickness: 0.0,
             cone: 0.0,
+            shape: RayShapeKind::Line,
             aim_at: String::new(),
             aim_at_gone: false,
             aim_at_unknown: false,
@@ -262,6 +284,7 @@ mod tests {
             RayFieldEdit::Enabled(true),
             RayFieldEdit::Thickness(0.0),
             RayFieldEdit::Cone(0.0),
+            RayFieldEdit::Shape(RayShapeKind::Line),
             RayFieldEdit::AimAt(String::new()),
             RayFieldEdit::PickAimAt(false),
             RayFieldEdit::IgnoreAdd(String::new()),
@@ -272,8 +295,8 @@ mod tests {
         ];
         assert_eq!(
             variantes.len(),
-            24,
-            "o `RaySensor` tem DEZOITO campos (a lista com dois gestos) e o `RaySignals` DOIS, mais \
+            25,
+            "o `RaySensor` tem DEZANOVE campos (a lista com dois gestos) e o `RaySignals` DOIS, mais \
              os três conta-gotas — se um nasceu, ele precisa de uma variante aqui e de uma row no painel"
         );
     }

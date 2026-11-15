@@ -1,9 +1,10 @@
 //! **Para onde o Ray Sensor aponta e a forma do feixe** (GEF 07 RS): o «Angle», o «Turns with facing», o «Aim at»
-//! (RS-3), o «Reach» | «Layer» e o «Thickness» | «Cone» (RS-1, RS-2) — irmão de [`super::ray`] pelo tecto de 600
+//! (RS-3), o «Reach» | «Layer» e a «Shape» (Line · Thick · Cone, dono 15/11) com o número da forma activa — irmão de [`super::ray`] pelo tecto de 600
 //! linhas dos painéis.
 
 use super::*;
-use ph2d_editor_core::ray_edits::InspectorRayInfo;
+use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayShapeKind};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_i18n::tr;
 
 /// Para onde ele aponta: o «Angle» e o «Turns with facing» — que só decidem sem alvo — e o «Aim at» (RS-3).
@@ -117,7 +118,7 @@ fn angulo(
     cur_y
 }
 
-/// «Reach» | «Layer», e «Thickness» | «Cone» (RS-1, RS-2) — dois a dois em cartões.
+/// «Reach» | «Layer» (dois a dois em cartões), a «Shape» e, por baixo, SÓ o número da forma activa.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn alcance_e_feixe(
     scene: &mut VectorScene,
@@ -181,40 +182,121 @@ pub(super) fn alcance_e_feixe(
         seccao,
     );
     let cur_y = depois_do_alcance.max(depois_da_camada);
-    let depois_da_espessura = super::rows::fields_row(
+    let cur_y = linha_da_forma(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        xa,
-        wa,
-        cur_y,
-        TextKey::new("component.field.ray_sensor.14"),
-        &[crate::ids::INSP_RAY_THICKNESS],
-        0.05, // LITERAL-PX-OK: passo de arrasto em METROS
-        Some(ph2d_editor_core::widget::Unit::Meters),
+        (x, w, cur_y),
+        i.shape,
         seccao,
     );
-    let topo_do_cone = if crate::cards::active() {
-        cur_y
-    } else {
-        depois_da_espessura
+    // Só o número da forma activa: um campo que não decide nada seria um controlo morto.
+    let (rotulo, id, passo, unidade) = match i.shape {
+        RayShapeKind::Line => return cur_y,
+        RayShapeKind::Thick => (
+            "component.field.ray_sensor.14",
+            crate::ids::INSP_RAY_THICKNESS,
+            0.05, // LITERAL-PX-OK: passo de arrasto em METROS
+            ph2d_editor_core::widget::Unit::Meters,
+        ),
+        RayShapeKind::Cone => (
+            "component.field.ray_sensor.15",
+            crate::ids::INSP_RAY_CONE,
+            1.0, // LITERAL-PX-OK: passo de arrasto em GRAUS
+            ph2d_editor_core::widget::Unit::Degrees,
+        ),
     };
-    let depois_do_cone = super::rows::fields_row(
+    super::rows::fields_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        xb,
-        wb,
-        topo_do_cone,
-        TextKey::new("component.field.ray_sensor.15"),
-        &[crate::ids::INSP_RAY_CONE],
-        1.0, // LITERAL-PX-OK: passo de arrasto em GRAUS
-        Some(ph2d_editor_core::widget::Unit::Degrees),
+        x,
+        w,
+        cur_y,
+        TextKey::new(rotulo),
+        &[id],
+        passo,
+        Some(unidade),
+        seccao,
+    )
+}
+
+/// As opções da «Shape», na ordem do [`RayShapeKind::ALL`] (e dos ids).
+pub(crate) fn opcoes_da_forma() -> Vec<DropdownOption<u8>> {
+    const ROTULOS: [&str; 3] = [
+        "panel.inspector.ray.shape_line",
+        "panel.inspector.ray.shape_thick",
+        "panel.inspector.ray.shape_cone",
+    ];
+    crate::ids::INSP_RAY_SHAPE_OPTS
+        .iter()
+        .zip(ROTULOS)
+        .zip(0_u8..)
+        .map(|((&id, k), n)| DropdownOption::new(id, n, tr(k)))
+        .collect()
+}
+
+/// O índice de `forma` na lista.
+pub(crate) fn indice_da_forma(forma: RayShapeKind) -> u8 {
+    RayShapeKind::ALL
+        .iter()
+        .position(|&f| f == forma)
+        .and_then(|n| u8::try_from(n).ok())
+        .unwrap_or_default()
+}
+
+/// ⭐ **A linha «Shape»** (dono 15/11: *«thickness e cone são conflitantes»*): a lista suspensa Line · Thick · Cone,
+/// com o popover diferido (o mesmo passe da lista da camada, nos dois modos) e o losango do canal.
+#[allow(clippy::too_many_arguments)]
+fn linha_da_forma(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    (x, w, y): (f32, f32, f32),
+    forma: RayShapeKind,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let id = crate::ids::INSP_RAY_SHAPE;
+    let rotulo = TextKey::new("component.field.ray_sensor.18");
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ph2d_tokens::ROW_H_PX,
+        tr("component.field.ray_sensor.18"),
         seccao,
     );
-    depois_da_espessura.max(depois_do_cone)
+    hit_index.register(id, linha.control);
+    let aberto = matches!(
+        store.get(id),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let sel = indice_da_forma(forma);
+    let mut dd = Dropdown::new(id, "", opcoes_da_forma())
+        .open(aberto)
+        .visual(store.dropdown_visual(id));
+    dd.select(sel);
+    paint_dropdown_chip(&dd, linha.control, scene, text_system, theme);
+    if aberto {
+        crate::state_popovers::set_pending_ray_shape_dd(Some((sel, linha.control)));
+    }
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        linha.dot,
+        &[id],
+        rotulo.into(),
+    ) {
+        hit_index.register(alvo, linha.dot);
+    }
+    linha.fim(ph2d_tokens::row_pitch_px())
 }

@@ -29,6 +29,22 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             push(host, bits, RayFieldEdit::Layer(n as u32));
             return true;
         }
+        // «Shape» (dono 15/11): fecha a lista e NÃO escreve o `selected_index` — a escolha é do snapshot.
+        if let Some(n) = crate::ids::INSP_RAY_SHAPE_OPTS
+            .iter()
+            .position(|&o| o == id)
+        {
+            if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                open, ..
+            }) = host.store_mut().get_mut(crate::ids::INSP_RAY_SHAPE)
+            {
+                *open = false;
+            }
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            let forma = ph2d_editor_core::ray_edits::RayShapeKind::ALL[n];
+            push(host, bits, RayFieldEdit::Shape(forma));
+            return true;
+        }
         let quem = &crate::sections::physics_colide::DO_RAIO;
         #[allow(clippy::cast_possible_truncation)]
         let a = info.layer.min(u32::from(u8::MAX)) as u8;

@@ -22,8 +22,8 @@
 //! só.*
 
 use ph2d_ecs::{Entity, Name, SimWorld, World};
-use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayFieldEdit, RaySee};
-use ph2d_physics_ecs::{RaySensor, RaySignals, SeeFilter};
+use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayFieldEdit, RaySee, RayShapeKind};
+use ph2d_physics_ecs::{RaySensor, RayShape, RaySignals, SeeFilter};
 
 /// **O instantâneo.** `None` para quem não tem o componente (ADR-0166).
 ///
@@ -59,7 +59,7 @@ pub fn build_ray_info(
         .first()
         .map(|&(_, _, forma)| crate::gotas::tags_da_forma(world, tree, forma))
         .unwrap_or_default();
-    let sees_all = if r.all_hits || r.cone > 0.0 {
+    let sees_all = if r.all_hits || r.cone_activo() > 0.0 {
         vistos.iter().map(|&(alvo, d, _)| (nome(alvo), d)).collect()
     } else {
         Vec::new()
@@ -94,6 +94,11 @@ pub fn build_ray_info(
         enabled: r.enabled,
         thickness: r.thickness,
         cone: r.cone,
+        shape: match r.shape {
+            RayShape::Line => RayShapeKind::Line,
+            RayShape::Thick => RayShapeKind::Thick,
+            RayShape::Cone => RayShapeKind::Cone,
+        },
         aim_at: aim.0,
         aim_at_gone: aim.1,
         aim_at_unknown: aim.2,
@@ -214,6 +219,13 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
         RayFieldEdit::Enabled(v) => r.enabled = *v,
         RayFieldEdit::Thickness(v) => r.thickness = *v,
         RayFieldEdit::Cone(v) => r.cone = *v,
+        RayFieldEdit::Shape(v) => {
+            r.shape = match v {
+                RayShapeKind::Line => RayShape::Line,
+                RayShapeKind::Thick => RayShape::Thick,
+                RayShapeKind::Cone => RayShape::Cone,
+            }
+        }
         RayFieldEdit::AimAt(_) => r.aim_at = topo.unwrap_or(0),
         RayFieldEdit::IgnoreAdd(_) => {
             let id = topo.unwrap_or(0);

@@ -88,6 +88,23 @@ pub struct RaySensor {
     /// «Also ignore» (RS-12): os `StableId` dos objectos que ele não vê (com a família de cada um),
     /// escolhidos pelo conta-gotas — o «Actors to Ignore» do Unreal.
     pub also_ignore: Vec<u64>,
+    /// «Shape» (dono 15/11): QUAL forma o raio lança — só o número da forma activa conta
+    /// ([`RaySensor::largura_activa`], [`RaySensor::cone_activo`]); os outros guardam o valor.
+    pub shape: RayShape,
+}
+
+/// **A forma do raio** («Shape», dono 15/11: *«thickness e cone são conflitantes»*): um dropdown de três.
+///
+/// Variantes SEM dados (como [`SeeFilter`]): o catálogo e o script leem-nas pelo nome serde.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RayShape {
+    /// A linha fina: nem `thickness` nem `cone` contam.
+    #[default]
+    Line,
+    /// Um CÍRCULO de diâmetro `thickness` varrido ao longo do raio.
+    Thick,
+    /// O leque de abertura `cone`, com linhas de vista FINAS (o cone não usa `thickness`).
+    Cone,
 }
 
 /// **O filtro de tags do raio** («Only see»): o MODO; a tag é o campo [`RaySensor::see_tag`].
@@ -138,6 +155,24 @@ impl RaySensor {
         let r = self.angle.to_radians();
         Vec2::new(libm::cosf(r), libm::sinf(r))
     }
+
+    /// O diâmetro do círculo varrido que CONTA: `thickness` só com [`RayShape::Thick`]; senão `0`.
+    #[must_use]
+    pub fn largura_activa(&self) -> f32 {
+        match self.shape {
+            RayShape::Thick if self.thickness.is_finite() => self.thickness.max(0.0),
+            _ => 0.0,
+        }
+    }
+
+    /// A abertura do leque que CONTA, em graus: `cone` só com [`RayShape::Cone`]; senão `0`.
+    #[must_use]
+    pub fn cone_activo(&self) -> f32 {
+        match self.shape {
+            RayShape::Cone if self.cone.is_finite() => self.cone.clamp(0.0, 360.0),
+            _ => 0.0,
+        }
+    }
 }
 
 impl Default for RaySensor {
@@ -162,6 +197,7 @@ impl Default for RaySensor {
             cone: 0.0,
             aim_at: 0,
             also_ignore: Vec::new(),
+            shape: RayShape::Line,
         }
     }
 }

@@ -189,7 +189,7 @@ pub const API_TYPES: &[ApiType] = &[
     },
     ApiType {
         ident: "RayFilter",
-        definition: "{ layer: number?, only_see: string?, tag: string?, walls_block: boolean?, hit_triggers: boolean?, starts_inside: boolean?, see_all_hits: boolean?, thickness: number?, cone: number?, ignore_my_body: boolean?, ignore_my_other_parts: boolean?, ignore_up_to: string?, also_ignore: { string }? }",
+        definition: "{ layer: number?, only_see: string?, tag: string?, walls_block: boolean?, hit_triggers: boolean?, starts_inside: boolean?, see_all_hits: boolean?, shape: string?, thickness: number?, cone: number?, ignore_my_body: boolean?, ignore_my_other_parts: boolean?, ignore_up_to: string?, also_ignore: { string }? }",
         doc: "The options of a `ph2d.raycast`, named as the Ray Sensor card names them (`ray_sensor.*`).",
     },
     ApiType {

@@ -72,3 +72,10 @@ pub const INSP_RAY_AIM: NodeId = hash_node_id("insp_ray_aim");
 pub const INSP_RAY_AIM_PICK: NodeId = hash_node_id("insp_ray_aim_pick");
 /// «Also ignore»: o conta-gotas que junta um objecto; os chips são o [`super::INSP_RAY_IGNORE_CHIP`].
 pub const INSP_RAY_IGNORE_PICK: NodeId = hash_node_id("insp_ray_ignore_pick");
+/// «Shape» (dono 15/11): a lista suspensa Line · Thick · Cone e as opções dela, na ordem do `RayShapeKind::ALL`.
+pub const INSP_RAY_SHAPE: NodeId = hash_node_id("insp_ray_shape");
+pub const INSP_RAY_SHAPE_OPTS: [NodeId; 3] = [
+    hash_node_id("insp_ray_shape_line"),
+    hash_node_id("insp_ray_shape_thick"),
+    hash_node_id("insp_ray_shape_cone"),
+];

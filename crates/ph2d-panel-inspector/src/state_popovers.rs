@@ -283,6 +283,20 @@ pub(crate) fn take_pending_ray_tag_dd() -> Option<ph2d_editor_core::zones::Rect>
 }
 
 thread_local! {
+    /// RAY SENSOR: `(forma escolhida, rect do chip)` da lista «Shape» aberta (dono 15/11).
+    static PENDING_RAY_SHAPE_DD: std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+pub(crate) fn set_pending_ray_shape_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_RAY_SHAPE_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_ray_shape_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_RAY_SHAPE_DD.with(std::cell::Cell::take)
+}
+
+thread_local! {
     /// O chip aberto da lista de sons: `(é o Mode, escolha atual, rect)`. Um popover de cada vez.
     static PENDING_SOUND_SET_DD: std::cell::Cell<Option<(bool, u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };

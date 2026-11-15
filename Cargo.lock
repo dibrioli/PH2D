@@ -7885,6 +7885,7 @@ dependencies = [
  "ph2d-ui-testkit",
  "ph2d-vec-svg",
  "ph2d-vector",
+ "serde_json",
  "vello",
  "wgpu",
 ]

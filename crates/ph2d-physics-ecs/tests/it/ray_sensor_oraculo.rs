@@ -5,7 +5,7 @@ use crate::ray_sensor_melhorias::{Cena, bloco, cena, nome};
 use crate::ray_sensor_versao_c::raio;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_physics_ecs::{PhysicsBridge, RaySensor};
+use ph2d_physics_ecs::{PhysicsBridge, RaySensor, RayShape};
 
 /// A linha `caso | …` da fixture do Godot.
 fn caso<'a>(fixture: &'a str, chave: &str) -> &'a str {
@@ -105,6 +105,7 @@ fn oraculo_godot_das_melhorias() {
     );
 
     let mut c = cena(RaySensor {
+        shape: RayShape::Thick,
         thickness: 0.6,
         ..RaySensor::default()
     });
@@ -204,6 +205,14 @@ fn mede_o_custo_de_see_all_hits() {
             RaySensor {
                 angle: 0.0,
                 reach: 120.0,
+                // Cada linha da tabela mede UMA forma (dono 15/11: só o número da activa conta).
+                shape: if cone > 0.0 {
+                    RayShape::Cone
+                } else if largura > 0.0 {
+                    RayShape::Thick
+                } else {
+                    RayShape::Line
+                },
                 thickness: largura,
                 all_hits: todos,
                 cone,

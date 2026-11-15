@@ -370,6 +370,18 @@ fn as_melhorias_do_raio_animam_pelo_canal() {
         .expect("raio")
         .clone();
     assert_eq!((r.enabled, r.thickness, r.cone), (false, 0.5, 30.0));
+    // «Shape» (dono 15/11): o dropdown anima pelo índice da opção (Line 0 · Thick 1 · Cone 2).
+    assert!(escrever(&reg, sim.world_mut(), e, kr(18), 2.0, &t, SEM).is_some());
+    assert_eq!(ler(&reg, sim.world(), e, kr(18), &mut t, SEM), Some(2.0));
+    let forma = sim
+        .world()
+        .get::<ph2d_physics_ecs::RaySensor>(e)
+        .map(|r| r.shape);
+    assert_eq!(
+        forma,
+        Some(ph2d_physics_ecs::RayShape::Cone),
+        "a forma pelo canal"
+    );
     assert_eq!((r.aim_at, r.also_ignore), (72, vec![71, 72]));
     let lido = ler(&reg, sim.world(), e, kr(16), &mut t, SEM).expect("canal");
     assert_eq!(t.texto(lido), Some("Box"), "o alvo lê-se pelo nome");

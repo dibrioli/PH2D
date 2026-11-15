@@ -46,6 +46,7 @@ pub(crate) fn raio() -> InspectorRayInfo {
         enabled: true,
         thickness: 0.0,
         cone: 0.0,
+        shape: ph2d_editor_core::ray_edits::RayShapeKind::Line,
         aim_at: String::new(),
         aim_at_gone: false,
         aim_at_unknown: false,

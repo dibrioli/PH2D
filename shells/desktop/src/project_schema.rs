@@ -506,5 +506,5 @@
 /// # `244 → 245` — **as melhorias do raio** (`line/GameEngineFuncional`, GEF 07 RS, 2026-11-15)
 ///
 /// No FIM do `RaySensor` (que deixa de ser `Copy`): `enabled`, `thickness`, `cone`, `aim_at: u64` e `also_ignore: Vec<u64>`
-/// (`StableId`s). SEM leitura dos anteriores (§0.11). Gate: `ray_sensor_melhorias`. ⚠️ **A tripla NÃO vê este degrau.**
+/// (`StableId`s), e `shape: RayShape` (Line · Thick · Cone: só o número da forma activa conta). SEM leitura dos anteriores (§0.11). Gate: `ray_sensor_melhorias`. ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 245;

@@ -4,7 +4,7 @@
 
 use crate::o_cartao_da_fisica::{achado, clica};
 use crate::seam_ray::{assente_com, edicoes, nos_dois_modos, raio};
-use ph2d_editor_core::ray_edits::{RayFieldEdit, RaySee};
+use ph2d_editor_core::ray_edits::{RayFieldEdit, RaySee, RayShapeKind};
 use ph2d_editor_core::widget::key_mark;
 use ph2d_panel_inspector::ids as i;
 use ph2d_panel_inspector::{InspectorPanel, set_current_inspector_ray};
@@ -78,8 +78,7 @@ fn campos() -> Vec<(ph2d_a11y::NodeId, &'static str)> {
         (i::INSP_RAY_ALL_HITS, "component.field.ray_sensor.11"),
         (i::INSP_RAY_UP_TO, "component.field.ray_sensor.12"),
         (i::INSP_RAY_ENABLED, "component.field.ray_sensor.13"),
-        (i::INSP_RAY_THICKNESS, "component.field.ray_sensor.14"),
-        (i::INSP_RAY_CONE, "component.field.ray_sensor.15"),
+        (i::INSP_RAY_SHAPE, "component.field.ray_sensor.18"),
         (i::INSP_RAY_AIM, "component.field.ray_sensor.16"),
         (i::INSP_RAY_IGNORE_PICK, "component.field.ray_sensor.17"),
         (i::INSP_RAY_ON_ENTER, "component.field.ray_signals.0"),
@@ -108,6 +107,29 @@ fn cada_campo_do_catalogo_pintado_tem_o_rotulo() {
             );
         }
         set_current_inspector_ray(None);
+        // Thickness e Cone só existem com a forma deles (dono 15/11).
+        for (forma, id, chave) in [
+            (
+                RayShapeKind::Thick,
+                i::INSP_RAY_THICKNESS,
+                "component.field.ray_sensor.14",
+            ),
+            (
+                RayShapeKind::Cone,
+                i::INSP_RAY_CONE,
+                "component.field.ray_sensor.15",
+            ),
+        ] {
+            let mut info = raio();
+            info.shape = forma;
+            key_mark::set_key_marks(std::collections::BTreeMap::new());
+            let _ = assente_com(&info, c, false);
+            assert!(
+                key_mark::rotulos_pintados().contains(&(id, chave)),
+                "{chave} sem rótulo pintado (cartões {c})"
+            );
+            set_current_inspector_ray(None);
+        }
     });
 }
 
@@ -124,6 +146,8 @@ fn toda_linha_do_cartao_ray_tem_dica() {
     ids.extend([
         i::INSP_RAY_UP_TO_PICK,
         i::INSP_RAY_AIM_PICK,
+        i::INSP_RAY_THICKNESS,
+        i::INSP_RAY_CONE,
         i::INSP_RAY_LAYER_RENAME,
         i::INSP_RAY_EDIT_MATRIX,
         i::INSP_RAY_FOLD_FILTER,

@@ -88,10 +88,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "On: the ray looks every frame. Off: it sees nothing and stays silent. Turning it off while it sees something sends On Exit."
         }
         "panel.inspector.ray.thickness_tip" => {
-            "How wide the ray is, in meters. 0 is a thin line. More sweeps a ball that wide, like a thick bullet: it cannot slip through gaps."
+            "How wide the ray is, in meters. It sweeps a ball that wide, like a thick bullet: it cannot slip through gaps."
         }
         "panel.inspector.ray.cone_tip" => {
-            "How wide the ray looks, in degrees. 0 is a line. More sees every object inside that slice that nothing hides, each one with its own signals."
+            "How wide the ray looks, in degrees. It sees every object inside that slice that nothing hides, each one with its own signals."
+        }
+        // «Shape» (dono 15/11): o dropdown de três formas; só a activa mostra o seu número.
+        "panel.inspector.ray.shape_line" => "Line",
+        "panel.inspector.ray.shape_thick" => "Thick",
+        "panel.inspector.ray.shape_cone" => "Cone",
+        "panel.inspector.ray.shape_tip" => {
+            "What the ray looks with. Line: a thin line. Thick: a ball as wide as Thickness. Cone: a slice as wide as Cone."
+        }
+        "panel.inspector.ray.shape_line_tip" => "A thin line: the first thing it touches.",
+        "panel.inspector.ray.shape_thick_tip" => {
+            "A ball swept along the ray, as wide as Thickness: it cannot slip through gaps."
+        }
+        "panel.inspector.ray.shape_cone_tip" => {
+            "A slice as wide as Cone: it sees everything inside it that nothing hides."
         }
         "panel.inspector.ray.aim_tip" => {
             "An object the ray always points at, wherever it moves. Empty: the Angle decides."

@@ -105,6 +105,26 @@ pub(super) fn paint_deferred_tag_popovers(
             hit_index,
         );
     }
+    // A «Shape» do mesmo cartão (dono 15/11): não é tag, mas é do Ray Sensor e pinta-se no mesmo passe.
+    if let Some((sel, chip)) = state_popovers::take_pending_ray_shape_dd() {
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_RAY_SHAPE,
+            "",
+            crate::sections::ray_rumo::opcoes_da_forma(),
+        )
+        .open(true);
+        dd.select(sel);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
     // ⭐⭐⭐ **A TAG ALVO de uma SIGNAL ACTION** (TOP-20 #9, W3b) — slot próprio, opções próprias.
     // ⚠️ Elas são a árvore INTEIRA (uma acção pode apontar a qualquer tag), ao contrário da secção
     // *Tags*, onde a lista tira as que o objecto já tem.

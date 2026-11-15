@@ -27,7 +27,7 @@ export type RayHit = { object: Entity, shape: Entity, point: Vec2, normal: Vec2,
 export type RayView = { seeing: boolean, hits: { RayHit }, object: Entity?, shape: Entity?, point: Vec2?, normal: Vec2?, distance: number?, tags: { string }?, friction: number?, bounce: number? }
 
 --- The options of a `ph2d.raycast`, named as the Ray Sensor card names them (`ray_sensor.*`).
-export type RayFilter = { layer: number?, only_see: string?, tag: string?, walls_block: boolean?, hit_triggers: boolean?, starts_inside: boolean?, see_all_hits: boolean?, thickness: number?, cone: number?, ignore_my_body: boolean?, ignore_my_other_parts: boolean?, ignore_up_to: string?, also_ignore: { string }? }
+export type RayFilter = { layer: number?, only_see: string?, tag: string?, walls_block: boolean?, hit_triggers: boolean?, starts_inside: boolean?, see_all_hits: boolean?, shape: string?, thickness: number?, cone: number?, ignore_my_body: boolean?, ignore_my_other_parts: boolean?, ignore_up_to: string?, also_ignore: { string }? }
 
 --- What a property may default to; the default decides its kind.
 export type PropertyDefault = number | boolean | string | Vec2 | Color

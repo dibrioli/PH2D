@@ -337,16 +337,8 @@ impl ProbeMark {
     #[must_use]
     pub fn com_feixe(self, r: &crate::RaySensor, vistos: &[[f32; 2]]) -> Self {
         let mut f = Feixe {
-            largura: if r.thickness.is_finite() {
-                r.thickness.max(0.0)
-            } else {
-                0.0
-            },
-            meio_cone: if r.cone.is_finite() {
-                (r.cone.clamp(0.0, 360.0) * 0.5).to_radians()
-            } else {
-                0.0
-            },
+            largura: r.largura_activa(),
+            meio_cone: (r.cone_activo() * 0.5).to_radians(),
             ..Feixe::default()
         };
         for (slot, p) in f.pontos.iter_mut().zip(vistos) {

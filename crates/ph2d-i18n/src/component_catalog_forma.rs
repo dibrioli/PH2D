@@ -28,6 +28,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.ray_sensor.15" => "Cone",
         "component.field.ray_sensor.16" => "Aim at",
         "component.field.ray_sensor.17" => "Also ignore",
+        "component.field.ray_sensor.18" => "Shape",
         _ => return None,
     })
 }

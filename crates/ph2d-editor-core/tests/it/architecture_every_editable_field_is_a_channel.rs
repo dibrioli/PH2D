@@ -769,6 +769,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/ray_rumo.rs::linha_da_forma",
+        Canal,
+        &["component.field.ray_sensor.18"],
+        "«Shape» (dono 15/11): o dropdown pelo rótulo do catálogo numa variável (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/ray_filtro.rs::linha_da_lista",
         Canal,
         &["component.field.ray_sensor.17"],

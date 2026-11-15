@@ -373,7 +373,10 @@ pub(super) const NAV_REGION: &[FieldDesc] = &[
     f(1, "component.field.nav_region.1", K::Int).named_as("wall_layers", "obstacle_layers"),
 ];
 pub(super) const RAY_SENSOR: &[FieldDesc] = &[
-    f(0, "component.field.ray_sensor.0", K::Angle).named("angle"),
+    // Guardados em graus; o script vê radianos, como todo ângulo (o `View::Degrees` faz a conversão).
+    f(0, "component.field.ray_sensor.0", K::Angle)
+        .named("angle")
+        .viewed(View::Degrees),
     f(1, "component.field.ray_sensor.1", K::Scalar).named("reach"),
     f(2, "component.field.ray_sensor.2", K::Int).named("layer"),
     f(3, "component.field.ray_sensor.3", K::Toggle).named("turns_with_facing"),
@@ -401,13 +404,23 @@ pub(super) const RAY_SENSOR: &[FieldDesc] = &[
     // As melhorias (RS, dono 15/11): a caixa, a forma do feixe, o alvo e a lista pelo conta-gotas.
     f(13, "component.field.ray_sensor.13", K::Toggle).named("enabled"),
     f(14, "component.field.ray_sensor.14", K::Scalar).named("thickness"),
-    f(15, "component.field.ray_sensor.15", K::Angle).named("cone"),
+    f(15, "component.field.ray_sensor.15", K::Angle)
+        .named("cone")
+        .viewed(View::Degrees),
     f(16, "component.field.ray_sensor.16", K::Text)
         .named("aim_at")
         .viewed(View::Named(crate::Target::Stable)),
     f(17, "component.field.ray_sensor.17", K::Text)
         .named("also_ignore")
         .viewed(View::Named(crate::Target::StableSet)),
+    // «Shape» (dono 15/11): qual dos dois números (Thickness, Cone) conta.
+    f(18, "component.field.ray_sensor.18", K::Enum)
+        .named("shape")
+        .viewed(crate::options![
+            "line" => Line @ "panel.inspector.ray.shape_line",
+            "thick" => Thick @ "panel.inspector.ray.shape_thick",
+            "cone" => Cone @ "panel.inspector.ray.shape_cone",
+        ]),
 ];
 pub(super) const RAY_SIGNALS: &[FieldDesc] = &[
     f(0, "component.field.ray_signals.0", K::Text).named("on_enter"),

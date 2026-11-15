@@ -5,15 +5,15 @@
 //!
 //! | forma | motor | acertos |
 //! |---|---|---|
-//! | linha (`thickness 0`, `cone 0`) | [`cast_ray_query`](ph2d_physics::PhysicsWorld::cast_ray_query) | o primeiro, ou todos com «See all hits» |
-//! | círculo (`thickness > 0`, RS-1) | [`cast_circle_query`](ph2d_physics::PhysicsWorld::cast_circle_query) | idem |
-//! | leque (`cone > 0`, RS-2) | [`shapes_in_disc`](ph2d_physics::PhysicsWorld::shapes_in_disc) + uma linha de visão por candidato | um por objecto dentro do leque e não tapado |
+//! | `Shape` Line | [`cast_ray_query`](ph2d_physics::PhysicsWorld::cast_ray_query) | o primeiro, ou todos com «See all hits» |
+//! | `Shape` Thick: círculo de `thickness` (RS-1) | [`cast_circle_query`](ph2d_physics::PhysicsWorld::cast_circle_query) | idem |
+//! | `Shape` Cone: leque de `cone` (RS-2) | [`shapes_in_disc`](ph2d_physics::PhysicsWorld::shapes_in_disc) + uma linha de visão por candidato | um por objecto dentro do leque e não tapado |
 //!
 //! ⭐ **O leque é a linha de visão do Construct** (Line-of-sight: alcance + ângulo + obstáculos), não
 //! um leque de N raios: N raios deixam passar o que cabe entre dois (o vão de 0,20 m que o
 //! `measure_the_gap_between_rays` mediu no agachar). Cada objecto no disco do alcance é testado por
 //! duas linhas de visão — para o ponto dele mais perto da origem e para o centro da forma, cada uma
-//! presa dentro do leque —; é visto se uma delas (linha ou círculo) o acerta primeiro. Uma só (o ponto
+//! presa dentro do leque —; é visto se uma delas (linha FINA: o cone não usa `thickness`, dono 15/11) o acerta primeiro. Uma só (o ponto
 //! mais perto) lia como tapado um objecto cujo canto de perto estava atrás da parede e o resto não
 //! (o gate do leque apanhou-o).
 
@@ -126,8 +126,8 @@ pub(super) fn lanca(
         point: h.point,
         normal: h.normal,
     };
-    let raio_do_circulo =
-        (r.thickness.is_finite() && r.thickness > 0.0).then_some(r.thickness * 0.5);
+    let largura = r.largura_activa();
+    let raio_do_circulo = (largura > 0.0).then_some(largura * 0.5);
     let caminho = |origin: [f32; 2], dir: [f32; 2]| RayPath {
         origin,
         dir,
@@ -140,8 +140,9 @@ pub(super) fn lanca(
         None => m.fisica.cast_ray_query(caminho(o, d), consulta, &aceita),
     };
 
-    if r.cone.is_finite() && r.cone > 0.0 {
-        let meio = (r.cone.min(360.0) * 0.5).to_radians();
+    let cone = r.cone_activo();
+    if cone > 0.0 {
+        let meio = (cone * 0.5).to_radians();
         m.fisica
             .shapes_in_disc(raio.origem, raio.reach, consulta, &aceita, &mut buf.disco);
         for &DiscCandidate {
@@ -264,7 +265,7 @@ impl PhysicsBridge {
         // Um tiro pontual não tem «Aim at»: o rumo é o `até`.
         r.aim_at = 0;
         lanca(&m, quem, &raio, &r, &mut Buffers::default(), &mut out);
-        if !(r.all_hits || r.cone > 0.0) {
+        if !(r.all_hits || r.cone_activo() > 0.0) {
             out.truncate(1);
         }
         out

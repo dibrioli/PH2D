@@ -5,7 +5,7 @@
 use crate::o_cartao_da_fisica::{achado, clica};
 use crate::seam_ray::{assente_com, edicoes, nos_dois_modos, pinta, raio};
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::ray_edits::{RayFieldEdit, RayQueixa};
+use ph2d_editor_core::ray_edits::{RayFieldEdit, RayQueixa, RayShapeKind};
 use ph2d_panel_inspector::ids as i;
 use ph2d_panel_inspector::{InspectorPanel, set_cards_on, set_current_inspector_ray};
 
@@ -50,7 +50,14 @@ fn thickness_e_cone_chegam_pelo_teclado() {
             (i::INSP_RAY_THICKNESS, "0.5", RayFieldEdit::Thickness(0.5)),
             (i::INSP_RAY_CONE, "45", RayFieldEdit::Cone(45.0)),
         ] {
-            let (mut h, mut st, r) = assente_com(&raio(), c, false);
+            // Cada número só existe com a forma dele (dono 15/11).
+            let mut info = raio();
+            info.shape = if id == i::INSP_RAY_CONE {
+                RayShapeKind::Cone
+            } else {
+                RayShapeKind::Thick
+            };
+            let (mut h, mut st, r) = assente_com(&info, c, false);
             let rect = achado(&r, id).unwrap_or_else(|| panic!("{id:?} não pintado (cartões {c})"));
             let _ = clica(&mut h, &mut st, rect);
             assert_eq!(h.store().focus_id(), Some(id), "{id:?} morto sob o dedo");
@@ -65,6 +72,71 @@ fn thickness_e_cone_chegam_pelo_teclado() {
                 _ => false,
             });
             assert!(bate, "{quer:?} não chegou: {saiu:?} (cartões {c})");
+            set_current_inspector_ray(None);
+        }
+    });
+}
+
+/// ⭐⭐⭐ **A «Shape» é um dropdown** (dono 15/11: *«thickness e cone são conflitantes»*), nos dois modos, por cliques
+/// REAIS: fechada, nenhuma opção pintada; o clique no chip abre a lista (pintada no passe diferido) e o clique em
+/// «Cone» manda `Shape(Cone)`. Por baixo, SÓ o número da forma activa: nada com Line, Thickness com Thick, Cone com
+/// Cone. A lista e cada opção têm dica.
+///
+/// **Mutações que devem sangrar:** a opção mapeada para outra variante no `event_ray` · o cartão pintar a
+/// Thickness com Line · o popover diferido não ser pintado (a opção não aparece).
+#[test]
+fn a_forma_e_um_dropdown_e_so_o_numero_dela_aparece() {
+    nos_dois_modos(|c| {
+        for (forma, espessura, cone) in [
+            (RayShapeKind::Line, false, false),
+            (RayShapeKind::Thick, true, false),
+            (RayShapeKind::Cone, false, true),
+        ] {
+            let mut info = raio();
+            info.shape = forma;
+            info.thickness = 0.5;
+            info.cone = 30.0;
+            let (_, _, r) = assente_com(&info, c, false);
+            assert!(
+                achado(&r, i::INSP_RAY_SHAPE).is_some(),
+                "a Shape pintada ({c})"
+            );
+            assert_eq!(
+                achado(&r, i::INSP_RAY_THICKNESS).is_some(),
+                espessura,
+                "{forma:?}: Thickness (cartões {c})"
+            );
+            assert_eq!(
+                achado(&r, i::INSP_RAY_CONE).is_some(),
+                cone,
+                "{forma:?}: Cone (cartões {c})"
+            );
+            set_current_inspector_ray(None);
+        }
+        for (n, quer) in RayShapeKind::ALL.into_iter().enumerate() {
+            let (mut h, mut st, r) = assente_com(&raio(), c, false);
+            assert!(
+                i::INSP_RAY_SHAPE_OPTS
+                    .iter()
+                    .all(|&o| achado(&r, o).is_none()),
+                "fechada, nenhuma opção ({c})"
+            );
+            let chip = achado(&r, i::INSP_RAY_SHAPE).expect("o chip Shape");
+            let _ = clica(&mut h, &mut st, chip);
+            let r = pinta(&mut h, &mut st, c);
+            let opcao = achado(&r, i::INSP_RAY_SHAPE_OPTS[n])
+                .unwrap_or_else(|| panic!("a opção {quer:?} não foi pintada (cartões {c})"));
+            assert_eq!(
+                edicoes(clica(&mut h, &mut st, opcao)),
+                vec![RayFieldEdit::Shape(quer)],
+                "cartões {c}"
+            );
+            for id in std::iter::once(i::INSP_RAY_SHAPE).chain(i::INSP_RAY_SHAPE_OPTS) {
+                assert!(
+                    h.store().tooltip_for(id).is_some_and(|t| !t.is_empty()),
+                    "{id:?} sem dica"
+                );
+            }
             set_current_inspector_ray(None);
         }
     });

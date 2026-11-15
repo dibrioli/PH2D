@@ -29,7 +29,8 @@ pub enum Geo {
     },
     /// O ângulo em volta de `centre`, em graus, a contar de `zero` (rad, no ecrã com y para cima).
     Angular { centre: (f32, f32), zero: f32 },
-    /// O motor que gira: o ângulo como em `Angular`, lido como o giro em [`w::MOTOR_PREVIEW_S`] (°/s).
+    /// O motor que gira: o ângulo como em `Angular`, lido como o giro em [`w::MOTOR_PREVIEW_S`] (°/s). Sem
+    /// tecto: a espiral dá as voltas que o número pedir, e o arrasto conta-as ([`Geo::value_near`]).
     Spin { centre: (f32, f32), zero: f32 },
 }
 
@@ -50,6 +51,19 @@ impl Geo {
                 Self::Angular { centre, zero }.value_at(x, y) / w::MOTOR_PREVIEW_S
             }
         }
+    }
+
+    /// O valor em `(x, y)` mais perto de `prev`: no `Spin` o ângulo do cursor ganha as voltas inteiras que o
+    /// deixam junto do giro de antes — o arrasto que dá a volta à roda passa de ±180° sem saltar.
+    #[must_use]
+    pub fn value_near(self, x: f32, y: f32, prev: f32) -> f32 {
+        let Self::Spin { .. } = self else {
+            return self.value_at(x, y);
+        };
+        let raw = self.value_at(x, y) * w::MOTOR_PREVIEW_S;
+        const TURN: f32 = 360.0; // LITERAL-PX-OK: uma volta, em graus
+        let turns = ((prev * w::MOTOR_PREVIEW_S - raw) / TURN).round();
+        (raw + turns * TURN) / w::MOTOR_PREVIEW_S
     }
 }
 
@@ -497,17 +511,22 @@ fn servo_pointer(ui: &mut Ui<'_>, from: (f32, f32), tip: (f32, f32), geo: Geo, g
     }
 }
 
-/// O arco do motor que gira, a partir do topo: o giro em [`w::MOTOR_PREVIEW_S`] (negativo = horário), e
-/// a alça na ponta quando `grip`.
+/// A espiral do motor que gira, a partir do topo: o giro em [`w::MOTOR_PREVIEW_S`] (negativo = horário), sem
+/// tecto — cada volta abre o raio em [`w::MOTOR_SPIRAL_GROWTH`] (dono 15/11: «em espiral, sem limites») —, e a
+/// alça na ponta quando `grip`.
 fn motor_arc(ui: &mut Ui<'_>, c: (f32, f32), rad: f32, speed: f32, col: Color, grip: bool) {
+    use std::f32::consts::{FRAC_PI_2, TAU};
     let speed = live(ui, Handle::MotorSpeed, speed);
     let dir = if speed < 0.0 { -1.0 } else { 1.0 };
-    let a0 = std::f32::consts::FRAC_PI_2;
-    let span = (speed * w::MOTOR_PREVIEW_S)
-        .to_radians()
-        .clamp(-std::f32::consts::PI, std::f32::consts::PI);
-    let pts: Vec<(f32, f32)> = (0..=20)
-        .map(|k| add(c, screen_dir(a0 + span * k as f32 / 20.0), rad))
+    let a0 = FRAC_PI_2;
+    let span = (speed * w::MOTOR_PREVIEW_S).to_radians();
+    let steps = ((span.abs() / FRAC_PI_2).ceil() as usize).max(1) * w::MOTOR_STEPS_PER_QUARTER;
+    let pts: Vec<(f32, f32)> = (0..=steps)
+        .map(|k| {
+            let a = span * k as f32 / steps as f32;
+            let r = rad * (1.0 + w::MOTOR_SPIRAL_GROWTH * a.abs() / TAU);
+            add(c, screen_dir(a0 + a), r)
+        })
         .collect();
     stroke_polyline(ui.scene, &pts, w::LINE, col);
     let end = a0 + span;

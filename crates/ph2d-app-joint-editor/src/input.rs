@@ -64,7 +64,7 @@ impl JointEditorDoc {
                 DragBy::Handle(h) => {
                     if let Some((_, g)) = self.geo.iter().find(|(k, _)| k == h) {
                         let q = grain.unwrap_or(1.0);
-                        d.value = (g.value_at(x, y) / q).round() * q;
+                        d.value = (g.value_near(x, y, d.value) / q).round() * q;
                     }
                 }
                 #[allow(clippy::cast_possible_truncation)] // o número do cartão é f32

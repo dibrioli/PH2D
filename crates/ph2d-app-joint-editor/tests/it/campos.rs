@@ -164,3 +164,39 @@ fn arrastar_a_letra_muda_o_numero_como_no_inspector() {
     m.escreve("5");
     assert_eq!(m.painted("Speed"), "5", "um clique na letra abre a escrita");
 }
+
+/// **A espiral do motor não tem tecto** (dono 15/11): arrastar a ponta à volta da roda, no sentido do giro,
+/// passa da meia volta (−180°, o antigo limite de −720°/s) e chega a três quartos (−1080°/s); a espiral abre
+/// o raio a cada volta, e a ponta fica mais longe do eixo do que a do quarto de volta.
+/// **Mutações que sangram:** o arrasto sem contar voltas (`value_at` no lugar de `value_near`) · a espiral sem
+/// abrir o raio · o giro preso a ±π.
+#[test]
+fn a_espiral_do_motor_passa_da_meia_volta() {
+    let mut m = Mesa::carro();
+    let (cx, cy) = m.centre(&Hit::Shape(1, 0));
+    let (tx, ty) = m.centre(&Hit::Handle(Handle::MotorSpeed));
+    let r0 = libm::hypotf(tx - cx, ty - cy);
+    let no = Modifiers::default();
+    m.ptr_mods(PointerKind::Down, tx, ty, no);
+    // De −90° (a ponta de fábrica, à direita) até −270° (à esquerda), por baixo, em passos de 15°.
+    let mut last = (tx, ty);
+    for k in 1..=12 {
+        let a = (90.0 + 15.0 * k as f32).to_radians(); // a contar do topo, no sentido horário
+        last = (cx + r0 * libm::sinf(a), cy - r0 * libm::cosf(a));
+        m.ptr_mods(PointerKind::Move, last.0, last.1, no);
+    }
+    assert_eq!(
+        m.painted("Speed"),
+        "-1080",
+        "três quartos de volta em 0,25 s"
+    );
+    m.ptr_mods(PointerKind::Up, last.0, last.1, no);
+    assert!((graus(m.joints()[0].motor_speed) + 1080.0).abs() < 1e-2);
+    let (ex, ey) = m.centre(&Hit::Handle(Handle::MotorSpeed));
+    assert!(ex < cx, "a ponta à esquerda do eixo: {ex} ≥ {cx}");
+    assert!(
+        libm::hypotf(ex - cx, ey - cy) > r0 * 1.05,
+        "a espiral abriu: {} ≤ {r0}",
+        libm::hypotf(ex - cx, ey - cy)
+    );
+}

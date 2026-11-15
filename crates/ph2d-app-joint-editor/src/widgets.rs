@@ -40,8 +40,12 @@ pub const MENU_CELL_MIN_W: f32 = 200.0;
 /// As colunas da grelha dos gabaritos (maquete B1).
 pub const MENU_COLS: usize = 3;
 /// A seta do motor mostra até onde ele leva a peça neste tempo (s): o carro de fábrica, −360°/s, vira um
-/// quarto de volta, e o arco cabe nos ±180° que a alça lê (até ±720°/s; acima disso, o número do cartão).
+/// quarto de volta; acima de meia volta a seta segue em espiral, sem tecto.
 pub const MOTOR_PREVIEW_S: f32 = 0.25;
+/// Quanto o raio da espiral do motor abre por volta (fração do raio da 1.ª): as voltas não se tocam.
+pub const MOTOR_SPIRAL_GROWTH: f32 = 0.22;
+/// Pontos da espiral por quarto de volta (a curva lisa a qualquer número de voltas).
+pub const MOTOR_STEPS_PER_QUARTER: usize = 12;
 /// O texto pequeno (pés, papéis).
 pub const SMALL_PX: f32 = 10.5;
 /// O valor mais largo que um campo escreve, «-0.000» (sinal, três casas), medido no `TextSystem` a

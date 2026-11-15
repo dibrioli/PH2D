@@ -44,11 +44,35 @@
   ≡ `drives` ⇒ vermelho na linha da sessão (`held_tests.rs:123`); restaurado.
 - Bateria por nome ✓: **ph2d-preview-drive inteira 6** (ledger mudou) · timeline-preview held 5 · host-desktop autokey 67, preview_drive 12, timeline_bridge 41, the_timeline_drivers_list 1, done 4 · app-vec ui_state_bridge 11 · panel-timeline animando 4, animating_done 4 · fmt ✓ · clippy `-D warnings --all-targets` (preview-drive, timeline-preview) ✓ · `cargo check -p ph2d-host-desktop --all-targets` ✓. Censos e suíte: do integrador.
 
+## Acréscimo — a marca do estado nos menus da lane, da faixa, do fade e do Auto-Orient (dono 15/11)
+
+- **Pedido** (verbatim, com foto do menu da lane): «o modo da lane não fica checado (não posso saber que modo está
+  ativo). corrija» · depois: «procure problemas similares».
+- **Mecanismo:** o pintor acende uma linha por `store.menu_row_is_marked(kind, id)`, e quem publica as marcas da
+  timeline é `menu_marcas::linhas_acesas` — que só tinha braços para chave/coluna, submenu de ease e extrapolação.
+  Varredura (explorador) dos menus da timeline com linhas de ESCOLHA: lane (Override/Additive), faixa
+  (Once/Loop/Ping-Pong), fade (`StripFade` devolvia `None` de propósito — Smooth/Linear/Ease e o submenu de formas) e
+  Auto-Orient (interruptor da track de trajetória; o estado não estava no snapshot). Os outros menus da timeline são
+  ações/cascatas.
+- **Cura:** braços novos em `linhas_acesas` (`TimelineLane`, `TimelineStrip`, `TimelineTrackPath`, `StripFade` no
+  `TimelineSegment` e no `TimelineSegmentEase`; ajudantes `faixa`, `fade_de`); `TimelineViewSnapshot.auto_orient_on:
+  Vec<u64>` (entidades cuja `Position` PEDE auto-orient — o pedido, como o interruptor; a recusa por Rotation fica na
+  `TimelineDoc::auto_orient`), cheio no `rebuild`. Campo no snapshot e não no `TrackView` (29 literais de teste).
+- **Fora da timeline, NÃO feito (visto pelo explorador, não confirmado):** o menu do tipo de alça das curvas
+  (`CurvePointHandle`: Free/Aligned/Symmetric/Vector/Auto) e o do falloff não publicam marca; o estado vive na shell.
+  Menus da Hierarquia/Board/Asset/Catalog não verificados linha a linha. Barra de menus e submenus de Settings já marcam.
+- **Provas:** testes `menu_marcas::tests::{the_lane_menu_lights_the_lanes_mode,
+  the_strip_fade_and_auto_orient_menus_light_their_state}` · app (Xvfb, Arrange → «+ Lane» → botão direito):
+  [Override marcado](../fotos/38_lane_mostra_o_modo.png). Faixa, fade e Auto-Orient só por teste (a cena do smoke não
+  tem faixa nem trajetória). `cargo check --workspace --all-targets` ✓ · timeline snapshot 20 · panel-timeline
+  menu_marcas 4 · clippy `-D warnings --all-targets` (timeline, panel-timeline) ✓ · fmt ✓.
+
 ## Superfície de colisão
 
 - `crates/ph2d-preview-drive/src/{lib.rs,consultas.rs}` (aditivo: um campo privado e um método público).
 - `crates/ph2d-timeline-preview/src/held_tests.rs` (um teste).
 - `shells/desktop/src/render_loop/autokey_amostra.rs` (uma linha + uma de doc).
+- `crates/ph2d-panel-timeline/src/menu_marcas{,_tests}.rs` · `crates/ph2d-timeline/src/snapshot.rs` (campo novo `auto_orient_on`, aditivo).
 
 ## Aberto
 

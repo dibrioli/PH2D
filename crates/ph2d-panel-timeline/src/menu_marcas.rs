@@ -38,8 +38,13 @@ pub(crate) fn amostra_ease(item: NodeId, mode: u8, u: f32) -> Option<f32> {
 pub(crate) fn linhas_acesas(kind: K, snap: &TimelineViewSnapshot) -> Option<Vec<NodeId>> {
     match kind {
         K::TimelineSegment { scope } => {
-            if matches!(scope, S::StripFade { .. }) {
-                return None;
+            if let S::StripFade { .. } = scope {
+                // A forma do fade (dono 15/11): Smooth (fábrica), Linear, ou o modo do ease.
+                return Some(vec![match fade_de(scope, snap)? {
+                    None => c::CTX_MENU_TL_FADE_SMOOTH,
+                    Some(e) if e.family == ph2d_anim::EasingFamily::Linear => c::CTX_MENU_TL_LINEAR,
+                    Some(e) => linha_da_interp(Interp::Eased(e)),
+                }]);
             }
             // ⚠️ Chaves que discordam (uma coluna mista) publicam o TÍTULO sem marca nenhuma.
             let Some((interp, rove)) = interp_de(scope, snap) else {
@@ -56,7 +61,13 @@ pub(crate) fn linhas_acesas(kind: K, snap: &TimelineViewSnapshot) -> Option<Vec<
             Some(v)
         }
         K::TimelineSegmentEase { scope, mode } => {
-            let (interp, _) = interp_de(scope, snap)?;
+            let interp = match scope {
+                S::StripFade { .. } => match fade_de(scope, snap)? {
+                    Some(e) => Interp::Eased(e),
+                    None => return Some(Vec::new()),
+                },
+                _ => interp_de(scope, snap)?.0,
+            };
             let Interp::Eased(e) = interp else {
                 return Some(Vec::new());
             };
@@ -85,6 +96,26 @@ pub(crate) fn linhas_acesas(kind: K, snap: &TimelineViewSnapshot) -> Option<Vec<
                 Extrap::Continue => c::CTX_MENU_TL_EXTRAP_CONTINUE,
             }])
         }
+        // O que a faixa faz quando a fonte acaba (dono 15/11, «problemas similares»).
+        K::TimelineStrip { lane, strip } => Some(vec![match faixa(snap, lane, strip)?.loop_mode {
+            ph2d_timeline::StripLoop::Once => c::CTX_MENU_TL_STRIP_ONCE,
+            ph2d_timeline::StripLoop::Loop => c::CTX_MENU_TL_STRIP_LOOP,
+            ph2d_timeline::StripLoop::PingPong => c::CTX_MENU_TL_STRIP_PINGPONG,
+        }]),
+        // Auto-Orient pedido na trajetória (um interruptor: aceso ou nada).
+        K::TimelineTrackPath { target } => {
+            let t = snap.tracks.iter().find(|t| t.target.get() == target)?;
+            Some(if snap.auto_orient_on.contains(&t.entity) {
+                vec![c::CTX_MENU_TL_AUTO_ORIENT]
+            } else {
+                Vec::new()
+            })
+        }
+        // O modo da lane (dono 15/11: «não posso saber que modo está ativo»).
+        K::TimelineLane { lane } => Some(vec![match snap.lanes.get(lane)?.mode {
+            ph2d_timeline::LaneMode::Override => c::CTX_MENU_TL_LANE_OVERRIDE,
+            ph2d_timeline::LaneMode::Additive => c::CTX_MENU_TL_LANE_ADDITIVE,
+        }]),
         _ => None,
     }
 }
@@ -147,6 +178,29 @@ fn interp_de(scope: S, snap: &TimelineViewSnapshot) -> Option<(Interp, bool)> {
     chaves
         .all(|k| k.interp == interp && k.roving == rove)
         .then_some((interp, rove))
+}
+
+/// A faixa `strip` da lane `lane`, pelo id estável.
+fn faixa(
+    snap: &TimelineViewSnapshot,
+    lane: usize,
+    strip: u64,
+) -> Option<&ph2d_timeline::StripView> {
+    snap.lanes
+        .get(lane)?
+        .strips
+        .iter()
+        .find(|s| s.id.0 == strip)
+}
+
+/// A forma do fade de uma borda da faixa (`None` dentro = a de fábrica); `None` fora = não é
+/// fade ou a faixa já não existe.
+fn fade_de(scope: S, snap: &TimelineViewSnapshot) -> Option<Option<ph2d_anim::Easing>> {
+    let S::StripFade { lane, strip, edge } = scope else {
+        return None;
+    };
+    let s = faixa(snap, lane, strip)?;
+    Some(if edge == 0 { s.curve_in } else { s.curve_out })
 }
 
 /// A linha de topo do menu da chave que diz esta interpolação.

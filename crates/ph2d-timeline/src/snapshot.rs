@@ -262,6 +262,10 @@ pub struct TimelineViewSnapshot {
     /// Markers as `(seconds, label, signal)` — the signal name (ADR-0143) is `Some`
     /// when the marker emits, which the ruler draws as a distinct glyph.
     pub markers: Vec<(f64, String, Option<String>)>,
+    /// As entidades cuja trajetória PEDE Auto-Orient (`Binding::auto_orient` da `Position`): o
+    /// menu da track de trajetória marca a linha (dono 15/11). Pedido, não honrado — a recusa
+    /// por uma track de Rotation é a `TimelineDoc::auto_orient`.
+    pub auto_orient_on: Vec<u64>,
     /// **As etapas da macro do clipe activo** (ADR-0186, W5d) — a linha «Macro steps» da vista
     /// Keys. Vazia quando o clipe activo não é o de uma macro. Quem a enche é a shell, pela
     /// `ph2d-app-macros` (o `rebuild` não lhe toca).
@@ -570,6 +574,13 @@ impl TimelineViewSnapshot {
             self.markers
                 .push((m.t.to_seconds(), m.label.clone(), m.signal.clone()));
         }
+        self.auto_orient_on.clear();
+        self.auto_orient_on.extend(
+            doc.bindings()
+                .iter()
+                .filter(|b| b.prop == PropKind::Position && b.auto_orient && !b.missing)
+                .map(|b| b.entity),
+        );
 
         // Track rows: one per LIVE binding, in binding order — a missing binding
         // (its object was deleted) paints no row; the data stays dormant in the

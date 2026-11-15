@@ -82,6 +82,112 @@ fn the_lit_row_is_the_interpolation_and_extrapolation_under_the_click() {
 
 /// O botão do cartão desenha a conta do documento: cada forma × modo é o `Easing::eval` dela, e o
 /// que não é forma (Hold, Straight) não tem régua.
+/// Dono 15/11: o menu da lane não dizia qual modo está ativo.
+#[test]
+fn the_lane_menu_lights_the_lanes_mode() {
+    use ph2d_timeline::{LaneMode, LaneView};
+    let lane = |mode| LaneView {
+        name: String::new(),
+        muted: false,
+        weight: 1.0,
+        mode,
+        strips: Vec::new(),
+    };
+    let s = TimelineViewSnapshot {
+        lanes: vec![lane(LaneMode::Override), lane(LaneMode::Additive)],
+        ..Default::default()
+    };
+    let acesa = |lane| linhas_acesas(K::TimelineLane { lane }, &s);
+    assert_eq!(acesa(0), Some(vec![c::CTX_MENU_TL_LANE_OVERRIDE]));
+    assert_eq!(acesa(1), Some(vec![c::CTX_MENU_TL_LANE_ADDITIVE]));
+    assert_eq!(acesa(2), None, "lane que não existe: nada aceso");
+}
+
+/// «Procure problemas similares» (dono 15/11): a faixa (Once/Loop/Ping-Pong), a forma do fade e o
+/// Auto-Orient também não diziam o estado.
+#[test]
+fn the_strip_fade_and_auto_orient_menus_light_their_state() {
+    use ph2d_anim::EasingFamily as F;
+    use ph2d_timeline::{LaneMode, LaneView, StripId, StripLoop, StripView};
+    let quad_out = Easing {
+        family: F::Quad,
+        mode: EasingMode::Out,
+    };
+    let linear = Easing {
+        family: F::Linear,
+        mode: EasingMode::In,
+    };
+    let faixa = StripView {
+        id: StripId(7),
+        clip_name: "C".into(),
+        container: None,
+        t_start: 0.0,
+        t_end: 1.0,
+        blend_in: 0.0,
+        blend_out: 0.0,
+        lead_in: 0.0,
+        lead_out: 0.0,
+        volta: 0.0,
+        ease_locked_in: false,
+        ease_locked_out: false,
+        curve_in: Some(quad_out),
+        curve_out: Some(linear),
+        seam: None,
+        loop_mode: StripLoop::PingPong,
+        speed: 1.0,
+        marks: [0.0; 4],
+    };
+    let mut s = snap();
+    s.lanes = vec![LaneView {
+        name: String::new(),
+        muted: false,
+        weight: 1.0,
+        mode: LaneMode::Override,
+        strips: vec![faixa],
+    }];
+    let acesa = |k| linhas_acesas(k, &s);
+    assert_eq!(
+        acesa(K::TimelineStrip { lane: 0, strip: 7 }),
+        Some(vec![c::CTX_MENU_TL_STRIP_PINGPONG])
+    );
+    let fade = |edge| K::TimelineSegment {
+        scope: S::StripFade {
+            lane: 0,
+            strip: 7,
+            edge,
+        },
+    };
+    assert_eq!(acesa(fade(0)), Some(vec![c::CTX_MENU_TL_EASE_OUT]));
+    assert_eq!(acesa(fade(1)), Some(vec![c::CTX_MENU_TL_LINEAR]));
+    let sub = |mode| K::TimelineSegmentEase {
+        scope: S::StripFade {
+            lane: 0,
+            strip: 7,
+            edge: 0,
+        },
+        mode,
+    };
+    assert_eq!(
+        acesa(sub(c::TL_EASE_MODE_OUT)),
+        Some(vec![c::CTX_MENU_TL_FAM_QUAD])
+    );
+    assert_eq!(acesa(sub(c::TL_EASE_MODE_IN)), Some(Vec::new()));
+    // Fade de fábrica: Smooth.
+    s.lanes[0].strips[0].curve_in = None;
+    assert_eq!(
+        linhas_acesas(fade(0), &s),
+        Some(vec![c::CTX_MENU_TL_FADE_SMOOTH])
+    );
+    // Auto-Orient: aceso só quando pedido.
+    let path = K::TimelineTrackPath { target: 9 };
+    assert_eq!(linhas_acesas(path, &s), Some(Vec::new()));
+    s.auto_orient_on = vec![1];
+    assert_eq!(
+        linhas_acesas(path, &s),
+        Some(vec![c::CTX_MENU_TL_AUTO_ORIENT])
+    );
+}
+
 #[test]
 fn the_card_buttons_draw_the_documents_own_easing() {
     use ph2d_anim::EasingMode;

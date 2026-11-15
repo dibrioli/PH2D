@@ -16,6 +16,14 @@ pub fn com_portas<R>(
     reg: &ComponentRegistry,
     f: impl FnOnce(ph2d_app_game::smoke::Portas<'_>) -> R,
 ) -> R {
+    com_portas_e_tags(reg, f).0
+}
+
+/// [`com_portas`], e a árvore de tags do projecto que a cena escreveu (a que a shell dá à ponte).
+pub fn com_portas_e_tags<R>(
+    reg: &ComponentRegistry,
+    f: impl FnOnce(ph2d_app_game::smoke::Portas<'_>) -> R,
+) -> (R, ph2d_tags::TagTree) {
     let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
     let anexa =
         |s: &mut SimWorld, b, n: &str| component_attach::attach_by_name(s, reg, seeds, b, n);
@@ -24,16 +32,27 @@ pub fn com_portas<R>(
         raiz: object_add::spawn_empty_root,
         anexa: &anexa,
     };
-    f(ph2d_app_game::smoke::Portas {
+    let arvore = std::cell::RefCell::new(ph2d_tags::TagTree::new());
+    let marca = |s: &mut SimWorld, e, c: &str| {
+        ph2d_app_components::tags_doc::marca(&mut arvore.borrow_mut(), s.world_mut(), e, c)
+    };
+    let r = f(ph2d_app_game::smoke::Portas {
         menu,
         componentes: &componentes,
         importa_som: ph2d_app_components::sound_project::import_for_scene,
-    })
+        marca: &marca,
+    });
+    (r, arvore.into_inner())
 }
 
 /// Monta o nível `nivel` como o smoke o monta. Devolve o jogador.
 pub fn montar(sim: &mut SimWorld, nivel: u32) -> Entity {
-    com_portas(&registo(), |p| ph2d_app_game::smoke::montar(sim, p, nivel))
+    montar_com_tags(sim, nivel).0
+}
+
+/// [`montar`], e a árvore de tags que a cena escreveu.
+pub fn montar_com_tags(sim: &mut SimWorld, nivel: u32) -> (Entity, ph2d_tags::TagTree) {
+    com_portas_e_tags(&registo(), |p| ph2d_app_game::smoke::montar(sim, p, nivel))
 }
 
 /// Um objecto do menu Add do JOGO pelas portas do produto — `None` se a entrada não é dele.

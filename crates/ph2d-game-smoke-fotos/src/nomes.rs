@@ -1,12 +1,12 @@
 //! **Os nomes do smoke do jogo**: cada leitor de `PH2D_GAME_SMOKE_FOTO` declara os seus (`NOMES`), e o arranque
 //! recusa ALTO o nome que nenhum aceita — antes, um nome errado deixava a cena por preparar, calada.
-use ph2d_physics_scene::{cena_projectile, cena_topdown, fotos_dos_cartoes};
+use ph2d_physics_scene::{cena_projectile, cena_ray, cena_topdown, fotos_dos_cartoes};
 
 /// Um leitor: os nomes que declara (separados por espaço) e a porta que diz se aceita um nome.
 pub type Leitor = (&'static str, fn(&str) -> bool);
 
-/// Os cinco leitores de `PH2D_GAME_SMOKE_FOTO`: a lista de cada um e a sua porta.
-pub const LEITORES: [Leitor; 5] = [
+/// Os seis leitores de `PH2D_GAME_SMOKE_FOTO`: a lista de cada um e a sua porta.
+pub const LEITORES: [Leitor; 6] = [
     (fotos_dos_cartoes::NOMES, |n| {
         fotos_dos_cartoes::caso(n).is_some()
     }),
@@ -20,6 +20,7 @@ pub const LEITORES: [Leitor; 5] = [
     (cena_projectile::NOMES, |n| {
         cena_projectile::foto(Some(n)).is_some()
     }),
+    (cena_ray::NOMES, |n| cena_ray::foto(Some(n)).is_some()),
 ];
 
 /// O nome de foto que algum leitor aceita.

@@ -5,6 +5,11 @@
 //! peito, a olhar para a frente (há parede?). O chão acaba antes da parede, que desce até ao fundo do poço. No Play, anda-se para a
 //! direita: a luz «Wall Light» acende quando a parede entra no alcance e a «Edge Light» quando o chão
 //! acaba à frente. O «Wall Ray» nasce escolhido, com o cartão Ray Sensor e o grupo Signals abertos.
+//!
+//! **O filtro (versão C):** um terceiro raio, «Eye Ray», olha para cima e para a frente, onde um «Enemy» (tag
+//! «Enemy», criada na árvore do projecto) está atrás de uma «Crate». Com «Only see» = Only tag Enemy e «Walls
+//! block» desligado, a caixa é transparente para ele: a «Eye Light» acende já no Play, de pé. Ligar «Walls
+//! block» apaga-a (a caixa tapa o inimigo).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -13,7 +18,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::{NodeId, ids};
-use ph2d_physics_ecs::{Collider, ColliderShape, RaySensor, RaySignals};
+use ph2d_physics_ecs::{Collider, ColliderShape, RaySensor, RaySignals, SeeFilter};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 pub const CENA: u32 = 26;
@@ -21,6 +26,11 @@ pub const CENA: u32 = 26;
 pub const HEROI: &str = "Hero";
 pub const RAIO_PAREDE: &str = "Wall Ray";
 pub const RAIO_BEIRADA: &str = "Ledge Ray";
+pub const RAIO_OLHO: &str = "Eye Ray";
+pub const INIMIGO: &str = "Enemy";
+pub const CAIXA: &str = "Crate";
+/// A tag do inimigo, na árvore de tags do projecto.
+pub const TAG_INIMIGO: &str = "Enemy";
 
 /// O herói nasce aqui; o chão vai de `x = -7` a `x = 1,5`, a parede está em `x = 6`.
 pub const HEROI_EM: [f32; 2] = [-5.0, -1.0];
@@ -28,10 +38,14 @@ const FUNDO: ([f32; 2], [f32; 2]) = ([0.0, 0.0], [16.0, 9.0]);
 pub const CHAO: ([f32; 2], [f32; 2]) = ([-2.75, -2.25], [4.25, 0.25]);
 pub const PAREDE: ([f32; 2], [f32; 2]) = ([6.0, -1.25], [0.3, 2.75]);
 const POCO: ([f32; 2], [f32; 2]) = ([5.0, -4.25], [2.0, 0.25]);
+/// No caminho do «Eye Ray» de pé (a 30° da origem `(-4,7 ; -0,4)`): a caixa a ~3 m, o inimigo a ~5 m, ambos
+/// acima da cabeça do herói e longe dos outros dois raios.
+pub const CAIXA_EM: ([f32; 2], [f32; 2]) = ([-2.1, 1.1], [0.4, 0.4]);
+pub const INIMIGO_EM: ([f32; 2], [f32; 2]) = ([-0.37, 2.1], [0.35, 0.45]);
 
 /// `(nome, desvio no herói, ângulo, alcance, ao ver, ao deixar de ver)`.
 type Raio = (&'static str, [f32; 2], f32, f32, &'static str, &'static str);
-pub const RAIOS: [Raio; 2] = [
+pub const RAIOS: [Raio; 3] = [
     (RAIO_PAREDE, [0.3, 0.2], 0.0, 6.0, "wall_ahead", "wall_gone"),
     (
         RAIO_BEIRADA,
@@ -41,12 +55,14 @@ pub const RAIOS: [Raio; 2] = [
         "ground",
         "edge_ahead",
     ),
+    (RAIO_OLHO, [0.3, 0.6], 30.0, 7.0, "enemy_seen", "enemy_gone"),
 ];
 
 /// `(nome, x, acende com, apaga com)` — as luzes ficam no alto, apagadas.
-const LUZES: [(&str, f32, &str, &str); 2] = [
+const LUZES: [(&str, f32, &str, &str); 3] = [
     ("Wall Light", 2.0, "wall_ahead", "wall_gone"),
     ("Edge Light", -2.0, "edge_ahead", "ground"),
+    ("Eye Light", 0.0, "enemy_seen", "enemy_gone"),
 ];
 const Y_LUZ: f32 = 3.2;
 const LUZ_LADO: f32 = 0.6;
@@ -56,6 +72,8 @@ const CHAO_RGBA: [f32; 4] = [0.30, 0.32, 0.36, 1.0];
 const PAREDE_RGBA: [f32; 4] = [0.45, 0.42, 0.38, 1.0];
 const LUZ_RGBA: [f32; 4] = [0.98, 0.82, 0.25, 1.0];
 const SUPORTE_RGBA: [f32; 4] = [0.26, 0.27, 0.30, 1.0];
+const CAIXA_RGBA: [f32; 4] = [0.55, 0.40, 0.24, 1.0];
+const INIMIGO_RGBA: [f32; 4] = [0.85, 0.25, 0.25, 1.0];
 
 /// As portas do menu que a cena usa (a mesma rota do artista).
 pub struct Pecas<'a> {
@@ -65,6 +83,8 @@ pub struct Pecas<'a> {
     pub heroi: &'a dyn Fn(&mut SimWorld) -> Entity,
     /// Add ▸ «Ray Sensor» com `pai` selecionado.
     pub raio: &'a dyn Fn(&mut SimWorld, Entity) -> Entity,
+    /// Marca o objecto com a tag (criada na árvore de tags do projecto se falta); o id.
+    pub marca: &'a dyn Fn(&mut SimWorld, Entity, &str) -> u64,
 }
 
 fn arruma(sim: &mut SimWorld, e: Entity, nome: &str, at: [f32; 2]) {
@@ -75,19 +95,18 @@ fn arruma(sim: &mut SimWorld, e: Entity, nome: &str, at: [f32; 2]) {
     }
 }
 
-fn bloco(sim: &mut SimWorld, p: &Pecas<'_>, nome: &str, (c, h): ([f32; 2], [f32; 2])) {
+fn bloco(
+    sim: &mut SimWorld,
+    p: &Pecas<'_>,
+    nome: &str,
+    (c, h): ([f32; 2], [f32; 2]),
+    rgba: [f32; 4],
+) -> Entity {
     let e = (p.estatico)(sim);
     arruma(sim, e, nome, c);
     let w = sim.world_mut();
-    w.entity_mut(e).insert(Sprite::atlas(
-        WHITE_TILE_KEY,
-        [2.0 * h[0], 2.0 * h[1]],
-        if nome == "Wall" {
-            PAREDE_RGBA
-        } else {
-            CHAO_RGBA
-        },
-    ));
+    w.entity_mut(e)
+        .insert(Sprite::atlas(WHITE_TILE_KEY, [2.0 * h[0], 2.0 * h[1]], rgba));
     let f = ph2d_physics_ecs::forma_para_editar(w, e).unwrap_or(e);
     if let Some(mut col) = w.get_mut::<Collider>(f) {
         col.shape = ColliderShape::Cuboid {
@@ -95,6 +114,7 @@ fn bloco(sim: &mut SimWorld, p: &Pecas<'_>, nome: &str, (c, h): ([f32; 2], [f32;
             half_y: h[1],
         };
     }
+    e
 }
 
 fn linha(on: &str, verb: SignalVerb) -> SignalAction {
@@ -138,14 +158,18 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
         Sprite::atlas(WHITE_TILE_KEY, FUNDO.1, FUNDO_RGBA),
         ZIndexOverride(-1),
     ));
-    bloco(sim, &p, "Floor", CHAO);
-    bloco(sim, &p, "Wall", PAREDE);
-    bloco(sim, &p, "Pit Floor", POCO);
+    bloco(sim, &p, "Floor", CHAO, CHAO_RGBA);
+    bloco(sim, &p, "Wall", PAREDE, PAREDE_RGBA);
+    bloco(sim, &p, "Pit Floor", POCO, CHAO_RGBA);
+    bloco(sim, &p, CAIXA, CAIXA_EM, CAIXA_RGBA);
+    let inimigo = bloco(sim, &p, INIMIGO, INIMIGO_EM, INIMIGO_RGBA);
+    let tag = (p.marca)(sim, inimigo, TAG_INIMIGO);
     for (nome, x, acende, apaga) in LUZES {
         luz(sim, &p, nome, x, acende, apaga);
     }
     let heroi = (p.heroi)(sim);
     arruma(sim, heroi, HEROI, HEROI_EM);
+    let pedida = foto(pedida().as_deref());
     let mut escolhido = heroi;
     for (nome, desvio, angle, reach, ve, perde) in RAIOS {
         let r = (p.raio)(sim, heroi);
@@ -155,37 +179,77 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
             s.angle = angle;
             s.reach = reach;
             s.turns_with_facing = true; // vira com o herói (a opção, ligada na cena)
+            if nome == RAIO_OLHO {
+                s.only_see = SeeFilter::OnlyTag;
+                s.see_tag = tag;
+                s.walls_block = false; // vê o inimigo através da caixa
+            }
         }
         w.entity_mut(r).insert(RaySignals {
             on_enter: ve.to_owned(),
             on_exit: perde.to_owned(),
         });
-        if nome == RAIO_PAREDE {
+        let quer = if pedida == Some(Foto::Filter) {
+            RAIO_OLHO
+        } else {
+            RAIO_PAREDE
+        };
+        if nome == quer {
             escolhido = r;
         }
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
     println!(
-        "[game-smoke] =26 o Hero tem dois Ray Sensor como filhos na Hierarchy: «Wall Ray» olha para a frente \
-         (selecionado) e «Ledge Ray» olha para baixo, à frente dos pés. Play (F5) e seta para a direita: a luz \
-         da direita acende quando a parede entra no raio, a da esquerda quando o chão acaba."
+        "[game-smoke] =26 o Hero tem três Ray Sensor como filhos na Hierarchy: «Wall Ray» olha para a frente \
+         (selecionado), «Ledge Ray» olha para baixo, à frente dos pés, e «Eye Ray» olha para o alto, só para a \
+         tag Enemy e sem Walls block — vê o Enemy através da Crate. Play (F5): a luz do meio acende já; seta \
+         para a direita: a da direita acende quando a parede entra no raio, a da esquerda quando o chão acaba."
     );
     escolhido
 }
 
-/// O cartão Ray Sensor e o grupo Signals abertos, e o Inspector no raio escolhido.
+/// O instante das fotos do cartão (`PH2D_GAME_SMOKE_FOTO`); sem a variável a cena é a do dono.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Foto {
+    /// `ray_filter`: o «Eye Ray» escolhido, com o grupo Filter aberto.
+    Filter,
+}
+
+/// Os nomes que [`foto`] aceita (censo em `ph2d_game_smoke_fotos::nomes`).
+pub const NOMES: &str = "ray_filter";
+
+/// A foto pedida pelo nome.
 #[must_use]
-pub fn gavetas(cartao: NodeId) -> Vec<(NodeId, bool)> {
+pub fn foto(nome: Option<&str>) -> Option<Foto> {
+    match nome?.trim() {
+        "ray_filter" => Some(Foto::Filter),
+        _ => None,
+    }
+}
+
+fn pedida() -> Option<String> {
+    std::env::var("PH2D_GAME_SMOKE_FOTO").ok()
+}
+
+/// O cartão Ray Sensor e o grupo Signals abertos (a foto `ray_filter` abre o Filter no lugar dele).
+#[must_use]
+pub fn gavetas(foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, bool)> {
+    let grupo = if foto == Some(Foto::Filter) {
+        ids::INSP_RAY_FOLD_FILTER
+    } else {
+        ids::INSP_RAY_FOLD_SIGNALS
+    };
     vec![
         (cartao, false),
         (ids::INSP_LIVE_RAY_SECTION, false),
-        (ids::INSP_RAY_FOLD_SIGNALS, false),
+        (grupo, false),
     ]
 }
 
+/// Aplica as [`gavetas`] e pede ao Inspector o cartão Ray Sensor do `raio` escolhido.
 pub fn arruma_o_inspector(store: &mut WidgetStore, cartao: NodeId, raio: u64) {
-    for (id, fechada) in gavetas(cartao) {
+    for (id, fechada) in gavetas(foto(pedida().as_deref()), cartao) {
         store.set_collapsed(id, fechada);
     }
     store.request_inspector_section(ids::INSP_LIVE_RAY_SECTION, raio);
@@ -196,11 +260,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn os_dois_raios_diferem_no_angulo_e_nas_vozes() {
-        let [(_, _, a, _, ve_a, perde_a), (_, _, b, _, ve_b, perde_b)] = RAIOS;
-        assert_ne!(a, b, "um olha para a frente e o outro para baixo");
-        for n in [ve_a, perde_a] {
-            assert!(![ve_b, perde_b].contains(&n), "nomes partilhados: {n}");
+    fn os_raios_diferem_no_angulo_e_nas_vozes() {
+        for (i, a) in RAIOS.iter().enumerate() {
+            for b in &RAIOS[i + 1..] {
+                assert_ne!(a.2, b.2, "{} e {} olham para o mesmo lado", a.0, b.0);
+                for n in [a.4, a.5] {
+                    assert!(![b.4, b.5].contains(&n), "nomes partilhados: {n}");
+                }
+            }
         }
         // Cada luz ouve um raio: acende com um nome e apaga com o outro extremo do MESMO raio.
         for (luz, _, acende, apaga) in LUZES {
@@ -210,6 +277,37 @@ mod tests {
                 .unwrap_or_else(|| panic!("{luz}: ninguém publica «{acende}»"));
             assert!([dono.4, dono.5].contains(&apaga), "{luz}");
         }
+    }
+
+    /// O «Eye Ray» de pé passa pela caixa ANTES do inimigo, e nenhum dos dois toca a linha do «Wall Ray».
+    #[test]
+    fn o_olho_de_pe_atravessa_a_caixa_ate_ao_inimigo() {
+        let (_, d, ang, alcance, _, _) = RAIOS[2];
+        let o = [HEROI_EM[0] + d[0], HEROI_EM[1] + d[1]];
+        let (s, c) = ang.to_radians().sin_cos();
+        let entra = |(cen, h): ([f32; 2], [f32; 2])| {
+            (0..=700)
+                .map(|i| i as f32 * alcance / 700.0)
+                .find(|t| {
+                    ((o[0] + c * t) - cen[0]).abs() <= h[0] && ((o[1] + s * t) - cen[1]).abs() <= h[1]
+                })
+        };
+        let caixa = entra(CAIXA_EM).expect("a caixa está no caminho");
+        let inimigo = entra(INIMIGO_EM).expect("o inimigo está no alcance");
+        assert!(caixa < inimigo, "a caixa fica à frente do inimigo");
+        let y_parede = HEROI_EM[1] + RAIOS[0].1[1];
+        for (cen, h) in [CAIXA_EM, INIMIGO_EM] {
+            assert!(cen[1] - h[1] > y_parede + 1.0, "fora da linha do Wall Ray");
+        }
+    }
+
+    #[test]
+    fn a_foto_ray_filter_abre_o_filter() {
+        let c = ids::INSP_LIVE_PLAYER_SECTION;
+        assert!(gavetas(None, c).contains(&(ids::INSP_RAY_FOLD_SIGNALS, false)));
+        let f = gavetas(foto(Some("ray_filter")), c);
+        assert!(f.contains(&(ids::INSP_RAY_FOLD_FILTER, false)), "{f:?}");
+        assert_eq!(foto(Some("projectile_speed_change")), None);
     }
 
     #[test]

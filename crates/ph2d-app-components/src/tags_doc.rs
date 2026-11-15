@@ -130,6 +130,27 @@ impl TagsCache {
     }
 }
 
+/// ⭐ **Marca `e` com a tag `caminho`**, criando-a (e os ancestrais) na árvore do projecto se falta — a
+/// porta das cenas que marcam um objecto: sem a tag na árvore, o painel abriria vazio sobre ids órfãos.
+/// Devolve o id (`TagId.0`); `0` se o caminho é vazio.
+pub fn marca(
+    tree: &mut TagTree,
+    world: &mut ph2d_ecs::World,
+    e: ph2d_ecs::Entity,
+    caminho: &str,
+) -> u64 {
+    let Ok(id) = tree.create(caminho) else {
+        return 0;
+    };
+    let mut em = world.entity_mut(e);
+    if let Some(mut t) = em.get_mut::<ph2d_ecs::tags::Tags>() {
+        t.insert(id);
+    } else {
+        em.insert(ph2d_ecs::tags::Tags::from_ids([id]));
+    }
+    id.0
+}
+
 #[cfg(test)]
 #[path = "tags_doc_tests.rs"]
 mod tests;

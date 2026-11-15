@@ -283,8 +283,9 @@ pub const HORARIO_5: [(u32, Gesto); 5] = [
 /// A cena 24: ↗ até à parede de cima e desliza ao canto; só ← ao longo dela; só ↓ para abrir espaço; só ↑ de
 /// volta à parede (o gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda` mede cada trecho).
 /// Cena 26: anda para a direita (a parede entra no raio), pára à beirada (o chão acaba no outro raio).
+/// Fica de pé até ao 360 (o «Eye Ray» vê o Enemy já no Play e os avisos somem), depois anda até à beirada.
 pub const HORARIO_26: [(u32, Gesto); 2] =
-    [(120, Gesto::Direita(true)), (330, Gesto::Direita(false))];
+    [(360, Gesto::Direita(true)), (570, Gesto::Direita(false))];
 
 pub const HORARIO_24: [(u32, Gesto); 11] = [
     (120, Gesto::Direita(true)),
@@ -341,6 +342,8 @@ pub struct Portas<'a> {
     /// Cria um objecto do menu dos componentes pelo nome canónico (`"ph2d::ecs::GameCamera"`); os bits.
     pub componentes: &'a dyn Fn(&mut SimWorld, &str) -> Result<u64, String>,
     pub importa_som: fn(&mut SimWorld, &std::path::Path) -> Result<String, String>,
+    /// Marca o objecto com a tag `caminho` (criada na árvore de tags do projecto se falta); o id.
+    pub marca: &'a dyn Fn(&mut SimWorld, Entity, &str) -> u64,
 }
 
 /// Monta o nível `nivel` no mundo. Devolve o jogador, ou o objeto dos sons no `PH2D_SFX_SMOKE`.
@@ -409,6 +412,7 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
                     .unwrap_or_else(|e| panic!("Ray Sensor: {e}"));
                     Entity::from_bits(bits)
                 },
+                marca: portas.marca,
             },
         ),
         n if input_map::codigo(n).is_some() => input_map::leitores(sim, n, |s| nivel_2(s, portas)),

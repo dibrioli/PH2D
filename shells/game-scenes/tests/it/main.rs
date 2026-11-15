@@ -28,6 +28,7 @@ mod jogo_object_add;
 mod jogo_palco_alarga;
 mod jogo_play_da_o_teclado;
 mod jogo_projectile;
+mod jogo_ray;
 mod jogo_smoke;
 mod jogo_topdown;
 mod plataforma_alargada;

@@ -175,10 +175,15 @@ impl crate::App {
                 raiz: object_add::spawn_empty_root,
                 anexa: &anexa,
             };
+            let arvore = std::cell::RefCell::new(&mut *cx.tags);
+            let marca = |s: &mut ph2d_ecs::SimWorld, e, c: &str| {
+                ph2d_app_components::tags_doc::marca(&mut arvore.borrow_mut(), s.world_mut(), e, c)
+            };
             let portas = ph2d_app_game::smoke::Portas {
                 menu,
                 componentes: &componentes,
                 importa_som: ph2d_app_components::sound_project::import_for_scene,
+                marca: &marca,
             };
             let jogador = ph2d_app_game::smoke::montar(cx.sim, portas, nivel).to_bits();
             use ph2d_app_game::smoke::input_map as aba;

@@ -52,6 +52,22 @@ Base do estudo: `main` `7b3dd983f7`.
   (Eye Ray: Only tag, Tag Enemy, Walls block desligado) · [play](fotos_07/26_play_eye.png) (de pé, Eye Light acesa).
 - Falta: o smoke do dono.
 
+## Como ficou: as melhorias (RS, 15/11)
+
+Mecanismo, números e gates: [handoff, sexta onda](../handoffs/HANDOFF_CONTINUACAO_2026-11-15_07_RAY_SENSOR.md). Em resumo:
+
+- **Campos novos do raio** (todos canais, na Timeline): Enabled (desligar emite On Exit e cala) · Thickness (raio grosso = cápsula) ·
+  Cone (leque, linha de vista à Construct) · Aim at (mira o corpo VIVO do alvo no mesmo tique, não o Transform atrasado) ·
+  Also ignore (lista de objetos por conta-gotas, chips com ×).
+- **O acerto diz a forma tocada** (Collision Shape filha): as tags dela são o material, mais fricção/restituição — «Sees Ground (Ice), at …».
+- **Script:** `ph2d.ray(id)` (lê o sensor, `seeing`) e `ph2d.raycast(from, to, filter)` (o tiro vê o mesmo que o raio com o mesmo filtro).
+- **Canvas:** o feixe é desenhado como fatia (leque), cápsula (grosso) e círculo no acerto; o conta-gotas de Aim at / Also ignore clica no canvas.
+- **Cena 26:** «Guard» com «Guard Eye» (cone 50°) acende «Alarm Light»; «Turret» atira por script (`turret.luau`, 0,5 m de largura) e acende «Shot Light».
+- **Oráculo:** Godot 4.7.2 corrido sobre a nossa cena ([`oraculo_raio_rs/`](oraculo_raio_rs/)), gate `oraculo_godot_das_melhorias`.
+- Fotos: [cartão](fotos_07/26_rs_cartao.png) ([clássico](fotos_07/26_rs_cartao_cards_off.png)) · [cone](fotos_07/26_rs_cone.png)
+  ([clássico](fotos_07/26_rs_cone_cards_off.png)) · [play](fotos_07/26_rs_play.png) · [torreta](fotos_07/26_rs_play_turret.png).
+- Falta: o smoke do dono.
+
 ## Como está (conferido no código)
 
 - **O componente** `RaySensor` (`ph2d-physics-ecs/src/components/ray_sensor.rs`): `origin` (m, local), `dir`, `reach` (m), `layer: u8`.

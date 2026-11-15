@@ -127,19 +127,82 @@ Commits `412699ec58` (curas C1–C9, U1, U2, U6, U7) · `63372c90b3` (U4, U5, ca
   `bash docs/Components/ferramentas/fotografa_cena.sh "PH2D_GAME_SMOKE=26 PH2D_GAME_SMOKE_FOTO=ray_filter [PH2D_CARDS=0]" 1930 1040 <png>`.
 - **Binário smoke** (2.ª corrida, `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`): ``Finished `smoke` profile [optimized] target(s) in 0.22s``.
 
+## Sexta onda: as melhorias (RS-1..RS-12, dono 15/11)
+
+Commits: `5757ddd28f` (motor, cartão, script, oráculo) · `dca2de0759` (cena 26 Guard+Turret, gates, cápsula, `ray_rumo.rs`) ·
+`c980df2f3c` (canal da Timeline, desenho do feixe, conta-gotas no canvas, tecto da crate nova) · `0d77572e92` (fotos; tiro da Turret
+0,5 m) · `5954d0bcc4` (Aim at em saltos de 20 tiques) · `2d99aaa773` (fecho fmt/clippy: `RayPath`, `DiscCandidate`).
+
+**Motor (`crates/ph2d-physics-ecs`).** `RaySensor` deixa de ser `Copy`; campos novos NO FIM: `enabled`, `thickness` (m, diâmetro),
+`cone` (graus, abertura total), `aim_at: u64` (StableId), `also_ignore: Vec<u64>`. `RayHit` ganha `shape` (a forma acertada).
+UMA porta para o que um raio vê: `bridge/ray_lance.rs::lanca` (linha / círculo varrido / leque), usada por `cast_ray_sensors` E por
+`PhysicsBridge::raycast` (script). Portas de física em `crates/ph2d-physics/src/world/cast_query.rs`: `cast_circle_query`,
+`cast_circle_query_all` (uma consulta de cápsula + `cast_shapes` do parry por candidato), `shapes_in_disc` (`DiscCandidate`), `RayPath`.
+Os sensores iteram em ordem de StableId (RS-10).
+
+- **Cone** = linha de vista à Construct: candidatos no disco do alcance, DUAS linhas por candidato (ponto mais próximo e centro,
+  presos ao cone). A 1.ª versão só com o ponto mais próximo lia um objeto meio escondido como escondido (o gate do leque apanhou).
+- **Desligado** (`enabled` falso): sem lançar, sem marca, e o que via sai com On Exit nesse tique. Decisão (regra do Unreal): desligar
+  fecha a aresta; senão uma luz acesa por On Enter ficava acesa.
+- **RS-3 medido:** o constraint Look At no objeto do raio roda-o, mas corre DEPOIS da física (`fase_skeleton_drives` após
+  `fase_physics_step`) → um quadro atrasado, e o `angle` soma por cima. Cura: campo `aim_at` lê a pose VIVA do corpo do alvo no mesmo tique
+  (Transform se não há corpo). O cartão esconde Angle e Turns com facing enquanto há mira.
+- **RS-4, decisão do dono:** sem tipo de material novo — o acerto leva a forma (filha Collision Shape); as tags dela são o material,
+  mais fricção/restituição. Cartão «Sees Ground (Ice), at …»; script `RayHit.tags/friction/bounce`.
+- **RS-5:** Signal Actions/máquina de estados NÃO têm condições (transição = nome de sinal) ⇒ regras leem «a ver» por On Enter/On Exit
+  (já existia); script lê `ph2d.ray(id).seeing`. Planilha de Eventos abandonada, intocada.
+- **RS-12, ordem do dono:** «Also ignore» = lista de objetos por conta-gotas (a crítica recomendava caixa de tags; a ordem do dono vence).
+  `Target::StableSet` novo (`property_ref` `name_of`/`id_of`); canal = nomes unidos por «, » (`canais_componente` `LISTA_SEP`). Listar um objeto
+  ignora-o e a família abaixo; escolher uma Collision Shape ignora o corpo dela.
+- `ProbeMark.feixe` (`Feixe`: largura, meio_cone, pontos) → `ph2d-app-physics` `overlay/probes.rs::feixe_path` (fatia do leque; cápsula +
+  círculo inteiro no acerto). `PROJECT_SCHEMA` 243 → 244 (sem leitor velho).
+
+**Script (`crates/ph2d-script`).** `ph2d.ray(entity) -> RayView?` · `ph2d.raycast(from: Vec2, to: Vec2, filter: RayFilter?) -> {RayHit}`;
+tipos `RayHit/RayView/RayFilter` em `api_table` + `api_help_props`; `lane_ray.rs` (HealthRequest/NoDoors mudaram para lá; `lane.rs` 695 linhas);
+`SceneDoors::ray_view/raycast`; o filtro passa por `property::set_in` (novo) sobre um `RaySensor` por omissão — mesmos nomes do cartão,
+ângulos em radianos. `ScriptDoors` ganha `physics: Option<&PhysicsBridge>`; a shell passa `Some(&*physics)` em `fase_signal_outbox.rs`.
+`runtime/luau/ph2d.d.luau` regenerado por `cargo run -p ph2d-bindgen -- --write`.
+
+**Crate NOVA `crates/ph2d-ray-sensor`** (`inspector.rs`, `topo.rs`, `gotas.rs`, `script.rs`): a família do raio saiu de `ph2d-app-components`
+(reexportada como `ray_inspector`, `ray_topo`, `ray_gotas`). Entrada 989 (889 medido) em `TETOS_DAS_CRATES_DA_FAMILIA`.
+Contadores: `ph2d-app-components` 80 396 / 80 869 · `ph2d-app-game` 2 865 / 2 869 · shell sob o tecto.
+
+**Cartão.** `sections/ray.rs` (455) + `ray_rumo.rs` (novo, 220: Angle/Turns/Aim at, Reach|Layer, Thickness|Cone) + `ray_filtro.rs` (chips de
+Also ignore com ×, conta-gotas; resumo «Also ignores N»). Enabled é a 1.ª linha (em cartões partilha a linha com Angle). Catálogo
+`ray_sensor.13..17` = Enabled, Thickness, Cone, Aim at, Also ignore; todos canais (Timeline); dica em cada linha nova.
+
+**Medido RS-9** (`mede_o_custo_de_see_all_hits`, 200 peças, `--profile smoke`, mínimo de 7×50 tiques, tique inteiro): linha primeiro 101,8 µs ·
+linha todos 133,4 · círculo primeiro 99,9 · círculo todos 183,0 (1.ª versão a varrer de novo por acerto: 1 196,3 — recusada) · cone 60° 209,7
+⇒ sem tecto de acertos (o `max_results=32` do Godot seria tecto sem recurso). Tabela na doc de `cast_ray_query_all`.
+
+**Oráculo Godot** (MIT, 4.7.2, headless) CORRIDO sobre a NOSSA cena: `docs/GameEngineFuncional/componentes/oraculo_raio_rs/` (`oraculo.gd`,
+`corre.sh`, `godot_rs.txt`); gate `oraculo_godot_das_melhorias` (`crates/ph2d-physics-ecs/tests/it/ray_sensor_oraculo.rs`) por passo: linha ·
+desligado · `add_exception` = also_ignore · todos os acertos · ShapeCast círculo 0,6 (nosso 0,2264 exato, dentro do safe 0,2227 / unsafe 0,2402
+do Godot, mesmo ponto de contacto) · `intersect_ray` = `raycast` · alvo apagado → o seguinte no mesmo tique (RS-11).
+
+**Cena 26** (`crates/ph2d-physics-scene/src/cena_ray.rs`): «Guard» (alto, à direita) com «Guard Eye» (Cone 50°, ângulo 211°, alcance 6,5 m,
+Only tag Player; o herói tem a tag Player) → «Alarm Light» (spotted/lost); «Turret» no ar em (0,6; 0,8) com `turret.luau` (`ph2d.raycast` 3 m para
+baixo, 0,5 m de largura, Only tag Player) → «Shot Light» (turret_hit/turret_miss). Foto `ray_cone` (Guard Eye + Filter aberto). Fotos em
+`componentes/fotos_07/`: `26_rs_cartao`, `26_rs_cone`, `26_rs_play`, `26_rs_play_turret` (+ `_cards_off` das duas primeiras). Vistas: campos
+presentes, nenhum rótulo cortado salvo o clássico «Ignore my othe…» (regra da elipse da casa).
+
+**Gates novos.** `ph2d-physics-ecs` `ray_sensor_melhorias` (`desligar_a_ver_emite_on_exit_e_cala`, `o_circulo_ve_todos_os_acertos_por_distancia`,
+`o_leque_ve_quem_esta_dentro_e_nao_tapado`, `aim_at_acerta_o_alvo_na_pose_viva_no_mesmo_tique`, `also_ignore_tira_o_objecto_a_familia_e_o_corpo_da_forma`,
+`o_acerto_diz_a_forma_que_tocou`, `dois_raios_em_ordem_trocada_dao_as_mesmas_arestas`, `o_tiro_ve_o_mesmo_que_o_raio_com_o_mesmo_filtro`) ·
+`ray_sensor_oraculo` (`oraculo_godot_das_melhorias`; `mede_o_custo_de_see_all_hits` `#[ignore]`) · unit `o_rumo_fica_dentro_do_leque` ·
+`ph2d-panel-inspector` `seam_ray_melhorias` (5, cliques reais nos dois modos) + tabelas de `seam_ray_auditoria` alargadas ·
+`ph2d-app-components` `as_melhorias_do_raio_animam_pelo_canal` · `shells/game-scenes` `jogo_ray_melhorias`
+(`na_cena_26_o_guarda_ve_o_heroi_pelo_leque`, `na_cena_26_a_torreta_atira_por_script` — o script passa pela física do quadro; o controlo sem
+física falha com o motivo) · `jogo_ray_feixe` (`o_leque_e_a_fatia_e_o_raio_grosso_e_a_capsula`) ·
+`jogo_conta_gotas_canvas::o_clique_no_canvas_escolhe_a_mira_e_a_lista_do_raio`.
+**Mutação 20/20 sangrou** (um sobrevivente de início: Aim at a ler o Transform — curado despachando em saltos de 20 tiques).
+
+**Fecho.** fmt limpo; clippy `--all-targets -D warnings` exit 0 nas 15 crates tocadas; 2.ª corrida do binário smoke:
+``Finished `smoke` profile [optimized] target(s) in 0.24s``.
+
 ## Aberto
 
-- ~~Smoke do dono das curas da auditoria~~ — **OK 15/11** (com as duas ordens seguintes: `940e347c1f` conta-gotas não muda a
-  seleção, gate `o_conta_gotas_nao_muda_a_selecao`; `37675a0959` erro do «Ignore up to» na própria caixa, gates
-  `a_caixa_do_ignore_up_to_mostra_o_erro`, `um_nome_fora_da_cadeia_ou_de_ninguem_mostra_o_erro`).
-- **Quinta onda (15/11), feita, à espera do smoke do dono (as quatro):**
-  - `05742878d4` — caixa de marcar clássica (cartões OFF) desmarcada com moldura visível e centrada no «On»; gate
-    `a_caixa_desmarcada_classica_tem_moldura_visivel`. Os 4 temas da família clássica (Forge/Workshop/Sunstone/Blueprint)
-    ficaram de propósito inalterados — o dono decide.
-  - `e603bd9860` — `PH2D_RAY_SMOKE=1` refeita: os olhos são filhos «Ray Sensor» do «Post» (`pendura_raio`), nomes em inglês,
-    cartão aberto como na 26; gate `a_cena_do_olho_pendura_os_raios_como_filhos`.
-  - `1bc3e76db8` — clique do conta-gotas no CANVAS com gate de clique real `o_clique_no_canvas_do_conta_gotas_nao_seleciona`.
-  - `89a8c277fd` — U5 curado (ver acima).
-  - Fecho da onda: fmt limpo, clippy `-D warnings` exit 0 nas 8 crates, gates por nome verdes na árvore combinada.
-- Próximo item da fila: **Motion Input** (`23_refundacao_plano.md`, «Corpo e movimento»).
-- Integração: só por ordem do dono; fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md nela.
+- **Smoke do dono das melhorias** (RS-1..RS-12) — pendente.
+- **`oraculo_lsp` G5b** (os exemplos de `ph2d.ray`/`ph2d.raycast` no luau-lsp) NÃO correu: `luau-lsp` não está instalado nesta máquina.
+- Próximo item da fila: **Motion Input** ([`23_refundacao_plano.md`](../23_refundacao_plano.md)), começando pela TABELA DE CAPACIDADES antes das maquetes.
+- Integração: só por ordem do dono; fecho da linha (§1.5.9) e a entrada do §5 do CLAUDE.md nela. (Smokes anteriores — auditoria curada e a quinta onda — já fechados/registados acima.)

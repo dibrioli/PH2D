@@ -285,6 +285,7 @@ fn paint_check(on: bool, hovered: bool, r: Rect, scene: &mut VectorScene, theme:
             decorator: false,
             pinta_coluna: false,
             linha: None,
+            centro_y: None,
         },
         scene,
         theme,

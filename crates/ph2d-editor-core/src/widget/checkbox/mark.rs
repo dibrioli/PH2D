@@ -67,6 +67,9 @@ pub(crate) struct BooleanMark {
     /// `Some(sec)` faz a marca viver **dentro de uma CAIXA** que ocupa a coluna do controlo;
     /// `None` é a pele de canvas e o interruptor, que trazem o rect já do tamanho que querem.
     pub linha: Option<crate::widget::Seccao>,
+    /// O centro vertical da LINHA da palavra «On» ao lado da marca: dentro da caixa a marca centra
+    /// nele, e não no campo (dono 15/11: a caixa ficava acima do «On»). `None` = o centro do campo.
+    pub centro_y: Option<f32>,
 }
 
 /// ⭐⭐ **O que o pintor da marca DEVOLVE** — a marca e, quando a linha é de formulário, a CAIXA.
@@ -95,6 +98,7 @@ pub(crate) fn paint_boolean_mark(
         decorator,
         pinta_coluna,
         linha,
+        centro_y,
     } = m;
     // A moldura é o TETO em qualquer dos dois casos (a caixa não transborda o que a contém);
     // o que `box_px` troca é a BASE — o token, ou o que o chamador mediu. `None` reduz à
@@ -160,12 +164,9 @@ pub(crate) fn paint_boolean_mark(
             // para a selecção. *Uma marca não tem caret*: `12` lia-se como «não está à esquerda».
             let recuo = Spacing::Xs.px();
             let lado = box_size.min(campo.h - 2.0 * recuo).max(1.0);
-            Rect::new(
-                campo.x + recuo,
-                campo.y + (campo.h - lado) * 0.5,
-                lado,
-                lado,
-            )
+            let centro = centro_y.unwrap_or(campo.y + campo.h * 0.5);
+            let topo = (centro - lado * 0.5).clamp(campo.y, campo.y + campo.h - lado);
+            Rect::new(campo.x + recuo, topo, lado, lado)
         }
         (true, None) => Rect::new(
             crate::widget::property_box::value_column(rect, box_size, decorator).x,
@@ -303,19 +304,33 @@ pub(crate) fn paint_boolean_mark(
     // ⭐ A moldura pela porta do TEMA: no clássico a de sempre; num tema moderno a caixa é plana
     //    (marcada = acento cheio, desmarcada = um degrau abaixo do painel) e só o foco traça.
     let feel = feel_of_state(state);
-    crate::paint::stroke_frame(
-        scene,
-        box_rect,
-        radius,
-        theme,
-        feel,
-        if state == CheckboxState::Focused {
-            2.0
-        } else {
-            1.0
-        },
-        border,
-    );
+    // ⭐ Vazia num CAMPO, a caixa tem sempre moldura (dono 15/11): sem ela era um quadrado escuro.
+    let no_campo = (caixa.is_some() && value == CheckboxValue::Unchecked)
+        .then(|| ph2d_tokens::visuals::frame_on_field(theme, feel));
+    match no_campo {
+        Some(ph2d_tokens::visuals::Frame::Modern(s)) if s.is_visible() => {
+            crate::paint::stroke_rounded_rect(
+                scene,
+                box_rect,
+                radius,
+                s.width,
+                crate::paint::token_to_vello(s.color),
+            );
+        }
+        _ => crate::paint::stroke_frame(
+            scene,
+            box_rect,
+            radius,
+            theme,
+            feel,
+            if state == CheckboxState::Focused {
+                2.0
+            } else {
+                1.0
+            },
+            border,
+        ),
+    }
 
     let glyph_color = if state == CheckboxState::Disabled {
         ColorToken::TextDisabled

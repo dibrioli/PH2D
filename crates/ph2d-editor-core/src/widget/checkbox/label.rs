@@ -91,6 +91,30 @@ pub fn paint_checkbox(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    let _ = paint_checkbox_medido(cb, rect, scene, text_system, theme);
+}
+
+/// O topo da palavra «On» numa linha `rect`, e o centro da LINHA dela (a caixa da linha do
+/// layout, não o corpo da letra): é nele que a marca centra.
+fn palavra_y(rect: Rect, text_system: &mut TextSystem) -> (f32, f32) {
+    let fonte = TypeToken::Sm.px();
+    let topo = rect.y + (rect.h - fonte) * 0.5;
+    let linha = text_system
+        .layout(ph2d_i18n::tr("chrome.checkbox.on"), fonte, f32::INFINITY)
+        .height();
+    (topo, topo + linha * 0.5)
+}
+
+/// [`paint_checkbox`] devolvendo a marca pintada e o centro da linha da palavra que ela segue —
+/// a régua do gate do alinhamento mede o que o pintor USOU.
+pub(crate) fn paint_checkbox_medido(
+    cb: &Checkbox,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> (Rect, f32) {
+    let (palavra_topo, palavra_centro) = palavra_y(rect, text_system);
     let pintada = paint_boolean_mark(
         rect,
         BooleanMark {
@@ -101,6 +125,7 @@ pub fn paint_checkbox(
             decorator: cb.decorator,
             pinta_coluna: !cb.coluna_de_fora,
             linha: cb.seccao,
+            centro_y: Some(palavra_centro),
         },
         scene,
         theme,
@@ -128,7 +153,7 @@ pub fn paint_checkbox(
             scene,
             ph2d_i18n::tr("chrome.checkbox.on"),
             x,
-            rect.y + (rect.h - fonte) * 0.5,
+            palavra_topo,
             fonte,
             orcamento,
             resolve(
@@ -240,4 +265,5 @@ pub fn paint_checkbox(
             );
         }
     }
+    (box_rect, palavra_centro)
 }

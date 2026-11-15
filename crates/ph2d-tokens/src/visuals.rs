@@ -386,6 +386,27 @@ pub fn frame(theme: Theme, feel: Feel) -> Frame {
     })
 }
 
+/// ⭐⭐ **A moldura de uma marca DESMARCADA que assenta numa caixa de campo** — o [`frame`] com um
+/// piso: onde o tema não traça moldura nenhuma (moderno, sem *Draw Extra Borders*), a caixa vazia
+/// ganha um traço que se lê, como a caixa dos cartões (`CardLabel`). Report do dono, 15/11: na
+/// UI sem cartões a caixa vazia era um quadrado escuro sem borda.
+///
+/// ⚠️ O token sai de uma MEDIÇÃO contra as duas superfícies (o campo em que assenta e o painel),
+/// piso [`crate::contrast::GRAPHIC_MIN_RATIO`] (WCAG 1.4.11): `TextDisabled` é o único candidato
+/// que passa em todo tema moderno sem moldura (pior: Candy campo `3,20`, Dark painel `3,86`);
+/// `CardLabel` cai a `2,97` no painel do PlumberGreen, `Text3` a `2,74` no campo do Candy, e o
+/// `Border` dos modernos é quase branco (`20:1`). Tabela: o gate
+/// `a_caixa_desmarcada_classica_tem_moldura_visivel`.
+#[must_use]
+pub fn frame_on_field(theme: Theme, feel: Feel) -> Frame {
+    match frame(theme, feel) {
+        Frame::Modern(s) if !s.is_visible() => {
+            Frame::Modern(Stroke::new(1.0, ColorToken::TextDisabled.resolve(theme)))
+        }
+        f => f,
+    }
+}
+
 /// ⭐ **A porta única do RAIO de um controlo.**
 ///
 /// Clássico: o raio que o pintor sempre usou (`classic`). Moderno: o `corner_radius` do Godot —

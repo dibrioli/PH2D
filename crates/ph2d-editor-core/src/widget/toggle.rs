@@ -146,6 +146,7 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
             //    desenham-no com forma de interruptor e pintam o rótulo eles próprios. Ele não é
             //    uma linha de formulário, logo não tem caixa de campo: ver [`Checkbox::seccao`].
             linha: None,
+            centro_y: None,
             // ⛔ **O interruptor NÃO leva a coluna de animação**, e não é esquecimento: os três
             // chamadores dele (grid-snap · painter-layers · timeline) pintam o rótulo eles próprios
             // e passam um rect **com forma de interruptor** — uma faixa estreita no fim da linha,

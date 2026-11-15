@@ -167,12 +167,12 @@ impl PhysicsBridge {
         // no corpo A, B é a outra ponta** —, e por ler e escrever o MESMO número
         // as duas alças seguem o cursor.
         if side == JointSide::B && self.joint_is_world_anchored(joint) {
-            let t = sim.world().get::<Transform>(joint)?;
+            let t = crate::joint_world_pose(sim.world(), joint)?;
             return Some([t.translation.x, t.translation.y]);
         }
         match side {
             JointSide::A => {
-                let t = sim.world().get::<Transform>(joint)?;
+                let t = crate::joint_world_pose(sim.world(), joint)?;
                 Some([t.translation.x, t.translation.y])
             }
             JointSide::B => None,
@@ -190,6 +190,22 @@ impl PhysicsBridge {
     /// ⚠️ It writes the **local**, and nothing else. The A end's display pivot
     /// (the joint's `Transform`) is *derived*, and `sync_joint_pivots` already
     /// owns that derivation — writing it here too would make two functions
+    /// **The Inspector's Position of a joint** — a LOCAL pivot (the joint lives
+    /// inside body A), re-seated as the A anchor in WORLD.
+    pub fn set_joint_pivot_local(
+        &mut self,
+        sim: &mut SimWorld,
+        joint: Entity,
+        local: [f32; 2],
+    ) -> bool {
+        let parent = ph2d_ecs::parent_world_transform(sim.world(), joint);
+        let at = Transform::compose(
+            parent,
+            Transform::from_translation(ph2d_core::Vec2::new(local[0], local[1])),
+        );
+        self.set_joint_anchor_world(sim, joint, JointSide::A, [at.translation.x, at.translation.y])
+    }
+
     /// responsible for one number, which is the shape a drift takes. The
     /// exception is the un-seeded case below, where the `Transform` **is** the
     /// authored state rather than a view of it.
@@ -361,8 +377,8 @@ impl PhysicsBridge {
     /// gesture set), so it never manufactures a diff — a body move and the pivot
     /// that follows it land in the SAME undo step (one gesture).
     ///
-    /// ⚠️ Joints are root entities, so `translation` IS the world pivot with no
-    /// parent compose (the same assumption `point_gizmo::build_point_view` makes).
+    /// ⚠️ A joint lives inside body A (or its assembly): the pivot is read and
+    /// written in WORLD through `joint_pose`, never on the raw `Transform`.
     pub(super) fn sync_joint_pivots(&mut self, sim: &mut SimWorld) {
         if self.joints.is_empty() {
             return;
@@ -394,14 +410,9 @@ impl PhysicsBridge {
             }
         }
         for &(e, pivot) in scratch.iter() {
-            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
-                // Write only on a real change so an untouched joint never
-                // manufactures a diff for the frame-level undo.
-                if t.translation.x != pivot[0] || t.translation.y != pivot[1] {
-                    t.translation.x = pivot[0];
-                    t.translation.y = pivot[1];
-                }
-            }
+            // Writes only a real change of the LOCAL, so an untouched joint never
+            // manufactures a diff for the frame-level undo.
+            crate::set_joint_world_pose(sim.world_mut(), e, pivot, None);
         }
         scratch.clear();
         self.joints_to_sync = scratch;
@@ -411,10 +422,5 @@ impl PhysicsBridge {
 /// Write the joint's display pivot (its `Transform.translation`), reporting
 /// whether the entity had one.
 fn write_pivot(sim: &mut SimWorld, joint: Entity, world: [f32; 2]) -> bool {
-    let Some(mut t) = sim.world_mut().get_mut::<Transform>(joint) else {
-        return false;
-    };
-    t.translation.x = world[0];
-    t.translation.y = world[1];
-    true
+    crate::set_joint_world_pose(sim.world_mut(), joint, world, None)
 }

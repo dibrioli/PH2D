@@ -2,7 +2,8 @@
 //! `joint_assembly::place_part`, os números por `joint::joint_with_edit` (o funil do cartão Joint), o
 //! «Same as» por `joint_assembly_card::set_linked`. O desfazer vem do diff do projeto: uma edição = um passo.
 
-use ph2d_ecs::{ChildOf, Entity, SimWorld, StableId, Transform};
+use ph2d_core::Vec2;
+use ph2d_ecs::{Entity, SimWorld, StableId, Transform};
 use ph2d_editor_core::JointFieldEdit;
 use ph2d_i18n::tr_with;
 use ph2d_joint_assembly::joint_assembly;
@@ -166,9 +167,6 @@ fn set_wheelbase(sim: &mut SimWorld, asm: Entity, metres: f32) {
     else {
         return;
     };
-    if sim.world().get::<ChildOf>(fw).is_some() {
-        return;
-    }
     let tf = |e: Entity| ph2d_ecs::world_transform(sim.world(), e);
     let (Some(b), Some(r), Some(f)) = (tf(body), tf(rw), tf(fw)) else {
         return;
@@ -183,14 +181,23 @@ fn set_wheelbase(sim: &mut SimWorld, asm: Entity, metres: f32) {
     }
     let (sin, cos) = libm::sincosf(b.rotation);
     let (dx, dy) = (cos * delta, sin * delta);
+    // Em MUNDO: a roda e a junta moram em pastas (a montagem, o chassi), e o passo é no mundo.
+    let to = Transform {
+        translation: Vec2::new(f.translation.x + dx, f.translation.y + dy),
+        ..f
+    };
+    let parent = ph2d_ecs::parent_world_transform(sim.world(), fw);
+    let Some(local) = Transform::inverse_compose(parent, to) else {
+        return;
+    };
+    let pivot = ph2d_physics_ecs::joint_world_pose(sim.world(), front.0);
     let w = sim.world_mut();
     if let Some(mut t) = w.get_mut::<Transform>(fw) {
-        t.translation.x += dx;
-        t.translation.y += dy;
+        t.translation = local.translation;
     }
-    if let Some(mut t) = w.get_mut::<Transform>(front.0) {
-        t.translation.x += dx;
-        t.translation.y += dy;
+    if let Some(p) = pivot {
+        let at = [p.translation.x + dx, p.translation.y + dy];
+        ph2d_physics_ecs::set_joint_world_pose(w, front.0, at, None);
     }
     if let Some(mut j) = w.get_mut::<PhysicsJoint>(front.0) {
         // A âncora no corpo é medida no referencial dele: o eixo x do corpo É a direcção do passo.
@@ -298,7 +305,7 @@ mod tests {
         set_wheelbase(&mut sim, e, 2.0);
         let x = |sim: &mut SimWorld, n: &str| {
             let e = body_named(sim, n).expect("peça");
-            sim.world().get::<Transform>(e).expect("t").translation.x
+            ph2d_ecs::world_transform(sim.world(), e).expect("t").translation.x
         };
         assert!(
             (x(&mut sim, "Front") - 1.3).abs() < 1e-4,

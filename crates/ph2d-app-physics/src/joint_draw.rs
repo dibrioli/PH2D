@@ -227,11 +227,9 @@ pub fn joint_draw_release(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f3
     // trilho na diagonal criava um trilho horizontal e o artista teria de ir
     // digitar o ângulo, que é exatamente o passo que este gesto existe para
     // remover.
-    if kind == JointKind::Slider
-        && span > 1e-3
-        && let Some(mut t) = ctx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(joint)
-    {
-        t.rotation = libm::atan2f(world[1] - d.from[1], world[0] - d.from[0]);
+    if kind == JointKind::Slider && span > 1e-3 {
+        let axis = libm::atan2f(world[1] - d.from[1], world[0] - d.from[0]);
+        ph2d_physics_ecs::set_joint_world_axis(ctx.sim.world_mut(), joint, axis);
     }
     // O gesto terminou: desarma, e SELECIONA o joint novo — a §12 abre no
     // que você acabou de desenhar, exatamente como no botão (W-JointCreate).

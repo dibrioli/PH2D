@@ -285,11 +285,15 @@ fn the_rig_anchors_on_the_seam_not_on_the_midpoint_of_centres() {
 
     rig(&mut sim, torso);
     let j = {
-        let mut q = sim.world_mut().query::<(&Name, &Transform)>();
-        q.iter(sim.world())
-            .find(|(n, _)| n.as_str() == "Torso : Head")
-            .map(|(_, t)| t.translation)
-            .expect("o joint existe")
+        let mut q = sim.world_mut().query::<(Entity, &Name)>();
+        let e = q
+            .iter(sim.world())
+            .find(|(_, n)| n.as_str() == "Torso : Head")
+            .map(|(e, _)| e)
+            .expect("o joint existe");
+        ph2d_physics_ecs::joint_world_pose(sim.world(), e)
+            .expect("pose")
+            .translation
     };
     assert!(
         (j.y - 3.5).abs() < 1e-4,

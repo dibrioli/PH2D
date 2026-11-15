@@ -72,15 +72,14 @@ impl crate::App {
         // dragging it mean the same thing. ⚠️ Not the `anchored` sentinel the
         // old tail cleared: that re-derives BOTH locals, so editing X for the
         // A end would silently reset the B end the artist just placed.
-        // A joint is a root entity, so its local translation IS world.
-        if let Some((bits, world)) = joint_pivot_commit {
+        if let Some((bits, local)) = joint_pivot_commit {
             let e = ph2d_ecs::Entity::from_bits(bits);
             if sim
                 .world()
                 .get::<ph2d_physics_ecs::PhysicsJoint>(e)
                 .is_some()
             {
-                physics.set_joint_anchor_world(sim, e, ph2d_physics_ecs::JointSide::A, world);
+                physics.set_joint_pivot_local(sim, e, local);
             }
             // W6: e o mesmo commit numa RODLANA montada precisa do sentinela
             // desarmado — o centro dela também é derivado, e o

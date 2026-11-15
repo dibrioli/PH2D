@@ -199,6 +199,8 @@ pub fn create_joint_at(
     // by entity bits — which the undo's respawn changes (the W3-era lesson
     // that `assign_missing_root_order` exists for).
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
+    // A junta mora dentro do corpo A (`joint_pose::joint_home`), sem sair do lugar.
+    ph2d_physics_ecs::rehome_joint(sim.world_mut(), joint);
     Some(joint)
 }
 
@@ -262,5 +264,7 @@ pub fn set_joint_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, target:
             .entity_mut(joint_e)
             .remove::<ph2d_physics_ecs::JointWorldAnchor>();
     }
+    ph2d_physics_ecs::rehome_joint(sim.world_mut(), joint_e);
+    ph2d_ecs::assign_missing_root_order(sim.world_mut());
     true
 }

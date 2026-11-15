@@ -99,6 +99,10 @@ pub fn place_part(
     if let Some(mut a) = sim.world_mut().get_mut::<JointAssembly>(assembly) {
         a.parts.push(AssemblyPart { role, body: id });
     }
+    // A montagem é a PASTA das peças: apagá-la apaga o conjunto, movê-la move-o.
+    if let Some(e) = body {
+        ph2d_physics_ecs::adopt_keeping_world(sim.world_mut(), e, Some(assembly));
+    }
     Ok(sync_joints(sim, assembly))
 }
 
@@ -125,13 +129,24 @@ pub fn assemble(
     Ok(Assembled { assembly, joints })
 }
 
-/// Apaga a montagem e as juntas dela. As peças ficam.
+/// Apaga a montagem e as juntas dela. As peças ficam, de volta à raiz e no mesmo lugar.
 pub fn dissolve(sim: &mut SimWorld, assembly: Entity) {
     let id = ph2d_ecs::stable_id_of(sim.world(), assembly).map_or(0, |s| s.0);
     for (j, _) in joints_of(sim.world_mut(), id) {
         despawn_joint(sim.world_mut(), j);
     }
+    let parts: Vec<Entity> = {
+        let mut q = sim.world_mut().query::<(Entity, &ph2d_ecs::ChildOf)>();
+        q.iter(sim.world())
+            .filter(|(_, c)| c.parent() == assembly)
+            .map(|(e, _)| e)
+            .collect()
+    };
+    for e in parts {
+        ph2d_physics_ecs::adopt_keeping_world(sim.world_mut(), e, None);
+    }
     sim.world_mut().despawn(assembly);
+    ph2d_ecs::assign_missing_root_order(sim.world_mut());
 }
 
 /// As juntas de uma montagem, pela identidade dela.
@@ -413,8 +428,10 @@ fn create(sim: &mut SimWorld, template: &Template, pair: &Pair, asm_id: u64) -> 
         ..fab
     };
     if let Some(axis) = rule.axis {
-        world.get_mut::<Transform>(joint)?.rotation = axis;
+        ph2d_physics_ecs::set_joint_world_axis(world, joint, axis);
     }
+    // Agora com a montagem escrita: um pino de cenário mora na pasta dela.
+    ph2d_physics_ecs::rehome_joint(world, joint);
     Some(joint)
 }
 

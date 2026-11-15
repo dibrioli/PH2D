@@ -278,9 +278,7 @@ fn write_rail_end(
     if len > 1e-4 {
         // The axis points at a forward end and away from a rearward one.
         let ang = libm::atan2f(side * dy, side * dx);
-        if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(joint) {
-            t.rotation = ang;
-        }
+        ph2d_physics_ecs::set_joint_world_axis(sim.world_mut(), joint, ang);
     }
     write_limit(sim, joint, kind, side * len);
 }

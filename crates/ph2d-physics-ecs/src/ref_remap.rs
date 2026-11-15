@@ -46,12 +46,17 @@ pub fn remap_joint_refs(
             j.body_b = id;
             moved = true;
         }
-        // A montagem copiada junto leva as juntas dela; copiada sem ela, a junta fica na original.
-        if j.assembly != 0
-            && let Some(&id) = by_id.get(&j.assembly)
-        {
-            j.assembly = id;
-            moved = true;
+        // A montagem copiada junto leva as juntas dela. Copiada SEM ela (duplicar só o chassi, que
+        // leva as juntas filhas), a cópia vira junta avulsa: a original só conta os pares das peças.
+        if j.assembly != 0 {
+            match by_id.get(&j.assembly) {
+                Some(&id) => j.assembly = id,
+                None if moved => {
+                    j.assembly = 0;
+                    j.role = 0;
+                }
+                None => {}
+            }
         }
         if moved {
             hits += 1;

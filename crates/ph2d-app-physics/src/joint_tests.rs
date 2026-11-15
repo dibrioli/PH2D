@@ -131,7 +131,7 @@ fn the_new_joint_lands_between_the_two_bodies() {
     let (mut sim, hook, plank) = two_bodies(true);
     let joint =
         create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
-    let t = sim.world().get::<Transform>(joint).expect("transform");
+    let t = ph2d_physics_ecs::joint_world_pose(sim.world(), joint).expect("transform");
     assert_eq!(
         t.translation.y, 5.5,
         "hook at 6, plank at 5 -> pivot at 5.5"
@@ -425,9 +425,7 @@ fn a_joint_between_parented_bodies_anchors_in_world_space() {
     let j = crate::joint::create_joint(&mut sim, parent.to_bits(), child.to_bits(), JointKind::Pin)
         .expect("joint criado");
 
-    let pivot = sim
-        .world()
-        .get::<Transform>(j)
+    let pivot = ph2d_physics_ecs::joint_world_pose(sim.world(), j)
         .expect("o joint tem Transform")
         .translation;
     assert!(

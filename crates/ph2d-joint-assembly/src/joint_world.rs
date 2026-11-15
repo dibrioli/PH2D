@@ -57,7 +57,7 @@ pub fn create_world_pin_at(
     }
     let a = Entity::from_bits(a_bits);
     let pose = {
-        let t = sim.world().get::<Transform>(a)?;
+        let t = ph2d_ecs::world_transform(sim.world(), a)?;
         [t.translation.x, t.translation.y, t.rotation]
     };
     let name_a = ensure_named(sim, a, "Body")?;

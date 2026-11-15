@@ -26,6 +26,11 @@ pub mod excecao;
 pub mod interaction;
 mod joint;
 mod joint_group;
+pub mod joint_pose;
+pub use joint_pose::{
+    adopt_keeping_world, joint_home, joint_world_pose, rehome_joint, set_joint_world_axis,
+    set_joint_world_pose,
+};
 pub mod joint_tool;
 /// ⭐⭐⭐ **Quem lê o teclado** — a porta ÚNICA que as duas metades da entrega do dedo
 /// partilham (a da shell e a da fita). Ver o cabeçalho do módulo.

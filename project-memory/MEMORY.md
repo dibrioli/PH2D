@@ -151,3 +151,4 @@
 - ⛔⛔ [Dono 13/11: desistiu da Planilha de Eventos; linha apagada — não recomeçar sem ordem](project_event_sheet_module_abandoned_2026_11_13.md)
 - ⭐⭐ [Dono 13/11: checkbox do app todo numa MOLDURA à Godot; losango no padrão (acima do canto sup. direito)](project_checkbox_in_a_frame_like_godot_2026_11_13.md)
 - ⭐⭐ [Dono 15/11: até onde o Ray Sensor ignora a família = campo texto + conta-gotas (vazio = para no personagem)](project_ray_family_ignore_up_to_field_2026_11_15.md)
+- ⛔⛔ [Dono 15/11: crítica que conta CAMPOS esconde o que falta FAZER — tabela de capacidades antes das maquetes](feedback_a_critique_that_counts_fields_hides_the_capability_gap.md)

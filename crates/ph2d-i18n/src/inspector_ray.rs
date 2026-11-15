@@ -111,7 +111,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "An object the ray always points at, wherever it moves. Empty: the Angle decides."
         }
         "panel.inspector.ray.aim_pick_tip" => "Click the object to aim at. Esc cancels.",
-        "panel.inspector.ray.aim_none" => "None: the Angle decides",
+        "panel.inspector.ray.aim_none" => "None",
         "panel.inspector.ray.aim_is_gone" => {
             "The object it aimed at is gone, so the Angle decides."
         }

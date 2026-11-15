@@ -154,6 +154,7 @@ pub mod projectile_smoke;
 pub use ph2d_ray_sensor::inspector as ray_inspector;
 /// ⭐⭐⭐ **O smoke do OLHO** (suplente #21, W6) — um poste com dois olhos e uma caixa que chega.
 pub mod ray_smoke;
+pub use ph2d_ray_sensor::gotas as ray_gotas;
 pub use ph2d_ray_sensor::topo as ray_topo;
 /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
 pub mod restart_smoke;

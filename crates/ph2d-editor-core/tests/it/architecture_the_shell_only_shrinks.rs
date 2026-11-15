@@ -247,6 +247,7 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-painter-canvas-map", 824), // 724 (integ 13/11: o `CanvasMap` e o gate dele saíram da `ph2d-app-painter`, que estava 177 acima do tecto)
     ("ph2d-physics-smoke-jump", 1_258), // 1_158 (13/11: as cenas 110 e 111 e o gate do pulo na parede saíram da `ph2d-physics-smoke-scenes`, que estava 204 acima do tecto)
     ("ph2d-physics-smoke-scenes", 18_422), // 18_061 (13/11: −1 151 do pulo para a `ph2d-physics-smoke-jump`; o tecto desce); 18_859 (integ 12/11: +149 da cena 49, `joint_break`, que saiu da `ph2d-app-physics` para curar o tecto dela); 18_732 (GEF02 onda 8: +287 da cena 48 com o tecto, +122 da cena 122)
+    ("ph2d-ray-sensor", 989), // 889 (GEF 07 RS, 15/11: a família do raio saiu da `ph2d-app-components`)
 ];
 
 /// A folga de uma crate: **2 %** do medido, piso de 100 linhas. É a razão da shell

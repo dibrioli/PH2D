@@ -329,3 +329,60 @@ fn um_canal_de_referencia_le_e_escreve_pelo_nome() {
     let lido = ler(&reg, sim.world(), e, k, &mut t, names).expect("canal");
     assert_eq!(t.texto(lido), Some(longe), "e lê-se de volta pelo nome");
 }
+
+/// ⭐⭐ **As melhorias do raio animam** (GEF 07 RS): Enabled, Thickness e Cone vão e voltam pela curva;
+/// o «Aim at» lê e escreve pelo NOME do objecto e o «Also ignore» pelo texto «A, B» — e um nome que
+/// nenhum objecto tem não escreve.
+///
+/// **Mutações que devem sangrar:** o `LISTA_SEP` deixar de ser «, » · o `escrever_ref` gravar a
+/// lista como um nome só · o campo 16 perder o `View::Named(Stable)`.
+#[test]
+fn as_melhorias_do_raio_animam_pelo_canal() {
+    use ph2d_ecs::{Name, StableId};
+    let reg = registo();
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((Name::new("Crate"), StableId(71)));
+    sim.world_mut().spawn((Name::new("Box"), StableId(72)));
+    let e = sim
+        .world_mut()
+        .spawn(ph2d_physics_ecs::RaySensor::default())
+        .id();
+    let kr = |f| chave("ph2d::physics::RaySensor", f, 0).expect("cabe");
+    let mut t = TextosDosCanais::default();
+    for (f, x) in [(13, 0.0), (14, 0.5), (15, 30.0)] {
+        assert!(
+            escrever(&reg, sim.world_mut(), e, kr(f), x, &t, SEM).is_some(),
+            "{f}"
+        );
+        assert_eq!(
+            ler(&reg, sim.world(), e, kr(f), &mut t, SEM),
+            Some(x),
+            "{f}"
+        );
+    }
+    let x = t.indice(Some("Box"));
+    assert!(escrever(&reg, sim.world_mut(), e, kr(16), x, &t, SEM).is_some());
+    let x = t.indice(Some("Crate, Box"));
+    assert!(escrever(&reg, sim.world_mut(), e, kr(17), x, &t, SEM).is_some());
+    let r = sim
+        .world()
+        .get::<ph2d_physics_ecs::RaySensor>(e)
+        .expect("raio")
+        .clone();
+    assert_eq!((r.enabled, r.thickness, r.cone), (false, 0.5, 30.0));
+    assert_eq!((r.aim_at, r.also_ignore), (72, vec![71, 72]));
+    let lido = ler(&reg, sim.world(), e, kr(16), &mut t, SEM).expect("canal");
+    assert_eq!(t.texto(lido), Some("Box"), "o alvo lê-se pelo nome");
+    let lido = ler(&reg, sim.world(), e, kr(17), &mut t, SEM).expect("canal");
+    assert_eq!(t.texto(lido), Some("Crate, Box"), "a lista lê-se «A, B»");
+    let x = t.indice(Some("Crate, Ghost"));
+    assert!(
+        escrever(&reg, sim.world_mut(), e, kr(17), x, &t, SEM).is_none(),
+        "nome sem objecto"
+    );
+    let r = sim
+        .world()
+        .get::<ph2d_physics_ecs::RaySensor>(e)
+        .expect("raio");
+    assert_eq!(r.also_ignore, vec![71, 72], "a lista não mudou");
+}

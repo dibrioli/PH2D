@@ -198,3 +198,70 @@ fn o_clique_no_canvas_do_conta_gotas_nao_seleciona() {
     assert_eq!(p.seleccao, Some(caixa.to_bits()), "desarmado, selecciona");
     assert!(p.bus.drain().next().is_none());
 }
+
+/// ⭐⭐ **«Aim at» e «Also ignore» pelo canvas** (GEF 07 RS-3/RS-12): armado, o clique sobre um objecto escreve-o
+/// no campo armado (`AimAt` / `IgnoreAdd`), desarma, e a selecção fica no raio. O clique no PRÓPRIO raio salta:
+/// nada sai e o conta-gotas continua armado.
+///
+/// **Mutações que sangram:** `conta_gotas::armado` esquecer o `gotas::armado` (o press cai no pick e selecciona) ·
+/// o `escolher` não filtrar o próprio raio · trocar `AimAt`/`IgnoreAdd` no `match campo`.
+#[test]
+fn o_clique_no_canvas_escolhe_a_mira_e_a_lista_do_raio() {
+    use ph2d_app_components::ray_gotas::{Gotas, arma};
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let corpo = RigidBody {
+        kind: BodyKind::Static,
+    };
+    let truck = w.spawn((Name::new("Truck"), corpo, StableId(41))).id();
+    let raio = w
+        .spawn((Name::new("Ray Sensor"), RaySensor::default(), StableId(42)))
+        .id();
+    let caixa = w.spawn((Name::new("Crate"), corpo, StableId(43))).id();
+    let mut present = PresentWorld::new();
+    let [m_truck, m_raio, m_caixa] = [[-3.0, 0.0], [0.0, 2.0], [3.0, 0.0]];
+    sprite(&mut present, truck, m_truck[0], m_truck[1], 2.0);
+    sprite(&mut present, raio, m_raio[0], m_raio[1], 1.0);
+    sprite(&mut present, caixa, m_caixa[0], m_caixa[1], 2.0);
+    let mut p = Palco {
+        sim,
+        present,
+        camera: Camera2d::new([0.5, 0.0], 10.0),
+        bus: ActionBus::default(),
+        seleccao: Some(raio.to_bits()),
+    };
+    let (px_truck, px_raio, px_caixa) = (p.pixel(m_truck), p.pixel(m_raio), p.pixel(m_caixa));
+    let escrito = |edit| EditorAction::InspectorComponentEdit {
+        entity_bits: raio.to_bits(),
+        edit: ComponentEdit::Ray(edit),
+    };
+    let armado = Some((raio.to_bits(), Gotas::Mira));
+    arma(p.sim.world_mut(), armado);
+    p.clica(px_raio);
+    assert!(
+        p.bus.drain().next().is_none(),
+        "o próprio raio não se escolhe"
+    );
+    assert!(conta_gotas::armado(p.sim.world()), "e continua armado");
+    assert_eq!(
+        p.seleccao,
+        Some(raio.to_bits()),
+        "o raio não se re-selecciona"
+    );
+    p.clica(px_caixa);
+    assert_eq!(p.seleccao, Some(raio.to_bits()), "a Crate mudou a selecção");
+    assert!(!conta_gotas::armado(p.sim.world()), "escreve e desarma");
+    let saiu: Vec<_> = p.bus.drain().collect();
+    assert_eq!(saiu, vec![escrito(RayFieldEdit::AimAt("Crate".into()))]);
+
+    arma(p.sim.world_mut(), Some((raio.to_bits(), Gotas::Lista)));
+    p.clica(px_truck);
+    assert_eq!(p.seleccao, Some(raio.to_bits()), "o Truck mudou a selecção");
+    assert!(!conta_gotas::armado(p.sim.world()));
+    let saiu: Vec<_> = p.bus.drain().collect();
+    assert_eq!(saiu, vec![escrito(RayFieldEdit::IgnoreAdd("Truck".into()))]);
+
+    // Controlo: desarmado, o mesmo pixel selecciona.
+    p.clica(px_truck);
+    assert_eq!(p.seleccao, Some(truck.to_bits()), "desarmado, selecciona");
+}

@@ -1,0 +1,20 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Ctrl+Q to exit)…
+[ph2d-gpu] adapter: NVIDIA GeForce RTX 5060 Ti (Vulkan, DiscreteGpu, NVIDIA 620.70.06)
+[ph2d-gpu] surface present mode: Fifo (available [Fifo, Immediate], refresh Some(59908) mHz)
+[   279ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   303ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   303ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   318ms] M11: VelloPass initialized (1024×768 intermediate)
+[   325ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   341ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   389ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   410ms] lifecycle: Foreground
+[   410ms] resize: 1024x768 @ 1.00x scale
+[game-smoke] =26 o Hero tem três Ray Sensor como filhos na Hierarchy: «Wall Ray» olha para a frente (selecionado), «Ledge Ray» olha para baixo, à frente dos pés, e «Eye Ray» olha para o alto, só para a tag Enemy e sem Walls block — vê o Enemy através da Crate. O Guard (alto, à direita) tem o «Guard Eye», um leque de 50°; a Turret (no ar) dá um tiro por script a cada quadro. Play (F5): a luz do meio acende já; seta para a direita: a Shot Light pisca ao passar sob a Turret, a Alarm Light acende quando o herói entra no leque do Guard, a Wall Light com a parede e a Edge Light quando o chão acaba.
+[ph2d-gpu] surface present mode → Immediate
+[   428ms] resize: 1930x1040 @ 1.00x scale
+warn: dropped 0.283s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

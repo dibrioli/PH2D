@@ -200,6 +200,20 @@ física falha com o motivo) · `jogo_ray_feixe` (`o_leque_e_a_fatia_e_o_raio_gro
 **Fecho.** fmt limpo; clippy `--all-targets -D warnings` exit 0 nas 15 crates tocadas; 2.ª corrida do binário smoke:
 ``Finished `smoke` profile [optimized] target(s) in 0.24s``.
 
+**Shape (dono 15/11: «thickness e cone são conflitantes»).** Commit `8b63b01a3c` (+ fotos e este parágrafo). Decisão: uma lista
+suspensa **Shape = Line · Thick · Cone** (dropdown por ordem do dono) e por baixo SÓ o número da forma activa (Line: nenhum; Thick:
+Thickness; Cone: Cone) — campo que não decide é controlo morto. `RayShape` sem dados no FIM do `RaySensor` (schema fica 244, degrau
+desta linha); `largura_activa`/`cone_activo` decidem o `lanca`, o `raycast` do script, o `ProbeMark::com_feixe` e a lista «todos» do
+cartão. **O leque já não usa a thickness** (linhas de vista finas). Catálogo `ray_sensor.18` (canal); popover diferido `PENDING_RAY_SHAPE_DD`
+(`popovers_tags.rs`), opções `INSP_RAY_SHAPE_OPTS`. Script: `RayFilter.shape` (`"line"|"thick"|"cone"`); Turret `shape = "thick"`, Guard Eye Cone.
+⚠️ Achado pelo gate do script: `angle` e `cone` do raio não tinham `View::Degrees` — o script lia/escrevia GRAUS contra a ajuda («radianos»);
+curado no catálogo (o canal da Timeline não usa a vista). Gates: `a_forma_escolhe_qual_numero_conta` · `a_forma_e_um_dropdown_e_so_o_numero_dela_aparece`
+(cliques reais, dois modos) · canal 18 em `as_melhorias_do_raio_animam_pelo_canal` · `o_filtro_do_script_escolhe_a_forma_pelo_nome`.
+**Mutação 6/6 sangrou:** opção→variante errada · `lanca` com thickness sem forma · leque com o círculo · cartão pinta Thickness com Line ·
+`com_feixe` sem forma · `lanca` com o cone sem forma. Fotos `fotos_07/26_shape_cartao`, `26_shape_cone` (+ `_cards_off`); a lista ABERTA não
+tem gancho de foto (`26_shape_aberto` não feita). 2.ª build: ``Finished `smoke` profile [optimized] target(s) in 0.25s``.
+⚠️ `ph2d-panel-registry-init/tests/it/o_inspector_armado.rs` monta um `InspectorRayInfo` literal sem os campos RS (já antes desta onda).
+
 ## Aberto
 
 - **Smoke do dono das melhorias** (RS-1..RS-12) — pendente.

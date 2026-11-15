@@ -77,6 +77,11 @@ fn campos() -> Vec<(ph2d_a11y::NodeId, &'static str)> {
         (i::INSP_RAY_STARTS_INSIDE, "component.field.ray_sensor.10"),
         (i::INSP_RAY_ALL_HITS, "component.field.ray_sensor.11"),
         (i::INSP_RAY_UP_TO, "component.field.ray_sensor.12"),
+        (i::INSP_RAY_ENABLED, "component.field.ray_sensor.13"),
+        (i::INSP_RAY_THICKNESS, "component.field.ray_sensor.14"),
+        (i::INSP_RAY_CONE, "component.field.ray_sensor.15"),
+        (i::INSP_RAY_AIM, "component.field.ray_sensor.16"),
+        (i::INSP_RAY_IGNORE_PICK, "component.field.ray_sensor.17"),
         (i::INSP_RAY_ON_ENTER, "component.field.ray_signals.0"),
         (i::INSP_RAY_ON_EXIT, "component.field.ray_signals.1"),
     ];
@@ -118,6 +123,7 @@ fn toda_linha_do_cartao_ray_tem_dica() {
     let mut ids: Vec<_> = campos().into_iter().map(|(id, _)| id).collect();
     ids.extend([
         i::INSP_RAY_UP_TO_PICK,
+        i::INSP_RAY_AIM_PICK,
         i::INSP_RAY_LAYER_RENAME,
         i::INSP_RAY_EDIT_MATRIX,
         i::INSP_RAY_FOLD_FILTER,

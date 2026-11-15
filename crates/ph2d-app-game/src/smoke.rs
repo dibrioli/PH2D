@@ -413,6 +413,13 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
                     Entity::from_bits(bits)
                 },
                 marca: portas.marca,
+                script: &|s, e, nome, fonte| {
+                    let w = s.world_mut();
+                    let id = w
+                        .get_resource_or_init::<ProjectScripts>()
+                        .insert(nome, fonte);
+                    w.entity_mut(e).insert(LuauScript::library(id));
+                },
             },
         ),
         n if input_map::codigo(n).is_some() => input_map::leitores(sim, n, |s| nivel_2(s, portas)),

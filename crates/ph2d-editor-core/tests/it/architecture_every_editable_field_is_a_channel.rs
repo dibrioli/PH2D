@@ -751,13 +751,28 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/ray.rs::corpo",
+        "sections/ray_rumo.rs::angulo",
+        Canal,
+        &["component.field.ray_sensor.0"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ray_rumo.rs::alcance_e_feixe",
         Canal,
         &[
-            "component.field.ray_sensor.0",
             "component.field.ray_sensor.1",
+            "component.field.ray_sensor.14",
+            "component.field.ray_sensor.15",
         ],
-        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+        "Reach, Thickness e Cone: o rótulo do catálogo vem da tabela da secção (F27 B2, RS-1/RS-2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ray_filtro.rs::linha_da_lista",
+        Canal,
+        &["component.field.ray_sensor.17"],
+        "«Also ignore» (RS-12): o canal da lista inteira pelo rótulo do catálogo numa variável (F27 B2)",
     ),
     (
         "ph2d-panel-inspector",
@@ -780,6 +795,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         &[
             "component.field.projectile_motion.9",
             "component.field.ray_sensor.12",
+            "component.field.ray_sensor.16",
         ],
         "a linha de texto com o conta-gotas: o rótulo do catálogo vem do chamador (o Target da bala, o «Ignore up to» do raio)",
     ),

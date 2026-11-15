@@ -98,6 +98,11 @@ const NOT_LANGUAGE: &[(&str, &str, &str)] = &[
     ),
     (
         "ids/inspector_tag_opts.rs",
+        "insp_ray_ignore_chip_{n}",
+        MOLDE,
+    ),
+    (
+        "ids/inspector_tag_opts.rs",
         "insp_action_tag_opt_{n}",
         MOLDE,
     ),

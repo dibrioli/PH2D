@@ -10,6 +10,12 @@
 //! «Enemy», criada na árvore do projecto) está atrás de uma «Crate». Com «Only see» = Only tag Enemy e «Walls
 //! block» desligado, a caixa é transparente para ele: a «Eye Light» acende já no Play, de pé. Ligar «Walls
 //! block» apaga-a (a caixa tapa o inimigo).
+//!
+//! **As melhorias (RS, dono 15/11):** um «Guard» no alto, à direita, com o «Guard Eye» — um raio em LEQUE
+//! (Cone 50°) a olhar para baixo e para a esquerda, só para a tag «Player» do herói: a «Alarm Light» acende
+//! quando o herói entra no leque (perto da beirada) e apaga quando sai. E uma «Turret» no tecto, com um
+//! script que dá um TIRO instantâneo a cada quadro (`ph2d.raycast`, reto para baixo, só para o «Player»): a
+//! «Shot Light» acende enquanto o herói passa por baixo dela.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -31,6 +37,35 @@ pub const INIMIGO: &str = "Enemy";
 pub const CAIXA: &str = "Crate";
 /// A tag do inimigo, na árvore de tags do projecto.
 pub const TAG_INIMIGO: &str = "Enemy";
+pub const GUARDA: &str = "Guard";
+pub const RAIO_GUARDA: &str = "Guard Eye";
+pub const TORRETA: &str = "Turret";
+/// A tag do herói — o que o guarda e a torreta procuram.
+pub const TAG_HEROI: &str = "Player";
+/// O guarda no alto, à direita; o leque dele olha para baixo e para a esquerda, até à beirada.
+pub const GUARDA_EM: [f32; 2] = [4.5, 1.2];
+/// `(ângulo, abertura, alcance)` do «Guard Eye».
+pub const LEQUE_DO_GUARDA: (f32, f32, f32) = (211.0, 50.0, 6.5);
+/// A torreta no tecto, sobre o chão: o tiro desce 3 m.
+pub const TORRETA_EM: [f32; 2] = [0.6, 0.8];
+/// O nome do script da torreta na biblioteca do projecto.
+pub const SCRIPT_DA_TORRETA: &str = "turret.luau";
+/// ⭐ O script da torreta: um tiro por quadro, a resposta na hora; diz-se só quando muda.
+pub const TORRETA_LUAU: &str = r#"-- Turret: an instant shot straight down every frame (ph2d.raycast).
+-- The Shot Light shows while the hero is under it.
+local seen = false
+
+function update(self, dt)
+  local x = ph2d.get(self.id, "x") or 0
+  local y = ph2d.get(self.id, "y") or 0
+  local hit = ph2d.raycast(ph2d.vec2(x, y), ph2d.vec2(x, y - 3), { only_see = "only_tag", tag = "Player" })[1]
+  local now = hit ~= nil
+  if now ~= seen then
+    seen = now
+    ph2d.emit(if now then "turret_hit" else "turret_miss")
+  end
+end
+"#;
 
 /// O herói nasce aqui; o chão vai de `x = -7` a `x = 1,5`, a parede está em `x = 6`.
 pub const HEROI_EM: [f32; 2] = [-5.0, -1.0];
@@ -59,10 +94,12 @@ pub const RAIOS: [Raio; 3] = [
 ];
 
 /// `(nome, x, acende com, apaga com)` — as luzes ficam no alto, apagadas.
-const LUZES: [(&str, f32, &str, &str); 3] = [
+const LUZES: [(&str, f32, &str, &str); 5] = [
     ("Wall Light", 2.0, "wall_ahead", "wall_gone"),
     ("Edge Light", -2.0, "edge_ahead", "ground"),
     ("Eye Light", 0.0, "enemy_seen", "enemy_gone"),
+    ("Alarm Light", 4.0, "spotted", "lost"),
+    ("Shot Light", -4.0, "turret_hit", "turret_miss"),
 ];
 const Y_LUZ: f32 = 3.2;
 const LUZ_LADO: f32 = 0.6;
@@ -74,6 +111,8 @@ const LUZ_RGBA: [f32; 4] = [0.98, 0.82, 0.25, 1.0];
 const SUPORTE_RGBA: [f32; 4] = [0.26, 0.27, 0.30, 1.0];
 const CAIXA_RGBA: [f32; 4] = [0.55, 0.40, 0.24, 1.0];
 const INIMIGO_RGBA: [f32; 4] = [0.85, 0.25, 0.25, 1.0];
+const GUARDA_RGBA: [f32; 4] = [0.30, 0.45, 0.80, 1.0];
+const TORRETA_RGBA: [f32; 4] = [0.60, 0.62, 0.66, 1.0];
 
 /// As portas do menu que a cena usa (a mesma rota do artista).
 pub struct Pecas<'a> {
@@ -85,6 +124,8 @@ pub struct Pecas<'a> {
     pub raio: &'a dyn Fn(&mut SimWorld, Entity) -> Entity,
     /// Marca o objecto com a tag (criada na árvore de tags do projecto se falta); o id.
     pub marca: &'a dyn Fn(&mut SimWorld, Entity, &str) -> u64,
+    /// Põe no objecto o script `(nome, fonte)` da biblioteca do projecto.
+    pub script: &'a dyn Fn(&mut SimWorld, Entity, &str, &str),
 }
 
 fn arruma(sim: &mut SimWorld, e: Entity, nome: &str, at: [f32; 2]) {
@@ -172,6 +213,16 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     }
     let heroi = (p.heroi)(sim);
     arruma(sim, heroi, HEROI, HEROI_EM);
+    let jogador = (p.marca)(sim, heroi, TAG_HEROI);
+    let olho_do_guarda = guarda(sim, &p, jogador);
+    let torreta = (p.imagem)(sim);
+    arruma(sim, torreta, TORRETA, TORRETA_EM);
+    sim.world_mut().entity_mut(torreta).insert(Sprite::atlas(
+        WHITE_TILE_KEY,
+        [0.5, 0.3],
+        TORRETA_RGBA,
+    ));
+    (p.script)(sim, torreta, SCRIPT_DA_TORRETA, TORRETA_LUAU);
     let pedida = foto(pedida().as_deref());
     let mut escolhido = heroi;
     for (nome, desvio, angle, reach, ve, perde) in RAIOS {
@@ -201,15 +252,45 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
             escolhido = r;
         }
     }
+    if pedida == Some(Foto::Cone) {
+        escolhido = olho_do_guarda;
+    }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
     println!(
         "[game-smoke] =26 o Hero tem três Ray Sensor como filhos na Hierarchy: «Wall Ray» olha para a frente \
          (selecionado), «Ledge Ray» olha para baixo, à frente dos pés, e «Eye Ray» olha para o alto, só para a \
-         tag Enemy e sem Walls block — vê o Enemy através da Crate. Play (F5): a luz do meio acende já; seta \
-         para a direita: a da direita acende quando a parede entra no raio, a da esquerda quando o chão acaba."
+         tag Enemy e sem Walls block — vê o Enemy através da Crate. O Guard (alto, à direita) tem o «Guard Eye», \
+         um leque de 50°; a Turret (no tecto) dá um tiro por script a cada quadro. Play (F5): a luz do meio \
+         acende já; seta para a direita: a Shot Light pisca ao passar sob a Turret, a Alarm Light acende quando \
+         o herói entra no leque do Guard, a Wall Light com a parede e a Edge Light quando o chão acaba."
     );
     escolhido
+}
+
+/// O «Guard» e o seu «Guard Eye» (o leque, só para o `Player`, que acende a «Alarm Light»). Devolve o raio.
+fn guarda(sim: &mut SimWorld, p: &Pecas<'_>, jogador: u64) -> Entity {
+    let g = (p.imagem)(sim);
+    arruma(sim, g, GUARDA, GUARDA_EM);
+    sim.world_mut()
+        .entity_mut(g)
+        .insert(Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.8], GUARDA_RGBA));
+    let r = (p.raio)(sim, g);
+    arruma(sim, r, RAIO_GUARDA, [0.0, 0.0]);
+    let (angle, cone, reach) = LEQUE_DO_GUARDA;
+    let w = sim.world_mut();
+    if let Some(mut s) = w.get_mut::<RaySensor>(r) {
+        s.angle = angle;
+        s.cone = cone;
+        s.reach = reach;
+        s.only_see = SeeFilter::OnlyTag;
+        s.see_tag = jogador;
+    }
+    w.entity_mut(r).insert(RaySignals {
+        on_enter: "spotted".to_owned(),
+        on_exit: "lost".to_owned(),
+    });
+    r
 }
 
 /// O instante das fotos do cartão (`PH2D_GAME_SMOKE_FOTO`); sem a variável a cena é a do dono.
@@ -217,16 +298,19 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
 pub enum Foto {
     /// `ray_filter`: o «Eye Ray» escolhido, com o grupo Filter aberto.
     Filter,
+    /// `ray_cone`: o «Guard Eye» escolhido (o leque), com o grupo Filter aberto.
+    Cone,
 }
 
 /// Os nomes que [`foto`] aceita (censo em `ph2d_game_smoke_fotos::nomes`).
-pub const NOMES: &str = "ray_filter";
+pub const NOMES: &str = "ray_filter ray_cone";
 
 /// A foto pedida pelo nome.
 #[must_use]
 pub fn foto(nome: Option<&str>) -> Option<Foto> {
     match nome?.trim() {
         "ray_filter" => Some(Foto::Filter),
+        "ray_cone" => Some(Foto::Cone),
         _ => None,
     }
 }
@@ -238,7 +322,7 @@ fn pedida() -> Option<String> {
 /// O cartão Ray Sensor e o grupo Signals abertos (a foto `ray_filter` abre o Filter no lugar dele).
 #[must_use]
 pub fn gavetas(foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, bool)> {
-    let grupo = if foto == Some(Foto::Filter) {
+    let grupo = if matches!(foto, Some(Foto::Filter | Foto::Cone)) {
         ids::INSP_RAY_FOLD_FILTER
     } else {
         ids::INSP_RAY_FOLD_SIGNALS
@@ -273,12 +357,19 @@ mod tests {
             }
         }
         // Cada luz ouve um raio: acende com um nome e apaga com o outro extremo do MESMO raio.
+        // O Guard Eye e a Turret (o script) publicam os seus dois nomes como os raios da tabela.
+        let mut vozes: Vec<(&str, &str)> = RAIOS.iter().map(|r| (r.4, r.5)).collect();
+        vozes.push(("spotted", "lost"));
+        vozes.push(("turret_hit", "turret_miss"));
+        assert!(
+            TORRETA_LUAU.contains("\"turret_hit\"") && TORRETA_LUAU.contains("\"turret_miss\"")
+        );
         for (luz, _, acende, apaga) in LUZES {
-            let dono = RAIOS
+            let dono = vozes
                 .iter()
-                .find(|r| [r.4, r.5].contains(&acende))
+                .find(|v| [v.0, v.1].contains(&acende))
                 .unwrap_or_else(|| panic!("{luz}: ninguém publica «{acende}»"));
-            assert!([dono.4, dono.5].contains(&apaga), "{luz}");
+            assert!([dono.0, dono.1].contains(&apaga), "{luz}");
         }
     }
 

@@ -20,6 +20,15 @@ export type Vec2 = { __kind: "vec2", x: number, y: number }
 --- A linear RGBA colour, as `ph2d.color` builds it and `self` reads it.
 export type Color = { __kind: "color", r: number, g: number, b: number, a: number }
 
+--- One thing a ray sees: the object, the collision shape it hit (with that shape's tags), where, the surface normal and how far.
+export type RayHit = { object: Entity, shape: Entity, point: Vec2, normal: Vec2, distance: number, tags: { string }, friction: number?, bounce: number? }
+
+--- What a Ray Sensor sees now: `seeing`, every hit (nearest first) and the nearest one's fields at the top.
+export type RayView = { seeing: boolean, hits: { RayHit }, object: Entity?, shape: Entity?, point: Vec2?, normal: Vec2?, distance: number?, tags: { string }?, friction: number?, bounce: number? }
+
+--- The options of a `ph2d.raycast`, named as the Ray Sensor card names them (`ray_sensor.*`).
+export type RayFilter = { layer: number?, only_see: string?, tag: string?, walls_block: boolean?, hit_triggers: boolean?, starts_inside: boolean?, see_all_hits: boolean?, thickness: number?, cone: number?, ignore_my_body: boolean?, ignore_my_other_parts: boolean?, ignore_up_to: string?, also_ignore: { string }? }
+
 --- What a property may default to; the default decides its kind.
 export type PropertyDefault = number | boolean | string | Vec2 | Color
 
@@ -174,6 +183,10 @@ declare ph2d: {
     object: (name: string) -> Entity,
     --- Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.
     spawn: (master: string?, x: number?, y: number?) -> Entity,
+    --- What a Ray Sensor object sees right now; nil when the object is not a Ray Sensor.
+    ray: (entity: Entity) -> RayView?,
+    --- Casts a ray right now, from one point to another, and gives back what it hits, nearest first (empty = nothing).
+    raycast: (from: Vec2, to: Vec2, filter: RayFilter?) -> { RayHit },
     --- Hits an object's Health for `amount` points, as a hit does (blink, numbers, death at 0).
     damage: (entity: Entity, amount: number) -> (),
     --- Gives an object's Health `amount` points back, up to its Max.

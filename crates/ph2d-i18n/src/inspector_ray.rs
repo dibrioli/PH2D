@@ -101,11 +101,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ray.aim_is_gone" => {
             "The object it aimed at is gone, so the Angle decides."
         }
-        "panel.inspector.ray.also_ignore_tip" => {
-            "Objects this ray never sees, with everything under them. Pick them with the dropper."
-        }
         "panel.inspector.ray.ignore_pick_tip" => {
-            "Click an object to add it to the list. Esc cancels."
+            "Objects this ray never sees, with everything under them. Click one to add it. Esc cancels."
         }
         "panel.inspector.ray.ignore_none" => "Nothing else",
         "panel.inspector.ray.ignore_chip_tip" => "Remove it from the list.",

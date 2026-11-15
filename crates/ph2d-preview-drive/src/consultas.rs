@@ -29,6 +29,20 @@ impl PreviewDrive {
         self.de(entity).next().is_some()
     }
 
+    /// ⭐ **Um MOTOR conduz esta entidade — a sessão «Animating» da Timeline não conta** (dono
+    /// 15/11: com o Auto Key ligado, um clipe novo e a regravação de uma chave não gravavam até ao
+    /// Done). A sessão segura a pose de quem a curva escreveu até ao Done
+    /// ([`Self::driven_held`]), mas o que ela escreve É a curva: o autokey lê `mundo == curva` e não
+    /// cunha nada, e o que a mão muda por cima é exactamente a chave que o artista quer. A pergunta
+    /// do autokey é esta, não [`Self::drives`].
+    #[must_use]
+    pub fn drives_outside_the_session(&self, entity: u64) -> bool {
+        self.memo
+            .range((entity, Driver::PRIMEIRO)..)
+            .take_while(|((bits, _), _)| *bits == entity)
+            .any(|(_, e)| !e.held)
+    }
+
     /// Os motores desta entidade, pela faixa dela no ledger (sem varrer as outras: a cola pergunta
     /// por membro, e a varredura era O(n²) — 05_W5 §4.2).
     fn de(&self, entity: u64) -> impl Iterator<Item = Driver> + '_ {

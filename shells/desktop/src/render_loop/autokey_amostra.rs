@@ -40,6 +40,7 @@ pub(super) fn sample_pose<'a>(
 /// ⚠️ Isto não espalha chaves: quem filtra é o DIFF do [`super::apply_samples`]. A ordem é a da selecção
 /// primeiro (a primeira recusa do quadro). ⛔ Menos quem um MOTOR conduz: os passes do esqueleto
 /// escrevem entre o apply e este passe, e a chave nasceria da saída do motor (auditoria de 08/09).
+/// A sessão «Animating» da Timeline não é motor: a pose que ela segura é a curva (dono 15/11).
 #[must_use]
 pub(crate) fn populacao(
     hero: &HeroScreen,
@@ -64,7 +65,7 @@ pub(crate) fn populacao(
         .chain(pinos)
         .chain(filhos)
     {
-        if !preview.drives(e) && !fora.contains(&e) {
+        if !preview.drives_outside_the_session(e) && !fora.contains(&e) {
             fora.push(e);
         }
     }

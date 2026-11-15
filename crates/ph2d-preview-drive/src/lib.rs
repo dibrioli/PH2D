@@ -269,6 +269,9 @@ struct Entry {
     last_written: Driven,
     /// Declarado neste quadro? O [`PreviewDrive::settle`] esquece quem não foi.
     seen: bool,
+    /// Declarado pela sessão «Animating» da Timeline ([`PreviewDrive::driven_held`]) e não por um
+    /// motor: ver [`PreviewDrive::drives_outside_the_session`].
+    held: bool,
 }
 
 /// **O ledger da condução** — quem está a ser escrito por um motor, e qual era o valor autorado.
@@ -311,6 +314,7 @@ impl PreviewDrive {
                     authored: before,
                     last_written: after,
                     seen: true,
+                    held: false,
                 });
             }
             std::collections::btree_map::Entry::Occupied(o) => {
@@ -325,6 +329,7 @@ impl PreviewDrive {
                 }
                 e.last_written = after;
                 e.seen = true;
+                e.held = false;
             }
         }
     }
@@ -404,12 +409,14 @@ impl PreviewDrive {
                 authored: before,
                 last_written: after,
                 seen: true,
+                held: true,
             });
         if e.last_written != before {
             e.authored = e.authored.adopta_por_campo(e.last_written, before, after);
         }
         e.last_written = after;
         e.seen = true;
+        e.held = true;
     }
 
     /// ⛔ **Ela NUNCA cria uma entrada.** Sem entrada não há condução a manter: o motor está a

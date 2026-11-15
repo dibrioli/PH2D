@@ -106,3 +106,29 @@ fn while_animating_an_edit_on_an_undriven_field_survives_done() {
         "o x conduzido volta à entrada"
     );
 }
+
+/// ⭐ Dono 15/11: com o Auto Key ligado, um clipe novo e a regravação de uma chave não gravavam até
+/// ao Done — o autokey tirava da população quem a sessão segurava. A sessão não é motor; a mesma
+/// curva tocada FORA da sessão (`held = false`) continua a ser.
+/// *Mutação: `drives_outside_the_session` = `drives` ⇒ o 1.º assert fica vermelho.*
+#[test]
+fn the_animating_session_is_not_a_motor_to_the_autokey() {
+    let (mut sim, e, mut doc) = rig();
+    let mut drive = PreviewDrive::default();
+    quadro(&mut sim, &mut doc, &mut drive, true);
+    assert!(
+        drive.drives(e.to_bits()),
+        "controlo: a sessão segura o objeto"
+    );
+    assert!(
+        !drive.drives_outside_the_session(e.to_bits()),
+        "a sessão contou como motor: o autokey não grava até ao Done"
+    );
+    // A mesma curva a tocar sem sessão é pré-visualização (um motor).
+    let (mut sim, e, mut doc) = rig();
+    let mut drive = PreviewDrive::default();
+    let before = state_of_bindings(sim.world(), &doc);
+    ph2d_timeline::apply_from_doc(sim.world_mut(), &mut doc, 2.0);
+    declare_timeline_writes_held(sim.world(), &before, &mut drive, false);
+    assert!(drive.drives_outside_the_session(e.to_bits()));
+}

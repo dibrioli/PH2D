@@ -32,6 +32,16 @@ Estudos lidos:
 
 Base do estudo: `main` `7b3dd983f7`.
 
+## Como ficou: o filtro (versão C, 15/11, commits `8fa2181ffc` motor · `c6a6d7f98e` painel · `1d4bd82003` canvas)
+
+- Grupo **Filter** no cartão (`sections/ray_filtro.rs`), entre Layer/Sees e Signals, nasce fechado com resumo
+  («Ignores me», «Only Enemy, Sees triggers»…): Ignore my body | Ignore my other parts · Only see (Everything ·
+  Only tag · All except tag, a linha de escolha da casa — segmentos, não lista: decisão do dono 23/09 sobre escolhas)
+  · Tag (lista da árvore de tags) e Walls block só fora de Everything · Hit triggers | Starts inside · See all hits.
+- Leitura com See all hits: uma linha por acerto («Sees Wall, at …», «and Box, at …», até 4, «and N more»).
+- Canvas: com See all hits a linha vai até ao bloqueio (ou ao alcance inteiro) com um tique em cada acerto.
+- Falta: a cena 26 com o inimigo atrás da caixa e o «Eye Ray», a foto `ray_filter` e o smoke do dono.
+
 ## Como está (conferido no código)
 
 - **O componente** `RaySensor` (`ph2d-physics-ecs/src/components/ray_sensor.rs`): `origin` (m, local), `dir`, `reach` (m), `layer: u8`.

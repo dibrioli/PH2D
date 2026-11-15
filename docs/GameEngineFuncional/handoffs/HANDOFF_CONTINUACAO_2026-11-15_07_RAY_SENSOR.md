@@ -50,6 +50,28 @@ fecha, dica do Angle), `o_angle_e_o_reach_do_raio_animam` (canal do catálogo, K
   (`ph2d_transport::corrida`) e `toma_o_teclado` (o Play solta o campo focado). Gates em
   `shells/game-scenes/tests/it/jogo_play_da_o_teclado.rs` (4), mutação 3/3. Doc 06 §9.
 
+## Terceira onda: o filtro (versão C)
+
+Commits `8fa2181ffc` (motor e vocabulário) · `c6a6d7f98e` (painel) · `1d4bd82003` (canvas).
+
+- **Painel:** `sections/ray_filtro.rs` (grupo `INSP_RAY_FOLD_FILTER`, fechado de fábrica, `resumo()`); ids em
+  `ids/inspector_ray.rs` (`INSP_RAY_IGNORE_BODY` … `INSP_RAY_ALL_HITS`, `INSP_RAY_ONLY_SEE[3]`, `INSP_RAY_SEE_TAG` +
+  `INSP_RAY_SEE_TAG_OPT[64]`, gerados por `inspector_physics_body::tabela::<N>`); popover diferido
+  `PENDING_RAY_TAG_DD` (`popovers_tags.rs`); a árvore de tags pela porta `nav_tag_row::opcoes_da_arvore` (a mesma do
+  Nav Agent). Eventos em `event_ray::clique_do_filtro` (caixa = contrário do snapshot). «Only see» é `paint_choice_row`
+  (segmentos) e não lista suspensa: a porta da casa para escolhas.
+- **Canvas:** `ProbeMark::more_hits` (`MaisAcertos`, `MAX_TIQUES_DO_RAIO = 8`, tecto do desenho); `ray_sensors.rs`
+  desenha all_hits até ao bloqueio.
+- **Gates verdes por nome:** `seam_ray` (9, +4 novos), `o_resumo_do_filter_muda_com_as_opcoes`,
+  `o_cartao_pinta_a_chave_do_catalogo` (era o vermelho), `architecture_every_editable_field_is_a_channel` (+2 entradas
+  Canal em POR_FUNCAO), `o_inspector_armado`, `versao_c_*` (9), `com_all_hits_ha_um_tique_em_cada_acerto`.
+- **Mutação 9/9 sangram:** IgnoreBody sem `!` · Filter nasce aberto · tag/Walls block sem o `if` · pintor sem
+  `more_hits` · ponte sem `com_mais_acertos` · fim sem o bloqueio · resumo sempre «Ignores me» · opções da tag pelo
+  array do Nav · AllHits sem `!`.
+- **Não feito (prazo):** cena 26 (inimigo «Enemy» atrás da caixa, «Eye Ray» Only tag sem Walls block, luz) e a foto
+  `PH2D_GAME_SMOKE_FOTO=ray_filter` (`cena_ray.rs`, molde `cena_projectile.rs`); fotos do cartão; fmt/clippy
+  `-D warnings` do fecho; o binário smoke.
+
 ## Aberto
 
 - Smoke do dono da cena 26 (passos na conversa de 15/11).

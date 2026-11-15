@@ -450,7 +450,7 @@ fn o_raio_nasce_filho_do_seleccionado_a_olhar_para_baixo() {
     let mut sim = SimWorld::new();
     let heroi = nasce(CHARACTER, &mut sim);
     let reg = crate::comp::registo();
-    let mut raio_sob = |sim: &mut SimWorld, pai: Option<Entity>| {
+    let raio_sob = |sim: &mut SimWorld, pai: Option<Entity>| {
         let bits = crate::comp::com_portas(&reg, |p| {
             add(RAY_SENSOR, sim, p.menu, pai.map(Entity::to_bits))
         })
@@ -467,6 +467,9 @@ fn o_raio_nasce_filho_do_seleccionado_a_olhar_para_baixo() {
     assert_eq!(r.angle, -90.0, "nasce a olhar para baixo");
     let t = w.get::<ph2d_ecs::Transform>(filho).expect("pose");
     assert_eq!(t.translation, ph2d_core::Vec2::ZERO, "na origem do pai");
-    assert!(w.get::<ph2d_physics_ecs::RaySensor>(heroi).is_none(), "o pai não ganha raio");
+    assert!(
+        w.get::<ph2d_physics_ecs::RaySensor>(heroi).is_none(),
+        "o pai não ganha raio"
+    );
     assert!(w.get::<RigidBody>(filho).is_none(), "o raio não é corpo");
 }

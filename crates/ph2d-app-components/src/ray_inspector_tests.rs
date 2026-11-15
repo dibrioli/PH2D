@@ -138,10 +138,16 @@ fn a_camada_vazia_so_fala_quando_e_certo() {
             .expect("seccao")
             .layer_empty
     };
-    assert!(vazia(&sim), "só a forma do PRÓPRIO corpo: o raio nunca verá nada");
+    assert!(
+        vazia(&sim),
+        "só a forma do PRÓPRIO corpo: o raio nunca verá nada"
+    );
 
     let chao = forma(&mut sim, 0, None);
-    assert!(!vazia(&sim), "uma forma de outro corpo na camada 0 cala o aviso");
+    assert!(
+        !vazia(&sim),
+        "uma forma de outro corpo na camada 0 cala o aviso"
+    );
 
     // A matriz diz que a camada 0 não vê a 0: o chão deixa de contar.
     let mut linhas = [u32::MAX; ph2d_physics_ecs::MAX_LAYERS];

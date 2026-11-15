@@ -107,7 +107,10 @@ impl PhysicsBridge {
                     (false, Some(tc), Some(te)) => {
                         let (s, co) = (libm::sinf(-tc.rotation), libm::cosf(-tc.rotation));
                         let d = te.translation - tc.translation;
-                        ([d.x * co - d.y * s, d.x * s + d.y * co], te.rotation - tc.rotation)
+                        (
+                            [d.x * co - d.y * s, d.x * s + d.y * co],
+                            te.rotation - tc.rotation,
+                        )
                     }
                     _ => ([0.0, 0.0], 0.0),
                 };

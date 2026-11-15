@@ -46,7 +46,7 @@ use ph2d_editor_core::widget::TextInputState;
 /// [`RaySensor::default()`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-physics-ecs/src/components/ray_sensor.rs
 const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 2] = [
     (ids::INSP_RAY_ANGLE, -90.0, -360.0, 360.0, 1.0), // LITERAL-PX-OK: graus, a faixa da Rotation
-    (ids::INSP_RAY_REACH, 1.0, 0.0, 1_000.0, 0.1),   // LITERAL-PX-OK: metros — ver o cabeçalho
+    (ids::INSP_RAY_REACH, 1.0, 0.0, 1_000.0, 0.1),    // LITERAL-PX-OK: metros — ver o cabeçalho
 ];
 
 pub(crate) fn populate_ray(store: &mut WidgetStore) {

@@ -9,7 +9,9 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayFieldEdit, RayQueixa};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::ids as i;
-use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_cards_on, set_current_inspector_ray};
+use ph2d_panel_inspector::{
+    InspectorPanel, InspectorState, set_cards_on, set_current_inspector_ray,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -53,7 +55,10 @@ fn pinta(h: &mut MockPanelHost, st: &mut InspectorState, cartoes: bool) -> Vec<(
     }
 }
 
-fn assente(info: &InspectorRayInfo, cartoes: bool) -> (MockPanelHost, InspectorState, Vec<(NodeId, Rect)>) {
+fn assente(
+    info: &InspectorRayInfo,
+    cartoes: bool,
+) -> (MockPanelHost, InspectorState, Vec<(NodeId, Rect)>) {
     let mut h = crate::host_em_metros();
     h.store_mut()
         .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION, false);
@@ -90,7 +95,11 @@ fn os_campos_ganham_o_foco_sob_o_dedo() {
             let (mut h, mut st, r) = assente(&raio(), c);
             let rect = achado(&r, id).unwrap_or_else(|| panic!("{id:?} não pintado (cartões {c})"));
             let _ = clica(&mut h, &mut st, rect);
-            assert_eq!(h.store().focus_id(), Some(id), "{id:?} morto sob o dedo (cartões {c})");
+            assert_eq!(
+                h.store().focus_id(),
+                Some(id),
+                "{id:?} morto sob o dedo (cartões {c})"
+            );
             set_current_inspector_ray(None);
         }
     });
@@ -125,13 +134,20 @@ fn digitar_45_no_angle_da_45_graus() {
 fn o_grupo_signals_abre_e_fecha_pelo_clique() {
     nos_dois_modos(|c| {
         let (mut h, mut st, mut r) = assente(&raio(), c);
-        assert!(achado(&r, i::INSP_RAY_ON_ENTER).is_some(), "Signals fechado de fábrica (cartões {c})");
+        assert!(
+            achado(&r, i::INSP_RAY_ON_ENTER).is_some(),
+            "Signals fechado de fábrica (cartões {c})"
+        );
         for aberto in [false, true] {
             let cab = achado(&r, i::INSP_RAY_FOLD_SIGNALS).expect("o cabeçalho Signals");
             let _ = clica(&mut h, &mut st, cab);
             r = pinta(&mut h, &mut st, c);
             for id in [i::INSP_RAY_ON_ENTER, i::INSP_RAY_ON_EXIT] {
-                assert_eq!(achado(&r, id).is_some(), aberto, "{id:?} com Signals aberto={aberto} (cartões {c})");
+                assert_eq!(
+                    achado(&r, id).is_some(),
+                    aberto,
+                    "{id:?} com Signals aberto={aberto} (cartões {c})"
+                );
             }
         }
         set_current_inspector_ray(None);

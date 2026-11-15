@@ -29,11 +29,12 @@ const _: () = assert!(ray::CENA == projectile::CENA + 1);
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 const _: () = assert!(projectile::CENA == topdown::CENA + 1);
 pub use ph2d_input_map_scene as input_map;
+pub use ph2d_physics_scene::niveis::{
+    BLOCOS, BLOCOS_2, CENTRO_DO_INICIO, CEU_COR, CEU_TAMANHO, MOEDAS, MOEDAS_2, PAREDE_INVISIVEL,
+    autorada,
+};
 pub use ph2d_physics_scene::{
     cena_projectile as projectile, cena_ray as ray, cena_topdown as topdown,
-};
-pub use ph2d_physics_scene::niveis::{
-    BLOCOS, BLOCOS_2, CENTRO_DO_INICIO, CEU_COR, CEU_TAMANHO, MOEDAS, MOEDAS_2, PAREDE_INVISIVEL, autorada,
 };
 
 /// As cenas que abrem com o Inspector no objecto que [`montar`] devolve (o herói, ou o míssil na 25).
@@ -282,7 +283,8 @@ pub const HORARIO_5: [(u32, Gesto); 5] = [
 /// A cena 24: ↗ até à parede de cima e desliza ao canto; só ← ao longo dela; só ↓ para abrir espaço; só ↑ de
 /// volta à parede (o gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda` mede cada trecho).
 /// Cena 26: anda para a direita (a parede entra no raio), pára à beirada (o chão acaba no outro raio).
-pub const HORARIO_26: [(u32, Gesto); 2] = [(120, Gesto::Direita(true)), (330, Gesto::Direita(false))];
+pub const HORARIO_26: [(u32, Gesto); 2] =
+    [(120, Gesto::Direita(true)), (330, Gesto::Direita(false))];
 
 pub const HORARIO_24: [(u32, Gesto); 11] = [
     (120, Gesto::Direita(true)),

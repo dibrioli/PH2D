@@ -15,10 +15,10 @@
 
 pub mod cena_projectile;
 pub mod cena_ray;
-pub mod niveis;
 pub mod cena_topdown;
 pub mod ficha;
 pub mod fotos_dos_cartoes;
+pub mod niveis;
 #[cfg(test)]
 mod superficie_do_player_tests;
 

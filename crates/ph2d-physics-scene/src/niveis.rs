@@ -60,4 +60,3 @@ pub fn autorada(no_mundo: [f32; 2], k: f32) -> [f32; 2] {
         no_mundo[1] - CENTRO_DO_INICIO[1] * (1.0 - k),
     ]
 }
-

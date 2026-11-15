@@ -103,16 +103,19 @@ fn a_linha_desenhada_e_o_raio_que_foi_lancado() {
         .world_mut()
         .spawn((Name::new("Olho"), Transform::from_translation(Vec2::ZERO)))
         .id();
-    let e = sim.world_mut().spawn((
-        Name::new("Ray Sensor"),
-        Transform::from_translation(Vec2::new(1.0, 0.0)),
-        ph2d_ecs::ChildOf(pai),
-        RaySensor {
-            angle: 0.0,
-            reach: 5.0,
-            layer: 0,
-        },
-    )).id();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name::new("Ray Sensor"),
+            Transform::from_translation(Vec2::new(1.0, 0.0)),
+            ph2d_ecs::ChildOf(pai),
+            RaySensor {
+                angle: 0.0,
+                reach: 5.0,
+                layer: 0,
+            },
+        ))
+        .id();
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(pai) {
         t.rotation = std::f32::consts::FRAC_PI_2;
     }

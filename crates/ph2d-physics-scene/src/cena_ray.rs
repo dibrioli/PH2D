@@ -33,7 +33,14 @@ const POCO: ([f32; 2], [f32; 2]) = ([5.0, -4.25], [2.0, 0.25]);
 type Raio = (&'static str, [f32; 2], f32, f32, &'static str, &'static str);
 pub const RAIOS: [Raio; 2] = [
     (RAIO_PAREDE, [0.3, 0.2], 0.0, 6.0, "wall_ahead", "wall_gone"),
-    (RAIO_BEIRADA, [0.6, -0.4], -90.0, 1.2, "ground", "edge_ahead"),
+    (
+        RAIO_BEIRADA,
+        [0.6, -0.4],
+        -90.0,
+        1.2,
+        "ground",
+        "edge_ahead",
+    ),
 ];
 
 /// `(nome, x, acende com, apaga com)` — as luzes ficam no alto, apagadas.
@@ -75,7 +82,11 @@ fn bloco(sim: &mut SimWorld, p: &Pecas<'_>, nome: &str, (c, h): ([f32; 2], [f32;
     w.entity_mut(e).insert(Sprite::atlas(
         WHITE_TILE_KEY,
         [2.0 * h[0], 2.0 * h[1]],
-        if nome == "Wall" { PAREDE_RGBA } else { CHAO_RGBA },
+        if nome == "Wall" {
+            PAREDE_RGBA
+        } else {
+            CHAO_RGBA
+        },
     ));
     let f = ph2d_physics_ecs::forma_para_editar(w, e).unwrap_or(e);
     if let Some(mut col) = w.get_mut::<Collider>(f) {
@@ -102,9 +113,11 @@ fn luz(sim: &mut SimWorld, p: &Pecas<'_>, nome: &str, x: f32, acende: &str, apag
     let suporte = (p.imagem)(sim);
     arruma(sim, suporte, &format!("{nome} Base"), [x, Y_LUZ]);
     let lado = LUZ_LADO * 1.4;
-    sim.world_mut()
-        .entity_mut(suporte)
-        .insert(Sprite::atlas(WHITE_TILE_KEY, [lado, lado], SUPORTE_RGBA));
+    sim.world_mut().entity_mut(suporte).insert(Sprite::atlas(
+        WHITE_TILE_KEY,
+        [lado, lado],
+        SUPORTE_RGBA,
+    ));
     let l = (p.imagem)(sim);
     arruma(sim, l, nome, [x, Y_LUZ]);
     sim.world_mut().entity_mut(l).insert((
@@ -202,7 +215,10 @@ mod tests {
     fn o_chao_acaba_antes_da_parede() {
         let fim_do_chao = CHAO.0[0] + CHAO.1[0];
         let face_da_parede = PAREDE.0[0] - PAREDE.1[0];
-        assert!(fim_do_chao + 1.0 < face_da_parede, "a beirada tem de vir antes");
+        assert!(
+            fim_do_chao + 1.0 < face_da_parede,
+            "a beirada tem de vir antes"
+        );
         assert!(HEROI_EM[0] < fim_do_chao);
     }
 }

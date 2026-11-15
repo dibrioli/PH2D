@@ -19,8 +19,7 @@ use ph2d_render::{FactoryArt, HERO_SHEET_SOLE_BELOW_CENTRE, HILLS_TILE, Sprite, 
 /// As entradas e o ensino do menu Add moram na folha de dados (`ph2d-game-dicas`), pela catraca de LOC.
 pub use ph2d_game_dicas::add::{
     ANIMATED_SPRITE, BACKGROUND_LAYER, CHARACTER, COLLISION_SHAPE, ENTRIES, RAY_SENSOR, SPRITE,
-    STATIC_BODY,
-    TEACH,
+    STATIC_BODY, TEACH,
 };
 
 const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];

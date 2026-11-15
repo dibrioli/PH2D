@@ -68,9 +68,31 @@ Commits `8fa2181ffc` (motor e vocabulário) · `c6a6d7f98e` (painel) · `1d4bd82
 - **Mutação 9/9 sangram:** IgnoreBody sem `!` · Filter nasce aberto · tag/Walls block sem o `if` · pintor sem
   `more_hits` · ponte sem `com_mais_acertos` · fim sem o bloqueio · resumo sempre «Ignores me» · opções da tag pelo
   array do Nav · AllHits sem `!`.
-- **Não feito (prazo):** cena 26 (inimigo «Enemy» atrás da caixa, «Eye Ray» Only tag sem Walls block, luz) e a foto
-  `PH2D_GAME_SMOKE_FOTO=ray_filter` (`cena_ray.rs`, molde `cena_projectile.rs`); fotos do cartão; fmt/clippy
-  `-D warnings` do fecho; o binário smoke.
+- **Cena 26 com o filtro** (`7f318581fa`): `Crate` (−2,1 ; 1,1) e `Enemy` (−0,37 ; 2,1) no alto, fora da linha do
+  Wall Ray; o `Enemy` leva a tag «Enemy» criada na árvore do projecto pela porta nova `smoke::Portas::marca`
+  (`ph2d_app_components::tags_doc::marca`; a shell liga-a sobre `cx.tags` em `janela_do_jogo.rs`, o espelho
+  `shells/game-scenes/tests/it/comp.rs` devolve a árvore por `montar_com_tags`). «Eye Ray» = terceiro raio de
+  `RAIOS` (30°, 7 m, Only tag, Walls block off); «Eye Light» na fila das luzes (x = 0). `HORARIO_26` passou a andar
+  ao 360 (era 120): o herói fica de pé, a luz acende e os avisos somem antes de andar (com 120 o olho perdia o
+  inimigo aos ~0,8 m e a foto apanhava `enemy_gone`). O selecionado continua o Wall Ray.
+- **Foto `ray_filter`** (`cena_ray::{Foto, NOMES, foto, gavetas}`): seleciona o Eye Ray e abre o Filter em vez de
+  Signals; registada em `ph2d_game_smoke_fotos::nomes::LEITORES` (6) e nos dois censos de `jogo_nomes_do_smoke`.
+- **Fotos** (`docs/GameEngineFuncional/componentes/fotos_07/`): `26_cartao.png` (Wall Ray, Filter fechado com
+  «Ignores me»), `26_filter.png` (`PH2D_GAME_SMOKE_FOTO=ray_filter`), `26_play_eye.png` (`PH2D_GAME_SMOKE_DRIVE=editor`,
+  espera 5: de pé, Eye Light acesa, raio a acabar no Enemy através da Crate). Olhadas: sem rótulo cortado nem
+  sobreposição; caixas «On» em moldura como Turns with facing.
+- **Fecho** (`0ec52ac519`): `cargo fmt` das crates; `clippy --all-targets -D warnings` verde em ph2d-physics,
+  -physics-ecs, editor-core, panel-inspector, app-components, app-physics, physics-scene, app-game, component-desc,
+  i18n, host-desktop, game-smoke-fotos, host-game-scenes — curados: `PointQuery` sem uso (`cast_query.rs`), doc e
+  `#[must_use]` trocados entre `com_mais_acertos`/`na_camada` (`player_view.rs`), dois `if` colapsados
+  (`ray_sensors.rs`). LOC: `workspace_src_files_under_loc_cap` reprovava `inspector_game.rs` 709 e
+  `component_catalog.rs` 704 — o Filter foi para a irmã `ph2d-i18n/src/inspector_ray.rs` (+ 11.ª tabela do
+  `every_word_this_panel_shows…`) e os canais `ray_sensor.4..11` para `component_catalog_forma.rs` (670 e 696).
+- **Gates verdes por nome:** `the_shell_only_shrinks`, `workspace_src_files_under_loc_cap`, `file_loc_caps`,
+  `architecture_every_editable_field_is_a_channel`, `o_cartao_pinta_a_chave_do_catalogo`, `seam_ray` (9),
+  `versao_c` (9), `ray_` (physics-ecs 30, app-components 15), `project_schema`, `jogo_ray`, `jogo_nomes_do_smoke` (4),
+  `cena_ray` (4), `every_word_this_panel_shows`, `every_word_this_catalog`, `o_tutorial` (6), `smoke` (app-game 5).
+- **Binário smoke** (2.ª corrida): ``Finished `smoke` profile [optimized] target(s) in 0.23s``.
 
 ## Aberto
 

@@ -40,7 +40,14 @@ Base do estudo: `main` `7b3dd983f7`.
   · Tag (lista da árvore de tags) e Walls block só fora de Everything · Hit triggers | Starts inside · See all hits.
 - Leitura com See all hits: uma linha por acerto («Sees Wall, at …», «and Box, at …», até 4, «and N more»).
 - Canvas: com See all hits a linha vai até ao bloqueio (ou ao alcance inteiro) com um tique em cada acerto.
-- Falta: a cena 26 com o inimigo atrás da caixa e o «Eye Ray», a foto `ray_filter` e o smoke do dono.
+- **Cena 26 com o filtro** (`7f318581fa`): «Enemy» (tag «Enemy» criada na árvore do projecto pela porta
+  `Portas::marca` → `tags_doc::marca`) atrás da «Crate», no alto; «Eye Ray» (filho do Hero, 30°, 7 m, Only tag Enemy,
+  Walls block desligado) e «Eye Light» (acende com `enemy_seen`, apaga com `enemy_gone`). De pé no Play a luz do meio
+  acende; o condutor do smoke fica de pé até ao quadro 360. Gate `jogo_ray` (game-scenes): vê através da caixa; com
+  Walls block a caixa tapa. Foto `PH2D_GAME_SMOKE_FOTO=ray_filter`: o Eye Ray escolhido, com o Filter aberto.
+- Fotos: [cartão](fotos_07/26_cartao.png) (Wall Ray, Filter fechado «Ignores me») · [filter](fotos_07/26_filter.png)
+  (Eye Ray: Only tag, Tag Enemy, Walls block desligado) · [play](fotos_07/26_play_eye.png) (de pé, Eye Light acesa).
+- Falta: o smoke do dono.
 
 ## Como está (conferido no código)
 

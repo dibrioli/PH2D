@@ -1,12 +1,36 @@
 # Ray Sensor
 
-**Estado: `em estudo`** (15/11) — versões A/B/C mostradas ao dono; aguarda a escolha. Nada construído.
+**Estado: `em obra`** (15/11) — o dono escolheu a **B** e mandou: *«assim como o collision shape deixou de ser
+componente e passou a ser objeto que aparece na hierarquia, também deve ser o Ray»*. A alça da C não foi pedida.
+O texto «Como está» abaixo é o estado de PARTIDA.
+
+## Como ficou (15/11, commit `0ff6b66e20`)
+
+- **O raio é um OBJETO** (como a forma, ADR-0199): Add ▸ «Ray Sensor» (`ph2d-game-dicas` `add::RAY_SENSOR`,
+  `ph2d_physics_ecs::pendura_raio`) — com seleção vira filho dela na origem dela, sem seleção fica na raiz.
+  Sai do Add Component e da paleta de física (`il`, `PORTAS` 8 → 7). Dois raios = dois filhos.
+- **Motor:** `RaySensor { angle (graus locais, 0 = direita, 90 = cima), reach, layer }`; a origem é a posição do
+  objeto. `raio_em_mundo` sobe ao corpo dono (`owner_body`): exclui-o e nasce da pose VIVA dele mais o desvio do
+  filho. `PROJECT_SCHEMA` 242 → 243, sem leitor velho (§0.11).
+- **Cartão B** (`sections/ray.rs`): avisos · «Sees X, at Y» · Angle (dica de hover) · Reach | Layer por nome ·
+  Rename/Open in tab · Sees · grupo **Signals** (aberto; `INSP_RAY_FOLD_SIGNALS`) com On Enter/On Exit e o
+  sufixo «n listens / nobody listens» que já existia (a crítica B·3 já estava feita).
+- **Aviso novo** «Nothing in the layers this ray sees. It can never see anything.» (`RayQueixa::CamadaVazia`,
+  `ray_inspector::camada_vazia`): nenhuma forma de OUTRO corpo numa camada que a matriz deixa o raio ver; uma
+  forma com exceção conta como visível (o aviso só fala quando é certo). A queixa «direção zero» saiu (um
+  ângulo é sempre um rumo).
+- **Hierarquia:** `ObjectType::RaySensor`, ícone `Probe`, cor `obj-ray-sensor`.
+- **O objeto raio não mostra a face «Add Physics Body»** (`paint_frame.rs`, `raio_solto`): seria um controlo
+  que transforma uma sonda em corpo.
+- **Cena** `PH2D_GAME_SMOKE=26` (`ph2d-physics-scene/src/cena_ray.rs`): Hero (Character do Add) com «Wall Ray»
+  (frente, 6 m) e «Ledge Ray» (pés, para baixo, 1,2 m), luzes «Wall Light» e «Edge Light», chão que acaba
+  antes da parede e um poço. Fotos em `fotos_07/26_*`. O `PH2D_RAY_SMOKE=1` antigo segue, com ângulos 0/180.
 
 Estudos lidos:
 - crítica `critica_ph2d.html#raysensor`, §1–§7, com o «Vale rever?» da Origin na C.
 - O estudo não tem seção própria; a crítica usou só a doc das engines, sem foto.
 
-Base: `main` `7b3dd983f7` (linha no mesmo sha).
+Base do estudo: `main` `7b3dd983f7`.
 
 ## Como está (conferido no código)
 

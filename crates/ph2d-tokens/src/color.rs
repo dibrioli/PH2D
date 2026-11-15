@@ -11,8 +11,7 @@
 //!
 //! **Source-of-truth: `docs/design/tokens.json`**, turned into per-theme tables by `build.rs`.
 
-// ⭐ **O endereço não muda com o corte:** quem escrevia `ph2d_tokens::color::srgb_to_oklch`
-// continua a escrevê-lo, e este ficheiro usa-as na mesma linha.
+// ⭐ O endereço não muda com o corte: `ph2d_tokens::color::srgb_to_oklch` continua a valer.
 pub use crate::color_space::{oklch_in_gamut, oklch_to_linear_srgb, oklch_to_srgb, srgb_to_oklch};
 use crate::theme::Theme;
 

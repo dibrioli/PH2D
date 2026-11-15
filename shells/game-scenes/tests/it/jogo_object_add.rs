@@ -53,6 +53,8 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
                 (false, false, Some(BodyKind::Static), true, false)
             }
             "object_add.game.background_layer" => (true, false, None, false, false),
+            // Sem seleção o raio fica só na raiz: sem imagem, sem corpo, sem forma (GEF 07).
+            "object_add.game.ray_sensor" => (false, false, None, false, false),
             other => panic!("entrada sem conjunto esperado: {other}"),
         };
         assert_eq!(tem, esperado, "{}", entry.key.key());
@@ -435,4 +437,36 @@ fn a_parede_invisivel_e_peca_do_chao() {
     let (parede, chao) = (achar("Invisible Wall"), achar("Ground Right"));
     assert_eq!(ph2d_physics_ecs::owner_body(w, parede), Some(chao));
     assert!(w.get::<RigidBody>(parede).is_none(), "sem Static próprio");
+}
+
+/// ⭐ **Add ▸ Ray Sensor** (GEF 07, dono 15/11): com um objeto selecionado o raio nasce FILHO dele, na
+/// origem dele (`Transform` identidade), a olhar para baixo — e o objeto selecionado não ganha nada (nem
+/// corpo, nem raio); sem seleção fica na raiz. O devolvido é o RAIO.
+///
+/// **Mutações que devem sangrar:** pôr o `RaySensor` no pai · não pendurar o raio · nascer com o
+/// `Transform` do menu (fora da origem do pai).
+#[test]
+fn o_raio_nasce_filho_do_seleccionado_a_olhar_para_baixo() {
+    let mut sim = SimWorld::new();
+    let heroi = nasce(CHARACTER, &mut sim);
+    let reg = crate::comp::registo();
+    let mut raio_sob = |sim: &mut SimWorld, pai: Option<Entity>| {
+        let bits = crate::comp::com_portas(&reg, |p| {
+            add(RAY_SENSOR, sim, p.menu, pai.map(Entity::to_bits))
+        })
+        .expect("é do jogo")
+        .expect("nasce");
+        Entity::from_bits(bits)
+    };
+    let filho = raio_sob(&mut sim, Some(heroi));
+    let solto = raio_sob(&mut sim, None);
+    let w = sim.world();
+    let pai = |e| w.get::<ph2d_ecs::ChildOf>(e).map(ph2d_ecs::ChildOf::parent);
+    assert_eq!((pai(filho), pai(solto)), (Some(heroi), None));
+    let r = w.get::<ph2d_physics_ecs::RaySensor>(filho).expect("o raio");
+    assert_eq!(r.angle, -90.0, "nasce a olhar para baixo");
+    let t = w.get::<ph2d_ecs::Transform>(filho).expect("pose");
+    assert_eq!(t.translation, ph2d_core::Vec2::ZERO, "na origem do pai");
+    assert!(w.get::<ph2d_physics_ecs::RaySensor>(heroi).is_none(), "o pai não ganha raio");
+    assert!(w.get::<RigidBody>(filho).is_none(), "o raio não é corpo");
 }

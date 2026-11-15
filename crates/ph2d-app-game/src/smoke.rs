@@ -32,6 +32,9 @@ pub use ph2d_input_map_scene as input_map;
 pub use ph2d_physics_scene::{
     cena_projectile as projectile, cena_ray as ray, cena_topdown as topdown,
 };
+pub use ph2d_physics_scene::niveis::{
+    BLOCOS, BLOCOS_2, CENTRO_DO_INICIO, CEU_COR, CEU_TAMANHO, MOEDAS, MOEDAS_2, PAREDE_INVISIVEL, autorada,
+};
 
 /// As cenas que abrem com o Inspector no objecto que [`montar`] devolve (o herói, ou o míssil na 25).
 #[must_use]
@@ -325,24 +328,6 @@ function update(self, dt)
 end
 "#;
 
-/// Os blocos do nível: nome, centro, meia-extensão (metros).
-const BLOCOS: [(&str, [f32; 2], [f32; 2]); 6] = [
-    ("Ground Left", [-5.0, -0.5], [7.0, 0.5]),
-    ("Ground Right", [11.0, -0.5], [6.0, 0.5]),
-    ("Platform Low", [3.5, 1.6], [1.2, 0.25]),
-    ("Platform High", [9.0, 3.0], [1.5, 0.25]),
-    ("Wall Left", [-12.5, 3.0], [0.5, 4.0]),
-    ("Wall Right", [17.5, 3.0], [0.5, 4.0]),
-];
-
-pub const MOEDAS: [[f32; 2]; 5] = [
-    [-4.0, 0.7],
-    [-1.5, 0.7],
-    [3.5, 2.4],
-    [9.0, 3.8],
-    [14.0, 0.7],
-];
-
 const CHAO: [f32; 4] = [0.35, 0.35, 0.40, 1.0];
 const OURO: [f32; 4] = [0.98, 0.80, 0.18, 1.0];
 const META: [f32; 4] = [0.30, 0.80, 0.40, 1.0];
@@ -496,35 +481,6 @@ fn arruma(sim: &mut SimWorld, e: Entity, nome: &str, at: [f32; 2], escala: [f32;
     t.scale = Vec2::new(escala[0], escala[1]);
 }
 
-/// Os blocos do nível 2 (*Static Body*): o desenho do nível 1 com as plataformas à altura do salto do
-/// boneco de fábrica (sobe ~1,4 m; a baixa tem o topo a 1,1 m, a alta alcança-se da baixa).
-pub const BLOCOS_2: [(&str, [f32; 2], [f32; 2]); 6] = [
-    ("Ground Left", [-5.0, -0.5], [7.0, 0.5]),
-    ("Ground Right", [11.0, -0.5], [6.0, 0.5]),
-    ("Platform Low", [3.5, 0.85], [1.2, 0.25]),
-    ("Platform High", [8.5, 2.0], [1.5, 0.25]),
-    ("Wall Left", [-12.5, 3.0], [0.5, 4.0]),
-    // Fundo a 0,60 m: de pé (topo 0,80) não cabe, agachado (0,50) passa — plano 09.
-    ("Low Ceiling", [-10.5, 0.85], [1.5, 0.25]),
-];
-
-/// A parede invisível do fim do nível: centro e meia-extensão no mundo (m).
-pub const PAREDE_INVISIVEL: ([f32; 2], [f32; 2]) = ([17.5, 3.0], [0.5, 4.0]);
-
-/// As moedas do nível 2: sobre o chão, sobre cada plataforma e antes da meta.
-pub const MOEDAS_2: [[f32; 2]; 5] = [
-    [-4.0, 0.6],
-    [-1.5, 0.6],
-    [3.5, 1.65],
-    [8.5, 2.8],
-    [13.5, 0.6],
-];
-
-/// O fundo do nível 2 (plano 11): o céu parado no ecrã, maior que a vista mais larga, na cor do céu do fundo
-/// azul do Kenney (`#DFF6F5`).
-pub const CEU_TAMANHO: [f32; 2] = [40.0, 16.0];
-/// ⚠️ O tingimento é LINEAR (`#DFF6F5` pela curva sRGB); `223/255` saía `#F0FBFA` (foto do plano 11).
-pub const CEU_COR: [f32; 4] = [0.7379, 0.9216, 0.9131, 1.0];
 /// As camadas de fundo: (nome, fracção da câmara que guardam, centro no MUNDO na vista do início, ordem).
 pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [
     ("Clouds", 0.15, [-5.9, 5.6], -2),
@@ -535,19 +491,6 @@ pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [
         -1,
     ),
 ];
-/// O centro da câmara quando o nível começa (o jogador em `[-8, 1,5]` encostado ao limite da esquerda, 16:9).
-pub const CENTRO_DO_INICIO: [f32; 2] = [-5.9, 3.0];
-
-/// A pose AUTORADA que põe uma camada com fracção `k` em `no_mundo` quando a câmara está em
-/// [`CENTRO_DO_INICIO`] (a ponte desloca-a de `centro·(1 − k)`).
-#[must_use]
-pub fn autorada(no_mundo: [f32; 2], k: f32) -> [f32; 2] {
-    [
-        no_mundo[0] - CENTRO_DO_INICIO[0] * (1.0 - k),
-        no_mundo[1] - CENTRO_DO_INICIO[1] * (1.0 - k),
-    ]
-}
-
 /// Veste um bloco com o azulejo de fábrica do seu papel em *Tiled* ao tamanho do bloco, escala 1 e a caixa do
 /// collider igual ao desenho (plano GEF 14 D6: o que o artista faz no Inspector — a imagem, Draw Mode Tiled e
 /// a Largura/Altura).

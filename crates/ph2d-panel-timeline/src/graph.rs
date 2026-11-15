@@ -251,10 +251,9 @@ pub(crate) fn resolve_drag(
             state::push_intent(i);
         }
         None
-    } else if state.speed_view {
-        // Speed edit, the AE gesture: vertical = VELOCITY, horizontal =
-        // INFLUENCE (the arm's length) — one tip drags both. Override rebuilds: a rhythm the
-        // segment had goes (the new easing already carries the speed that played at the far end).
+    } else {
+        // Override rebuilds, in either view: a rhythm the segment had goes (the handles are drawn
+        // where the motion PLAYS, so the new easing starts from the curve on screen).
         if k0.retime.is_some() {
             let sem = ph2d_timeline::RetimeIntent::Set {
                 target: track.target,
@@ -263,12 +262,13 @@ pub(crate) fn resolve_drag(
             };
             state::push_intent(TimelineIntent::Retime(sem));
         }
-        Some(weighted_with_speed_handle(
-            k0, k1, d.which, ponto.0, ponto.1,
-        ))
-    } else {
-        // Value edit: the dragged handle follows the pointer in (time, value).
-        Some(weighted_with_handle(k0, k1, d.which, ponto.0, ponto.1))
+        Some(if state.speed_view {
+            // Speed edit, the AE gesture: vertical = VELOCITY, horizontal = INFLUENCE.
+            weighted_with_speed_handle(k0, k1, d.which, ponto.0, ponto.1)
+        } else {
+            // Value edit: the dragged handle follows the pointer in (time, value).
+            weighted_with_handle(k0, k1, d.which, ponto.0, ponto.1)
+        })
     };
     if let Some(interp) = interp {
         state::push_intent(TimelineIntent::SetInterp {

@@ -125,8 +125,9 @@ pub use doc_path::AutoOrient;
 /// derive o seed desenha um wobble que o objeto não roda (auditoria 2026-07-29, §4 D-J).
 pub use frame_solve::seed_of_target;
 pub use graph::{
-    drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_points,
-    speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,
+    drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_drawn,
+    segment_handle_points, speed_handle_tip, value_extent, weighted_with_handle,
+    weighted_with_speed_handle,
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::TimelineIntent;

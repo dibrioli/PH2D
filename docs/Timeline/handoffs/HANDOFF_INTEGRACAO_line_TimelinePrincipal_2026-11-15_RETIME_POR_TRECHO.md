@@ -138,6 +138,35 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   6 + inset 2 ≥ raio 7) · «NaN vai ao canto» (só com evento de rato inválido) · arrasto aberto ao rolar (anterior, não medido).
 - Provas: `graph_ritmo` 9 ✓ · `graph::tests` 23 ✓ · `resize` 7 ✓.
 
+## Vista de VALOR sobre um trecho retimado (15/11, 2.ª janela — o 1.º aberto)
+
+- **Defeito:** `segment_handle_points` dava os pontos do easing `E` sem o ritmo; a curva desenhada é `E(W(u))` ⇒ os braços
+  não tocavam a curva. A vista de velocidade já mostrava o que TOCA (`speed_handle_tip` usa `E'·W'`); faltava a de valor.
+- **Lei (uma para as duas vistas):** num trecho retimado o braço é a TANGENTE do que toca (`segment_endpoint_speed`), com a
+  influência do easing ENCURTADA até a ponta caber nos valores que o trecho toca (`arm_inside` sobre
+  `segment_value_range`, 64 amostras) — sem isso um ritmo íngreme punha a ponta fora da banda (medido na 1.ª foto: nem se
+  via nem se agarrava). Chegada/saída VERTICAL (alça do tempo num canto da caixa, `W'` infinito): o braço SOME
+  (`segment_handle_drawn`), como na velocidade — antes caía no ponto do easing, que mentia.
+- **Gesto:** puxar o braço na vista de valor = Override, como na velocidade: `resolve_drag` tira o ritmo
+  (`RetimeIntent::Set { retime: None }`) no mesmo passo de undo e grava o `BezierW` a partir dos pontos DESENHADOS (o outro
+  lado fica onde estava). A `Spline` com pontos retimada também passa a `BezierW` (os pontos dela não sabiam do ritmo).
+  `weighted_with_speed_handle` perdeu a sua correção própria — `segment_handle_points` já a dá.
+- **Provas por nome:** `ph2d-timeline graph::` 18 ✓ — novos `num_trecho_retimado_a_alca_de_valor_e_tangente_a_curva_desenhada`
+  (oráculo = diferença finita de 2.ª ordem sobre `sample_keys`, 3 famílias, os dois lados),
+  `com_ritmo_ingreme_a_ponta_do_braco_fica_dentro_do_que_o_trecho_toca`, `com_a_chegada_na_vertical_aquele_braco_some_e_o_outro_fica`,
+  `puxar_a_alca_de_um_trecho_retimado_deixa_a_outra_ponta_onde_estava` · `ph2d-panel-timeline graph` 37 ✓ — novo
+  `na_vista_de_valor_puxar_a_alca_de_um_trecho_retimado_tira_o_ritmo` · `speed` 20 + 4 ✓ · `retime` 9 + 1 ✓.
+- **Mutações (uma a uma, restauradas e conferidas com `cmp`):** bloco do ritmo desligado · sinal do lado de chegada
+  trocado · `Spline` retimada mantida · tirar o ritmo só na velocidade ⇒ **as 4 vermelhas**.
+- **App (Xvfb, cliques reais, [`fotos_retime_valor.sh`](../ferramentas/fotos_retime_valor.sh), com conferências):**
+  [ritmo dentro da caixa](../fotos/retime_14_ritmo_dentro_da_caixa.png) · [braços tangentes](../fotos/retime_15_valor_bracos_tangentes.png) ·
+  [braço puxado](../fotos/retime_16_valor_braco_puxado.png) · [antes × depois](../fotos/retime_17_valor_antes_e_depois.png)
+  (esquerda: binário com o bloco desligado — braços na reta antiga; direita: a cura). ⚠️ A cena do Bounce com a alça no
+  canto (`fotos_retime_caixa.sh`) dava fotos IGUAIS antes e depois: o Bounce sai parado (`E'(0)=0`) e o canto dá `W'(1)=∞` —
+  a cena do valor usa Straight e alças longe dos cantos por isso.
+- **Não feito, por decisão:** «Reset timing» no cartão da chave — seria um botão inerte em quase toda chave (só serve a
+  trecho retimado); fica ao lado da pílula. Se o dono o pedir, é uma linha na tabela do menu + o resolvedor.
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é
@@ -160,7 +189,6 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   - **Dono 15/11: «vamos tentar A» — FEITO** (ver «Retime = caixa do tempo» abaixo) e a auditoria das 2 lentes curada.
     **Smoke do dono 15/11: OK** («Muito bom! Parece ótimo!»; depois da auditoria: «smoke OK»).
 
-- Na vista de VALOR as alças continuam as do easing (sobre um trecho retimado não ficam em cima da curva desenhada).
-- O «Reset timing» mora ao lado da pílula, não no menu da chave (o plano dizia «menu da chave/linha»); se o dono o quiser
-  também lá, é uma linha no cartão da chave.
+- ~~Na vista de VALOR as alças continuam as do easing~~ — FEITO (secção «Vista de VALOR…»); smoke do dono pendente.
+- O «Reset timing» fica só ao lado da pílula (decidido na 2.ª janela de 15/11, ver a mesma secção).
 - Do handoff anterior: smoke do Auto Key na sessão e dos acréscimos 13–14; o campo do Inspector digitado (não medido).

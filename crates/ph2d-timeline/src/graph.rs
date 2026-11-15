@@ -112,7 +112,10 @@ pub fn drawn_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
         // steep preset (Expo, Back) would drag the whole band's fit out to
         // meet a hint, squashing the curve the author came to look at. Those
         // get clipped instead.
-        if !matches!(k0.interp, Interp::Bezier { .. } | Interp::BezierW { .. }) {
+        // A retimed segment's handles are derived and already inside its played values.
+        if k0.retime.is_some()
+            || !matches!(k0.interp, Interp::Bezier { .. } | Interp::BezierW { .. })
+        {
             continue;
         }
         for (_, v) in segment_handle_points(k0, k1) {
@@ -129,19 +132,74 @@ pub fn drawn_extent(keys: &[KeyView], t0: f64, t1: f64, samples: usize) -> Optio
 /// positions the value graph has always drawn). This is the value-space
 /// counterpart of [`handle_point`], and the one source the panel paints and
 /// drags from.
+///
+/// A RETIMED segment draws `E(W(u))`, so its handles are the tangents of what PLAYS: the played
+/// endpoint slope `E'·W'`, with the easing's influence (`x`) shortened until the tip is inside the
+/// values the segment plays — the same arm the speed view's Override shows, and the `BezierW` a
+/// handle drag rebuilds the segment into. A vertical played tangent
+/// (`W'` infinite at a box corner) keeps the easing's own point: there is no finite tip to draw.
 #[must_use]
 pub fn segment_handle_points(k0: &KeyView, k1: &KeyView) -> [(f64, f64); 2] {
     let (t0, v0) = (k0.t_seconds, f64::from(k0.value));
     let (t1, v1) = (k1.t_seconds, f64::from(k1.value));
-    if let Interp::BezierW { x1, dy1, x2, dy2 } = k0.interp {
+    let mut pts = if let Interp::BezierW { x1, dy1, x2, dy2 } = k0.interp {
         let span = t1 - t0;
-        return [(t0 + x1 * span, v0 + dy1), (t0 + x2 * span, v1 + dy2)];
+        [(t0 + x1 * span, v0 + dy1), (t0 + x2 * span, v1 + dy2)]
+    } else {
+        let (h_out, h_in) = k0.interp.tangent_handles();
+        [
+            handle_point(t0, v0, t1, v1, h_out),
+            handle_point(t0, v0, t1, v1, h_in),
+        ]
+    };
+    if k0.retime.is_some() {
+        let toca = [0u8, 1].map(|w| crate::speed::segment_endpoint_speed(k0, k1, w));
+        let caixa = segment_value_range(k0, k1);
+        let piso = MIN_INFLUENCE * (t1 - t0);
+        if toca[0].is_finite() {
+            let x = arm_inside(pts[0].0 - t0, toca[0], v0, caixa).max(piso);
+            pts[0] = (t0 + x, v0 + toca[0] * x);
+        }
+        if toca[1].is_finite() {
+            let x = arm_inside(t1 - pts[1].0, -toca[1], v1, caixa).max(piso);
+            pts[1] = (t1 - x, v1 - toca[1] * x);
+        }
     }
-    let (h_out, h_in) = k0.interp.tangent_handles();
-    [
-        handle_point(t0, v0, t1, v1, h_out),
-        handle_point(t0, v0, t1, v1, h_in),
-    ]
+    pts
+}
+
+/// The `(min, max)` of the values a segment PLAYS (its two keys and 64 samples between).
+fn segment_value_range(k0: &KeyView, k1: &KeyView) -> (f64, f64) {
+    let keys = [k0.clone(), k1.clone()];
+    let (t0, span) = (k0.t_seconds, k1.t_seconds - k0.t_seconds);
+    (0..=64)
+        .filter_map(|i| sample_keys(&keys, t0 + span * f64::from(i) / 64.0))
+        .map(f64::from)
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| {
+            (lo.min(v), hi.max(v))
+        })
+}
+
+/// An arm's time length `len` from the key at value `v` along slope `s` (value per second),
+/// shortened so its tip stays inside `[lo, hi]` — a steep played tangent would otherwise put the
+/// tip far outside the band, where it can be neither seen nor grabbed.
+fn arm_inside(len: f64, s: f64, v: f64, (lo, hi): (f64, f64)) -> f64 {
+    let lim = if s > 0.0 {
+        (hi - v) / s
+    } else if s < 0.0 {
+        (lo - v) / s
+    } else {
+        f64::INFINITY
+    };
+    len.min(lim)
+}
+
+/// Whether the value graph draws handle `which` (`0` = out, `1` = in): a retimed side whose played
+/// tangent is VERTICAL (the time handle in a corner of the box) has no finite tip — hidden, as the
+/// speed view hides it ([`speed_handle_tip`] → `None`), never drawn at the easing's own point.
+#[must_use]
+pub fn segment_handle_drawn(k0: &KeyView, k1: &KeyView, which: u8) -> bool {
+    k0.retime.is_none() || crate::speed::segment_endpoint_speed(k0, k1, which).is_finite()
 }
 
 /// A weighted tangent pair from one dragged handle: `which` (`0` = out, `1` =
@@ -155,7 +213,9 @@ pub fn weighted_with_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f6
     // A Custom com PONTOS só troca a alça da ponta — virar `BezierW` apagaria os pontos. Parada
     // (`v0 == v1`) não tem forma normalizada: cai no `BezierW` como as outras.
     let (span, dv) = (k1.t_seconds - k0.t_seconds, f64::from(k1.value - k0.value));
+    // Retimed: the handles drawn are what PLAYS, and the drag rebuilds a `BezierW` (Override).
     if let Interp::Spline(_) = k0.interp
+        && k0.retime.is_none()
         && span > 0.0
         && dv.abs() > f64::EPSILON
     {
@@ -210,18 +270,9 @@ pub fn weighted_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64,
     let [out, inn] = segment_handle_points(k0, k1);
     let mut x1 = if span > 0.0 { (out.0 - t0) / span } else { 0.0 };
     let mut x2 = if span > 0.0 { (inn.0 - t0) / span } else { 1.0 };
-    let (mut dy1, mut dy2) = (out.1 - v0, inn.1 - v1);
     // Override REBUILDS (dono 15/11): a retimed segment comes out without its rhythm (the caller
-    // drops it), so the far side keeps the speed that PLAYS there (`E'·W'`) — nothing jumps.
-    if k0.retime.is_some() {
-        let tocam = [0u8, 1].map(|w| crate::speed::segment_endpoint_speed(k0, k1, w) * span);
-        if tocam[0].is_finite() {
-            dy1 = tocam[0] * x1;
-        }
-        if tocam[1].is_finite() {
-            dy2 = -tocam[1] * (1.0 - x2);
-        }
-    }
+    // drops it); `segment_handle_points` already gives the far side the speed that PLAYS there.
+    let (mut dy1, mut dy2) = (out.1 - v0, inn.1 - v1);
     let u = if span > 0.0 { (t - t0) / span } else { 0.0 };
     if which == 0 {
         x1 = u.clamp(MIN_INFLUENCE, 1.0); // CLAMP-OK: const bounds, min<max
@@ -295,6 +346,117 @@ mod tests {
             interp,
             selected: false,
             roving: false,
+        }
+    }
+
+    /// The played slope at each end, measured on the curve itself (`sample_keys`, one-sided
+    /// difference) — an oracle independent of the chain rule the handles use.
+    fn slope_medida(k0: &KeyView, k1: &KeyView, which: u8) -> f64 {
+        // Second-order one-sided difference: `sample_keys` is `f32`, so `h` cannot be tiny.
+        let (h, keys) = (1.0e-3, [k0.clone(), k1.clone()]);
+        let s = |t: f64| f64::from(sample_keys(&keys, t).unwrap_or(f32::NAN));
+        let (t, d) = if which == 0 {
+            (k0.t_seconds, h)
+        } else {
+            (k1.t_seconds, -h)
+        };
+        (-3.0 * s(t) + 4.0 * s(t + d) - s(t + 2.0 * d)) / (2.0 * d)
+    }
+
+    fn retimado(interp: Interp) -> (KeyView, KeyView) {
+        let mut k0 = key(0.0, 0.0, interp);
+        k0.retime = Some(ph2d_anim::Retime::new(0.1, 0.6, 0.5, 0.95));
+        (k0, key(2.0, 10.0, Interp::Linear))
+    }
+
+    /// Item aberto do 15/11: na vista de VALOR, sobre um trecho retimado, as alças eram as do
+    /// easing sem o ritmo — não tocavam a curva desenhada. Cada braço tem de ser TANGENTE à curva
+    /// que toca, para toda família.
+    #[test]
+    fn num_trecho_retimado_a_alca_de_valor_e_tangente_a_curva_desenhada() {
+        for interp in [
+            Interp::Linear,
+            Interp::bezier(0.3, 0.1, 0.6, 0.9),
+            Interp::bezier_w(0.4, 3.0, 0.7, -1.0),
+        ] {
+            let (k0, k1) = retimado(interp);
+            let pts = segment_handle_points(&k0, &k1);
+            for (which, (anc, p)) in [((0.0, 0.0), pts[0]), ((2.0, 10.0), pts[1])]
+                .into_iter()
+                .enumerate()
+            {
+                let braco = (p.1 - anc.1) / (p.0 - anc.0);
+                let medida = slope_medida(&k0, &k1, which as u8);
+                assert!(
+                    (braco - medida).abs() <= 2.0e-3 * medida.abs().max(1.0),
+                    "{interp:?} lado {which}: braço {braco} × curva {medida}"
+                );
+            }
+        }
+    }
+
+    /// Um ritmo íngreme (`W'(0) = 18`) punha a ponta do braço muito acima da banda (foto 15/11): nem
+    /// se via nem se agarrava. A ponta fica dentro dos valores que o trecho toca — num trecho
+    /// monótono de 0 a 10, entre 0 e 10 — e o braço continua tangente.
+    #[test]
+    fn com_ritmo_ingreme_a_ponta_do_braco_fica_dentro_do_que_o_trecho_toca() {
+        let (mut k0, k1) = retimado(Interp::Linear);
+        k0.retime = Some(ph2d_anim::Retime::new(0.05, 0.9, 0.5, 1.0));
+        let pts = segment_handle_points(&k0, &k1);
+        for (which, p) in pts.into_iter().enumerate() {
+            assert!(
+                (-1e-9..=10.0 + 1e-9).contains(&p.1),
+                "lado {which}: ponta em {p:?}"
+            );
+            assert!(
+                p.0 > 0.0 && p.0 < 2.0,
+                "lado {which}: ponta fora do trecho {p:?}"
+            );
+        }
+        let braco = pts[0].1 / pts[0].0;
+        let medida = slope_medida(&k0, &k1, 0);
+        // 5e-3: the difference's own truncation on a curve this steep (90 exact × 89,76 measured).
+        assert!(
+            (braco - medida).abs() <= 5.0e-3 * medida.abs(),
+            "{braco} × {medida}"
+        );
+    }
+
+    /// A alça do tempo no CANTO da caixa (`x2 = 1`) faz o movimento chegar na vertical: aquele
+    /// braço não tem ponta finita e some (como na vista de velocidade); o outro lado fica.
+    #[test]
+    fn com_a_chegada_na_vertical_aquele_braco_some_e_o_outro_fica() {
+        let (mut k0, k1) = retimado(Interp::bezier(0.3, 0.1, 0.6, 0.9));
+        assert!(segment_handle_drawn(&k0, &k1, 0) && segment_handle_drawn(&k0, &k1, 1));
+        k0.retime = Some(ph2d_anim::Retime::new(0.3, 0.3, 1.0, 0.0));
+        assert!(
+            segment_handle_drawn(&k0, &k1, 0),
+            "a saída tem tangente finita"
+        );
+        assert!(!segment_handle_drawn(&k0, &k1, 1), "a chegada é vertical");
+    }
+
+    /// Puxar uma alça de um trecho retimado reconstrói o trecho (Override, o chamador tira o
+    /// ritmo): o OUTRO lado fica onde estava desenhado — nada salta na outra ponta — e uma Custom
+    /// com pontos também passa a `BezierW` (os pontos dela não sabiam do ritmo).
+    #[test]
+    fn puxar_a_alca_de_um_trecho_retimado_deixa_a_outra_ponta_onde_estava() {
+        let mut sp = ph2d_anim::EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        sp.insert(0.5);
+        for interp in [Interp::bezier(0.3, 0.1, 0.6, 0.9), Interp::Spline(sp)] {
+            let (k0, k1) = retimado(interp);
+            let antes = segment_handle_points(&k0, &k1)[1];
+            let mut novo = k0.clone();
+            novo.interp = weighted_with_handle(&k0, &k1, 0, 0.5, 4.0);
+            novo.retime = None;
+            assert!(
+                matches!(novo.interp, Interp::BezierW { .. }),
+                "{:?}",
+                novo.interp
+            );
+            let depois = segment_handle_points(&novo, &k1);
+            assert!((depois[1].0 - antes.0).abs() < 1e-9 && (depois[1].1 - antes.1).abs() < 1e-6);
+            assert!((depois[0].0 - 0.5).abs() < 1e-9 && (depois[0].1 - 4.0).abs() < 1e-6);
         }
     }
 

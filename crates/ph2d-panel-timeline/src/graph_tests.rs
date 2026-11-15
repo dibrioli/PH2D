@@ -175,6 +175,40 @@ fn the_whole_drag_is_one_undo_bracket() {
     assert_eq!(edits, 2, "one SetInterp per frame, both inside the bracket");
 }
 
+/// Value view over a RETIMED segment (aberto 15/11): the handle drag is an Override — the
+/// rhythm goes in the same step as the new easing, exactly as in the speed view. Without it the
+/// easing built from the PLAYED handles would play through the old rhythm a second time.
+#[test]
+fn na_vista_de_valor_puxar_a_alca_de_um_trecho_retimado_tira_o_ritmo() {
+    let mut tr = track(Interp::bezier(0.3, 0.1, 0.6, 0.9));
+    tr.keys[0].retime = Some(ph2d_anim::Retime::new(0.1, 0.6, 0.5, 0.95));
+    let band = Band::fit(ROW, Some((0.0, 10.0)));
+    let mut st = TimelinePanelState::default();
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::Begin, 0.0, 0.0));
+    apply_handle_gesture(&mut st, 9, 1, 0, gesture(GesturePhase::End, 25.0, 50.0));
+    resolve_drag(&mut st, &band, VIEW, &tr);
+    let got = state::drain_intents();
+    let sem_ritmo = got.iter().position(|i| {
+        matches!(
+            i,
+            TimelineIntent::Retime(ph2d_timeline::RetimeIntent::Set { retime: None, .. })
+        )
+    });
+    let easing = got.iter().position(|i| {
+        matches!(
+            i,
+            TimelineIntent::SetInterp {
+                interp: Interp::BezierW { .. },
+                ..
+            }
+        )
+    });
+    assert!(
+        sem_ritmo.is_some() && easing.is_some(),
+        "o ritmo sai e o easing novo entra: {got:?}"
+    );
+}
+
 /// Drive a full out-handle drag in SPEED mode to pointer `y`, returning intents.
 /// The `x` is irrelevant to a speed edit (only `y = velocity` moves the tangent);
 /// `band` maps velocity ↔ pixels.

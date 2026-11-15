@@ -387,6 +387,9 @@ fn paint_handles(
         // their tangent handles through the value change — same dots as ever).
         for (which, (t, v)) in segment_handle_points(k0, k1).into_iter().enumerate() {
             let which = which as u8;
+            if !ph2d_timeline::segment_handle_drawn(k0, k1, which) {
+                continue;
+            }
             let (px, py) = (view.x(t), band.y(v));
             let anchor = if which == 0 { k0 } else { k1 };
             let (ax, ay) = (view.x(anchor.t_seconds), band.y(f64::from(anchor.value)));

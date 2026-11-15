@@ -57,6 +57,7 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 4] = [
 pub(crate) fn populate_ray(store: &mut WidgetStore) {
     store.mark_collapsible_section(ids::INSP_RAY_FOLD_SIGNALS);
     store.mark_collapsible_section(ids::INSP_RAY_FOLD_FILTER);
+    store.mark_collapsible_section(ids::INSP_RAY_FOLD_LAYERS);
     store.set_collapsed_if_unchosen(ids::INSP_RAY_FOLD_FILTER, true);
     // O grupo «Filter» (versão C): caixas e peças são botões; a tag é uma lista com opções próprias.
     for (id, dica) in [
@@ -97,6 +98,7 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
             "panel.inspector.ray.rename_layers_tip",
         ),
         (ids::INSP_RAY_FOLD_FILTER, "panel.inspector.ray.filter_tip"),
+        (ids::INSP_RAY_FOLD_LAYERS, "panel.inspector.ray.layers_tip"),
         (
             ids::INSP_RAY_FOLD_SIGNALS,
             "panel.inspector.ray.signals_tip",

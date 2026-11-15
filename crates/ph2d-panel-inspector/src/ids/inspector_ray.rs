@@ -43,7 +43,9 @@ pub const INSP_RAY_LAYER_RENAMING: NodeId = hash_node_id("insp_ray_layer_renamin
 pub const INSP_RAY_LAYER_RENAME_DONE: NodeId = hash_node_id("insp_ray_layer_rename_done");
 pub const INSP_RAY_EDIT_MATRIX: NodeId = hash_node_id("insp_ray_edit_matrix");
 
-pub use ph2d_editor_core::ids::{INSP_RAY_FOLD_FILTER, INSP_RAY_FOLD_SIGNALS};
+pub use ph2d_editor_core::ids::{
+    INSP_RAY_FOLD_FILTER, INSP_RAY_FOLD_LAYERS, INSP_RAY_FOLD_SIGNALS,
+};
 
 /// O grupo «Filter» (GEF 07, versão C): as caixas, a escolha «Only see» e a tag.
 pub const INSP_RAY_IGNORE_BODY: NodeId = hash_node_id("insp_ray_ignore_body");

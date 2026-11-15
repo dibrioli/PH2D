@@ -253,20 +253,19 @@ fn corpo(
         i,
         seccao,
     );
-    let mut t = super::physics_cartao::Tinta {
+    // O grupo «Layers» (dono 15/11): a Layer e o Sees juntos, numa secção própria.
+    cur_y = super::ray_camadas::grupo_das_camadas(
         scene,
-        text: text_system,
+        text_system,
         theme,
-        hit: hit_index,
+        hit_index,
         store,
         x,
         w,
-    };
-    let camada = u8::try_from(i.layer)
-        .ok()
-        .filter(|&c| usize::from(c) < crate::ids::INSP_PHYS_LAYERS)
-        .unwrap_or_default();
-    cur_y = botoes_do_raio(&mut t, cur_y, usize::from(camada));
+        cur_y,
+        i,
+        seccao,
+    );
     // O QUEM ele vê (versão C, dono 15/11): nasce fechado, com o resumo.
     cur_y = super::ray_filtro::grupo_do_filtro(
         scene,
@@ -413,40 +412,6 @@ pub(crate) fn paint_ray_section(
         info,
     );
     fold.finish(store, scene, hit_index, cur_y)
-}
-
-/// Os botões do Ray no lugar e idioma dos do collider (emenda 4, dono 08/11), só em cartões como o cartão Collision
-/// Layers; renomeando, os campos de todas as camadas e «Done» tomam o lugar de «Sees».
-fn botoes_do_raio(t: &mut super::physics_cartao::Tinta<'_>, y: f32, camada: usize) -> f32 {
-    let sees = tr("panel.inspector.ray.sees");
-    if !crate::cards::active() {
-        return super::physics_colide_fila::fila_da_matriz(
-            t,
-            y,
-            &super::physics_colide::DO_RAIO,
-            camada,
-            sees,
-        );
-    }
-    if renomeia_o_raio(t.store) {
-        let y = super::physics_colide::rename(t, y, camada);
-        let feito = tr("card.insp.phys.layer_rename_done");
-        let (r, y) = t.botao(crate::ids::INSP_RAY_LAYER_RENAME_DONE, feito, y);
-        t.hit.register(crate::ids::INSP_RAY_LAYER_RENAME_DONE, r);
-        return y;
-    }
-    let y = t.dois_botoes(
-        y,
-        (
-            crate::ids::INSP_RAY_LAYER_RENAME,
-            tr("card.insp.phys.layer_rename"),
-        ),
-        (
-            crate::ids::INSP_RAY_EDIT_MATRIX,
-            tr("card.insp.phys.edit_matrix"),
-        ),
-    );
-    super::physics_colide_fila::fila_da_matriz(t, y, &super::physics_colide::DO_RAIO, camada, sees)
 }
 
 /// O Ray está no modo Rename (só por escolha: o estado nunca semeado é «fechado»).

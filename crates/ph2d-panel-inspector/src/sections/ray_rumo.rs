@@ -1,5 +1,5 @@
 //! **Para onde o Ray Sensor aponta e a forma do feixe** (GEF 07 RS): o «Angle», o «Turns with facing», o «Aim at»
-//! (RS-3), o «Reach» | «Layer» e a «Shape» (Line · Thick · Cone, dono 15/11) com o número da forma activa — irmão de [`super::ray`] pelo tecto de 600
+//! (RS-3), o «Reach» | «Shape» (Line · Thick · Cone, dono 15/11) e o número da forma activa — irmão de [`super::ray`] pelo tecto de 600
 //! linhas dos painéis.
 
 use super::*;
@@ -118,7 +118,7 @@ fn angulo(
     cur_y
 }
 
-/// «Reach» | «Layer» (dois a dois em cartões), a «Shape» e, por baixo, SÓ o número da forma activa.
+/// «Reach» | «Shape» (dois a dois em cartões) e, por baixo, SÓ o número da forma activa.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn alcance_e_feixe(
     scene: &mut VectorScene,
@@ -153,45 +153,23 @@ pub(super) fn alcance_e_feixe(
         Some(ph2d_editor_core::widget::Unit::Meters),
         seccao,
     );
-    let topo_da_camada = if crate::cards::active() {
+    // A «Shape» ao lado do «Reach» em cartões (as duas dizem COMO o raio olha); empilhada fora deles.
+    let topo_da_forma = if crate::cards::active() {
         cur_y
     } else {
         depois_do_alcance
     };
-    let mut t = super::physics_cartao::Tinta {
-        scene,
-        text: text_system,
-        theme,
-        hit: hit_index,
-        store,
-        x: xb,
-        w: wb,
-    };
-    let camada = u8::try_from(i.layer)
-        .ok()
-        .filter(|&c| usize::from(c) < crate::ids::INSP_PHYS_LAYERS)
-        .unwrap_or_default();
-    let rotulo = TextKey::new("component.field.ray_sensor.2");
-    let quem = &super::physics_colide::DO_RAIO;
-    let depois_da_camada = super::camada_por_nome::linha_da_camada(
-        &mut t,
-        topo_da_camada,
-        quem,
-        camada,
-        rotulo.into(),
-        seccao,
-    );
-    let cur_y = depois_do_alcance.max(depois_da_camada);
-    let cur_y = linha_da_forma(
+    let depois_da_forma = linha_da_forma(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        (x, w, cur_y),
+        (xb, wb, topo_da_forma),
         i.shape,
         seccao,
     );
+    let cur_y = depois_do_alcance.max(depois_da_forma);
     // Só o número da forma activa: um campo que não decide nada seria um controlo morto.
     let (rotulo, id, passo, unidade) = match i.shape {
         RayShapeKind::Line => return cur_y,

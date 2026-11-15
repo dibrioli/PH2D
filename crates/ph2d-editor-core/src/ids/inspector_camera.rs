@@ -42,6 +42,8 @@ pub const INSP_PJ_FOLD_SPEED_CHANGE: NodeId = hash_node_id("insp_pj_fold_speed_c
 pub const INSP_RAY_FOLD_SIGNALS: NodeId = hash_node_id("insp_ray_fold_signals");
 /// O grupo «Filter» do Ray Sensor (GEF 07, versão C) — nasce FECHADO; a cena 26 abre-o para a foto.
 pub const INSP_RAY_FOLD_FILTER: NodeId = hash_node_id("insp_ray_fold_filter");
+/// O grupo «Layers» do Ray Sensor (Layer + Sees juntos, dono 15/11) — nasce ABERTO.
+pub const INSP_RAY_FOLD_LAYERS: NodeId = hash_node_id("insp_ray_fold_layers");
 /// O cabeçalho dobrável da secção STATE MACHINE (TOP-20 #15).
 pub const INSP_LIVE_SM_SECTION: NodeId = hash_node_id("insp_live_sm_section");
 /// O cabeçalho dobrável da secção SCRIPT (TOP-20 #16).

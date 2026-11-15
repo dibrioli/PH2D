@@ -122,6 +122,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ray.ignore_chip_tip" => "Remove it from the list.",
         "panel.inspector.ray.filter_also_n" => "Also ignores {n}",
         "panel.inspector.ray.sees_x_on_t_at_y_m" => "Sees {name} ({tags}), at {dist}",
+        // O grupo «Layers» (dono 15/11): a camada do raio e o que ela vê, juntos.
+        "panel.inspector.ray.layers" => "Layers",
+        "panel.inspector.ray.layers_tip" => {
+            "The layer the ray is on, and the layers it sees from there."
+        }
+        "panel.inspector.ray.layers_summary" => "{layer} · sees {seen}",
+        "panel.inspector.ray.layers_sees_nothing" => "{layer} · sees nothing",
+        "panel.inspector.ray.layers_list_sep" => ", ",
         _ => return None,
     })
 }

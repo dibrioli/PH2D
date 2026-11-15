@@ -121,6 +121,7 @@ mod seam_projectile;
 mod seam_properties;
 mod seam_px_m;
 mod seam_ray;
+mod seam_ray_arrumacao;
 mod seam_ray_auditoria;
 mod seam_ray_melhorias;
 mod seam_render_source;

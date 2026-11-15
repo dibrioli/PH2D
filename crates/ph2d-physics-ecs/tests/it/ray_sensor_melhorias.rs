@@ -265,7 +265,9 @@ fn aim_at_acerta_o_alvo_na_pose_viva_no_mesmo_tique() {
             },
         );
         let mut b = PhysicsBridge::new();
-        for t in 1..=40 {
+        // ⚠️ Em saltos de 20 tiques (um quadro lento): o `Transform` só é relido no FIM do dispatch, logo dentro
+        // dele fica 20 tiques atrás do corpo — a mira que o lesse apontaria para onde o alvo ESTAVA.
+        for t in (20..=120).step_by(20) {
             b.dispatch(&mut sim, true, t);
             let visto = b.ray_sensor_hits().get(&olho).map(|h| h.body);
             assert_eq!(visto, mira.then_some(alvo), "tique {t}, mira = {mira}");

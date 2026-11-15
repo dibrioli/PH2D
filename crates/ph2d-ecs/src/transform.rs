@@ -288,11 +288,32 @@ pub struct GroupedChildren;
 
 impl SimComponent for GroupedChildren {}
 
+/// Marker: o cadeado DESTE objecto vale para tudo o que está dentro dele — uma PASTA sem arte
+/// própria (a montagem de juntas: dono 15/11, «o cadeado não protegeu»). Derivado por
+/// `#[require]` do componente que o pede, nunca gravado. Nos outros objectos o cadeado continua
+/// a travar só o próprio (Enio 2026-05-26).
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct LockCoversChildren;
+
+/// Um ancestral é uma pasta TRANCADA ([`LockCoversChildren`] + [`Locked`])?
+#[must_use]
+pub fn locked_by_a_folder(world: &World, entity: Entity) -> bool {
+    let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
+    while let Some(p) = cur {
+        if world.get::<Locked>(p).is_some() && world.get::<LockCoversChildren>(p).is_some() {
+            return true;
+        }
+        cur = world.get::<ChildOf>(p).map(|c| c.parent());
+    }
+    false
+}
+
 /// True iff `entity` has `Locked`, OR any ancestor (via `ChildOf`)
-/// has `GroupedChildren`. Used by the gizmo Down handlers to reject
+/// has `GroupedChildren`, OR sits inside a locked folder
+/// ([`locked_by_a_folder`]). Used by the gizmo Down handlers to reject
 /// drag gestures on locked entities.
 pub fn is_locked_for_edit(world: &World, entity: Entity) -> bool {
-    if world.get::<Locked>(entity).is_some() {
+    if world.get::<Locked>(entity).is_some() || locked_by_a_folder(world, entity) {
         return true;
     }
     let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
@@ -318,7 +339,7 @@ pub fn pick_target(world: &World, entity: Entity) -> Option<Entity> {
         }
         cur = world.get::<ChildOf>(p).map(|c| c.parent());
     }
-    world.get::<Locked>(alvo).is_none().then_some(alvo)
+    (world.get::<Locked>(alvo).is_none() && !locked_by_a_folder(world, alvo)).then_some(alvo)
 }
 
 /// World-space affine transform as a 3×3 column-major matrix.

@@ -74,7 +74,7 @@ pub fn outlines(
     let mut chain = Vec::new();
     let mut out = Vec::new();
     for (e, col, one_way) in q.iter(world) {
-        if ph2d_physics_ecs::forma_desligada(world, e) {
+        if ph2d_physics_ecs::forma_desligada(world, e) || ph2d_ecs::is_hidden_in_tree(world, e) {
             continue;
         }
         // De QUEM é esta forma? Dela mesma, se ela for um corpo; senão do corpo
@@ -339,6 +339,15 @@ pub fn draw(
         );
     }
     // ⚠️ A lista sai do DESENHO e é lida pelo READOUT (W-RopeSays): uma pergunta, não duas.
+    // Junta escondida pelo olho (dela ou de uma pasta acima) não se desenha.
+    let hidden = |v: &ph2d_physics_ecs::JointView| ph2d_ecs::is_hidden_in_tree(sim.world(), v.entity);
+    let shown: Vec<ph2d_physics_ecs::JointView>;
+    let joint_views = if joint_views.iter().any(hidden) {
+        shown = joint_views.iter().filter(|v| !hidden(v)).cloned().collect();
+        &shown[..]
+    } else {
+        joint_views
+    };
     let marks = joint_marks(
         show,
         joint_views,

@@ -3,7 +3,7 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "joint_editor.title" => "Joint Editor",
-        "joint_editor.cmd.open" => "Joint Editor\u{2026}",
+        "joint_editor.cmd.open" => "Joint Editor",
         "joint_editor.assemblies" => "Assemblies",
         "joint_editor.new_assembly" => "New assembly",
         "joint_editor.new" => "+ New",

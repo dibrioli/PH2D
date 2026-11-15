@@ -49,17 +49,17 @@ pub fn is_front(hero: &mut HeroScreen) -> bool {
 /// relê as montagens.
 pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
     let request = hero.store.take_joint_editor_request();
-    let mut select = None;
-    {
+    let mut select;
+    'tab: {
         let Some(tab) = hero.documents.surfaces_mut().find_mut::<JointEditorTab>() else {
             return;
         };
-        smoke::arm(sim, tab);
+        select = smoke::arm(sim, tab);
         if request.is_some() {
             tab.open();
         }
         if !tab.is_open() {
-            return;
+            break 'tab;
         }
         let mut made = None;
         for e in tab.doc.take_pending() {
@@ -82,6 +82,13 @@ pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
     if let Some(bits) = select {
         hero.gizmo.selection = Some(bits);
         hero.gizmo.extra_selection.clear();
+        if smoke::level() == Some(10) {
+            hero.panel_visibility.insert("inspector", true);
+            hero.panel_visibility.insert("physics", false);
+            // A dobra «Joint» do cartão Body (o mesmo slug do `ids::INSP_PHYS_FOLD_JOINT` do Inspector).
+            hero.store
+                .set_collapsed(ph2d_editor_core::registry::hash_node_id("insp_phys_fold_joint"), false);
+        }
     }
 }
 

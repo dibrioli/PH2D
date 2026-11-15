@@ -245,6 +245,7 @@ pub fn doc_menu_kind(
         DocMenu::Plan => K::MenuBarWindowPlan,
         DocMenu::Audio => K::MenuBarWindowAudio,
         DocMenu::Edit => K::MenuBarEdit,
+        DocMenu::View => K::MenuBarView,
         DocMenu::Tab => return None,
     })
 }

@@ -82,9 +82,8 @@ pub fn layer_visible(sim: &World, entity: Entity, cull_mask: u32) -> bool {
 /// renderer, e a mutação que a desligasse compilaria e passaria a suíte inteira.
 pub fn is_off_canvas(sim: &World, entity: Entity) -> bool {
     is_unedited_recipe(sim, entity)
-        || sim
-            .get::<ph2d_ecs::Visibility>(entity)
-            .is_some_and(|v| v.hidden)
+        // O olho do objecto OU de um pai: esconder uma pasta esconde o que está dentro (dono 15/11).
+        || ph2d_ecs::is_hidden_in_tree(sim, entity)
         // ⭐ 3. ser MOLDE de um objecto Motion (doc ObjectsAndComponents 01 §13): só as cópias se
         //    desenham — o molde continua publicado ao cozido, que não pergunta isto.
         || sim.get::<ph2d_ecs::MotionTemplate>(entity).is_some()
@@ -146,6 +145,22 @@ mod off_canvas_tests {
             is_off_canvas(sim.world(), bola),
             "o molde desenhou-se sozinho"
         );
+    }
+
+    /// ⭐⭐ **Esconder a PASTA esconde o que está dentro** (dono 15/11: o olho de «Car 1» não
+    /// escondia as rodas). A metade que desenha primeiro, depois o olho do avô.
+    ///
+    /// **Mutação:** voltar a ler só o olho da própria entidade ⇒ RED.
+    #[test]
+    fn hiding_a_folder_hides_what_is_inside() {
+        let mut sim = SimWorld::new();
+        let folder = sim.world_mut().spawn((Transform::IDENTITY, Name::new("Car 1"))).id();
+        let body = sim.world_mut().spawn((Transform::IDENTITY, ChildOf(folder))).id();
+        let shape = sim.world_mut().spawn((Transform::IDENTITY, ChildOf(body))).id();
+        assert!(draws_this_frame(sim.world(), shape, u32::MAX, [0.0, 0.0]));
+        sim.world_mut().entity_mut(folder).insert(Visibility::hidden());
+        assert!(is_off_canvas(sim.world(), body), "the body still drew");
+        assert!(is_off_canvas(sim.world(), shape), "the grandchild still drew");
     }
 
     /// ⭐⭐ **O PISCAR da invencibilidade passa pela MESMA porta** (plano 28, W5) — com a marca

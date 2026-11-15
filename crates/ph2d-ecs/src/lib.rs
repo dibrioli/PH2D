@@ -322,7 +322,7 @@ pub use timer::{
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
-    WorklistBuf, is_locked_for_edit, pick_target, propagate_transforms,
+    WorklistBuf, is_locked_for_edit, pick_target, propagate_transforms, LockCoversChildren, locked_by_a_folder,
     propagate_transforms_into_present,
 };
 pub use tween::{Escrita, TWEENS_MAX, Tweens};

@@ -77,10 +77,8 @@ fn cascade_tint_with_ancestors(world: &World, entity: Entity, sprite: &Sprite) -
 /// **Hidden / culled clip-parent (known W3 behavior, audit LOW):** a
 /// clip-parent that is `Visibility.hidden` or `VisibilityLayer`-culled
 /// emits no `SortInput`, so `ranks.rank(parent)` is `None` and its members
-/// fall through to `CLIP_GROUP_NONE` → they render UNCLIPPED (Visibility is
-/// per-entity, it does not propagate to descendants). Graceful (children
-/// don't vanish) but means hiding a mould un-clips its children. Proper
-/// subtree-hide = visibility propagation, a future wave.
+/// fall through to `CLIP_GROUP_NONE`. A hidden one hides them too (the eye
+/// walks the tree, `is_off_canvas`); a culled one leaves them UNCLIPPED.
 fn resolve_clip_grouping(sim: &World, entity: Entity, ranks: &SortScratch) -> (u32, u32) {
     // This entity owns a clip? → it is the mask source for its group.
     if let Some(cc) = sim.get::<ClipChildren>(entity)

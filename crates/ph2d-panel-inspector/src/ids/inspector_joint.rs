@@ -272,6 +272,10 @@ pub const INSP_JOINT_BODY_ROW_A: NodeId = hash_node_id("insp_joint_body_row_a");
 
 pub const INSP_JOINT_BODY_ROW_B: NodeId = hash_node_id("insp_joint_body_row_b");
 
+/// **«Open in Joint Editor» no bloco «Joints» do CORPO** (dono 15/11): a aba na montagem da primeira
+/// junta dele, ou vazia se ele não tem juntas.
+pub const INSP_BODY_OPEN_JOINT_EDITOR: NodeId = hash_node_id("insp_body_open_joint_editor");
+
 const INSP_BODY_JOINT_BASE: NodeId = hash_node_id("insp_body_joint_row");
 
 /// A linha `i` do bloco «Joints» do CORPO (Joint Editor W2): clicar seleciona aquela junta. Sem tecto:

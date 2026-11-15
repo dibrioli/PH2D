@@ -92,6 +92,8 @@ pub enum DocMenu {
     /// *Window ▸ Audio* — os sons do SFX Lab.
     Audio,
     Edit,
+    /// *View* — uma aba-ferramenta que se abre (o Joint Editor, dono 15/11).
+    View,
     /// No menu PRÓPRIO da aba (o editor de scripts, 13 §4 item 11): a barra do app não o lista; a
     /// paleta `Ctrl+K` sim.
     Tab,

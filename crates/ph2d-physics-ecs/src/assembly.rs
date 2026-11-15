@@ -19,7 +19,9 @@ pub struct AssemblyPart {
     pub body: u64,
 }
 
+/// O cadeado da montagem tranca o conjunto (`LockCoversChildren`, derivado, não gravado).
 #[derive(Component, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[require(ph2d_ecs::LockCoversChildren)]
 pub struct JointAssembly {
     /// O `TemplateId` do gabarito (pinado em `ph2d-joint-templates`, append-only).
     pub template: u16,

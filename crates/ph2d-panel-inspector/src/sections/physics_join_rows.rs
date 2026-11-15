@@ -148,9 +148,34 @@ pub(crate) fn paint_body_joints(
     y: f32,
 ) -> f32 {
     let rows = crate::state_components::current_inspector_body_joints();
-    if rows.is_empty() {
-        return y;
+    let mut yy = y;
+    if !rows.is_empty() {
+        yy = paint_joint_rows(scene, text_system, theme, hit_index, store, x, w, y, &rows);
     }
+    // A porta da aba Joint Editor também mora aqui, com ou sem juntas (dono 15/11).
+    let id = ids::INSP_BODY_OPEN_JOINT_EDITOR;
+    let label = tr("panel.inspector.joint.open_in_joint_editor");
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, label);
+    let btn = Button::new(id, label)
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(id));
+    paint_button(&btn, rect, scene, text_system, theme);
+    hit_index.register(id, rect);
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_joint_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    rows: &[ph2d_editor_core::screens::hero::InspectorBodyJoint],
+) -> f32 {
     let font = TypeToken::Sm.px();
     let top = y + Spacing::Xs.px();
     paint_text(

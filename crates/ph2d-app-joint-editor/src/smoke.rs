@@ -2,7 +2,7 @@
 //! `1` no «Car 1» montado · `2` num carro por fazer, com três peças soltas («Kart …») na Hierarchy para
 //! arrastar · `3` na «Bridge 1» · `4` na «Door 1» · `5` o carro por fazer com a lista Template aberta (a foto
 //! da maquete B1) · `6` o «Car 1» com o painel alargado pela divisória · `7` o «Car 1», `8` a «Door 1» e `9` a
-//! «Bridge 1» com o painel no mínimo (uma coluna de campos). É a cena 123 que monta o mundo; aqui só se abre a aba,
+//! «Bridge 1» com o painel no mínimo (uma coluna de campos) · `10` e `11` ficam na aba Scene ([`scene_tab`]). É a cena 123 que monta o mundo; aqui só se abre a aba,
 //! uma vez, no primeiro quadro em que o «Car 1» existe.
 
 use ph2d_core::Vec2;
@@ -14,7 +14,7 @@ use crate::surface::JointEditorTab;
 
 pub const ENV: &str = "PH2D_JOINT_EDITOR_SMOKE";
 /// O maior nível que [`arm`] responde (conta-se no `match` abaixo).
-pub const MAX_LEVEL: u32 = 9;
+pub const MAX_LEVEL: u32 = 11;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: ENV,
@@ -84,19 +84,21 @@ pub fn spawn_kart(sim: &mut SimWorld) {
     ph2d_ecs::assign_missing_root_order(w);
 }
 
-/// Abre a aba no estado do nível, uma vez.
-pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) {
+/// Abre a aba no estado do nível, uma vez. Devolve o objecto a selecionar (as cenas 10 e 11 ficam na
+/// aba Scene).
+pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) -> Option<u64> {
     if tab.smoke_done {
-        return;
+        return None;
     }
     let Some(n) = level() else {
         tab.smoke_done = true;
-        return;
+        return None;
     };
-    let Some(car) = find(sim, "Car 1") else {
-        return;
-    };
+    let car = find(sim, "Car 1")?;
     tab.smoke_done = true;
+    if n >= 10 {
+        return scene_tab(sim, n);
+    }
     tab.open();
     let on = match n {
         1 => car,
@@ -128,4 +130,22 @@ pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) {
     } else {
         tab.doc.open_on(on);
     }
+    None
+}
+
+/// `10`: o «Car Body» selecionado, para ver «Open in Joint Editor» no bloco «Joints» do Inspector ·
+/// `11`: o «Car 1» escondido e trancado pelo olho e pelo cadeado da Hierarchy.
+fn scene_tab(sim: &mut SimWorld, n: u32) -> Option<u64> {
+    let w = sim.world_mut();
+    let pick = if n == 10 { "Car Body" } else { "Car 1" };
+    let e = w
+        .query::<(ph2d_ecs::Entity, &Name)>()
+        .iter(w)
+        .find(|(_, nm)| nm.as_str() == pick)
+        .map(|(e, _)| e)?;
+    if n == 11 {
+        w.entity_mut(e)
+            .insert((ph2d_ecs::Visibility::hidden(), ph2d_ecs::Locked));
+    }
+    Some(e.to_bits())
 }

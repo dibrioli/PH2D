@@ -737,3 +737,27 @@ fn duplicating_only_the_chassis_leaves_the_assembly_with_its_own_joints() {
     assert_eq!(copied.len(), 2, "the copy carries its child joints");
     assert!(copied.iter().all(|j| j.assembly == 0), "as loose joints");
 }
+
+/// ⭐ **O cadeado de «Car 1» tranca o carro** (dono 15/11) — a pasta não tem arte própria, então o
+/// cadeado dela vale para o conteúdo; destrancada, as peças voltam a mexer-se. A marca vem do
+/// próprio `JointAssembly` (`#[require]`), sem nada gravado a mais.
+/// **Mutações que sangram:** tirar o `#[require]` · `locked_by_a_folder` sem o `Locked`.
+#[test]
+fn locking_the_assembly_locks_the_whole_machine() {
+    let (mut sim, parts, made) = built(JointKind::Wheel, "Car", false);
+    let chassis = part(&parts, 0);
+    let joint = made.joints[0];
+    assert!(sim.world().get::<ph2d_ecs::LockCoversChildren>(made.assembly).is_some());
+    assert!(!ph2d_ecs::is_locked_for_edit(sim.world(), chassis), "unlocked moves");
+    assert_eq!(ph2d_ecs::pick_target(sim.world(), chassis), Some(chassis));
+    sim.world_mut().entity_mut(made.assembly).insert(ph2d_ecs::Locked);
+    for e in [chassis, joint] {
+        assert!(ph2d_ecs::is_locked_for_edit(sim.world(), e), "the lock covers what is inside");
+    }
+    assert_eq!(ph2d_ecs::pick_target(sim.world(), chassis), None, "a click cannot take it");
+    // Um objecto comum continua com a regra de 26/05: o cadeado trava só ele.
+    let w = sim.world_mut();
+    let plain = w.spawn((Transform::IDENTITY, ph2d_ecs::Locked)).id();
+    let kid = w.spawn((Transform::IDENTITY, ph2d_ecs::ChildOf(plain))).id();
+    assert!(!ph2d_ecs::is_locked_for_edit(sim.world(), kid));
+}

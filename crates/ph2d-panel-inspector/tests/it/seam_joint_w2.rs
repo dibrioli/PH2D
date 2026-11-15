@@ -213,3 +213,48 @@ fn the_same_as_box_writes_the_other_side_and_hides_without_a_pair() {
     );
     assert!(!painted_ids(joint(KIND_PIN)).contains(&INSP_JOINT_LINKED));
 }
+
+/// ⭐ **«Open in Joint Editor» no bloco «Joints» do corpo** (dono 15/11: «não encontrei o lugar»):
+/// pintado com e sem juntas; o clique pede a aba na montagem da 1.ª junta, ou vazia (`0`).
+/// **Mutações que sangram:** não pintar o botão sem juntas · o braço do clique no `event_physics` ·
+/// pedir sempre `0`.
+#[test]
+fn the_body_joints_block_opens_the_joint_editor() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let id = ph2d_panel_inspector::ids::INSP_BODY_OPEN_JOINT_EDITOR;
+    set_current_inspector_physics(Some(crate::seam_physics::with_body()));
+    let mut asked = Vec::new();
+    for rows in [two_joints(), Vec::new()] {
+        set_current_inspector_body_joints(rows);
+        let mut host = crate::host_em_metros();
+        let mut state = InspectorState::default();
+        let r = rect_of(&host.paint::<InspectorPanel>(&mut state, VIEWPORT), id);
+        for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+            let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+        }
+        asked.push(host.store_mut().take_joint_editor_request());
+    }
+    set_current_inspector_body_joints(Vec::new());
+    set_current_inspector_physics(None);
+    assert_eq!(asked, vec![Some(0x0101), Some(0)]);
+}
+
+/// **«Open in Joint Editor» no cartão Joint** responde ao clique: pede a aba na montagem da junta.
+/// **Mutação que sangra:** tirar `INSP_JOINT_OPEN_EDITOR` do registo do `populate_joint`.
+#[test]
+fn the_joint_card_opens_the_joint_editor() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let id = ph2d_panel_inspector::ids::INSP_JOINT_OPEN_EDITOR;
+    let mut info = joint(0);
+    info.title = "Rear wheel · Car 1".into();
+    set_current_inspector_joint(Some(info));
+    let mut host = crate::host_em_metros();
+    let mut state = InspectorState::default();
+    let r = rect_of(&host.paint::<InspectorPanel>(&mut state, VIEWPORT), id);
+    for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+    }
+    let asked = host.store_mut().take_joint_editor_request();
+    set_current_inspector_joint(None);
+    assert_eq!(asked, Some(ENTITY));
+}

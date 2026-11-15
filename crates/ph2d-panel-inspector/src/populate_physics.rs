@@ -85,6 +85,9 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
             ids::INSP_WHEEL_UNMOUNT,
             // §13 (W1): o eyedropper que arma o pick da CORDA.
             ids::INSP_WHEEL_ROPE_PICK,
+            // As duas portas da aba Joint Editor: o cartão Joint e o bloco «Joints» do corpo.
+            ids::INSP_JOINT_OPEN_EDITOR,
+            ids::INSP_BODY_OPEN_JOINT_EDITOR,
         ],
     );
     // The join-kind selector's four chips (Pin/Spring/Rope/Weld). Registered in a

@@ -105,6 +105,13 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     if crate::recibo_fisica::click(host, ev) || crate::sections::physics_colide::clique(host, ev) {
         return true;
     }
+    if ev == WidgetEvent::Click(crate::ids::INSP_BODY_OPEN_JOINT_EDITOR) {
+        ph2d_editor_core::panel::seam_reset_button(host, crate::ids::INSP_BODY_OPEN_JOINT_EDITOR);
+        let rows = crate::state_components::current_inspector_body_joints();
+        let first = rows.first().map_or(0, |r| r.joint_bits);
+        host.store_mut().request_joint_editor(first);
+        return true;
+    }
     // O bloco «Joints» do corpo: a linha `i` seleciona a junta `i` da lista pintada.
     if let WidgetEvent::Click(id) = ev
         && let rows = crate::state_components::current_inspector_body_joints()

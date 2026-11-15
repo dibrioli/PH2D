@@ -219,7 +219,7 @@ impl DocumentSurface for JointEditorTab {
         vec![DocCommand {
             id: CMD_OPEN,
             label: tr("joint_editor.cmd.open").to_owned(),
-            menu: DocMenu::New,
+            menu: DocMenu::View,
             icon: ph2d_editor_core::icons::IconId::Joint,
         }]
     }
@@ -253,5 +253,21 @@ impl DocumentSurface for JointEditorTab {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A porta da aba mora no menu **View** (dono 15/11: «coloque no menu View»).
+    #[test]
+    fn the_joint_editor_opens_from_the_view_menu() {
+        let cmds = JointEditorTab::default().family_commands();
+        let kinds: Vec<_> = cmds
+            .iter()
+            .filter_map(|c| ph2d_editor_core::screens::hero::document_tabs::doc_menu_kind(c.menu))
+            .collect();
+        assert_eq!(kinds, vec![ph2d_editor_core::interaction::ContextMenuKind::MenuBarView]);
     }
 }

@@ -229,6 +229,9 @@ pub struct Template {
     pub name: &'static str,
     pub roles: &'static [Role],
     pub joints: &'static [JointRule],
+    /// O «Custom» da família: duas peças quaisquer e a junta do tipo (o seletor mostra-o como
+    /// «You draw the parts», sem miniatura de máquina).
+    pub hand_made: bool,
 }
 
 impl Template {

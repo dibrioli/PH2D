@@ -537,3 +537,48 @@ fn no_minimo_dois_campos_por_fila_e_nada_sai_nem_se_sobrepoe() {
         }
     }
 }
+
+/// ⭐ **A lista Template é a grelha da maquete B1** (W4j): três colunas, as linhas de cima para baixo, e o
+/// «Custom» por último; clicá-lo deixa a montagem por fazer com as DUAS peças quaisquer dele.
+/// **Mutações que sangram:** `grid_cols` a devolver 1 · a célula a andar só em `y` · o «Custom» fora do
+/// catálogo.
+#[test]
+fn a_lista_template_e_uma_grelha_de_tres_com_o_custom_por_ultimo() {
+    use ph2d_app_joint_editor::doc::Menu;
+    let mut m = Mesa::aberta();
+    m.click(&Hit::OpenMenu(Menu::Kind));
+    m.click(&Hit::Kind(JointKind::Pin));
+    m.click(&Hit::OpenMenu(Menu::Template));
+    let ids: Vec<u16> = ph2d_joint_templates::of_kind(JointKind::Pin)
+        .map(|t| t.id.0)
+        .collect();
+    assert_eq!(
+        ids.len(),
+        6,
+        "Door, Seesaw, Pendulum, Flipper, Bridge e Custom"
+    );
+    let r: Vec<Rect> = ids.iter().map(|&id| m.rect(&Hit::Template(id))).collect();
+    for row in r.chunks(3) {
+        assert!(
+            row.windows(2)
+                .all(|p| p[0].y == p[1].y && p[0].x + p[0].w <= p[1].x),
+            "três lado a lado: {row:?}"
+        );
+    }
+    assert!(
+        r[3].y > r[0].y && r[3].x == r[0].x,
+        "a 4.ª abre a 2.ª linha"
+    );
+    let custom = *ids.last().expect("o último");
+    assert!(ph2d_joint_templates::by_id(custom).is_some_and(|t| t.hand_made));
+    m.click(&Hit::Template(custom));
+    assert_eq!(m.tab().doc.template().id.0, custom);
+    let t = m.tab().doc.template();
+    assert_eq!((t.roles.len(), t.joints[0].kind), (2, JointKind::Pin));
+    for role in 0..2 {
+        assert!(
+            m.tab().doc.hits_for(&Hit::Shape(role, 0)).is_some(),
+            "a peça {role} desenhada"
+        );
+    }
+}

@@ -26,6 +26,15 @@ fn the_template_ids_are_pinned() {
         (16, JointKind::Weld, "Breakable"),
         (17, JointKind::Rod, "Rigid pendulum"),
         (18, JointKind::Pulley, "Lift"),
+        (19, JointKind::Wheel, "Custom"),
+        (20, JointKind::Pin, "Custom"),
+        (21, JointKind::Rope, "Custom"),
+        (22, JointKind::Slider, "Custom"),
+        (23, JointKind::Spring, "Custom"),
+        (24, JointKind::Weld, "Custom"),
+        (25, JointKind::Rod, "Custom"),
+        (26, JointKind::Pulley, "Custom"),
+        (27, JointKind::Custom, "Custom"),
     ];
     assert_eq!(ALL.len(), pinned.len(), "a template without a pinned id");
     for &(id, kind, name) in pinned {
@@ -37,15 +46,49 @@ fn the_template_ids_are_pinned() {
     assert!(by_id(0).is_none());
 }
 
+/// **Toda família oferece gabaritos, e o último é o «Custom»** (maquete B1): duas peças quaisquer e
+/// UMA junta do tipo, com os números de fábrica dele — a junta feita à mão, pela porta de soltar.
 #[test]
-fn every_family_but_custom_offers_a_template() {
+fn every_family_ends_with_its_hand_made_custom() {
     for kind in JointKind::ALL {
-        let n = of_kind(kind).count();
-        if kind == JointKind::Custom {
-            assert_eq!(n, 0, "Custom is the hand-made joint");
-        } else {
-            assert!(n > 0, "{kind:?} has no template");
-        }
+        let list: Vec<_> = of_kind(kind).collect();
+        let last = list
+            .last()
+            .unwrap_or_else(|| panic!("{kind:?} has no template"));
+        assert!(
+            last.hand_made && last.name == "Custom",
+            "{kind:?} ends with {}",
+            last.name
+        );
+        assert_eq!(
+            list.iter().filter(|t| t.hand_made).count(),
+            1,
+            "{kind:?}: one Custom"
+        );
+        assert_eq!(
+            (last.roles.len(), last.joints.len()),
+            (2, 1),
+            "{kind:?}: two parts, one joint"
+        );
+        let rule = last.joints[0];
+        assert_eq!(rule.kind, kind);
+        let raw = rule.joint(0.0);
+        let base = PhysicsJoint::of_kind(kind);
+        assert_eq!(
+            (
+                raw.stiffness,
+                raw.damping,
+                raw.motor_enabled,
+                raw.limits_enabled
+            ),
+            (
+                base.stiffness,
+                base.damping,
+                base.motor_enabled,
+                base.limits_enabled
+            ),
+            "{kind:?}: the Custom keeps the kind's factory numbers"
+        );
     }
 }
 

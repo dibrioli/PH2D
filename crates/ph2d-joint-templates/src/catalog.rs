@@ -1,6 +1,7 @@
 //! O catálogo. A ordem de [`ALL`] é a do seletor; o `id` é o que se grava e nunca muda.
 //! Cada número de fábrica tem a sua medição em `docs/JointEditor/02_gabaritos_medidos.md`.
 
+mod custom;
 mod hinges;
 mod lines;
 mod rails;
@@ -91,6 +92,7 @@ const fn template(
         name,
         roles,
         joints,
+        hand_made: false,
     }
 }
 
@@ -117,4 +119,13 @@ pub const ALL: &[Template] = &[
     hinges::BREAKABLE,
     lines::RIGID_PENDULUM,
     lines::LIFT,
+    custom::WHEEL_C,
+    custom::PIN_C,
+    custom::ROPE_C,
+    custom::SLIDER_C,
+    custom::SPRING_C,
+    custom::WELD_C,
+    custom::ROD_C,
+    custom::PULLEY_C,
+    custom::FREE_C,
 ];

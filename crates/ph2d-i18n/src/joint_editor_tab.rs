@@ -15,6 +15,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "A ready-made machine for this joint. Drop your objects into it."
         }
         "joint_editor.templates_n" => "{n} templates",
+        "joint_editor.templates_1" => "1 template",
+        "joint_editor.custom" => "Custom",
+        "joint_editor.custom_parts" => "You draw the parts",
         "joint_editor.scope.both_wheels" => "Both wheels",
         "joint_editor.scope.all" => "All {n}",
         "joint_editor.scene" => "The scene",

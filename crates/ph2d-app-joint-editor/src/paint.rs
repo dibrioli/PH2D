@@ -2,13 +2,14 @@
 //! gabarito; à direita o painel em cartões. As listas suspensas pintam-se por último, por cima.
 
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect_dashed};
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect_dashed};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_joint_templates::Guide;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 use crate::doc::{Focus, Hit, JointEditorDoc, Menu, kind_key, kinds};
@@ -203,6 +204,40 @@ pub fn thumbnail(ui: &mut Ui<'_>, t: &ph2d_joint_templates::Template, r: Rect) {
     }
 }
 
+/// A miniatura do «Custom»: a caixa tracejada vazia com o «+» (maquete B1) — as peças são do artista.
+fn hand_made_thumbnail(ui: &mut Ui<'_>, r: Rect) {
+    let c = ui.c(ColorToken::Text2);
+    stroke_rounded_rect_dashed(
+        ui.scene,
+        r,
+        m::SEG_RADIUS,
+        m::FIELD_BORDER,
+        m::LOOSE_DASH,
+        c,
+    );
+    let s = m::ICON_CELL;
+    let icon = Rect::new(r.x + (r.w - s) * 0.5, r.y + (r.h - s) * 0.5, s, s);
+    paint_icon(ui.scene, IconId::Plus, icon, c, StrokeToken::Default.px());
+}
+
+/// Quantas colunas a grelha dos gabaritos leva em `avail` px: até [`w::MENU_COLS`], nunca mais que as
+/// opções, e pelo menos uma.
+#[must_use]
+pub fn grid_cols(n: usize, avail: f32) -> usize {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let fit = (avail / w::MENU_CELL_MIN_W).floor().max(1.0) as usize;
+    fit.min(w::MENU_COLS).min(n.max(1))
+}
+
+/// O nome do gabarito no seletor: o «Custom» é a palavra da casa, os outros o nome do catálogo.
+fn tr_template(t: &ph2d_joint_templates::Template) -> &'static str {
+    if t.hand_made {
+        tr("joint_editor.custom")
+    } else {
+        t.name
+    }
+}
+
 /// Uma opção da lista: o alvo, o nome, a linha de baixo e a miniatura do gabarito.
 type MenuRow = (
     Hit,
@@ -217,21 +252,26 @@ fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
             .into_iter()
             .map(|k| {
                 let n = ph2d_joint_templates::of_kind(k).count();
-                (
-                    Hit::Kind(k),
-                    tr(kind_key(k)).to_owned(),
-                    tr_with("joint_editor.templates_n", &[("n", &n)]),
-                    None,
-                )
+                let sub = if n == 1 {
+                    tr("joint_editor.templates_1").to_owned()
+                } else {
+                    tr_with("joint_editor.templates_n", &[("n", &n)])
+                };
+                (Hit::Kind(k), tr(kind_key(k)).to_owned(), sub, None)
             })
             .collect(),
         Menu::Template => ph2d_joint_templates::of_kind(ui.doc.template().kind)
             .map(|t| {
                 let roles: Vec<&str> = t.roles.iter().map(|r| r.name).collect();
+                let sub = if t.hand_made {
+                    tr("joint_editor.custom_parts").to_owned()
+                } else {
+                    roles.join(" · ")
+                };
                 (
                     Hit::Template(t.id.0),
-                    t.name.to_owned(),
-                    roles.join(" · "),
+                    tr_template(t).to_owned(),
+                    sub,
                     Some(t),
                 )
             })
@@ -241,18 +281,29 @@ fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
         Menu::Kind => m::FIELD_H + m::LABEL_PX,
         Menu::Template => w::MENU_ROW_H,
     };
-    #[allow(clippy::cast_precision_loss)]
-    let h = row_h * rows.len() as f32 + m::SEG_PAD * 2.0;
-    // Por baixo da caixa; se não cabe até ao fundo da aba, sobe o que falta.
+    // A lista dos tipos é uma coluna; a dos gabaritos, a grelha da maquete B1 (até três colunas, que
+    // alargam a lista para o palco).
+    let p = ui.doc.panel;
     let area = ui.doc.area;
+    let lw = (p.w.max(ph2d_tokens::INSPECTOR_W_PX) - m::CARD_PAD_X * 2.0).min(area.w);
+    let cols = match menu {
+        Menu::Kind => 1,
+        Menu::Template => grid_cols(rows.len(), area.w - m::SEG_PAD * 2.0),
+    };
+    #[allow(clippy::cast_precision_loss)]
+    let lw = lw
+        .max(w::MENU_CELL_MIN_W * cols as f32 + m::SEG_PAD * 2.0)
+        .min(area.w);
+    let lines = rows.len().div_ceil(cols);
+    #[allow(clippy::cast_precision_loss)]
+    let h = row_h * lines as f32 + m::SEG_PAD * 2.0;
+    // Por baixo da caixa; se não cabe até ao fundo da aba, sobe o que falta.
     let y0 = (b.y + b.h + m::SEG_PAD)
         .min(area.y + area.h - h)
         .max(area.y);
-    // A lista abre na largura do cartão (Joint e Template partilham a fila; a miniatura e o nome cabem);
-    // no painel estreito, nunca menos que no de fábrica, alargando para o palco.
-    let p = ui.doc.panel;
-    let lw = (p.w.max(ph2d_tokens::INSPECTOR_W_PX) - m::CARD_PAD_X * 2.0).min(area.w);
-    let r = Rect::new(p.x + p.w - m::CARD_PAD_X - lw, y0, lw, h);
+    // A lista abre na largura do cartão (no painel estreito, nunca menos que no de fábrica) ou na da
+    // grelha, alargando para o palco a partir da borda direita do painel.
+    let r = Rect::new((p.x + p.w - m::CARD_PAD_X - lw).max(area.x), y0, lw, h);
     let shade = ui.c(ColorToken::KanbanListShadow);
     ph2d_editor_core::paint_flight::shadow(ui.scene, r, m::CARD_RADIUS, shade, m::LIST_SHADOW_FAR);
     fill_rounded_rect(
@@ -264,12 +315,14 @@ fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
     let cur = ui.doc.template();
     // O véu: um clique fora fecha a lista sem fazer mais nada.
     ui.hit(ui.doc.area, Hit::OpenMenu(menu), "");
+    #[allow(clippy::cast_precision_loss)]
+    let cell_w = (r.w - m::SEG_PAD * 2.0) / cols as f32;
     for (k, (hit, name, sub, t)) in rows.into_iter().enumerate() {
         #[allow(clippy::cast_precision_loss)]
         let row = Rect::new(
-            r.x + m::SEG_PAD,
-            r.y + m::SEG_PAD + row_h * k as f32,
-            r.w - m::SEG_PAD * 2.0,
+            r.x + m::SEG_PAD + cell_w * (k % cols) as f32,
+            r.y + m::SEG_PAD + row_h * (k / cols) as f32,
+            cell_w,
             row_h,
         );
         let on = match hit {
@@ -295,7 +348,11 @@ fn paint_menu(ui: &mut Ui<'_>, b: Rect, menu: Menu) {
                 w::THUMB.0,
                 w::THUMB.1,
             );
-            thumbnail(ui, t, th);
+            if t.hand_made {
+                hand_made_thumbnail(ui, th);
+            } else {
+                thumbnail(ui, t, th);
+            }
             tx += w::THUMB.0 + m::FIELD_GAP;
         }
         let tw = (row.x + row.w - m::FIELD_PAD_R - tx).max(0.0);

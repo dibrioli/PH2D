@@ -34,6 +34,11 @@ pub const HANDLE_R: f32 = 6.0;
 pub const THUMB: (f32, f32) = (76.0, 38.0);
 /// A linha de uma opção da lista suspensa com miniatura.
 pub const MENU_ROW_H: f32 = 48.0;
+/// A célula mais estreita da grelha dos gabaritos: a maquete B1 pede 180 px com a miniatura de 64; a
+/// nossa tem 76 (+12) e o vão dela (+8).
+pub const MENU_CELL_MIN_W: f32 = 200.0;
+/// As colunas da grelha dos gabaritos (maquete B1).
+pub const MENU_COLS: usize = 3;
 /// O texto pequeno (pés, papéis).
 pub const SMALL_PX: f32 = 10.5;
 /// O valor mais largo que um campo escreve, «-0.000» (sinal, três casas), medido no `TextSystem` a

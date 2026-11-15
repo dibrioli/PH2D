@@ -266,9 +266,9 @@ pub(crate) fn resolve_drag(
     } else {
         // Override rebuilds, in either view: a rhythm the segment had goes (the handles are drawn
         // where the motion PLAYS, so the new easing starts from the curve on screen) — except the
-        // END handle of a Custom with points in the value view, which keeps rhythm and points.
-        let fica = !state.speed_view && ph2d_timeline::end_handle_keeps_rhythm(k0, k1);
-        if k0.retime.is_some() && !fica {
+        // END handle of a Custom with points, which keeps rhythm and points in both views.
+        let pontos = ph2d_timeline::end_handle_keeps_points(k0, k1);
+        if k0.retime.is_some() && !pontos {
             let sem = ph2d_timeline::RetimeIntent::Set {
                 target: track.target,
                 key: k0.id,
@@ -276,7 +276,9 @@ pub(crate) fn resolve_drag(
             };
             state::push_intent(TimelineIntent::Retime(sem));
         }
-        Some(if state.speed_view {
+        Some(if state.speed_view && pontos {
+            ph2d_timeline::spline_with_speed_handle(k0, k1, d.which, ponto.0, ponto.1)
+        } else if state.speed_view {
             // Speed edit, the AE gesture: vertical = VELOCITY, horizontal = INFLUENCE.
             weighted_with_speed_handle(k0, k1, d.which, ponto.0, ponto.1)
         } else {

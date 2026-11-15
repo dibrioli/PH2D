@@ -74,6 +74,17 @@ arrasta 583 555 590 478
 foto pontos_r3b_braco_acima_da_curva_a_vista
 confere "$(difere pontos_r3_braco_da_ponta pontos_r3b_braco_acima_da_curva_a_vista && echo s)" "puxar o braço para cima não mudou nada"
 para 3b
+# Vista de VELOCIDADE: liga «Show speed in the curves».
+c 1211 351; c 981 619; xdotool key Escape; sleep 0.6; c 567 479
+c 406 548
+foto pontos_rv1_velocidade_override
+# Puxa o braço de CHEGADA da velocidade: a curva com pontos não se converte (antes apagava os pontos e o ritmo).
+arrasta 815 575 785 598
+foto pontos_rv2_braco_de_velocidade_puxado
+confere "$(difere pontos_rv1_velocidade_override pontos_rv2_braco_de_velocidade_puxado && echo s)" "puxar o braço de velocidade não mudou nada"
+c 1211 351; c 981 619; xdotool key Escape; sleep 0.6; c 567 479
+foto pontos_rv3_de_volta_ao_valor_os_pontos_ficaram
+para v
 # (2) O cartão da chave: «Reset timing» ao lado do Done.
 c 567 479 3
 import -window root -crop 560x420+560+470 +repage "$SAIDA/pontos_r4_cartao_com_reset_timing.png"

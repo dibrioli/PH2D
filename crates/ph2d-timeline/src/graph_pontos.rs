@@ -80,6 +80,42 @@ pub fn end_handle_keeps_rhythm(k0: &KeyView, k1: &KeyView) -> bool {
     k0.retime.is_some() && matches!(k0.interp, Interp::Spline(_)) && segment_curve(k0, k1).is_some()
 }
 
+/// Puxar um braço de uma Custom com PONTOS (em qualquer vista) mexe só na alça da ponta da curva:
+/// os pontos e o ritmo ficam. O Override (virar `BezierW`, tirar o ritmo) apagá-los-ia.
+#[must_use]
+pub fn end_handle_keeps_points(k0: &KeyView, k1: &KeyView) -> bool {
+    matches!(k0.interp, Interp::Spline(_)) && segment_curve(k0, k1).is_some()
+}
+
+/// O gesto do braço na vista de VELOCIDADE (o do AE: horizontal = influência, vertical =
+/// velocidade) numa Custom com pontos: a alça da ponta ganha a influência `x = u` do rato e a
+/// inclinação que dá a velocidade `v` que TOCA (`E'·W'·Δv/Δt`, com o ritmo); os pontos e o ritmo
+/// ficam. Sem velocidade possível (`W'` nulo ou infinito na ponta) a curva fica como está.
+#[must_use]
+pub fn spline_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f64) -> Interp {
+    let Interp::Spline(sp) = k0.interp else {
+        return k0.interp;
+    };
+    let (span, dv) = (k1.t_seconds - k0.t_seconds, f64::from(k1.value - k0.value));
+    let ws = ph2d_anim::retime::warp_slope(k0.retime, if which == 0 { 0.0 } else { 1.0 });
+    if span <= 0.0 || dv.abs() <= f64::EPSILON || !(ws.is_finite() && ws > 0.0) {
+        return k0.interp;
+    }
+    let m = crate::graph::MIN_INFLUENCE;
+    let u = (t - k0.t_seconds) / span;
+    let declive = v * span / (ws * dv); // E' na ponta
+    let (out, inn) = sp.end_handles();
+    let f = |x: f64, y: f64| [x as f32, y as f32];
+    let nova = if which == 0 {
+        let x = u.clamp(m, 1.0); // CLAMP-OK: const bounds, min<max
+        sp.with_end_handles(f(x, declive * x), inn)
+    } else {
+        let x = u.clamp(0.0, 1.0 - m); // CLAMP-OK: const bounds, min<max
+        sp.with_end_handles(out, f(x, 1.0 - declive * (1.0 - x)))
+    };
+    Interp::Spline(nova)
+}
+
 /// Onde a vista de VALOR desenha (e agarra) os dois braços do trecho: os de
 /// [`crate::segment_handle_points`], salvo numa Custom com pontos retimada, cujas pontas seguem o
 /// mapa dos pontos do meio ([`end_handle_keeps_rhythm`]).
@@ -294,6 +330,45 @@ mod tests {
             assert!(hi >= 12.9, "{retime:?}: a ponta do braço (13) fora: {hi}");
             assert!(lo <= -3.9, "{retime:?}: a alça do ponto (−4) fora: {lo}");
         }
+    }
+
+    /// Na vista de VELOCIDADE, puxar o braço de uma Custom com pontos dá à ponta a velocidade do
+    /// rato (o oráculo é a velocidade que TOCA, `segment_endpoint_speed`, com o ritmo) e a
+    /// influência do rato — sem apagar os pontos nem o ritmo.
+    #[test]
+    fn na_vista_de_velocidade_o_braco_da_custom_com_pontos_mantem_pontos_e_ritmo() {
+        let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        sp.insert(0.5);
+        for retime in [None, Some(RITMO)] {
+            for (which, t, v) in [(0u8, 0.4, 7.0), (1, 1.5, 3.0)] {
+                let (mut k0, k1) = (
+                    key(0.0, 0.0, Interp::Spline(sp)),
+                    key(2.0, 10.0, Interp::Linear),
+                );
+                k0.retime = retime;
+                assert!(end_handle_keeps_points(&k0, &k1));
+                let mut novo = k0.clone();
+                novo.interp = spline_with_speed_handle(&k0, &k1, which, t, v);
+                let Interp::Spline(c) = novo.interp else {
+                    panic!("{retime:?}: virou {:?}", novo.interp);
+                };
+                assert_eq!(c.points().len(), 1, "{retime:?}: os pontos sumiram");
+                let toca = crate::speed::segment_endpoint_speed(&novo, &k1, which);
+                assert!(
+                    (toca - v).abs() < 1e-3,
+                    "{retime:?} {which}: toca {toca} × rato {v}"
+                );
+                if retime.is_none() {
+                    let (tt, _) = crate::speed_handle_tip(&novo, &k1, which).unwrap();
+                    assert!((tt - t).abs() < 1e-4, "a influência não foi ao rato: {tt}");
+                }
+            }
+        }
+        let sem = key(0.0, 0.0, Interp::bezier(0.3, 0.0, 0.7, 1.0));
+        assert!(!end_handle_keeps_points(
+            &sem,
+            &key(2.0, 10.0, Interp::Linear)
+        ));
     }
 
     #[test]

@@ -265,3 +265,31 @@ fn a_ponta_do_braco_acima_da_curva_continua_a_vista_e_agarravel() {
         set_current_timeline(None);
     }
 }
+
+/// Na vista de VELOCIDADE (Override), puxar o braço de uma Custom com pontos já não a converte
+/// (apagava os pontos e o ritmo): o painel pintado, o arrasto pelo despacho real.
+#[test]
+fn na_vista_de_velocidade_o_braco_da_custom_com_pontos_nao_apaga_nada() {
+    for retime in [None, Some(RITMO)] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState {
+            speed_view: true,
+            ..TimelinePanelState::default()
+        };
+        let regs = pinta_r(&mut host, &mut st, com_ponto(), retime);
+        let (x, y) = centro(&regs, ids::timeline_handle_hit_id(TGT, 1, 0));
+        let _ = drain_intents();
+        let _ = host.drag_at(x, y, x + 10.0, y - 15.0);
+        let _ = pinta_r(&mut host, &mut st, com_ponto(), retime);
+        let got = drain_intents();
+        assert!(!tirou_o_ritmo(&got), "{retime:?}: tirou o ritmo: {got:?}");
+        let Some(Interp::Spline(c)) = got.into_iter().rev().find_map(|i| match i {
+            TimelineIntent::SetInterp { interp, .. } => Some(interp),
+            _ => None,
+        }) else {
+            panic!("{retime:?}: o braço de velocidade apagou os pontos");
+        };
+        assert_eq!(c.points().len(), 1);
+        set_current_timeline(None);
+    }
+}

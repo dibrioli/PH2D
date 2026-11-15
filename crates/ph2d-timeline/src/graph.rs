@@ -253,7 +253,7 @@ pub fn weighted_with_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f6
 /// AE's minimum influence (0.1%): a zero-influence side has no tangent to
 /// author a speed with (`speed = dy / (x·span)` degenerates), so the speed
 /// graph's horizontal drag clamps just short of it.
-const MIN_INFLUENCE: f64 = 1.0e-3;
+pub(crate) const MIN_INFLUENCE: f64 = 1.0e-3;
 
 /// The speed graph's editable handle TIP for one side of a segment (AE's
 /// yellow arm): it extends horizontally from the key's speed point, and its

@@ -356,3 +356,79 @@ fn versao_c_all_hits_duas_paredes_e_arestas_por_objecto() {
     assert_eq!(b2.ray_sensor_hits().get(&r2).map(|h| h.body), Some(perto2));
     assert_eq!(b2.ray_enters(), &[(r2, perto2)]);
 }
+
+/// A marca do raio `r` (o que o canvas desenha): `(alcance desenhado, primeiro acerto, os outros)`.
+fn marca(b: &PhysicsBridge) -> (f32, Option<f32>, Vec<f32>) {
+    let m = b.ray_marks().first().expect("a marca do raio");
+    match m.shape {
+        ph2d_physics_ecs::ProbeShape::Ray { reach, hit, .. } => {
+            (reach, hit, m.more_hits.como_lista().to_vec())
+        }
+        _ => panic!("o raio sem marca de raio"),
+    }
+}
+
+/// ⭐⭐ **O desenho de «See all hits»**: a linha vai ao alcance inteiro quando nada bloqueia, com um
+/// tique em CADA acerto; com «Walls block» e uma parede sem a tag, a linha PÁRA nela. Controlo:
+/// desligado, um tique só (o mais perto) e o alcance inteiro.
+///
+/// **Mutações que sangram:** a marca sem os acertos a mais · o fim no alcance mesmo com bloqueio.
+#[test]
+fn versao_c_all_hits_desenha_um_tique_por_acerto_ate_ao_bloqueio() {
+    let perto_longe = |all_hits: bool| {
+        let mut sim = SimWorld::new();
+        parede(&mut sim, "Longe", 4.0);
+        parede(&mut sim, "Perto", 2.0);
+        let _ = raio(
+            &mut sim,
+            Vec2::ZERO,
+            None,
+            RaySensor {
+                all_hits,
+                ..para(0.0)
+            },
+        );
+        let mut b = PhysicsBridge::new();
+        b.dispatch(&mut sim, true, 1);
+        marca(&b)
+    };
+    let (fim, hit, mais) = perto_longe(true);
+    assert!(
+        (fim - 20.0).abs() < 1.0e-4,
+        "nada bloqueia: o alcance inteiro ({fim})"
+    );
+    assert!(hit.is_some_and(|h| (h - 1.75).abs() < 1.0e-3), "{hit:?}");
+    assert_eq!(mais.len(), 1, "um tique a mais, o da de longe: {mais:?}");
+    assert!((mais[0] - 3.75).abs() < 1.0e-3, "{mais:?}");
+    let (fim, hit, mais) = perto_longe(false);
+    assert!(
+        (fim - 20.0).abs() < 1.0e-4 && mais.is_empty(),
+        "controlo: {fim} {mais:?}"
+    );
+    assert!(hit.is_some_and(|h| (h - 1.75).abs() < 1.0e-3));
+
+    // Com a tag e «Walls block»: a parede sem a tag tapa — a linha pára nela, sem acerto.
+    let mut tree = TagTree::new();
+    let inimigo = tree.create("Inimigo").expect("tag");
+    let mut sim = SimWorld::new();
+    parede(&mut sim, "Parede", 2.0);
+    let alvo = parede(&mut sim, "Alvo", 4.0);
+    com_tag(&mut sim, alvo, 1, inimigo);
+    let _ = raio(
+        &mut sim,
+        Vec2::ZERO,
+        None,
+        RaySensor {
+            only_see: SeeFilter::OnlyTag,
+            see_tag: inimigo.0,
+            all_hits: true,
+            ..para(0.0)
+        },
+    );
+    let mut b = PhysicsBridge::new();
+    b.set_tag_tree(&tree);
+    b.dispatch(&mut sim, true, 1);
+    let (fim, hit, mais) = marca(&b);
+    assert!((fim - 1.75).abs() < 1.0e-3, "a linha pára na parede: {fim}");
+    assert_eq!((hit, mais.len()), (None, 0));
+}

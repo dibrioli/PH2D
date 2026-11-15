@@ -116,7 +116,8 @@ pub fn probe_marks(
                     // A PONTA — sem ela um alcance curto é um risco solto, e um
                     // risco solto de 15 px não lê como uma medida.
                     tick(&mut p, e, END_TICK_PX);
-                    if let Some(d) = hit {
+                    // Com «See all hits», um tique em CADA acerto (o primeiro é o `hit`).
+                    for &d in hit.iter().chain(m.more_hits.como_lista()) {
                         let at = to_screen(origin[0] + dir[0] * d, origin[1] + dir[1] * d);
                         tick(&mut p, at, HIT_TICK_PX);
                     }

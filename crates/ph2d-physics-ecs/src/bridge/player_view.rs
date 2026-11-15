@@ -167,12 +167,44 @@ pub enum ProbeShape {
     Sweep { body: Entity, offset: [f32; 2] },
 }
 
+/// Quantos acertos a MAIS um raio «See all hits» leva ao desenho. ⚠️ Tecto do DESENHO, não do motor
+/// (`ray_sensor_hits_all` guarda todos e a leitura do Inspector conta-os): é o que mantém a marca `Copy`
+/// sem alocar por tique (HR-3); com tiques de 5 px, oito num raio já se tocam a qualquer zoom útil.
+pub const MAX_TIQUES_DO_RAIO: usize = 8;
+
+/// Os acertos depois do primeiro de um raio «See all hits», por distância (do `origin`).
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
+pub struct MaisAcertos {
+    pub d: [f32; MAX_TIQUES_DO_RAIO],
+    pub n: u8,
+}
+
+impl MaisAcertos {
+    /// Os primeiros [`MAX_TIQUES_DO_RAIO`] de `todos`.
+    #[must_use]
+    pub fn de(todos: &[f32]) -> Self {
+        let mut m = Self::default();
+        for (slot, &v) in m.d.iter_mut().zip(todos) {
+            *slot = v;
+            m.n += 1;
+        }
+        m
+    }
+
+    #[must_use]
+    pub fn como_lista(&self) -> &[f32] {
+        &self.d[..usize::from(self.n)]
+    }
+}
+
 /// **Uma marca de sensor** — o que ele olhou e o que respondeu.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ProbeMark {
     pub kind: ProbeKind,
     pub state: ProbeState,
     pub shape: ProbeShape,
+    /// Com «See all hits»: um tique em CADA acerto depois do primeiro (o `hit` do raio).
+    pub more_hits: MaisAcertos,
     /// A camada de quem olha, quando ela é do objecto: o `RaySensor` autorado (o canvas pinta-o na cor dela, emenda 4
     /// da GEF02, dono 08/11). Os sensores do personagem são anatomia dele e não têm camada própria: `None`.
     pub layer: Option<u8>,
@@ -207,6 +239,7 @@ impl ProbeMark {
                 skin,
             },
             layer: None,
+            more_hits: MaisAcertos::default(),
         }
     }
 
@@ -230,6 +263,7 @@ impl ProbeMark {
                 skin,
             },
             layer: None,
+            more_hits: MaisAcertos::default(),
         }
     }
 
@@ -261,11 +295,21 @@ impl ProbeMark {
                 samples,
             },
             layer: None,
+            more_hits: MaisAcertos::default(),
         }
     }
 
     /// A mesma marca, na camada `layer` do objecto que olha.
     #[must_use]
+    /// Os acertos a mais de um raio «See all hits».
+    #[must_use]
+    pub fn com_mais_acertos(self, todos: &[f32]) -> Self {
+        Self {
+            more_hits: MaisAcertos::de(todos),
+            ..self
+        }
+    }
+
     pub fn na_camada(self, layer: u8) -> Self {
         Self {
             layer: Some(layer),
@@ -285,6 +329,7 @@ impl ProbeMark {
             },
             shape: ProbeShape::Sweep { body, offset },
             layer: None,
+            more_hits: MaisAcertos::default(),
         }
     }
 }

@@ -508,6 +508,7 @@ impl PhysicsBridge {
                         skin: 0.0,
                     },
                     layer: None,
+                    more_hits: crate::MaisAcertos::default(),
                 });
             }
         }

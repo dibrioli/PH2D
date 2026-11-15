@@ -398,6 +398,7 @@ fn uma_parede_da_area_andavel_nao_leva_tiques() {
             hit: None,
             skin: 0.0,
         },
+        more_hits: ph2d_physics_ecs::MaisAcertos::default(),
         layer: None,
     };
     let caminho = ProbeMark::ray(ProbeKind::Path, [0.0, 0.0], [1.0, 0.0], 2.0, None, 0.0);
@@ -416,6 +417,22 @@ fn uma_parede_da_area_andavel_nao_leva_tiques() {
         d[0].1[3] < d[1].1[3],
         "o mapa é mais claro que o caminho, para não competir com ele"
     );
+}
+
+/// ⭐ **«See all hits» no canvas: um tique em CADA acerto** (GEF 07, versão C). Controlo: sem os
+/// acertos a mais, só o do primeiro.
+///
+/// **Mutação que sangra:** o pintor desenhar só o `hit` (sem o `more_hits`).
+#[test]
+fn com_all_hits_ha_um_tique_em_cada_acerto() {
+    let sim = no_world();
+    let um = ray(ProbeKind::Sensor, Some(0.5));
+    let tres = um.com_mais_acertos(&[1.0, 1.5]);
+    let pontos =
+        |m: ProbeMark| points(&probe_marks(true, &[m], &sim, &camera(), window())[0].0).len();
+    // a linha (2) + a ponta (2) + 2 por acerto
+    assert_eq!(pontos(um), 6, "o controlo: um acerto");
+    assert_eq!(pontos(tres), 10, "três acertos, três tiques");
 }
 
 // ---------------------------------------------------------------------------

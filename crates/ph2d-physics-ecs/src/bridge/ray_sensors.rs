@@ -242,6 +242,9 @@ impl PhysicsBridge {
                     normal: h.normal,
                 };
                 let parou: Option<f32>;
+                // Com «See all hits» a linha vai até ao BLOQUEIO (ou ao alcance inteiro), com um tique em cada acerto.
+                let mut fim = raio.reach;
+                let mut mais = crate::MaisAcertos::default();
                 if r.all_hits {
                     self.world.cast_ray_query_all(
                         raio.origem,
@@ -267,7 +270,12 @@ impl PhysicsBridge {
                             }
                         }
                     }
-                    parou = bloqueio.or(self.ray_scratch.first().map(|h| h.distance));
+                    parou = lista.first().map(|h| h.distance);
+                    fim = bloqueio.unwrap_or(raio.reach);
+                    for (slot, h) in mais.d.iter_mut().zip(lista.iter().skip(1)) {
+                        *slot = h.distance;
+                        mais.n += 1;
+                    }
                     // As ARESTAS por objecto: entra quem passa a estar na lista, sai quem deixa.
                     for h in &lista {
                         if !anterior.iter().any(|x| x.body == h.body) {
@@ -306,11 +314,12 @@ impl PhysicsBridge {
                         ProbeKind::Sensor,
                         raio.origem,
                         raio.dir,
-                        raio.reach,
+                        fim,
                         parou,
                         // ⛔ **Sem `skin`, e a ausência é a lei:** a origem é **autorada**.
                         0.0,
                     )
+                    .com_mais_acertos(mais.como_lista())
                     .na_camada(r.layer),
                 );
             }

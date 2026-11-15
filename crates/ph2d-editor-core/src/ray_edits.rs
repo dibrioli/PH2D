@@ -20,6 +20,8 @@ pub struct InspectorRayInfo {
     pub angle: f32,
     pub reach: f32,
     pub layer: u32,
+    /// Espelha com o lado do personagem dono.
+    pub turns_with_facing: bool,
     /// Nenhum objeto com forma está numa camada que esta vê (a matriz): o raio nunca verá nada.
     pub layer_empty: bool,
     /// O nome publicado ao passar a ver — vazio = calado.
@@ -76,6 +78,7 @@ pub enum RayFieldEdit {
     /// Graus locais.
     Angle(f32),
     Reach(f32),
+    TurnsWithFacing(bool),
     Layer(u32),
     /// ⚠️ Os NOMES, crus — a mesma convenção do alvo do projéctil: quem apara é quem lê.
     OnEnter(String),
@@ -92,6 +95,7 @@ mod tests {
             angle: -90.0,
             reach: 1.0,
             layer: 0,
+            turns_with_facing: false,
             layer_empty: false,
             on_enter: "vi".into(),
             on_exit: String::new(),
@@ -109,14 +113,15 @@ mod tests {
         let variantes = [
             RayFieldEdit::Angle(0.0),
             RayFieldEdit::Reach(0.0),
+            RayFieldEdit::TurnsWithFacing(false),
             RayFieldEdit::Layer(0),
             RayFieldEdit::OnEnter(String::new()),
             RayFieldEdit::OnExit(String::new()),
         ];
         assert_eq!(
             variantes.len(),
-            5,
-            "o `RaySensor` tem TRÊS campos e o `RaySignals` DOIS — se um nasceu, ele precisa de \
+            6,
+            "o `RaySensor` tem QUATRO campos e o `RaySignals` DOIS — se um nasceu, ele precisa de \
              uma variante aqui e de uma row no painel"
         );
     }

@@ -99,7 +99,9 @@ impl PhysicsBridge {
             crate::owner_body(world, e)
         };
         let em_mundo = ph2d_ecs::world_transform(world, e);
-        let (px, py, ang, excluir) = match corpo.and_then(|c| self.bodies.get(&c).map(|b| (c, b))) {
+        let (px, py, ang, excluir, lado) = match corpo
+            .and_then(|c| self.bodies.get(&c).map(|b| (c, b)))
+        {
             // A pose VIVA do corpo dono, mais o que separa o raio dele na árvore (zero se é o próprio).
             Some((c, b)) => {
                 let p = self.world.body_pose(b.handle)?;
@@ -116,20 +118,31 @@ impl PhysicsBridge {
                 };
                 let a = p.rotation.angle();
                 let (s, co) = (libm::sinf(a), libm::cosf(a));
+                // O lado do personagem dono (a mesma fonte que a física usa), só com a opção ligada.
+                let lado = if r.turns_with_facing {
+                    self.player_state
+                        .get(&c)
+                        .map_or(1.0, |st| st.facing.signum())
+                } else {
+                    1.0
+                };
+                let rel = [rel[0] * lado, rel[1]];
                 (
                     p.translation.x + rel[0] * co - rel[1] * s,
                     p.translation.y + rel[0] * s + rel[1] * co,
-                    a + d_ang,
+                    a + d_ang * lado,
                     Some(b.handle),
+                    lado,
                 )
             }
             None => {
                 let t = em_mundo?;
-                (t.translation.x, t.translation.y, t.rotation, None)
+                (t.translation.x, t.translation.y, t.rotation, None, 1.0)
             }
         };
         let (s, c) = (libm::sinf(ang), libm::cosf(ang));
         let v = r.dir_local();
+        let v = ph2d_core::Vec2::new(v.x * lado, v.y);
         let d = [v.x * c - v.y * s, v.x * s + v.y * c];
         let n = libm::sqrtf(d[0] * d[0] + d[1] * d[1]);
         if !n.is_finite() || n <= f32::EPSILON || !r.reach.is_finite() || r.reach < 0.0 {

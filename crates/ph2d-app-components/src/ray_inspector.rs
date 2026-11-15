@@ -56,6 +56,7 @@ pub fn build_ray_info(
         angle: r.angle,
         reach: r.reach,
         layer: u32::from(r.layer),
+        turns_with_facing: r.turns_with_facing,
         layer_empty: camada_vazia(world, e, r.layer),
         on_enter: s.map(|s| s.on_enter.clone()).unwrap_or_default(),
         on_exit: s.map(|s| s.on_exit.clone()).unwrap_or_default(),
@@ -109,6 +110,7 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
     };
     match edit {
         RayFieldEdit::Angle(v) => r.angle = *v,
+        RayFieldEdit::TurnsWithFacing(v) => r.turns_with_facing = *v,
         RayFieldEdit::Reach(v) => r.reach = *v,
         // ⚠️ **A camada é um ÍNDICE**, e o tecto é o do mundo (`MAX_LAYERS`): um número maior não
         // tem linha na matriz, e a porta do motor leria uma coluna que não existe.

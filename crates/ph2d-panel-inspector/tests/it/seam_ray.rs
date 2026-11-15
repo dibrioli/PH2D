@@ -28,6 +28,7 @@ fn raio() -> InspectorRayInfo {
         reach: 6.0,
         layer: 0,
         layer_empty: false,
+        turns_with_facing: false,
         on_enter: "wall_ahead".into(),
         on_exit: "wall_gone".into(),
         sees: "Wall".into(),
@@ -167,4 +168,27 @@ fn a_camada_vazia_e_a_dica_do_angle() {
     assert!(dica.contains("90"), "o Angle sem dica de direção: «{dica}»");
     set_current_inspector_ray(None);
     set_cards_on(false);
+}
+
+/// ⭐ A caixa «Turns with facing» (dono 15/11): o clique no rect pintado escreve o CONTRÁRIO do que o
+/// snapshot mostra, nos cartões e fora deles.
+///
+/// **Mutação que deve sangrar:** escrever `info.turns_with_facing` sem o `!`.
+#[test]
+fn a_caixa_turns_with_facing_escreve_o_contrario_do_ecra() {
+    nos_dois_modos(|c| {
+        for ligada in [false, true] {
+            let mut info = raio();
+            info.turns_with_facing = ligada;
+            let (mut h, mut st, r) = assente(&info, c);
+            let rect = achado(&r, i::INSP_RAY_TURNS).expect("a caixa pintada");
+            let saiu = edicoes(clica(&mut h, &mut st, rect));
+            assert_eq!(
+                saiu,
+                vec![RayFieldEdit::TurnsWithFacing(!ligada)],
+                "cartões {c}, ligada {ligada}"
+            );
+            set_current_inspector_ray(None);
+        }
+    });
 }

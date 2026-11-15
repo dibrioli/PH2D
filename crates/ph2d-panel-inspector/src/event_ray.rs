@@ -36,6 +36,15 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             return true;
         }
         // «Open in tab…»: a aba central na camada do RAIO (emenda 4).
+        if id == crate::ids::INSP_RAY_TURNS {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            push(
+                host,
+                bits,
+                RayFieldEdit::TurnsWithFacing(!info.turns_with_facing),
+            );
+            return true;
+        }
         if id == crate::ids::INSP_RAY_EDIT_MATRIX {
             ph2d_editor_core::panel::seam_reset_button(host, id);
             host.bus_mut()

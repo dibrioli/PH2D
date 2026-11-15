@@ -51,6 +51,11 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 2] = [
 
 pub(crate) fn populate_ray(store: &mut WidgetStore) {
     store.mark_collapsible_section(ids::INSP_RAY_FOLD_SIGNALS);
+    crate::populate::register_button_ids(store, &[ids::INSP_RAY_TURNS]);
+    store.set_tooltip(
+        ids::INSP_RAY_TURNS,
+        ph2d_i18n::tr("panel.inspector.ray.turns_tip"),
+    );
     store.set_tooltip(
         ids::INSP_RAY_ANGLE,
         ph2d_i18n::tr("panel.inspector.ray.angle_tip"),

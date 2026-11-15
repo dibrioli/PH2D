@@ -131,6 +131,7 @@ fn corpo(
             tr("component.field.ray_sensor.0"),
             tr("component.field.ray_sensor.1"),
             tr("component.field.ray_sensor.2"),
+            tr("component.field.ray_sensor.3"),
             tr("component.field.ray_signals.0"),
             tr("component.field.ray_signals.1"),
         ],
@@ -149,6 +150,23 @@ fn corpo(
         &[crate::ids::INSP_RAY_ANGLE],
         1.0, // LITERAL-PX-OK: passo de arrasto em GRAUS
         Some(ph2d_editor_core::widget::Unit::Degrees),
+        seccao,
+    );
+    // Opção (dono 15/11): espelhar com o lado do personagem. O estado vem do SNAPSHOT.
+    cur_y = ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_RAY_TURNS,
+            TextKey::new("component.field.ray_sensor.3"),
+            i.turns_with_facing,
+        ),
         seccao,
     );
     let [(xa, wa), (xb, wb)] = if crate::cards::active() {

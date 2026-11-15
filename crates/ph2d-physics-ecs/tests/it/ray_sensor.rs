@@ -41,6 +41,7 @@ fn olho(sim: &mut SimWorld, em: Vec2, dir: Vec2, reach: f32) -> Entity {
                 angle: libm::atan2f(dir.y, dir.x).to_degrees(),
                 reach,
                 layer: 0,
+                turns_with_facing: false,
             },
         ))
         .id()
@@ -164,6 +165,7 @@ fn um_raio_roda_com_o_objecto() {
                 angle: 0.0,
                 reach: 5.0,
                 layer: 0,
+                turns_with_facing: false,
             },
         ))
         .id();
@@ -222,6 +224,7 @@ fn um_raio_nao_se_ve_a_si_mesmo() {
                 angle: 0.0,
                 reach: 20.0,
                 layer: 0,
+                turns_with_facing: false,
             },
         ))
         .id();
@@ -467,6 +470,7 @@ fn um_raio_filho_exclui_o_corpo_dono_e_segue_a_pose_viva() {
                 angle: 0.0,
                 reach: 20.0,
                 layer: 0,
+                turns_with_facing: false,
             },
         ))
         .id();
@@ -498,4 +502,70 @@ fn um_raio_filho_exclui_o_corpo_dono_e_segue_a_pose_viva() {
         bridge.ray_sensor_hits().get(&raio).is_none(),
         "o corpo caiu para y = {y} e o raio continuou a ver a parede: nao seguiu a pose viva"
     );
+}
+
+/// ⭐⭐ **«Turns with facing»** (dono 15/11, uma OPÇÃO): o raio filho de um personagem que olha para a
+/// esquerda espelha o ângulo e o desvio; desligada, ele fica para a direita.
+///
+/// **Mutações que devem sangrar:** ignorar o `facing` · espelhar só o rumo (o desvio fica do lado
+/// errado) · espelhar com a opção desligada.
+#[test]
+fn com_a_opcao_o_raio_vira_com_o_lado_do_personagem() {
+    for ligada in [true, false] {
+        let (mut sim, mut bridge, p) = crate::platform_scene::scene(0.0, 0.0);
+        let px = sim.world().get::<Transform>(p).expect("pose").translation.x;
+        let py = sim.world().get::<Transform>(p).expect("pose").translation.y;
+        let esq = parede(&mut sim, "Esquerda", px - 3.0);
+        let dir = parede(&mut sim, "Direita", px + 3.0);
+        for w in [esq, dir] {
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(w) {
+                t.translation.y = py; // à altura do raio
+            }
+        }
+        let raio = sim
+            .world_mut()
+            .spawn((
+                Name::new("Ray Sensor"),
+                Transform::from_translation(Vec2::new(0.5, 0.0)),
+                ChildOf(p),
+                RaySensor {
+                    angle: 0.0,
+                    reach: 20.0,
+                    layer: 0,
+                    turns_with_facing: ligada,
+                },
+            ))
+            .id();
+        for t in 1..=6u64 {
+            bridge.set_player_input(
+                p,
+                ph2d_platformer::PlayerInput {
+                    drive: -1.0,
+                    ..ph2d_platformer::PlayerInput::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, t);
+        }
+        assert_eq!(
+            bridge.player_view(p).map(|v| v.facing),
+            Some(-1.0),
+            "fixtura"
+        );
+        let h = bridge
+            .ray_sensor_hits()
+            .get(&raio)
+            .copied()
+            .expect("o raio vê uma das paredes");
+        assert_eq!(h.body, if ligada { esq } else { dir }, "ligada = {ligada}");
+        // O desvio também espelha: nascido a 0,5 do centro, do lado da parede para onde olha.
+        let pose = sim.world().get::<Transform>(p).expect("pose").translation.x;
+        let face = if ligada { px - 2.75 } else { px + 2.75 };
+        let origem = if ligada { pose - 0.5 } else { pose + 0.5 };
+        assert!(
+            (h.distance - (face - origem).abs()).abs() < 0.05,
+            "ligada = {ligada}: d {} (esperava {})",
+            h.distance,
+            (face - origem).abs()
+        );
+    }
 }

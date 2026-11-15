@@ -231,7 +231,7 @@ fn o_angle_e_o_reach_do_raio_animam() {
     );
     let kr = |f| chave(RAIO, f, 0).expect("cabe");
     let todos = campos(&reg, sim.world(), e);
-    for f in 0..3 {
+    for f in 0..4 {
         assert!(todos.contains(&kr(f)), "falta o campo {f} em {todos:?}");
     }
     let mut t = TextosDosCanais::default();

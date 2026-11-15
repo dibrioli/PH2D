@@ -154,6 +154,7 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
         if let Some(mut s) = w.get_mut::<RaySensor>(r) {
             s.angle = angle;
             s.reach = reach;
+            s.turns_with_facing = true; // vira com o herói (a opção, ligada na cena)
         }
         w.entity_mut(r).insert(RaySignals {
             on_enter: ve.to_owned(),

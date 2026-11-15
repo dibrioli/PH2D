@@ -188,6 +188,7 @@ fn olho(world: &mut World, nome: &str, angle: f32, y: f32, voz: RaySignals) -> E
                 angle,
                 reach: ALCANCE,
                 layer: 0,
+                turns_with_facing: false,
             },
             voz,
         ))

@@ -38,6 +38,7 @@ pub(crate) fn olho() -> InspectorRayInfo {
         reach: 6.0,
         layer: 3,
         layer_empty: false,
+        turns_with_facing: false,
         on_enter: "vi".into(),
         on_exit: "perdi".into(),
         sees: "Caixa".into(),

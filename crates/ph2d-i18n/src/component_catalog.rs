@@ -226,6 +226,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.ray_sensor.0" => "Angle",
         "component.field.ray_sensor.1" => "Reach",
         "component.field.ray_sensor.2" => "Layer",
+        "component.field.ray_sensor.3" => "Turns with facing",
         "component.field.ray_signals.0" => "On Enter",
         "component.field.ray_signals.1" => "On Exit",
         "component.field.projectile_motion.0" => "Speed",

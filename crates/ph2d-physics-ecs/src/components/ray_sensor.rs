@@ -50,6 +50,9 @@ pub struct RaySensor {
     pub reach: f32,
     /// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê.
     pub layer: u8,
+    /// Espelha com o lado para onde o personagem dono olha (`PlayerState::facing`): a olhar para a
+    /// esquerda, o ângulo e o desvio do raio trocam de lado. Opção do artista (dono 15/11), desligada.
+    pub turns_with_facing: bool,
 }
 
 impl RaySensor {
@@ -68,6 +71,7 @@ impl Default for RaySensor {
             angle: -90.0,
             reach: 1.0,
             layer: 0,
+            turns_with_facing: false,
         }
     }
 }

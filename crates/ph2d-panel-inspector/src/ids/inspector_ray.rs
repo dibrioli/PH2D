@@ -15,6 +15,8 @@ use ph2d_tool_registry::hash_node_id;
 
 /// Para onde o raio aponta, em graus locais (GEF 07: a origem é a posição do objeto).
 pub const INSP_RAY_ANGLE: NodeId = hash_node_id("insp_ray_angle");
+/// A caixa «Turns with facing» (dono 15/11).
+pub const INSP_RAY_TURNS: NodeId = hash_node_id("insp_ray_turns");
 /// Até onde ele enxerga, em metros.
 pub const INSP_RAY_REACH: NodeId = hash_node_id("insp_ray_reach");
 /// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê. É a lista suspensa

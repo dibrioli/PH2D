@@ -376,6 +376,7 @@ pub(super) const RAY_SENSOR: &[FieldDesc] = &[
     f(0, "component.field.ray_sensor.0", K::Angle).named("angle"),
     f(1, "component.field.ray_sensor.1", K::Scalar).named("reach"),
     f(2, "component.field.ray_sensor.2", K::Int).named("layer"),
+    f(3, "component.field.ray_sensor.3", K::Toggle).named("turns_with_facing"),
 ];
 pub(super) const RAY_SIGNALS: &[FieldDesc] = &[
     f(0, "component.field.ray_signals.0", K::Text).named("on_enter"),

@@ -1030,6 +1030,7 @@ fn arma_o_top20() {
         reach: 8.0,
         layer: 3,
         layer_empty: false,
+        turns_with_facing: false,
         on_enter: "spotted".to_string(),
         on_exit: "lost".to_string(),
         sees: "Player".to_string(),

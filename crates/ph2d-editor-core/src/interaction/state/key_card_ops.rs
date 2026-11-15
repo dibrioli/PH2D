@@ -56,6 +56,8 @@ pub(in crate::interaction) struct KeyCardState {
     sampler: Option<EaseSampler>,
     curva: Option<EaseSpline>,
     desce: bool,
+    retimado: bool,
+    reset: Option<TimelineInterpScope>,
     area: core::cell::Cell<Option<BezArea>>,
     alvo: Option<BezAlvo>,
     escolhido: Option<usize>,
@@ -102,6 +104,28 @@ impl WidgetStore {
     #[must_use]
     pub fn key_card_desce(&self) -> bool {
         self.key_card.desce
+    }
+
+    /// Publicado com a curva: o trecho da chave tem RITMO (Retime). Sem ele o cartão não tem
+    /// «Reset timing» — nada de botão morto.
+    pub fn set_key_card_retimado(&mut self, retimado: bool) {
+        self.key_card.retimado = retimado;
+    }
+
+    /// Ver [`Self::set_key_card_retimado`].
+    #[must_use]
+    pub fn key_card_retimado(&self) -> bool {
+        self.key_card.retimado
+    }
+
+    /// O clique em «Reset timing»: a timeline drena-o ([`Self::take_key_card_reset_timing`]).
+    pub fn request_key_card_reset_timing(&mut self, scope: TimelineInterpScope) {
+        self.key_card.reset = Some(scope);
+    }
+
+    /// O pedido de «Reset timing» desde a última drenagem.
+    pub fn take_key_card_reset_timing(&mut self) -> Option<TimelineInterpScope> {
+        self.key_card.reset.take()
     }
 
     /// A curva que o editor desenha: a da edição em curso, senão a publicada.

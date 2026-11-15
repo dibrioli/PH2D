@@ -269,12 +269,13 @@ fn o_clique_apanha_o_ponto_desenhado_e_a_linha_por_perto() {
     assert_eq!(apanha(&regs, 20.0, 40.0), None, "longe da linha: 40 px");
 }
 
-/// Onde os pontos mentiriam (trecho retimado) ou sem chave seleccionada, nada se regista.
+/// Um trecho retimado mostra os pontos (em cima do que toca); sem chave seleccionada, nada se
+/// regista.
 #[test]
-fn trecho_retimado_ou_sem_selecao_nao_tem_pontos_nem_linha() {
+fn trecho_retimado_tem_pontos_e_sem_selecao_nao_tem_nada() {
     let mut tr = track(com_ponto());
     tr.keys[0].retime = Some(Retime::new(0.1, 0.6, 0.5, 0.95));
-    assert!(pinta(&tr).is_empty(), "retimado");
+    assert!(!pinta(&tr).is_empty(), "retimado");
     let mut tr = track(com_ponto());
     for k in &mut tr.keys {
         k.selected = false;

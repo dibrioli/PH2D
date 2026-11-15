@@ -265,8 +265,10 @@ pub(crate) fn resolve_drag(
         None
     } else {
         // Override rebuilds, in either view: a rhythm the segment had goes (the handles are drawn
-        // where the motion PLAYS, so the new easing starts from the curve on screen).
-        if k0.retime.is_some() {
+        // where the motion PLAYS, so the new easing starts from the curve on screen) — except the
+        // END handle of a Custom with points in the value view, which keeps rhythm and points.
+        let fica = !state.speed_view && ph2d_timeline::end_handle_keeps_rhythm(k0, k1);
+        if k0.retime.is_some() && !fica {
             let sem = ph2d_timeline::RetimeIntent::Set {
                 target: track.target,
                 key: k0.id,

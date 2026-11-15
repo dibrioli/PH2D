@@ -72,7 +72,7 @@ fn every_card_target_fits_and_none_overlaps() {
     assert_eq!(g.interp.len(), INTERP.len());
     assert_eq!(g.ease.len(), EASES.len());
     assert_eq!(g.formas.len(), c::TIMELINE_EASE_MENU.len());
-    let mut alvos = vec![g.cabeca, g.rove, g.done];
+    let mut alvos = vec![g.cabeca, g.rove, g.reset, g.done];
     alvos.extend(g.interp.iter().chain(&g.ease).chain(&g.formas));
     let dentro = |r: &Rect| {
         r.x >= g.cartao.x
@@ -216,4 +216,97 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
         crate::interaction::key_card_alvo::alvo_em(&curva, &area, 290.0, 60.0),
         None
     );
+}
+
+/// Pinta o cartão inteiro e devolve os alvos registados e os pontos que a cena emite.
+fn pinta_cartao(store: &WidgetStore) -> (Vec<(NodeId, Rect)>, Vec<[f32; 2]>, Geo) {
+    let mut scene = VectorScene::new();
+    let mut ts = TextSystem::without_system_fonts();
+    let mut hit = HitIndex::new();
+    let req = crate::interaction::ContextMenuRequest {
+        x: 40.0,
+        y: 30.0,
+        kind: KIND,
+    };
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    paint(
+        &mut scene,
+        &mut ts,
+        Theme::Dark,
+        &mut hit,
+        store,
+        req,
+        viewport,
+    );
+    let regs = hit.iter_registrations().collect();
+    (regs, scene.probe_strokes().1, geo(40.0, 30.0))
+}
+
+/// ⭐ «Reset timing» (dono 15/11): só existe — pintado e clicável — quando a timeline publica que
+/// o trecho tem ritmo; o clique pelo despacho do cartão pede o reset do alcance e o cartão FICA.
+#[test]
+fn reset_timing_so_existe_com_ritmo_e_o_clique_pede_o_reset() {
+    crate::test_support::ensure_panel_registry();
+    let mut store = WidgetStore::default();
+    let (regs, _, g) = pinta_cartao(&store);
+    let id = c::CTX_MENU_TL_KEY_RESET_TIMING;
+    assert!(
+        !regs.iter().any(|r| r.0 == id),
+        "sem ritmo: nada de botão morto"
+    );
+    assert_eq!(acao(id, KIND, &store), Some(Acao::Nada));
+    store.set_key_card_retimado(true);
+    let (regs, _, _) = pinta_cartao(&store);
+    assert_eq!(regs.iter().find(|r| r.0 == id).map(|r| r.1), Some(g.reset));
+    assert!(e_alvo_do_cartao(id), "apertá-lo não fecha o cartão");
+    let mut hero = crate::screens::hero::HeroScreen::new(NodeId(1));
+    hero.store.set_key_card_retimado(true);
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: KIND,
+        });
+    hero.store.close_context_menu();
+    assert!(hero.apply_event(crate::interaction::WidgetEvent::Click(id)));
+    let K::TimelineSegment { scope } = KIND else {
+        unreachable!()
+    };
+    assert_eq!(hero.store.take_key_card_reset_timing(), Some(scope));
+    assert!(hero.pending_timeline_interp.is_none(), "não troca a curva");
+}
+
+/// ⭐ As miniaturas viram quando o valor DESCE (dono 15/11), como o editor e a timeline: o botão de
+/// Quad (`u²` no In) tem o meio `(½, ¼)` a ¼ da altura a partir de BAIXO a subir e a ¼ a partir
+/// de CIMA a descer. Lido do que a cena emite, com o cartão inteiro pintado.
+#[test]
+fn as_miniaturas_viram_quando_o_valor_desce() {
+    let i = c::TIMELINE_EASE_MENU
+        .iter()
+        .position(|r| r.0 == c::CTX_MENU_TL_FAM_QUAD)
+        .expect("Quad é uma forma");
+    for desce in [false, true] {
+        let mut store = WidgetStore::default();
+        store.set_ease_sampler(quad);
+        store.set_menu_marks(KIND, &[c::CTX_MENU_TL_EASE_IN, c::CTX_MENU_TL_FAM_QUAD], "");
+        store.set_key_card_desce(desce);
+        let (_, pontos, g) = pinta_cartao(&store);
+        let a = area_do_botao(g.formas[i]);
+        let f = if desce { 0.75 } else { 0.25 };
+        let alvo = [a.x + a.w * 0.5, a.y + a.h - f * a.h];
+        let errado = [a.x + a.w * 0.5, a.y + a.h - (1.0 - f) * a.h];
+        let perto = |p: [f32; 2]| {
+            pontos
+                .iter()
+                .any(|q| (q[0] - p[0]).abs() < 0.05 && (q[1] - p[1]).abs() < 0.05)
+        };
+        assert!(
+            perto(alvo),
+            "desce = {desce}: o meio da curva não está em {alvo:?}"
+        );
+        assert!(
+            !perto(errado),
+            "desce = {desce}: a curva saiu do lado de antes"
+        );
+    }
 }

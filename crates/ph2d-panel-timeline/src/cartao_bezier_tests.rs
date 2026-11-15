@@ -202,3 +202,55 @@ fn a_chave_que_desce_publica_o_cartao_virado() {
         );
     }
 }
+
+/// «Reset timing» do cartão (dono 15/11): a timeline publica `retimado` só quando o trecho da chave
+/// tem ritmo; o pedido do cartão vira um passo de undo que tira o ritmo de cada trecho do alcance
+/// que o tem (o da coluna inteira, no Summary) — e nada quando nenhum tem.
+#[test]
+fn o_reset_timing_do_cartao_so_existe_com_ritmo_e_tira_o_num_passo() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_timeline::RetimeIntent;
+    let ritmo = ph2d_anim::Retime::new(0.1, 0.6, 0.5, 0.95);
+    for (com, esperado) in [(Some(ritmo), true), (None, false)] {
+        let mut store = WidgetStore::default();
+        let scope = S::Key { target: 9, key: 1 };
+        store.open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::TimelineSegment { scope },
+        });
+        let mut k0 = chave(1, 0.0, 0.0, Interp::Linear, true);
+        k0.retime = com;
+        let s = snap(vec![faixa(
+            9,
+            vec![k0, chave(2, 1.0, 10.0, Interp::Linear, false)],
+        )]);
+        let _ = crate::state::drain_intents();
+        publica_e_drena(&mut store, &s);
+        assert_eq!(store.key_card_retimado(), esperado, "{com:?}");
+        store.request_key_card_reset_timing(scope);
+        publica_e_drena(&mut store, &s);
+        let got = crate::state::drain_intents();
+        if esperado {
+            assert_eq!(
+                got,
+                vec![
+                    TimelineIntent::BeginEdit,
+                    TimelineIntent::Retime(RetimeIntent::Set {
+                        target: AnimTarget::new(9),
+                        key: KeyId::new(1),
+                        retime: None,
+                    }),
+                    TimelineIntent::EndEdit,
+                ]
+            );
+        } else {
+            assert!(got.is_empty(), "sem ritmo nada muda: {got:?}");
+        }
+        assert_eq!(
+            store.take_key_card_reset_timing(),
+            None,
+            "o pedido drena-se"
+        );
+    }
+}

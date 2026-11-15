@@ -409,6 +409,8 @@ pub const CTX_MENU_TL_KEY_BEZ_AREA: NodeId = hash_node_id("ctx_menu_tl_key_bez_a
 pub const CTX_MENU_TL_KEY_HANDLE_CORNER: NodeId = hash_node_id("ctx_menu_tl_key_handle_corner");
 pub const CTX_MENU_TL_KEY_HANDLE_SMOOTH: NodeId = hash_node_id("ctx_menu_tl_key_handle_smooth");
 pub const CTX_MENU_TL_KEY_HANDLE_SYMM: NodeId = hash_node_id("ctx_menu_tl_key_handle_symm");
+/// **Reset timing**: tira o ritmo do trecho (dono 15/11). Só se pinta quando o trecho TEM ritmo.
+pub const CTX_MENU_TL_KEY_RESET_TIMING: NodeId = hash_node_id("ctx_menu_tl_key_reset_timing");
 /// **Done**: fecha o cartão (as escolhas não o fecham, dono 13/11).
 pub const CTX_MENU_TL_KEY_DONE: NodeId = hash_node_id("ctx_menu_tl_key_done");
 /// Bloco **Curve**: a forma escolhida (ou Cubic) no modo escolhido (ou In-Out).
@@ -421,12 +423,13 @@ pub const CTX_MENU_TL_CURVE_INOUT: NodeId = hash_node_id("ctx_menu_tl_curve_inou
 pub const CTX_MENU_TL_CURVE_OUT: NodeId = hash_node_id("ctx_menu_tl_curve_out");
 
 /// Os ids que só o cartão da chave tem — registados pelo `pre_populate` como toda tabela.
-pub const TIMELINE_KEY_CARD: [MenuRow; 5] = [
+pub const TIMELINE_KEY_CARD: [MenuRow; 6] = [
     menu_row(CTX_MENU_TL_CURVE, "chrome.timeline_menu.curve"),
     menu_row(CTX_MENU_TL_CURVE_IN, "chrome.timeline_menu.seg_in"),
     menu_row(CTX_MENU_TL_CURVE_INOUT, "chrome.timeline_menu.seg_in_out"),
     menu_row(CTX_MENU_TL_CURVE_OUT, "chrome.timeline_menu.seg_out"),
     menu_row(CTX_MENU_TL_KEY_DONE, "chrome.timeline_menu.done"),
+    menu_row(CTX_MENU_TL_KEY_RESET_TIMING, "panel.timeline.reset_timing"),
 ];
 
 /// Uma tabela de menu — o que a [`ALL_TIMELINE_MENUS`] lista e o overlay pinta.

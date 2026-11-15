@@ -15,8 +15,8 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    KeyView, TrackValues, TrackView, drawn_extent, sample_keys, sample_speed,
-    segment_handle_points, speed_extent,
+    KeyView, TrackValues, TrackView, drawn_extent, sample_keys, sample_speed, speed_extent,
+    value_handle_points,
 };
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -391,7 +391,7 @@ fn paint_handles(
         // One source for every interp: the value-space handle positions
         // (`BezierW` places its absolute offsets; the normalized forms map
         // their tangent handles through the value change — same dots as ever).
-        for (which, (t, v)) in segment_handle_points(k0, k1).into_iter().enumerate() {
+        for (which, (t, v)) in value_handle_points(k0, k1).into_iter().enumerate() {
             let which = which as u8;
             if !ph2d_timeline::segment_handle_drawn(k0, k1, which) {
                 continue;

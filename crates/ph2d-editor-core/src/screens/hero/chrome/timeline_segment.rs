@@ -55,6 +55,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 hero.store.close_context_menu();
                 hero.store.consume_last_context_menu();
             }
+            Acao::ReiniciaRitmo => hero.store.request_key_card_reset_timing(scope),
         }
         return true;
     }

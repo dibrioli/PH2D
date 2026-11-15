@@ -48,6 +48,8 @@ const BEZ_P1: (f32, f32) = (0.62, 0.0); // LITERAL-PX-OK: alça do desenho do Cu
 const BEZ_P2: (f32, f32) = (0.38, 1.0); // LITERAL-PX-OK: alça do desenho do Custom (quadrado unitário)
 /// A largura do botão Done.
 const DONE_W: f32 = 76.0; // LITERAL-PX-OK: o botão primário de um cartão, «Done» + folga
+/// A largura do botão Reset timing (entre o Rove e o Done).
+const RESET_W: f32 = 92.0; // LITERAL-PX-OK: «Reset timing» em Sm + folga, como o Done
 
 /// Interpolation: o id e o rótulo de cada segmento. Curve acende com qualquer ease.
 const INTERP: [(NodeId, &str); 5] = [
@@ -89,6 +91,8 @@ pub enum Acao {
     Escolhe { item: NodeId, mode: u8 },
     /// **Done**: fecha o cartão.
     Fecha,
+    /// **Reset timing**: tira o ritmo do trecho. O cartão fica.
+    ReiniciaRitmo,
 }
 
 /// A forma acesa (ou `Cubic`) e o modo aceso (ou In-Out): o que Curve e o ease mantêm.
@@ -118,6 +122,11 @@ pub fn acao(id: NodeId, kind: ContextMenuKind, store: &WidgetStore) -> Option<Ac
             Some(Acao::Nada)
         }
         _ if id == c::CTX_MENU_TL_KEY_DONE => Some(Acao::Fecha),
+        _ if id == c::CTX_MENU_TL_KEY_RESET_TIMING => Some(if store.key_card_retimado() {
+            Acao::ReiniciaRitmo
+        } else {
+            Acao::Nada
+        }),
         _ if id == c::CTX_MENU_TL_CURVE => Some(Acao::Escolhe {
             item: forma,
             mode: modo,
@@ -150,6 +159,8 @@ pub(super) struct Geo {
     /// Onde o editor da curva Custom mora quando a chave é Custom: o lugar de Ease e Curve shape.
     pub editor: Rect,
     pub rove: Rect,
+    /// «Reset timing», só pintado quando o trecho tem ritmo.
+    pub reset: Rect,
     pub done: Rect,
 }
 
@@ -189,10 +200,11 @@ pub(super) fn geo(x: f32, y: f32) -> Geo {
         TILE_COLS,
         c::TIMELINE_EASE_MENU.len(),
     );
-    // Rove à esquerda e Done à direita, na mesma fileira.
+    // Rove à esquerda, Reset timing e Done à direita, na mesma fileira.
     let fy = base(&formas) + m::CARD_GAP;
     let done = Rect::new(x0 + iw - DONE_W, fy, DONE_W, m::FIELD_H);
-    let rove = Rect::new(x0, fy, iw - DONE_W - m::FIELD_GAP, m::FIELD_H);
+    let reset = Rect::new(done.x - m::FIELD_GAP - RESET_W, fy, RESET_W, m::FIELD_H);
+    let rove = Rect::new(x0, fy, reset.x - m::FIELD_GAP - x0, m::FIELD_H);
     let h = done.y + done.h + m::CARD_PAD_BOTTOM - y;
     let editor = Rect::new(x0, rotulo_ease.y, iw, base(&formas) - rotulo_ease.y);
     Geo {
@@ -206,6 +218,7 @@ pub(super) fn geo(x: f32, y: f32) -> Geo {
         formas,
         editor,
         rove,
+        reset,
         done,
     }
 }
@@ -299,6 +312,17 @@ pub(super) fn paint(
     crate::widget::card_ink::com(ink, || corpo(scene, ts, hit, store, req.kind, &g, ink));
 }
 
+/// Onde a curva de um botão desenhado mora: o botão menos a folga e o rótulo por baixo.
+pub(super) fn area_do_botao(r: Rect) -> Rect {
+    let (px, pad) = (TypeToken::Xs.px(), Spacing::Sm.px());
+    Rect::new(
+        r.x + pad,
+        r.y + pad,
+        r.w - pad * 2.0,
+        r.h - pad * 2.0 - px - Spacing::Xs.px(),
+    )
+}
+
 /// Um botão desenhado: o fundo do campo de cartão (o escolhido sobe a `KanbanCardRaised` com o
 /// contorno no acento), as guias 0 e 1, a curva com as pontas e o rótulo por baixo.
 #[allow(clippy::too_many_arguments)]
@@ -309,7 +333,7 @@ fn botao(
     r: Rect,
     rotulo: &str,
     d: Desenho,
-    (aceso, quente): (bool, bool),
+    (aceso, quente, desce): (bool, bool, bool),
     sampler: Option<crate::interaction::EaseSampler>,
 ) {
     let fundo = if aceso {
@@ -336,18 +360,18 @@ fn botao(
     let fg = ink.color(ColorToken::KanbanCardFg);
     let px = TypeToken::Xs.px();
     let pad = Spacing::Sm.px();
-    let area = Rect::new(
-        r.x + pad,
-        r.y + pad,
-        r.w - pad * 2.0,
-        r.h - pad * 2.0 - px - Spacing::Xs.px(),
-    );
+    let area = area_do_botao(r);
     let pts = pontos(d, sampler);
     // O 0 e o 1 ocupam a área; o que passa (Back, Elastic) encolhe-os para caber.
     let (lo, hi) = pts
         .iter()
         .fold((0.0_f32, 1.0_f32), |(lo, hi), p| (lo.min(p.1), hi.max(p.1)));
-    let ny = |y: f32| area.y + area.h - (y - lo) / (hi - lo) * area.h;
+    // O valor DESCE até à chave seguinte: o desenho vira, como a curva na timeline (dono 15/11).
+    let ny = |y: f32| {
+        let f = (y - lo) / (hi - lo);
+        let f = if desce { 1.0 - f } else { f };
+        area.y + area.h - f * area.h
+    };
     let nx = |u: f32| area.x + u * area.w;
     let guia = fg.with_alpha(GUIDE_A);
     for v in [0.0, 1.0] {
@@ -411,6 +435,7 @@ fn corpo(
     let quente = |id| store.hot_id() == Some(id);
     let fg = ink.color(ColorToken::KanbanCardFg);
     let sampler = store.ease_sampler();
+    let desce = store.key_card_desce();
 
     // O título: o do cartão do Inspector (CARD_TITLE_PX, mais forte), centrado na cabeça.
     let tpx = m::CARD_TITLE_PX;
@@ -450,7 +475,16 @@ fn corpo(
             _ if id == c::CTX_MENU_TL_NEAREST => (Desenho::Proxima, marcado(id)),
             _ => (Desenho::Bezier, marcado(id)),
         };
-        botao(scene, ts, ink, r, tr(chave), d, (on, quente(id)), sampler);
+        botao(
+            scene,
+            ts,
+            ink,
+            r,
+            tr(chave),
+            d,
+            (on, quente(id), desce),
+            sampler,
+        );
         hit.register(id, r);
     }
 
@@ -489,7 +523,7 @@ fn corpo(
                 r,
                 tr(chave),
                 d,
-                (marcado(linha), quente(id)),
+                (marcado(linha), quente(id), desce),
                 sampler,
             );
             veu(scene, r);
@@ -506,7 +540,16 @@ fn corpo(
             };
             // A forma acende só quando a chave está em curva (Straight não tem forma).
             let on = curva && marcado(id);
-            botao(scene, ts, ink, r, row.1.tr(), d, (on, quente(id)), sampler);
+            botao(
+                scene,
+                ts,
+                ink,
+                r,
+                row.1.tr(),
+                d,
+                (on, quente(id), desce),
+                sampler,
+            );
             veu(scene, r);
             hit.register(id, r);
         }
@@ -559,6 +602,30 @@ fn corpo(
         cor,
     );
     hit.register(c::CTX_MENU_TL_KEY_DONE, g.done);
+
+    // Reset timing: um botão secundário do cartão, só quando o trecho tem ritmo.
+    if store.key_card_retimado() {
+        let id = c::CTX_MENU_TL_KEY_RESET_TIMING;
+        let fundo = if quente(id) {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(scene, g.reset, m::FIELD_RADIUS, ink.color(fundo));
+        let texto = tr("panel.timeline.reset_timing");
+        let w = ts.prefix_width(texto, px).min(g.reset.w);
+        crate::paint::paint_text_elided(
+            ts,
+            scene,
+            texto,
+            g.reset.x + (g.reset.w - w) * 0.5,
+            meio(g.reset),
+            px,
+            g.reset.w,
+            fg,
+        );
+        hit.register(id, g.reset);
+    }
 }
 
 #[path = "key_card_editor.rs"]

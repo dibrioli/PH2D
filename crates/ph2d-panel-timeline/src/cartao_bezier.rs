@@ -75,11 +75,46 @@ pub(crate) fn publica_e_drena(store: &mut WidgetStore, snap: &TimelineViewSnapsh
     let desce =
         primeira.is_some_and(|(t, i)| t.keys.get(i + 1).is_some_and(|k| k.value < t.keys[i].value));
     store.set_key_card_desce(desce);
+    // «Reset timing» só existe quando alguma chave do alcance tem ritmo (dono 15/11).
+    let retimado = aberto.is_some_and(|scope| !retimadas(scope, snap).is_empty());
+    store.set_key_card_retimado(retimado);
     if let Some(edit) = store.take_key_card_bez_edit() {
         for i in intents(edit, snap) {
             crate::state::push_intent(i);
         }
     }
+    if let Some(scope) = store.take_key_card_reset_timing() {
+        for i in reset_intents(scope, snap) {
+            crate::state::push_intent(i);
+        }
+    }
+}
+
+/// As chaves do alcance cujo trecho de saída tem ritmo.
+fn retimadas(scope: S, snap: &TimelineViewSnapshot) -> Vec<(&TrackView, usize)> {
+    chaves(scope, snap)
+        .into_iter()
+        .filter(|(t, i)| t.keys[*i].retime.is_some() && *i + 1 < t.keys.len())
+        .collect()
+}
+
+/// «Reset timing» do cartão: tira o ritmo de cada trecho do alcance que o tem, num passo de undo.
+#[must_use]
+pub(crate) fn reset_intents(scope: S, snap: &TimelineViewSnapshot) -> Vec<TimelineIntent> {
+    let alvo = retimadas(scope, snap);
+    if alvo.is_empty() {
+        return Vec::new();
+    }
+    let mut out = vec![TimelineIntent::BeginEdit];
+    out.extend(alvo.iter().map(|(t, i)| {
+        TimelineIntent::Retime(ph2d_timeline::RetimeIntent::Set {
+            target: t.target,
+            key: t.keys[*i].id,
+            retime: None,
+        })
+    }));
+    out.push(TimelineIntent::EndEdit);
+    out
 }
 
 /// O lote da edição em intents: abre o passo de undo, põe a curva no alcance, fecha-o.

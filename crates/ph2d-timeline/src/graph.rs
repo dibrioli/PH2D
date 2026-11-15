@@ -199,7 +199,9 @@ fn arm_inside(len: f64, s: f64, v: f64, (lo, hi): (f64, f64)) -> f64 {
 /// speed view hides it ([`speed_handle_tip`] → `None`), never drawn at the easing's own point.
 #[must_use]
 pub fn segment_handle_drawn(k0: &KeyView, k1: &KeyView, which: u8) -> bool {
-    k0.retime.is_none() || crate::speed::segment_endpoint_speed(k0, k1, which).is_finite()
+    k0.retime.is_none()
+        || crate::graph_pontos::end_handle_keeps_rhythm(k0, k1)
+        || crate::speed::segment_endpoint_speed(k0, k1, which).is_finite()
 }
 
 /// A weighted tangent pair from one dragged handle: `which` (`0` = out, `1` =
@@ -213,13 +215,18 @@ pub fn weighted_with_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v: f6
     // A Custom com PONTOS só troca a alça da ponta — virar `BezierW` apagaria os pontos. Parada
     // (`v0 == v1`) não tem forma normalizada: cai no `BezierW` como as outras.
     let (span, dv) = (k1.t_seconds - k0.t_seconds, f64::from(k1.value - k0.value));
-    // Retimed: the handles drawn are what PLAYS, and the drag rebuilds a `BezierW` (Override).
+    // Retimed WITH points: the end handle goes through the same rhythm map as the points
+    // (`value_handle_points`) and the rhythm stays. Retimed without points: the handles drawn are
+    // what PLAYS, and the drag rebuilds a `BezierW` (Override).
     if let Interp::Spline(_) = k0.interp
-        && k0.retime.is_none()
         && span > 0.0
         && dv.abs() > f64::EPSILON
     {
-        let h = ((t - k0.t_seconds) / span, (v - f64::from(k0.value)) / dv);
+        let u = (t - k0.t_seconds) / span;
+        let h = (
+            ph2d_anim::retime::warp(k0.retime, u),
+            (v - f64::from(k0.value)) / dv,
+        );
         return if which == 0 {
             k0.interp.with_out_handle(h.0, h.1)
         } else {
@@ -437,13 +444,12 @@ mod tests {
     }
 
     /// Puxar uma alça de um trecho retimado reconstrói o trecho (Override, o chamador tira o
-    /// ritmo): o OUTRO lado fica onde estava desenhado — nada salta na outra ponta — e uma Custom
-    /// com pontos também passa a `BezierW` (os pontos dela não sabiam do ritmo).
+    /// ritmo): o OUTRO lado fica onde estava desenhado — nada salta na outra ponta. A Custom com
+    /// pontos retimada é a exceção (mantém ritmo e pontos): `graph_pontos` prova-a.
     #[test]
     fn puxar_a_alca_de_um_trecho_retimado_deixa_a_outra_ponta_onde_estava() {
-        let mut sp = ph2d_anim::EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
-        sp.insert(0.5);
-        for interp in [Interp::bezier(0.3, 0.1, 0.6, 0.9), Interp::Spline(sp)] {
+        {
+            let interp = Interp::bezier(0.3, 0.1, 0.6, 0.9);
             let (k0, k1) = retimado(interp);
             let antes = segment_handle_points(&k0, &k1)[1];
             let mut novo = k0.clone();

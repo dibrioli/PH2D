@@ -20,7 +20,7 @@
 use std::collections::BTreeMap;
 
 use ph2d_ecs::{ChildOf, Entity, StableId, World};
-use ph2d_physics::{CastHit, ColliderHandle, PhysicsWorld, RayQuery, RigidBodyHandle};
+use ph2d_physics::{CastHit, DiscCandidate, PhysicsWorld, RayPath, RayQuery, RigidBodyHandle};
 
 use super::ray_sensors::RaioEmMundo;
 use super::{BodyRef, PhysicsBridge};
@@ -42,7 +42,7 @@ pub(super) struct Mundo<'a> {
 #[derive(Default)]
 pub(super) struct Buffers {
     pub acertos: Vec<CastHit>,
-    pub disco: Vec<(ColliderHandle, Option<RigidBodyHandle>, [f32; 2], [f32; 2])>,
+    pub disco: Vec<DiscCandidate>,
 }
 
 /// **Lança `r` a partir de `raio`** e põe em `out` (limpo primeiro) o que ele VÊ, do mais perto ao mais
@@ -126,19 +126,31 @@ pub(super) fn lanca(
         point: h.point,
         normal: h.normal,
     };
-    let raio_do_circulo = (r.thickness.is_finite() && r.thickness > 0.0).then(|| r.thickness * 0.5);
+    let raio_do_circulo =
+        (r.thickness.is_finite() && r.thickness > 0.0).then_some(r.thickness * 0.5);
+    let caminho = |origin: [f32; 2], dir: [f32; 2]| RayPath {
+        origin,
+        dir,
+        max_dist: raio.reach,
+    };
     let um = |o: [f32; 2], d: [f32; 2]| match raio_do_circulo {
         Some(rr) => m
             .fisica
-            .cast_circle_query(o, d, raio.reach, rr, consulta, &aceita),
-        None => m.fisica.cast_ray_query(o, d, raio.reach, consulta, &aceita),
+            .cast_circle_query(caminho(o, d), rr, consulta, &aceita),
+        None => m.fisica.cast_ray_query(caminho(o, d), consulta, &aceita),
     };
 
     if r.cone.is_finite() && r.cone > 0.0 {
         let meio = (r.cone.min(360.0) * 0.5).to_radians();
         m.fisica
             .shapes_in_disc(raio.origem, raio.reach, consulta, &aceita, &mut buf.disco);
-        for &(_, corpo, perto, centro) in &buf.disco {
+        for &DiscCandidate {
+            body: corpo,
+            nearest: perto,
+            center: centro,
+            ..
+        } in &buf.disco
+        {
             let Some(b) = entidade(corpo) else { continue };
             if !passa(Some(b)) || out.iter().any(|x| x.body == b) {
                 continue;
@@ -167,18 +179,14 @@ pub(super) fn lanca(
     if r.all_hits {
         match raio_do_circulo {
             Some(rr) => m.fisica.cast_circle_query_all(
-                raio.origem,
-                raio.dir,
-                raio.reach,
+                caminho(raio.origem, raio.dir),
                 rr,
                 consulta,
                 &aceita,
                 &mut buf.acertos,
             ),
             None => m.fisica.cast_ray_query_all(
-                raio.origem,
-                raio.dir,
-                raio.reach,
+                caminho(raio.origem, raio.dir),
                 consulta,
                 &aceita,
                 &mut buf.acertos,

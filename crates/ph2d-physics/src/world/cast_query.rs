@@ -43,20 +43,36 @@ pub struct RayQuery {
     pub hit_from_inside: bool,
 }
 
+/// **O traçado do raio** — de onde sai, para onde aponta (não precisa de ser unitário) e até onde vai.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct RayPath {
+    pub origin: [f32; 2],
+    pub dir: [f32; 2],
+    pub max_dist: f32,
+}
+
+/// **Um candidato do disco** ([`PhysicsWorld::shapes_in_disc`]): a forma, o seu corpo, o ponto dela
+/// mais perto da origem e o seu centro, em mundo.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DiscCandidate {
+    pub collider: ColliderHandle,
+    pub body: Option<RigidBodyHandle>,
+    pub nearest: [f32; 2],
+    pub center: [f32; 2],
+}
+
 impl PhysicsWorld {
     /// **O primeiro acerto** do raio autorado — `None` sem nada no alcance ou com entrada degenerada.
     #[must_use]
     pub fn cast_ray_query(
         &self,
-        origin: [f32; 2],
-        dir: [f32; 2],
-        max_dist: f32,
+        path: RayPath,
         q: RayQuery,
         accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
     ) -> Option<CastHit> {
-        let (ray, max) = raio(origin, dir, max_dist)?;
+        let (ray, max) = raio(path)?;
         let mut achou = None;
-        self.with_query_pipeline(origin, q, accept, |p| {
+        self.with_query_pipeline(path.origin, q, accept, |p| {
             achou = p
                 .cast_ray_and_get_normal(&ray, max, true)
                 .map(|(c, h)| self.hit_of(&ray, c, h.time_of_impact, h.normal));
@@ -85,18 +101,16 @@ impl PhysicsWorld {
     /// (`MAX_TIQUES_DO_RAIO`, a marca `Copy`).
     pub fn cast_ray_query_all(
         &self,
-        origin: [f32; 2],
-        dir: [f32; 2],
-        max_dist: f32,
+        path: RayPath,
         q: RayQuery,
         accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
         out: &mut Vec<CastHit>,
     ) {
         out.clear();
-        let Some((ray, max)) = raio(origin, dir, max_dist) else {
+        let Some((ray, max)) = raio(path) else {
             return;
         };
-        self.with_query_pipeline(origin, q, accept, |p| {
+        self.with_query_pipeline(path.origin, q, accept, |p| {
             for (c, _, h) in p.intersect_ray(ray, max, true) {
                 out.push(self.hit_of(&ray, c, h.time_of_impact, h.normal));
             }
@@ -110,16 +124,14 @@ impl PhysicsWorld {
     #[must_use]
     pub fn cast_circle_query(
         &self,
-        origin: [f32; 2],
-        dir: [f32; 2],
-        max_dist: f32,
+        path: RayPath,
         radius: f32,
         q: RayQuery,
         accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
     ) -> Option<CastHit> {
-        let (ray, max) = raio(origin, dir, max_dist)?;
+        let (ray, max) = raio(path)?;
         let mut achou = None;
-        self.with_query_pipeline(origin, q, accept, |p| {
+        self.with_query_pipeline(path.origin, q, accept, |p| {
             achou = circulo(p, &ray, max, radius).map(|(c, h)| self.shape_hit_of(c, &h));
         });
         achou
@@ -133,16 +145,14 @@ impl PhysicsWorld {
     /// acerto custava `1 196 µs` por tique; assim, ver a tabela do `cast_ray_query_all`.
     pub fn cast_circle_query_all(
         &self,
-        origin: [f32; 2],
-        dir: [f32; 2],
-        max_dist: f32,
+        path: RayPath,
         radius: f32,
         q: RayQuery,
         accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
         out: &mut Vec<CastHit>,
     ) {
         out.clear();
-        let Some((ray, max)) = raio(origin, dir, max_dist) else {
+        let Some((ray, max)) = raio(path) else {
             return;
         };
         let r = radius.max(0.0);
@@ -150,7 +160,7 @@ impl PhysicsWorld {
         let disco = rapier2d::parry::shape::Ball::new(r);
         let inicio = rapier2d::math::Pose::from_translation(ray.origin);
         let opcoes = rapier2d::parry::query::ShapeCastOptions::with_max_time_of_impact(max);
-        self.with_query_pipeline(origin, q, accept, |p| {
+        self.with_query_pipeline(path.origin, q, accept, |p| {
             for (h, c) in p.intersect_shape(rapier2d::math::Pose::IDENTITY, &capsula) {
                 let Ok(Some(t)) = rapier2d::parry::query::cast_shapes(
                     c.position(),
@@ -179,8 +189,7 @@ impl PhysicsWorld {
     }
 
     /// **As formas que tocam o DISCO** de raio `radius` à volta de `origin` — os candidatos do
-    /// «Cone» (RS-2), com o ponto de cada uma mais perto da origem e o centro dela, em `out` (ordenado
-    /// pelo handle).
+    /// «Cone» (RS-2), cada uma um [`DiscCandidate`], em `out` (ordenado pelo handle).
     /// As mesmas camadas, `accept` e `RayQuery` do raio.
     pub fn shapes_in_disc(
         &self,
@@ -188,7 +197,7 @@ impl PhysicsWorld {
         radius: f32,
         q: RayQuery,
         accept: &dyn Fn(Option<RigidBodyHandle>, bool) -> bool,
-        out: &mut Vec<(ColliderHandle, Option<RigidBodyHandle>, [f32; 2], [f32; 2])>,
+        out: &mut Vec<DiscCandidate>,
     ) {
         out.clear();
         if !radius.is_finite() || radius <= 0.0 {
@@ -201,10 +210,15 @@ impl PhysicsWorld {
             for (h, c) in p.intersect_shape(pose, &disco) {
                 let perto = c.shape().project_point(c.position(), o, true).point;
                 let centro = c.position().translation;
-                out.push((h, c.parent(), [perto.x, perto.y], [centro.x, centro.y]));
+                out.push(DiscCandidate {
+                    collider: h,
+                    body: c.parent(),
+                    nearest: [perto.x, perto.y],
+                    center: [centro.x, centro.y],
+                });
             }
         });
-        out.sort_by_key(|(h, ..)| h.into_raw_parts());
+        out.sort_by_key(|d| d.collider.into_raw_parts());
     }
 
     fn with_query_pipeline(
@@ -301,7 +315,12 @@ fn circulo(
 }
 
 /// O raio unitário e o alcance — `None` para entrada degenerada (a recusa do `cast`).
-fn raio(origin: [f32; 2], dir: [f32; 2], max_dist: f32) -> Option<(Ray, f32)> {
+fn raio(path: RayPath) -> Option<(Ray, f32)> {
+    let RayPath {
+        origin,
+        dir,
+        max_dist,
+    } = path;
     let d = Vector::new(dir[0], dir[1]);
     let n = d.length();
     if !n.is_finite() || n <= f32::EPSILON || !max_dist.is_finite() || max_dist < 0.0 {

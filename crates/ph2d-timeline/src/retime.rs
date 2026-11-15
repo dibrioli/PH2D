@@ -98,14 +98,16 @@ pub fn retime_with_speed_handle(
     let u = (t - k0.t_seconds) / (k1.t_seconds - k0.t_seconds);
     // Monotone: the rate never goes below zero (a speed on the far side of the zero line pauses).
     let s = (v / r).max(0.0);
+    // The arm `a` (influence) and the rate `s` meet `y = s·a`, and `y ≤ 1` keeps `W` monotone. Past
+    // that the SPEED is honoured and the arm shortens to `1/s`: clamping `y` instead left the tip
+    // stuck while the pointer went on — 254/s away from it (auditoria do dono 15/11).
+    let braco = |a: f64| a.min(1.0 / s.max(1.0)).max(MIN_INFLUENCE);
     Some(if which == 0 {
-        let x1 = u.clamp(MIN_INFLUENCE, 1.0); // CLAMP-OK: const bounds, min<max
-        let y1 = s * x1;
-        Retime::new(x1 as f32, y1 as f32, w.x2, w.y2)
+        let x1 = braco(u.clamp(MIN_INFLUENCE, 1.0)); // CLAMP-OK: const bounds, min<max
+        Retime::new(x1 as f32, (s * x1) as f32, w.x2, w.y2)
     } else {
-        let x2 = u.clamp(0.0, 1.0 - MIN_INFLUENCE); // CLAMP-OK: const bounds, min<max
-        let y2 = 1.0 - s * (1.0 - x2);
-        Retime::new(w.x1, w.y1, x2 as f32, y2 as f32)
+        let a = braco((1.0 - u).clamp(MIN_INFLUENCE, 1.0)); // CLAMP-OK: const bounds, min<max
+        Retime::new(w.x1, w.y1, (1.0 - a) as f32, (1.0 - s * a) as f32)
     })
 }
 

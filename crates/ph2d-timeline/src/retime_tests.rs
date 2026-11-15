@@ -251,3 +251,41 @@ fn copiar_colar_e_duplicar_levam_o_ritmo() {
         "duplicar"
     );
 }
+
+/// ⭐ Auditoria do dono (15/11): «o arrastar das alças em Retime não é consistente — a curva treme e dá
+/// pulos». Medido: puxar a alça para a direita E para cima batia no tecto `y ≤ 1` e a ponta ficava até
+/// 254/s longe do rato. Agora, num arrasto que passa o tecto nas DUAS alças, a ponta fica na altura do
+/// rato a cada quadro, o braço só encurta, e o ritmo continua monótono.
+#[test]
+fn a_ponta_do_ritmo_segue_o_rato_mesmo_alem_do_tecto() {
+    let k1 = kv(1.0, 100.0, Interp::Linear, None);
+    let mut w = None;
+    for which in [0u8, 1u8] {
+        for i in 0..=200 {
+            let f = f64::from(i) / 200.0;
+            let t = if which == 0 {
+                0.33 + 0.5 * f
+            } else {
+                0.67 - 0.5 * f
+            };
+            let v = 100.0 + 250.0 * f + 30.0 * (f * 40.0).sin();
+            let k0 = kv(0.0, 0.0, bounce(), w);
+            w = Some(retime_with_speed_handle(&k0, &k1, which, t, v).unwrap());
+            let (tip_t, tip_v) = rhythm_handle_tip(&kv(0.0, 0.0, bounce(), w), &k1, which).unwrap();
+            assert!(
+                (tip_v - v).abs() < 1.0e-2,
+                "{which} {i}: ponta {tip_v} × rato {v}"
+            );
+            let braco = if which == 0 { tip_t } else { 1.0 - tip_t };
+            let pedido = if which == 0 { t } else { 1.0 - t };
+            assert!(braco <= pedido + 1.0e-6, "{which} {i}: o braço só encurta");
+            let w = w.unwrap();
+            let mut antes = 0.0;
+            for j in 0..=100 {
+                let y = w.eval(f64::from(j) / 100.0);
+                assert!(y >= antes - 1.0e-6, "{which} {i}: W desceu");
+                antes = y;
+            }
+        }
+    }
+}

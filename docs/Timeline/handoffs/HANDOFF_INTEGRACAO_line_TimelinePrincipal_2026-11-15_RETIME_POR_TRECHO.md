@@ -65,6 +65,20 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
   [alças arrastadas](../fotos/retime_2_alcas_arrastadas.png) · [curva de valor: os 4 quiques ficam](../fotos/retime_3_curva_de_valor.png) ·
   [Reset timing](../fotos/retime_4_reset_timing.png) · [Override](../fotos/retime_5_override.png).
 
+## Auditoria do dono (15/11) — «o arrastar em Retime treme e dá pulos com easing complexo»
+
+- **Respostas:** «Retime» SIM · azul × âmbar SIM · esconder as alças do Bounce em Override NÃO (§4.5 fechado: fica como está).
+- **Medido (sonda headless, arrasto suave de 200 quadros, Bounce e Elastic):** num arrasto dentro do tecto a ponta segue o
+  rato (erro 0) e o pico desenhado a 2 px salta o mesmo que o verdadeiro (4 × 2,8 /s Bounce; 26 × 24 /s Elastic) — a
+  amostragem NÃO é a causa. Puxando a alça para a direita E para cima, `y1 = s·x1` passava de 1, o `Retime::new` prendia-o
+  e a ponta ficava **até 254 /s longe do rato** (de novo ao soltar o tecto: o pulo).
+- **Cura** (`retime_with_speed_handle`): além do tecto honra-se a VELOCIDADE e o braço encurta para `1/s` (`y ≤ 1`, monótona).
+  Gate `a_ponta_do_ritmo_segue_o_rato_mesmo_alem_do_tecto` (as duas alças, 200 quadros cada: ponta = rato, o braço só
+  encurta, W monótona); mutação «sem encurtar» ⇒ vermelho. [Foto a meio do arrasto](../fotos/retime_6_alca_alem_do_tecto.png):
+  a ponta na altura do rato, o braço curto.
+- Fica (intrínseco, não defeito): a curva azul muda muito com o ritmo num easing complexo (`E'(W)·W'`) e, com o
+  enquadramento congelado durante o arrasto, pode sair da banda até se soltar.
+
 ## Superfície de colisão
 
 - `ph2d_anim::Key` ganhou um campo: todo literal `Key { t, value, interp }` fora desta árvore deixa de compilar — a cura é
@@ -77,10 +91,7 @@ anteriores (§0.11). `DOC_VERSION` da timeline intocado (o mesmo que o degrau 23
 
 ## Aberto
 
-- Smoke do dono (o roteiro vai na resposta da janela): o nome «Retime» e as cores.
-- Plano 18 §4.5 — Override sobre Bounce/Elastic/Back/Custom com pontos: o 1.º toque na alça ainda troca a família (como
-  hoje, pedido do dono: «Override = exatamente como agora»). Recomendação ainda de pé: esconder as alças com a dica
-  «Choose Curve or Custom to edit with handles» — decisão do dono.
+- Smoke do dono depois da cura da auditoria (o arrasto além do tecto).
 - Na vista de VALOR as alças continuam as do easing (sobre um trecho retimado não ficam em cima da curva desenhada).
 - O «Reset timing» mora ao lado da pílula, não no menu da chave (o plano dizia «menu da chave/linha»); se o dono o quiser
   também lá, é uma linha no cartão da chave.

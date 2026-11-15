@@ -38,6 +38,9 @@ Base do estudo: `main` `7b3dd983f7`.
   («Ignores me», «Only Enemy, Sees triggers»…): Ignore my body | Ignore my other parts · Only see (Everything ·
   Only tag · All except tag, a linha de escolha da casa — segmentos, não lista: decisão do dono 23/09 sobre escolhas)
   · Tag (lista da árvore de tags) e Walls block só fora de Everything · Hit triggers | Starts inside · See all hits.
+- **Ignore up to** (auditoria 15/11, decisão C8): campo de texto + conta-gotas que nomeia o objeto MAIS ALTO da cadeia
+  que o raio ignora (escreve pelo nome). Vazio = automático. **Lei da família do raio:** a cadeia ignorada pára no
+  personagem (PlatformPlayer/TopDownPlayer); sem personagem, no corpo mais alto. Ver [auditoria](07_auditoria_2026-11-15.md).
 - Leitura com See all hits: uma linha por acerto («Sees Wall, at …», «and Box, at …», até 4, «and N more»).
 - Canvas: com See all hits a linha vai até ao bloqueio (ou ao alcance inteiro) com um tique em cada acerto.
 - **Cena 26 com o filtro** (`7f318581fa`): «Enemy» (tag «Enemy» criada na árvore do projecto pela porta

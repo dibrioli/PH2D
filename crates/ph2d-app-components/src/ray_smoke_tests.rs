@@ -51,14 +51,13 @@ fn os_dois_olhos_diferem_so_na_direccao() {
     let a = sensor(&mut sim, "Olho que ve");
     let b = sensor(&mut sim, "Olho que olha para tras");
     assert_eq!(a.reach, b.reach, "os alcances divergiram");
-    assert_eq!(a.origin, b.origin, "as origens divergiram");
     assert_eq!(a.layer, b.layer, "as camadas divergiram");
     assert_eq!(
-        a.dir,
-        Vec2::new(-b.dir.x, -b.dir.y),
-        "o controlo tem de olhar exactamente ao CONTRARIO: {:?} contra {:?}",
-        a.dir,
-        b.dir
+        (b.angle - a.angle).rem_euclid(360.0),
+        180.0,
+        "o controlo tem de olhar exactamente ao CONTRARIO: {} contra {}",
+        a.angle,
+        b.angle
     );
 
     // ⭐ E os dois dentro da altura da caixa — senão o silêncio do controlo tem duas causas.
@@ -361,8 +360,8 @@ fn o_roteiro_nomeia_rotulos_que_existem() {
     let prefixo = viva.split('{').next().unwrap_or_default().trim_end();
     let rotulos = [
         ph2d_i18n::tr("component.ray_sensor.name"),
+        ph2d_i18n::tr("component.field.ray_sensor.0"),
         ph2d_i18n::tr("component.field.ray_sensor.1"),
-        ph2d_i18n::tr("component.field.ray_sensor.2"),
         ph2d_i18n::tr("panel.inspector.ray.sees_nothing_right_now"),
         prefixo,
     ];

@@ -44,15 +44,17 @@ use ph2d_editor_core::widget::TextInputState;
 /// queixa em vez de lhe impedir a escrita.
 ///
 /// [`RaySensor::default()`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-physics-ecs/src/components/ray_sensor.rs
-const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 5] = [
-    (ids::INSP_RAY_ORIGIN_X, 0.0, -50.0, 50.0, 0.1), // LITERAL-PX-OK: metros, locais
-    (ids::INSP_RAY_ORIGIN_Y, 0.0, -50.0, 50.0, 0.1), // LITERAL-PX-OK: metros, locais
-    (ids::INSP_RAY_DIR_X, 0.0, -1.0, 1.0, 0.1),      // LITERAL-PX-OK: direcção
-    (ids::INSP_RAY_DIR_Y, -1.0, -1.0, 1.0, 0.1),     // LITERAL-PX-OK: direcção
+const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 2] = [
+    (ids::INSP_RAY_ANGLE, -90.0, -360.0, 360.0, 1.0), // LITERAL-PX-OK: graus, a faixa da Rotation
     (ids::INSP_RAY_REACH, 1.0, 0.0, 1_000.0, 0.1),   // LITERAL-PX-OK: metros — ver o cabeçalho
 ];
 
 pub(crate) fn populate_ray(store: &mut WidgetStore) {
+    store.mark_collapsible_section(ids::INSP_RAY_FOLD_SIGNALS);
+    store.set_tooltip(
+        ids::INSP_RAY_ANGLE,
+        ph2d_i18n::tr("panel.inspector.ray.angle_tip"),
+    );
     // A camada: a lista suspensa (o chip é o próprio campo) e os quadros «Sees».
     store.register(
         ids::INSP_RAY_LAYER,

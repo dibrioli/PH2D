@@ -32,6 +32,13 @@ pub const COLLISION_SHAPE: AddEntry =
             super::COLLISION_SHAPE,
         );
 /// Uma camada de fundo que fica para trás quando a câmara anda (parallax) — plano 11.
+/// O raio é um objeto (GEF 07, dono 15/11): filho do selecionado, como a forma.
+pub const RAY_SENSOR: AddEntry = AddEntry::new("object_add.game.ray_sensor", AddGroup::Game)
+    .at(3)
+    .with_tip(
+        "object_add.game.ray_sensor.tip",
+        crate::componente_desenhos::RAY_SENSOR,
+    );
 pub const BACKGROUND_LAYER: AddEntry =
     AddEntry::new("object_add.game.background_layer", AddGroup::Pictures)
         .at(4)
@@ -46,6 +53,7 @@ pub const ENTRIES: &[AddEntry] = &[
     STATIC_BODY,
     CHARACTER,
     COLLISION_SHAPE,
+    RAY_SENSOR,
     BACKGROUND_LAYER,
 ];
 

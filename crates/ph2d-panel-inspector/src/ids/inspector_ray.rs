@@ -13,17 +13,8 @@
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
-/// Onde o raio nasce, em coordenadas **locais** — o eixo X.
-pub const INSP_RAY_ORIGIN_X: NodeId = hash_node_id("insp_ray_origin_x");
-/// …e o eixo Y.
-pub const INSP_RAY_ORIGIN_Y: NodeId = hash_node_id("insp_ray_origin_y");
-/// Para onde ele aponta, em coordenadas **locais** — o eixo X.
-///
-/// ⚠️ **Não precisa de vir normalizado** (a porta do motor normaliza-o), mas ⛔ **nulo não é um
-/// raio**: a porta devolve `None`, e a secção diz-o na primeira linha da queixa.
-pub const INSP_RAY_DIR_X: NodeId = hash_node_id("insp_ray_dir_x");
-/// …e o eixo Y.
-pub const INSP_RAY_DIR_Y: NodeId = hash_node_id("insp_ray_dir_y");
+/// Para onde o raio aponta, em graus locais (GEF 07: a origem é a posição do objeto).
+pub const INSP_RAY_ANGLE: NodeId = hash_node_id("insp_ray_angle");
 /// Até onde ele enxerga, em metros.
 pub const INSP_RAY_REACH: NodeId = hash_node_id("insp_ray_reach");
 /// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê. É a lista suspensa
@@ -49,3 +40,5 @@ pub const INSP_RAY_LAYER_RENAME: NodeId = hash_node_id("insp_ray_layer_rename");
 pub const INSP_RAY_LAYER_RENAMING: NodeId = hash_node_id("insp_ray_layer_renaming");
 pub const INSP_RAY_LAYER_RENAME_DONE: NodeId = hash_node_id("insp_ray_layer_rename_done");
 pub const INSP_RAY_EDIT_MATRIX: NodeId = hash_node_id("insp_ray_edit_matrix");
+
+pub use ph2d_editor_core::ids::INSP_RAY_FOLD_SIGNALS;

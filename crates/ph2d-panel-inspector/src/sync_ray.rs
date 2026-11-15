@@ -35,16 +35,11 @@ use crate::state::InspectorState;
 fn assinatura(info: &InspectorRayInfo) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
     info.entity_bits.hash(&mut h);
-    for v in [
-        info.origin_x,
-        info.origin_y,
-        info.dir_x,
-        info.dir_y,
-        info.reach,
-    ] {
+    for v in [info.angle, info.reach] {
         v.to_bits().hash(&mut h);
     }
     info.layer.hash(&mut h);
+    info.layer_empty.hash(&mut h);
     info.on_enter.hash(&mut h);
     info.on_exit.hash(&mut h);
     h.finish()
@@ -86,10 +81,7 @@ pub(crate) fn sync(
     // ⚠️ **A ORDEM é a do [`super::populate_ray::NUMEROS`]**, e é assim que ela não pode divergir:
     // os cinco ids são os mesmos cinco, na mesma ordem, e um campo novo tem de entrar nos dois.
     for (id, v) in [
-        (crate::ids::INSP_RAY_ORIGIN_X, info.origin_x),
-        (crate::ids::INSP_RAY_ORIGIN_Y, info.origin_y),
-        (crate::ids::INSP_RAY_DIR_X, info.dir_x),
-        (crate::ids::INSP_RAY_DIR_Y, info.dir_y),
+        (crate::ids::INSP_RAY_ANGLE, info.angle),
         (crate::ids::INSP_RAY_REACH, info.reach),
     ] {
         if focus == Some(id) || drag == Some(id) {

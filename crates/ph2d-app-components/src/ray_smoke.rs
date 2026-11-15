@@ -2,13 +2,13 @@
 //!
 //! # A cena: **um poste com DOIS olhos, e uma caixa que chega**
 //!
-//! Os dois olhos têm o **mesmo componente** e **uma** diferença — a `Direction`. Uma caixa vem da
+//! Os dois olhos têm o **mesmo componente** e **uma** diferença — o `Angle`. Uma caixa vem da
 //! direita:
 //!
-//! | olho | `Direction` | o que acontece |
+//! | olho | `Angle` | o que acontece |
 //! |---|---|---|
-//! | **o de cima** | `(+1, 0)`, para a direita | vê a caixa, a luz da **direita** acende, e a leitura viva do painel conta a distância |
-//! | **o de baixo** (o CONTROLO) | `(−1, 0)`, para trás | fica **calado** o tempo todo |
+//! | **o de cima** | `0`, para a direita | vê a caixa, a luz da **direita** acende, e a leitura viva do painel conta a distância |
+//! | **o de baixo** (o CONTROLO) | `180`, para trás | fica **calado** o tempo todo |
 //!
 //! ⭐⭐⭐ **É a coluna que a composição não exprime, desenhada.** A sonda
 //! [`mede_o_que_a_composicao_ja_da_ao_raio`] mediu a melhor alternativa que a casa tem — um colisor
@@ -178,15 +178,14 @@ fn luz(world: &mut World, nome: &str, x: f32, acende: &str, apaga: &str) -> Enti
 ///
 /// ⛔ **E ele não tem colisor**, também de propósito: com um, o raio do olho de baixo acertaria no de
 /// cima e o CONTROLO deixava de estar calado — por uma razão que não é a direcção.
-fn olho(world: &mut World, nome: &str, dir: Vec2, y: f32, voz: RaySignals) -> Entity {
+fn olho(world: &mut World, nome: &str, angle: f32, y: f32, voz: RaySignals) -> Entity {
     world
         .spawn((
             Name::new(nome),
             Transform::from_translation(Vec2::new(X_POSTE, y)),
             Visibility::visible(),
             RaySensor {
-                origin: Vec2::ZERO,
-                dir,
+                angle,
                 reach: ALCANCE,
                 layer: 0,
             },
@@ -220,7 +219,7 @@ fn cena_um(world: &mut World) -> Entity {
     let ve = olho(
         world,
         "Olho que ve",
-        Vec2::new(1.0, 0.0),
+        0.0,
         Y_OLHO,
         RaySignals {
             on_enter: VIU.to_owned(),
@@ -230,7 +229,7 @@ fn cena_um(world: &mut World) -> Entity {
     olho(
         world,
         "Olho que olha para tras",
-        Vec2::new(-1.0, 0.0),
+        180.0,
         -Y_OLHO,
         RaySignals {
             on_enter: VIU_ATRAS.to_owned(),
@@ -305,7 +304,7 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (4) o olho da frente ja' nasce escolhido: no painel, a linha por baixo do titulo passa a \
          dizer `Sees Caixa` com a distancia em metros, e o numero MUDA enquanto ela se aproxima\n\
          (5) a luz da ESQUERDA fica APAGADA o tempo todo, e esse e' o CONTROLO: o olho de baixo \
-         tem o MESMO componente com UMA diferenca — o `Direction` esta' ao contrario. Uma forma nao \
+         tem o MESMO componente com UMA diferenca — o `Angle` esta' ao contrario (0 e 180). Uma forma nao \
          distingue a frente de tras; um raio distingue\n\
          (6) agora mude o `Reach` do olho escolhido para 2: a linha ENCOLHE no canvas na hora e a \
          luz da direita APAGA, porque o olho deixou de alcancar a caixa. Ponha 6 outra vez e ela \

@@ -23,23 +23,29 @@ use std::sync::OnceLock;
 
 /// A última cena do roteiro: 6..=`input_map::ULTIMA` = a aba Input Map (a tabela: `input_map`); a seguinte = o
 /// Top-Down Player, e depois o Projectile Motion. Contada: uma cena nova sem empurrar as seguintes não compila.
-pub const CENAS: u32 = 25;
-const _: () = assert!(CENAS == projectile::CENA);
+pub const CENAS: u32 = 26;
+const _: () = assert!(CENAS == ray::CENA);
+const _: () = assert!(ray::CENA == projectile::CENA + 1);
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 const _: () = assert!(projectile::CENA == topdown::CENA + 1);
 pub use ph2d_input_map_scene as input_map;
-pub use ph2d_physics_scene::{cena_projectile as projectile, cena_topdown as topdown};
+pub use ph2d_physics_scene::{
+    cena_projectile as projectile, cena_ray as ray, cena_topdown as topdown,
+};
 
 /// As cenas que abrem com o Inspector no objecto que [`montar`] devolve (o herói, ou o míssil na 25).
 #[must_use]
 pub fn abre_no_jogador(nivel: u32) -> bool {
-    matches!(nivel, 2 | 4 | 5 | topdown::CENA | projectile::CENA)
+    matches!(
+        nivel,
+        2 | 4 | 5 | topdown::CENA | projectile::CENA | ray::CENA
+    )
 }
 
 /// Para onde a vista vai ao abrir: a 25 enquadra a arena inteira (as balas, a parede e o alvo); as outras, a seleção.
 #[must_use]
 pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
-    if nivel == projectile::CENA {
+    if nivel == projectile::CENA || nivel == ray::CENA {
         ph2d_editor_core::ViewFocusKind::All
     } else {
         ph2d_editor_core::ViewFocusKind::Selected
@@ -48,7 +54,9 @@ pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
 
 /// Arruma as gavetas do Inspector da cena `nivel` e pede o cartão dela à vista sobre `heroi`.
 pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
-    if nivel == projectile::CENA {
+    if nivel == ray::CENA {
+        ray::arruma_o_inspector(store, cartao, heroi);
+    } else if nivel == projectile::CENA {
         projectile::arruma_o_inspector(store, cartao, heroi);
     } else {
         topdown::arruma_o_inspector(store, nivel, cartao, heroi);
@@ -225,6 +233,7 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
         2 | 4 => &HORARIO_2,
         topdown::CENA => &HORARIO_24, // ↗ e desliza, depois só ←, só ↓ e só ↑
         projectile::CENA => &[],      // só o Play: as cinco balas partem sozinhas
+        ray::CENA => &HORARIO_26,     // anda para a direita até à beirada
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
         _ => &HORARIO_1,
@@ -269,6 +278,9 @@ pub const HORARIO_5: [(u32, Gesto); 5] = [
 ];
 /// A cena 24: ↗ até à parede de cima e desliza ao canto; só ← ao longo dela; só ↓ para abrir espaço; só ↑ de
 /// volta à parede (o gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda` mede cada trecho).
+/// Cena 26: anda para a direita (a parede entra no raio), pára à beirada (o chão acaba no outro raio).
+pub const HORARIO_26: [(u32, Gesto); 2] = [(120, Gesto::Direita(true)), (330, Gesto::Direita(false))];
+
 pub const HORARIO_24: [(u32, Gesto); 11] = [
     (120, Gesto::Direita(true)),
     (121, Gesto::Salta(true)),
@@ -391,6 +403,25 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
                 estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
                 imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
                 anexa: portas.menu.anexa,
+            },
+        ),
+        ray::CENA => ray::montar(
+            sim,
+            ray::Pecas {
+                estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
+                imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
+                heroi: &|s| do_menu(s, portas, crate::object_add::CHARACTER),
+                raio: &|s, pai| {
+                    let bits = crate::object_add::add(
+                        crate::object_add::RAY_SENSOR,
+                        s,
+                        portas.menu,
+                        Some(pai.to_bits()),
+                    )
+                    .expect("a entrada é desta família")
+                    .unwrap_or_else(|e| panic!("Ray Sensor: {e}"));
+                    Entity::from_bits(bits)
+                },
             },
         ),
         n if input_map::codigo(n).is_some() => input_map::leitores(sim, n, |s| nivel_2(s, portas)),

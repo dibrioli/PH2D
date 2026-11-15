@@ -93,38 +93,47 @@ impl PhysicsBridge {
         r: &RaySensor,
     ) -> Option<RaioEmMundo> {
         // A pose: do MUNDO se houver corpo (é a de AGORA), do `Transform` se não houver.
-        let (px, py, ang, excluir) = match self.bodies.get(&e) {
-            Some(b) => {
+        let corpo = if self.bodies.contains_key(&e) {
+            Some(e)
+        } else {
+            crate::owner_body(world, e)
+        };
+        let em_mundo = ph2d_ecs::world_transform(world, e);
+        let (px, py, ang, excluir) = match corpo.and_then(|c| self.bodies.get(&c).map(|b| (c, b))) {
+            // A pose VIVA do corpo dono, mais o que separa o raio dele na árvore (zero se é o próprio).
+            Some((c, b)) => {
                 let p = self.world.body_pose(b.handle)?;
+                let (rel, d_ang) = match (c == e, ph2d_ecs::world_transform(world, c), em_mundo) {
+                    (false, Some(tc), Some(te)) => {
+                        let (s, co) = (libm::sinf(-tc.rotation), libm::cosf(-tc.rotation));
+                        let d = te.translation - tc.translation;
+                        ([d.x * co - d.y * s, d.x * s + d.y * co], te.rotation - tc.rotation)
+                    }
+                    _ => ([0.0, 0.0], 0.0),
+                };
+                let a = p.rotation.angle();
+                let (s, co) = (libm::sinf(a), libm::cosf(a));
                 (
-                    p.translation.x,
-                    p.translation.y,
-                    p.rotation.angle(),
+                    p.translation.x + rel[0] * co - rel[1] * s,
+                    p.translation.y + rel[0] * s + rel[1] * co,
+                    a + d_ang,
                     Some(b.handle),
                 )
             }
             None => {
-                let t = ph2d_ecs::world_transform(world, e)?;
+                let t = em_mundo?;
                 (t.translation.x, t.translation.y, t.rotation, None)
             }
         };
-        // ⭐ **Os dois vectores são LOCAIS**, logo a pose roda-os — é isso que faz a mira de uma
-        // torreta seguir a torreta sem uma segunda lei.
-        // ⚠️⚠️ **`libm` e nunca o `std`** — este código corre no caminho do `physics_ecs_c9`, e a
-        // libc de cada SO devolve o último ulp do seno diferente: o hash partiria entre as três
-        // plataformas, e **só o CI o mediria**. O gate
-        // `no_std_transcendental_reaches_the_deterministic_hash` apanhou-o na primeira corrida
-        // desta wave, com o ficheiro e a linha.
         let (s, c) = (libm::sinf(ang), libm::cosf(ang));
-        let gira = |v: ph2d_core::Vec2| [v.x * c - v.y * s, v.x * s + v.y * c];
-        let o = gira(r.origin);
-        let d = gira(r.dir);
+        let v = r.dir_local();
+        let d = [v.x * c - v.y * s, v.x * s + v.y * c];
         let n = libm::sqrtf(d[0] * d[0] + d[1] * d[1]);
         if !n.is_finite() || n <= f32::EPSILON || !r.reach.is_finite() || r.reach < 0.0 {
             return None;
         }
         Some(RaioEmMundo {
-            origem: [px + o[0], py + o[1]],
+            origem: [px, py],
             dir: [d[0] / n, d[1] / n],
             reach: r.reach,
             excluir,

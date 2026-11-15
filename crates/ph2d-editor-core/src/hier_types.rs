@@ -38,11 +38,13 @@ pub enum ObjectType {
     Collider,
     /// Uma montagem de juntas («Car 1», Joint Editor).
     Assembly,
+    /// O objeto «Ray Sensor» (GEF 07): o raio é um objeto, como a forma.
+    RaySensor,
 }
 
 impl ObjectType {
     /// Todos, na ordem de PRECEDÊNCIA entre os definidos por componente.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Empty,
         Self::Image,
         Self::Vector,
@@ -61,6 +63,7 @@ impl ObjectType {
         Self::Body,
         Self::Collider,
         Self::Assembly,
+        Self::RaySensor,
     ];
 
     /// O glifo — um por tipo, nenhum repetido.
@@ -85,6 +88,7 @@ impl ObjectType {
             Self::Body => IconId::Body,
             Self::Collider => IconId::Collider,
             Self::Assembly => IconId::Link,
+            Self::RaySensor => IconId::Probe,
         }
     }
 
@@ -110,6 +114,7 @@ impl ObjectType {
             Self::Body => ColorToken::ObjBody,
             Self::Collider => ColorToken::ObjCollider,
             Self::Assembly => ColorToken::ObjAssembly,
+            Self::RaySensor => ColorToken::ObjRaySensor,
         }
     }
 
@@ -128,6 +133,7 @@ impl ObjectType {
             Self::Body => Some("ph2d::physics::RigidBody"),
             Self::Collider => Some("ph2d::physics::Collider"),
             Self::Assembly => Some("ph2d::physics::JointAssembly"),
+            Self::RaySensor => Some("ph2d::physics::RaySensor"),
             Self::Empty
             | Self::Image
             | Self::Vector

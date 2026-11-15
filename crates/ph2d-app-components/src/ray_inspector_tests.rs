@@ -36,6 +36,7 @@ fn olho(sim: &mut SimWorld, com_voz: bool) -> Entity {
 #[test]
 fn um_raio_sem_voz_tem_seccao() {
     let mut sim = SimWorld::new();
+    forma(&mut sim, 0, None); // algo para ver: senão a queixa é a camada vazia
     let e = olho(&mut sim, false);
     let i = build_ray_info(sim.world(), e.to_bits(), 1, true, None)
         .expect("um raio sem voz tem de ter seccao");
@@ -81,4 +82,76 @@ fn a_leitura_viva_vira_um_nome() {
     let i2 = build_ray_info(sim.world(), e.to_bits(), 1, true, Some((parede, 1.75)))
         .expect("ha' seccao");
     assert!(i2.sees.is_empty(), "um alvo apagado nao tem nome a mostrar");
+}
+
+fn forma(sim: &mut SimWorld, layer: u8, pai: Option<Entity>) -> Entity {
+    use ph2d_physics_ecs::{BodyKind, Collider, RigidBody};
+    let w = sim.world_mut();
+    let e = w
+        .spawn((
+            Transform::from_translation(Vec2::ZERO),
+            Collider {
+                layer,
+                ..Collider::default()
+            },
+        ))
+        .id();
+    match pai {
+        Some(p) => {
+            w.entity_mut(e).insert(ph2d_ecs::ChildOf(p));
+        }
+        None => {
+            w.entity_mut(e).insert(RigidBody {
+                kind: BodyKind::Static,
+            });
+        }
+    }
+    e
+}
+
+/// ⭐⭐ **«Nothing in this layer» só fala quando é CERTO** (GEF 07, B·3): uma forma de outro corpo
+/// numa camada que o raio vê cala-o; as formas do PRÓPRIO corpo não contam (o raio exclui-as); uma
+/// camada que a matriz não deixa ver não conta.
+///
+/// **Mutações que devem sangrar:** contar as formas do corpo dono · ignorar a matriz · voltar a pôr o
+/// `Option<&CollisionOverride>` na consulta (o aviso mente sempre, a foto de 15/11).
+#[test]
+fn a_camada_vazia_so_fala_quando_e_certo() {
+    use ph2d_physics_ecs::{BodyKind, RigidBody};
+    let mut sim = SimWorld::new();
+    let corpo = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::ZERO),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+        ))
+        .id();
+    forma(&mut sim, 0, Some(corpo));
+    let raio = olho(&mut sim, true);
+    sim.world_mut()
+        .entity_mut(raio)
+        .insert(ph2d_ecs::ChildOf(corpo));
+    let vazia = |sim: &SimWorld| {
+        build_ray_info(sim.world(), raio.to_bits(), 1, true, None)
+            .expect("seccao")
+            .layer_empty
+    };
+    assert!(vazia(&sim), "só a forma do PRÓPRIO corpo: o raio nunca verá nada");
+
+    let chao = forma(&mut sim, 0, None);
+    assert!(!vazia(&sim), "uma forma de outro corpo na camada 0 cala o aviso");
+
+    // A matriz diz que a camada 0 não vê a 0: o chão deixa de contar.
+    let mut linhas = [u32::MAX; ph2d_physics_ecs::MAX_LAYERS];
+    linhas[0] &= !1;
+    ph2d_physics_ecs::excecao::LiveLayerRows::install(sim.world_mut(), linhas);
+    assert!(vazia(&sim), "a matriz não deixa a camada 0 ver a 0");
+
+    // Uma exceção própria na forma conta como visível (o aviso não adivinha).
+    sim.world_mut()
+        .entity_mut(chao)
+        .insert(ph2d_physics_ecs::CollisionOverride::default());
+    assert!(!vazia(&sim), "com exceção, o aviso cala-se");
 }

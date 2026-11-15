@@ -34,12 +34,10 @@ const VIEWPORT: Rect = Rect {
 pub(crate) fn olho() -> InspectorRayInfo {
     InspectorRayInfo {
         entity_bits: 0x00AB_CDEF,
-        origin_x: 0.25,
-        origin_y: -0.5,
-        dir_x: 1.0,
-        dir_y: 0.0,
+        angle: 30.0,
         reach: 6.0,
         layer: 3,
+        layer_empty: false,
         on_enter: "vi".into(),
         on_exit: "perdi".into(),
         sees: "Caixa".into(),
@@ -55,12 +53,9 @@ fn host(i: InspectorRayInfo) -> (MockPanelHost, InspectorState) {
     (h, InspectorState::default())
 }
 
-/// Os cinco números da secção, na ordem em que o painel os pinta (a camada é a lista: `a_camada_pelo_nome`).
-const NUMEROS: [(ph2d_a11y::NodeId, f64); 5] = [
-    (ph2d_panel_inspector::ids::INSP_RAY_ORIGIN_X, 0.25),
-    (ph2d_panel_inspector::ids::INSP_RAY_ORIGIN_Y, -0.5),
-    (ph2d_panel_inspector::ids::INSP_RAY_DIR_X, 1.0),
-    (ph2d_panel_inspector::ids::INSP_RAY_DIR_Y, 0.0),
+/// Os dois números da secção (GEF 07: Angle e Reach), na ordem em que o painel os pinta (a camada é a lista: `a_camada_pelo_nome`).
+const NUMEROS: [(ph2d_a11y::NodeId, f64); 2] = [
+    (ph2d_panel_inspector::ids::INSP_RAY_ANGLE, 30.0),
     (ph2d_panel_inspector::ids::INSP_RAY_REACH, 6.0),
 ];
 

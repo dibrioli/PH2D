@@ -208,3 +208,38 @@ fn o_rebobinar_dos_scripts_nao_devolve_o_campo_que_a_curva_conduz() {
         .height_world;
     assert!((h - 15.0).abs() < 1e-4, "{h}");
 }
+
+/// ⭐⭐ **O Angle e o Reach do Ray Sensor animam** (GEF 07): o objeto «Ray Sensor» publica os três campos
+/// (Angle, Reach, Layer) e uma curva no Angle chega ao componente em GRAUS, sem passar por um vetor.
+///
+/// **Mutação que deve sangrar:** voltar o campo 0 do catálogo a `Vec2` (Direction) — a chave `(0, 0)`
+/// deixa de ser o ângulo.
+#[test]
+fn o_angle_e_o_reach_do_raio_animam() {
+    const RAIO: &str = "ph2d::physics::RaySensor";
+    let reg = registo();
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn(ph2d_physics_ecs::RaySensor::default())
+        .id();
+    let kr = |f| chave(RAIO, f, 0).expect("cabe");
+    let todos = campos(&reg, sim.world(), e);
+    for f in 0..3 {
+        assert!(todos.contains(&kr(f)), "falta o campo {f} em {todos:?}");
+    }
+    let mut t = TextosDosCanais::default();
+    assert_eq!(ler(&reg, sim.world(), e, kr(0), &mut t), Some(-90.0), "o Angle de fábrica");
+    sim.world_mut()
+        .get_resource_or_insert_with(CanaisEscritos::default)
+        .escrever(e.to_bits(), kr(0), 45.0);
+    sim.world_mut()
+        .get_resource_or_insert_with(CanaisEscritos::default)
+        .escrever(e.to_bits(), kr(1), 3.0);
+    assert!(aplicar(&mut sim, &reg, &mut PreviewDrive::default()));
+    let r = *sim
+        .world()
+        .get::<ph2d_physics_ecs::RaySensor>(e)
+        .expect("raio");
+    assert_eq!((r.angle, r.reach), (45.0, 3.0));
+}

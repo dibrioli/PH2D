@@ -63,10 +63,7 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         // ⚠️ **Um `match` e não um `if` por campo** — com `if`s, o terceiro acaba a escrever no
         // primeiro (a lição dos três campos de texto da tabela de acções).
         let edit = match id {
-            crate::ids::INSP_RAY_ORIGIN_X => RayFieldEdit::OriginX(f),
-            crate::ids::INSP_RAY_ORIGIN_Y => RayFieldEdit::OriginY(f),
-            crate::ids::INSP_RAY_DIR_X => RayFieldEdit::DirX(f),
-            crate::ids::INSP_RAY_DIR_Y => RayFieldEdit::DirY(f),
+            crate::ids::INSP_RAY_ANGLE => RayFieldEdit::Angle(f),
             crate::ids::INSP_RAY_REACH => RayFieldEdit::Reach(f),
             _ => return false,
         };

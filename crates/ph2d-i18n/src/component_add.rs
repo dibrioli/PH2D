@@ -36,9 +36,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component_add.tip.motion_input" => {
             "Sends a number from the game (health, damage, or a value you set) into a Motion graph, so the effect reacts to it."
         }
-        "component_add.tip.ray_sensor" => {
-            "An invisible line that asks \u{201c}is something there?\u{201d}. Enemies use it to find a wall or the edge of a floor."
-        }
         // Find a path
         "component_add.tip.nav_agent" => "Walks to a goal on its own, going around walls.",
         "component_add.tip.nav_region" => "Marks the floor where walkers can go.",

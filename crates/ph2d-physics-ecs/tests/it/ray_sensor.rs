@@ -5,7 +5,7 @@
 //! duas metades que só a fiação tem: a aresta e o rebobinar.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Entity, Name, SimWorld, StableId, Transform};
+use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, StableId, Transform};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, PhysicsBridge, RaySensor, RaySignals, RigidBody,
     SignalTagFilter,
@@ -38,8 +38,7 @@ fn olho(sim: &mut SimWorld, em: Vec2, dir: Vec2, reach: f32) -> Entity {
             Name::new("Olho"),
             Transform::from_translation(em),
             RaySensor {
-                origin: Vec2::ZERO,
-                dir,
+                angle: libm::atan2f(dir.y, dir.x).to_degrees(),
                 reach,
                 layer: 0,
             },
@@ -115,7 +114,7 @@ fn um_raio_nao_ve_o_que_esta_atras() {
 
     // ⛔ O CONTROLO: virado ao contrário, ele vê a de trás e **não** a da frente.
     if let Some(mut r) = sim.world_mut().get_mut::<RaySensor>(e) {
-        r.dir = Vec2::new(-1.0, 0.0);
+        r.angle = 180.0;
     }
     let mut b2 = PhysicsBridge::new();
     b2.dispatch(&mut sim, true, 1);
@@ -150,14 +149,19 @@ fn um_raio_roda_com_o_objecto() {
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cima) {
         t.translation = Vec2::new(0.0, 3.0);
     }
+    // O raio é o objecto FILHO a `(1, 0)` do pai; roda-se o PAI.
+    let pai = sim
+        .world_mut()
+        .spawn((Name::new("Olho"), Transform::from_translation(Vec2::ZERO)))
+        .id();
     let e = sim
         .world_mut()
         .spawn((
-            Name::new("Olho"),
-            Transform::from_translation(Vec2::ZERO),
+            Name::new("Ray Sensor"),
+            Transform::from_translation(Vec2::new(1.0, 0.0)),
+            ChildOf(pai),
             RaySensor {
-                origin: Vec2::new(1.0, 0.0),
-                dir: Vec2::new(1.0, 0.0),
+                angle: 0.0,
                 reach: 5.0,
                 layer: 0,
             },
@@ -171,7 +175,7 @@ fn um_raio_roda_com_o_objecto() {
     );
 
     // Um quarto de volta: a origem vai para `(0, 1)` e o rumo passa a ser «para cima».
-    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(pai) {
         t.rotation = std::f32::consts::FRAC_PI_2;
     }
     let mut b2 = PhysicsBridge::new();
@@ -215,8 +219,7 @@ fn um_raio_nao_se_ve_a_si_mesmo() {
             },
             Transform::from_translation(Vec2::ZERO),
             RaySensor {
-                origin: Vec2::ZERO,
-                dir: Vec2::new(1.0, 0.0),
+                angle: 0.0,
                 reach: 20.0,
                 layer: 0,
             },
@@ -425,5 +428,74 @@ fn rebobinar_faz_o_raio_voltar_a_nao_ver_nada() {
         vec!["vi"],
         "depois de rebobinar a entrada tem de soar outra vez — o mapa ficou com o \
          que o raio via no fim da 1.ª corrida"
+    );
+}
+
+/// ⭐⭐ **O raio é um OBJECTO FILHO do corpo** (GEF 07, dono 15/11): exclui o corpo DONO (o ancestral)
+/// e nasce da pose VIVA dele mais o desvio do filho — um corpo que cai leva o raio consigo.
+///
+/// **Mutações que devem sangrar:** não subir ao corpo dono (o raio acha-se no próprio corpo) ·
+/// ler a pose só do `Transform` do filho sem o corpo · deitar fora o desvio do filho.
+#[test]
+fn um_raio_filho_exclui_o_corpo_dono_e_segue_a_pose_viva() {
+    let mut sim = SimWorld::new();
+    let alvo = parede(&mut sim, "Alvo", 3.0);
+    let corpo = sim
+        .world_mut()
+        .spawn((
+            Name::new("Corpo"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.5,
+                    half_y: 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.5)),
+        ))
+        .id();
+    let raio = sim
+        .world_mut()
+        .spawn((
+            Name::new("Ray Sensor"),
+            Transform::from_translation(Vec2::new(0.25, 0.0)),
+            ChildOf(corpo),
+            RaySensor {
+                angle: 0.0,
+                reach: 20.0,
+                layer: 0,
+            },
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    anda(&mut sim, &mut bridge, 1);
+    let h = bridge
+        .ray_sensor_hits()
+        .get(&raio)
+        .copied()
+        .expect("o raio filho tem de ver a parede");
+    assert_eq!(h.body, alvo, "o raio filho achou-se no corpo dono");
+    // Face esquerda da parede em x = 2,75; o raio nasce em x = 0,25 (o desvio do filho).
+    assert!(
+        (h.distance - 2.5).abs() < 1.0e-3,
+        "distancia {} — esperava 2,5 (nascido no desvio do filho)",
+        h.distance
+    );
+
+    // A parede tem meia-altura 1: depois de o corpo cair abaixo de y = -1 o raio passa por baixo dela.
+    anda(&mut sim, &mut bridge, 120);
+    let y = sim
+        .world()
+        .get::<Transform>(corpo)
+        .expect("o corpo existe")
+        .translation
+        .y;
+    assert!(y < -1.5, "a fixtura precisa do corpo a cair: y = {y}");
+    assert!(
+        bridge.ray_sensor_hits().get(&raio).is_none(),
+        "o corpo caiu para y = {y} e o raio continuou a ver a parede: nao seguiu a pose viva"
     );
 }

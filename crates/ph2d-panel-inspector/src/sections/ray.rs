@@ -37,8 +37,8 @@ use ph2d_i18n::{tr, tr_with};
 #[must_use]
 const fn chave_da_queixa(q: RayQueixa) -> &'static str {
     match q {
-        RayQueixa::SemDireccao => "panel.inspector.ray.the_direction_is_zero",
         RayQueixa::SemAlcance => "panel.inspector.ray.the_reach_is_zero",
+        RayQueixa::CamadaVazia => "panel.inspector.ray.nothing_in_this_layer",
         RayQueixa::Mudo => "panel.inspector.ray.this_ray_says_nothing",
         RayQueixa::NaoVeNada => "panel.inspector.ray.sees_nothing_right_now",
     }
@@ -131,44 +131,26 @@ fn corpo(
             tr("component.field.ray_sensor.0"),
             tr("component.field.ray_sensor.1"),
             tr("component.field.ray_sensor.2"),
-            tr("component.field.ray_sensor.3"),
+            tr("component.field.ray_signals.0"),
+            tr("component.field.ray_signals.1"),
         ],
     );
-    // ⚠️ **A origem e a direcção são UMA linha de DOIS campos cada** — elas são um ponto e um
-    // vector, e parti-las em quatro linhas faria o artista procurar o par.
-    for (label, ids, step, unidade) in [
-        (
-            TextKey::new("component.field.ray_sensor.0"),
-            [crate::ids::INSP_RAY_ORIGIN_X, crate::ids::INSP_RAY_ORIGIN_Y],
-            0.1, // LITERAL-PX-OK: passo de arrasto em METROS, locais
-            Some(ph2d_editor_core::widget::Unit::Meters),
-        ),
-        (
-            TextKey::new("component.field.ray_sensor.1"),
-            [crate::ids::INSP_RAY_DIR_X, crate::ids::INSP_RAY_DIR_Y],
-            0.1, // LITERAL-PX-OK: passo de arrasto de uma DIRECÇÃO, adimensional
-            None,
-        ),
-    ] {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            label,
-            &ids,
-            step,
-            unidade,
-            seccao,
-        );
-    }
-    // Reach e a camada: no cartão, irmãos curtos que dividem a linha (lei 1); fora dele, um por linha. A camada é a
-    // MESMA lista do collider (nomes, contorno da cor, o losango do campo) e «Sees», a linha da matriz do mundo
-    // dessa camada (dono 08/11: «os mesmos campos»).
+    // GEF 07 (versão B): um ângulo no lugar de Direction X·Y; a origem é a posição do objeto.
+    cur_y = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        TextKey::new("component.field.ray_sensor.0"),
+        &[crate::ids::INSP_RAY_ANGLE],
+        1.0, // LITERAL-PX-OK: passo de arrasto em GRAUS
+        Some(ph2d_editor_core::widget::Unit::Degrees),
+        seccao,
+    );
     let [(xa, wa), (xb, wb)] = if crate::cards::active() {
         ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w)
     } else {
@@ -183,7 +165,7 @@ fn corpo(
         xa,
         wa,
         cur_y,
-        TextKey::new("component.field.ray_sensor.2"),
+        TextKey::new("component.field.ray_sensor.1"),
         &[crate::ids::INSP_RAY_REACH],
         0.1, // LITERAL-PX-OK: passo de arrasto em METROS
         Some(ph2d_editor_core::widget::Unit::Meters),
@@ -207,7 +189,7 @@ fn corpo(
         .ok()
         .filter(|&c| usize::from(c) < crate::ids::INSP_PHYS_LAYERS)
         .unwrap_or_default();
-    let rotulo = TextKey::new("component.field.ray_sensor.3");
+    let rotulo = TextKey::new("component.field.ray_sensor.2");
     let quem = &super::physics_colide::DO_RAIO;
     let depois_da_camada = super::camada_por_nome::linha_da_camada(
         &mut t,
@@ -220,6 +202,23 @@ fn corpo(
     cur_y = depois_do_alcance.max(depois_da_camada);
     (t.x, t.w) = (x, w);
     cur_y = botoes_do_raio(&mut t, cur_y, usize::from(camada));
+    // Os sinais num grupo próprio (B): ligam-se noutro lugar, e a caixa diz quem ouve.
+    let g = super::grupo_dobravel::grupo_dobravel(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        crate::ids::INSP_RAY_FOLD_SIGNALS,
+        tr("panel.inspector.ray.signals"),
+    );
+    if !g.aberto() {
+        return g.fecha(store, scene, hit_index, cur_y);
+    }
+    cur_y = g.y;
     // ⚠️ **Os dois NOMES, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
     //
     // ⛔ **Pela porta que já existe** (`anim_rows::text_row`): copiá-la seria a terceira resposta a
@@ -256,7 +255,7 @@ fn corpo(
             .placeholder(tr("panel.inspector.ray.signal_when_it_stops_seeing_u")),
         seccao,
     );
-    cur_y
+    g.fecha(store, scene, hit_index, cur_y)
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.

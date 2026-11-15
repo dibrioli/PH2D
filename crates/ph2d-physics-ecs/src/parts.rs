@@ -126,6 +126,17 @@ pub fn pendura_forma(world: &mut World, e: Entity, pai: Option<Entity>) -> Entit
     crate::nasce_com_forma(world, p, FORMA_DO_MENU)
 }
 
+/// ⭐ **O Add ▸ «Ray Sensor»** (GEF 07, dono 15/11): o raio é o objeto `e`, olhando para baixo. Com `pai`
+/// vira filho dele, na origem do pai (`Transform` identidade), e anda com ele; sem pai fica na raiz.
+pub fn pendura_raio(world: &mut World, e: Entity, pai: Option<Entity>) -> Entity {
+    world.entity_mut(e).insert(crate::RaySensor::default());
+    if let Some(p) = pai.filter(|&p| world.get_entity(p).is_ok() && p != e) {
+        world.entity_mut(e).insert(ph2d_ecs::Transform::IDENTITY);
+        crate::migra_formas::pendura(world, e, p, None);
+    }
+    e
+}
+
 /// Quantas peças estão penduradas em `body`.
 ///
 /// `candidates` vem de uma query do chamador (`&Collider` sem `&RigidBody`) — não

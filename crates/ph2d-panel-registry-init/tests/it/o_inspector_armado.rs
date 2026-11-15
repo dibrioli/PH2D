@@ -1026,12 +1026,10 @@ fn arma_o_top20() {
     ));
     insp::set_current_inspector_ray(Some(InspectorRayInfo {
         entity_bits: BITS,
-        origin_x: 0.0,
-        origin_y: 0.5,
-        dir_x: 1.0,
-        dir_y: 0.0,
+        angle: 0.0,
         reach: 8.0,
         layer: 3,
+        layer_empty: false,
         on_enter: "spotted".to_string(),
         on_exit: "lost".to_string(),
         sees: "Player".to_string(),

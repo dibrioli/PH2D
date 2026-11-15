@@ -381,7 +381,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`241` em 2026-11-10** (`line/PainterWatercolor`, B50.1) — os enums do pincel pelo nome. A tripla NÃO vê.
         // ⚠️ **`242` em 2026-11-11** (`line/PainterWatercolor`, B34.1) — o fator de aparência do documento. A tripla NÃO vê.
         // ⚠️ **`243` em 2026-11-15** (`line/TimelinePrincipal`, plano 18) — `Key.retime`, o ritmo do trecho. A tripla NÃO vê.
-        (243, 13, 29),
+        // ⚠️ **`244` em 2026-11-15** (`line/GameEngineFuncional`, GEF 07) — o raio é um objeto (`angle`). A tripla NÃO vê.
+        (244, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

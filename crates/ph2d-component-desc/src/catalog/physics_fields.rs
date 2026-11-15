@@ -373,10 +373,9 @@ pub(super) const NAV_REGION: &[FieldDesc] = &[
     f(1, "component.field.nav_region.1", K::Int).named_as("wall_layers", "obstacle_layers"),
 ];
 pub(super) const RAY_SENSOR: &[FieldDesc] = &[
-    f(0, "component.field.ray_sensor.0", K::Vec2).named("origin"),
-    f(1, "component.field.ray_sensor.1", K::Vec2).named_as("direction", "dir"),
-    f(2, "component.field.ray_sensor.2", K::Scalar).named("reach"),
-    f(3, "component.field.ray_sensor.3", K::Int).named("layer"),
+    f(0, "component.field.ray_sensor.0", K::Angle).named("angle"),
+    f(1, "component.field.ray_sensor.1", K::Scalar).named("reach"),
+    f(2, "component.field.ray_sensor.2", K::Int).named("layer"),
 ];
 pub(super) const RAY_SIGNALS: &[FieldDesc] = &[
     f(0, "component.field.ray_signals.0", K::Text).named("on_enter"),

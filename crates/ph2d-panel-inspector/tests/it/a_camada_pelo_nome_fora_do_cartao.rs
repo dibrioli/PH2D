@@ -135,7 +135,7 @@ fn olho_na(camada: u32) -> InspectorRayInfo {
 }
 
 /// Dono 08/11: o Ray Sensor com os MESMOS campos de camada do collider — a lista com o nome e o contorno da cor,
-/// o losango do campo (o mesmo canal `component.field.ray_sensor.3`) e «Sees», a linha da matriz do mundo.
+/// o losango do campo (o mesmo canal `component.field.ray_sensor.2`) e «Sees», a linha da matriz do mundo.
 ///
 /// Mutações: uma opção que manda outra camada; os quadros a ler outra linha da matriz; o chip sem losango.
 #[test]
@@ -158,7 +158,7 @@ fn o_ray_sensor_escolhe_a_camada_pela_lista_e_ve_pela_matriz() {
         );
         let canal: Vec<_> = key_mark::rotulos_pintados()
             .into_iter()
-            .filter(|(_, k)| *k == "component.field.ray_sensor.3")
+            .filter(|(_, k)| *k == "component.field.ray_sensor.2")
             .map(|(id, _)| id)
             .collect();
         assert_eq!(

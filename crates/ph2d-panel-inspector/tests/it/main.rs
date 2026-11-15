@@ -117,6 +117,7 @@ mod seam_player;
 mod seam_player_pulo;
 mod seam_precision;
 mod seam_projectile;
+mod seam_ray;
 mod seam_properties;
 mod seam_px_m;
 mod seam_render_source;

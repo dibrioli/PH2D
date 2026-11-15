@@ -1554,7 +1554,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "sections/physics_colide.rs::chip",
         Canal,
         &["INSP_PHYS_LAYER"],
-        "a Layer do collider (`Quem::canal` = as opções, `marcas_inspector`) e a do Ray Sensor (o rótulo `component.field.ray_sensor.3`)",
+        "a Layer do collider (`Quem::canal` = as opções, `marcas_inspector`) e a do Ray Sensor (o rótulo `component.field.ray_sensor.2`)",
     ),
     (
         "ph2d-panel-physics",

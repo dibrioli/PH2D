@@ -143,8 +143,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // ⚠️ **A QUEIXA, da mais especifica para a mais geral** — a ordem vive na porta
         // `InspectorRayInfo::queixa`, e estas quatro sao so' a lingua dela.
-        "panel.inspector.ray.the_direction_is_zero" => {
-            "The direction is zero \u{2014} that is not a ray."
+        "panel.inspector.ray.nothing_in_this_layer" => {
+            "Nothing in the layers this ray sees. It can never see anything."
+        }
+        "panel.inspector.ray.signals" => "Signals",
+        "panel.inspector.ray.angle_tip" => {
+            "Where the ray points: 0 is right, 90 is up, -90 is down. It turns with the object."
         }
         "panel.inspector.ray.the_reach_is_zero" => {
             "The reach is zero \u{2014} it starts and ends in the same place."

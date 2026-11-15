@@ -83,7 +83,14 @@ pub(crate) fn push_physics_sections<'a>(
     use crate::plano::emoldurada;
     // §11 Physics Body — offered for ANY Transform-bearing entity, with or without a body: the
     // empty state is the Add button (ADR-0131 D8).
-    if let Some(phys) = physics {
+    // GEF 07: o objeto «Ray Sensor» é uma sonda, não um candidato a corpo — sem a face «Add Physics Body».
+    let raio_solto = |p: &&ph2d_editor_core::screens::hero::InspectorPhysicsInfo| {
+        crate::state_components::current_inspector_ray().is_some()
+            && !p.has_body
+            && !p.has_collider
+            && p.shape_of.is_empty()
+    };
+    if let Some(phys) = physics.filter(|p| !raio_solto(p)) {
         emoldurada(
             plano,
             ids::INSP_LIVE_PHYSICS_SECTION,

@@ -37,41 +37,35 @@ use ph2d_core::Vec2;
 use ph2d_ecs::SimComponent;
 use serde::{Deserialize, Serialize};
 
-/// **Um raio persistente, preso a este objecto.**
+/// **Um raio persistente: o objecto «Ray Sensor»** (GEF 07, dono 15/11 — objecto filho, como a forma do ADR-0199).
 ///
-/// Ausente = o objecto não olha para nada, que é o default de toda cena que já existe.
-///
-/// ⚠️ **`origin` e `dir` são LOCAIS**, e é isso que faz o raio **rodar com o objecto** sem uma
-/// segunda lei: a pose do objecto já é uma matriz, e a fase aplica-a aos dois. *Escrevê-los em
-/// mundo obrigaria o artista a reescrevê-los sempre que o objecto virasse.*
+/// A origem é a POSIÇÃO do objecto e o rumo é `angle` rodado pela pose dele (e a do pai): dois raios
+/// são dois objectos. ⚠️ `angle` é LOCAL e em GRAUS (a unidade autorada, `FieldKind::Angle`): anima-se
+/// sem passar por `0,707`, e o motor faz o vetor (`dir_local`).
 #[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RaySensor {
-    /// Onde o raio nasce, em coordenadas locais do objecto.
-    pub origin: Vec2,
-    /// Para onde ele aponta, em coordenadas locais.
-    ///
-    /// ⚠️ **Não precisa vir normalizado** — a porta do motor normaliza-o, e é deliberado: o alcance
-    /// do rapier é medido em múltiplos da norma, logo um `dir` não-unitário daria, em silêncio, um
-    /// alcance diferente do pedido.
-    ///
-    /// ⛔ **Nulo não é um raio.** A porta devolve `None`, e o painel diz-o — senão é um controlo que
-    /// parece partido.
-    pub dir: Vec2,
+    /// Para onde aponta, em graus locais: `0` = direita, `90` = cima, `-90` = baixo.
+    pub angle: f32,
     /// Até onde ele enxerga, em metros.
     pub reach: f32,
     /// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê.
     pub layer: u8,
 }
 
+impl RaySensor {
+    /// O rumo unitário local que `angle` diz.
+    #[must_use]
+    pub fn dir_local(&self) -> Vec2 {
+        let r = self.angle.to_radians();
+        Vec2::new(libm::cosf(r), libm::sinf(r))
+    }
+}
+
 impl Default for RaySensor {
-    /// ⭐ **O default OLHA PARA BAIXO, e isso é medido e não escolhido:** dos cinco consumidores que
-    /// o motor tem hoje, o mais usado é o **sensor de chão**, e é a primeira coisa que alguém quer
-    /// de um raio num jogo 2D. Um default de direcção **nula** entregaria um componente inerte, que
-    /// se lê exactamente como um componente partido.
+    /// O default OLHA PARA BAIXO: o sensor de chão é o primeiro raio de um jogo 2D.
     fn default() -> Self {
         Self {
-            origin: Vec2::ZERO,
-            dir: Vec2::new(0.0, -1.0),
+            angle: -90.0,
             reach: 1.0,
             layer: 0,
         }

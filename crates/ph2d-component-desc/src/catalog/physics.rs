@@ -461,11 +461,10 @@ pub const DESCS: &[D] = &[
     // ⛔ **E ele NÃO requer `RigidBody`**, ao contrário dos dois movers: está MEDIDO
     // (`um_raio_sem_corpo_nao_exclui_ninguem`) — um olho sem corpo vê na mesma, e ali a resposta
     // certa é não excluir ninguém. *Exigir um corpo entregaria uma cerca que a lei não tem.*
-    D::authored(
+    // GEF 07 (dono 15/11): o raio é um OBJETO — nasce no Add ▸ «Ray Sensor», nunca no `+`.
+    il(
         "ph2d::physics::RaySensor",
         "component.ray_sensor.name",
-        C::Physics,
-        O::ANY,
         RAY_SENSOR,
     )
     .coded("ray_sensor"),
@@ -578,13 +577,13 @@ mod tests {
         // ⭐ **SEIS portas desde 2026-10-01** — as novas são a NAVEGAÇÃO (plano 30, W4): o agente
         //    (*este objecto persegue*, e pede o mover junto) e a região (*os agentes andam aqui*).
         // ⭐ **OITO desde 2026-10-03** — a área de custo e o atalho (plano 30, W7), sem companhia.
-        const PORTAS: [&str; 8] = [
+        // ⭐ **SETE desde 2026-11-15** — o raio virou objeto (GEF 07): sai da paleta, entra no Add.
+        const PORTAS: [&str; 7] = [
             "ph2d::physics::NavAgent",
             "ph2d::physics::NavCostArea",
             "ph2d::physics::NavLink",
             "ph2d::physics::NavRegion",
             "ph2d::physics::ProjectileMotion",
-            "ph2d::physics::RaySensor",
             "ph2d::physics::RigidBody",
             "ph2d::physics::TopDownPlayer",
         ];

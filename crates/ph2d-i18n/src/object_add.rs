@@ -15,6 +15,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.game.static_body" => "Static Body",
         "object_add.game.character" => "Character",
         "object_add.game.collision_shape" => "Collision Shape",
+        "object_add.game.ray_sensor" => "Ray Sensor",
         "object_add.game.background_layer" => "Background Layer",
         // As dicas ilustradas do menu (05_N1_plano.md §4): o que o objecto é, para que serve.
         "object_add.game.sprite.tip" => {
@@ -31,6 +32,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "object_add.game.collision_shape.tip" => {
             "An invisible shape that things bump into. Select a body first and the shape goes inside it as one more shape of that body: an invisible wall at the end of a level, a ledge, a wider hit area. With nothing selected it is a fixed wall of its own."
+        }
+        "object_add.game.ray_sensor.tip" => {
+            "An invisible line that asks: is something there? Select an object first and the ray goes inside it and moves with it: is there ground below, a wall ahead, the player in sight. It sends a signal when it starts and stops seeing. Two rays are two of these."
         }
         "object_add.game.background_layer.tip" => {
             "Scenery far away: sky, clouds, hills. When the camera moves it stays behind and moves more slowly than the level, which makes the world look deep. Set how far away it is in the Inspector (Parallax) \u{2014} 0 stays still on the screen, 1 moves with the level. It repeats sideways, so it never ends."
@@ -106,6 +110,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "object_add.game.collision_shape.keywords" => {
             "collider, hitbox, invisible wall, barrier, bounds, sensor, area"
+        }
+        "object_add.game.ray_sensor.keywords" => {
+            "raycast, ray, detect, sense, see ahead, line of sight, ground check, edge, wall check"
         }
         "object_add.game.camera.keywords" => "view, viewport, screen, follow, look",
         "object_add.game.sound.keywords" => {

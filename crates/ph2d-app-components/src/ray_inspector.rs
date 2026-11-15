@@ -53,12 +53,10 @@ pub fn build_ray_info(
     };
     Some(InspectorRayInfo {
         entity_bits: bits,
-        origin_x: r.origin.x,
-        origin_y: r.origin.y,
-        dir_x: r.dir.x,
-        dir_y: r.dir.y,
+        angle: r.angle,
         reach: r.reach,
         layer: u32::from(r.layer),
+        layer_empty: camada_vazia(world, e, r.layer),
         on_enter: s.map(|s| s.on_enter.clone()).unwrap_or_default(),
         on_exit: s.map(|s| s.on_exit.clone()).unwrap_or_default(),
         sees,
@@ -110,10 +108,7 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
         return false;
     };
     match edit {
-        RayFieldEdit::OriginX(v) => r.origin.x = *v,
-        RayFieldEdit::OriginY(v) => r.origin.y = *v,
-        RayFieldEdit::DirX(v) => r.dir.x = *v,
-        RayFieldEdit::DirY(v) => r.dir.y = *v,
+        RayFieldEdit::Angle(v) => r.angle = *v,
         RayFieldEdit::Reach(v) => r.reach = *v,
         // ⚠️ **A camada é um ÍNDICE**, e o tecto é o do mundo (`MAX_LAYERS`): um número maior não
         // tem linha na matriz, e a porta do motor leria uma coluna que não existe.
@@ -127,6 +122,32 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
 
 /// ⭐ **A lei do RAIO** (doc CodeEditor 08 §3.5): a camada é um índice da matriz do mundo, e acima
 /// do tecto (`MAX_LAYERS`) não há coluna. O resto aceita tudo (o alcance zero é um aviso do cartão).
+/// ⭐ **Nenhuma forma numa camada que o raio vê** (GEF 07, B·3): fora as do corpo dono, que ele
+/// exclui. Uma forma com exceção própria (`CollisionOverride`) conta como visível — o aviso só fala
+/// quando é CERTO que o raio nunca verá nada.
+fn camada_vazia(world: &World, raio: Entity, layer: u8) -> bool {
+    use ph2d_physics_ecs::{Collider, CollisionOverride, RigidBody};
+    let linha = ph2d_physics_ecs::excecao::LiveLayerRows::row(world, layer);
+    let dono = |e: Entity| {
+        if world.get::<RigidBody>(e).is_some() {
+            Some(e)
+        } else {
+            ph2d_physics_ecs::owner_body(world, e)
+        }
+    };
+    let meu = dono(raio);
+    // ⚠️ Só `&Collider` na consulta: um `Option<&CollisionOverride>` nela devolve `None` enquanto
+    // nenhum objeto da cena tiver exceção (o tipo nem está registado) — e o aviso mentia sempre.
+    let Some(mut q) = world.try_query::<(Entity, &Collider)>() else {
+        return true;
+    };
+    !q.iter(world).any(|(e, c)| {
+        let excecao = world.get::<CollisionOverride>(e).is_some();
+        let ve = excecao || linha & (1u32 << u32::from(c.layer).min(31)) != 0;
+        ve && (meu.is_none() || dono(e) != meu)
+    })
+}
+
 pub(crate) fn sanitize_ray_sensor(r: &mut ph2d_physics_ecs::RaySensor) {
     r.layer = r.layer.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1);
 }

@@ -38,6 +38,8 @@ pub const INSP_LIVE_PROJECTILE_SECTION: NodeId = hash_node_id("insp_live_project
 /// Projectile «Speed change», GEF 06): aqui, na folha que o painel e a `ph2d-physics-scene` vêem.
 pub const INSP_TD_FOLD_MORE: NodeId = hash_node_id("insp_td_fold_more");
 pub const INSP_PJ_FOLD_SPEED_CHANGE: NodeId = hash_node_id("insp_pj_fold_speed_change");
+/// O grupo «Signals» do Ray Sensor (GEF 07, versão B) — nasce ABERTO.
+pub const INSP_RAY_FOLD_SIGNALS: NodeId = hash_node_id("insp_ray_fold_signals");
 /// O cabeçalho dobrável da secção STATE MACHINE (TOP-20 #15).
 pub const INSP_LIVE_SM_SECTION: NodeId = hash_node_id("insp_live_sm_section");
 /// O cabeçalho dobrável da secção SCRIPT (TOP-20 #16).

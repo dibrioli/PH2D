@@ -48,8 +48,7 @@ fn olho(sim: &mut SimWorld, em: Vec2, dir: Vec2, reach: f32) -> Entity {
             Name::new("Olho"),
             Transform::from_translation(em),
             RaySensor {
-                origin: Vec2::ZERO,
-                dir,
+                angle: libm::atan2f(dir.y, dir.x).to_degrees(),
                 reach,
                 layer: 0,
             },
@@ -100,20 +99,21 @@ fn a_linha_desenhada_e_o_raio_que_foi_lancado() {
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cima) {
         t.translation = Vec2::new(0.0, 3.0);
     }
-    let e = sim
+    let pai = sim
         .world_mut()
-        .spawn((
-            Name::new("Olho"),
-            Transform::from_translation(Vec2::ZERO),
-            RaySensor {
-                origin: Vec2::new(1.0, 0.0),
-                dir: Vec2::new(1.0, 0.0),
-                reach: 5.0,
-                layer: 0,
-            },
-        ))
+        .spawn((Name::new("Olho"), Transform::from_translation(Vec2::ZERO)))
         .id();
-    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+    let e = sim.world_mut().spawn((
+        Name::new("Ray Sensor"),
+        Transform::from_translation(Vec2::new(1.0, 0.0)),
+        ph2d_ecs::ChildOf(pai),
+        RaySensor {
+            angle: 0.0,
+            reach: 5.0,
+            layer: 0,
+        },
+    )).id();
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(pai) {
         t.rotation = std::f32::consts::FRAC_PI_2;
     }
     let mut bridge = PhysicsBridge::new();
@@ -208,7 +208,7 @@ fn um_raio_que_nao_ve_nada_continua_desenhado() {
     );
 }
 
-/// ⛔ **Um raio DEGENERADO não se desenha** — as três entradas com que não se faz uma linha.
+/// ⛔ **Um raio DEGENERADO não se desenha** — as entradas com que não se faz uma linha.
 ///
 /// ⚠️ **As duas últimas coincidem HOJE com o que a porta do motor recusa, e isso é um FACTO e não
 /// uma lei:** lá a razão é *«o parry responderia sobre um raio que não existe»* e aqui é *«não se
@@ -218,15 +218,18 @@ fn um_raio_que_nao_ve_nada_continua_desenhado() {
 /// **Mutação que deve sangrar:** tirar a guarda do `raio_em_mundo`.
 #[test]
 fn um_raio_degenerado_nao_se_desenha() {
-    for (nome, dir, reach) in [
-        ("direccao nula", Vec2::ZERO, 2.0),
-        ("direccao NaN", Vec2::new(f32::NAN, 0.0), 2.0),
-        ("alcance NaN", Vec2::new(1.0, 0.0), f32::NAN),
-        ("alcance negativo", Vec2::new(1.0, 0.0), -2.0),
+    for (nome, angle, reach) in [
+        ("angulo NaN", f32::NAN, 2.0),
+        ("angulo infinito", f32::INFINITY, 2.0),
+        ("alcance NaN", 0.0, f32::NAN),
+        ("alcance negativo", 0.0, -2.0),
     ] {
         let mut sim = SimWorld::new();
         parede(&mut sim, "Perto", 1.0);
-        olho(&mut sim, Vec2::ZERO, dir, reach);
+        let e = olho(&mut sim, Vec2::ZERO, Vec2::new(1.0, 0.0), reach);
+        if let Some(mut r) = sim.world_mut().get_mut::<RaySensor>(e) {
+            r.angle = angle;
+        }
         let mut bridge = PhysicsBridge::new();
         bridge.dispatch(&mut sim, true, 1);
         assert!(

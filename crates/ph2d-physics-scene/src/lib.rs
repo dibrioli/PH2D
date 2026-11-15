@@ -14,6 +14,7 @@
 //! outra (gate `architecture_no_dependency_climbs_a_layer`).
 
 pub mod cena_projectile;
+pub mod cena_ray;
 pub mod cena_topdown;
 pub mod ficha;
 pub mod fotos_dos_cartoes;

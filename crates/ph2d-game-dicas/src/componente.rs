@@ -101,7 +101,7 @@ const fn e(
 
 use Assunto as A;
 
-/// ⭐ As 63 entradas, agrupadas e na ordem da janela.
+/// ⭐ As 62 entradas, agrupadas e na ordem da janela.
 pub const ENTRADAS: &[Entrada] = &[
     e(
         "ph2d::physics::RigidBody",
@@ -132,12 +132,6 @@ pub const ENTRADAS: &[Entrada] = &[
         A::Move,
         "component_add.tip.motion_input",
         d::MOTION_INPUT,
-    ),
-    e(
-        "ph2d::physics::RaySensor",
-        A::Move,
-        "component_add.tip.ray_sensor",
-        d::RAY_SENSOR,
     ),
     e(
         "ph2d::physics::NavAgent",

@@ -56,7 +56,7 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 | Character | Character | — | `fechado` 10/11 ([ficha](componentes/03_character.md)) + curva do pulo no canvas `fechado` 10/11 ([ficha](componentes/04_curva_do_pulo.md) · [handoff](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)) |
 | Top-Down Player | Top-Down Player | — | `fechado` 12/11 ([ficha](componentes/05_topdown.md) · [handoff](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-12_TOPDOWN.md)) |
 | Projectile Motion | Projectile Motion | — | `fechado` 13/11 ([ficha](componentes/06_projectile.md) · [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-13_06_PROJECTILE.md)) |
-| Ray Sensor | Ray Sensor | — | `a revisar` |
+| Ray Sensor | Ray Sensor | — | `em estudo` 15/11 ([ficha](componentes/07_ray_sensor.md)) |
 | Motion Input | Motion Input | — | `a revisar` |
 | Path Follow | Path Follow | — | `a revisar` |
 

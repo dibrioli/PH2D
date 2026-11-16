@@ -253,8 +253,9 @@ fn o_painel_de_criacao_muda_as_juntas_das_tabuas_antes_de_fazer() {
     }
 }
 
-/// O carro por fazer mostra a suspensão de fábrica e o Drive; escolher «None» faz as rodas sem motor.
-/// **Mutação que sangra:** o Drive do rascunho sem chegar ao `Make`.
+/// O carro por fazer mostra a suspensão de fábrica e o Drive; escolher «None» faz as rodas sem motor, e
+/// «Applies to: Rear wheel» muda só a de trás.
+/// **Mutações que sangram:** o Drive do rascunho sem chegar ao `Make` · a edição em todas as regras.
 #[test]
 fn o_carro_por_fazer_mostra_a_suspensao_de_fabrica_e_o_drive() {
     let mut m = Mesa::draft(JointKind::Wheel, "Car");
@@ -262,11 +263,25 @@ fn o_carro_por_fazer_mostra_a_suspensao_de_fabrica_e_o_drive() {
     let fab = t.joints[0].joint(0.0);
     assert_eq!(m.tab().doc.value(Field::Stiffness), Some(fab.stiffness));
     m.click(&Hit::Drive(ph2d_app_joint_editor::doc::Drive::None));
+    // «Applies to: Rear wheel»: o número só nessa roda.
+    let rear = ph2d_app_joint_editor::doc::scope_options(t)
+        .iter()
+        .position(|o| o.label == "Rear wheel")
+        .expect("Rear wheel");
+    m.click(&Hit::Scope(rear));
+    m.click(&Hit::Field(Field::Stiffness));
+    m.escreve("77");
+    m.tecla(
+        ph2d_editor_core::screens::hero::board_keys::BoardKey::Enter,
+        None,
+    );
     m.click(&Hit::Make);
     let sid = m.tab().doc.assembly().map(|a| a.sid).expect("montagem");
     let joints = ph2d_joint_assembly::joint_assembly::joints_of(m.sim.world_mut(), sid);
     assert_eq!(joints.len(), 2);
     assert!(joints.iter().all(|(_, j)| !j.motor_enabled), "Drive None");
+    let k: Vec<f32> = joints.iter().map(|(_, j)| j.stiffness).collect();
+    assert_eq!(k, [77.0, t.joints[1].joint(0.0).stiffness], "só a de trás");
 }
 
 impl Mesa {

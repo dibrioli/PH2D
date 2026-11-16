@@ -1,6 +1,5 @@
-//! **O estado da aba** e as decisões que não pintam: que montagem está aberta, que gabarito vem a seguir,
-//! o que uma queda faria, a que juntas um número se aplica. Tudo o que muda o mundo sai como [`Edit`] e é
-//! aplicado pela família no quadro ([`crate::apply`]).
+//! **O estado da aba** e as decisões que não pintam (montagem aberta, gabarito, queda, alcance de um número).
+//! Tudo o que muda o mundo sai como [`Edit`], aplicado pela família no quadro ([`crate::apply`]).
 
 use std::collections::BTreeMap;
 
@@ -184,8 +183,7 @@ pub struct Dropping {
     pub line: String,
 }
 
-/// Um número a ser arrastado: pela alça do desenho ou pela letra do campo. `value` é o vivo, que o
-/// painel e o desenho mostram até ao Up.
+/// Um número arrastado (pela alça ou pela letra do campo); `value` é o vivo, mostrado até ao Up.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Drag {
     pub field: Field,

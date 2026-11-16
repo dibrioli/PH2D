@@ -420,3 +420,73 @@ fn planks_para_no_tecto_medido_da_fila() {
         "nem uma tábua acima do tecto"
     );
 }
+
+/// **A junta do artista debaixo da última tábua não se multiplica com as cópias**: «Planks» 2 → 5 copia a
+/// última com o que mora debaixo dela, mas a junta que lá estava é da original — no mundo ficam as 6 da
+/// ponte e UMA do artista. **Mutação que sangra:** a cópia sem tirar a junta copiada (N1).
+#[test]
+fn planks_nao_copia_a_junta_do_artista_debaixo_da_ultima_tabua() {
+    let mut m = Mesa::draft(JointKind::Pin, "Bridge");
+    m.planks("2");
+    m.click(&Hit::Make);
+    let (p1, _) = m.object("Plank 1");
+    let (p2, _) = m.object("Plank 2");
+    let w = m.sim.world_mut();
+    let sid = |w: &ph2d_ecs::World, b: u64| {
+        ph2d_ecs::stable_id_of(w, ph2d_ecs::Entity::from_bits(b)).map_or(0, |s| s.0)
+    };
+    let joint = PhysicsJoint {
+        body_a: sid(w, p2),
+        body_b: sid(w, p1),
+        ..PhysicsJoint::default()
+    };
+    w.spawn((
+        joint,
+        ph2d_ecs::Transform::default(),
+        Name::new("Artist Joint"),
+        ph2d_ecs::ChildOf(ph2d_ecs::Entity::from_bits(p2)),
+    ));
+    ph2d_ecs::assign_missing_stable_ids(w);
+    ph2d_ecs::assign_missing_sibling_order(w);
+    m.planks("5");
+    assert!(m.exists("Plank 5"));
+    assert_eq!(m.bridge_joints().len(), 6, "4 entre 5 tábuas + 2 postes");
+    let w = m.sim.world_mut();
+    let all = w.query::<&PhysicsJoint>().iter(w).count();
+    assert_eq!(all, 7, "as 6 da ponte + a do artista, nenhuma copiada");
+}
+
+/// **O passo das cópias é o da CENA**: o artista arrastou a última tábua (passo `0,82 × 0,2` em vez do
+/// `0,52` do gabarito); «Planks» 2 → 4 põe a 3.ª e a 4.ª um e dois passos da cena adiante dela.
+/// **Mutação que sangra:** sempre o passo do gabarito (N6).
+#[test]
+fn planks_copia_com_o_passo_da_cena_quando_o_artista_moveu_a_tabua() {
+    let mut m = Mesa::draft(JointKind::Pin, "Bridge");
+    m.planks("2");
+    m.click(&Hit::Make);
+    let (_, a) = m.object("Plank 1");
+    let (b2, _) = m.object("Plank 2");
+    {
+        let w = m.sim.world_mut();
+        let mut t = w
+            .get_mut::<ph2d_ecs::Transform>(ph2d_ecs::Entity::from_bits(b2))
+            .expect("pose");
+        t.translation.x += 0.3;
+        t.translation.y += 0.2;
+    }
+    let (_, b) = m.object("Plank 2");
+    let step = [b[0] - a[0], b[1] - a[1]];
+    assert!(
+        (step[0] - 0.82).abs() < 1e-3 && (step[1] - 0.2).abs() < 1e-3,
+        "{step:?}"
+    );
+    m.planks("4");
+    for (k, ahead) in [("Plank 3", 1.0), ("Plank 4", 2.0)] {
+        let (_, p) = m.object(k);
+        assert!(
+            (p[0] - b[0] - ahead * step[0]).abs() < 1e-3
+                && (p[1] - b[1] - ahead * step[1]).abs() < 1e-3,
+            "{k}: {p:?} (a última em {b:?}, passo {step:?})"
+        );
+    }
+}

@@ -43,7 +43,7 @@ impl Mesa {
     }
 
     /// Uma tecla premida pela porta do teclado da shell (`board_keys::key`).
-    fn tecla(&mut self, k: BoardKey, text: Option<&str>) {
+    pub(super) fn tecla(&mut self, k: BoardKey, text: Option<&str>) {
         let _ = board_keys::key(
             &mut self.hero,
             &mut self.ts,
@@ -57,7 +57,7 @@ impl Mesa {
     }
 
     /// Um carácter pela porta do texto (o `Commit` do IME e o caminho do texto da shell).
-    fn escreve(&mut self, s: &str) {
+    pub(super) fn escreve(&mut self, s: &str) {
         let arena = Bump::new();
         for ch in s.chars() {
             let _ = self.hero.handle_text_input(ch, &arena);

@@ -87,12 +87,16 @@ pub fn paint(ui: &mut Ui<'_>, r: Rect) {
             })
         })
         .collect();
-    let counts: Vec<u16> = t
-        .roles
-        .iter()
-        .zip(&placed)
-        .map(|(ro, &n)| shown_count(ro, n))
-        .collect();
+    // Por fazer, o desenho mostra as peças que o «Make the parts» faria (o campo «Planks»).
+    let counts: Vec<u16> = if ui.doc.assembly().is_none() {
+        ui.doc.draft_counts()
+    } else {
+        t.roles
+            .iter()
+            .zip(&placed)
+            .map(|(ro, &n)| shown_count(ro, n))
+            .collect()
+    };
     let map = StageMap::fit(t, &counts, r, w::STAGE_PAD, w::MAX_SCALE);
     ui.doc.map = Some(map);
     ui.doc.counts.clone_from(&counts);
@@ -129,7 +133,7 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
             .map(|a| a.parts_of(ri).map(|p| (p.name.clone(), p.bits)).collect())
             .unwrap_or_default();
         for n in 0..counts[i] {
-            let s = map.shape_rect(role, n);
+            let s = map.shape_rect(t, &counts, ri, n);
             let rad = match role.guide {
                 Guide::Disc { .. } => s.w * 0.5,
                 Guide::Box { .. } => m::FIELD_RADIUS,
@@ -331,7 +335,7 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
             .map_or(deg(fab.motor_target, mm), |i| i.motor_target_ui);
         let editable = row.is_some() && targets.contains(&ri);
         for n in pairs(t, ri, counts) {
-            let Some((ea, eb)) = rule_ends(t, ri, n) else {
+            let Some((ea, eb)) = rule_ends(t, counts, ri, n) else {
                 continue;
             };
             let (pa, pb) = (map.px(ea), map.px(eb));
@@ -415,7 +419,7 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
                 }
                 JointKind::Pin | JointKind::Weld => {
                     fill_circle(ui.scene, pa.0, pa.1, w::HANDLE_R * 0.7, line);
-                    let cb = t.role(rule.b).map_or(ea, |r| centre_of(r, n[1]));
+                    let cb = centre_of(t, counts, rule.b, n[1]);
                     let zero = libm::atan2f(cb[1] - ea[1], cb[0] - ea[0]);
                     let rad = t
                         .role(rule.b)

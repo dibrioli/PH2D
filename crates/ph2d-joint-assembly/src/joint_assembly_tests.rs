@@ -50,36 +50,10 @@ fn ground(sim: &mut SimWorld) {
     body(sim, "Ground", floor, [0.0, -0.5], BodyKind::Static);
 }
 
-/// As peças de fábrica do gabarito, no lugar que o desenho lhes dá. `scenery_is_world` deixa os
-/// papéis que o cenário pode fazer SEM peça.
+/// As peças de fábrica do gabarito, no lugar que o desenho lhes dá: a porta do «Make the parts»
+/// (`joint_factory::make_parts`). `scenery_is_world` deixa os papéis que o cenário pode fazer SEM peça.
 fn parts_of(sim: &mut SimWorld, t: &Template, scenery_is_world: bool) -> Parts {
-    let mut out = Parts::new();
-    for (i, role) in t.roles.iter().enumerate() {
-        let i = u16::try_from(i).expect("few roles");
-        if role.may_be_world && scenery_is_world {
-            out.push((i, None));
-            continue;
-        }
-        let (count, step) = role.many.map_or((1, [0.0, 0.0]), |m| (m.count, m.step));
-        for n in 0..count {
-            let at = [
-                role.at[0] + step[0] * f32::from(n),
-                role.at[1] + step[1] * f32::from(n),
-            ];
-            let kind = if role.fixed {
-                BodyKind::Static
-            } else {
-                BodyKind::Dynamic
-            };
-            let name = if count > 1 {
-                format!("{} {}", role.name, n + 1)
-            } else {
-                role.name.to_owned()
-            };
-            out.push((i, Some(body(sim, &name, role.guide, at, kind))));
-        }
-    }
-    out
+    crate::joint_factory::make_parts(sim, t, [0.0, 0.0], &[], scenery_is_world)
 }
 
 fn built(kind: JointKind, name: &str, scenery_is_world: bool) -> (SimWorld, Parts, Assembled) {
@@ -332,7 +306,11 @@ fn the_far_end_follows_the_last_plank_whatever_the_order() {
     assert_eq!(after.len(), 9);
     assert_eq!(pairs(true), after);
     assert!(
-        after.contains(&(2, Some("Right post".to_owned()), Some("Plank 8".to_owned()))),
+        after.contains(&(
+            2,
+            Some("Bridge Right Post".to_owned()),
+            Some("Plank 8".to_owned())
+        )),
         "{after:?}"
     );
 }

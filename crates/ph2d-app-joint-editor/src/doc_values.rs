@@ -11,8 +11,10 @@ impl JointEditorDoc {
     /// O valor de um número agora, na unidade do cartão (o da 1.ª junta do alcance).
     #[must_use]
     pub fn value(&self, f: Field) -> Option<f32> {
-        if f == Field::Wheelbase {
-            return self.wheelbase();
+        match f {
+            Field::Wheelbase => return self.wheelbase(),
+            Field::Count => return self.row_role().map(|i| f32::from(self.draft_counts()[i])),
+            _ => {}
         }
         let info = self.targets().first()?.info.clone()?;
         Some(match f {
@@ -27,8 +29,28 @@ impl JointEditorDoc {
             Field::MaxLength => info.max_length,
             Field::BreakForce => info.break_force,
             Field::BreakTorque => info.break_torque,
-            Field::Wheelbase => return None,
+            Field::Wheelbase | Field::Count => return None,
         })
+    }
+
+    /// O papel de várias peças do gabarito escolhido (as tábuas, os elos), se há um.
+    #[must_use]
+    pub fn row_role(&self) -> Option<usize> {
+        self.template().roles.iter().position(|r| r.many.is_some())
+    }
+
+    /// Quantas peças cada papel leva no «Make the parts»: o número do campo no papel de várias.
+    #[must_use]
+    pub fn draft_counts(&self) -> Vec<u16> {
+        let t = self.template();
+        let counts: Vec<u16> = t
+            .roles
+            .iter()
+            .map(|r| if r.many.is_some() { self.count } else { 0 })
+            .collect();
+        (0..t.roles.len())
+            .map(|i| ph2d_joint_assembly::joint_factory::count_of(&t.roles[i], &counts, i))
+            .collect()
     }
 
     /// O valor vivo de `f` enquanto se arrasta (pela alça ou pela letra): o que o painel e o desenho mostram.
@@ -62,6 +84,7 @@ impl JointEditorDoc {
             Field::RestLength | Field::Wheelbase => (CM, (0.0, BIG / 10.0)),
             Field::MaxLength => (CM, (CM / 10.0, BIG / 10.0)),
             Field::BreakForce | Field::BreakTorque => (1.0, (0.0, BIG)),
+            Field::Count => (1.0, (1.0, f64::from(u16::MAX))),
         }
     }
 
@@ -98,13 +121,20 @@ impl JointEditorDoc {
             Field::MaxLength => JointFieldEdit::MaxLength(v),
             Field::BreakForce => JointFieldEdit::BreakForce(v),
             Field::BreakTorque => JointFieldEdit::BreakTorque(v),
-            Field::Wheelbase => return None,
+            Field::Wheelbase | Field::Count => return None,
         })
     }
 
     /// Escreve `v` no número `f` das juntas do alcance (um passo de desfazer).
     pub fn commit(&mut self, f: Field, v: f32) {
         if !v.is_finite() {
+            return;
+        }
+        if f == Field::Count {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            // preso a 1..=u16::MAX
+            let n = v.round().clamp(1.0, f32::from(u16::MAX)) as u16; // CLAMP-OK: o tipo do contador
+            self.count = n;
             return;
         }
         if f == Field::Wheelbase {

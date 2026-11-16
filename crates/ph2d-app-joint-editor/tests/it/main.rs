@@ -3,6 +3,7 @@
 //! queda entre painéis (`surface_input::drop_hover` / `drop`, a mesma do arrasto da Hierarchy) e o clique.
 
 mod campos;
+mod fazer;
 
 use ph2d_a11y::NodeId;
 use ph2d_app_joint_editor::{Hit, JointEditorTab, frame, install, smoke};
@@ -29,6 +30,7 @@ struct Mesa {
     hero: HeroScreen,
     ts: TextSystem,
     area: Rect,
+    toasts: ph2d_editor_core::ToastQueue,
 }
 
 impl Mesa {
@@ -39,6 +41,7 @@ impl Mesa {
             hero: HeroScreen::new(NodeId(1)),
             ts: TextSystem::without_system_fonts(),
             area: AREA,
+            toasts: ph2d_editor_core::ToastQueue::default(),
         };
         smoke::spawn_kart(&mut m.sim);
         install(&mut m.hero);
@@ -48,7 +51,7 @@ impl Mesa {
     }
 
     fn frame(&mut self) {
-        frame(&mut self.sim, &mut self.hero);
+        frame(&mut self.sim, &mut self.hero, &mut self.toasts);
         self.hero.documents.follow_surfaces();
         let mut scene = VectorScene::new();
         if let Some((f, id)) = self.hero.documents.active_surface_mut() {

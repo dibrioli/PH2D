@@ -146,6 +146,15 @@ impl JointEditorDoc {
             Hit::Scope(i) => self.set_scope(i),
             Hit::Flag(f) => self.toggle(f),
             Hit::Drive(d) => self.set_drive(d),
+            Hit::Make => {
+                let (template, counts, at) =
+                    (self.template().id.0, self.draft_counts(), self.view_centre);
+                self.pending.push(Edit::Make {
+                    template,
+                    counts,
+                    at,
+                });
+            }
             Hit::Inspect => {
                 if let Some(bits) = self.targets().first().map(|j| j.bits) {
                     self.pending.push(Edit::Select { bits });

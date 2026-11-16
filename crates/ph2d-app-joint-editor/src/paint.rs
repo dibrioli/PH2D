@@ -195,7 +195,7 @@ pub fn thumbnail(ui: &mut Ui<'_>, t: &ph2d_joint_templates::Template, r: Rect) {
     let c = ui.c(ColorToken::Text2);
     for (k, role) in t.roles.iter().enumerate() {
         for n in 0..counts[k] {
-            let s = map.shape_rect(role, n);
+            let s = map.shape_rect(t, &counts, k as u16, n);
             let rad = match role.guide {
                 Guide::Disc { .. } => s.w * 0.5,
                 Guide::Box { .. } => m::SEG_RADIUS,

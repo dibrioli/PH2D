@@ -42,7 +42,11 @@ pub struct Assembled {
 
 /// Uma montagem VAZIA do gabarito: um objeto real, nomeado («Car 1») e na Hierarchy.
 pub fn new_assembly(sim: &mut SimWorld, template: &Template) -> Entity {
-    let name = ph2d_unique_name::unique_name(sim, &format!("{} 1", template.name));
+    // «Car 1», «Car 2»…: o número da montagem conta, nunca «Car 1 (1)».
+    let name = (1_u32..)
+        .map(|k| format!("{} {k}", template.name))
+        .find(|n| ph2d_unique_name::unique_name(sim, n) == *n)
+        .unwrap_or_default();
     let e = sim
         .world_mut()
         .spawn((

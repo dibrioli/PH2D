@@ -26,7 +26,7 @@ pub use surface::{CMD_OPEN, JointEditorTab, TAB_ID};
 pub use widgets::MOTOR_PREVIEW_S;
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::{HeroScreen, Toast, ToastQueue};
 
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "joint-editor",
@@ -47,10 +47,12 @@ pub fn is_front(hero: &mut HeroScreen) -> bool {
 }
 
 /// **O quadro da família**: abre a aba pedida (o botão do Inspector), aplica os pedidos dela no mundo e
-/// relê as montagens.
-pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
+/// relê as montagens. O «Make the parts» anuncia-se em `toasts`.
+pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen, toasts: &mut ToastQueue) {
     let request = hero.store.take_joint_editor_request();
+    let view = hero.grid.view.map(|v| v.camera_center);
     let mut select;
+    let mut picked = Vec::new();
     'tab: {
         let Some(tab) = hero.documents.surfaces_mut().find_mut::<JointEditorTab>() else {
             return;
@@ -62,16 +64,23 @@ pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
         if !tab.is_open() {
             break 'tab;
         }
+        if let Some(c) = view {
+            tab.doc.view_centre = c;
+        }
         let mut made = None;
         for e in tab.doc.take_pending() {
             let o = apply(sim, e);
             // A montagem nova abre-se SEMPRE (com ou sem frase): o gesto seguinte cai nela.
             if let Some(sid) = o.made {
                 made = Some((sid, o.line.clone().unwrap_or_default()));
-            } else if let Some(l) = o.line {
+            } else if let Some(l) = o.line.clone() {
                 tab.doc.note = Some(l);
             }
             select = o.select.or(select);
+            if !o.picked.is_empty() {
+                toasts.push(Toast::success(o.line.clone().unwrap_or_default()));
+                picked = o.picked;
+            }
         }
         tab.doc.set_snapshot(model::read(sim));
         if let Some((sid, line)) = made {
@@ -81,7 +90,10 @@ pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen) {
             tab.doc.open_on(sid);
         }
     }
-    if let Some(bits) = select {
+    if let Some((&first, rest)) = picked.split_first() {
+        hero.gizmo.selection = Some(first);
+        hero.gizmo.extra_selection = rest.to_vec();
+    } else if let Some(bits) = select {
         hero.gizmo.selection = Some(bits);
         hero.gizmo.extra_selection.clear();
         if smoke::level() == Some(10) {

@@ -5,18 +5,12 @@
 //! a cair no meio), Slider · Elevator e Wheel · Car. Cada montagem é um objeto na Hierarchy («Door 1»,
 //! «Bridge 1», «Elevator 1», «Car 1»). PAUSADA: o dono dá Play.
 
-use ph2d_core::Vec2;
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, World};
-use ph2d_joint_templates::{Guide, JointKind, Template, by_name};
-use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, InitialVelocity, RigidBody, nasce_com_forma,
-};
-use ph2d_render::{Sprite, WHITE_TILE_KEY};
+use ph2d_ecs::{Name, SimWorld, World};
+use ph2d_joint_assembly::joint_factory::{block, make_parts};
+use ph2d_joint_templates::{Guide, JointKind, by_name};
+use ph2d_physics_ecs::{BodyKind, Collider, InitialVelocity};
 
 const GROUND: [f32; 4] = [0.40, 0.42, 0.48, 1.0];
-const SCENERY: [f32; 4] = [0.62, 0.62, 0.68, 1.0];
-const PART: [f32; 4] = [0.95, 0.62, 0.25, 1.0];
-const TYRE: [f32; 4] = [0.22, 0.22, 0.26, 1.0];
 const LOAD: [f32; 4] = [0.45, 0.80, 0.95, 1.0];
 
 /// As quatro máquinas: o gabarito, onde fica, e se as peças de cenário ficam por conta do mundo.
@@ -33,88 +27,15 @@ const CAMERA_HEIGHT: f32 = 16.0;
 /// O muro onde o carro para, ainda à vista com o painel da direita aberto (foto de 12/11).
 pub const END_WALL_X: f32 = 21.0;
 
-fn block(
-    world: &mut World,
-    name: &str,
-    shape: ColliderShape,
-    size: [f32; 2],
-    rgba: [f32; 4],
-    at: [f32; 2],
-    kind: BodyKind,
-) -> Entity {
-    let e = world
-        .spawn((
-            Transform::from_translation(Vec2::new(at[0], at[1])),
-            Sprite::atlas(WHITE_TILE_KEY, size, rgba),
-            Name::new(name.to_owned()),
-            RigidBody { kind },
-        ))
-        .id();
-    // ADR-0199: a forma é a filha «Collision Shape» na Hierarchy, nunca um componente do corpo.
-    let f = nasce_com_forma(world, e, shape);
-    if let Some(mut c) = world.get_mut::<Collider>(f) {
-        c.friction = 1.0;
-    }
-    e
-}
-
-/// A forma de colisão (a filha) de um corpo da cena.
-fn shape_of(world: &mut World, body: Entity) -> Option<Entity> {
-    ph2d_physics_ecs::forma_para_editar(world, body)
-}
-
-fn wall(world: &mut World, name: &str, half: [f32; 2], at: [f32; 2]) {
-    let shape = ColliderShape::Cuboid {
-        half_x: half[0],
-        half_y: half[1],
-    };
-    let size = [half[0] * 2.0, half[1] * 2.0];
-    block(world, name, shape, size, GROUND, at, BodyKind::Static);
-}
-
-/// As peças de fábrica do gabarito em `x0`. Devolve `(papel, peça)`, `None` = o cenário.
-fn parts(
-    world: &mut World,
-    t: &Template,
-    x0: f32,
-    scenery_is_world: bool,
-) -> Vec<(u16, Option<Entity>)> {
-    let mut out = Vec::new();
-    for (i, role) in t.roles.iter().enumerate() {
-        let i = u16::try_from(i).unwrap_or(u16::MAX);
-        if role.may_be_world && scenery_is_world {
-            out.push((i, None));
-            continue;
-        }
-        let (count, step) = role.many.map_or((1, [0.0, 0.0]), |m| (m.count, m.step));
-        for n in 0..count {
-            let k = f32::from(n);
-            let at = [x0 + role.at[0] + step[0] * k, role.at[1] + step[1] * k];
-            let name = t.part_name(i, n);
-            let (shape, size, rgba) = match role.guide {
-                Guide::Box { half } => (
-                    ColliderShape::Cuboid {
-                        half_x: half[0],
-                        half_y: half[1],
-                    },
-                    [half[0] * 2.0, half[1] * 2.0],
-                    if role.fixed { SCENERY } else { PART },
-                ),
-                Guide::Disc { radius } => (
-                    ColliderShape::Ball { radius },
-                    [radius * 2.0, radius * 2.0],
-                    TYRE,
-                ),
-            };
-            let kind = if role.fixed {
-                BodyKind::Static
-            } else {
-                BodyKind::Dynamic
-            };
-            out.push((i, Some(block(world, &name, shape, size, rgba, at, kind))));
-        }
-    }
-    out
+fn wall(sim: &mut SimWorld, name: &str, half: [f32; 2], at: [f32; 2]) {
+    block(
+        sim,
+        name,
+        Guide::Box { half },
+        Some(GROUND),
+        at,
+        BodyKind::Static,
+    );
 }
 
 /// **Cena 123.** As quatro máquinas, o chão e um muro no fim da pista do carro. PAUSADA.
@@ -139,16 +60,16 @@ pub fn physics_smoke_joint_templates(ctx: &mut crate::SceneCtx<'_>) {
 
 /// A cena sobre um `World` cru — a mesma que o gate mede.
 pub fn build(world: &mut World) {
-    wall(world, "Ground", [11.0, 0.5], [10.5, -0.5]);
-    wall(world, "End Wall", [0.25, 1.5], [END_WALL_X, 1.5]);
-    // A montagem pede o `SimWorld` (nomes únicos): o mundo da cena entra e sai dele inteiro.
+    // As peças e a montagem pedem o `SimWorld` (nomes únicos): o mundo da cena entra e sai dele inteiro.
     let mut sim = SimWorld::new();
     std::mem::swap(sim.world_mut(), world);
+    wall(&mut sim, "Ground", [11.0, 0.5], [10.5, -0.5]);
+    wall(&mut sim, "End Wall", [0.25, 1.5], [END_WALL_X, 1.5]);
     for (kind, name, x0, scenery_is_world) in MACHINES {
         let Some(t) = by_name(kind, name) else {
             continue;
         };
-        let p = parts(sim.world_mut(), t, x0, scenery_is_world);
+        let p = make_parts(&mut sim, t, [x0, 0.0], &[], scenery_is_world);
         // Um gabarito que recusa as próprias peças é um defeito que o gate acusa; a cena segue.
         let _ = ph2d_joint_assembly::joint_assembly::assemble(&mut sim, t, &p);
         if kind == JointKind::Pin
@@ -161,22 +82,18 @@ pub fn build(world: &mut World) {
             });
         }
     }
-    let crate_shape = ColliderShape::Cuboid {
-        half_x: 0.25,
-        half_y: 0.25,
-    };
-    let w = sim.world_mut();
+    let half = [0.25, 0.25];
     let c = block(
-        w,
+        &mut sim,
         "Crate",
-        crate_shape,
-        [0.5, 0.5],
-        LOAD,
+        Guide::Box { half },
+        Some(LOAD),
         [7.0, 3.0],
         BodyKind::Dynamic,
     );
+    let w = sim.world_mut();
     // 0,25 m² × 40 = 10 kg: o peso com que o gate mede a ponte.
-    if let Some(f) = shape_of(w, c)
+    if let Some(f) = ph2d_physics_ecs::forma_para_editar(w, c)
         && let Some(mut col) = w.get_mut::<Collider>(f)
     {
         col.density = 40.0;

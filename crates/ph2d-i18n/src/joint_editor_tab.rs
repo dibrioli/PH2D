@@ -24,6 +24,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.scope.all" => "All {n}",
         "joint_editor.scene" => "The scene",
         "joint_editor.use_scene" => "Pin to the scene",
+        "joint_editor.make" => "Make the parts",
+        "joint_editor.made" => "Made {n} {n?object|objects}: {names}.",
+        "joint_editor.glyph.count" => "N",
+        "joint_editor.label.planks" => "Planks",
+        "joint_editor.label.links" => "Links",
+        "joint_editor.label.parts" => "Parts",
         "joint_editor.hint" => {
             "Drag objects from the Hierarchy into the dashed shapes. Each one becomes that part."
         }

@@ -4,7 +4,7 @@
 //! da maquete B1) · `6` o «Car 1» com o painel alargado pela divisória · `7` o «Car 1», `8` a «Door 1» e `9` a
 //! «Bridge 1» com o painel no mínimo (uma coluna de campos) · `10` e `11` ficam na aba Scene ([`scene_tab`]) ·
 //! `12` a lista Template do Pin aberta (a grelha de três colunas, «Custom» por último) · `13` o «Custom» do Pin por
-//! fazer (duas peças quaisquer). É a cena 123 que monta o mundo; aqui só se abre a aba,
+//! fazer (duas peças quaisquer) · `14` a «Bridge» por fazer (o campo «Planks» e «Make the parts»). É a cena 123 que monta o mundo; aqui só se abre a aba,
 //! uma vez, no primeiro quadro em que o «Car 1» existe.
 
 use ph2d_core::Vec2;
@@ -16,7 +16,7 @@ use crate::surface::JointEditorTab;
 
 pub const ENV: &str = "PH2D_JOINT_EDITOR_SMOKE";
 /// O maior nível que [`arm`] responde (conta-se no `match` abaixo).
-pub const MAX_LEVEL: u32 = 13;
+pub const MAX_LEVEL: u32 = 14;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: ENV,
@@ -133,7 +133,12 @@ pub fn arm(sim: &mut SimWorld, tab: &mut JointEditorTab) -> Option<u64> {
         if n == 5 || n == 12 {
             tab.doc.menu = Some(crate::doc::Menu::Template);
         }
-        if let (13, Some(t)) = (n, ph2d_joint_templates::by_name(JointKind::Pin, "Custom")) {
+        let pick = match n {
+            13 => "Custom",
+            14 => "Bridge",
+            _ => "",
+        };
+        if let Some(t) = ph2d_joint_templates::by_name(JointKind::Pin, pick) {
             tab.doc.choose_template(t.id.0);
         }
     } else {

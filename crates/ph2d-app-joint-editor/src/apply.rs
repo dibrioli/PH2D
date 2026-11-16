@@ -19,6 +19,8 @@ pub struct Outcome {
     pub line: Option<String>,
     /// O objeto a selecionar na cena (`bits`).
     pub select: Option<u64>,
+    /// Os objetos feitos agora (`bits`), todos selecionados; o primeiro é o principal.
+    pub picked: Vec<u64>,
 }
 
 fn sid_of(sim: &SimWorld, e: Entity) -> u64 {
@@ -135,6 +137,11 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             );
         }
         Edit::Select { bits } => out.select = Some(bits),
+        Edit::Make {
+            template,
+            counts,
+            at,
+        } => make(sim, template, &counts, at, &mut out),
         Edit::Wheelbase { assembly, metres } => {
             if let Some(e) = assembly_entity(sim, assembly) {
                 set_wheelbase(sim, e, metres);
@@ -142,6 +149,47 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
         }
     }
     out
+}
+
+/// **«Make the parts»** (plano §W4): as peças de fábrica com o meio delas em `at`, montadas numa montagem
+/// nova; reais, nomeadas, todas selecionadas e anunciadas. Um passo de desfazer (o mesmo quadro).
+fn make(sim: &mut SimWorld, template: u16, counts: &[u16], at: [f32; 2], out: &mut Outcome) {
+    use ph2d_joint_assembly::joint_factory::{make_parts, middle};
+    let Some(t) = ph2d_joint_templates::by_id(template) else {
+        return;
+    };
+    let mid = middle(t, counts);
+    let parts = make_parts(sim, t, [at[0] - mid[0], at[1] - mid[1]], counts, false);
+    let bodies: Vec<Entity> = parts.iter().filter_map(|p| p.1).collect();
+    let name = |e: Entity| {
+        sim.world()
+            .get::<ph2d_ecs::Name>(e)
+            .map_or_else(String::new, |n| n.as_str().to_owned())
+    };
+    // Uma fila diz-se pela primeira e a última («Plank 1 … Plank 12»): o aviso cabe em duas linhas.
+    let mut names: Vec<String> = Vec::new();
+    for (i, _) in t.roles.iter().enumerate() {
+        let row: Vec<Entity> = parts
+            .iter()
+            .filter(|p| usize::from(p.0) == i)
+            .filter_map(|p| p.1)
+            .collect();
+        match row[..] {
+            [] => {}
+            [one] => names.push(name(one)),
+            [first, .., last] => names.push(format!("{} \u{2026} {}", name(first), name(last))),
+        }
+    }
+    // Um gabarito que recusa as próprias peças é um defeito de catálogo (o gate `every_template_…`):
+    // as peças ficam, soltas e anunciadas.
+    if let Ok(a) = joint_assembly::assemble(sim, t, &parts) {
+        out.made = Some(sid_of(sim, a.assembly));
+    }
+    out.line = Some(tr_with(
+        "joint_editor.made",
+        &[("n", &bodies.len()), ("names", &names.join(", "))],
+    ));
+    out.picked = bodies.iter().map(|e| e.to_bits()).collect();
 }
 
 /// O funil do cartão Joint, escrito no lugar (o quadro da aba tem o mundo na mão).

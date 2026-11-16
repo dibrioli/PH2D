@@ -23,12 +23,11 @@ pub fn shown_count(role: &Role, placed: usize) -> u16 {
     factory.max(u16::try_from(placed).unwrap_or(u16::MAX))
 }
 
-/// O centro da `n`-ésima forma de um papel, metros.
+/// O centro da `n`-ésima forma do papel `i`, metros: a lei das peças de fábrica (`joint_factory::centre`),
+/// com `counts` formas por papel.
 #[must_use]
-pub fn centre_of(role: &Role, n: u16) -> [f32; 2] {
-    let step = role.many.map_or([0.0, 0.0], |m| m.step);
-    let k = f32::from(n);
-    [role.at[0] + step[0] * k, role.at[1] + step[1] * k]
+pub fn centre_of(t: &Template, counts: &[u16], i: u16, n: u16) -> [f32; 2] {
+    ph2d_joint_assembly::joint_factory::centre(t, counts, usize::from(i), n)
 }
 
 impl StageMap {
@@ -40,7 +39,7 @@ impl StageMap {
             let n = counts.get(i).copied().unwrap_or(1).max(1);
             let h = role.guide.half();
             for k in 0..n {
-                let c = centre_of(role, k);
+                let c = ph2d_joint_assembly::joint_factory::centre(t, counts, i, k);
                 lo = [lo[0].min(c[0] - h[0]), lo[1].min(c[1] - h[1])];
                 hi = [hi[0].max(c[0] + h[0]), hi[1].max(c[1] + h[1])];
             }
@@ -80,23 +79,24 @@ impl StageMap {
         ]
     }
 
-    /// A caixa no ecrã da forma `n` do papel.
+    /// A caixa no ecrã da forma `n` do papel `i`.
     #[must_use]
-    pub fn shape_rect(&self, role: &Role, n: u16) -> Rect {
-        let c = self.px(centre_of(role, n));
-        let h = role.guide.half();
+    pub fn shape_rect(&self, t: &Template, counts: &[u16], i: u16, n: u16) -> Rect {
+        let c = self.px(centre_of(t, counts, i, n));
+        let h = t.role(i).map_or([0.0, 0.0], |r| r.guide.half());
         let (hw, hh) = (h[0] * self.scale, h[1] * self.scale);
         Rect::new(c.0 - hw, c.1 - hh, hw * 2.0, hh * 2.0)
     }
 }
 
 /// O ponto `s` na forma-guia de quem ele cita, metros.
-fn spot_at(t: &Template, a: u16, b: u16, s: Spot, n: [u16; 2]) -> Option<[f32; 2]> {
-    let (role, k) = match s.on {
-        Side::A => (t.role(a)?, n[0]),
-        Side::B => (t.role(b)?, n[1]),
+fn spot_at(t: &Template, counts: &[u16], a: u16, b: u16, s: Spot, n: [u16; 2]) -> Option<[f32; 2]> {
+    let (i, k) = match s.on {
+        Side::A => (a, n[0]),
+        Side::B => (b, n[1]),
     };
-    let c = centre_of(role, k);
+    let role = t.role(i)?;
+    let c = centre_of(t, counts, i, k);
     let h = role.guide.half();
     Some([c[0] + s.u * h[0], c[1] + s.v * h[1]])
 }
@@ -104,17 +104,25 @@ fn spot_at(t: &Template, a: u16, b: u16, s: Spot, n: [u16; 2]) -> Option<[f32; 2
 /// As duas pontas de uma junta da regra `rule` entre as formas `n[0]` (de A) e `n[1]` (de B), metros.
 /// Num ponto só (pino, roda, trilho), as duas são iguais.
 #[must_use]
-pub fn rule_ends(t: &Template, rule: u16, n: [u16; 2]) -> Option<([f32; 2], [f32; 2])> {
+pub fn rule_ends(
+    t: &Template,
+    counts: &[u16],
+    rule: u16,
+    n: [u16; 2],
+) -> Option<([f32; 2], [f32; 2])> {
     let r = t.rule(rule)?;
+    let spot = |s| spot_at(t, counts, r.a, r.b, s, n);
     match r.anchor {
         Anchor::At(s) => {
-            let p = spot_at(t, r.a, r.b, s, n)?;
+            let p = spot(s)?;
             Some((p, p))
         }
-        Anchor::Ends(sa, sb) => Some((spot_at(t, r.a, r.b, sa, n)?, spot_at(t, r.a, r.b, sb, n)?)),
+        Anchor::Ends(sa, sb) => Some((spot(sa)?, spot(sb)?)),
         Anchor::Seam => {
-            let (ra, rb) = (t.role(r.a)?, t.role(r.b)?);
-            let (ca, cb) = (centre_of(ra, n[0]), centre_of(rb, n[1]));
+            let (ca, cb) = (
+                centre_of(t, counts, r.a, n[0]),
+                centre_of(t, counts, r.b, n[1]),
+            );
             let p = [(ca[0] + cb[0]) * 0.5, (ca[1] + cb[1]) * 0.5];
             Some((p, p))
         }
@@ -123,8 +131,19 @@ pub fn rule_ends(t: &Template, rule: u16, n: [u16; 2]) -> Option<([f32; 2], [f32
 
 /// O ponto `(x, y)` está dentro da forma-guia `role`/`n` (o disco é redondo de verdade)?
 #[must_use]
-pub fn inside(map: &StageMap, role: &Role, n: u16, x: f32, y: f32) -> bool {
-    let r = map.shape_rect(role, n);
+pub fn inside(
+    map: &StageMap,
+    t: &Template,
+    counts: &[u16],
+    i: u16,
+    n: u16,
+    x: f32,
+    y: f32,
+) -> bool {
+    let Some(role) = t.role(i) else {
+        return false;
+    };
+    let r = map.shape_rect(t, counts, i, n);
     match role.guide {
         Guide::Box { .. } => r.contains(x, y),
         Guide::Disc { .. } => {
@@ -148,10 +167,11 @@ pub fn role_at(map: &StageMap, t: &Template, counts: &[u16], x: f32, y: f32) -> 
                 .enumerate()
                 .filter(|(_, r)| matches!(r.guide, Guide::Box { .. })),
         );
-    for (i, role) in order {
+    for (i, _) in order {
         let n = counts.get(i).copied().unwrap_or(1).max(1);
-        if (0..n).any(|k| inside(map, role, k, x, y)) {
-            return u16::try_from(i).ok();
+        let ri = u16::try_from(i).ok()?;
+        if (0..n).any(|k| inside(map, t, counts, ri, k, x, y)) {
+            return Some(ri);
         }
     }
     None
@@ -171,8 +191,8 @@ mod tests {
     fn o_carro_cabe_no_palco_e_volta() {
         let r = Rect::new(100.0, 50.0, 600.0, 300.0);
         let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0, f32::MAX);
-        for (i, role) in car().roles.iter().enumerate() {
-            let s = m.shape_rect(role, 0);
+        for i in 0..car().roles.len() {
+            let s = m.shape_rect(car(), &[1, 1, 1], i as u16, 0);
             assert!(
                 s.x >= r.x && s.x + s.w <= r.x + r.w + 0.01,
                 "papel {i} sai na horizontal"
@@ -194,13 +214,13 @@ mod tests {
     fn a_roda_ganha_ao_corpo_sob_o_cursor() {
         let r = Rect::new(0.0, 0.0, 800.0, 400.0);
         let m = StageMap::fit(car(), &[1, 1, 1], r, 20.0, f32::MAX);
-        for (i, role) in car().roles.iter().enumerate() {
-            let c = m.px(centre_of(role, 0));
+        for i in 0..car().roles.len() {
+            let c = m.px(centre_of(car(), &[1, 1, 1], i as u16, 0));
             assert_eq!(role_at(&m, car(), &[1, 1, 1], c.0, c.1), Some(i as u16));
         }
         // A borda de cima da roda da frente está DENTRO do corpo e da roda: ganha a roda.
         let front = &car().roles[2];
-        let c = m.px(centre_of(front, 0));
+        let c = m.px(centre_of(car(), &[1, 1, 1], 2, 0));
         let top = (c.0, c.1 - front.guide.half()[1] * m.scale * 0.9);
         assert_eq!(role_at(&m, car(), &[1, 1, 1], top.0, top.1), Some(2));
         assert_eq!(role_at(&m, car(), &[1, 1, 1], r.x + 1.0, r.y + 1.0), None);
@@ -221,7 +241,7 @@ mod tests {
             f32::MAX,
         );
         for k in 0..6 {
-            let c = m.px(centre_of(&chain.roles[1], k));
+            let c = m.px(centre_of(chain, &counts, 1, k));
             assert_eq!(role_at(&m, chain, &counts, c.0, c.1), Some(1), "elo {k}");
         }
     }
@@ -229,7 +249,7 @@ mod tests {
     /// O eixo da roda do carro nasce no centro da roda (`at_b(0, 0)`).
     #[test]
     fn a_junta_da_roda_nasce_no_centro_dela() {
-        let (a, b) = rule_ends(car(), 1, [0, 0]).expect("a regra da frente");
+        let (a, b) = rule_ends(car(), &[1, 1, 1], 1, [0, 0]).expect("a regra da frente");
         assert_eq!(a, b);
         assert_eq!(a, car().roles[2].at);
     }

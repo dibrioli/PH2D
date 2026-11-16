@@ -45,6 +45,8 @@ pub enum Field {
     BreakTorque,
     /// A distância entre os eixos das duas rodas, metros (move a da frente).
     Wheelbase,
+    /// Quantas peças o papel de várias (as tábuas, os elos) leva no «Make the parts».
+    Count,
 }
 
 /// Uma caixa de marcar do painel.
@@ -110,6 +112,8 @@ pub enum Hit {
     Handle(Handle),
     /// «Open in Inspector»: seleciona a junta.
     Inspect,
+    /// «Make the parts»: as peças de fábrica do gabarito, montadas, no meio da vista.
+    Make,
     /// O título de um cartão do painel (a chave dele): recolhe ou abre.
     Fold(&'static str),
     /// A divisória à esquerda do painel: arrastar muda a largura.
@@ -154,6 +158,12 @@ pub enum Edit {
     Select { bits: u64 },
     /// Muda o entre-eixos para `metres`.
     Wheelbase { assembly: u64, metres: f32 },
+    /// Faz as peças de fábrica do gabarito (`counts` por papel) com o meio delas em `at` (mundo) e monta-as.
+    Make {
+        template: u16,
+        counts: Vec<u16>,
+        at: [f32; 2],
+    },
 }
 
 /// Uma opção do «a que juntas isto se aplica»: «Both wheels», «Rear wheel», «Front wheel».
@@ -203,6 +213,10 @@ pub struct JointEditorDoc {
     pub(crate) dropping: Option<Dropping>,
     pub(crate) typing: Option<(Field, String)>,
     pub(crate) drag: Option<Drag>,
+    /// Quantas peças leva o papel de várias no «Make the parts» (`0` = as da fábrica).
+    pub(crate) count: u16,
+    /// O meio da vista da cena (mundo, metros), onde o «Make the parts» põe as peças.
+    pub view_centre: [f32; 2],
     /// O texto que cada caixa pintou neste quadro (o valor acessível do campo).
     pub(crate) shown: Vec<(Field, String)>,
     /// As teclas do último evento do rato (Shift ×10 e Alt ×0,1 no arrasto da letra).
@@ -246,6 +260,8 @@ impl Default for JointEditorDoc {
             dropping: None,
             typing: None,
             drag: None,
+            count: 0,
+            view_centre: [0.0, 0.0],
             shown: Vec::new(),
             mods: ph2d_host::Modifiers::default(),
             pending: Vec::new(),

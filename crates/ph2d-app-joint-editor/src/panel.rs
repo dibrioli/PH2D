@@ -31,6 +31,8 @@ enum Item {
     /// O resumo da montagem (à esquerda de «Inspector»).
     Line(String),
     Inspect,
+    /// «Make the parts», a toda a largura.
+    Make,
     /// Uma escolha segmentada a toda a largura, com o rótulo por cima.
     Scope(&'static str, Vec<(String, Hit, bool)>),
 }
@@ -126,6 +128,16 @@ fn cards(ui: &Ui<'_>) -> Vec<Group> {
             "joint_editor.draft_title",
             &[("template", &t)],
         )));
+        if let Some(i) = ui.doc.row_role() {
+            let name = count_label(ui.doc.template().roles[i].name);
+            head.push(Item::Num(
+                Field::Count,
+                Glyph::Text("joint_editor.glyph.count"),
+                name,
+                "",
+            ));
+        }
+        head.push(Item::Make);
         head.push(Item::Note("joint_editor.empty_panel"));
         return vec![Group("joint_editor.group.assembly", head)];
     };
@@ -382,6 +394,15 @@ fn drive_segs(ui: &Ui<'_>) -> Vec<(String, Hit, bool)> {
         .collect()
 }
 
+/// O rótulo do campo de quantas peças, pelo papel de várias («Planks», «Links»).
+fn count_label(role: &str) -> &'static str {
+    match role {
+        "Plank" => "joint_editor.label.planks",
+        "Link" => "joint_editor.label.links",
+        _ => "joint_editor.label.parts",
+    }
+}
+
 /// O rótulo com a unidade, como o do Inspector: «Min travel (m)».
 fn full_name(name: &str, unit: &str) -> String {
     if unit.is_empty() {
@@ -420,6 +441,7 @@ fn item(ui: &mut Ui<'_>, b: Rect, it: &Item, at: &mut [Rect; 2]) {
         Item::Note(k) => note(ui, tr(k), b),
         Item::Line(s) if wrap(ui, s, b.w).len() > 1 && b.h > m::FIELD_H => note(ui, s, b),
         Item::Line(s) => ui.put(s, b, m::VALUE_PX, ColorToken::Text2),
+        Item::Make => ui.button(b, tr("joint_editor.make"), Hit::Make, true),
         Item::Inspect => {
             let a11y = tr("joint_editor.open_inspector");
             ui.button(b, tr("joint_editor.open_short"), Hit::Inspect, true);

@@ -214,3 +214,16 @@ fn o_nome_inicial_vem_do_grafo() {
         "o que já não é de fábrica não se toca"
     );
 }
+
+/// ⭐ A semente corre pela PORTA de anexar (a tabela própria da família), sem tabela injectada.
+#[test]
+fn anexar_pela_porta_da_o_nome_do_grafo() {
+    let mut sim = SimWorld::default();
+    sim.world_mut()
+        .insert_resource(ph2d_ecs::MotionGraphNames(vec!["wind".into()]));
+    let bits = sim.world_mut().spawn_empty().id().to_bits();
+    let reg = crate::component_registry_for_tests::registo();
+    crate::component_attach::attach_by_name(&mut sim, &reg, &[], bits, "ph2d::ecs::MotionInput")
+        .expect("anexa");
+    assert_eq!(comp(&sim, bits).name, "wind");
+}

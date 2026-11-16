@@ -219,6 +219,13 @@ fn sem_health_o_aviso_tem_a_saida() {
         rect_de(&rects, ids::INSP_MI_ADD_HEALTH).is_none(),
         "com Health não há botão"
     );
+    let mut outra = info(SOURCE_HEALTH);
+    outra.name = "wind".into();
+    let (_h, _st, rects) = pinta(outra);
+    assert!(
+        rect_de(&rects, ids::INSP_MI_ADD_HEALTH).is_none(),
+        "outra queixa (nome que o grafo não lê) não tem a saída da Health"
+    );
     let mut sem = info(SOURCE_HEALTH);
     sem.tem_vida = false;
     let (mut h, mut st, rects) = pinta(sem);

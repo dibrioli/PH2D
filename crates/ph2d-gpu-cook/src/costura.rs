@@ -18,7 +18,8 @@ impl GpuCook {
         &mut self,
         gpu: &GpuContext,
         boundary_streams: &[(NodeId, &Stream)],
-    ) -> BTreeMap<NodeId, GpuStream> {
+        ports: &[((NodeId, usize), Stream)],
+    ) -> BTreeMap<(NodeId, usize), GpuStream> {
         // The CPU→GPU crossings: one upload per boundary node, before anything
         // is encoded (a node consumed twice uploads once).
         //
@@ -30,11 +31,15 @@ impl GpuCook {
         // ⚠️ **Reutilizar é seguro porque nenhum estágio escreve no que recebe** — cada kernel
         // escreve buffers FRESCOS (o ping-pong implícito deste módulo), e há gate a prová-lo com
         // dois quadros seguidos sobre a mesma costura.
-        let mut uploaded: BTreeMap<NodeId, GpuStream> = BTreeMap::new();
-        for (node, s) in boundary_streams {
+        let mut uploaded: BTreeMap<(NodeId, usize), GpuStream> = BTreeMap::new();
+        let todas = boundary_streams
+            .iter()
+            .map(|(n, s)| ((*n, 0), *s))
+            .chain(ports.iter().map(|(k, s)| (*k, s)));
+        for (node, s) in todas {
             let reaproveita = self
                 .sent_boundaries
-                .get(node)
+                .get(&node)
                 .filter(|(antes, _)| antes.shares_storage_with(s))
                 .map(|(_, g)| g.clone());
             let g = match reaproveita {
@@ -48,17 +53,15 @@ impl GpuCook {
                     self.boundary_uploads += 1;
                     self.fases.enviadas += 1;
                     self.fases.bytes_enviados += crate::fases::bytes_de(&g);
-                    self.sent_boundaries
-                        .insert(*node, ((*s).clone(), g.clone()));
+                    self.sent_boundaries.insert(node, (s.clone(), g.clone()));
                     g
                 }
             };
-            uploaded.insert(*node, g);
+            uploaded.insert(node, g);
         }
         // ⚠️ **E o que deixou de ser costura larga-se**: um plano novo (o artista reescreveu o
         // grafo) não pode manter vivos os buffers de uma fronteira que já não existe.
-        self.sent_boundaries
-            .retain(|n, _| boundary_streams.iter().any(|(m, _)| m == n));
+        self.sent_boundaries.retain(|k, _| uploaded.contains_key(k));
         uploaded
     }
 }

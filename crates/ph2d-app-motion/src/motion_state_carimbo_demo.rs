@@ -242,36 +242,9 @@ const ANTES_NS: u64 = 163;
 /// O mesmo pela rota de HOJE (`10,37 ms / 90 000`).
 const HOJE_NS: u64 = 115;
 
-// ⭐⭐⭐ **A JANELA DA POPULAÇÃO, e ela é ERRO DE COMPILAÇÃO nas QUATRO metades.**
-//
-// ⛔⛔⛔ **A 1.ª redacção tinha DUAS metades e a segunda estava INVERTIDA**: ela exigia que a rota
-// antiga custasse **mais** de um quadro e meio, *«senão as duas dariam 60 fps e a cena não
-// mostraria nada»*. Medido no app à população desta cena, a rota antiga custa `14,67 ms` — ela
-// **cabe**, e a cerca passava só porque o `ANTES_NS` vinha do regime com dívida.
-//
-// ⚠️⚠️ **E pôr a cena do outro lado da fronteira é PIOR do que parece, porque ali ela não é
-// estável:** três corridas a `305`, `310` e `315` de lado leram `15,62`, `11,77` e `16,44 ms` pela
-// mesma rota — *não monótonas*. Perto do vsync o app salta entre dois regimes (com e sem tiques em
-// dívida) conforme o ruído, logo uma cena ali daria ao dono um número diferente em cada corrida.
-// ⇒ a cena fica **deste** lado, com as duas rotas a `60` fps, e o que ela mostra é a **FOLGA** —
-// o terceiro número da barra (`raw = 1000 / cpu`), que é `~96` contra `~68`.
-//
-// ⇒ as QUATRO metades: *a rota de hoje cabe* · *a antiga TAMBÉM cabe* (a cena não vive na zona
-// instável) · *a antiga usa pelo menos três quartos do quadro* (abaixo disso o que é fixo — a
-// moldura, o chrome — passa a dominar e a diferença dilui-se) · *e a distância entre as duas é
-// grande o bastante para se ler*.
-//
-// ⛔ Ela **não** pode viver num teste: um `assert!` sobre constantes é dobrado pelo compilador
-// antes de correr, e o clippy di-lo em voz alta (a lei que a cena `=124` já escreve).
-//
-// ⛔⛔ **E ela é ANÓNIMA (`const _`) e não um `const` com nome, porque a 1.ª redacção tinha nome e
-// o compilador acusou `constant QUADRO_NS is never used`:** um item com nome que ninguém
-// referencia é **morto** para o lint, e os usos DENTRO de um item morto não contam como usos —
-// logo a cerca compilava, mordia, e deixava um aviso a apontar para a constante medida como se
-// ela fosse lixo. *Um `const _` não pode ser referenciado por construção, logo é sempre vivo.*
-//
-// ⚠️ **Aritmética inteira de propósito** — comparar `f32` em contexto `const` é terreno que esta
-// casa não precisa de pisar para prender dois números medidos.
+// ⭐ A JANELA DA POPULAÇÃO, quatro metades: a rota de hoje cabe · a antiga TAMBÉM cabe (perto do
+// vsync o app salta de regime, não monótono) · a antiga usa ≥ ¾ do quadro · e a distância lê-se.
+// `const _` (anónima: sempre viva para o lint) e inteira, porque um `assert!` em teste dobra-se.
 const _: () = assert!(
     ESTRELAS * HOJE_NS <= QUADRO_NS,
     "a cena nao cabe num quadro pela rota de HOJE -- as duas corridas sairiam lentas e a cura \

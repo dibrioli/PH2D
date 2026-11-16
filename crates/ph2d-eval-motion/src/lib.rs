@@ -141,6 +141,9 @@ pub struct MotionCookPump {
     /// sequencer validates the set it is handed against `plan.boundaries`, so
     /// which stream came from which node is part of the answer, not bookkeeping.
     boundary_streams: Vec<(NodeId, Stream)>,
+    /// As saídas ≠ 0 de cada fronteira, por `(nó, porta)` — a placa lê-as pela porta (um
+    /// `value.input.xy` a alimentar um `motion.move`), e a porta 0 continua no irmão acima.
+    boundary_ports: Vec<((NodeId, usize), Stream)>,
     /// The raw output streams of this frame's TAPS — mid-graph nodes the caller
     /// named on the sink march because it wants to READ them, not draw them.
     ///
@@ -251,6 +254,7 @@ impl MotionCookPump {
             pulsos: entradas::Pulsos::default(),
             a_tocar: true,
             boundary_streams: Vec::new(),
+            boundary_ports: Vec::new(),
             tap_streams: taps::Tomadas::default(),
             taps: Vec::new(),
             armadas: taps::Armadas::default(),
@@ -574,6 +578,7 @@ impl MotionCookPump {
                 // frame, outside here. So a shared sequential prefix is simulated
                 // once, not once per boundary (gated: the eval COUNT, not a timer).
                 self.boundary_streams.clear();
+                self.boundary_ports.clear();
                 // ⚠️ E as TOMADAS, que nesta rota não têm quem as publique — sem isto as tomadas
                 // do quadro ANTERIOR sobreviveriam a um quadro híbrido. (A rota dos sinks limpa-as
                 // ela própria, porque é ela quem publica o que desenhou.)
@@ -599,6 +604,9 @@ impl MotionCookPump {
                             if let Some(v) = outputs.first() {
                                 self.boundary_streams.push((node, v.as_stream().clone()));
                             }
+                            for (p, v) in outputs.iter().enumerate().skip(1) {
+                                self.boundary_ports.push(((node, p), v.as_stream().clone()));
+                            }
                         }
                         Err(e) => self.last_error = Some(e),
                     }
@@ -616,6 +624,12 @@ impl MotionCookPump {
     #[must_use]
     pub fn boundary_streams(&self) -> &[(NodeId, Stream)] {
         &self.boundary_streams
+    }
+
+    /// As saídas ≠ 0 do mesmo cozimento que [`Self::boundary_streams`], por `(nó, porta)`.
+    #[must_use]
+    pub fn boundary_port_streams(&self) -> &[((NodeId, usize), Stream)] {
+        &self.boundary_ports
     }
 
     /// The tick this pump last rendered, if any — the ONE record of where the

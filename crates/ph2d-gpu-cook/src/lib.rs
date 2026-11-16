@@ -143,6 +143,13 @@ impl GpuCook {
         self.driven = driven;
     }
 
+    /// As saídas ≠ 0 das fronteiras, por `(nó, porta)`, para o PRÓXIMO [`Self::cook_many`] — a
+    /// porta 0 vem no argumento dele. Um plano que lê `Boundary(n, p ≠ 0)` sem a porta aqui é
+    /// recusado (`BoundaryMismatch`), como uma fronteira em falta.
+    pub fn set_boundary_ports(&mut self, ports: Vec<((NodeId, usize), Stream)>) {
+        self.boundary_ports = ports;
+    }
+
     /// ⭐⭐⭐ [`Self::cook`] com **várias saídas** (doc 119 W3): um estilo por [`GpuPlan::sinks`], na
     /// mesma ordem, e as saídas baixadas uma a seguir à outra no MESMO buffer. ⚠️ Com uma saída
     /// ela É o [`Self::cook`] — aquele delega aqui —, o que põe todos os gates de paridade desta
@@ -170,7 +177,12 @@ impl GpuCook {
         let CookClock { playhead, tick } = clock;
         let want: BTreeSet<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
         let got: BTreeSet<NodeId> = boundary_streams.iter().map(|(n, _)| *n).collect();
-        if want != got {
+        let ports = std::mem::take(&mut self.boundary_ports);
+        let falta_porta = plan
+            .boundaries
+            .iter()
+            .any(|&(n, p)| p != 0 && !ports.iter().any(|(k, _)| *k == (n, p)));
+        if want != got || falta_porta {
             return Err(GpuCookError::BoundaryMismatch);
         }
         // D5 — the scrub ring: `prev` right now IS the state this tick cooks
@@ -211,7 +223,7 @@ impl GpuCook {
         self.fases = FasesDoCozimento::default();
         let alocados = self.pool.allocations();
         let t = std::time::Instant::now();
-        let uploaded = self.enviar_costuras(gpu, boundary_streams);
+        let uploaded = self.enviar_costuras(gpu, boundary_streams, &ports);
         self.fases.costuras = t.elapsed();
         let t = std::time::Instant::now();
         let mut encoder = gravador::Gravador::new(
@@ -234,7 +246,9 @@ impl GpuCook {
                 .map(|src| match src {
                     GpuSource::Stage(n) => streams.get(n).cloned().unwrap_or_default(),
                     GpuSource::StagePort(n, p) => side.get(&(*n, *p)).cloned().unwrap_or_default(),
-                    GpuSource::Boundary(n, _) => uploaded.get(n).cloned().unwrap_or_default(),
+                    GpuSource::Boundary(n, p) => {
+                        uploaded.get(&(*n, *p)).cloned().unwrap_or_default()
+                    }
                     // Tick 0 (or a re-plan): no state yet — the empty stream,
                     // which is exactly what the CPU's `pre` reads then, and what
                     // makes a kernel take its seed path.

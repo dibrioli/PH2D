@@ -174,25 +174,7 @@ fn plan_forbidding(
         };
     }
 
-    // ⛔ **Uma fronteira de porta ≠ 0 recua quem a lê** (doc 120 §8.3.3): a entrega da bomba é a
-    // saída 0 de cada nó (`boundary_streams`) e a placa chaveia-a pelo nó, então a porta `5` de um
-    // gatilho chegaria como a coluna da porta `0`. Hoje nenhuma cena o alcança (a sonda
-    // `sonda_os_defeitos_latentes_da_entrega`); o recuo é o mesmo do laço, um nó de cada vez.
-    let leem_porta_lateral: Vec<NodeId> = walk
-        .stages
-        .iter()
-        .filter(|s| {
-            s.inputs
-                .iter()
-                .any(|i| matches!(i, GpuSource::Boundary(_, p) if *p != 0))
-        })
-        .map(|s| s.node)
-        .collect();
-    if !leem_porta_lateral.is_empty() {
-        let mut next = forbidden.clone();
-        next.extend(leem_porta_lateral);
-        return plan_forbidding(graph, ops, kernels, sinks, &next, (driven, condutores));
-    }
+    // Uma fronteira de porta ≠ 0 entrega-se por `(nó, porta)` (`GpuCook::set_boundary_ports`).
     // A staged node that feeds a `pre` edge owns simulation state. If the plan
     // ALSO leaves a CPU boundary, the caller would cook that boundary on the
     // pump — and the pump, to do so, re-cooks this node's chain with ITS OWN

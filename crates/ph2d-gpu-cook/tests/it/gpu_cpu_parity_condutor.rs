@@ -319,10 +319,10 @@ fn a_temporal_driver_chain_stays_on_the_cpu_and_keeps_the_loop_on_the_device() {
     assert_eq!(p.condutores_na_marcha, vec![src]);
 }
 
-/// ⛔ **Uma fronteira de porta ≠ 0 recua quem a lê** — a entrega da bomba é a saída `0` de cada nó,
-/// e a porta `5` (o pulso) de um gatilho chegaria à placa como a coluna da porta `0`.
+/// ⭐ **Uma fronteira de porta ≠ 0 NÃO recua quem a lê** (GEF 08 MI onda 3): a bomba entrega a porta
+/// `5` (o pulso) por `(nó, porta)`, e o envelope fica na placa a ler `Boundary(batida, 5)`.
 #[test]
-fn a_side_port_boundary_recedes_its_reader() {
+fn a_side_port_boundary_keeps_its_reader_on_the_device() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).unwrap();
     let mut g = Graph::new();
@@ -339,12 +339,8 @@ fn a_side_port_boundary_recedes_its_reader() {
         .unwrap();
     }
     let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &DrivenParams::new());
-    assert!(!p.stages.iter().any(|s| s.node == env), "{p:?}");
-    assert!(
-        p.boundaries.iter().all(|(_, porta)| *porta == 0),
-        "{:?}",
-        p.boundaries
-    );
+    assert!(p.stages.iter().any(|s| s.node == env), "{p:?}");
+    assert_eq!(p.boundaries, vec![(batida, 5)]);
     // O controlo: pela porta `0` o envelope encena-se, com a fronteira na porta `0`.
     g.disconnect(env, 0).unwrap();
     g.connect(Edge {

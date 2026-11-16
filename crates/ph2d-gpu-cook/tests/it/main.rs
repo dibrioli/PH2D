@@ -11,6 +11,7 @@ mod a_variante_entra_na_chave_do_pipeline;
 mod as_formas_no_dispositivo;
 mod as_imagens_do_grupo;
 mod boundary_arity;
+mod fronteira_de_porta;
 mod generated_wgsl_validates;
 mod gpu_boids;
 mod gpu_boids_scale;

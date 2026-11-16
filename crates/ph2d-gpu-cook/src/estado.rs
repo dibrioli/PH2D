@@ -209,7 +209,12 @@ pub struct GpuCook {
     /// ⚠️ **E segurar o `GpuStream` é o que o protege do [`BufferPool::reclaim`]** — pela mesma
     /// propriedade que já mantém [`Self::prev`] vivo: o pool só recicla o que mais ninguém
     /// referencia.
-    pub(crate) sent_boundaries: BTreeMap<NodeId, (ph2d_nodegraph::attr::Stream, GpuStream)>,
+    /// Chaveado por `(nó, porta)`: a placa lê uma fronteira pela PORTA (`GpuSource::Boundary`).
+    pub(crate) sent_boundaries:
+        BTreeMap<(NodeId, usize), (ph2d_nodegraph::attr::Stream, GpuStream)>,
+    /// As saídas ≠ 0 das fronteiras do PRÓXIMO cozimento ([`crate::GpuCook::set_boundary_ports`]);
+    /// o cozimento consome-as.
+    pub(crate) boundary_ports: Vec<((NodeId, usize), ph2d_nodegraph::attr::Stream)>,
     /// Quantas costuras foram ENVIADAS e quantas foram reconhecidas como a mesma — o instrumento
     /// da cura acima, pela mesma razão do contador do `Cook::set_external`: o ganho não muda o
     /// comportamento, então sem contador nenhum gate o distingue de não o fazer.

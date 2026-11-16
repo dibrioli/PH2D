@@ -496,6 +496,13 @@ pub(super) fn cook_gpu(
                 .filter(|(n, _)| plan.boundaries.iter().any(|(b, _)| b == n))
                 .map(|(n, s)| (*n, s))
                 .collect();
+            let portas: Vec<((NodeId, usize), ph2d_nodegraph::attr::Stream)> = motion
+                .pump
+                .boundary_port_streams()
+                .iter()
+                .filter(|(k, _)| plan.boundaries.contains(k))
+                .cloned()
+                .collect();
             // A boundary that failed to cook is simply missing, and the sequencer validates the
             // set against `plan.boundaries` — an incomplete hand-off is REFUSED
             // (`BoundaryMismatch`) rather than dispatched against an empty stream.
@@ -505,6 +512,7 @@ pub(super) fn cook_gpu(
                     .zip(dirigidos)
                     .all(|(&(playhead, tick), d)| {
                         motion.gpu_cook.set_driven(d);
+                        motion.gpu_cook.set_boundary_ports(portas.clone());
                         let t = std::time::Instant::now();
                         let feito = motion.gpu_cook.cook_many(
                             gpu,

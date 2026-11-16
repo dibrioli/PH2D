@@ -214,50 +214,8 @@ pub(super) fn build_com(
         g.set_param(alto, "offset_y", ALTURA);
 
         let zone = g.add_node("sim.zone");
-        // `Loop` para a queda recomeçar sozinha — sem isso o monte assenta uma vez e a cena
-        // deixa de ter o que mostrar depois do primeiro olhar.
-        // ⭐⭐⭐ **OS SUB-PASSOS — a cura do 4.º report do dono** (*«as shapes que ficam embaixo no
-        // centro vibram muito»*, 2026-09-15). Doc 111 §5.8.
-        //
-        // ⚠️⚠️ **O defeito não estava no motor: estava neste número.** Oito cadeias de cura foram
-        // construídas e refutadas (doc 109 §8.14) e mais três na obra encomendada (doc 111) antes de
-        // alguém medir o knob que já existia. Partir o tique em `N` passos, cada um com a sua
-        // integração E o seu contacto, é o que faz um solver assentar uma pilha **à rigidez plena**
-        // — sem baixar o ganho, sem filtrar e sem amolecer, que são as três que caíram.
-        //
-        // ⚠️⚠️ **A TABELA FOI RE-MEDIDA em 2026-09-15, depois do ENCOSTO DE DOIS PONTOS** (doc 111
-        // §5.11) — a primeira versão dela foi levantada com o contacto de UM ponto, e o manifesto
-        // moveu a curva inteira. *Uma tabela medida sobre um substrato que mudou é uma mentira com
-        // números* (`CLAUDE.md` §0.0: quem move o número tem de reconferir a nota).
-        //
-        // ⭐ **O `8` é o JOELHO da curva** (5 realizações por célula, as CINCO réguas):
-        //
-        // ⚠️⚠️ **RE-MEDIDA OUTRA VEZ em 2026-09-15**, depois do IMPULSO DO PAR (doc 111 §5.12) —
-        // é a TERCEIRA versão desta tabela no mesmo dia, e as duas primeiras ficaram erradas
-        // exactamente por o substrato ter mudado debaixo delas.
-        //
-        // ```text
-        //   substeps | tremor (°/tique) |  rodopio   | altura |   vão  | salto | cozimento
-        //          1 |   42,5 .. 48,0   | 15,5..63,4 | −2,61  | 0,2005 |   —   |  0,99 ms
-        //          2 |    2,06.. 13,9   | 10,0..20,0 | −2,50  | 0,2081 |   —   |  2,07 ms
-        //          4 |    1,01..  3,47  | 17,2..17,6 | −2,46  | 0,2186 |   —   |  3,51 ms
-        //          8 |    0,246.. 0,327 |  2,6.. 2,8 | −2,43  | 0,2206 | 1,27° |  7,05 ms
-        //         16 |    0,091.. 0,236 |  3,2.. 3,5 | −2,42  | 0,2202 |   —   | 14,05 ms
-        // ```
-        //
-        // ⚠️ **O recurso é o QUADRO**, e é ele que escolhe o `8`: o `16` custa o dobro para comprar
-        // um tremor que a `8` já tem `35×` abaixo da barra do gate. ⛔ Acima daqui o preço cresce
-        // linear e o ganho não.
-        //
-        // ⛔⛔ **E o `4` DEIXOU de ser uma opção** — ele era viável com o contacto de um ponto
-        // (`1,01..3,47` de tremor hoje, contra `0,150..0,217` antes). *Uma alternativa medida
-        // sobre um substrato que mudou tem de ser re-medida antes de ser oferecida outra vez*, e
-        // esta linha escreveu-a como viável de manhã. Com a física certa, a `8` é o PISO.
-        //
-        // ⚠️ **E as duas réguas de FORMA ficam intactas** — a pilha não congela (`y = −2,42`, longe
-        // da altura de nascimento `−0,35`) nem colapsa: o vão `0,2203` é o face-a-face **exacto**
-        // (`2 × LADO = 0,2200`), isto é, a pilha passou a encostar de CHAPA em vez de assentar em
-        // quinas. As duas curas anteriores falharam exactamente aí.
+        // `Loop`: a queda recomeça sozinha. `SUBSTEPS = 8` é o joelho da curva medida (tremor
+        // 0,25–0,33 °/tique a 7 ms; o 4 já não serve com o encosto de dois pontos) — doc 111 §5.8–§5.12.
         g.set_param(zone, "substeps", SUBSTEPS);
         g.set_param(zone, "mode", em_laco);
         g.set_param(zone, "duration", m.duracao);

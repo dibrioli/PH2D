@@ -71,42 +71,8 @@ pub(super) fn build_gpu_boids_demo_document(
     let g = &mut doc.graph;
 
     let boids = g.add_node("motion.boids");
-    // 2²⁰ = 1.048.576 agents, and the key that makes a MILLION hold 60 fps is
-    // `seek = 0`. Three rounds of Enio's smoke, all measured to equilibrium
-    // (`gpu_boids_scale.rs::where_does_the_flock_settle`), built this table:
-    //
-    // 1. "queda de FPS quando boids se aproximam" — resized 1 M → 524 k off a
-    //    600-tick window. ⚠️ The curve was STILL CLIMBING; the fixture did not
-    //    contain the settled flock.
-    // 2. "até metade se juntar, depois queda grave" — measured to 80 s at 262 k:
-    //    seek 0.35 plateaus at 28,5 ms (a dense ball parked on the target, at ANY
-    //    count); an ORBITING target was refuted (the flock rides it as a dense
-    //    comet); seek 0.02 + sep 3.0 settles at 5,3–6,3 ms. Shipped that, at 262 k.
-    // 3. "tente 1 milhão" — and at 1 M the attractor law turns SUPERLINEAR: the
-    //    pull compresses the core with the whole swarm's weight, so the same
-    //    seek 0.02 tuning plateaus at 74–80 ms, sep 4.0 at ~50, and even
-    //    seek 0.005 at 26–30. **No attractor fits a million.** With `seek = 0`
-    //    (a pure local murmuration — real starlings have no global target) the
-    //    density can only FALL: measured over 160 s, r 1.5 runs 9,9 → 5,4 ms and
-    //    r 2.0 runs 13,9 → 5,8, both monotonically DOWN — the worst frame is the
-    //    opening one, and it improves from there.
-    //
-    // Shipped: 1 M, seek 0, radius 1.5 — opening ≈10 ms (60 % of a frame, the
-    // safe side of r 2.0's 84 % first window), falling for as long as you watch.
-    // The swarm slowly disperses instead of balling up; that IS the murmuration.
-    // ⛔⛔⛔ **O MILHÃO MORREU EM 2026-09-22, E FOI UMA ORDEM DO DONO QUE O MATOU** (*«vamos
-    // efetivar o limite de 16 384»*). A tabela acima — três rondas de medição, `160 s` de
-    // observação, o ajuste do atractor a ser refeito duas vezes — descreve uma cena que o produto
-    // já não pode produzir: o `motion.boids` clampa hoje em
-    // [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO).
-    //
-    // ⚠️⚠️ **E o que esta cena EXISTIA para mostrar era exactamente o milhão:** que o dispositivo
-    // faz `4,19 M` objectos em `3,85 ms` contra `195,9 ms` da CPU. A `16 384` as duas rotas cabem
-    // num quadro com folga e a demonstração **deixa de ter sujeito** — a mesma perda que a cena
-    // `=126` e a do pano sofreram na mesma ordem.
-    //
-    // ⚠️ A tabela FICA porque ela é a medição do DISPOSITIVO, e ela continua verdadeira sobre a
-    // placa; o que mudou foi o que um nó pode pedir.
+    // `seek = 0`, radius 1.5: a murmuração local (sem atractor) só dispersa. O milhão saiu por ordem
+    // do dono (22/09, tecto `MAX_INSTANCIAS_POR_NO`); a tabela vive em `gpu_boids_scale.rs`.
     g.set_param(
         boids,
         "count",

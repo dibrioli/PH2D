@@ -289,3 +289,83 @@ fn a_ponte_na_placa_grita_o_que_a_cpu_grita() {
         "a placa não pode mudar o que o grafo grita"
     );
 }
+
+/// ⭐ **MI-8 PELA PLACA**: `envelope → Send signal (Falls below 0,5) → drive`, dois segundos pelo
+/// quadro do produto (`coze_o_quadro`) — UM «caiu», com o objecto Motion dono do nó como origem.
+#[test]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
+fn o_send_signal_pela_placa_cai_uma_vez_e_fala_pelo_objecto() {
+    use ph2d_node_send_signal as send;
+    use ph2d_nodegraph::graph::Edge;
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        return;
+    };
+    let mut motion = MotionState::new();
+    let g = &mut motion.doc.graph;
+    let [grid, beat, env, s, drive, out] = [
+        "motion.grid",
+        "pulse.beat",
+        "pulse.adsr",
+        send::MANIFEST.name,
+        "motion.drive",
+        "motion.output",
+    ]
+    .map(|t| g.add_node(t));
+    g.set_param(beat, "period", 30.0);
+    let adsr = [
+        ("attack", 0.05),
+        ("decay", 0.1),
+        ("sustain", 0.8),
+        ("hold", 0.2),
+    ];
+    for (k, v) in adsr.into_iter().chain([("release", 0.3)]) {
+        g.set_param(env, k, v);
+    }
+    g.set_text_param(s, send::NAME_KEY, "caiu");
+    g.set_param(s, send::WHEN, send::WHEN_FALLS as f32);
+    g.set_param(s, send::LEVEL, 0.5);
+    let fios = [
+        (grid, beat),
+        (beat, env),
+        (env, s),
+        (grid, drive),
+        (drive, out),
+    ];
+    let fios = fios.map(|(a, b)| (a, 0, b, 0, false)).into_iter().chain([
+        (s, 0, drive, 1, false),
+        (beat, 0, beat, 1, true),
+        (env, 0, env, 1, true),
+    ]);
+    for (a, ap, b, bp, delayed) in fios {
+        let (from, to) = ((a, ap), (b, bp));
+        g.connect(Edge { from, to, delayed }).expect("fio");
+    }
+    motion.doc.set_owner(s, 77);
+    let dono = crate::motion_objeto::Dono {
+        entity: 4242,
+        visible: true,
+        afim: crate::motion_objeto::IDENTIDADE,
+    };
+    motion.objeto.donos.insert(77, dono);
+    motion.sinks = vec![out];
+    motion.signal_taps = signal_nodes(&motion.doc.graph);
+    let mut playhead = ph2d_core::Playhead::new(1.0 / FPS);
+    let mut sinais = Vec::new();
+    for tick in 0..=((2.0 * FPS) as u64) {
+        playhead.seek(tick as f64 / FPS);
+        motion.pump.set_taps(&motion.signal_taps.clone());
+        motion.pump.clear_tap_fires();
+        motion.signals_out.clear();
+        crate::motion_bridge::quadro::coze_o_quadro(&mut motion, &gpu, &playhead, 1.0 / FPS);
+        let rota = motion.route_said.unwrap_or_default();
+        assert!(
+            rota.starts_with("device:"),
+            "tique {tick}: recusou ({rota})"
+        );
+        collect_signals(&mut motion);
+        sinais.extend(std::mem::take(&mut motion.signals_out));
+    }
+    assert_eq!(sinais.len(), 1, "uma queda = um sinal: {sinais:?}");
+    assert_eq!(sinais[0].name, "caiu");
+    assert_eq!(sinais[0].source, Some(4242), "a origem é o objecto Motion");
+}

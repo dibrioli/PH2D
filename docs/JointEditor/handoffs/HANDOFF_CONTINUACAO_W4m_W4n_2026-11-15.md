@@ -54,3 +54,23 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-JointEditor && pwd && git 
 Confirme `line/JointEditor`. Leia este handoff (`docs/JointEditor/handoffs/HANDOFF_CONTINUACAO_W4m_W4n_2026-11-15.md`) e o anterior.
 Comece o §3.1 (W4o, cadeado da pasta comum), depois §3.2 a §3.5. Inner loop = `cargo-check-narrow.sh`; testes por nome; foto de gesto
 real com `docs/JointEditor/ferramentas/fotos_gesto.sh`; smoke ao dono em passos numerados; sem push, sem integrar.
+
+## 5. ⛔ Smoke do dono 16/11 — REPROVADO (antes de qualquer item do §3, isto primeiro)
+
+Cena `PH2D_PHYSICS_SMOKE=123 PH2D_JOINT_EDITOR_SMOKE=14`, teste 1 (Applies to: Plank · Breaks On · Break force 500 · Make):
+
+1. **«Make the parts» travou o PC** («loop infinito»). Nenhum processo `ph2d-host-desktop` sobrou e o journal não tem OOM.
+   Não reproduzido. Hipóteses a MEDIR (nada de remendo por palpite):
+   - (a) **Field::Count sem tecto medido:** `step_of(Count)` aceita `1..=u16::MAX`, e um campo que não apaga (defeito 2) pode ter
+     ficado com `8500`/`812`. Então `make_parts` faz milhares de corpos e juntas `one_chain` e a máquina trava. Viola §0.0
+     (limite sem medição). Medir o custo de Make e do passo da física por N tábuas, e pôr um tecto de RECURSO com a tabela ao lado.
+   - (b) laço nas `draft_edits` / `set_snapshot` / `made()` reabrindo o Make a cada quadro: confirmar que `Hit::Make` só empurra
+     UM `Edit::Make` por clique na porta REAL (`frame` da shell). O teste `fazer::` usa a Mesa, não a shell.
+   - (c) a mola da emenda (`SEAM_SOFTNESS`, 51051dde4f) com a contagem do campo: `refresh_chains` em laço?
+   - Reproduzir SÓ dentro de `bash scripts/ph2d-run.sh timeout 120 …` (tecto de memória e CPU da linha), em Xvfb
+     (`fotos_gesto.sh`), com o gesto exato do dono. Se for (a), também `type 500` num campo que já tinha texto.
+2. **As caixas de texto do painel fogem do padrão do app:** Backspace não apaga o número que já está lá e o duplo clique não
+   seleciona. Hoje `typing` começa VAZIO e mostra o valor antigo até à 1.ª tecla (`typing_shown`), e o Backspace faz `buf.pop()`
+   num buffer vazio. O padrão é o campo do Inspector (o mesmo `FieldScrub`/edição de texto do cartão: texto selecionado
+   ao entrar, cursor, Backspace, duplo clique seleciona tudo). A cura é USAR a porta de texto do cartão do Inspector, não
+   imitá-la. O teste por gesto real (Xvfb) tem de cobrir Backspace e duplo clique.

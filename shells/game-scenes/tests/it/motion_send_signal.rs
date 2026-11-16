@@ -15,7 +15,7 @@ const SID: u64 = 77;
 const BITS: u64 = 4242;
 
 /// `grid 1×1 → beat → adsr → Send signal (Falls below 0.5) → drive → output`; o nó é do objecto `SID`.
-fn grafo(motion: &mut MotionState) -> NodeId {
+fn grafo(motion: &mut MotionState, bits: u64) -> NodeId {
     let g = &mut motion.doc.graph;
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", 1.0);
@@ -65,7 +65,7 @@ fn grafo(motion: &mut MotionState) -> NodeId {
     g.validate(&motion.registry).expect("grafo válido");
     motion.doc.set_owner(s, SID);
     let dono = Dono {
-        entity: BITS,
+        entity: bits,
         visible: true,
         afim: IDENTIDADE,
     };
@@ -84,7 +84,7 @@ enum Rota {
 
 /// O relógio do quadro, pela lei REAL (`Playhead::crosses_forward`, a pergunta do shell antes de
 /// `collect_signals`).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Relogio {
     Toca,
     Parado,
@@ -93,8 +93,15 @@ enum Relogio {
 
 /// `segundos` de jogo pela `rota`, com a lei do `relogio`. Devolve o que a outbox recebeu.
 fn corre(segundos: f64, rota: Rota, relogio: Relogio) -> Vec<Signal> {
+    let outbox = outbox(segundos, rota, relogio, BITS);
+    let mut leitor = SignalReader::new();
+    outbox.read(&mut leitor).cloned().collect()
+}
+
+/// O barramento depois de `segundos` de jogo, com o nó dono do objecto Motion de `bits`.
+fn outbox(segundos: f64, rota: Rota, relogio: Relogio, bits: u64) -> SignalOutbox {
     let mut motion = MotionState::new();
-    grafo(&mut motion);
+    grafo(&mut motion, bits);
     motion.signal_taps = signal_nodes(&motion.doc.graph);
     motion.pump.set_taps(&motion.signal_taps);
     motion.pump.clear_tap_fires();
@@ -144,8 +151,7 @@ fn corre(segundos: f64, rota: Rota, relogio: Relogio) -> Vec<Signal> {
             ));
         }
     }
-    let mut leitor = SignalReader::new();
-    outbox.read(&mut leitor).cloned().collect()
+    outbox
 }
 
 /// ⭐ Uma queda abaixo do nível = UM sinal, «caiu», com o objecto Motion como origem — pelas DUAS
@@ -168,6 +174,136 @@ fn send_signal_falls_below_once_and_speaks_for_the_motion_object() {
         assert!(
             corre(2.0, rota, Relogio::Salta).is_empty(),
             "um salto no play: nada"
+        );
+    }
+}
+
+/// Uma cena com o objecto «Motion» (dono do nó) e a «Door» visível; devolve `(sim, motion, door)`.
+fn cena_com_porta() -> (ph2d_ecs::SimWorld, ph2d_ecs::Entity, ph2d_ecs::Entity) {
+    use ph2d_ecs::{Name, StableId, Transform, Visibility};
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let w = sim.world_mut();
+    let motion = w
+        .spawn((Transform::IDENTITY, StableId(SID), Name::new("Motion")))
+        .id();
+    let door = w
+        .spawn((
+            Transform::IDENTITY,
+            StableId(SID + 1),
+            Name::new("Door"),
+            Visibility::visible(),
+        ))
+        .id();
+    (sim, motion, door)
+}
+
+/// ⭐ **Uma regra «When signal caiu» reage ao nó** (a tabela de acções do quadro): a linha mora no
+/// objecto Motion com «From: Myself» e esconde a «Door» — só passa porque a origem é o Motion.
+/// Controlo: relógio parado (o nó não manda) ⇒ a porta fica.
+#[test]
+fn a_rule_on_the_motion_object_hides_the_door_when_the_node_sends() {
+    use ph2d_app_components::signal_actions_bridge::{apply, lido};
+    use ph2d_ecs::{SignalAction, SignalActions, SignalFrom, SignalVerb, Visibility};
+    for (relogio, escondida) in [(Relogio::Toca, true), (Relogio::Parado, false)] {
+        let (mut sim, motion, door) = cena_com_porta();
+        sim.world_mut()
+            .entity_mut(motion)
+            .insert(SignalActions(vec![SignalAction {
+                on: "caiu".into(),
+                target: "Door".into(),
+                verb: SignalVerb::Hide,
+                from: SignalFrom::Myself,
+                ..SignalAction::default()
+            }]));
+        let outbox = outbox(2.0, Rota::Cpu, relogio, motion.to_bits());
+        let mut leitor = SignalReader::new();
+        let lidos: Vec<_> = outbox.read(&mut leitor).map(lido).collect();
+        let disparos: Vec<ph2d_ecs::Disparo<'_>> = lidos
+            .iter()
+            .map(|(nome, quem, outro)| ph2d_ecs::Disparo {
+                nome,
+                quem: *quem,
+                outro: *outro,
+            })
+            .collect();
+        let tags = ph2d_tags::TagTree::new();
+        let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), &tags, &disparos);
+        let mut drive = ph2d_preview_drive::PreviewDrive::default();
+        let r = apply(&mut sim, &efeitos, 2.0, &mut drive, &mut |_, _, _| false);
+        assert_eq!(r.applied, usize::from(escondida), "{relogio:?}: {r:?}");
+        assert_eq!(
+            sim.world().get::<Visibility>(door).map(|v| v.hidden),
+            Some(escondida),
+            "{relogio:?}"
+        );
+    }
+}
+
+/// ⭐ **Um script Luau ouve o nó**: `on_signal(self, signal, from)` recebe `signal = "caiu"` e `from` =
+/// o objecto Motion (o mesmo id de `ph2d.find_by_name`), pelos motores do quadro (`motores::correm`).
+/// Controlo: relógio parado ⇒ o gancho não corre.
+#[test]
+fn a_luau_on_signal_hears_the_node_with_the_motion_object_as_from() {
+    use ph2d_app_components::motores;
+    use ph2d_ecs::Transform;
+    const SRC: &str = r#"
+function on_signal(self, signal, from)
+  if signal == "caiu" then ph2d.set(self.id, "y", 1) end
+  if from == ph2d.find_by_name("Motion") then ph2d.set(self.id, "x", 1) end
+end
+"#;
+    for (relogio, ouviu) in [(Relogio::Toca, 1.0), (Relogio::Parado, 0.0)] {
+        let (mut sim, motion, door) = cena_com_porta();
+        let id = sim
+            .world_mut()
+            .get_resource_or_init::<ph2d_script::ProjectScripts>()
+            .insert("ouvinte.luau", SRC.to_owned());
+        sim.world_mut()
+            .entity_mut(door)
+            .insert(ph2d_script::LuauScript::library(id));
+        let mut outbox = outbox(2.0, Rota::Cpu, relogio, motion.to_bits());
+        let reg = crate::comp::registo();
+        let tags = ph2d_tags::TagTree::new();
+        let (mut vec, mut mapa) = ph2d_app_components::instance_docs::empty_docs();
+        let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
+            registry: &reg,
+            tags: &tags,
+            docs: ph2d_app_components::instance_docs::OwnedDocs {
+                vec_scene: &mut vec,
+                vec_entities: &mut mapa,
+            },
+            tick: 1,
+            images: ph2d_app_components::script_image::ImageLibrary::none(),
+            physics: None,
+        };
+        let mut host = Some(ph2d_script::ScriptHost::new().expect("vm"));
+        let (mut r_script, mut r_part, mut r_arma) = (
+            SignalReader::new(),
+            SignalReader::new(),
+            SignalReader::new(),
+        );
+        motores::correm(
+            &mut sim,
+            &mut host,
+            &mut ph2d_app_components::particles_bridge::ParticlesState::new(),
+            &mut ph2d_app_components::health_bar_bridge::HealthBarsState::new(),
+            &ph2d_ecs::sort_key::SortScratch::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
+            &mut outbox,
+            motores::Leitores {
+                script: &mut r_script,
+                particles: &mut r_part,
+                weapon: &mut r_arma,
+            },
+            &motores::Relogio::do_quadro(true, 1, 1.0 / FPS),
+            &std::collections::BTreeMap::new(),
+            &mut portas,
+        );
+        let t = sim.world().get::<Transform>(door).expect("pose");
+        assert_eq!(t.translation.y, ouviu, "{relogio:?}: signal = o nome");
+        assert_eq!(
+            t.translation.x, ouviu,
+            "{relogio:?}: from = o objecto Motion"
         );
     }
 }

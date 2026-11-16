@@ -39,6 +39,13 @@ pub const RAY_SENSOR: AddEntry = AddEntry::new("object_add.game.ray_sensor", Add
         "object_add.game.ray_sensor.tip",
         crate::componente_desenhos::RAY_SENSOR,
     );
+/// Uma entrada do grafo do Motion (GEF 08 MI-10): objeto filho do selecionado, que lê dele.
+pub const MOTION_INPUT: AddEntry = AddEntry::new("object_add.game.motion_input", AddGroup::Game)
+    .at(4)
+    .with_tip(
+        "object_add.game.motion_input.tip",
+        crate::componente_desenhos::MOTION_INPUT,
+    );
 pub const BACKGROUND_LAYER: AddEntry =
     AddEntry::new("object_add.game.background_layer", AddGroup::Pictures)
         .at(4)
@@ -54,6 +61,7 @@ pub const ENTRIES: &[AddEntry] = &[
     CHARACTER,
     COLLISION_SHAPE,
     RAY_SENSOR,
+    MOTION_INPUT,
     BACKGROUND_LAYER,
 ];
 

@@ -514,4 +514,6 @@
 /// (`StableId`, `0` = este), `action`, `property` (`canonical/serde_key`), `remap`, `remap_from`, `remap_to`, `curve` e
 /// `smooth`. SEM leitura dos anteriores (§0.11). Gates: `motion_input_bridge::` (from/action/property/speed/remap/smooth).
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 246;
+///
+/// # `246 → 247` — **o Motion Input é um objeto filho** (GEF 08 MI-10, 2026-11-16): `from = 0` = o PAI. A tripla NÃO vê.
+pub(crate) const PROJECT_SCHEMA: u32 = 247;

@@ -102,13 +102,22 @@ fn forma(sim: &mut SimWorld, e: Entity, shape: ColliderShape) {
     }
 }
 
+/// O objeto filho «Motion Input» de `dono` com a config `mi` (MI-10), pela porta do `+`; devolve o filho.
+fn entrada(sim: &mut SimWorld, p: &Pecas<'_>, dono: Entity, mi: MotionInput) -> Entity {
+    let e = ph2d_physics_ecs::pendura_entrada(sim.world_mut(), None, Some(dono), "");
+    anexa(sim, p, e, "ph2d::ecs::MotionInput");
+    sim.world_mut().entity_mut(e).insert(mi);
+    e
+}
+
 fn anexa(sim: &mut SimWorld, p: &Pecas<'_>, e: Entity, nome: &str) {
     if let Err(erro) = (p.anexa)(sim, e.to_bits(), nome) {
         eprintln!("[game-smoke] =27 {nome}: {erro}");
     }
 }
 
-/// Monta a cena e devolve o objecto que o Inspector abre (o «Health Dummy», ou o da [`Foto`] pedida).
+/// Monta a cena e devolve o objecto que o Inspector abre: o filho «Motion Input» do «Health Dummy» (MI-10), ou o
+/// do da [`Foto`] pedida.
 pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     let quer = match foto(pedida().as_deref()) {
         Some(Foto::Lamp) => LAMPADA,
@@ -143,14 +152,14 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
                 h.invincible_s = 0.0; // um golpe por bala, sem janela que engula o seguinte
             }
         }
-        anexa(sim, &p, e, "ph2d::ecs::MotionInput");
-        sim.world_mut().entity_mut(e).insert(MotionInput {
+        let mi = MotionInput {
             name: entrada.to_owned(),
             source: fonte,
             ..MotionInput::default()
-        });
+        };
+        let filho = self::entrada(sim, &p, e, mi);
         if nome == quer {
-            escolhido = Some(e);
+            escolhido = Some(filho);
         }
     }
     for (alvo, d, distancias) in BALAS {
@@ -184,10 +193,10 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
             }
         }
     }
-    for e in onda2(sim, &p) {
+    for (dono, filho) in onda2(sim, &p) {
         let w = sim.world();
-        if w.get::<Name>(e).is_some_and(|n| n.0 == quer) {
-            escolhido = Some(e);
+        if w.get::<Name>(dono).is_some_and(|n| n.0 == quer) {
+            escolhido = Some(filho);
         }
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
@@ -207,8 +216,8 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     escolhido.expect("o objecto escolhido está na tabela")
 }
 
-/// Os três leitores sem corpo, a bola que quica e o parapeito; devolve os quatro leitores.
-fn onda2(sim: &mut SimWorld, p: &Pecas<'_>) -> Vec<Entity> {
+/// Os três leitores sem corpo, a bola que quica e o parapeito; devolve os quatro `(leitor, filho Motion Input)`.
+fn onda2(sim: &mut SimWorld, p: &Pecas<'_>) -> Vec<(Entity, Entity)> {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let sid = |sim: &mut SimWorld, nome: &str| {
         let w = sim.world_mut();
@@ -250,9 +259,8 @@ fn onda2(sim: &mut SimWorld, p: &Pecas<'_>) -> Vec<Entity> {
                 ..MotionInput::default()
             },
         };
-        anexa(sim, p, e, "ph2d::ecs::MotionInput");
-        sim.world_mut().entity_mut(e).insert(mi);
-        leitores.push(e);
+        let filho = entrada(sim, p, e, mi);
+        leitores.push((e, filho));
     }
     let (c, h) = PARAPEITO_AT;
     let ledge = (p.estatico)(sim);
@@ -289,8 +297,7 @@ fn onda2(sim: &mut SimWorld, p: &Pecas<'_>) -> Vec<Entity> {
     if let Some(mut col) = w.get_mut::<Collider>(f) {
         col.restitution = RESTITUICAO;
     }
-    anexa(sim, p, bola, "ph2d::ecs::MotionInput");
-    sim.world_mut().entity_mut(bola).insert(MotionInput {
+    let mi = MotionInput {
         name: ENTRADA_ESTADO.into(),
         source: MotionSource::Speed,
         remap: true,
@@ -298,8 +305,9 @@ fn onda2(sim: &mut SimWorld, p: &Pecas<'_>) -> Vec<Entity> {
         remap_to: RAPIDEZ_TIPICA,
         smooth: SUAVE_S,
         ..MotionInput::default()
-    });
-    leitores.push(bola);
+    };
+    let filho = entrada(sim, p, bola, mi);
+    leitores.push((bola, filho));
     leitores
 }
 

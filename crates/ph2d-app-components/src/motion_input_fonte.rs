@@ -24,11 +24,12 @@ pub struct Fontes<'a> {
     pub registry: Option<&'a ComponentRegistry>,
 }
 
-/// O objecto From: `0` = o próprio; um `StableId` que ninguém tem = `None` (a fonte não existe).
+/// O objecto From: `0` = o dono (o PAI do objeto «Motion Input», MI-10); um `StableId` que ninguém tem
+/// = `None` (a fonte não existe).
 #[must_use]
 pub fn alvo(world: &World, e: Entity, from: u64) -> Option<Entity> {
     if from == 0 {
-        Some(e)
+        Some(ph2d_ecs::motion_input::dono(world, e))
     } else {
         ph2d_ecs::entity_with_stable_id(world, StableId(from))
     }

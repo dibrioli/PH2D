@@ -175,6 +175,30 @@ pub fn pendura_raio(world: &mut World, e: Entity, pai: Option<Entity>) -> Entity
     e
 }
 
+/// ⭐ **A entrada do Motion é um objeto filho** (GEF 08 MI-10, dono 16/11): `e` (ou, sem `e`, um vazio novo
+/// chamado `nome`; `""` = sem `Name`, a ponte põe o rótulo) vira o último filho de `pai`, na origem dele (sem
+/// `pai`, fica na raiz). Devolve o filho; quem anexa o `MotionInput` é o chamador (pela porta do `+`, com a semente).
+pub fn pendura_entrada(
+    world: &mut World,
+    e: Option<Entity>,
+    pai: Option<Entity>,
+    nome: &str,
+) -> Entity {
+    let e = e.unwrap_or_else(|| {
+        if nome.is_empty() {
+            return world.spawn_empty().id();
+        }
+        let nome = crate::migra_formas::nome_livre(world, nome);
+        world.spawn(ph2d_ecs::Name::new(nome)).id()
+    });
+    if let Some(p) = pai.filter(|&p| world.get_entity(p).is_ok() && p != e) {
+        world.entity_mut(e).insert(ph2d_ecs::Transform::IDENTITY);
+        crate::migra_formas::pendura(world, e, p, None);
+    }
+    ph2d_ecs::assign_missing_stable_ids(world);
+    e
+}
+
 /// Quantas peças estão penduradas em `body`.
 ///
 /// `candidates` vem de uma query do chamador (`&Collider` sem `&RigidBody`) — não

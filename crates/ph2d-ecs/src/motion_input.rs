@@ -99,3 +99,37 @@ impl Default for MotionInput {
         }
     }
 }
+
+/// O dono de uma entrada (MI-10): o PAI do objeto «Motion Input»; na raiz, o próprio.
+#[must_use]
+pub fn dono(
+    world: &bevy_ecs::world::World,
+    e: bevy_ecs::entity::Entity,
+) -> bevy_ecs::entity::Entity {
+    world
+        .get::<crate::ChildOf>(e)
+        .map_or(e, crate::ChildOf::parent)
+}
+
+/// O rótulo da linha da Hierarquia: `«<base> · <nome>»` (`base` = «Motion Input», traduzido por quem chama).
+#[must_use]
+pub fn rotulo(base: &str, nome: &str) -> String {
+    format!("{base} \u{b7} {}", nome.trim())
+}
+
+/// A linha da Hierarquia segue o nome da entrada: todo objeto com `MotionInput` cujo `Name` ainda começa
+/// por `base` (o artista não o renomeou) passa a `rotulo(base, nome)`. Só escreve quando muda.
+pub fn rotula_entradas(world: &mut bevy_ecs::world::World, base: &str) {
+    let mut q = world.query::<(bevy_ecs::entity::Entity, &MotionInput, Option<&crate::Name>)>();
+    let trocar: Vec<_> = q
+        .iter(world)
+        .filter_map(|(e, m, n)| {
+            let quer = rotulo(base, &m.name);
+            let atual = n.map_or("", |n| n.as_str());
+            (atual != quer && (atual.is_empty() || atual.starts_with(base))).then_some((e, quer))
+        })
+        .collect();
+    for (e, quer) in trocar {
+        world.entity_mut(e).insert(crate::Name::new(quer));
+    }
+}

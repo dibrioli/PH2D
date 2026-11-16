@@ -55,6 +55,7 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
             "object_add.game.background_layer" => (true, false, None, false, false),
             // Sem seleção o raio fica só na raiz: sem imagem, sem corpo, sem forma (GEF 07).
             "object_add.game.ray_sensor" => (false, false, None, false, false),
+            "object_add.game.motion_input" => (false, false, None, false, false),
             other => panic!("entrada sem conjunto esperado: {other}"),
         };
         assert_eq!(tem, esperado, "{}", entry.key.key());
@@ -472,4 +473,32 @@ fn o_raio_nasce_filho_do_seleccionado_a_olhar_para_baixo() {
         "o pai não ganha raio"
     );
     assert!(w.get::<RigidBody>(filho).is_none(), "o raio não é corpo");
+}
+
+/// ⭐ **Add ▸ Motion Input** (GEF 08 MI-10, dono 16/11): com um objeto selecionado a entrada nasce FILHA dele, na
+/// origem dele, com o `MotionInput` — e o pai não ganha o componente; sem seleção fica na raiz. O devolvido é o FILHO.
+#[test]
+fn a_entrada_do_motion_nasce_filha_do_seleccionado() {
+    let mut sim = SimWorld::new();
+    let heroi = nasce(CHARACTER, &mut sim);
+    let reg = crate::comp::registo();
+    let sob = |sim: &mut SimWorld, pai: Option<Entity>| {
+        let bits = crate::comp::com_portas(&reg, |p| {
+            add(MOTION_INPUT, sim, p.menu, pai.map(Entity::to_bits))
+        })
+        .expect("é do jogo")
+        .expect("nasce");
+        Entity::from_bits(bits)
+    };
+    let (filho, solto) = (sob(&mut sim, Some(heroi)), sob(&mut sim, None));
+    let w = sim.world();
+    let pai = |e| w.get::<ph2d_ecs::ChildOf>(e).map(ph2d_ecs::ChildOf::parent);
+    assert_eq!((pai(filho), pai(solto)), (Some(heroi), None));
+    assert!(
+        w.get::<ph2d_ecs::MotionInput>(filho).is_some(),
+        "o filho leva a entrada"
+    );
+    assert!(w.get::<ph2d_ecs::MotionInput>(heroi).is_none(), "o pai não");
+    let t = w.get::<ph2d_ecs::Transform>(filho).expect("pose");
+    assert_eq!(t.translation, ph2d_core::Vec2::ZERO, "na origem do pai");
 }

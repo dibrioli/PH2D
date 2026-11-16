@@ -16,6 +16,23 @@ fn por_nome(sim: &mut SimWorld, nome: &str) -> Vec<Entity> {
         .collect()
 }
 
+/// MI-10: o ÚNICO filho «Motion Input» de `dono` (o dono não leva o componente).
+fn entrada_de(sim: &mut SimWorld, dono: Entity) -> Entity {
+    assert!(
+        sim.world().get::<MotionInput>(dono).is_none(),
+        "o dono não leva o Motion Input"
+    );
+    let w = sim.world_mut();
+    let mut q = w.query::<(Entity, &MotionInput, &ph2d_ecs::ChildOf)>();
+    let v: Vec<Entity> = q
+        .iter(w)
+        .filter(|(_, _, c)| c.parent() == dono)
+        .map(|(e, ..)| e)
+        .collect();
+    assert_eq!(v.len(), 1, "um filho Motion Input");
+    v[0]
+}
+
 fn um(sim: &mut SimWorld, nome: &str) -> Entity {
     let v = por_nome(sim, nome);
     assert_eq!(v.len(), 1, "{nome}");
@@ -28,11 +45,17 @@ fn um(sim: &mut SimWorld, nome: &str) -> Entity {
 fn a_cena_27_monta_os_alvos_a_lampada_e_as_balas() {
     let mut sim = SimWorld::new();
     let aberto = crate::comp::montar(&mut sim, cena::CENA);
-    assert_eq!(um(&mut sim, cena::ALVO_VIDA), aberto);
+    let dummy = um(&mut sim, cena::ALVO_VIDA);
+    assert_eq!(
+        entrada_de(&mut sim, dummy),
+        aberto,
+        "abre no filho Motion Input"
+    );
     for (nome, _, fonte, entrada) in cena::OBJETOS {
         let e = um(&mut sim, nome);
+        let f = entrada_de(&mut sim, e);
         let w = sim.world();
-        let mi = w.get::<MotionInput>(e).expect(nome);
+        let mi = w.get::<MotionInput>(f).expect(nome);
         assert_eq!((mi.name.as_str(), mi.source), (entrada, fonte), "{nome}");
         let lampada = nome == cena::LAMPADA;
         assert_eq!(w.get::<Health>(e).is_none(), lampada, "{nome}: vida");
@@ -127,7 +150,8 @@ fn a_cena_27_monta_os_leitores_da_onda_2() {
     ];
     for (nome, fonte, entrada, from) in casos {
         let e = um(&mut sim, nome);
-        let mi = sim.world().get::<MotionInput>(e).expect(nome).clone();
+        let f = entrada_de(&mut sim, e);
+        let mi = sim.world().get::<MotionInput>(f).expect(nome).clone();
         assert_eq!(
             (mi.source, mi.name.as_str(), mi.from),
             (fonte, entrada, from),
@@ -142,6 +166,7 @@ fn a_cena_27_monta_os_leitores_da_onda_2() {
         um(&mut sim, cena::LEITOR_CAMPO),
         um(&mut sim, cena::LEITOR_ACCAO),
     );
+    let (ec, ea) = (entrada_de(&mut sim, ec), entrada_de(&mut sim, ea));
     let campo = sim.world().get::<MotionInput>(ec).cloned().expect("campo");
     assert_eq!(
         (campo.property.as_str(), campo.remap, campo.remap_to),
@@ -155,8 +180,9 @@ fn a_cena_27_monta_os_leitores_da_onda_2() {
         Some(cena::ACCAO)
     );
     let bola = um(&mut sim, cena::LEITOR_RAPIDEZ);
+    let fb = entrada_de(&mut sim, bola);
     let w = sim.world();
-    let mi = w.get::<MotionInput>(bola).expect("bola");
+    let mi = w.get::<MotionInput>(fb).expect("bola");
     assert_eq!(
         (mi.remap, mi.remap_to, mi.smooth),
         (true, cena::RAPIDEZ_TIPICA, cena::SUAVE_S)

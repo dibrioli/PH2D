@@ -16,6 +16,7 @@ use crate::motion_input_fonte::{self as fonte, Fontes};
 use bevy_ecs::prelude::Resource;
 use ph2d_ecs::motion_inputs::{Escritor, Valor};
 use ph2d_ecs::{MotionInput, MotionInputs, MotionSource, Name, SimWorld};
+use ph2d_game_dicas::add::MOTION_INPUT;
 use ph2d_runtime::{SignalOutbox, SignalReader};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -37,21 +38,24 @@ enum Publica {
 /// Corre UMA vez por quadro, depois da física (o `HealthNow`) e antes do Motion.
 pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
     let world = sim.world_mut();
+    ph2d_ecs::motion_input::rotula_entradas(world, &MOTION_INPUT.key.tr());
     let mut ponte = world.remove_resource::<Ponte>().unwrap_or_default();
     // `bool` = a fonte existe neste quadro; sem ela a linha SAI (o `value.input` volta ao número
     // dele), nunca fica presa no último valor.
     let mut linhas: Vec<(Escritor, String, Publica, bool)> = Vec::new();
     let mut vida_agora = BTreeMap::new();
     let mut suave_agora = BTreeMap::new();
-    let mut q = world.query::<(bevy_ecs::entity::Entity, &MotionInput, Option<&Name>)>();
-    let lidos: Vec<_> = q
-        .iter(world)
-        .map(|(e, m, n)| (e, m.clone(), n.map(|n| n.0.clone()).unwrap_or_default()))
-        .collect();
-    for (e, m, nome_obj) in lidos {
+    let mut q = world.query::<(bevy_ecs::entity::Entity, &MotionInput)>();
+    let lidos: Vec<_> = q.iter(world).map(|(e, m)| (e, m.clone())).collect();
+    for (e, m) in lidos {
         let bits = e.to_bits();
+        // O escritor fala pelo DONO (o pai, MI-10): é o nome que o artista vê e a ordem de «quem escreve primeiro».
+        let dono = ph2d_ecs::motion_input::dono(world, e);
         let escritor = Escritor::Objeto {
-            nome: nome_obj,
+            nome: world
+                .get::<Name>(dono)
+                .map(|n| n.0.clone())
+                .unwrap_or_default(),
             bits,
         };
         let alvo = fonte::alvo(world, e, m.from);

@@ -207,6 +207,7 @@ pub fn attach_picked(
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Option<(u64, String)> {
     let (bits, name) = picks?;
+    let bits = &crate::motion_input_filho::alvo_do_pick(sim, *bits, name);
     let ja = ph2d_ecs::Entity::try_from_bits(*bits)
         .map(|e| present_on(sim.world(), e, registry))
         .unwrap_or_default();

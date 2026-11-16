@@ -18,8 +18,8 @@ use ph2d_render::{FactoryArt, HERO_SHEET_SOLE_BELOW_CENTRE, HILLS_TILE, Sprite, 
 
 /// As entradas e o ensino do menu Add moram na folha de dados (`ph2d-game-dicas`), pela catraca de LOC.
 pub use ph2d_game_dicas::add::{
-    ANIMATED_SPRITE, BACKGROUND_LAYER, CHARACTER, COLLISION_SHAPE, ENTRIES, RAY_SENSOR, SPRITE,
-    STATIC_BODY, TEACH,
+    ANIMATED_SPRITE, BACKGROUND_LAYER, CHARACTER, COLLISION_SHAPE, ENTRIES, MOTION_INPUT,
+    RAY_SENSOR, SPRITE, STATIC_BODY, TEACH,
 };
 
 const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -146,6 +146,9 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<
             }
         } else if entry == RAY_SENSOR {
             ph2d_physics_ecs::pendura_raio(world, e, pai.map(Entity::from_bits));
+        } else if entry == MOTION_INPUT {
+            ph2d_physics_ecs::pendura_entrada(world, Some(e), pai.map(Entity::from_bits), "");
+            attach(sim, "ph2d::ecs::MotionInput")?;
         } else {
             let forma = ph2d_physics_ecs::pendura_forma(world, e, pai.map(Entity::from_bits));
             return Ok(forma.to_bits());

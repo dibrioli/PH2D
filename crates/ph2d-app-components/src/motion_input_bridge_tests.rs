@@ -390,3 +390,44 @@ fn smooth_halves_the_gap_per_half_life_and_is_born_on_target() {
     let v = numero(&sim, "v").unwrap();
     assert!((v - 0.5).abs() < 1e-5, "meia-vida de 1 s: {v}");
 }
+
+/// ⭐ MI-10: a entrada mora num filho. `from = 0` lê o PAI; dois filhos Damage no mesmo pai disparam cada um
+/// (estado próprio, chave = bits do filho); o escritor fala pelo nome do pai; a linha diz «Motion Input · <nome>».
+#[test]
+fn a_motion_input_child_reads_its_parent_and_siblings_keep_their_own_state() {
+    let mut sim = SimWorld::new();
+    let out = SignalOutbox::new();
+    let pai = com_vida(&mut sim, entrada("x", MotionSource::Value, 0.0));
+    sim.world_mut()
+        .entity_mut(pai)
+        .remove::<MotionInput>()
+        .insert(Name("Dummy".into()));
+    let filho = |sim: &mut SimWorld, m: MotionInput| {
+        let e = ph2d_physics_ecs::pendura_entrada(sim.world_mut(), None, Some(pai), "");
+        sim.world_mut().entity_mut(e).insert(m);
+        e
+    };
+    let vida = filho(&mut sim, entrada("vida", MotionSource::Health, 0.0));
+    filho(&mut sim, entrada("d1", MotionSource::Damage, 0.0));
+    filho(&mut sim, entrada("d2", MotionSource::Damage, 0.0));
+    quadro(&mut sim, &out);
+    sim.world_mut().get_mut::<HealthNow>(pai).unwrap().pontos = 4.0;
+    quadro(&mut sim, &out);
+    assert_eq!(
+        valor(&sim, "vida"),
+        vec![Valor::Numero(0.4)],
+        "from = 0 é o pai"
+    );
+    assert_eq!(
+        (disparos(&sim, "d1"), disparos(&sim, "d2")),
+        (vec![1], vec![1])
+    );
+    let m = sim.world().get_resource::<MotionInputs>().unwrap();
+    let quem = m.primeira_linha("vida").map(|(e, _)| e.clone());
+    assert!(
+        matches!(quem, Some(Escritor::Objeto { nome, .. }) if nome == "Dummy"),
+        "o escritor é o pai"
+    );
+    let rotulo = sim.world().get::<Name>(vida).map(|n| n.0.clone());
+    assert_eq!(rotulo.as_deref(), Some("Motion Input \u{b7} vida"));
+}

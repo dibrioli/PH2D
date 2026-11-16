@@ -114,7 +114,11 @@ Fotos (Xvfb, cliques reais, roteiro com conferências por passo [`fotos_pontos_r
 [r6 miniaturas viradas](../fotos/pontos_r6_miniaturas_viradas_quando_desce.png) · [r7 Elastic com braços à vista](../fotos/pontos_r7_elastic_bracos_a_vista.png) ·
 [r8 toque no Elastic cria o ponto](../fotos/pontos_r8_toque_no_elastic_cria_o_ponto.png); [velocidade rv1..rv3](../fotos/pontos_rv_sequencia.png).
 
-_BUILD_
+Binário do smoke compilado depois do commit final `87bbadf620` (`rm -rf target/*/incremental` antes), 2.ª corrida:
+```
+$ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 0.35s      # zero linhas Compiling
+```
 
 ## Aberto
 

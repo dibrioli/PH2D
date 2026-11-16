@@ -57,7 +57,7 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 | Top-Down Player | Top-Down Player | — | `fechado` 12/11 ([ficha](componentes/05_topdown.md) · [handoff](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-12_TOPDOWN.md)) |
 | Projectile Motion | Projectile Motion | — | `fechado` 13/11 ([ficha](componentes/06_projectile.md) · [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-13_06_PROJECTILE.md)) |
 | Ray Sensor | Ray Sensor | — | `em obra` 15/11: versão B + vira objeto filho ([ficha](componentes/07_ray_sensor.md)) |
-| Motion Input | Motion Input | — | `a revisar` |
+| Motion Input | Motion Input | — | `em obra` 15/11: maquete B + três ondas ([ficha](componentes/08_motion_input.md)) |
 | Path Follow | Path Follow | — | `a revisar` |
 
 ## Câmera e fundo

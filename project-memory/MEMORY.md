@@ -153,3 +153,4 @@
 - ⭐⭐ [Dono 15/11: até onde o Ray Sensor ignora a família = campo texto + conta-gotas (vazio = para no personagem)](project_ray_family_ignore_up_to_field_2026_11_15.md)
 - ⭐⭐ [Dono 15/11: melhorias do Ray Sensor — tags como material, Shape em dropdown, cartão por pergunta, Also ignore por lista, desligar dispara On Exit](project_ray_sensor_improvements_owner_decisions_2026_11_15.md)
 - ⛔⛔ [Dono 15/11: crítica que conta CAMPOS esconde o que falta FAZER — tabela de capacidades antes das maquetes](feedback_a_critique_that_counts_fields_hides_the_capability_gap.md)
+- ⭐⭐ [Dono 15/11: Motion Input = maquete B + três ondas (consertos · origens sem script · vetor/get/lista/sinal)](project_motion_input_plan_b_three_waves_2026_11_15.md)

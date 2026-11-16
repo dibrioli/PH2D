@@ -323,6 +323,7 @@ color_tokens! {
     ObjCollider => "obj-collider",
     ObjAssembly => "obj-assembly", // montagem de juntas (Joint Editor W3)
     ObjRaySensor => "obj-ray-sensor", // o objeto Ray Sensor (GEF 07)
+    ObjMotionInput => "obj-motion-input", // o filho Motion Input (GEF 08)
     // ⭐ As 32 camadas de colisão (GEF02 9c), cor de DADO pelo número: `camadas_de_colisao.rs`.
     ObjLayer0 => "obj-layer-0", ObjLayer1 => "obj-layer-1", ObjLayer2 => "obj-layer-2", ObjLayer3 => "obj-layer-3",
     ObjLayer4 => "obj-layer-4", ObjLayer5 => "obj-layer-5", ObjLayer6 => "obj-layer-6", ObjLayer7 => "obj-layer-7",

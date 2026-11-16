@@ -40,11 +40,13 @@ pub enum ObjectType {
     Assembly,
     /// O objeto «Ray Sensor» (GEF 07): o raio é um objeto, como a forma.
     RaySensor,
+    /// O objeto filho «Motion Input · …» (GEF 08 MI-10).
+    MotionInput,
 }
 
 impl ObjectType {
     /// Todos, na ordem de PRECEDÊNCIA entre os definidos por componente.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::Empty,
         Self::Image,
         Self::Vector,
@@ -64,6 +66,7 @@ impl ObjectType {
         Self::Collider,
         Self::Assembly,
         Self::RaySensor,
+        Self::MotionInput,
     ];
 
     /// O glifo — um por tipo, nenhum repetido.
@@ -89,6 +92,7 @@ impl ObjectType {
             Self::Collider => IconId::Collider,
             Self::Assembly => IconId::Link,
             Self::RaySensor => IconId::Probe,
+            Self::MotionInput => IconId::Gamepad,
         }
     }
 
@@ -115,6 +119,7 @@ impl ObjectType {
             Self::Collider => ColorToken::ObjCollider,
             Self::Assembly => ColorToken::ObjAssembly,
             Self::RaySensor => ColorToken::ObjRaySensor,
+            Self::MotionInput => ColorToken::ObjMotionInput,
         }
     }
 
@@ -134,6 +139,7 @@ impl ObjectType {
             Self::Collider => Some("ph2d::physics::Collider"),
             Self::Assembly => Some("ph2d::physics::JointAssembly"),
             Self::RaySensor => Some("ph2d::physics::RaySensor"),
+            Self::MotionInput => Some("ph2d::ecs::MotionInput"),
             Self::Empty
             | Self::Image
             | Self::Vector

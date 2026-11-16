@@ -125,9 +125,7 @@ impl RowComponents {
 mod tests {
     use super::*;
 
-    /// ⭐ F42 — o tipo da linha sai dos marcadores do REGISTO: o componente definidor faz o tipo num
-    /// vazio, e o jogador ganha à imagem. (Mutação: a sonda dos marcadores responder `false` ⇒ tudo
-    /// volta a Empty/Image — RED.)
+    /// ⭐ F42 — o tipo da linha sai dos marcadores do REGISTO; o filho «Motion Input · …» (GEF 08) também.
     #[test]
     fn the_row_type_comes_from_the_registered_markers() {
         use ph2d_editor_core::hier_types::ObjectType;
@@ -139,14 +137,16 @@ mod tests {
             .to_bits();
         let camera = world.spawn(ph2d_ecs::GameCamera::default()).id().to_bits();
         let vazio = world.spawn(ph2d_ecs::Transform::default()).id().to_bits();
+        let mi = world.spawn(ph2d_ecs::MotionInput::default()).id().to_bits();
         let rows = RowComponents::of(&world, &registry);
+        assert_eq!(rows.object_type(&world, mi), ObjectType::MotionInput);
+        assert_eq!(ObjectType::MotionInput.icon(), ph2d_editor_core::icons::IconId::Gamepad);
         assert_eq!(rows.object_type(&world, caixa), ObjectType::Collider);
         assert_eq!(rows.object_type(&world, camera), ObjectType::Camera);
         assert_eq!(rows.object_type(&world, vazio), ObjectType::Empty);
     }
 
-    /// N10 F6c: a busca por nome dá as MESMAS sondas que a varredura linear de antes (o perfil
-    /// achou-a por quadro). Controlo: o oráculo é a varredura, sobre o registo inteiro.
+    /// N10 F6c: a busca por nome dá as MESMAS sondas que a varredura linear (o oráculo).
     #[test]
     fn a_busca_por_nome_da_as_mesmas_sondas_que_a_varredura() {
         let registry = crate::component_registry_for_tests::registo();

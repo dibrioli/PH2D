@@ -213,6 +213,7 @@ impl ColorToken {
             | T::ObjCollider
             | T::ObjAssembly
             | T::ObjRaySensor
+            | T::ObjMotionInput
             | T::ObjLayer0
             | T::ObjLayer1
             | T::ObjLayer2

@@ -1,0 +1,139 @@
+<!doctype html><meta charset="utf-8"><title>Motion Input — onda 3, maquete</title>
+<style>
+body{background:#121316;color:#ddd;font:13px system-ui;margin:16px;max-width:1400px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:26px 0 6px;color:#fff}
+p.n{color:#aaa;margin:2px 0 10px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+.op{background:#1a1b1f;border-radius:10px;padding:10px;border:2px solid #2a2c33}
+.op.rec{border-color:#3b82f6}
+.op h3{margin:0 0 8px;font-size:14px}.op h3 b{color:#60a5fa}
+.row{display:flex;gap:10px;align-items:flex-start}
+.panel{background:#202228;border-radius:8px;padding:8px;flex:1;min-width:0}
+.ph{font-size:11px;letter-spacing:.06em;color:#bbb;font-weight:600;margin-bottom:6px}
+.tr{padding:2px 4px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr.s{background:#284a7a}.i1{padding-left:16px}.i2{padding-left:30px}
+.ic{display:inline-block;width:10px;height:10px;border:1.5px solid #8ab4f8;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.ic.m{border-color:#c084fc;border-radius:50%}.ic.c{border-color:#a3e635}
+.card{background:#25272e;border-radius:6px;padding:7px;margin-top:6px}
+.ct{font-weight:600;color:#fff;display:flex;justify-content:space-between}
+.lb{font-size:11px;color:#999;margin:6px 0 3px}
+.chips{display:flex;flex-wrap:wrap;gap:3px}
+.ch{background:#2f323a;padding:3px 7px;border-radius:4px;font-size:12px}
+.ch.on{background:#3b4252;color:#fff;outline:1px solid #60a5fa}
+.fld{background:#1c1d22;border-radius:4px;padding:4px 6px;font-size:12px}
+.live{color:#86efac;font-size:12px;margin-top:6px}
+.li{display:grid;grid-template-columns:70px 1fr 54px 14px;gap:4px;align-items:center;font-size:12px;padding:3px 2px;border-bottom:1px solid #2c2e35}
+.li.sel{background:#2b3140}
+.add{color:#93c5fd;font-size:12px;margin-top:6px}
+.pro{color:#9ca3af;font-size:12px;margin:8px 0 0;line-height:1.45}
+.pro b{color:#e5e7eb}.ok{color:#86efac}.no{color:#fca5a5}
+.node{background:#2a2d36;border-radius:8px;width:190px;font-size:12px;border:1px solid #444}
+.nh{background:#7c3aed;color:#fff;padding:4px 8px;border-radius:7px 7px 0 0;font-weight:600}
+.nh.o{background:#0e7490}
+.np{padding:3px 8px;display:flex;justify-content:space-between}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#facc15;margin:0 4px}
+.dot.v{background:#38bdf8}.dot.e{background:#f472b6}
+.rec-tag{background:#3b82f6;color:#fff;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:6px}
+</style>
+<h1>Motion Input — onda 3: três escolhas antes do código</h1>
+<p class="n">Conceito, não tela do app. Contorno azul = a recomendação. O resto da onda (o script lê o valor de volta) não tem escolha.</p>
+
+<h2>1 · Várias entradas no mesmo objeto</h2>
+<p class="n">Ex.: o Herói manda a VIDA para a barra e a VELOCIDADE para o rastro.</p>
+<div class="g">
+ <div class="op rec"><h3><b>B</b> · Cada entrada é um objeto filho <span class="rec-tag">recomendo</span></h3>
+  <div class="row">
+   <div class="panel" style="max-width:170px"><div class="ph">HIERARCHY</div>
+    <div class="tr"><span class="ic"></span>Hero</div>
+    <div class="tr i1"><span class="ic c"></span>Collision Shape</div>
+    <div class="tr i1 s"><span class="ic m"></span>Motion Input · vida</div>
+    <div class="tr i1"><span class="ic m"></span>Motion Input · estado</div>
+    <div class="tr"><span class="ic"></span>Motion</div>
+   </div>
+   <div class="panel"><div class="ph">INSPECTOR</div>
+    <div class="card"><div class="ct">Motion Input</div>
+     <div class="lb">Input</div><div class="chips"><span class="ch">boom</span><span class="ch">estado</span><span class="ch on">vida</span><span class="ch">New…</span></div>
+     <div class="lb">Source</div><div class="chips"><span class="ch">Value</span><span class="ch on">Health</span><span class="ch">Speed</span><span class="ch">…</span></div>
+     <div class="lb">From</div><div class="fld">Hero (parent)</div>
+     <div class="live">Reads Health here: 0.75</div></div>
+   </div></div>
+  <p class="pro"><b>Como se adiciona:</b> Add ▸ Motion Input com o Hero selecionado, igual ao Ray Sensor e à Collision Shape.<br>
+  <span class="ok">+</span> O cartão de hoje fica igual e cada entrada tem o próprio Auto Key.<br>
+  <span class="ok">+</span> Arrasta, copia e apaga cada entrada sozinha, e o nome fica visível na Hierarquia.<br>
+  <span class="no">−</span> A Hierarquia ganha uma linha por entrada.</p>
+ </div>
+ <div class="op"><h3><b>A</b> · Uma lista dentro do cartão</h3>
+  <div class="row">
+   <div class="panel" style="max-width:170px"><div class="ph">HIERARCHY</div>
+    <div class="tr s"><span class="ic"></span>Hero</div>
+    <div class="tr i1"><span class="ic c"></span>Collision Shape</div>
+    <div class="tr"><span class="ic"></span>Motion</div>
+   </div>
+   <div class="panel"><div class="ph">INSPECTOR</div>
+    <div class="card"><div class="ct">Motion Input</div>
+     <div class="li sel"><span>vida</span><span>Health</span><span class="live" style="margin:0">0.75</span><span>⋯</span></div>
+     <div class="li"><span>estado</span><span>Speed · Smooth</span><span class="live" style="margin:0">0.40</span><span>⋯</span></div>
+     <div class="add">+ Add input</div>
+     <div class="lb" style="margin-top:8px">▾ vida</div>
+     <div class="chips"><span class="ch on">Health</span><span class="ch">Speed</span><span class="ch">…</span></div>
+    </div>
+   </div></div>
+  <p class="pro"><b>Como se adiciona:</b> com o «+ Add input» dentro do cartão.<br>
+  <span class="ok">+</span> A Hierarquia fica curta.<br>
+  <span class="no">−</span> O Auto Key não grava um item de lista, então as entradas da lista não se animam na Timeline.<br>
+  <span class="no">−</span> O cartão vira dois níveis (a lista mais o item aberto) e a família do código já está no limite de tamanho.</p>
+ </div>
+</div>
+
+<h2>2 · O efeito avisa o jogo (sinal)</h2>
+<p class="n">Ex.: quando a barra de vida passa de 0.25 para baixo, o grafo grita «low_health». As regras do Game e o script já ouvem sinais, sem nada novo do lado deles.</p>
+<div class="g">
+ <div class="op rec"><h3><b>A</b> · Um nó «Send signal» no grafo <span class="rec-tag">recomendo</span></h3>
+  <div class="row" style="align-items:center;gap:30px">
+   <div class="node"><div class="nh">Input · vida</div><div class="np"><span></span><span>out<span class="dot"></span></span></div><div class="np"><span></span><span>pulse<span class="dot e"></span></span></div></div>
+   <div class="node"><div class="nh o">Send signal</div>
+    <div class="np"><span><span class="dot"></span>value</span><span></span></div>
+    <div class="lb" style="padding:0 8px">Signal</div><div class="fld" style="margin:0 8px">low_health</div>
+    <div class="lb" style="padding:0 8px">When</div>
+    <div class="chips" style="padding:0 8px 8px"><span class="ch">Pulse</span><span class="ch">Rises above</span><span class="ch on">Falls below</span></div>
+    <div class="lb" style="padding:0 8px">Level</div><div class="fld" style="margin:0 8px 8px">0.25</div>
+   </div></div>
+  <p class="pro"><b>Do outro lado:</b> numa regra, «When signal <b>low_health</b> → Play sound», ou no script, <code>on_signal</code>.<br>
+  <span class="ok">+</span> Fica no grafo, ao lado do efeito que causa o aviso.<br>
+  <span class="ok">+</span> Dispara uma vez a cada passagem pelo nível, e não a cada quadro.<br>
+  <span class="ok">+</span> O cartão do Motion mostra «Sent low_health 2 times» em Play.</p>
+ </div>
+ <div class="op"><h3><b>B</b> · Uma lista «Signals» no cartão do Motion</h3>
+  <div class="panel"><div class="ph">INSPECTOR · Motion</div>
+   <div class="card"><div class="ct">Signals</div>
+    <div class="li" style="grid-template-columns:90px 1fr 60px 14px"><span>low_health</span><span>vida falls below</span><span>0.25</span><span>⋯</span></div>
+    <div class="add">+ Add signal</div></div></div>
+  <p class="pro"><span class="ok">+</span> Não exige abrir o grafo.<br>
+  <span class="no">−</span> Só lê os valores que entram no grafo, não os que o grafo calcula (o choque, a cor, a fase…).<br>
+  <span class="no">−</span> O aviso fica longe do efeito que o causa.</p>
+ </div>
+</div>
+
+<h2>3 · Valor com duas medidas (x, y)</h2>
+<p class="n">Ex.: o rastro aponta para onde o herói corre; as partículas seguem o analógico.</p>
+<div class="g">
+ <div class="op rec"><h3><b>A</b> · A origem decide sozinha <span class="rec-tag">recomendo</span></h3>
+  <div class="row" style="gap:16px">
+   <div class="panel"><div class="card"><div class="ct">Motion Input</div>
+    <div class="lb">Source</div><div class="chips"><span class="ch">Value</span><span class="ch">Health</span><span class="ch">Speed</span><span class="ch on">Velocity</span><span class="ch">Move</span><span class="ch">…</span></div>
+    <div class="live">Reads Velocity here: (3.2, −1.0)</div></div></div>
+   <div class="node"><div class="nh">Input · rastro</div>
+    <div class="np"><span></span><span>out<span class="dot"></span></span></div>
+    <div class="np"><span></span><span>xy<span class="dot v"></span></span></div>
+    <div class="np"><span></span><span>x · y<span class="dot"></span></span></div></div>
+  </div>
+  <p class="pro">Há duas origens novas: <b>Velocity</b>, a direção e a rapidez do corpo, e <b>Move</b>, uma ação do Input Map com duas direções, como o analógico ou o WASD. Uma Property de duas medidas (a Position, por exemplo) também passa a mandar x e y.<br>
+  No nó, «out» continua sendo o tamanho do vetor, então o que já funciona com número continua igual.</p>
+ </div>
+ <div class="op"><h3><b>B</b> · Uma escolha «Type: Number · Vector» no cartão</h3>
+  <div class="panel"><div class="card"><div class="ct">Motion Input</div>
+   <div class="lb">Type</div><div class="chips"><span class="ch">Number</span><span class="ch on">Vector</span></div>
+   <div class="lb">Source</div><div class="chips"><span class="ch on">Speed</span><span class="ch">Action</span><span class="ch">Property</span></div></div></div>
+  <p class="pro"><span class="no">−</span> Mais um controle, e várias combinações não fazem sentido (por exemplo, Health como Vector).</p>
+ </div>
+</div>

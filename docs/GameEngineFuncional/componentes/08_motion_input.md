@@ -67,6 +67,29 @@ controle; checkbox em moldura; rótulo que não cabe = «…»; catracas de LOC 
   passa a receber o `dt`.
 - `PROJECT_SCHEMA` sobe (`shells/desktop/src/project_schema.rs` + irmãos; `scripts/schema-recount.py`).
 
+## Desenho da onda 3 (dono 16/11: 1B · 2A · 3A — maquete `08_onda3_maquete.html`/`.png`)
+
+- **MI-10 = objeto filho** (padrão Ray Sensor/Collision Shape, ADR-0199): o `MotionInput` mora SÓ num filho
+  «Motion Input» (Add ▸ Motion Input e a paleta de componentes criam o filho; nunca no objeto em si). `from = 0`
+  passa a ser **o pai** (o dono); Speed/Grounded/Velocity leem o corpo do pai. Cada filho = sua chave na ponte
+  (`bits` do filho) — a ponte não muda de forma. Linha da Hierarquia «Motion Input · <nome>». `PROJECT_SCHEMA` sobe.
+- **MI-9 `motion.get(nome)`**: devolve o que o `value.input` desse nome lê (a mesma regra de «quem escreve
+  primeiro»), do tique anterior (as escritas do Luau aplicam no fim do tique); `nil` sem escritor. Número, cor
+  ou par, no mesmo tipo que `motion.set` aceita. Espelho num recurso que o `World` do Luau vê.
+- **MI-5 par (x, y)**: `Valor::Vetor([f32;2])` em `MotionInputs`; o `value.input` ganha saídas `xy` (Vec2), `x`, `y`
+  NO FIM do manifesto (portas existentes não mudam de índice); `out` = tamanho do vetor. Origens novas no FIM de
+  `MotionSource`: **Velocity** (velocidade linear do corpo do pai) e **Move** (ação 2D do Input Map); Property de
+  campo com 2 faixas manda o par. Remap e curva agem no TAMANHO (a direção fica); Smooth por componente.
+  `motion.set` aceita o par (no idioma de vetor que o `ph2d.d.luau` já usa).
+- **MI-8 nó «Send signal»**: drop-crate `ph2d-node-*` nova (não muda NodeOp/OpResolver/NodeManifest — gate
+  `architecture_contract_surface`). Entradas `value` (escalar) e `pulse` (evento); parâmetros Signal (texto),
+  When (Pulse · Rises above · Falls below), Level. A detecção de borda (estado = valor anterior) mora numa PONTE
+  de CPU depois do cook, lendo o valor pela mesma leitura (tap) que o painel usa no cook GPU; publica no
+  `SignalOutbox` com o objeto Motion como origem, uma vez por passagem, só com o jogo a correr. O cartão do Motion
+  mostra «Sent <signal> N times».
+- Ordem: motor (MI-10+MI-9 → MI-5 → MI-8) → cartão → cena/fotos (cena de Game nova com grafo de demo novo:
+  formas + simulação) → mutação. Um agente por parte, em série.
+
 ## Como ficou
 
 ### Onda 1 (15/11, commit `835fe76619`) — smoke do dono OK 16/11

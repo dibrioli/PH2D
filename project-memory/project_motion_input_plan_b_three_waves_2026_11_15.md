@@ -17,3 +17,8 @@ Motion Input leva um valor do jogo a um efeito do Motion (não é o controle do 
 fazê-lo SEM script, e o defeito do valor preso.
 **How to apply:** plano em `docs/GameEngineFuncional/componentes/08_motion_input.md`; cada onda fecha com smoke.
 Relacionado: [[feedback_a_critique_that_counts_fields_hides_the_capability_gap]].
+
+**Onda 3 (dono 16/11, *«faça como sugere»* sobre `docs/GameEngineFuncional/componentes/08_onda3_maquete.png`):**
+1B — cada entrada é um OBJETO FILHO «Motion Input» (como Ray Sensor/Collision Shape), não lista no cartão;
+2A — nó «Send signal» no grafo (When: Pulse · Rises above · Falls below + Level), uma vez por passagem;
+3A — a ORIGEM decide se é par (Velocity, Move, Property 2D); sem seletor «Type»; `out` = tamanho do vetor.

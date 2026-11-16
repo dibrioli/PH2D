@@ -28,14 +28,12 @@ fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
 
     let snap = build_params_snapshot(&motion, ProjectSettings::default())
         .expect("tint node is resolvable");
-    // A named Mode enum (Solid/Gradient), never a number slider.
     assert!(
         snap.rows
             .iter()
             .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "mode")),
         "mode is a named Enum row"
     );
-    // The Start colour is a swatch over r/g/b/a, opaque white by default.
     let start = snap
         .rows
         .iter()
@@ -45,13 +43,6 @@ fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
         })
         .expect("Start colour is a swatch, not four sliders");
     assert_eq!(start.srgb, [255, 255, 255, 255]);
-    // ⚠️ **Em Solid — o modo em que o nó nasce — a segunda cor NÃO aparece**, e é a cura de
-    // 2026-08-22 (doc 90 §2): o braço `Gradient` é o único que lê `r2..a2`, então pintar o
-    // swatch em Solid era um controle que não mudava a imagem.
-    //
-    // ⚠️ Este teste é sobre o WIDGET (*"uma cor é um swatch, nunca quatro sliders"*), não sobre
-    // a visibilidade — então ele passa a perguntar no modo em que a row existe. *Um teste cujo
-    // assunto declarado é outro não deve fixar, de passagem, o defeito que a wave cura.*
     assert!(
         !snap
             .rows
@@ -59,7 +50,6 @@ fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
             .any(|r| matches!(r, ParamRow::Color(c) if c.channels == ["r2", "g2", "b2", "a2"])),
         "em Solid o swatch End nao e' pintado — ele nao faz nada ai'"
     );
-    // Em Gradient ele é o seu próprio swatch sobre r2/g2/b2/a2.
     motion.doc.graph.set_param(tint, "mode", 1.0);
     let grad = build_params_snapshot(&motion, ProjectSettings::default())
         .expect("tint node is resolvable");
@@ -85,11 +75,9 @@ fn color_pick_writes_linear_and_round_trips_to_srgb() {
 
     apply_color_to_node(&mut motion, tint, ["r", "g", "b", "a"], picked);
 
-    // The stored channels are linear-straight (RGB gamma-decoded, alpha /255).
     let lin = channel_values(&motion, tint, ["r", "g", "b", "a"]);
     assert!(lin[0] < lin[2], "blue channel dominates in linear too");
     assert!((lin[3] - 128.0 / 255.0).abs() < 1e-6, "alpha is straight");
-    // Re-encoding the stored linear colour reproduces the pick (±1 LSB).
     let srgb = linear_rgba_to_srgb8(lin);
     for (got, want) in srgb.into_iter().zip(picked) {
         assert!(
@@ -109,13 +97,11 @@ fn color_pick_writes_linear_and_round_trips_to_srgb() {
 fn opening_the_picker_does_not_quantize_an_unmoved_colour() {
     let mut motion = MotionState::new();
     let tint = motion.doc.graph.add_node("motion.tint");
-    // A linear value that does NOT survive an 8-bit round-trip exactly.
     for name in ["r", "g", "b"] {
         motion.doc.graph.set_param(tint, name, 0.5);
     }
     let before = channel_values(&motion, tint, ["r", "g", "b", "a"]);
 
-    // The picker reports back exactly what the swatch seeded it with.
     apply_color_to_node(
         &mut motion,
         tint,
@@ -129,7 +115,6 @@ fn opening_the_picker_does_not_quantize_an_unmoved_colour() {
         "an unmoved picker must not rewrite the doc"
     );
 
-    // A real pick still lands (the guard is not simply dead).
     apply_color_to_node(&mut motion, tint, ["r", "g", "b", "a"], [10, 20, 30, 255]);
     assert_ne!(channel_values(&motion, tint, ["r", "g", "b", "a"]), before);
 }
@@ -150,8 +135,6 @@ fn a_translucent_palette_pick_reaches_the_cooked_tint() {
     use ph2d_nodegraph::cook::Cook;
 
     let mut motion = MotionState::new();
-    // ⚠️ Os dois nós são MODIFICADORES: sem fonte o cook devolve zero elementos e o gate
-    // ficaria verde-sobre-vazio (a 1ª versão deste teste era exatamente isso).
     let grid = motion.doc.graph.add_node("motion.grid");
     let arr = motion.doc.graph.add_node("motion.color_array");
     motion
@@ -168,7 +151,6 @@ fn a_translucent_palette_pick_reaches_the_cooked_tint() {
         "palette",
         ph2d_color::serialize_palette(&[[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]]),
     );
-    // Uma cor com METADE da alfa.
     apply_palette_pick(&mut motion, arr, "palette", 0, [255, 0, 0, 128]);
 
     let mut reg = ph2d_node_registry::NodeRegistry::new();
@@ -296,7 +278,6 @@ fn a_palette_of_any_length_cycles_through_all_of_it() {
     })
     .expect("edge");
 
-    // DOZE cores — três vezes o cap que esta wave removeu.
     #[expect(
         clippy::cast_precision_loss,
         reason = "twelve fixture indices, exact in f32"
@@ -326,7 +307,6 @@ fn a_palette_of_any_length_cycles_through_all_of_it() {
          still capped at the old slot count",
         distinct.len()
     );
-    // …e a décima terceira repete a primeira: é um ciclo, não uma lista que acaba.
     assert!(
         (tint[12][0] - tint[0][0]).abs() < 1e-6,
         "the thirteenth row wraps to the first"

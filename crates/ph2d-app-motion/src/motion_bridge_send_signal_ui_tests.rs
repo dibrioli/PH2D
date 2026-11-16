@@ -26,8 +26,15 @@ fn send_signal_esta_na_paleta_em_output_e_os_params_editam_por_clique() {
         .iter()
         .find(|g| g.subs.iter().flat_map(|s| &s.items).any(|i| i.id == id))
         .expect("Send signal está na paleta");
-    assert_eq!(grupo.title, "Output", "ao lado do «Signal», quem fala para fora");
-    let item = grupo.subs.iter().flat_map(|s| &s.items).find(|i| i.id == id);
+    assert_eq!(
+        grupo.title, "Output",
+        "ao lado do «Signal», quem fala para fora"
+    );
+    let item = grupo
+        .subs
+        .iter()
+        .flat_map(|s| &s.items)
+        .find(|i| i.id == id);
     assert_eq!(item.map(|i| i.label.as_str()), Some("Send signal"));
 
     let n = m.doc.graph.add_node(send::MANIFEST.name);
@@ -46,9 +53,16 @@ fn send_signal_esta_na_paleta_em_output_e_os_params_editam_por_clique() {
     assert_eq!(palavras, ["Pulse", "Rises above", "Falls below"]);
     let p = mostra(&m);
     assert!(p.iter().any(|x| x == send::NAME_KEY), "{p:?}");
-    assert!(!p.iter().any(|x| x == send::LEVEL), "Pulse esconde o Level: {p:?}");
+    assert!(
+        !p.iter().any(|x| x == send::LEVEL),
+        "Pulse esconde o Level: {p:?}"
+    );
 
-    for (when, level) in [(send::WHEN_RISES, true), (send::WHEN_FALLS, true), (0, false)] {
+    for (when, level) in [
+        (send::WHEN_RISES, true),
+        (send::WHEN_FALLS, true),
+        (0, false),
+    ] {
         dispatch(
             &mut m,
             MotionParamIntent::SetParam {
@@ -58,7 +72,11 @@ fn send_signal_esta_na_paleta_em_output_e_os_params_editam_por_clique() {
             },
         );
         let p = mostra(&m);
-        assert_eq!(p.iter().any(|x| x == send::LEVEL), level, "when={when}: {p:?}");
+        assert_eq!(
+            p.iter().any(|x| x == send::LEVEL),
+            level,
+            "when={when}: {p:?}"
+        );
     }
     dispatch(
         &mut m,

@@ -15,6 +15,7 @@
 | `pulse.adsr` — `retrigger delay` — o TD dá um TEMPO mínimo antes de aceitar novo disparo; o no… | recusada | vivo, tabela |
 | `pulse.level` — os modos de conversão do TD Logic CHOP (`Off/On/Momentary/Toggle/…`), que exist… | recusada | vivo, tabela |
 | `pulse.signal` — um sinal com PAYLOAD (Max/TD levam um valor no evento; doc 09 §3) | recusada | vivo, tabela |
+| `value.send_signal` — «While above» (TD CHOP Execute `whileOn`: envia a cada quadro enquanto acima do nível) | recusada: decisão do dono 16/11 (maquete 08 onda 3, 2A) — uma vez por passagem, nunca a cada quadro; o Pulse com um `pulse.beat` exprime a repetição | vivo, tabela |
 | _Linhas ✅ (fechadas) da tabela_ — arquivadas quando o doc passou dos 40 KB | O placar e o gate `conferencia()` leem as linhas VIVAS (≥ 1 por nó); as fechadas estão verbatim no arquivo | [arquivo](../../archive/motion-nodes-2026-10-12/89_conferencia/12_pulse.md) |
 
 **Data:** 2026-08-09 · **Plano:** [89](../89_plano_conferencia_dos_nos.md) §3 · **Família 12/17**

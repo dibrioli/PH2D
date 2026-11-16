@@ -22,7 +22,10 @@ fn serie(when: i32, valores: &[f32]) -> Vec<usize> {
 
 #[test]
 fn falls_below_fires_once_on_the_crossing_and_not_every_frame() {
-    assert_eq!(serie(WHEN_FALLS, &[0.9, 0.7, 0.4, 0.3, 0.2, 0.6, 0.1]), vec![2, 6]);
+    assert_eq!(
+        serie(WHEN_FALLS, &[0.9, 0.7, 0.4, 0.3, 0.2, 0.6, 0.1]),
+        vec![2, 6]
+    );
 }
 
 #[test]

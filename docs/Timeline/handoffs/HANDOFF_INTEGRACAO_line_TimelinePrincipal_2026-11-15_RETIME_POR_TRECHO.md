@@ -1,5 +1,7 @@
 # Integração — `line/TimelinePrincipal`: Retime por trecho + pontos da Custom no gráfico (dono 15/11)
 
+Seguinte: [barra do tempo, 16/11](HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-16_BARRA_DO_TEMPO.md)
+
 - Worktree `Worktrees/line-TimelinePrincipal` · branch `line/TimelinePrincipal` · merge-base `7b3dd983f7` · **sem rebase**
   (ordem do dono no fecho: «NÃO faça rebase») ⇒ o rebase sobre o `main` e os censos da árvore combinada são do integrador.
 - **23 commits** `23db12c893..ae78635856`: os 3 do [handoff anterior](HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-15_AUTOKEY_NA_SESSAO.md)

@@ -9,8 +9,8 @@ use ph2d_i18n::tr_with;
 use ph2d_joint_assembly::joint_assembly;
 use ph2d_physics_ecs::PhysicsJoint;
 
-use crate::doc::Edit;
-use crate::model::body_named;
+use ph2d_joint_editor_doc::doc::Edit;
+use ph2d_joint_editor_doc::model::body_named;
 
 /// O que uma edição deixou para a aba: a montagem nova a abrir, e a frase do pé.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -301,9 +301,9 @@ fn set_wheelbase(sim: &mut SimWorld, asm: Entity, metres: f32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doc::Edit;
     use ph2d_core::Vec2;
     use ph2d_ecs::Name;
+    use ph2d_joint_editor_doc::doc::Edit;
     use ph2d_physics_ecs::{BodyKind, ColliderShape, JointAssembly, RigidBody, nasce_com_forma};
 
     fn body(sim: &mut SimWorld, name: &str, at: [f32; 2], shape: ColliderShape) -> Entity {

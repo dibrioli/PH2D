@@ -10,7 +10,8 @@ pub mod geo;
 mod grab;
 mod input;
 pub mod model;
-pub mod stage;
+// O desenho em metros mora com a fábrica (a mesma lei de onde nasce cada peça); o caminho fica.
+pub use ph2d_joint_factory::stage;
 mod typing;
 
 pub use doc::{Edit, Focus, Hit, JointEditorDoc};

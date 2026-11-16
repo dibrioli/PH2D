@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-joint-editor-apply"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ As edições da aba Joint Editor aplicadas ao mundo (`apply`): cada `Edit` do documento passa pela porta
+# que o resto do app já usa (montagem, funil do cartão Joint, «Same as», «Make the parts», «Planks»). Saiu
+# da `ph2d-app-joint-editor` (tecto de linhas por crate, 16/11); fica entre o documento e a pintura.
+[lib]
+
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-joint-assembly = { path = "../ph2d-joint-assembly" }
+ph2d-joint-editor-doc = { path = "../ph2d-joint-editor-doc" }
+ph2d-joint-factory = { path = "../ph2d-joint-factory" }
+ph2d-joint-templates = { path = "../ph2d-joint-templates" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# `libm`: HR-5, a trigonometria bit-idêntica entre OS (o entre-eixos ao longo do eixo do carro).
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

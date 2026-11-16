@@ -9,12 +9,14 @@ authors.workspace = true
 
 # As PEÇAS DE FÁBRICA de um gabarito («Make the parts») e as fileiras de uma montagem feita («Planks»):
 # saíram da `ph2d-joint-assembly` (tecto de linhas por crate, 16/11), com os testes que montam máquinas
-# com essas peças. Fica ACIMA da montagem (usa `assemble`/`joints_of`) e abaixo do documento da aba.
+# com essas peças; e o desenho do gabarito em metros (`stage`, vindo da `ph2d-joint-editor-doc`). Fica ACIMA da montagem (usa `assemble`/`joints_of`) e abaixo do documento da aba.
 [lib]
 
 [dependencies]
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# O `Rect` do desenho (`stage::StageMap`).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-joint-assembly = { path = "../ph2d-joint-assembly" }
 ph2d-joint-templates = { path = "../ph2d-joint-templates" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
@@ -23,8 +25,6 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 
 [dev-dependencies]
-# O cartão de uma peça (`JointFieldEdit`) no teste da roda do carro.
-ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]

@@ -1,5 +1,6 @@
 //! **O desenho do gabarito**: onde cada forma-guia fica no ecrã, que forma está debaixo do cursor, e onde
-//! nasce cada junta. Puro (metros → píxeis); a pintura mora em `paint_stage` da `ph2d-app-joint-editor`.
+//! nasce cada junta. Puro (metros → píxeis), e mora com a fábrica porque é a MESMA lei de onde cada peça nasce
+//! ([`crate::joint_factory::centre`]); a pintura mora em `paint_stage` da `ph2d-app-joint-editor`.
 //!
 //! ⚠️ O desenho é o do GABARITO (as formas-guia de `ph2d-joint-templates`), não o da cena: a peça do
 //! artista pode ter outro tamanho, e o que a aba ensina é o papel. Só a cota do entre-eixos mede a cena.
@@ -27,7 +28,7 @@ pub fn shown_count(role: &Role, placed: usize) -> u16 {
 /// com `counts` formas por papel.
 #[must_use]
 pub fn centre_of(t: &Template, counts: &[u16], i: u16, n: u16) -> [f32; 2] {
-    ph2d_joint_factory::joint_factory::centre(t, counts, usize::from(i), n)
+    crate::joint_factory::centre(t, counts, usize::from(i), n)
 }
 
 impl StageMap {
@@ -39,7 +40,7 @@ impl StageMap {
             let n = counts.get(i).copied().unwrap_or(1).max(1);
             let h = role.guide.half();
             for k in 0..n {
-                let c = ph2d_joint_factory::joint_factory::centre(t, counts, i, k);
+                let c = crate::joint_factory::centre(t, counts, i, k);
                 lo = [lo[0].min(c[0] - h[0]), lo[1].min(c[1] - h[1])];
                 hi = [hi[0].max(c[0] + h[0]), hi[1].max(c[1] + h[1])];
             }

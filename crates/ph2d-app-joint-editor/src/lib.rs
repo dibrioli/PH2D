@@ -6,7 +6,6 @@
 //! A shell chama [`install`] uma vez e [`frame`] uma vez por quadro, com o mundo na mão: é aqui que os
 //! pedidos da aba viram mudanças no mundo (um passo de desfazer cada, pelo diff do projeto).
 
-mod apply;
 pub use ph2d_joint_editor_doc::{doc, model, stage};
 pub mod paint;
 mod paint_stage;
@@ -15,7 +14,7 @@ pub mod smoke;
 mod surface;
 mod widgets;
 
-pub use apply::{Outcome, apply};
+pub use ph2d_joint_editor_apply::{Outcome, apply};
 pub use ph2d_joint_editor_doc::{Edit, Focus, Hit, JointEditorDoc};
 pub use surface::{CMD_OPEN, JointEditorTab, TAB_ID};
 pub use widgets::MOTOR_PREVIEW_S;

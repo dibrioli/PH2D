@@ -85,7 +85,7 @@ fn paint_shapes(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
             .map(|a| a.parts_of(ri).map(|p| (p.name.clone(), p.bits)).collect())
             .unwrap_or_default();
         for n in 0..counts[i] {
-            let s = map.shape_rect(t, &counts, ri, n);
+            let s = map.shape_rect(t, counts, ri, n);
             let rad = match role.guide {
                 Guide::Disc { .. } => s.w * 0.5,
                 Guide::Box { .. } => m::FIELD_RADIUS,

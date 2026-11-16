@@ -3,7 +3,7 @@
 
 use ph2d_editor_core::JointFieldEdit;
 use ph2d_i18n::tr;
-use ph2d_joint_assembly::joint_factory::MAX_ROW_PARTS;
+use ph2d_joint_factory::joint_factory::MAX_ROW_PARTS;
 use ph2d_joint_templates::JointKind;
 
 use crate::doc::{Drive, Edit, Field, Flag, JointEditorDoc, scope_options};
@@ -62,7 +62,7 @@ impl JointEditorDoc {
             .map(|r| if r.many.is_some() { self.count } else { 0 })
             .collect();
         (0..t.roles.len())
-            .map(|i| ph2d_joint_assembly::joint_factory::count_of(&t.roles[i], &counts, i))
+            .map(|i| ph2d_joint_factory::joint_factory::count_of(&t.roles[i], &counts, i))
             .collect()
     }
 

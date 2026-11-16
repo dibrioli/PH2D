@@ -149,7 +149,7 @@ pub fn apply(
         } => make(sim, template, &counts, at, &edits, &mut out),
         Edit::Rows { assembly, n } => {
             if let Some(e) = assembly_entity(sim, assembly)
-                && let Some(c) = ph2d_joint_assembly::joint_rows::set_row_count(sim, registry, e, n)
+                && let Some(c) = ph2d_joint_factory::joint_rows::set_row_count(sim, registry, e, n)
             {
                 let (more, less) = (
                     c.after.saturating_sub(c.before),
@@ -182,7 +182,7 @@ fn make(
     edits: &[(u16, JointFieldEdit)],
     out: &mut Outcome,
 ) {
-    use ph2d_joint_assembly::joint_factory::{make_parts, middle};
+    use ph2d_joint_factory::joint_factory::{make_parts, middle};
     let Some(t) = ph2d_joint_templates::by_id(template) else {
         return;
     };

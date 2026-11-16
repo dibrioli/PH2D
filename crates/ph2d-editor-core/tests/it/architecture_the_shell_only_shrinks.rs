@@ -244,7 +244,8 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-viewmodel", 304),   // 204
     ("ph2d-game-smoke-fotos", 1_077), // 977 (12/11: as fotos e a mão saíram da `ph2d-app-game`, com o miolo de `janela_do_jogo_smoke.rs` da shell)
     ("ph2d-joint-editor-doc", 2_253), // 2_153 (15/11 W4n: o documento, o retrato, o desenho em metros e o rato da aba, vindos da `ph2d-app-joint-editor`)
-    ("ph2d-joint-assembly", 2_175), // +361 vindos da ph2d-app-physics com a lei da junta (`joint_info`, integ 13/11 2a4beabf15) · 1_714 (corte 13/11: a montagem de juntas e os gestos de criar junta saíram da `ph2d-app-physics`)
+    ("ph2d-joint-assembly", 1_661), // 1_561 (16/11: as peças de fábrica, as fileiras e os testes de máquina saíram para a `ph2d-joint-factory`; o tecto desce) · 2_175: +361 vindos da ph2d-app-physics com a lei da junta (`joint_info`, integ 13/11 2a4beabf15) · 1_714 (corte 13/11: a montagem de juntas e os gestos de criar junta saíram da `ph2d-app-physics`)
+    ("ph2d-joint-factory", 1_380), // 1_280 (16/11: «Make the parts», as fileiras e os testes que montam máquinas com elas, vindos da `ph2d-joint-assembly`)
     ("ph2d-painter-canvas-map", 824), // 724 (integ 13/11: o `CanvasMap` e o gate dele saíram da `ph2d-app-painter`, que estava 177 acima do tecto)
     ("ph2d-physics-smoke-jump", 1_258), // 1_158 (13/11: as cenas 110 e 111 e o gate do pulo na parede saíram da `ph2d-physics-smoke-scenes`, que estava 204 acima do tecto)
     ("ph2d-physics-smoke-scenes", 18_422), // 18_061 (13/11: −1 151 do pulo para a `ph2d-physics-smoke-jump`; o tecto desce); 18_859 (integ 12/11: +149 da cena 49, `joint_break`, que saiu da `ph2d-app-physics` para curar o tecto dela); 18_732 (GEF02 onda 8: +287 da cena 48 com o tecto, +122 da cena 122)

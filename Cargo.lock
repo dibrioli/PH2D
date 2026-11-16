@@ -5928,6 +5928,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-joint-assembly",
  "ph2d-joint-editor-doc",
+ "ph2d-joint-factory",
  "ph2d-joint-templates",
  "ph2d-physics-ecs",
  "ph2d-render",
@@ -8330,7 +8331,6 @@ dependencies = [
  "ph2d-joint-templates",
  "ph2d-label-census",
  "ph2d-physics-ecs",
- "ph2d-render",
  "ph2d-unique-name",
 ]
 
@@ -8346,10 +8346,26 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-joint-assembly",
+ "ph2d-joint-factory",
  "ph2d-joint-templates",
  "ph2d-physics-ecs",
  "ph2d-text",
  "ph2d-tokens",
+]
+
+[[package]]
+name = "ph2d-joint-factory"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-joint-assembly",
+ "ph2d-joint-templates",
+ "ph2d-label-census",
+ "ph2d-physics-ecs",
+ "ph2d-render",
+ "ph2d-unique-name",
 ]
 
 [[package]]
@@ -11103,6 +11119,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-joint-assembly",
+ "ph2d-joint-factory",
  "ph2d-joint-templates",
  "ph2d-physics-ecs",
  "ph2d-physics-scene",

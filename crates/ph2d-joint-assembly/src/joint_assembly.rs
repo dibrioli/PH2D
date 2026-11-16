@@ -438,7 +438,3 @@ fn create(sim: &mut SimWorld, template: &Template, pair: &Pair, asm_id: u64) -> 
     ph2d_physics_ecs::rehome_joint(world, joint);
     Some(joint)
 }
-
-#[cfg(test)]
-#[path = "joint_assembly_tests.rs"]
-mod tests;

@@ -6,8 +6,8 @@ use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_joint_templates::{JointKind, by_name};
 use ph2d_physics_ecs::{PhysicsJoint, RigidBody};
 
-use super::super::{assemble, joints_of};
 use super::{built, ground, part, parts_of, pose};
+use ph2d_joint_assembly::joint_assembly::{assemble, joints_of};
 
 fn parent(sim: &SimWorld, e: Entity) -> Option<Entity> {
     sim.world()
@@ -171,7 +171,7 @@ fn dissolving_puts_the_parts_back_at_the_root_where_they_were() {
         .iter()
         .map(|(_, e)| pose(&sim, e.expect("p")))
         .collect();
-    super::super::dissolve(&mut sim, made.assembly);
+    ph2d_joint_assembly::joint_assembly::dissolve(&mut sim, made.assembly);
     for ((_, e), was) in parts.iter().zip(&at) {
         let e = e.expect("p");
         assert_eq!(parent(&sim, e), None, "back at the root");
@@ -188,7 +188,7 @@ fn dissolving_puts_the_parts_back_at_the_root_where_they_were() {
 fn duplicating_only_the_chassis_leaves_the_assembly_with_its_own_joints() {
     let (mut sim, parts, made) = built(JointKind::Wheel, "Car", false);
     let chassis = part(&parts, 0);
-    let reg = crate::test_registry();
+    let reg = super::super::test_registry();
     let copy = ph2d_ecs::deep_copy_subtree(sim.world_mut(), &reg, chassis, Some(made.assembly))
         .expect("copy");
     ph2d_physics_ecs::remap_joint_refs(sim.world_mut(), &copy.copies(), &copy.stable_ids);

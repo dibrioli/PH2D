@@ -169,7 +169,7 @@ fn free_suffix(sim: &mut SimWorld, t: &Template, counts: &[u16], world_roles: bo
 }
 
 /// **Faz as peças de fábrica** de `t`, com o (0, 0) do desenho em `origin` (mundo, metros) e `counts[i]`
-/// peças nos papéis de várias. Devolve `(papel, peça)` na ordem de [`crate::joint_assembly::assemble`];
+/// peças nos papéis de várias. Devolve `(papel, peça)` na ordem de [`ph2d_joint_assembly::joint_assembly::assemble`];
 /// `None` = o papel fica por conta do cenário (`world_roles` e o papel admite-o).
 pub fn make_parts(
     sim: &mut SimWorld,

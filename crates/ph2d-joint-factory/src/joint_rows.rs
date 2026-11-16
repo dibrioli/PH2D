@@ -13,7 +13,7 @@ use ph2d_ecs::{Entity, Name, SimWorld, StableId, Transform};
 use ph2d_joint_templates::Link;
 use ph2d_physics_ecs::{AssemblyPart, JointAssembly, PhysicsJoint};
 
-use crate::joint_assembly::{joints_of, sync_joints};
+use ph2d_joint_assembly::joint_assembly::{joints_of, sync_joints};
 
 /// O que mudou numa fila.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

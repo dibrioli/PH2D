@@ -1,19 +1,10 @@
 //! **A montagem de juntas** (ADR-0201) — o objeto que agrupa as juntas de um gabarito, e os
-//! gestos que a montam. A `ph2d-app-physics` re-exporta cada módulo pelo mesmo nome.
+//! gestos que a montam. A `ph2d-app-physics` re-exporta cada módulo pelo mesmo nome. As peças de fábrica
+//! e as fileiras (e os testes que montam máquinas com elas) moram na `ph2d-joint-factory`, acima desta.
 
 pub mod joint_assembly;
 pub mod joint_assembly_card;
 pub mod joint_create;
 pub mod joint_drop;
-pub mod joint_factory;
 pub mod joint_info;
-pub mod joint_rows;
 pub mod joint_world;
-
-#[cfg(test)]
-pub(crate) fn test_registry() -> ph2d_ecs::scene::ComponentRegistry {
-    let mut reg = ph2d_ecs::scene::ComponentRegistry::new();
-    ph2d_ecs::scene::register_ecs_components(&mut reg);
-    ph2d_physics_ecs::register_physics_components(&mut reg);
-    reg
-}

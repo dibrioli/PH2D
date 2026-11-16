@@ -13,7 +13,9 @@ use ph2d_physics_ecs::{
     RigidBody,
 };
 
-use super::{Assembled, PlaceError, assemble, joints_of, new_assembly, place_part};
+use ph2d_joint_assembly::joint_assembly::{
+    Assembled, PlaceError, assemble, joints_of, new_assembly, place_part,
+};
 
 /// Um papel e a peça dele (`None` = o cenário).
 type Parts = Vec<(u16, Option<Entity>)>;
@@ -53,7 +55,7 @@ fn ground(sim: &mut SimWorld) {
 /// As peças de fábrica do gabarito, no lugar que o desenho lhes dá: a porta do «Make the parts»
 /// (`joint_factory::make_parts`). `scenery_is_world` deixa os papéis que o cenário pode fazer SEM peça.
 fn parts_of(sim: &mut SimWorld, t: &Template, scenery_is_world: bool) -> Parts {
-    crate::joint_factory::make_parts(sim, t, [0.0, 0.0], &[], scenery_is_world)
+    ph2d_joint_factory::joint_factory::make_parts(sim, t, [0.0, 0.0], &[], scenery_is_world)
 }
 
 fn built(kind: JointKind, name: &str, scenery_is_world: bool) -> (SimWorld, Parts, Assembled) {
@@ -337,7 +339,7 @@ fn the_elevator_rises_one_storey_and_stops() {
 /// **Salvar e abrir devolve a mesma montagem**, com as juntas ainda a apontar para ela.
 #[test]
 fn an_assembly_round_trips_through_the_snapshot() {
-    let reg = crate::test_registry();
+    let reg = super::test_registry();
     let (mut sim, _, made) = built(JointKind::Wheel, "Car", false);
     let before = sim
         .world()
@@ -460,7 +462,7 @@ fn probe_factory_numbers() {
 }
 
 fn snap(sim: &mut SimWorld) -> WorldSnapshot {
-    let reg = crate::test_registry();
+    let reg = super::test_registry();
     let mut s = WorldSnapshot::new();
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::default();
@@ -481,7 +483,7 @@ fn restoring_the_snapshot_before_the_gesture_removes_the_whole_assembly() {
     assemble(&mut sim, car, &parts).expect("assembles");
     let after = snap(&mut sim);
 
-    let reg = crate::test_registry();
+    let reg = super::test_registry();
     let count = |s: &WorldSnapshot| {
         let mut w = SimWorld::new();
         snapshot_to_world(w.world_mut(), s, &reg).expect("load");
@@ -516,8 +518,10 @@ fn restoring_the_snapshot_before_the_gesture_removes_the_whole_assembly() {
 /// `set_linked` a não limpar o bit · `body_joints` sem o lado A ou fora de ordem.
 #[test]
 fn the_car_wheel_card_titles_links_and_lists_its_joints() {
-    use crate::joint_assembly_card::{body_joints, card_context, set_linked, with_linked};
     use ph2d_editor_core::JointFieldEdit as E;
+    use ph2d_joint_assembly::joint_assembly_card::{
+        body_joints, card_context, set_linked, with_linked,
+    };
     let (mut sim, parts, made) = built(JointKind::Wheel, "Car", false);
     let id = ph2d_ecs::stable_id_of(sim.world(), made.assembly)
         .expect("id")
@@ -565,5 +569,5 @@ fn the_car_wheel_card_titles_links_and_lists_its_joints() {
     assert_eq!(body_joints(sim.world_mut(), None), []);
 }
 
-#[path = "joint_assembly_folder_tests.rs"]
+#[path = "assembly_folder.rs"]
 mod folder;

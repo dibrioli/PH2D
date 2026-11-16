@@ -20,8 +20,6 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-joint-templates = { path = "../ph2d-joint-templates" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
-# A aparência simples das peças de fábrica (`joint_factory`, «Make the parts»).
-ph2d-render = { path = "../ph2d-render" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 # `libm`: HR-5, a trigonometria bit-idêntica entre OS (a pose das peças).
 libm = { version = "=0.2.16", default-features = false }

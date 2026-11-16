@@ -402,7 +402,7 @@ fn planks_numa_ponte_feita_refaz_as_copias() {
 /// **Mutações que sangram:** o campo sem o tecto · `count_of` sem o tecto.
 #[test]
 fn planks_para_no_tecto_medido_da_fila() {
-    let max = ph2d_joint_assembly::joint_factory::MAX_ROW_PARTS;
+    let max = ph2d_joint_factory::joint_factory::MAX_ROW_PARTS;
     let mut m = Mesa::draft(JointKind::Pin, "Bridge");
     m.click(&Hit::Field(Field::Count));
     m.escreve("9999");

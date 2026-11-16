@@ -6,7 +6,7 @@
 //! «Bridge 1», «Elevator 1», «Car 1»). PAUSADA: o dono dá Play.
 
 use ph2d_ecs::{Name, SimWorld, World};
-use ph2d_joint_assembly::joint_factory::{block, make_parts};
+use ph2d_joint_factory::joint_factory::{block, make_parts};
 use ph2d_joint_templates::{Guide, JointKind, by_name};
 use ph2d_physics_ecs::{BodyKind, Collider, InitialVelocity};
 

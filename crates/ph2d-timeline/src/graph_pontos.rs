@@ -102,15 +102,18 @@ pub fn spline_with_speed_handle(k0: &KeyView, k1: &KeyView, which: u8, t: f64, v
         return k0.interp;
     }
     let m = crate::graph::MIN_INFLUENCE;
-    let u = (t - k0.t_seconds) / span;
+    // O `x` do easing debaixo do rato (pelo ritmo, como na vista de valor), preso entre a ponta e o
+    // nó vizinho ANTES de dar a altura: o `arruma` prenderia só o `x` e a velocidade mudaria.
+    let x = f64::from(plane_to_unit(k0, k1, t, 0.0)[0]);
     let declive = v * span / (ws * dv); // E' na ponta
     let (out, inn) = sp.end_handles();
+    let n = sp.node_count();
     let f = |x: f64, y: f64| [x as f32, y as f32];
     let nova = if which == 0 {
-        let x = u.clamp(m, 1.0); // CLAMP-OK: const bounds, min<max
+        let x = x.min(f64::from(sp.node(1).p[0])).max(m);
         sp.with_end_handles(f(x, declive * x), inn)
     } else {
-        let x = u.clamp(0.0, 1.0 - m); // CLAMP-OK: const bounds, min<max
+        let x = x.max(f64::from(sp.node(n - 2).p[0])).min(1.0 - m);
         sp.with_end_handles(out, f(x, 1.0 - declive * (1.0 - x)))
     };
     Interp::Spline(nova)
@@ -159,7 +162,8 @@ pub fn point_speed_arms(k0: &KeyView, k1: &KeyView) -> Vec<PointSpeedArm> {
         let t = unit_to_plane(k0, k1, n.p).0;
         for (part, h) in [(1u8, n.h_in), (2, n.h_out)] {
             let dx = f64::from(n.p[0] - h[0]);
-            if dx.abs() <= f64::EPSILON {
+            // O mesmo piso das pontas (metade, para o braço que o gesto deixa no piso continuar).
+            if dx.abs() < 0.5 * crate::graph::MIN_INFLUENCE {
                 continue;
             }
             let declive = f64::from(n.p[1] - h[1]) / dx;
@@ -201,10 +205,11 @@ pub fn spline_with_point_speed(
     let x = plane_to_unit(k0, k1, t, 0.0)[0];
     let (lado, x) = if part == 1 {
         let antes = c.node(node - 1).p[0];
-        (SplineSide::In, x.clamp(antes, p[0] - m)) // CLAMP-OK: entre o nó anterior e este
+        // `max`/`min`, nunca `clamp`: com dois nós a `X_EPS` em f32, `p − m` pode cair abaixo do anterior.
+        (SplineSide::In, x.max(antes).min(p[0] - m))
     } else {
         let depois = c.node(node + 1).p[0];
-        (SplineSide::Out, x.clamp(p[0] + m, depois)) // CLAMP-OK: entre este e o seguinte
+        (SplineSide::Out, x.min(depois).max(p[0] + m))
     };
     let declive = v * span / (ws * dv);
     let y = f64::from(p[1]) + declive * f64::from(x - p[0]);
@@ -314,7 +319,7 @@ mod tests {
             let mut c = segment_curve(&k0, &k1).expect("retimado também é editável");
             let i = c.insert(0.4).expect("cabe");
             let mut novo = k0.clone();
-            novo.interp = interp_of_curve(c.clone());
+            novo.interp = interp_of_curve(c);
             let keys = [novo.clone(), k1.clone()];
             let toca = |p| {
                 let (t, v) = unit_to_plane(&novo, &k1, p);
@@ -330,7 +335,7 @@ mod tests {
             // Arrastado para outro sítio da tela, continua em cima.
             let [x, y] = plane_to_unit(&k0, &k1, 2.3, 9.0);
             c.move_point(i, x, y);
-            novo.interp = interp_of_curve(c.clone());
+            novo.interp = interp_of_curve(c);
             let keys = [novo.clone(), k1.clone()];
             let (t, v) = unit_to_plane(&novo, &k1, c.node(i).p);
             let a = f64::from(sample_keys(&keys, t).unwrap_or(f32::NAN));
@@ -436,7 +441,7 @@ mod tests {
         let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
         sp.insert(0.5);
         for retime in [None, Some(RITMO)] {
-            for (which, t, v) in [(0u8, 0.4, 7.0), (1, 1.5, 3.0)] {
+            for (which, t, v) in [(0u8, 0.1, 7.0), (1, 1.5, 3.0)] {
                 let (mut k0, k1) = (
                     key(0.0, 0.0, Interp::Spline(sp)),
                     key(2.0, 10.0, Interp::Linear),
@@ -454,10 +459,13 @@ mod tests {
                     (toca - v).abs() < 1e-3,
                     "{retime:?} {which}: toca {toca} × rato {v}"
                 );
-                if retime.is_none() {
-                    let (tt, _) = crate::speed_handle_tip(&novo, &k1, which).unwrap();
-                    assert!((tt - t).abs() < 1e-4, "a influência não foi ao rato: {tt}");
-                }
+                // A ponta desenhada fica no tempo do rato também com o ritmo (a vista de valor e a de
+                // velocidade leem a alça pelo mesmo mapa).
+                let (tt, _) = crate::speed_handle_tip(&novo, &k1, which).unwrap();
+                assert!(
+                    (tt - t).abs() < 1e-3,
+                    "{retime:?}: a influência não foi ao rato: {tt}"
+                );
             }
         }
         let sem = key(0.0, 0.0, Interp::bezier(0.3, 0.0, 0.7, 1.0));
@@ -568,5 +576,81 @@ mod tests {
             segment_curve(&key(0.0, 0.0, Interp::Hold), &k1).is_none(),
             "Hold"
         );
+    }
+
+    /// Auditoria do fecho (15/11): o braço de velocidade da ponta, puxado além do ponto vizinho,
+    /// fica preso nele SEM perder a velocidade do rato (antes o `x` era preso depois da altura).
+    #[test]
+    fn o_braco_da_ponta_alem_do_ponto_vizinho_mantem_a_velocidade_do_rato() {
+        let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        sp.insert(0.5);
+        let x_no = f64::from(sp.node(1).p[0]);
+        for retime in [None, Some(RITMO)] {
+            for (which, u) in [(0u8, 0.95), (1, 0.05)] {
+                let (mut k0, k1) = (
+                    key(0.0, 0.0, Interp::Spline(sp)),
+                    key(2.0, 10.0, Interp::Linear),
+                );
+                k0.retime = retime;
+                let mut novo = k0.clone();
+                novo.interp = spline_with_speed_handle(&k0, &k1, which, 2.0 * u, 7.0);
+                let Interp::Spline(c) = novo.interp else {
+                    panic!("virou {:?}", novo.interp);
+                };
+                let (out, inn) = c.end_handles();
+                let hx = f64::from(if which == 0 { out[0] } else { inn[0] });
+                assert!(
+                    (hx - x_no).abs() < 1e-6,
+                    "{retime:?} {which}: a alça não ficou no ponto: {hx}"
+                );
+                let toca = crate::speed::segment_endpoint_speed(&novo, &k1, which);
+                assert!(
+                    (toca - 7.0).abs() < 1e-3,
+                    "{retime:?} {which}: toca {toca} × 7"
+                );
+            }
+        }
+    }
+
+    /// Dois pontos encostados (a `X_EPS`, onde o `arruma` os deixa) não fazem o gesto entrar em
+    /// pânico. Varredura sem pânico; o caso f32 `p − m < anterior` da auditoria não se alcança por
+    /// `move_point` (medido: 0 em 1000), por isso o `max`/`min` é defesa, não cura provada.
+    #[test]
+    fn dois_pontos_encostados_nao_fazem_o_braco_de_velocidade_entrar_em_panico() {
+        let k1 = key(2.0, 10.0, Interp::Linear);
+        for i in 0..1000 {
+            let a = 0.002 + i as f32 * 1e-6;
+            let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+            sp.insert(0.3);
+            sp.insert(0.6);
+            sp.move_point(1, a, 0.1);
+            sp.move_point(2, a, 0.2);
+            let k0 = key(0.0, 0.0, Interp::Spline(sp));
+            for part in [1u8, 2] {
+                for t in [0.0, 0.004, 1.0] {
+                    let _ = spline_with_point_speed(&k0, &k1, (2, part), t, 3.0);
+                    let _ = spline_with_point_speed(&k0, &k1, (1, part), t, 3.0);
+                }
+            }
+        }
+    }
+
+    /// Uma alça de ponto quase vertical não tem braço de velocidade (o mesmo piso das pontas): a
+    /// ponta dele, a ~10⁶ /s, ficava sem lugar na banda e não se agarrava.
+    #[test]
+    fn a_alca_quase_vertical_de_um_ponto_nao_tem_braco_de_velocidade() {
+        let mut sp = EaseSpline::from_bezier(0.3, 0.0, 0.7, 1.0);
+        let i = sp.insert(0.5).expect("cabe");
+        assert!(sp.set_kind(i, ph2d_anim::HandleKind::Corner));
+        let p = sp.node(i).p;
+        sp.move_handle(i, SplineSide::In, p[0] - 1e-6, p[1] - 0.2);
+        let k0 = key(0.0, 0.0, Interp::Spline(sp));
+        let k1 = key(2.0, 10.0, Interp::Linear);
+        let arms = point_speed_arms(&k0, &k1);
+        assert!(
+            arms.iter().all(|a| a.part != 1),
+            "a chegada quase vertical ganhou braço: {arms:?}"
+        );
+        assert!(arms.iter().any(|a| a.part == 2), "a saída perdeu o braço");
     }
 }

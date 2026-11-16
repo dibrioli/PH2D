@@ -174,12 +174,11 @@ pub(crate) fn resolve_drag(
         && t == target
         && let Some((k0, k1)) = trecho(track, key)
         && let Some(mut c) = segment_curve(k0, k1)
+        && c.set_kind(node, tipo)
     {
-        if c.set_kind(node, tipo) {
-            push_intent(TimelineIntent::BeginEdit);
-            grava(track, k0, c);
-            push_intent(TimelineIntent::EndEdit);
-        }
+        push_intent(TimelineIntent::BeginEdit);
+        grava(track, k0, c);
+        push_intent(TimelineIntent::EndEdit);
     }
     let Some(mut d) = state.ponto_drag.filter(|d| d.target == target) else {
         return;
@@ -259,6 +258,12 @@ fn trechos(track: &TrackView) -> impl Iterator<Item = (&KeyView, &KeyView, EaseS
 }
 
 fn regista(ctx: &mut PaintCtx, band: &Band, id: ph2d_a11y::NodeId, kind: TimelineHitKind, r: Rect) {
+    // Fora da banda (zoom, rolagem) a pintura sai cortada: nenhum alvo invisível fica a flutuar.
+    let (cx, cy) = (r.x + 0.5 * r.w, r.y + 0.5 * r.h);
+    let b = band.rect;
+    if cx < b.x || cx > b.x + b.w || cy < b.y || cy > b.y + b.h {
+        return;
+    }
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {

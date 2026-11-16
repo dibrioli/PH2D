@@ -392,3 +392,67 @@ fn um_toque_numa_curva_pronta_cria_o_ponto_debaixo_do_rato() {
         set_current_timeline(None);
     }
 }
+
+/// Auditoria do fecho (15/11): rolada a vista para lá do ponto, a pintura sai cortada e nenhum
+/// alvo invisível fica a flutuar sobre a coluna de rótulos (o padrão de `paint_handles`).
+#[test]
+fn o_ponto_fora_da_vista_nao_deixa_alvo_de_clique() {
+    for speed_view in [false, true] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState {
+            speed_view,
+            ..TimelinePanelState::default()
+        };
+        let curva = {
+            let mut c = EaseSpline::from_bezier(1.0 / 3.0, 0.0, 2.0 / 3.0, 1.0);
+            assert_eq!(c.insert(0.5), Some(1));
+            Interp::Spline(c)
+        };
+        // Controlo: na vista inteira o ponto (ou o braço de chegada dele) regista-se.
+        let parte = if speed_view { 1 } else { 0 };
+        let regs = pinta(&mut host, &mut st, curva);
+        let _ = centro(&regs, ids::timeline_curve_point_hit_id(TGT, 1, 1, parte));
+        st.view_start_s = 0.6;
+        let regs = pinta(&mut host, &mut st, curva);
+        for part in [0u8, 1] {
+            let id = ids::timeline_curve_point_hit_id(TGT, 1, 1, part);
+            assert!(
+                regs.iter().all(|(w, _)| *w != id),
+                "vista {speed_view}: o alvo {part} do ponto fora da vista ficou registado"
+            );
+        }
+        set_current_timeline(None);
+        let _ = drain_intents();
+    }
+}
+
+/// Auditoria do fecho (15/11): na vista de velocidade, numa Custom com pontos RETIMADA, puxar o
+/// braço da ponta só na vertical não muda a influência (a ponta desenhada é a alça guardada, lida
+/// pelo ritmo, como na vista de valor — antes era o braço encurtado e o agarrão saltava).
+#[test]
+fn na_vista_de_velocidade_puxar_na_vertical_nao_muda_a_influencia_da_custom_retimada() {
+    for retime in [None, Some(RITMO)] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState {
+            speed_view: true,
+            ..TimelinePanelState::default()
+        };
+        let Interp::Spline(antes) = com_ponto() else {
+            unreachable!()
+        };
+        let regs = pinta_r(&mut host, &mut st, com_ponto(), retime);
+        let (x, y) = centro(&regs, ids::timeline_handle_hit_id(TGT, 1, 0));
+        let _ = drain_intents();
+        let _ = host.drag_at(x, y, x, y - 15.0);
+        let _ = pinta_r(&mut host, &mut st, com_ponto(), retime);
+        let Some(Interp::Spline(c)) = ultima() else {
+            panic!("{retime:?}: o arrasto não deu uma Custom");
+        };
+        let (a, d) = (antes.end_handles().0[0], c.end_handles().0[0]);
+        assert!(
+            (a - d).abs() < 0.01,
+            "{retime:?}: a influência saltou {a} → {d} sem o rato andar na horizontal"
+        );
+        set_current_timeline(None);
+    }
+}

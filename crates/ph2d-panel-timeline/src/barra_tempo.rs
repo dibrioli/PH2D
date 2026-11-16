@@ -280,7 +280,7 @@ pub(crate) fn paint(
 /// Os alvos das duas pontas dentro do polegar `p`: cada um `ALCA` de largura (ou um terço do
 /// polegar, se ele for mais estreito — o meio nunca desaparece).
 pub(crate) fn alvos_das_pontas(p: Rect) -> [Rect; 2] {
-    let w = ALCA.min(p.w / 3.0);
+    let w = ALCA.min(p.w / 3.0); // LITERAL-PX-OK: três partes (duas pontas e o meio), não uma medida
     [
         Rect::new(p.x, p.y, w, p.h),
         Rect::new(p.x + p.w - w, p.y, w, p.h),

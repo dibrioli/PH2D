@@ -1,8 +1,7 @@
 //! Gates da pintura/hit das faixas da pilha (irmão de `stack_lane_paint.rs` via `#[path]`; `super` é ele).
 //!
-//! Tudo aqui é sobre a **ORDEM e a existência dos hits** — as duas coisas que nenhuma pintura
-//! headless alcança e que, quando erram, erram em silêncio: um grip que outro retângulo cobriu,
-//! ou um grip travado que ainda aceita o clique.
+//! Tudo aqui é sobre a **ORDEM e a existência dos hits** — o que nenhuma pintura headless alcança e
+//! erra em silêncio: um grip que outro retângulo cobriu, ou um grip travado que aceita o clique.
 
 use super::*;
 use crate::graph::TimeView;

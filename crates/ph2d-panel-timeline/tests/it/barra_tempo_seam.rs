@@ -70,7 +70,7 @@ fn aberto_com_zoom() -> (MockPanelHost, TimelinePanelState, Vec<(NodeId, Rect)>)
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut st = TimelinePanelState::default();
     let _ = pinta(&mut host, &mut st);
-    st.px_per_s = st.view_span_s * st.px_per_s; // 1 s cabe na coluna inteira
+    st.px_per_s *= st.view_span_s; // 1 s cabe na coluna inteira
     st.view_start_s = 1.0;
     let _ = pinta(&mut host, &mut st);
     let regs = pinta(&mut host, &mut st);

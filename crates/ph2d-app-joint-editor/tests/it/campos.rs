@@ -347,3 +347,24 @@ fn a_seta_para_cima_anda_um_passo_e_grava() {
     m.tecla(BoardKey::Down, None);
     assert!((m.joints()[0].break_force - v0).abs() < 1e-3, "↓ volta");
 }
+
+/// **I.** Entrar numa caixa e sair sem escrever não grava nada (auditoria do fecho 16/11): o texto do motor
+/// tem 3 casas, e gravá-lo arredondava o número — e espalhava o da 1.ª junta por todas as do alcance.
+/// **Mutação que sangra:** o `ValueChanged` gravado sem comparar com o texto semeado.
+#[test]
+fn entrar_e_sair_da_caixa_sem_escrever_nao_grava() {
+    let (mut m, _) = Mesa::com_a_forca_de_quebra();
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    m.escreve("100.1234");
+    m.tecla(BoardKey::Enter, None);
+    let gravado = m.joints()[0].break_force;
+    assert!((gravado - 100.1234).abs() < 1e-4, "{gravado}");
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    m.tecla(BoardKey::Tab, None);
+    assert!(m.tab().doc.typing.is_none(), "o Tab fecha a escrita");
+    assert_eq!(
+        m.joints()[0].break_force.to_bits(),
+        gravado.to_bits(),
+        "sair sem escrever não arredonda para 100.123"
+    );
+}

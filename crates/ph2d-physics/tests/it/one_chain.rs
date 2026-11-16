@@ -436,6 +436,41 @@ fn a_long_bridge_is_cut_into_trees_and_a_short_one_is_the_old_chain() {
     // encontram-se por uma junta. 4 emendas de trecho + a do encontro.
     assert_eq!(seams, 5, "uma emenda por trecho");
 
+    // O tecto conta ELOS, não a profundidade: 20 peças presas ao mesmo fixo (uma estrela, profundidade 1)
+    // ficam 8 na árvore; as outras 12 são raízes próprias, e a aresta delas fica de impulso.
+    let mut star = PhysicsWorld::new();
+    star.set_chain_segment_links(8);
+    let hub = body(
+        &mut star,
+        RigidBodyType::Fixed,
+        [0.0, 5.0, 0.0],
+        [0.1, 0.1],
+        1.0,
+    );
+    let spokes: Vec<_> = (0..20)
+        .map(|i| {
+            let leaf = body(
+                &mut star,
+                RigidBodyType::Dynamic,
+                [-5.0 + 0.5 * i as f32, 4.0, 0.0],
+                [0.1, 0.1],
+                1.0,
+            );
+            let d = JointDesc {
+                kind: JointKind::Pin,
+                one_chain: true,
+                ..JointDesc::default()
+            };
+            star.spawn_joint(hub, leaf, d).expect("joint")
+        })
+        .collect();
+    star.step();
+    let reduced = spokes
+        .iter()
+        .filter(|&&j| star.joint_is_in_one_chain(j))
+        .count();
+    assert_eq!(reduced, 8, "a árvore fecha em 8 elos, mesmo larga");
+
     let mut long = long_bridge(96, ph2d_physics::SEGMENT_LINKS);
     for _ in 0..40 {
         long.world.step();

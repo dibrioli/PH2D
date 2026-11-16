@@ -192,9 +192,11 @@ impl PhysicsWorld {
             }
         }
         // Em largura, de todas as raízes ao mesmo tempo: cada tábua pendura-se no fixo mais perto. Uma
-        // árvore com `segment` elos fecha: a peça seguinte é a raiz (livre) de outra, e a aresta fica emenda.
+        // árvore com `segment` ELOS (contados, não a profundidade: uma rede ramificada também fecha) pára:
+        // a peça seguinte é a raiz (livre) de outra, e a aresta fica emenda.
         let segment = self.chains.segment.unwrap_or(SEGMENT_LINKS);
-        let mut depth: BTreeMap<Key, u16> = roots.iter().map(|&k| (k, 0)).collect();
+        let mut root_of: BTreeMap<Key, Key> = roots.iter().map(|&k| (k, k)).collect();
+        let mut links: BTreeMap<Key, u16> = BTreeMap::new();
         let mut seen: BTreeSet<Key> = roots.clone();
         let mut queue: VecDeque<RigidBodyHandle> = roots.iter().map(|k| handles[k]).collect();
         let mut used: BTreeSet<Key> = BTreeSet::new();
@@ -213,10 +215,10 @@ impl PhysicsWorld {
                 if seen.contains(&body_key(o)) || !dynamic(o) {
                     continue;
                 }
-                let d = depth.get(&body_key(p)).copied().unwrap_or(0);
-                if d >= segment {
+                let root = root_of.get(&body_key(p)).copied().unwrap_or(body_key(p));
+                if links.get(&root).copied().unwrap_or(0) >= segment {
                     seen.insert(body_key(o));
-                    depth.insert(body_key(o), 0);
+                    root_of.insert(body_key(o), body_key(o));
                     queue.push_back(o);
                     continue;
                 }
@@ -231,7 +233,8 @@ impl PhysicsWorld {
                 if let Some(mh) = self.multibody_joints.insert(p, o, data, true) {
                     used.insert(k);
                     seen.insert(body_key(o));
-                    depth.insert(body_key(o), d + 1);
+                    root_of.insert(body_key(o), root);
+                    *links.entry(root).or_default() += 1;
                     queue.push_back(o);
                     grown.push((ih, mh, p, o));
                     self.chains.twins.insert(k, mh);

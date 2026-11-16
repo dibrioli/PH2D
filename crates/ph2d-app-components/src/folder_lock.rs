@@ -7,14 +7,19 @@
 
 use bevy_ecs::query::Or;
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_ecs::{Entity, LockCoversChildren, Locked, SimWorld, With};
+use ph2d_ecs::{Entity, LockCoversChildren, Locked, SimWorld, With, Without};
 
 /// Põe ou tira a marca em quem está trancado (ou ainda a tem); só escreve onde ela difere.
 /// Devolve quantas entidades mudaram.
 pub fn sync(sim: &mut SimWorld, registry: &ComponentRegistry) -> usize {
     let w = sim.world_mut();
+    // A montagem traz a marca pelo `#[require]` e fica sempre pasta: fora daqui (e o quadro sem pastas
+    // trancadas não constrói a tabela dos tipos).
     let alvo: Vec<Entity> = w
-        .query_filtered::<Entity, Or<(With<Locked>, With<LockCoversChildren>)>>()
+        .query_filtered::<Entity, (
+            Or<(With<Locked>, With<LockCoversChildren>)>,
+            Without<ph2d_physics_ecs::JointAssembly>,
+        )>()
         .iter(w)
         .collect();
     if alvo.is_empty() {

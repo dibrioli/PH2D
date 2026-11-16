@@ -32,6 +32,9 @@ pub struct FieldBox {
     pressing: bool,
     /// O texto copiado por Ctrl+C/X, para a shell.
     copy: Option<String>,
+    /// O número que o texto semeado diz: entrar e sair sem mudar nada não grava (o arredondado
+    /// do texto, espalhado por todas as juntas do alcance).
+    seeded: Option<f64>,
 }
 
 impl JointEditorDoc {
@@ -51,6 +54,9 @@ impl JointEditorDoc {
         let value = f64::from(self.value(f).unwrap_or(0.0));
         let (step, (lo, hi)) = self.step_of(f);
         let b = &mut self.field_box;
+        b.seeded = ph2d_editor_core::interaction::util::format_number(value)
+            .parse()
+            .ok();
         b.store.set_focus(None);
         b.store.register(
             BOX,
@@ -88,9 +94,12 @@ impl JointEditorDoc {
         for e in events {
             match e {
                 WidgetEvent::ValueChanged(id) if *id == BOX => {
-                    if let Some(v) = self.field_box.store.number_value(BOX) {
+                    if let Some(v) = self.field_box.store.number_value(BOX)
+                        && self.field_box.seeded != Some(v)
+                    {
                         #[allow(clippy::cast_possible_truncation)] // o número do cartão é f32
                         self.commit(f, v as f32);
+                        self.field_box.seeded = Some(v);
                     }
                 }
                 WidgetEvent::Blur(id) if *id == BOX => self.typing = None,

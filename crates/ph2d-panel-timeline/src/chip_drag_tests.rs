@@ -99,6 +99,7 @@ fn o_container_nao_se_larga_dentro_de_si() {
         time_area: rows,
         rows,
         scrollbar: rows,
+        barra_tempo: Rect::new(0.0, 0.0, 0.0, 0.0),
     };
     let view = TimeView {
         time_x: 100.0,

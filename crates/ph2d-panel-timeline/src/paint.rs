@@ -339,6 +339,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         tracks::paint_marquee(ctx, theme, b.rect());
     }
     scrollbar::paint(ctx, theme, g.scrollbar, state, content_h);
+    crate::barra_tempo::paint(ctx, theme, g.barra_tempo, state, &snapshot);
     // Time axis last, so ticks + playhead overlay the rows. **What it measures is
     // the tab's** (`RulerClock`): the Arrange tab rules the timeline, the Keys tab
     // rules the clip — and without a stack those are one clock, which is why a

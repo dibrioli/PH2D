@@ -89,5 +89,7 @@ mod timeline_no_lugar;
 pub use timeline_no_lugar::*;
 mod timeline_ritmo;
 pub use timeline_ritmo::*;
+mod timeline_rolagem;
+pub use timeline_rolagem::*;
 mod timeline_pontos;
 pub use timeline_pontos::*;

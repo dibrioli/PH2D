@@ -57,6 +57,8 @@ pub(crate) fn process(
         .store_mut()
         .take_timeline_wheel(ph2d_editor_core::ids::TIMELINE_PANEL)
     {
+        let mut w = w;
+        crate::barra_tempo::roda(state, ctx.host.store(), &mut w, time_x);
         view::apply_wheel(state, time_x, w);
     }
     // Read the scale AFTER the wheel landed, so a same-frame zoom and the key
@@ -129,6 +131,7 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::LoopBrace { edge } => {
             loop_drag::apply(state, time_x, px_per_s, snap, edge, g);
         }
+        TimelineHitKind::TimeBar { part } => crate::barra_tempo::apply(state, snap, part, g),
         // The grip at the veil's left edge: drag it to resize the composition
         // duration (scope-appropriate `Set*Length`, snapped like the playhead).
         TimelineHitKind::DurationHandle => {

@@ -169,7 +169,10 @@ pub(crate) fn reveal_time(state: &mut TimelinePanelState, time_area_w: f32, t: f
 /// Arrange falls back to the keys when no lane holds a strip: `F` on a document
 /// nobody has arranged yet should still frame something rather than snapping back
 /// to the default zoom.
-fn content_extent(state: &TimelinePanelState, snap: &TimelineViewSnapshot) -> Option<(f64, f64)> {
+pub(crate) fn content_extent(
+    state: &TimelinePanelState,
+    snap: &TimelineViewSnapshot,
+) -> Option<(f64, f64)> {
     if state.tab.shows_lanes() {
         strip_extent(snap).or_else(|| key_extent(snap))
     } else {

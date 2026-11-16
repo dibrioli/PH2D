@@ -7,7 +7,8 @@ use super::TimelineHitKind as K;
 
 /// **Exactly one surface upgrades a second tap, and the list is pinned.**
 ///
-/// The container bar (double-click enters). Every other surface treats the pair as a plain
+/// The container bar (double-click enters) and the time bar (double-click fits it all, again
+/// goes back — dono 16/11). Every other surface treats the pair as a plain
 /// Click on purpose — this gate is what makes widening or narrowing that list a decision
 /// instead of a drive-by: the container bar was dead under the mouse precisely because the
 /// list lived inline in `pointer_up.rs` where no test enumerated it. ⚠️ The MARKER left this
@@ -15,8 +16,13 @@ use super::TimelineHitKind as K;
 /// tap on a pennant is a plain Click (re-seek) and MUST NOT synthesize a `DoubleClick`
 /// `marker_drag` no longer handles.
 #[test]
-fn exactly_the_container_bar_wants_a_double_click() {
-    let wants = [K::ContainerRow { index: 0 }];
+fn exactly_the_container_bar_and_the_time_bar_want_a_double_click() {
+    let wants = [
+        K::ContainerRow { index: 0 },
+        K::TimeBar { part: 0 },
+        K::TimeBar { part: 2 },
+        K::TimeBar { part: 3 },
+    ];
     let plain = [
         K::Lane,
         K::Marker { index: 0 },

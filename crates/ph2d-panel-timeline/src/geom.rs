@@ -44,6 +44,8 @@ pub(crate) struct Geom {
     pub rows: Rect,
     /// Vertical scrollbar strip at the right of the rows.
     pub scrollbar: Rect,
+    /// A barra de rolagem do tempo, por baixo das linhas e só sob a coluna do tempo (dono 16/11).
+    pub barra_tempo: Rect,
 }
 
 /// The panel body below the title (the transport bar + dope sheet live here).
@@ -206,20 +208,25 @@ pub(crate) fn resolve(rect: Rect, after_transport: f32, label_w: f32, min_label:
     // The time column starts a gutter past the seam, so the splitter grip and the
     // first keyframe never fight over the same pixels.
     let time_left = region.x + label_w + TIME_GUTTER;
-    let time_area = Rect::new(time_left, region.y, (bar_x - time_left).max(0.0), region.h);
+    // A barra do tempo come o pé da região: régua, playhead e linhas param por cima dela.
+    let barra_h = ph2d_tokens::chrome::TIMELINE_BARRA_TEMPO_H_PX.min(region.h);
+    let alto = region.h - barra_h;
+    let time_area = Rect::new(time_left, region.y, (bar_x - time_left).max(0.0), alto);
     let rows = Rect::new(
         region.x,
         region.y + ruler::RULER_H,
         (region.w - SCROLLBAR_W).max(0.0),
-        (region.h - ruler::RULER_H).max(0.0),
+        (alto - ruler::RULER_H).max(0.0),
     );
     let scrollbar = Rect::new(bar_x, rows.y, SCROLLBAR_W, rows.h);
+    let barra_tempo = Rect::new(time_area.x, region.y + alto, time_area.w, barra_h);
     Geom {
         region,
         label_w,
         time_area,
         rows,
         scrollbar,
+        barra_tempo,
     }
 }
 

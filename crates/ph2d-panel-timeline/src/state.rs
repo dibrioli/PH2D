@@ -157,6 +157,8 @@ pub struct TimelinePanelState {
     /// Middle-drag pan anchor (last pointer position) while the wheel button is
     /// held over the dope sheet.
     pub pan_drag: Option<(f32, f32)>,
+    /// A barra de rolagem do tempo com alças de zoom: o mapa pintado, o arrasto, a volta do «caber tudo».
+    pub barra: crate::barra_tempo::BarraEstado,
     /// Width of the track-name column, dragged by the splitter. Clamped into the
     /// panel's bounds on every paint (`geom::clamp_label_w`), so a resize of the
     /// panel itself never strands it.
@@ -349,6 +351,7 @@ impl Default for TimelinePanelState {
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
+            barra: crate::barra_tempo::BarraEstado::default(),
             label_w: crate::tracks::LABEL_COL_W,
             label_drag: None,
             graph_h: crate::graph::GRAPH_H_DEFAULT,

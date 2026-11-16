@@ -15,6 +15,7 @@ mod animation_chip_seam;
 mod arrange_sources_seam;
 mod as_faixas_nos_cartoes;
 mod autoplay_seam;
+mod barra_tempo_seam;
 mod buffer_curves_seam;
 mod chip_para_faixa;
 mod clipes_em_lista;

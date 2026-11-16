@@ -528,6 +528,7 @@ fn nos_cartoes_a_mistura_sai_antes_do_rotulo_e_das_alcas() {
         time_area: Rect::new(100.0, 18.0, 800.0, 222.0),
         rows: Rect::new(100.0, 40.0, 800.0, 200.0),
         scrollbar: Rect::new(900.0, 40.0, 0.0, 200.0),
+        barra_tempo: Rect::new(0.0, 0.0, 0.0, 0.0),
     };
     let view = TimeView {
         time_x: 100.0,

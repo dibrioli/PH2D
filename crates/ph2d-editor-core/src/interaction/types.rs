@@ -467,6 +467,12 @@ pub enum TimelineHitKind {
     /// payload — a duration has one value per view, resolved panel-side. The shell
     /// gives it a ↔ resize cursor (`timeline_resize_cursor`).
     DurationHandle,
+    /// ⭐ **A barra de rolagem do tempo no pé da fita** (dono 16/11; AE «Time Navigator», Premiere,
+    /// Blender): `part` `0` = ponta esquerda e `1` = direita (zoom, a outra ponta fica), `2` = o meio do
+    /// polegar (rola), `3` = a calha (salta para ali e continua a rolar). Duplo clique = caber tudo.
+    TimeBar {
+        part: u8,
+    },
     /// **A container's bar in the Containers list** (ADR-0133, amended 2026-07-21) — one rect,
     /// and a double-click on it enters that container.
     ///
@@ -541,7 +547,7 @@ impl TimelineHitKind {
     /// nobody asked for.
     #[must_use]
     pub fn wants_double_click(self) -> bool {
-        matches!(self, Self::ContainerRow { .. })
+        matches!(self, Self::ContainerRow { .. } | Self::TimeBar { .. })
     }
 }
 

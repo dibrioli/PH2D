@@ -213,6 +213,8 @@ fn o_renome_da_lane_tem_a_altura_da_linha_pintada() {
         index: 1,
         opened: false,
     });
+    // A barra do tempo (16/11) come 14 px do pé: a lane B desce abaixo do fundo; rola-se até ela.
+    m.st.scroll_y = f32::MAX;
     m.assenta_em(JANELA);
     m.assenta_em(JANELA);
     let campo = rect(&m, ids::TIMELINE_CLIP_RENAME_INPUT);

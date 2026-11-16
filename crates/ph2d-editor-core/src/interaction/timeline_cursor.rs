@@ -28,6 +28,10 @@ impl TimelineHitKind {
             Self::MarkerGap { .. } => PointerLook::Hand,
             // Nos cartões o marcador é a alça do fade das strips: o mesmo ↔ (dono 10/11).
             Self::Marker { .. } if em_cartoes => PointerLook::ResizeEw,
+            // A barra do tempo: as pontas esticam (zoom), o meio agarra, a calha é a seta.
+            Self::TimeBar { part } if part < CORPO => PointerLook::ResizeEw,
+            Self::TimeBar { part } if part == CORPO => mao,
+            Self::TimeBar { .. } => return None,
             Self::Strip { edge, .. } | Self::LoopBrace { edge } if edge != CORPO => {
                 PointerLook::ResizeEw
             }
@@ -93,6 +97,22 @@ mod tests {
         assert_eq!(
             brace(CORPO).pointer_look(true, false),
             Some(PointerLook::Grabbing)
+        );
+        let barra = |part| TimelineHitKind::TimeBar { part };
+        for ponta in [0, 1] {
+            assert_eq!(
+                barra(ponta).pointer_look(false, false),
+                Some(PointerLook::ResizeEw)
+            );
+        }
+        assert_eq!(
+            barra(CORPO).pointer_look(true, false),
+            Some(PointerLook::Grabbing)
+        );
+        assert_eq!(
+            barra(3).pointer_look(false, false),
+            None,
+            "a calha é a seta"
         );
         let marcador = TimelineHitKind::Marker { index: 0 };
         let nos_cartoes = marcador.pointer_look(false, true);

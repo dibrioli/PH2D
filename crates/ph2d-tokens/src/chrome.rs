@@ -246,3 +246,14 @@ pub const TIMELINE_FANTASMA_TRACO_PX: f64 = 3.0; // LITERAL-PX-OK: traço e vão
 pub const TIMELINE_CHIP_ARRASTADO_ALPHA: f32 = 0.25; // LITERAL-PX-OK: opacidade do chip arrastado
 /// …e o anel de dentro, 1,5 px na cor da fonte.
 pub const TIMELINE_CHIP_ARRASTADO_ANEL_PX: f32 = 1.5; // LITERAL-PX-OK: anel do chip arrastado
+
+// ── barra de rolagem do tempo com alças de zoom (dono 16/11) ──
+/// ⭐ **A barra do tempo no pé da fita** (AE «Time Navigator», Premiere «zoom scroll bar», Blender): o
+/// polegar é a janela visível do tempo; as pontas dão zoom, o meio rola. Altura total da faixa.
+pub const TIMELINE_BARRA_TEMPO_H_PX: f32 = 14.0; // LITERAL-PX-OK: altura da barra do tempo
+/// O recuo do polegar dentro da faixa, em cima e em baixo.
+pub const TIMELINE_BARRA_TEMPO_RECUO_PX: f32 = 2.0; // LITERAL-PX-OK: recuo do polegar na barra
+/// A largura do alvo de cada ponta do polegar (a alça de zoom).
+pub const TIMELINE_BARRA_TEMPO_ALCA_PX: f32 = 10.0; // LITERAL-PX-OK: alvo da ponta do polegar
+/// O polegar nunca fica mais estreito que isto (as duas pontas e um meio para agarrar).
+pub const TIMELINE_BARRA_TEMPO_POLEGAR_MIN_PX: f32 = 36.0; // LITERAL-PX-OK: largura mínima do polegar

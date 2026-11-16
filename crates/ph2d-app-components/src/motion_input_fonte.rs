@@ -3,13 +3,14 @@
 //! que já existe (sem segunda conta). A ponte e o Inspector leem daqui.
 
 use crate::canais_componente;
-use ph2d_component_desc::{FieldDesc, FieldKind, View};
+use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, View};
 use ph2d_ecs::canal_componente as cc;
 use ph2d_ecs::motion_inputs::{Valor, no_tamanho};
 use ph2d_ecs::scene::property_ref::RefNames;
 use ph2d_ecs::scene::registry::ComponentRegistry;
 use ph2d_ecs::{ActionSample, Entity, MotionInput, StableId, TextosDosCanais, World};
 use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, RigidBody};
+use ph2d_timeline::PropKind as P;
 use std::collections::BTreeMap;
 
 /// O que a ponte lê fora do mundo, neste quadro.
@@ -116,17 +117,29 @@ fn numerico(f: &FieldDesc) -> bool {
     ) && !matches!(f.view, View::Named(_))
 }
 
-/// Os canais de `"<canonical>/<serde_key>"` pelo descritor: um, ou dois num par.
-fn chaves(reg: &ComponentRegistry, property: &str) -> Option<Vec<ph2d_ecs::FieldKey>> {
-    let (canonical, key) = property.trim().split_once('/')?;
-    let d = reg.get_by_name(canonical)?.desc?;
-    let f = d
-        .fields
-        .iter()
-        .find(|f| f.serde_key() == key && numerico(f))?;
+/// ⭐ O Transform pelo endereço do Auto Key/Timeline (`PropKind` + `read_prop_kind`): o catálogo
+/// cede-lhe as faixas (chave vazia). `"ph2d::ecs::Transform/<nome>"`.
+const POSE: [(&str, &str, &[P]); 3] = [
+    (
+        "position",
+        "component.field.transform.1",
+        &[P::TranslationX, P::TranslationY],
+    ),
+    ("rotation", "component.field.transform.2", &[P::Rotation]),
+    (
+        "scale",
+        "component.field.transform.3",
+        &[P::ScaleX, P::ScaleY],
+    ),
+];
+const TRANSFORM: &str = "ph2d::ecs::Transform";
+
+/// As chaves do campo (uma, ou duas num par) — `None` se alguma faixa não se LÊ pelo funil
+/// (`cc::resolver`: cedida a uma família à mão, ou sem canal).
+fn chaves_do(d: &ComponentDesc, f: &FieldDesc) -> Option<Vec<ph2d_ecs::FieldKey>> {
     let n = if f.kind == FieldKind::Vec2 { 2 } else { 1 };
     (0..n)
-        .map(|faixa| cc::chave(d.canonical_name, f.field_id, faixa))
+        .map(|x| cc::chave(d.canonical_name, f.field_id, x).filter(|&k| cc::resolver(k).is_some()))
         .collect()
 }
 
@@ -139,19 +152,34 @@ pub fn propriedade(
     alvo: Entity,
     property: &str,
 ) -> Option<Valor> {
-    let reg = reg?;
-    let mut textos = TextosDosCanais::default();
-    let mut ler =
-        |k| canais_componente::ler(reg, world, alvo, k, &mut textos, RefNames { tags: None });
-    match chaves(reg, property)?.as_slice() {
-        [k] => ler(*k).map(Valor::Numero),
-        [x, y] => Some(Valor::Vetor([ler(*x)?, ler(*y)?])),
+    let (canonical, key) = property.trim().split_once('/')?;
+    let v: Vec<f32> = if canonical == TRANSFORM {
+        let ps = POSE.iter().find(|p| p.0 == key)?.2;
+        ps.iter()
+            .map(|&p| ph2d_timeline::read_prop_kind(world, alvo, p))
+            .collect::<Option<_>>()?
+    } else {
+        let reg = reg?;
+        let d = reg.get_by_name(canonical)?.desc?;
+        let f = d
+            .fields
+            .iter()
+            .find(|f| f.serde_key() == key && numerico(f))?;
+        let mut textos = TextosDosCanais::default();
+        let names = RefNames { tags: None };
+        (chaves_do(d, f)?.into_iter())
+            .map(|k| canais_componente::ler(reg, world, alvo, k, &mut textos, names))
+            .collect::<Option<_>>()?
+    };
+    match v.as_slice() {
+        [n] => Some(Valor::Numero(*n)),
+        [x, y] => Some(Valor::Vetor([*x, *y])),
         _ => None,
     }
 }
 
-/// Os campos numéricos dos componentes do alvo: `(«Health · Max», "Health/max")`, pela ordem do
-/// registo e do descritor.
+/// Os campos que a [`propriedade`] LÊ AGORA no alvo (a mesma lei; uma variante ausente ou um
+/// `None` não se oferece): `(«Health · Max», "Health/max")`; o Transform pela [`POSE`].
 #[must_use]
 pub fn campos_numericos(
     reg: &ComponentRegistry,
@@ -161,17 +189,20 @@ pub fn campos_numericos(
     reg.iter()
         .filter_map(|entry| Some((entry.desc?, (entry.value_of)(world, alvo).ok()??)))
         .flat_map(|(d, _)| {
-            d.fields.iter().filter(|f| numerico(f)).map(move |f| {
+            let pose = (d.canonical_name == TRANSFORM).then_some(POSE.iter());
+            let pose = pose.into_iter().flatten().map(|p| (p.1, p.0));
+            let campos = (d.fields.iter())
+                .filter(|f| numerico(f))
+                .map(|f| (f.label_key, f.serde_key()));
+            pose.chain(campos).map(move |(rotulo, chave)| {
+                let tr = ph2d_i18n::tr;
                 (
-                    format!(
-                        "{} \u{b7} {}",
-                        ph2d_i18n::tr(d.display_key),
-                        ph2d_i18n::tr(f.label_key)
-                    ),
-                    format!("{}/{}", d.canonical_name, f.serde_key()),
+                    format!("{} \u{b7} {}", tr(d.display_key), tr(rotulo)),
+                    format!("{}/{chave}", d.canonical_name),
                 )
             })
         })
+        .filter(|(_, k)| propriedade(Some(reg), world, alvo, k).is_some())
         .collect()
 }
 

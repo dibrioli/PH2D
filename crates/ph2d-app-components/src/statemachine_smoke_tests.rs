@@ -159,19 +159,8 @@ fn o_roteador_nunca_devolve_acima_do_tecto() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ⭐⭐⭐ O QUE TEM CÉREBRO TEM DE TER CORPO (report do dono, 2026-09-15)
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// O dono correu a cena e escreveu: *«não apareceu no painel a seção state machine»*. A fiação do
-// painel estava inteira — o defeito era **a cena**: o cérebro morava numa entidade **sem `Sprite`**,
-// logo invisível e **impossível de apontar**, enquanto o que se vê no ecrã (as placas coloridas) não
-// tem cérebro nenhum. O Inspector mostrava a verdade sobre o objecto escolhido.
-//
-// ⚠️ **Nenhum dos seis gates acima o via, e a cegueira é estrutural:** eles todos leem a cena como
-// DADOS (*«a porta tem `StateMachine`?»*) e nenhum pergunta o que o roteiro promete — *«o artista
-// consegue CHEGAR a ela?»*. ⛔ Uma cena correcta como dados e impossível como gesto ensina o
-// contrário do que diz, que é pior que uma cena ausente (`CLAUDE.md` §5.0).
+// ⭐⭐⭐ O QUE TEM CÉREBRO TEM DE TER CORPO (report do dono, 15/09): o artista tem de CHEGAR ao
+// cérebro pelo gesto, não só a cena tê-lo como dados (`CLAUDE.md` §5.0).
 
 /// O ponto do ecrã onde o roteiro manda tocar — o meio do corpo da porta da esquerda.
 ///

@@ -86,17 +86,8 @@ fn a_fase_e_a_mesma_ao_decimo_milesimo_ladrilho() {
                  (desvio de {delta} dentro do ladrilho)",
                 poses[0]
             );
-            // ⭐⭐⭐ **A METADE ABSOLUTA, e ela nasceu de uma MUTAÇÃO SOBREVIVENTE:** apagar a
-            // repetição da ponte deixava a asserção de cima VERDE, porque a varredura anda
-            // exactamente um ladrilho por passo e a diferença envolve para zero. *Uma régua que
-            // compara a fase MÓDULO o ladrilho não distingue «a costura fechou» de «o fundo fugiu
-            // um número inteiro de ladrilhos»* — e fugir é precisamente o que a repetição existe
-            // para impedir. ⚠️ O controlo do fim mede outra CENA (sem o componente): ele prova que
-            // a varredura mexe, nunca que é o componente que a segura.
-            //
-            // ⛔⛔ **E a régua é a posição NO ECRÃ (`p − c`), nunca `p − autorada`** (auditoria 26,
-            // §1.1): a 1.ª redacção media a distância à pose autorada NO MUNDO e ficava verde sobre
-            // a lei que prendia o fundo ao mundo — com a câmera longe, a fileira saía da vista.
+            // ⭐ A metade ABSOLUTA (de uma mutação sobrevivente: a fase módulo o ladrilho não vê o
+            // fundo fugir), medida NO ECRÃ (`p − c`), nunca contra a pose autorada (auditoria 26).
             let c = fase_inicial + 512.0 * n as f32;
             assert!(
                 (p - c - autorada.translation.x).abs() <= tile / 2.0 + 1e-3,

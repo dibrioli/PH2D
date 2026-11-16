@@ -7,6 +7,7 @@
 - Narrativa completa (medições, auditorias, recusas, fotos de cada volta): [jornada, verbatim](JORNADA_line_TimelinePrincipal_2026-11-15_RETIME_POR_TRECHO.md).
 - **Smoke do dono 15/11: OK de tudo** — Retime (caixa do tempo), Override, vista de valor retimada, pontos da Custom, cartão
   virado, e a última volta (abaixo).
+- **Smoke do dono depois da auditoria do fecho (15/11): OK** — a linha está pronta para integrar.
 
 ## O que entra
 

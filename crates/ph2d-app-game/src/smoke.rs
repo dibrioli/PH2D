@@ -23,12 +23,13 @@ use std::sync::OnceLock;
 
 /// A última cena do roteiro: 6..=`input_map::ULTIMA` = a aba Input Map (a tabela: `input_map`); a seguinte = o
 /// Top-Down Player, e depois o Projectile Motion. Contada: uma cena nova sem empurrar as seguintes não compila.
-pub const CENAS: u32 = 26;
-const _: () = assert!(CENAS == ray::CENA);
+pub const CENAS: u32 = 27;
+const _: () = assert!(CENAS == motion_input::CENA && CENAS == ray::CENA + 1);
 const _: () = assert!(ray::CENA == projectile::CENA + 1);
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 const _: () = assert!(projectile::CENA == topdown::CENA + 1);
 pub use ph2d_input_map_scene as input_map;
+pub use ph2d_physics_scene::cena_motion_input as motion_input;
 pub use ph2d_physics_scene::niveis::{
     BLOCOS, BLOCOS_2, CENTRO_DO_INICIO, CEU_COR, CEU_TAMANHO, MOEDAS, MOEDAS_2, PAREDE_INVISIVEL,
     autorada,
@@ -42,14 +43,14 @@ pub use ph2d_physics_scene::{
 pub fn abre_no_jogador(nivel: u32) -> bool {
     matches!(
         nivel,
-        2 | 4 | 5 | topdown::CENA | projectile::CENA | ray::CENA
+        2 | 4 | 5 | topdown::CENA | projectile::CENA | ray::CENA | motion_input::CENA
     )
 }
 
 /// Para onde a vista vai ao abrir: a 25 enquadra a arena inteira (as balas, a parede e o alvo); as outras, a seleção.
 #[must_use]
 pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
-    if nivel == projectile::CENA || nivel == ray::CENA {
+    if nivel >= projectile::CENA {
         ph2d_editor_core::ViewFocusKind::All
     } else {
         ph2d_editor_core::ViewFocusKind::Selected
@@ -58,7 +59,9 @@ pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
 
 /// Arruma as gavetas do Inspector da cena `nivel` e pede o cartão dela à vista sobre `heroi`.
 pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
-    if nivel == ray::CENA {
+    if nivel == motion_input::CENA {
+        motion_input::arruma_o_inspector(store, cartao, heroi);
+    } else if nivel == ray::CENA {
         ray::arruma_o_inspector(store, cartao, heroi);
     } else if nivel == projectile::CENA {
         projectile::arruma_o_inspector(store, cartao, heroi);
@@ -236,7 +239,7 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
         topdown::CENA => &HORARIO_24, // ↗ e desliza, depois só ←, só ↓ e só ↑
-        projectile::CENA => &[],      // só o Play: as cinco balas partem sozinhas
+        projectile::CENA | motion_input::CENA => &[], // só o Play: as balas partem sozinhas
         ray::CENA => &HORARIO_26,     // anda para a direita até à beirada
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
@@ -379,22 +382,18 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
             println!("{}", ph2d_sprite_anim_scene::MENSAGEM);
             jogador
         }
-        topdown::CENA => topdown::montar(
-            sim,
-            topdown::Pecas {
+        n @ (topdown::CENA | projectile::CENA | motion_input::CENA) => {
+            let p = topdown::Pecas {
                 estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
                 imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
                 anexa: portas.menu.anexa,
-            },
-        ),
-        projectile::CENA => projectile::montar(
-            sim,
-            projectile::Pecas {
-                estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
-                imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
-                anexa: portas.menu.anexa,
-            },
-        ),
+            };
+            match n {
+                topdown::CENA => topdown::montar(sim, p),
+                projectile::CENA => projectile::montar(sim, p),
+                _ => motion_input::montar(sim, p),
+            }
+        }
         ray::CENA => ray::montar(
             sim,
             ray::Pecas {

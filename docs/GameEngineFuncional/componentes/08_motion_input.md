@@ -52,6 +52,34 @@ Velocidade e «no chão» não estão nem no Luau.
 Regras: `PROJECT_SCHEMA` sobe quando o tipo muda, sem leitor velho (§0.11); clique REAL e animação para todo
 controle; checkbox em moldura; rótulo que não cabe = «…»; catracas de LOC (mover/cortar).
 
+## Desenho da onda 2 (portas existentes, sem segunda conta)
+
+- Fontes novas no FIM de `MotionSource` (a ordem é a do seletor): `Speed`, `Grounded`, `Action`, `Property`.
+- `from` (texto, `Target::Stable`, conta-gotas `ph2d-app-components::conta_gotas` como o Ray Sensor; vazio = este
+  objeto): vale para Health, Damage, Speed, Grounded e Property.
+- `Property`: componente + campo do objeto From, escolhidos em duas listas (o modelo do Property Binder do Unity);
+  guardado como texto `canonical/serde_key`; lido por `canais_componente::ler` (o mesmo funil da Timeline/Auto Key).
+- `Action`: o nome de uma ação do Input Map, lido pela `action_strength` (a mesma do Luau), 0..1.
+- `Speed` / `Grounded`: do corpo dono (`owner_body`); a velocidade viva e o `grounded` do personagem.
+- Faixa (MI-6): caixa «Remap» (moldura) + From · To (o valor chega em 0..1, com clamp — a lei do `value.map_range`)
+  + curva (`ph2d-curve`, texto).
+- Smooth (MI-7): segundos de meia-vida — a lei do `value.follow` Smooth, `v += (alvo − v)·(1 − 2^(−dt/s))`; a ponte
+  passa a receber o `dt`.
+- `PROJECT_SCHEMA` sobe (`shells/desktop/src/project_schema.rs` + irmãos; `scripts/schema-recount.py`).
+
 ## Como ficou
 
-(preenche-se por onda)
+### Onda 1 (15/11, commit `835fe76619`)
+
+- **Cura do valor preso (21/MI-12):** sem a fonte, a linha do objeto SAI de `MotionInputs` e o `value.input` volta
+  ao número dele. Gate `a_source_that_disappears_stops_publishing_instead_of_freezing` (vermelho antes).
+- **Nome inicial:** `MotionGraphNames` (recurso, `ph2d-ecs`) publicado por `motion_entradas::publica_os_nomes`
+  em `publica_o_mundo`; semente própria da família (`component_seed::PROPRIAS`) → `semeia_o_nome`.
+- **Cartão B:** chips do grafo + «New…» (esvazia e foca a caixa); a caixa só para um nome que o grafo não lê.
+- **Leitura ao vivo:** «Reads Health here: 0.75» (também parado), «Sends 0.50» e «Fired N times» em Play, e quem
+  tapa o nome («A script sets this name first (0.20) — the graph reads that.»).
+- **Saída do aviso:** «Add Health» → `InspectorAddComponentRequested { component: Some(..) }`, a mesma porta da
+  paleta (cascata com o corpo, recibo, Undo) sem a abrir.
+- Gates: `a_seccao_motion_input_esta_viva` (6), `motion_input` da app-components (10),
+  `a_named_request_attaches_that_component_without_opening_the_palette`,
+  `the_graph_names_reach_the_world_and_follow_the_graph`.

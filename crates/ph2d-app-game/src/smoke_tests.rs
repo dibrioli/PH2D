@@ -10,12 +10,14 @@ fn o_nivel_le_se_pela_porta_e_fora_da_faixa_e_inerte() {
     assert_eq!(armed_level_in(com("13")), Some(13));
     assert_eq!(armed_level_in(com("24")), Some(topdown::CENA));
     assert_eq!(armed_level_in(com("25")), Some(projectile::CENA));
-    assert_eq!(armed_level_in(com("26")), Some(ray::CENA)); // a última: o Ray Sensor
-    assert_eq!(armed_level_in(com("27")), None);
+    assert_eq!(armed_level_in(com("26")), Some(ray::CENA));
+    assert_eq!(armed_level_in(com("27")), Some(motion_input::CENA)); // a última: o Motion Input
+    assert_eq!(armed_level_in(com("28")), None);
     assert!(
         abre_no_jogador(projectile::CENA)
             && abre_no_jogador(topdown::CENA)
             && abre_no_jogador(ray::CENA)
+            && abre_no_jogador(motion_input::CENA)
             && !abre_no_jogador(3)
     );
     assert_eq!(armed_level_in(com("x")), None);

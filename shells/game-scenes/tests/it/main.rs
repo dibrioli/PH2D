@@ -25,6 +25,7 @@ mod jogo_moedas;
 mod jogo_moldura;
 mod jogo_moldura_lei;
 mod jogo_moldura_ponteiro;
+mod jogo_motion_input;
 mod jogo_nomes_do_smoke;
 mod jogo_object_add;
 mod jogo_palco_alarga;

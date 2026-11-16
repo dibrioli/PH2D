@@ -69,7 +69,9 @@ controle; checkbox em moldura; rótulo que não cabe = «…»; catracas de LOC 
 
 ## Como ficou
 
-### Onda 1 (15/11, commit `835fe76619`)
+### Onda 1 (15/11, commit `835fe76619`) — smoke do dono OK 16/11
+
+Cena `PH2D_GPU_COOK_DEMO=134 PH2D_GAME_SMOKE=27` (`ph2d-physics-scene/src/cena_motion_input.rs`), fotos `fotos_08/`. Mutação 12/12.
 
 - **Cura do valor preso (21/MI-12):** sem a fonte, a linha do objeto SAI de `MotionInputs` e o `value.input` volta
   ao número dele. Gate `a_source_that_disappears_stops_publishing_instead_of_freezing` (vermelho antes).

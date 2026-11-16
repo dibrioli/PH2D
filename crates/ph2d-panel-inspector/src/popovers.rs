@@ -266,6 +266,8 @@ pub(crate) fn paint_deferred_popovers(
     anim_rule_popover(scene, text_system, theme, hit_index, store, region);
     // O dropdown das folhas do cartão Image (plano GEF 26 §3.3).
     crate::cards_sprite_folhas::paint_deferred(scene, text_system, theme, hit_index, store, region);
+    // As listas Action e Property do Motion Input (GEF 08 onda 2) — no irmão.
+    motion_input::paint_deferred(scene, text_system, theme, hit_index, store, region);
 }
 
 /// O menu aberto do FORMATO DO JOGO do cartão Camera, com a escolha atual vinda do slot.
@@ -482,6 +484,10 @@ fn constraint_prop_popover(
 #[path = "popovers_tags.rs"]
 mod tags;
 pub(crate) use tags::publica;
+
+/// As duas listas do MOTION INPUT — irmão por `#[path]`; ver a chamada acima.
+#[path = "popovers_motion_input.rs"]
+pub(crate) mod motion_input;
 
 /// ⭐ **Os dois selectores das secções do TOP-20** — irmão por `#[path]`; ver a chamada acima.
 #[path = "popovers_top20.rs"]

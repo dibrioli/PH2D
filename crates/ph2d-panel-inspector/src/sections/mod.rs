@@ -116,6 +116,7 @@ pub(crate) mod luz_corpo;
 pub(crate) mod macro_card;
 mod material_blend;
 pub(crate) mod motion_input;
+pub(crate) mod motion_input_linhas;
 pub(crate) mod nav;
 /// ⭐ (W7) As secções NAV COST AREA e NAV LINK e os interruptores do agente — irmão do `nav` pelo
 /// tecto de LOC do painel.

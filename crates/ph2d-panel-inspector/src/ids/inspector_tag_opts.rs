@@ -61,6 +61,12 @@ fn action(n: usize) -> NodeId {
 fn ray_ignore(n: usize) -> NodeId {
     hash_node_id_runtime(&format!("insp_ray_ignore_chip_{n}"))
 }
+fn mi_action(n: usize) -> NodeId {
+    hash_node_id_runtime(&format!("insp_mi_action_opt_{n}"))
+}
+fn mi_property(n: usize) -> NodeId {
+    hash_node_id_runtime(&format!("insp_mi_property_opt_{n}"))
+}
 fn phys(n: usize) -> NodeId {
     hash_node_id_runtime(&format!("insp_phys_tag_opt_{n}"))
 }
@@ -75,3 +81,7 @@ pub static INSP_ACTION_TAG_OPT: OpcoesDeTag = OpcoesDeTag::new(action);
 pub static INSP_PHYS_TAG_OPT: OpcoesDeTag = OpcoesDeTag::new(phys);
 /// O «×» de cada objecto do «Also ignore» do Ray Sensor (RS-12) — a mesma tabela crescente, uma por item.
 pub static INSP_RAY_IGNORE_CHIP: OpcoesDeTag = OpcoesDeTag::new(ray_ignore);
+/// As acções do Input Map da lista Action do Motion Input (o mapa não tem tecto: a mesma tabela crescente).
+pub static INSP_MI_ACTION_OPT: OpcoesDeTag = OpcoesDeTag::new(mi_action);
+/// Os campos numéricos do From da lista Property do Motion Input.
+pub static INSP_MI_PROPERTY_OPT: OpcoesDeTag = OpcoesDeTag::new(mi_property);

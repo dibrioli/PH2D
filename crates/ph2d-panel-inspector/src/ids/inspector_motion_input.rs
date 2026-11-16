@@ -49,3 +49,32 @@ pub const INSP_MI_GRAFO: [NodeId; 16] = [
 pub const INSP_MI_NEW: NodeId = hash_node_id("insp_mi_new");
 /// A saída do aviso «sem Health»: anexa a `Health` (com o corpo que ela exige), com Undo.
 pub const INSP_MI_ADD_HEALTH: NodeId = hash_node_id("insp_mi_add_health");
+
+/// O From pelo NOME (fontes que leem um objecto) e o conta-gotas dele.
+pub const INSP_MI_FROM: NodeId = hash_node_id("insp_mi_from");
+/// O conta-gotas do From (a porta `ph2d-app-components::conta_gotas`).
+pub const INSP_MI_FROM_PICK: NodeId = hash_node_id("insp_mi_from_pick");
+/// A lista da acção do Input Map (fonte Action); as opções são o [`super::INSP_MI_ACTION_OPT`].
+pub const INSP_MI_ACTION: NodeId = hash_node_id("insp_mi_action");
+/// A lista do campo lido (fonte Property); as opções são o [`super::INSP_MI_PROPERTY_OPT`].
+pub const INSP_MI_PROPERTY: NodeId = hash_node_id("insp_mi_property");
+/// O grupo dobrável «Shape» (Remap, Curve, Smooth) — só com uma fonte que publica número.
+pub const INSP_MI_FOLD_SHAPE: NodeId = hash_node_id("insp_mi_fold_shape");
+/// A caixa «Remap».
+pub const INSP_MI_REMAP: NodeId = hash_node_id("insp_mi_remap");
+/// O número que vira `0` e o que vira `1` (a mesma linha).
+pub const INSP_MI_REMAP_FROM: NodeId = hash_node_id("insp_mi_remap_from");
+pub const INSP_MI_REMAP_TO: NodeId = hash_node_id("insp_mi_remap_to");
+/// As predefinições da Curve, pela ordem de `CURVE_PRESETS`.
+pub const INSP_MI_CURVE: [NodeId; 4] = [
+    hash_node_id("insp_mi_curve_0"),
+    hash_node_id("insp_mi_curve_1"),
+    hash_node_id("insp_mi_curve_2"),
+    hash_node_id("insp_mi_curve_3"),
+];
+/// A meia-vida da suavização, em segundos.
+pub const INSP_MI_SMOOTH: NodeId = hash_node_id("insp_mi_smooth");
+/// A saída da queixa «sem corpo» com a fonte Speed: anexa o Rigid Body, com Undo.
+pub const INSP_MI_ADD_BODY: NodeId = hash_node_id("insp_mi_add_body");
+/// A saída da queixa «From não acha ninguém»: arma o conta-gotas do From.
+pub const INSP_MI_PICK_OBJECT: NodeId = hash_node_id("insp_mi_pick_object");

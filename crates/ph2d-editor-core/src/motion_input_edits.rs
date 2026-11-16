@@ -51,7 +51,30 @@ pub enum MotionInputFieldEdit {
     Curve(String),
     /// A meia-vida da suavização, em segundos (`0` = desligada).
     Smooth(f32),
+    /// Arma (`true`) ou desarma o conta-gotas do From — estado da SESSÃO, sem passo de desfazer.
+    PickFrom(bool),
 }
+
+/// ⭐ **As predefinições da Curve** do grupo «Shape»: `(chave do rótulo, texto ph2d-curve)`.
+///
+/// Só segmentos `L`/`S` (HR-5): o Ease In é a primeira metade de um `smoothstep` em `[0, 2]`, o Ease Out a
+/// segunda de um em `[-1, 1]` — exactos, com a tangente plana na ponta lenta. A prova vive na
+/// `ph2d-app-components` (que lê a `ph2d-curve`).
+pub const CURVE_PRESETS: [(&str, &str); 4] = [
+    ("panel.inspector.motion_input.curve_linear", ""),
+    (
+        "panel.inspector.motion_input.curve_ease_in",
+        "c1 0:0:S 2:2:L",
+    ),
+    (
+        "panel.inspector.motion_input.curve_ease_out",
+        "c1 -1:-1:S 1:1:L",
+    ),
+    (
+        "panel.inspector.motion_input.curve_smooth",
+        "c1 0:0:S 1:1:L",
+    ),
+];
 
 /// O que a secção diz antes dos campos — a causa de *«o grafo não lê nada»*.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -138,6 +161,8 @@ pub struct InspectorMotionInputInfo {
     pub curve: String,
     /// A meia-vida da suavização, em segundos (`0` = desligada).
     pub smooth: f32,
+    /// O conta-gotas do From está armado para ESTE objecto.
+    pub from_pick_armed: bool,
     /// Quantos objectos estão escolhidos (a edição aplica-se ao activo).
     pub selected_count: usize,
     /// O jogo está a correr (as leituras do que chega ao grafo só existem em Play).
@@ -181,11 +206,7 @@ impl InspectorMotionInputInfo {
     /// A queixa da FONTE (o objecto From e o que ela lê dele), por ordem de cura.
     fn queixa_da_fonte(&self) -> Option<MotionInputQueixa> {
         use MotionInputQueixa as Q;
-        let le_from = matches!(
-            self.source,
-            SOURCE_HEALTH | SOURCE_DAMAGE | SOURCE_SPEED | SOURCE_GROUNDED | SOURCE_PROPERTY
-        );
-        if le_from && !self.alvo_achado {
+        if self.le_from() && !self.alvo_achado {
             return Some(Q::SemAlvo);
         }
         match self.source {
@@ -200,6 +221,15 @@ impl InspectorMotionInputInfo {
             }
             _ => None,
         }
+    }
+
+    /// A fonte lê um OBJECTO (o From)? Value, Color e Action não leem ninguém.
+    #[must_use]
+    pub fn le_from(&self) -> bool {
+        matches!(
+            self.source,
+            SOURCE_HEALTH | SOURCE_DAMAGE | SOURCE_SPEED | SOURCE_GROUNDED | SOURCE_PROPERTY
+        )
     }
 
     /// A fonte publica um NÚMERO (o Remap e o Smooth só valem aí).
@@ -234,6 +264,7 @@ mod tests {
             remap_to: 1.0,
             curve: String::new(),
             smooth: 0.0,
+            from_pick_armed: false,
             selected_count: 1,
             a_correr: false,
             ao_vivo: None,

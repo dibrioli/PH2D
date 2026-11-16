@@ -192,14 +192,26 @@ pub(super) fn paint_deferred_tag_popovers(
 pub(crate) fn publica(store: &mut WidgetStore, painted: PaintedPopover) {
     store.publish_dropdown_popover(painted);
     use crate::ids as d;
-    let opts = match painted.id {
-        d::INSP_NAV_TAG_PICK => &d::INSP_NAV_TAG_OPT,
-        d::INSP_RAY_SEE_TAG => &d::INSP_RAY_SEE_TAG_OPT,
-        d::INSP_ACTION_TAG_PICK => &d::INSP_ACTION_TAG_OPT,
-        d::INSP_PHYS_SIGNAL_TAG => &d::INSP_PHYS_TAG_OPT,
+    let arvore = crate::state::current_tag_tree_len;
+    let (opts, len) = match painted.id {
+        d::INSP_NAV_TAG_PICK => (&d::INSP_NAV_TAG_OPT, arvore()),
+        d::INSP_RAY_SEE_TAG => (&d::INSP_RAY_SEE_TAG_OPT, arvore()),
+        d::INSP_ACTION_TAG_PICK => (&d::INSP_ACTION_TAG_OPT, arvore()),
+        d::INSP_PHYS_SIGNAL_TAG => (&d::INSP_PHYS_TAG_OPT, arvore()),
+        // As listas do Motion Input (GEF 08 onda 2): o comprimento é o do instantâneo.
+        d::INSP_MI_ACTION | d::INSP_MI_PROPERTY => {
+            use super::motion_input::Lista;
+            let lista = if painted.id == d::INSP_MI_ACTION {
+                Lista::Action
+            } else {
+                Lista::Property
+            };
+            let len = crate::state_components::current_inspector_motion_input()
+                .map_or(0, |i| lista.len(&i));
+            (lista.opcoes_ids(), len)
+        }
         _ => return,
     };
-    let len = crate::state::current_tag_tree_len();
     if len == 0 || store.get(opts.id(len - 1)).is_some() {
         return;
     }

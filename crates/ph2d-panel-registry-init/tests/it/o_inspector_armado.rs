@@ -1314,6 +1314,7 @@ fn arma_o_top20() {
         remap_to: 1.0,
         curve: String::new(),
         smooth: 0.0,
+        from_pick_armed: false,
         selected_count: selecionados(),
         a_correr: true,
         ao_vivo: Some(ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero(0.5)),

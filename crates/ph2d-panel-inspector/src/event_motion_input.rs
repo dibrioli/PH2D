@@ -32,6 +32,27 @@ pub(crate) fn apply_motion_input_event(host: &mut dyn PanelHostInternal, ev: Wid
                     component: Some("ph2d::physics::Health"),
                 });
             None
+        } else if id == crate::ids::INSP_MI_ADD_BODY {
+            // A saída da queixa «sem corpo» da Speed: a mesma porta, com o Rigid Body.
+            host.bus_mut()
+                .push(EditorAction::InspectorAddComponentRequested {
+                    entity_bits: bits,
+                    component: Some("ph2d::physics::RigidBody"),
+                });
+            None
+        } else if id == crate::ids::INSP_MI_FROM_PICK || id == crate::ids::INSP_MI_PICK_OBJECT {
+            // O conta-gotas (o da linha arma ou desarma; o da queixa só arma).
+            Some(E::PickFrom(
+                id == crate::ids::INSP_MI_PICK_OBJECT || !info.from_pick_armed,
+            ))
+        } else if id == crate::ids::INSP_MI_REMAP {
+            Some(E::Remap(!info.remap))
+        } else if let Some(n) = linha(&crate::ids::INSP_MI_CURVE, id) {
+            ph2d_editor_core::motion_input_edits::CURVE_PRESETS
+                .get(n)
+                .map(|(_, t)| E::Curve((*t).to_string()))
+        } else if let Some(edit) = opcao_da_lista(host, &info, id) {
+            Some(edit)
         } else if id == crate::ids::INSP_MI_COLOR {
             // A amostra ABRE o selector partilhado, semeado com a cor do documento; a escolha volta
             // pela semente (`sync_motion_input`).
@@ -54,26 +75,59 @@ pub(crate) fn apply_motion_input_event(host: &mut dyn PanelHostInternal, ev: Wid
         return true;
     }
 
-    if let WidgetEvent::TextChanged(id) = ev
-        && id == crate::ids::INSP_MI_NAME
-    {
+    if let WidgetEvent::TextChanged(id) = ev {
         let text = host.store().text(id).unwrap_or("").to_string();
-        push(host, bits, E::Name(text));
+        let edit = match id {
+            crate::ids::INSP_MI_NAME => E::Name(text),
+            // O NOME cru: quem o resolve é o dreno (um nome que ninguém tem não escreve).
+            crate::ids::INSP_MI_FROM => E::From(text.trim().to_string()),
+            _ => return false,
+        };
+        push(host, bits, edit);
         return true;
     }
 
-    if let WidgetEvent::ValueChanged(id) = ev
-        && id == crate::ids::INSP_MI_VALUE
-    {
+    if let WidgetEvent::ValueChanged(id) = ev {
         #[expect(
             clippy::cast_possible_truncation,
-            reason = "o campo do componente é f32"
+            reason = "os campos do componente são f32"
         )]
         let v = host.store().number_value(id).unwrap_or(0.0) as f32;
-        push(host, bits, E::Value(v));
+        // ⚠️ Um `match` e não um `if` por campo (a lição dos três campos da tabela de acções).
+        let edit = match id {
+            crate::ids::INSP_MI_VALUE => E::Value(v),
+            crate::ids::INSP_MI_REMAP_FROM => E::RemapFrom(v),
+            crate::ids::INSP_MI_REMAP_TO => E::RemapTo(v),
+            crate::ids::INSP_MI_SMOOTH => E::Smooth(v.max(0.0)),
+            _ => return false,
+        };
+        push(host, bits, edit);
         return true;
     }
     false
+}
+
+/// Uma opção de uma das duas listas (Action escreve o nome; Property, a CHAVE do campo): fecha a lista e
+/// devolve a edição. ⚠️ A escolha vem do instantâneo, nunca do `selected_index` do store.
+fn opcao_da_lista(
+    host: &mut dyn PanelHostInternal,
+    info: &ph2d_editor_core::motion_input_edits::InspectorMotionInputInfo,
+    id: ph2d_a11y::NodeId,
+) -> Option<E> {
+    use crate::popovers::motion_input::Lista;
+    let (lista, n) = [Lista::Action, Lista::Property]
+        .into_iter()
+        .find_map(|l| l.opcoes_ids().posicao(id, l.len(info)).map(|n| (l, n)))?;
+    if let Some(InteractiveState::Dropdown { open, .. }) = host.store_mut().get_mut(lista.id()) {
+        *open = false;
+    }
+    match lista {
+        Lista::Action => info.acoes_do_mapa.get(n).cloned().map(E::Action),
+        Lista::Property => info
+            .campos_do_alvo
+            .get(n)
+            .map(|(_, k)| E::Property(k.clone())),
+    }
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {

@@ -14,8 +14,10 @@ use crate::state::InspectorState;
 
 fn assinatura(info: &InspectorMotionInputInfo) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
-    (info.entity_bits, &info.name, info.source).hash(&mut h);
-    info.value.to_bits().hash(&mut h);
+    (info.entity_bits, &info.name, info.source, &info.from).hash(&mut h);
+    for v in [info.value, info.remap_from, info.remap_to, info.smooth] {
+        v.to_bits().hash(&mut h);
+    }
     h.finish()
 }
 
@@ -53,9 +55,16 @@ pub(crate) fn sync(
     inspector_state.last_motion_input_sig = Some(sig);
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
-    let valor = crate::ids::INSP_MI_VALUE;
-    if focus != Some(valor) && drag != Some(valor) {
-        crate::unidade_mundo::semeia(host, valor, f64::from(info.value));
+    for (id, v) in [
+        (crate::ids::INSP_MI_VALUE, info.value),
+        (crate::ids::INSP_MI_REMAP_FROM, info.remap_from),
+        (crate::ids::INSP_MI_REMAP_TO, info.remap_to),
+        (crate::ids::INSP_MI_SMOOTH, info.smooth),
+    ] {
+        if focus != Some(id) && drag != Some(id) {
+            crate::unidade_mundo::semeia(host, id, f64::from(v));
+        }
     }
     crate::sync_text_field::escreve_texto(host, focus, crate::ids::INSP_MI_NAME, &info.name);
+    crate::sync_text_field::escreve_texto(host, focus, crate::ids::INSP_MI_FROM, &info.from);
 }

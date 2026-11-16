@@ -5,6 +5,7 @@
 //! to» e o conta-gotas). Saiu da `ph2d-app-components`, que a reexporta pelos nomes de antes.
 
 pub mod gotas;
+pub mod gotas_from;
 pub mod inspector;
 pub mod script;
 pub mod topo;

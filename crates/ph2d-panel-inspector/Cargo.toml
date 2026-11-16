@@ -66,6 +66,8 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # pede um `PointerEvent`, e um `WidgetEvent::Click` sintético **pula a checagem de
 # focabilidade** — que é exactamente onde um chip pintado e hit-registado morre sob o dedo.
 ph2d-host = { path = "../ph2d-host" }
+# As predefinições da Curve do Motion Input lêem-se na `ph2d-curve` (o teste da secção).
+ph2d-curve = { path = "../ph2d-curve" }
 # O gate `every_word_this_panel_shows_comes_from_the_string_table`: a régua lexical partilhada.
 ph2d-label-census = { path = "../ph2d-label-census" }
 # Só para o gesto chegar ao objecto (`girar_e_espelhar_todo_objecto`): o clique, a fila de comandos

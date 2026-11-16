@@ -68,6 +68,7 @@ pub fn build_info(
         remap_to: m.remap_to,
         curve: m.curve.clone(),
         smooth: m.smooth,
+        from_pick_armed: ph2d_ray_sensor::gotas_from::armado(world, Some(bits)),
         selected_count,
         a_correr,
         ao_vivo,
@@ -177,6 +178,11 @@ pub fn semeia_o_nome(sim: &mut SimWorld, bits: u64) {
 /// diff).
 pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
     let e = ph2d_ecs::Entity::from_bits(bits);
+    if let E::PickFrom(arma) = edit {
+        // ⭐ O conta-gotas é da SESSÃO: armar não muda o documento (nenhum passo de desfazer).
+        ph2d_ray_sensor::gotas_from::arma(sim.world_mut(), bits, *arma);
+        return false;
+    }
     if let E::From(nome) = edit {
         // O NOME vira `StableId` pela porta do conta-gotas do Ray Sensor; ninguém com ele = inerte.
         let Some(id) = ph2d_ray_sensor::gotas::resolve(sim.world(), nome) else {
@@ -222,7 +228,7 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
             }
             m.color = *c;
         }
-        E::From(_) => return false, // resolvido acima
+        E::From(_) | E::PickFrom(_) => return false, // resolvidos acima
         E::Action(t) => return troca(&mut m.action, t),
         E::Property(t) => return troca(&mut m.property, t),
         E::Curve(t) => return troca(&mut m.curve, t),

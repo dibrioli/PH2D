@@ -14,16 +14,16 @@ use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector
 use ph2d_panel_inspector::{censo_dos_avisos, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
-const VIEWPORT: Rect = Rect {
+pub(super) const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
     h: 2600.0,
 };
-const SEC: u128 = 1_000_000_000;
-const BITS: u64 = 0x000A_11CE;
+pub(super) const SEC: u128 = 1_000_000_000;
+pub(super) const BITS: u64 = 0x000A_11CE;
 
-fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
+pub(super) fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     PointerEvent {
         kind,
         x,
@@ -35,7 +35,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     }
 }
 
-fn info(source: u8) -> InspectorMotionInputInfo {
+pub(super) fn info(source: u8) -> InspectorMotionInputInfo {
     InspectorMotionInputInfo {
         entity_bits: BITS,
         name: "energy".into(),
@@ -56,6 +56,7 @@ fn info(source: u8) -> InspectorMotionInputInfo {
         remap_to: 1.0,
         curve: String::new(),
         smooth: 0.0,
+        from_pick_armed: false,
         selected_count: 1,
         a_correr: false,
         ao_vivo: None,
@@ -63,7 +64,7 @@ fn info(source: u8) -> InspectorMotionInputInfo {
     }
 }
 
-fn pinta(
+pub(super) fn pinta(
     i: InspectorMotionInputInfo,
 ) -> (
     MockPanelHost,
@@ -78,7 +79,7 @@ fn pinta(
 }
 
 /// As frases da secção pintadas por `i` (o censo dos avisos, só desta secção).
-fn frases(i: InspectorMotionInputInfo) -> Vec<String> {
+pub(super) fn frases(i: InspectorMotionInputInfo) -> Vec<String> {
     let mut h = MockPanelHost::with_panel::<InspectorPanel>();
     set_current_inspector_motion_input(Some(i));
     let mut st = InspectorState::default();
@@ -90,12 +91,12 @@ fn frases(i: InspectorMotionInputInfo) -> Vec<String> {
         .collect()
 }
 
-fn rect_de(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> Option<Rect> {
+pub(super) fn rect_de(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> Option<Rect> {
     rects.iter().find(|(n, _)| *n == id).map(|(_, r)| *r)
 }
 
 /// Um clique real no centro de `id`; devolve as edições da secção que chegaram ao barramento.
-fn clica(
+pub(super) fn clica(
     h: &mut MockPanelHost,
     st: &mut InspectorState,
     rects: &[(ph2d_a11y::NodeId, Rect)],

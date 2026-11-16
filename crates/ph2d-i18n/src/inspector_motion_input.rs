@@ -62,6 +62,45 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.property_gone" => {
             "This object does not have that field \u{2014} pick one it has."
         }
+        // GEF 08 onda 2: From, as listas, o grupo «Shape» e as saídas das queixas.
+        "panel.inspector.motion_input.from_this" => "This object",
+        "panel.inspector.motion_input.from_tip" => {
+            "The object this input reads. Empty reads this object. Type a name or use the eyedropper."
+        }
+        "panel.inspector.motion_input.from_pick_tip" => {
+            "Click an object on the stage or in the Hierarchy to read it."
+        }
+        "panel.inspector.motion_input.action_pick" => "Pick an action",
+        "panel.inspector.motion_input.action_tip" => {
+            "The Input Map action this sends: 1 while held, 0 when let go."
+        }
+        "panel.inspector.motion_input.property_pick" => "Pick a field",
+        "panel.inspector.motion_input.property_tip" => {
+            "The number field this reads from the From object, every frame."
+        }
+        "panel.inspector.motion_input.shape" => "Shape",
+        "panel.inspector.motion_input.shape_tip" => {
+            "Turn the number into 0 to 1, bend it with a curve, and smooth it over time."
+        }
+        "panel.inspector.motion_input.shape_off" => "Off",
+        "panel.inspector.motion_input.remap_tip" => {
+            "Map From to 0 and To to 1. Numbers outside stay at 0 or 1."
+        }
+        "panel.inspector.motion_input.remap_range_tip" => {
+            "The number that becomes 0, and the one that becomes 1."
+        }
+        "panel.inspector.motion_input.curve_tip" => "How the 0 to 1 number bends on its way.",
+        "panel.inspector.motion_input.curve_linear" => "Linear",
+        "panel.inspector.motion_input.curve_ease_in" => "Ease In",
+        "panel.inspector.motion_input.curve_ease_out" => "Ease Out",
+        "panel.inspector.motion_input.curve_smooth" => "Smooth",
+        "panel.inspector.motion_input.curve_custom" => "Custom curve",
+        "panel.inspector.motion_input.smooth_tip" => {
+            "Seconds to catch up halfway with a new number. 0 is off: it jumps at once."
+        }
+        "panel.inspector.motion_input.smooth_s" => "Smooth {s} s",
+        "panel.inspector.motion_input.add_body" => "Add Physics Body",
+        "panel.inspector.motion_input.pick_object" => "Pick object",
         "panel.inspector.motion_input.more_names" => {
             "{n} more in the graph \u{2014} type the name you need."
         }

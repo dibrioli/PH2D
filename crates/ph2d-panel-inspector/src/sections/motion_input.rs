@@ -10,7 +10,7 @@
 use super::*;
 use ph2d_editor_core::motion_input_edits::{
     InspectorMotionInputInfo, MOTION_INPUT_SOURCES, MotionInputAoVivo, MotionInputOutro,
-    MotionInputQueixa,
+    MotionInputQueixa, SOURCE_ACTION, SOURCE_PROPERTY, SOURCE_SPEED,
 };
 use ph2d_editor_core::property_row::{Seccao, paint_choice_row};
 use ph2d_i18n::{tr, tr_with};
@@ -167,11 +167,24 @@ fn queixa(
         tr(chave_da_queixa(q)),
         ColorToken::Warn,
     );
-    if q != MotionInputQueixa::SemVida {
-        return cur_y;
-    }
-    let id = crate::ids::INSP_MI_ADD_HEALTH;
-    let rotulo = tr("panel.inspector.motion_input.add_health");
+    // A saída de cada queixa que tem uma: Health, o corpo da Speed (o Grounded pede um Player, que não é
+    // um anexo de um clique), e o conta-gotas para um From que não acha ninguém.
+    let (id, chave) = match q {
+        MotionInputQueixa::SemVida => (
+            crate::ids::INSP_MI_ADD_HEALTH,
+            "panel.inspector.motion_input.add_health",
+        ),
+        MotionInputQueixa::SemCorpo if i.source == SOURCE_SPEED => (
+            crate::ids::INSP_MI_ADD_BODY,
+            "panel.inspector.motion_input.add_body",
+        ),
+        MotionInputQueixa::SemAlvo => (
+            crate::ids::INSP_MI_PICK_OBJECT,
+            "panel.inspector.motion_input.pick_object",
+        ),
+        _ => return cur_y,
+    };
+    let rotulo = tr(chave);
     let r = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, cur_y, rotulo);
     let btn = Button::new(id, rotulo)
         .kind(ButtonKind::Default)
@@ -215,6 +228,14 @@ pub(crate) fn paint_motion_input_section(
         TextKey::new("component.field.motion_input_fields.3"),
         TextKey::new("component.field.motion_input_fields.4"),
         TextKey::new("panel.inspector.motion_input.name_label"),
+        TextKey::new("component.field.motion_input_fields.5"),
+        TextKey::new("component.field.motion_input_fields.6"),
+        TextKey::new("component.field.motion_input_fields.7"),
+        TextKey::new("component.field.motion_input_fields.8"),
+        TextKey::new("component.field.motion_input_fields.9"),
+        TextKey::new("component.field.motion_input_fields.10"),
+        TextKey::new("component.field.motion_input_fields.11"),
+        TextKey::new("component.field.motion_input_fields.12"),
     ];
     let rotulos = chaves.map(TextKey::tr);
     let seccao = Seccao::medida(text_system, 1, &rotulos);
@@ -270,6 +291,42 @@ pub(crate) fn paint_motion_input_section(
         &fontes,
         seccao,
     );
+    let linhas = super::motion_input_linhas::lista;
+    if i.le_from() {
+        let xy = (x, w, cur_y);
+        cur_y = super::motion_input_linhas::from(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            xy,
+            i,
+            seccao,
+        );
+    }
+    for (fonte, l) in [
+        (SOURCE_ACTION, crate::popovers::motion_input::Lista::Action),
+        (
+            SOURCE_PROPERTY,
+            crate::popovers::motion_input::Lista::Property,
+        ),
+    ] {
+        if i.source == fonte {
+            let xy = (x, w, cur_y);
+            cur_y = linhas(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                xy,
+                i,
+                l,
+                seccao,
+            );
+        }
+    }
     if i.le_valor() {
         cur_y = super::rows::fields_row(
             scene,
@@ -298,6 +355,19 @@ pub(crate) fn paint_motion_input_section(
             w,
             cur_y,
             &[(crate::ids::INSP_MI_COLOR, chaves[3], i.color)],
+        );
+    }
+    if i.le_numero() {
+        let xy = (x, w, cur_y);
+        cur_y = super::motion_input_linhas::grupo_shape(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            xy,
+            i,
+            seccao,
         );
     }
     cur_y = queixa(scene, text_system, theme, hit_index, store, x, w, cur_y, i);

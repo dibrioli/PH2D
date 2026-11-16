@@ -495,6 +495,21 @@ end"#,
   end
 end"#,
     },
+    ApiHelp {
+        key: "motion.get",
+        params: &[(
+            "input",
+            "The name of the input in the Motion graph. An empty name is an error.",
+        )],
+        returns: "The number or colour the graph reads for that input, or nil when nothing sends it.",
+        more: "It reads what the graph got at the start of this tick, so a [motion.set] in the same tick shows up in the next one. When several objects or scripts send the same name, it gives the one the graph reads: the first.",
+        example: r#"function update(self, dt)
+  local health = motion.get("health")
+  if health and health < 0.25 then
+    motion.fire("warning")
+  end
+end"#,
+    },
     // ── os ganchos ──
     ApiHelp {
         key: "hook.init",

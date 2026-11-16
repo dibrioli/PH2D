@@ -630,6 +630,38 @@ fn a_blank_motion_name_stops_the_object_and_its_writes_do_not_land() {
     assert!(sim.world().get_resource::<MotionInputs>().is_none());
 }
 
+/// ⭐ MI-9: `motion.get` devolve o que o `value.input` lê (a 1.ª linha) do começo do tique: `nil` sem escritor,
+/// a cor como tabela `color`, e o `motion.set` do próprio tique só no seguinte.
+#[test]
+fn motion_get_reads_what_the_graph_reads_from_the_start_of_the_tick() {
+    use ph2d_ecs::MotionInputs;
+    use ph2d_ecs::motion_inputs::{Escritor, Valor};
+    let mut host = ScriptHost::new().expect("vm");
+    let mut sim = SimWorld::new();
+    let src = "function update(self, dt)\n  ph2d.set(self.id, \"x\", motion.get(\"eco\") or -1)\n  \
+               local c = motion.get(\"cor\")\n  ph2d.set(self.id, \"y\", c and c.g or -1)\n  \
+               motion.set(\"eco\", 0.75)\nend\n";
+    let path = script_file("motion_get", src);
+    let e = actor(sim.world_mut(), 1, &path, &[]);
+    let mut m = MotionInputs::default();
+    let lamp = Escritor::Objeto {
+        nome: "Lamp".into(),
+        bits: 1,
+    };
+    m.set("cor", lamp, Valor::Cor([1.0, 0.5, 0.0, 1.0]));
+    sim.world_mut().insert_resource(m);
+    let r = frame(&mut host, &mut sim, 1.0 / 60.0);
+    assert!(r.failed.is_empty(), "{:?}", r.failed);
+    let y = |w: &World| w.get::<Transform>(e).expect("pose").translation.y;
+    assert_eq!(
+        (x(sim.world(), e), y(sim.world())),
+        (-1.0, 0.5),
+        "nil no 1.º tique; a cor"
+    );
+    frame(&mut host, &mut sim, 1.0 / 60.0);
+    assert_eq!(x(sim.world(), e), 0.75, "o set do tique anterior");
+}
+
 /// ADR-0188: o texto vem da biblioteca do projeto.
 #[path = "scene_library_tests.rs"]
 mod library;

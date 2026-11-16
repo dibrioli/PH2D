@@ -458,6 +458,12 @@ pub const API: &[ApiEntry] = &[
         luau_type: "(trigger: string) -> ()",
         doc: "Fires a trigger input of the Motion graph.",
     },
+    ApiEntry {
+        table: "motion",
+        ident: "get",
+        luau_type: "(input: string) -> (number | Color)?",
+        doc: "What the Motion graph reads for an input this tick: a number, a colour, or nil.",
+    },
 ];
 
 /// ⭐ **Os valores da CORRIDA que não são campo do componente** — a vida e o escudo de agora («Now»,

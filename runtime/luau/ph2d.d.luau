@@ -256,6 +256,8 @@ declare motion: {
     color: (input: string, r: number, g: number, b: number, a: number?) -> (),
     --- Fires a trigger input of the Motion graph.
     fire: (trigger: string) -> (),
+    --- What the Motion graph reads for an input this tick: a number, a colour, or nil.
+    get: (input: string) -> (number | Color)?,
 }
 
 -- Engine hooks: global functions of a script that the engine calls.

@@ -509,6 +509,7 @@ pub(crate) fn with_lane<R>(
     f: impl FnOnce(&RefCell<Lane<'_>>) -> R,
 ) -> mlua::Result<(R, LaneOut)> {
     let table: Table = lua.named_registry_value(LANE_KEY)?;
+    crate::motion_api::espelha(lua, lane.sim.world());
     let cell = RefCell::new(lane);
     let r = lua.scope(|scope| {
         let get = scope.create_function(|lua, (id, field): (f64, String)| {

@@ -5,6 +5,7 @@
 //! motion.set("vida", 0.3)          -- um número (ou true/false)
 //! motion.color("time", 1, 0.2, 0)  -- uma cor, RGBA linear (alpha 1 se faltar)
 //! motion.fire("dano")              -- um disparo de gatilho
+//! local v = motion.get("vida")     -- o que o grafo lê: número, cor ou nil (MI-9)
 //! ```
 //!
 //! As escritas seguem a lei das do `ph2d.set`: ficam numa fila da VM, drenada no fim de CADA
@@ -14,6 +15,7 @@
 use mlua::{Lua, Value};
 use ph2d_ecs::MotionInputs;
 use ph2d_ecs::motion_inputs::{Escritor, Valor};
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 /// Uma escrita do script na tabela `motion`.
@@ -26,6 +28,26 @@ pub enum MotionWrite {
 
 #[derive(Clone, Default)]
 struct MotionQueue(Arc<Mutex<Vec<MotionWrite>>>);
+
+/// O espelho do [`MotionInputs`] que o `motion.get` lê: a PRIMEIRA linha de cada nome (a do
+/// `value.input`), tirada no começo da passagem — as escritas desta só pousam no fim dela.
+#[derive(Clone, Default)]
+struct MotionMirror(Arc<Mutex<BTreeMap<String, Valor>>>);
+
+/// Tira o espelho do mundo da passagem (chamado ao abrir a pista).
+pub(crate) fn espelha(lua: &Lua, world: &ph2d_ecs::World) {
+    let Some(m) = lua.app_data_ref::<MotionMirror>() else {
+        return;
+    };
+    let mut e = m.0.lock().unwrap_or_else(|p| p.into_inner());
+    e.clear();
+    if let Some(r) = world.get_resource::<MotionInputs>() {
+        e.extend(
+            r.valores()
+                .filter_map(|(n, _)| Some((n.to_owned(), r.primeira_linha(n)?.1))),
+        );
+    }
+}
 
 fn push(lua: &Lua, w: MotionWrite) -> mlua::Result<()> {
     let q = lua
@@ -64,6 +86,7 @@ fn numero(f: &str, v: f64) -> mlua::Result<f32> {
 /// VM: entre ganchos ela está sempre vazia, então reconstruir a VM não perde nada.
 pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
     lua.set_app_data(MotionQueue::default());
+    lua.set_app_data(MotionMirror::default());
     let set = lua.create_function(|lua, (n, v): (String, Value)| -> mlua::Result<()> {
         let n = nome("set", n)?;
         let x = match v {
@@ -95,7 +118,25 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
         let n = nome("fire", n)?;
         push(lua, MotionWrite::Fire(n))
     })?;
+    let get = lua.create_function(|lua, n: String| -> mlua::Result<Value> {
+        let n = nome("get", n)?;
+        let v = lua.app_data_ref::<MotionMirror>().and_then(|m| {
+            m.0.lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .get(&n)
+                .copied()
+        });
+        match v {
+            None => Ok(Value::Nil),
+            Some(Valor::Numero(x)) => Ok(Value::Number(f64::from(x))),
+            Some(Valor::Cor(c)) => {
+                let c = crate::props::ScriptValue::Color(c.map(f64::from));
+                Ok(crate::valores::tabela_de(lua, &c)?.unwrap_or(Value::Nil))
+            }
+        }
+    })?;
     let t = lua.create_table()?;
+    t.set("get", get)?;
     t.set("set", set)?;
     t.set("color", color)?;
     t.set("fire", fire)?;

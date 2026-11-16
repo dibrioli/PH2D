@@ -359,6 +359,8 @@ pub struct MotionState {
     /// `tap_streams` do pump é limpo a cada cook, então um quadro que deve dois
     /// tiques deixa só o último — e a perda seria SILENCIOSA.
     pub signals_out: Vec<MotionSignalOut>,
+    /// MI-8: a borda e o «Sent N times» de cada Send signal (`Envios::vezes`).
+    pub envios: ph2d_node_send_signal::Envios,
     /// `atlas_uv` fallback for instances whose stream carries no `uv_rect`
     /// column (no framing node yet). Set from the composed atlas at init to a
     /// single opaque tile, so instances render as clean solid quads instead of a

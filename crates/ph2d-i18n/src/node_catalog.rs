@@ -150,6 +150,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "node.value.percentile.name" => "Percentile",
         "node.value.quantize.name" => "Quantize",
         "node.value.reduce.name" => "Reduce",
+        "node.value.send_signal.name" => "Send signal",
         "node.value.slope.name" => "Slope",
         "node.value.smooth.name" => "Smooth",
         "node.value.step.name" => "Step",

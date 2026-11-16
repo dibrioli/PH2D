@@ -6105,6 +6105,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-node-rig-bones",
+ "ph2d-node-send-signal",
  "ph2d-node-source-camera",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
@@ -9548,6 +9549,7 @@ dependencies = [
  "ph2d-node-rig-rubber-hose",
  "ph2d-node-rig-skeleton",
  "ph2d-node-rig-skin-deformer",
+ "ph2d-node-send-signal",
  "ph2d-node-sim-collide",
  "ph2d-node-sim-lifetime",
  "ph2d-node-sim-spawn",
@@ -9654,6 +9656,14 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
  "ph2d-rig-kinematics",
+]
+
+[[package]]
+name = "ph2d-node-send-signal"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
 ]
 
 [[package]]

@@ -42,6 +42,7 @@ impl MotionState {
             sinks,
             signal_taps: Vec::new(),
             signals_out: Vec::new(),
+            envios: Default::default(),
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
             card_sections: std::collections::BTreeMap::new(),

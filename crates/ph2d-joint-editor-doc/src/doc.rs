@@ -1,5 +1,5 @@
 //! **O estado da aba** e as decisões que não pintam (montagem aberta, gabarito, queda, alcance de um número).
-//! Tudo o que muda o mundo sai como [`Edit`], aplicado pela família no quadro ([`crate::apply`]).
+//! Tudo o que muda o mundo sai como [`Edit`], aplicado pela família no quadro (a app aplica-o).
 
 use std::collections::BTreeMap;
 
@@ -70,7 +70,7 @@ pub enum Handle {
     LimitMin,
     LimitMax,
     Wheelbase,
-    /// A ponta da seta do motor: até onde ele leva a peça em [`crate::widgets::MOTOR_PREVIEW_S`].
+    /// A ponta da seta do motor: até onde ele leva a peça em [`crate::MOTOR_PREVIEW_S`].
     MotorSpeed,
     /// O ponteiro do servo: o alvo onde o motor em «Position» segura a peça.
     MotorTarget,
@@ -202,50 +202,50 @@ pub enum DragBy {
 }
 
 pub struct JointEditorDoc {
-    pub(crate) snap: Snapshot,
-    pub(crate) focus: Focus,
-    pub(crate) kind: JointKind,
-    pub(crate) template: u16,
+    pub snap: Snapshot,
+    pub focus: Focus,
+    pub kind: JointKind,
+    pub template: u16,
     /// A opção de um papel escolhida por montagem (quando o grupo não está ligado).
-    pub(crate) scope: BTreeMap<u64, usize>,
-    pub(crate) menu: Option<Menu>,
-    pub(crate) hits: Vec<(Rect, Hit, String)>,
-    pub(crate) hover: Option<Hit>,
-    pub(crate) pressed: Option<Hit>,
-    pub(crate) dropping: Option<Dropping>,
-    pub(crate) typing: Option<(Field, String)>,
-    pub(crate) drag: Option<Drag>,
+    pub scope: BTreeMap<u64, usize>,
+    pub menu: Option<Menu>,
+    pub hits: Vec<(Rect, Hit, String)>,
+    pub hover: Option<Hit>,
+    pub pressed: Option<Hit>,
+    pub dropping: Option<Dropping>,
+    pub typing: Option<(Field, String)>,
+    pub drag: Option<Drag>,
     /// Quantas peças leva o papel de várias no «Make the parts» (`0` = as da fábrica).
-    pub(crate) count: u16,
+    pub count: u16,
     /// As edições da junta feitas no gabarito por fazer, por regra e por ordem: o «Make the parts» leva-as.
-    pub(crate) draft_edits: Vec<(u16, JointFieldEdit)>,
+    pub draft_edits: Vec<(u16, JointFieldEdit)>,
     /// O meio da vista da cena (mundo, metros), onde o «Make the parts» põe as peças.
     pub view_centre: [f32; 2],
     /// O texto que cada caixa pintou neste quadro (o valor acessível do campo).
-    pub(crate) shown: Vec<(Field, String)>,
+    pub shown: Vec<(Field, String)>,
     /// As teclas do último evento do rato (Shift ×10 e Alt ×0,1 no arrasto da letra).
-    pub(crate) mods: ph2d_host::Modifiers,
-    pub(crate) pending: Vec<Edit>,
-    pub(crate) map: Option<StageMap>,
-    pub(crate) counts: Vec<u16>,
+    pub mods: ph2d_host::Modifiers,
+    pub pending: Vec<Edit>,
+    pub map: Option<StageMap>,
+    pub counts: Vec<u16>,
     /// A frase do pé: o que a última queda fez.
-    pub(crate) note: Option<String>,
+    pub note: Option<String>,
     pub area: Rect,
     /// O painel da direita e o palco, como a última pintura os deixou.
     pub panel: Rect,
     pub stage: Rect,
     /// Quanto o painel está rolado, e o máximo (o que não cabe).
-    pub(crate) scroll: f32,
-    pub(crate) scroll_max: f32,
+    pub scroll: f32,
+    pub scroll_max: f32,
     /// Quantos px rola cada px da barra arrastada (o conteúdo sobre a vista).
-    pub(crate) scroll_per_px: f32,
+    pub scroll_per_px: f32,
     /// A largura do painel escolhida na divisória (`0` = a do Inspector).
-    pub(crate) panel_w: f32,
+    pub panel_w: f32,
     /// Os cartões recolhidos (a chave do título).
-    pub(crate) folded: Vec<&'static str>,
-    pub(crate) grab: Option<Grab>,
+    pub folded: Vec<&'static str>,
+    pub grab: Option<Grab>,
     /// Onde cada alça pintada mede o cursor.
-    pub(crate) geo: Vec<(Handle, crate::paint_stage::Geo)>,
+    pub geo: Vec<(Handle, crate::geo::Geo)>,
 }
 
 impl Default for JointEditorDoc {

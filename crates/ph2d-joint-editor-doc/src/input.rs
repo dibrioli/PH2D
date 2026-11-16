@@ -6,8 +6,8 @@ use ph2d_editor_core::doc_surface::Key;
 use ph2d_editor_core::interaction::field_scrub::FieldScrub;
 
 use crate::doc::{Drag, DragBy, Dropping, Edit, Field, Hit, JointEditorDoc};
+use crate::format;
 use crate::stage::role_at;
-use crate::widgets::format;
 
 impl JointEditorDoc {
     /// O Down. `true` = era da aba.

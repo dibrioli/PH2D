@@ -19,7 +19,7 @@ impl JointEditorDoc {
         let t = self.template();
         let r = t.rule(rule)?;
         let counts = self.draft_counts();
-        let gap = crate::paint_stage::pairs(t, rule, &counts)
+        let gap = crate::stage::pairs(t, rule, &counts)
             .first()
             .and_then(|&n| crate::stage::rule_ends(t, &counts, rule, n))
             .map_or(0.0, |(a, b)| libm::hypotf(b[0] - a[0], b[1] - a[1]));
@@ -68,7 +68,7 @@ impl JointEditorDoc {
     }
 
     /// Escreve `edit` nas juntas `rows`: no mundo (um passo de desfazer) ou, por fazer, no rascunho.
-    pub(crate) fn write(&mut self, rows: &[JointRow], edit: JointFieldEdit) {
+    pub fn write(&mut self, rows: &[JointRow], edit: JointFieldEdit) {
         if self.assembly().is_some() {
             let joints: Vec<u64> = rows.iter().map(|j| j.bits).collect();
             if !joints.is_empty() {

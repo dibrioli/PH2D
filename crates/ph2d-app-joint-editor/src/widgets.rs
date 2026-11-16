@@ -10,6 +10,7 @@ use ph2d_editor_core::widget::card_field::{
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::widget::{card_check_rect, paint_card_check};
 use ph2d_editor_core::zones::Rect;
+pub use ph2d_joint_editor_doc::{MOTOR_PREVIEW_S, format};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::{Color, VectorScene};
@@ -39,9 +40,6 @@ pub const MENU_ROW_H: f32 = 48.0;
 pub const MENU_CELL_MIN_W: f32 = 200.0;
 /// As colunas da grelha dos gabaritos (maquete B1).
 pub const MENU_COLS: usize = 3;
-/// A seta do motor mostra até onde ele leva a peça neste tempo (s): o carro de fábrica, −360°/s, vira um
-/// quarto de volta; acima de meia volta a seta segue em espiral, sem tecto.
-pub const MOTOR_PREVIEW_S: f32 = 0.25;
 /// Quanto o raio da espiral do motor abre por volta (fração do raio da 1.ª): as voltas não se tocam.
 pub const MOTOR_SPIRAL_GROWTH: f32 = 0.22;
 /// Pontos da espiral por quarto de volta (a curva lisa a qualquer número de voltas).
@@ -311,18 +309,6 @@ pub fn seg_h(rows: usize) -> f32 {
 /// A forma curta de uma opção: a primeira palavra.
 fn first_word(s: &str) -> &str {
     s.split_whitespace().next().unwrap_or(s)
-}
-
-/// O número como o cartão o escreve: até três casas, sem zeros à direita.
-#[must_use]
-pub fn format(v: f32) -> String {
-    let s = format!("{v:.3}");
-    let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" {
-        "0".to_owned()
-    } else {
-        s.to_owned()
-    }
 }
 
 #[cfg(test)]

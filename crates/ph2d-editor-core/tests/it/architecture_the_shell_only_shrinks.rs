@@ -214,7 +214,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-flip", 28_960),        // 28_393
     ("ph2d-app-game", 2_869), // 1_993 (12/11: as fotos e a mão do smoke saíram para `ph2d-game-smoke-fotos`); +776 (integ 13/11: `posse_do_jogo`, o registo e o `game_mouse` vieram da `ph2d-app-components`, que estava 29 acima do tecto)
     ("ph2d-app-input-map", 449), // 349 (InputMap R2a, 10/11: + `listen.rs`, a escuta do comando que saiu da shell)
-    ("ph2d-app-joint-editor", 4_749), // 4_649 (recontado 13/11 após a W3f, `conta()` + `folga_da_crate`)
+    ("ph2d-app-joint-editor", 4_142), // 4_042 (15/11 W4n: o estado da aba saiu para a `ph2d-joint-editor-doc`) · 4_649 (13/11, W3f)
     ("ph2d-app-kanban", 32_175),      // 31_545
     ("ph2d-app-light2d", 25_523),     // 25_023
     ("ph2d-app-macros", 14_630),      // 14_344
@@ -243,6 +243,7 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-smoke", 614),       // 514
     ("ph2d-code-viewmodel", 304),   // 204
     ("ph2d-game-smoke-fotos", 1_077), // 977 (12/11: as fotos e a mão saíram da `ph2d-app-game`, com o miolo de `janela_do_jogo_smoke.rs` da shell)
+    ("ph2d-joint-editor-doc", 2_253), // 2_153 (15/11 W4n: o documento, o retrato, o desenho em metros e o rato da aba, vindos da `ph2d-app-joint-editor`)
     ("ph2d-joint-assembly", 2_175), // +361 vindos da ph2d-app-physics com a lei da junta (`joint_info`, integ 13/11 2a4beabf15) · 1_714 (corte 13/11: a montagem de juntas e os gestos de criar junta saíram da `ph2d-app-physics`)
     ("ph2d-painter-canvas-map", 824), // 724 (integ 13/11: o `CanvasMap` e o gate dele saíram da `ph2d-app-painter`, que estava 177 acima do tecto)
     ("ph2d-physics-smoke-jump", 1_258), // 1_158 (13/11: as cenas 110 e 111 e o gate do pulo na parede saíram da `ph2d-physics-smoke-scenes`, que estava 204 acima do tecto)

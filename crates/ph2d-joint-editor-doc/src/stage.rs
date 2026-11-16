@@ -1,11 +1,11 @@
 //! **O desenho do gabarito**: onde cada forma-guia fica no ecrã, que forma está debaixo do cursor, e onde
-//! nasce cada junta. Puro (metros → píxeis); a pintura mora em [`crate::paint_stage`].
+//! nasce cada junta. Puro (metros → píxeis); a pintura mora em `paint_stage` da `ph2d-app-joint-editor`.
 //!
 //! ⚠️ O desenho é o do GABARITO (as formas-guia de `ph2d-joint-templates`), não o da cena: a peça do
 //! artista pode ter outro tamanho, e o que a aba ensina é o papel. Só a cota do entre-eixos mede a cena.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_joint_templates::{Anchor, Guide, Role, Side, Spot, Template};
+use ph2d_joint_templates::{Anchor, Guide, Link, Role, Side, Spot, Template};
 
 /// Metros → píxeis do palco: `y` cresce para cima no gabarito e para baixo no ecrã.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -175,6 +175,19 @@ pub fn role_at(map: &StageMap, t: &Template, counts: &[u16], x: f32, y: f32) -> 
         }
     }
     None
+}
+
+/// Os pares de formas que cada regra liga, no desenho.
+pub fn pairs(t: &Template, rule: u16, counts: &[u16]) -> Vec<[u16; 2]> {
+    let Some(r) = t.rule(rule) else {
+        return Vec::new();
+    };
+    let nb = counts.get(usize::from(r.b)).copied().unwrap_or(1).max(1);
+    match r.link {
+        Link::Pair | Link::ToFirst => vec![[0, 0]],
+        Link::ToLast => vec![[0, nb - 1]],
+        Link::Chain => (0..nb.saturating_sub(1)).map(|k| [k, k + 1]).collect(),
+    }
 }
 
 #[cfg(test)]

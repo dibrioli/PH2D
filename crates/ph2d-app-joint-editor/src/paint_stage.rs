@@ -9,63 +9,15 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_joint_templates::{Guide, JointKind, Link, Template};
+use ph2d_joint_templates::{Guide, JointKind, Template};
 use ph2d_physics_ecs::MotorMode;
 use ph2d_tokens::ColorToken;
 use ph2d_vector::Color;
 
 use crate::doc::{DragBy, Handle, Hit};
-use crate::stage::{StageMap, centre_of, rule_ends, shown_count};
+use crate::stage::{StageMap, centre_of, pairs, rule_ends, shown_count};
 use crate::widgets::{self as w, Ui};
-
-/// Como uma alça lê o cursor.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Geo {
-    /// Ao longo de `dir` (no ecrã) a partir de `origin`, em metros (`scale` px/m).
-    Linear {
-        origin: (f32, f32),
-        dir: (f32, f32),
-        scale: f32,
-    },
-    /// O ângulo em volta de `centre`, em graus, a contar de `zero` (rad, no ecrã com y para cima).
-    Angular { centre: (f32, f32), zero: f32 },
-    /// O motor que gira: o ângulo como em `Angular`, lido como o giro em [`w::MOTOR_PREVIEW_S`] (°/s). Sem
-    /// tecto: a espiral dá as voltas que o número pedir, e o arrasto conta-as ([`Geo::value_near`]).
-    Spin { centre: (f32, f32), zero: f32 },
-}
-
-impl Geo {
-    /// O valor (na unidade do cartão) que o cursor em `(x, y)` diz.
-    #[must_use]
-    pub fn value_at(self, x: f32, y: f32) -> f32 {
-        match self {
-            Self::Linear { origin, dir, scale } => {
-                ((x - origin.0) * dir.0 + (y - origin.1) * dir.1) / scale.max(f32::EPSILON)
-            }
-            Self::Angular { centre, zero } => {
-                let a = libm::atan2f(centre.1 - y, x - centre.0) - zero;
-                let a = libm::atan2f(libm::sinf(a), libm::cosf(a));
-                a.to_degrees()
-            }
-            Self::Spin { centre, zero } => {
-                Self::Angular { centre, zero }.value_at(x, y) / w::MOTOR_PREVIEW_S
-            }
-        }
-    }
-
-    /// O valor em `(x, y)` mais perto de `prev`: no `Spin` o ângulo do cursor ganha as voltas inteiras que o
-    /// deixam junto do giro de antes — o arrasto que dá a volta à roda passa de ±180° sem saltar.
-    #[must_use]
-    pub fn value_near(self, x: f32, y: f32, prev: f32) -> f32 {
-        let Self::Spin { .. } = self else {
-            return self.value_at(x, y);
-        };
-        let raw = self.value_at(x, y) * w::MOTOR_PREVIEW_S;
-        const TURN: f32 = 360.0; // LITERAL-PX-OK: uma volta, em graus
-        let turns = ((prev * w::MOTOR_PREVIEW_S - raw) / TURN).round();
-        (raw + turns * TURN) / w::MOTOR_PREVIEW_S
-    }
-}
+use ph2d_joint_editor_doc::geo::Geo;
 
 /// A direcção no ecrã de um ângulo do gabarito (y para cima).
 fn screen_dir(rad: f32) -> (f32, f32) {
@@ -248,19 +200,6 @@ fn tag(ui: &mut Ui<'_>, s: &str, r: Rect, px: f32, c: Color) {
     let bg = Rect::new(r.x + (r.w - tw) * 0.5, r.y, tw, r.h);
     fill_rounded_rect(ui.scene, bg, m::SEG_RADIUS, ui.c(ColorToken::KanbanCard));
     w::text_centred(ui.ts, ui.scene, s, r, px, c);
-}
-
-/// Os pares de formas que cada regra liga, no desenho.
-pub(crate) fn pairs(t: &Template, rule: u16, counts: &[u16]) -> Vec<[u16; 2]> {
-    let Some(r) = t.rule(rule) else {
-        return Vec::new();
-    };
-    let nb = counts.get(usize::from(r.b)).copied().unwrap_or(1).max(1);
-    match r.link {
-        Link::Pair | Link::ToFirst => vec![[0, 0]],
-        Link::ToLast => vec![[0, nb - 1]],
-        Link::Chain => (0..nb.saturating_sub(1)).map(|k| [k, k + 1]).collect(),
-    }
 }
 
 fn handle(ui: &mut Ui<'_>, at: (f32, f32), h: Handle, geo: Geo, label: &str) {

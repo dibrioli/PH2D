@@ -1,6 +1,6 @@
 //! **O que a aba lê do mundo**, uma vez por quadro: as montagens (cada uma um objeto «Car 1»), as peças
 //! nos papéis e as juntas com os números na unidade do Inspector (`build_joint_info`). A aba nunca guarda
-//! o mundo: guarda este retrato e pede as mudanças pelo [`crate::Edit`].
+//! o mundo: guarda este retrato e pede as mudanças pelo [`crate::doc::Edit`].
 
 use ph2d_ecs::{Entity, Name, SimWorld, StableId};
 use ph2d_editor_core::screens::hero::InspectorJointInfo;

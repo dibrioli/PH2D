@@ -56,7 +56,7 @@ impl JointEditorDoc {
         self.folded.contains(&key)
     }
 
-    pub(crate) fn toggle_fold(&mut self, key: &'static str) {
+    pub fn toggle_fold(&mut self, key: &'static str) {
         if let Some(i) = self.folded.iter().position(|k| *k == key) {
             self.folded.remove(i);
         } else {
@@ -65,7 +65,7 @@ impl JointEditorDoc {
     }
 
     /// O Down na divisória ou na barra começa o arrasto. `true` = começou.
-    pub(crate) fn grab_start(&mut self, hit: Option<&Hit>, x: f32, y: f32) -> bool {
+    pub fn grab_start(&mut self, hit: Option<&Hit>, x: f32, y: f32) -> bool {
         self.grab = match hit {
             Some(Hit::Split) => Some(Grab::Split {
                 x0: x,
@@ -81,7 +81,7 @@ impl JointEditorDoc {
     }
 
     /// O arrasto em curso segue o cursor. `true` = havia arrasto.
-    pub(crate) fn grab_move(&mut self, x: f32, y: f32) -> bool {
+    pub fn grab_move(&mut self, x: f32, y: f32) -> bool {
         match self.grab {
             Some(Grab::Split { x0, w0 }) => {
                 let (lo, hi) = self.panel_bounds();

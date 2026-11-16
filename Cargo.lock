@@ -5927,6 +5927,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-joint-assembly",
+ "ph2d-joint-editor-doc",
  "ph2d-joint-templates",
  "ph2d-physics-ecs",
  "ph2d-render",
@@ -8331,6 +8332,21 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-render",
  "ph2d-unique-name",
+]
+
+[[package]]
+name = "ph2d-joint-editor-doc"
+version = "0.0.0"
+dependencies = [
+ "libm",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-joint-assembly",
+ "ph2d-joint-templates",
+ "ph2d-physics-ecs",
+ "ph2d-tokens",
 ]
 
 [[package]]

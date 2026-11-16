@@ -7,22 +7,16 @@
 //! pedidos da aba viram mudanças no mundo (um passo de desfazer cada, pelo diff do projeto).
 
 mod apply;
-pub mod doc;
-mod doc_values;
-mod draft;
-mod grab;
-mod input;
-pub mod model;
+pub use ph2d_joint_editor_doc::{doc, model, stage};
 pub mod paint;
 mod paint_stage;
 mod panel;
 pub mod smoke;
-pub mod stage;
 mod surface;
 mod widgets;
 
 pub use apply::{Outcome, apply};
-pub use doc::{Edit, Focus, Hit, JointEditorDoc};
+pub use ph2d_joint_editor_doc::{Edit, Focus, Hit, JointEditorDoc};
 pub use surface::{CMD_OPEN, JointEditorTab, TAB_ID};
 pub use widgets::MOTOR_PREVIEW_S;
 

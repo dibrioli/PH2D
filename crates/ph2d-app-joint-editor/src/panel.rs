@@ -139,6 +139,15 @@ fn cards(ui: &Ui<'_>) -> Vec<Group> {
             Some(_) => Item::Inspect,
             None => Item::Note("joint_editor.no_joint_yet"),
         });
+        if let (Some(i), Some(_)) = (ui.doc.row_role(), ui.doc.row_count()) {
+            let glyph = Glyph::Text("joint_editor.glyph.count");
+            head.push(Item::Num(
+                Field::Count,
+                glyph,
+                count_label(t.roles[i].name),
+                "",
+            ));
+        }
     } else {
         head.push(Item::Line(tr_with(
             "joint_editor.draft_title",

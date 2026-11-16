@@ -7,6 +7,7 @@ pub mod joint_create;
 pub mod joint_drop;
 pub mod joint_factory;
 pub mod joint_info;
+pub mod joint_rows;
 pub mod joint_world;
 
 #[cfg(test)]

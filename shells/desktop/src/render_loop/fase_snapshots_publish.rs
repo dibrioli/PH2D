@@ -211,7 +211,8 @@ impl crate::App {
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
         let io = (self.gilrs.as_ref(), &self.input);
-        document_families(sim, hero, tl, toasts, io, &mut self.components.jogador);
+        let jogador = &mut self.components.jogador;
+        document_families(sim, hero, tl, (toasts, component_registry), io, jogador);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let (timeline, playhead) = (&self.timeline, &self.playhead);
         let mut ultimas = |sim: &mut ph2d_ecs::SimWorld, (b, n): (Option<u64>, usize)| {
@@ -272,7 +273,10 @@ fn document_families(
         &ph2d_timeline::TimelineDoc,
         &mut Vec<ph2d_timeline::TimelineIntent>,
     ),
-    toasts: &mut ph2d_editor_core::ToastQueue,
+    (toasts, reg): (
+        &mut ph2d_editor_core::ToastQueue,
+        &ph2d_ecs::scene::ComponentRegistry,
+    ),
     (gilrs, input): (Option<&gilrs::Gilrs>, &ph2d_input::InputState),
     jogador: &mut PlaySession,
 ) {
@@ -281,7 +285,7 @@ fn document_families(
     ph2d_app_planner::frame(hero, toasts);
     let pad = gilrs.is_some_and(|g| g.gamepads().next().is_some());
     ph2d_app_input_map::frame(sim.world(), hero, pad, (input, jogador));
-    ph2d_app_joint_editor::frame(sim, hero, toasts);
+    ph2d_app_joint_editor::frame(sim, hero, toasts, reg);
     if let Some(t) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() {
         t.doc.forget_reaches(jogador, &hero.input_map); // o «Forget them» no Play chega à sessão
     }

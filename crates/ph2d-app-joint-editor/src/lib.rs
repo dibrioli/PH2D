@@ -48,8 +48,14 @@ pub fn is_front(hero: &mut HeroScreen) -> bool {
 }
 
 /// **O quadro da família**: abre a aba pedida (o botão do Inspector), aplica os pedidos dela no mundo e
-/// relê as montagens. O «Make the parts» anuncia-se em `toasts`.
-pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen, toasts: &mut ToastQueue) {
+/// relê as montagens. O «Make the parts» anuncia-se em `toasts`; `registry` é o da app (as cópias da fila
+/// levam tudo o que a peça tem, como o Duplicate).
+pub fn frame(
+    sim: &mut SimWorld,
+    hero: &mut HeroScreen,
+    toasts: &mut ToastQueue,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+) {
     let request = hero.store.take_joint_editor_request();
     let view = hero.grid.view.map(|v| v.camera_center);
     let mut select;
@@ -70,7 +76,7 @@ pub fn frame(sim: &mut SimWorld, hero: &mut HeroScreen, toasts: &mut ToastQueue)
         }
         let mut made = None;
         for e in tab.doc.take_pending() {
-            let o = apply(sim, e);
+            let o = apply(sim, registry, e);
             // A montagem nova abre-se SEMPRE (com ou sem frase): o gesto seguinte cai nela.
             if let Some(sid) = o.made {
                 made = Some((sid, o.line.clone().unwrap_or_default()));

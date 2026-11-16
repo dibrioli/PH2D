@@ -13,7 +13,7 @@ impl JointEditorDoc {
     pub fn value(&self, f: Field) -> Option<f32> {
         match f {
             Field::Wheelbase => return self.wheelbase(),
-            Field::Count => return self.row_role().map(|i| f32::from(self.draft_counts()[i])),
+            Field::Count => return self.row_count().map(f32::from),
             _ => {}
         }
         let info = self.targets().first()?.info.clone()?;
@@ -37,6 +37,18 @@ impl JointEditorDoc {
     #[must_use]
     pub fn row_role(&self) -> Option<usize> {
         self.template().roles.iter().position(|r| r.many.is_some())
+    }
+
+    /// Quantas peças a fila tem: as da montagem aberta (só se já tem alguma), ou as do «Make the parts».
+    #[must_use]
+    pub fn row_count(&self) -> Option<u16> {
+        let i = u16::try_from(self.row_role()?).ok()?;
+        match self.assembly() {
+            Some(a) => u16::try_from(a.parts_of(i).filter(|p| p.sid != 0).count())
+                .ok()
+                .filter(|&n| n > 0),
+            None => self.draft_counts().get(usize::from(i)).copied(),
+        }
     }
 
     /// Quantas peças cada papel leva no «Make the parts»: o número do campo no papel de várias.
@@ -134,7 +146,10 @@ impl JointEditorDoc {
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             // preso a 1..=u16::MAX
             let n = v.round().clamp(1.0, f32::from(u16::MAX)) as u16; // CLAMP-OK: o tipo do contador
-            self.count = n;
+            match self.assembly().map(|a| a.sid) {
+                Some(assembly) => self.pending.push(Edit::Rows { assembly, n }),
+                None => self.count = n,
+            }
             return;
         }
         if f == Field::Wheelbase {

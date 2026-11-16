@@ -155,6 +155,8 @@ pub enum Edit {
     Linked { joint: u64, on: bool },
     /// Seleciona um objeto na cena (o Inspector mostra-o).
     Select { bits: u64 },
+    /// Deixa a fila (as tábuas, os elos) da montagem com `n` peças: cópias da última, ou menos do fim.
+    Rows { assembly: u64, n: u16 },
     /// Muda o entre-eixos para `metres`.
     Wheelbase { assembly: u64, metres: f32 },
     /// Faz as peças de fábrica do gabarito (`counts` por papel) com o meio delas em `at` (mundo), monta-as

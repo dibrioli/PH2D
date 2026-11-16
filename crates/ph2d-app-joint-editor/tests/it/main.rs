@@ -31,6 +31,7 @@ struct Mesa {
     ts: TextSystem,
     area: Rect,
     toasts: ph2d_editor_core::ToastQueue,
+    reg: ph2d_ecs::scene::ComponentRegistry,
 }
 
 impl Mesa {
@@ -42,6 +43,13 @@ impl Mesa {
             ts: TextSystem::without_system_fonts(),
             area: AREA,
             toasts: ph2d_editor_core::ToastQueue::default(),
+            reg: {
+                let mut r = ph2d_ecs::scene::ComponentRegistry::new();
+                ph2d_ecs::scene::register_ecs_components(&mut r);
+                ph2d_render::register_render_components(&mut r);
+                ph2d_physics_ecs::register_physics_components(&mut r);
+                r
+            },
         };
         smoke::spawn_kart(&mut m.sim);
         install(&mut m.hero);
@@ -51,7 +59,7 @@ impl Mesa {
     }
 
     fn frame(&mut self) {
-        frame(&mut self.sim, &mut self.hero, &mut self.toasts);
+        frame(&mut self.sim, &mut self.hero, &mut self.toasts, &self.reg);
         self.hero.documents.follow_surfaces();
         let mut scene = VectorScene::new();
         if let Some((f, id)) = self.hero.documents.active_surface_mut() {

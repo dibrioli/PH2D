@@ -34,7 +34,11 @@ fn assembly_entity(sim: &SimWorld, sid: u64) -> Option<Entity> {
 }
 
 /// Aplica uma edição. Uma montagem nova só nasce quando a primeira peça entra de facto (nunca vazia).
-pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
+pub fn apply(
+    sim: &mut SimWorld,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    edit: Edit,
+) -> Outcome {
     let mut out = Outcome::default();
     match edit {
         Edit::Place {
@@ -143,6 +147,22 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             at,
             edits,
         } => make(sim, template, &counts, at, &edits, &mut out),
+        Edit::Rows { assembly, n } => {
+            if let Some(e) = assembly_entity(sim, assembly)
+                && let Some(c) = ph2d_joint_assembly::joint_rows::set_row_count(sim, registry, e, n)
+            {
+                let (more, less) = (
+                    c.after.saturating_sub(c.before),
+                    c.before.saturating_sub(c.after),
+                );
+                out.line = Some(if more > 0 {
+                    tr_with("joint_editor.rows_more", &[("n", &more)])
+                } else {
+                    tr_with("joint_editor.rows_less", &[("n", &less)])
+                });
+                out.picked = c.made;
+            }
+        }
         Edit::Wheelbase { assembly, metres } => {
             if let Some(e) = assembly_entity(sim, assembly) {
                 set_wheelbase(sim, e, metres);
@@ -329,6 +349,7 @@ mod tests {
     fn place(sim: &mut SimWorld, assembly: u64, role: u16, name: &str) -> Outcome {
         apply(
             sim,
+            &ph2d_ecs::scene::ComponentRegistry::new(),
             Edit::Place {
                 assembly,
                 template: 1,

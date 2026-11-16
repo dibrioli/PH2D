@@ -268,3 +268,115 @@ fn o_carro_por_fazer_mostra_a_suspensao_de_fabrica_e_o_drive() {
     assert_eq!(joints.len(), 2);
     assert!(joints.iter().all(|(_, j)| !j.motor_enabled), "Drive None");
 }
+
+impl Mesa {
+    /// Escreve `n` no campo «Planks»/«Links» da aba.
+    fn planks(&mut self, n: &str) {
+        self.click(&Hit::Field(Field::Count));
+        self.escreve(n);
+        self.tecla(
+            ph2d_editor_core::screens::hero::board_keys::BoardKey::Enter,
+            None,
+        );
+    }
+
+    fn bridge_joints(&mut self) -> Vec<PhysicsJoint> {
+        let sid = self.tab().doc.assembly().map(|a| a.sid).expect("montagem");
+        ph2d_joint_assembly::joint_assembly::joints_of(self.sim.world_mut(), sid)
+            .into_iter()
+            .map(|(_, j)| j)
+            .collect()
+    }
+
+    fn exists(&mut self, name: &str) -> bool {
+        let w = self.sim.world_mut();
+        w.query::<&Name>().iter(w).any(|n| n.as_str() == name)
+    }
+}
+
+/// ⭐⭐ **«Planks» numa ponte JÁ feita refaz as cópias** (plano §W4, 2.º ponto): de UMA tábua saem cinco
+/// (cópias da última, com aparência e forma filha, «Plank 2» … «Plank 5»), as juntas novas levam os 500 N
+/// afinados na que já havia, o poste da direita anda com a última; 12 e depois 3 tiram do fim.
+/// **Mutações que sangram:** a cópia sem tirar a junta da original (juntas a dobrar) · as juntas novas
+/// de fábrica (sem `tuned`) · o poste parado · encolher sem apagar as tábuas que saem.
+#[test]
+fn planks_numa_ponte_feita_refaz_as_copias() {
+    let mut m = Mesa::draft(JointKind::Pin, "Bridge");
+    m.planks("1");
+    let plank = ph2d_app_joint_editor::doc::scope_options(
+        ph2d_joint_templates::by_name(JointKind::Pin, "Bridge").expect("ponte"),
+    )
+    .iter()
+    .position(|o| o.label == "Plank")
+    .expect("Plank");
+    m.click(&Hit::Make);
+    assert_eq!(m.bridge_joints().len(), 2, "uma tábua: só os dois postes");
+    let (_, r0) = m.object("Bridge Right Post");
+    let (_, p1) = m.object("Plank 1");
+    m.planks("2");
+    m.click(&Hit::Scope(plank));
+    m.click(&Hit::Flag(ph2d_app_joint_editor::doc::Flag::Breakable));
+    m.click(&Hit::Field(Field::BreakForce));
+    m.escreve("500");
+    m.tecla(
+        ph2d_editor_core::screens::hero::board_keys::BoardKey::Enter,
+        None,
+    );
+    m.planks("5");
+    for k in 1..=5 {
+        let (b, _) = m.object(&format!("Plank {k}"));
+        let w = m.sim.world_mut();
+        let e = ph2d_ecs::Entity::from_bits(b);
+        assert!(w.get::<Sprite>(e).is_some(), "Plank {k}: a aparência");
+        assert!(
+            ph2d_physics_ecs::forma_para_editar(w, e).is_some(),
+            "Plank {k}: a forma filha"
+        );
+    }
+    // Na Hierarchy, as cópias a seguir à tábua de onde saíram, antes do poste da direita.
+    let asm =
+        ph2d_ecs::Entity::from_bits(m.tab().doc.assembly().map(|a| a.bits).expect("montagem"));
+    let names: Vec<String> = ph2d_ecs::ordered_children(m.sim.world(), asm)
+        .into_iter()
+        .filter_map(|c| m.sim.world().get::<Name>(c).map(|n| n.as_str().to_owned()))
+        .collect();
+    let pos = |n: &str| names.iter().position(|x| x == n).unwrap_or(usize::MAX);
+    assert!(pos("Plank 5") < pos("Bridge Right Post"), "{names:?}");
+    let j = m.bridge_joints();
+    assert_eq!(j.len(), 6, "4 entre 5 tábuas + 2 postes, nenhuma a dobrar");
+    let planks: Vec<&PhysicsJoint> = j.iter().filter(|j| j.role == 1).collect();
+    assert_eq!(planks.len(), 4);
+    assert!(
+        planks
+            .iter()
+            .all(|j| j.break_enabled && (j.break_force - 500.0).abs() < 1e-3),
+        "{planks:?}"
+    );
+    let step = 0.52;
+    let (_, r) = m.object("Bridge Right Post");
+    assert!(
+        (r[0] - r0[0] - 4.0 * step).abs() < 1e-3,
+        "o poste anda 4 passos: {}",
+        r[0] - r0[0]
+    );
+    let (_, p5) = m.object("Plank 5");
+    assert!((p5[0] - p1[0] - 4.0 * step).abs() < 1e-3);
+    m.planks("12");
+    assert_eq!(m.bridge_joints().len(), 13);
+    m.planks("3");
+    assert_eq!(m.bridge_joints().len(), 4, "2 entre 3 tábuas + 2 postes");
+    assert!(m.exists("Plank 3") && !m.exists("Plank 4") && !m.exists("Plank 12"));
+    let (_, r) = m.object("Bridge Right Post");
+    assert!(
+        (r[0] - r0[0] - 2.0 * step).abs() < 1e-3,
+        "o poste volta: {}",
+        r[0] - r0[0]
+    );
+    let toast = m
+        .toasts
+        .iter()
+        .last()
+        .map(|t| t.message.clone())
+        .unwrap_or_default();
+    assert!(toast.contains("Made 7 copies"), "{toast}");
+}

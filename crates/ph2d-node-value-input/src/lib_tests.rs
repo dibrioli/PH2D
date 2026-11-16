@@ -116,3 +116,36 @@ fn a_colour_input_drives_four_channels_and_reports_its_lightness() {
     let l_azul = ph2d_color::perceptual::to_oklab([0.0, 0.0, 1.0])[0];
     assert_eq!(s[0][0], l_azul);
 }
+
+/// ⭐ MI-5: o par publicado chega a `xy` (Vec2, coluna `P`), `x`, `y`, e `out` é o tamanho; um número
+/// é o `x` (`y = 0`). As portas de antes não mudam de índice.
+#[test]
+fn a_published_pair_reaches_xy_x_y_and_out_is_its_length() {
+    let mut g = Graph::new();
+    let n = no(&mut g, KIND_NUMBER, "andar");
+    let mut cook = Cook::new();
+    publica(&mut cook, "andar", &[0.5]);
+    let s = saidas(&mut cook, &g, n);
+    assert_eq!(
+        (s[7].clone(), s[8].clone()),
+        (vec![0.5], vec![0.0]),
+        "um número é o x"
+    );
+    cook.set_external(
+        input_of("andar"),
+        Stream::new(1)
+            .with(INPUT_VALUE, Column::Scalar(vec![5.0]))
+            .with(INPUT_XY, Column::Vec2(vec![[3.0, -4.0]])),
+    );
+    let s = saidas(&mut cook, &g, n);
+    assert_eq!(s[0], vec![5.0], "out = o tamanho");
+    assert_eq!((s[7].clone(), s[8].clone()), (vec![3.0], vec![-4.0]));
+    let out = cook.cook(&g, &Reg, n, 0.0).unwrap();
+    assert_eq!(
+        out[6].as_stream().get("P"),
+        Some(&Column::Vec2(vec![[3.0, -4.0]]))
+    );
+    let nomes: Vec<_> = MANIFEST.outputs.iter().map(|p| p.name).collect();
+    assert_eq!(nomes, ["out", "r", "g", "b", "a", "pulse", "xy", "x", "y"]);
+    assert_eq!(MANIFEST.outputs[6].ty.dim, Dim::Vec2);
+}

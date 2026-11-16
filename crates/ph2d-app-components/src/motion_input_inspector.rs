@@ -80,6 +80,7 @@ const fn ao_vivo_de(v: Valor) -> AoVivo {
     match v {
         Valor::Numero(n) => AoVivo::Numero(n),
         Valor::Cor(c) => AoVivo::Cor(c),
+        Valor::Vetor(p) => AoVivo::Par(p),
     }
 }
 
@@ -119,13 +120,15 @@ fn ao_vivo(
             Some(j) => j.valor_de(nome, &eu).map(ao_vivo_de),
             None => alvo
                 .and_then(|a| fonte::propriedade(reg, world, a, &m.property))
-                .map(AoVivo::Numero),
+                .map(ao_vivo_de),
         },
         MotionSource::Value
         | MotionSource::Color
         | MotionSource::Speed
         | MotionSource::Grounded
-        | MotionSource::Action => jogo.and_then(|j| j.valor_de(nome, &eu)).map(ao_vivo_de),
+        | MotionSource::Action
+        | MotionSource::Velocity
+        | MotionSource::Move => jogo.and_then(|j| j.valor_de(nome, &eu)).map(ao_vivo_de),
     };
     let tapado = jogo
         .and_then(|j| j.primeira_linha(nome))

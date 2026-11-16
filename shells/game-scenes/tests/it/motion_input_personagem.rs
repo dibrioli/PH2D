@@ -109,10 +109,7 @@ fn com_vida(sim: &mut SimWorld, bits: u64, pontos: f64) {
 #[test]
 fn a_property_parada_le_o_campo_e_em_play_o_que_a_ponte_publicou() {
     use ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero as N;
-    let ((mut sim, bits), reg) = (
-        cena(),
-        crate::comp::registo(),
-    );
+    let ((mut sim, bits), reg) = (cena(), crate::comp::registo());
     let e = ph2d_ecs::Entity::from_bits(bits);
     let h = reg
         .iter()
@@ -153,4 +150,83 @@ fn a_property_parada_le_o_campo_e_em_play_o_que_a_ponte_publicou() {
         (Some(N(10.0)), Some(N(20.0))),
         "Play: o publicado"
     );
+}
+
+fn par(sim: &SimWorld, nome: &str) -> Option<[f32; 2]> {
+    let m = sim.world().get_resource::<MotionInputs>()?;
+    match m.valores().find(|(n, _)| *n == nome)?.1.as_slice() {
+        [Valor::Vetor(v)] => Some(*v),
+        _ => None,
+    }
+}
+
+/// ⭐ MI-5 Velocity: o PAR da velocidade do corpo do pai (a cair, `y < 0`), o mesmo de que o Speed é o tamanho.
+#[test]
+fn velocity_sends_the_pair_of_a_moving_body() {
+    let (mut sim, bridge, p) = personagem(20.0, 20);
+    let mi = MotionInput {
+        name: "vel".into(),
+        source: MotionSource::Velocity,
+        ..MotionInput::default()
+    };
+    sim.world_mut().spawn((mi, ChildOf(p)));
+    let accoes = BTreeMap::new();
+    let f = Fontes {
+        dt: 1.0 / 60.0,
+        physics: Some(&bridge),
+        accoes: &accoes,
+        registry: None,
+    };
+    frame(&mut sim, &SignalOutbox::new(), &f);
+    let v = par(&sim, "vel").expect("Velocity manda um par");
+    assert!(v[1] < -1.0, "a cair: {v:?}");
+    assert_eq!(Some(v[0].hypot(v[1])), numero(&sim, "rapidez"));
+}
+
+/// ⭐ MI-5 Move: `(direita − esquerda, cima − baixo)` das acções `move_*`; Remap 0→2 age no TAMANHO
+/// (a direção fica) e sem nenhuma `move_*` no mapa a linha sai.
+#[test]
+fn move_sends_the_2d_action_and_remap_keeps_its_direction() {
+    let mut sim = SimWorld::default();
+    let mut mi = MotionInput {
+        name: "andar".into(),
+        source: MotionSource::Move,
+        ..MotionInput::default()
+    };
+    let e = sim.world_mut().spawn(mi.clone()).id();
+    let forca = |s| ph2d_ecs::ActionSample {
+        strength: s,
+        ..Default::default()
+    };
+    let accoes: BTreeMap<String, _> = [
+        ("move_right", forca(1.0)),
+        ("move_left", forca(0.0)),
+        ("move_up", forca(1.0)),
+        ("move_down", forca(0.0)),
+    ]
+    .into_iter()
+    .map(|(n, a)| (n.to_string(), a))
+    .collect();
+    let quadro = |sim: &mut SimWorld, accoes: &BTreeMap<String, _>| {
+        let f = Fontes {
+            dt: 1.0 / 60.0,
+            physics: None,
+            accoes,
+            registry: None,
+        };
+        frame(sim, &SignalOutbox::new(), &f);
+    };
+    quadro(&mut sim, &accoes);
+    assert_eq!(par(&sim, "andar"), Some([1.0, 1.0]));
+    (mi.remap, mi.remap_from, mi.remap_to) = (true, 0.0, 2.0 * 2f32.sqrt());
+    sim.world_mut().entity_mut(e).insert(mi);
+    quadro(&mut sim, &accoes);
+    let v = par(&sim, "andar").expect("par");
+    let k = 0.5 / 2f32.sqrt();
+    assert!(
+        (v[0] - k).abs() < 1e-6 && (v[1] - k).abs() < 1e-6,
+        "tamanho ½, a 45°: {v:?}"
+    );
+    quadro(&mut sim, &BTreeMap::new());
+    assert_eq!(par(&sim, "andar"), None, "sem move_* a fonte não existe");
 }

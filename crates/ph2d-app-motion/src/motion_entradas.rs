@@ -10,7 +10,7 @@ use crate::motion_state::MotionState;
 use ph2d_ecs::motion_inputs::{Escritor, Valor};
 use ph2d_ecs::{MotionInputs, SimWorld};
 use ph2d_nodegraph::attr::{Column, Stream};
-use ph2d_nodegraph::external::{INPUT_COLOR, INPUT_COUNT, INPUT_VALUE, input_of};
+use ph2d_nodegraph::external::{INPUT_COLOR, INPUT_COUNT, INPUT_VALUE, INPUT_XY, input_of};
 use ph2d_nodegraph::graph::NodeId;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -31,7 +31,7 @@ pub struct EntradasDoJogo {
 
 /// ⭐ **As entradas pela linha de comando** — `PH2D_MOTION_INPUTS=vida=0.25:estado=1:time=0.2,0.5,1`
 /// (pares separados por `:`, a convenção do `PATH`; um `;` partiria a linha de um script):
-/// um número (ou `true`/`false`) ou uma cor `r,g,b[,a]` por nome. O jogo lançado já com valores, e a
+/// um número (ou `true`/`false`), um par `x,y` ou uma cor `r,g,b[,a]` por nome. O jogo lançado já com valores, e a
 /// porta das FOTOS de uma cena com outras entradas (a ferramenta não clica).
 pub const VAR_DA_LINHA: &str = "PH2D_MOTION_INPUTS";
 
@@ -54,6 +54,7 @@ pub fn le_a_linha(texto: &str) -> Vec<(String, Valor)> {
             .collect();
         let v = match nums.as_slice() {
             [Some(x)] => Valor::Numero(*x),
+            [Some(x), Some(y)] => Valor::Vetor([*x, *y]),
             [Some(r), Some(g), Some(b)] => Valor::Cor([*r, *g, *b, 1.0]),
             [Some(r), Some(g), Some(b), Some(a)] => Valor::Cor([*r, *g, *b, *a]),
             _ => {
@@ -171,21 +172,20 @@ fn disparos_dos_cartoes(motion: &mut MotionState, seconds: f64) {
 
 fn coluna_de_valores(linhas: &[Valor]) -> Stream {
     let n = linhas.len();
-    let v: Vec<f32> = linhas
-        .iter()
-        .map(|l| match *l {
-            Valor::Numero(x) => x,
-            // Um número lido de uma cor: a média dos canais (a luminosidade fica para o nó).
-            Valor::Cor(c) => (c[0] + c[1] + c[2]) / 3.0,
-        })
-        .collect();
+    let v = linhas.iter().map(|l| l.numero()).collect();
     let mut s = Stream::new(n).with(INPUT_VALUE, Column::Scalar(v));
+    if linhas.iter().any(|l| matches!(l, Valor::Vetor(_))) {
+        s = s.with(
+            INPUT_XY,
+            Column::Vec2(linhas.iter().map(|l| l.par()).collect()),
+        );
+    }
     if linhas.iter().any(|l| matches!(l, Valor::Cor(_))) {
         let c = linhas
             .iter()
             .map(|l| match *l {
-                Valor::Numero(x) => [x, x, x, 1.0],
                 Valor::Cor(c) => c,
+                o => [o.numero(), o.numero(), o.numero(), 1.0],
             })
             .collect();
         s = s.with(INPUT_COLOR, Column::Vec4(c));

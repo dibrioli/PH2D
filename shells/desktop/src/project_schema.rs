@@ -516,4 +516,6 @@
 /// ⚠️ **A tripla NÃO vê este degrau.**
 ///
 /// # `246 → 247` — **o Motion Input é um objeto filho** (GEF 08 MI-10, 2026-11-16): `from = 0` = o PAI. A tripla NÃO vê.
-pub(crate) const PROJECT_SCHEMA: u32 = 247;
+///
+/// # `247 → 248` — **o par (x, y)** (GEF 08 MI-5, 2026-11-16): `MotionSource` ganha `Velocity` e `Move` no fim. A tripla NÃO vê.
+pub(crate) const PROJECT_SCHEMA: u32 = 248;

@@ -95,7 +95,9 @@ fn republishing_the_same_inputs_does_not_dirty_the_pump() {
 /// A linha de comando: números, booleanos e cores; o que não se entende salta-se.
 #[test]
 fn the_command_line_reads_numbers_booleans_and_colours() {
-    let l = le_a_linha(" vida=0.25: ligado=true :time=0.2,0.5,1: mau=x: sem: alfa=1,0,0,0.5");
+    let l = le_a_linha(
+        " vida=0.25: ligado=true :time=0.2,0.5,1: mau=x: sem: alfa=1,0,0,0.5:andar=3,-4",
+    );
     assert_eq!(
         l,
         vec![
@@ -103,12 +105,23 @@ fn the_command_line_reads_numbers_booleans_and_colours() {
             ("ligado".to_string(), Valor::Numero(1.0)),
             ("time".to_string(), Valor::Cor([0.2, 0.5, 1.0, 1.0])),
             ("alfa".to_string(), Valor::Cor([1.0, 0.0, 0.0, 0.5])),
+            ("andar".to_string(), Valor::Vetor([3.0, -4.0])),
         ]
     );
     let mut m = MotionState::new();
     m.entradas.da_linha = l;
     publica(&mut m, 0.0);
     assert_eq!(valor(&m, "vida", INPUT_VALUE), Some(vec![0.25]));
+    assert_eq!(
+        valor(&m, "andar", INPUT_VALUE),
+        Some(vec![5.0]),
+        "MI-5: out = o tamanho"
+    );
+    let xy = m.pump.cook.externals()[&input_of("andar")]
+        .value
+        .get(INPUT_XY)
+        .cloned();
+    assert_eq!(xy, Some(Column::Vec2(vec![[3.0, -4.0]])));
 }
 
 /// ⭐ Os nomes do grafo chegam ao MUNDO (para o nome inicial de um `Motion Input` novo), e só se

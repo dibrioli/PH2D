@@ -75,10 +75,6 @@ pub(crate) fn users_of(
                 .collect::<Vec<_>>()
         }
         DragPayload::Image { asset } => {
-            // ⚠️ **Pela MESMA porta que o índice usa** ([`ph2d_render::texture_of`]) —
-            // uma sprite de átlas não carrega `SpritePixels`, e perguntar só por ele fazia o
-            // *Select users* devolver **zero** sobre toda imagem importada. *A pergunta «que
-            // textura é esta?» tem um dono, e ele não é este ficheiro.*
             // As folhas extra de um Animated Sprite também a usam (GEF 26 F2): `images_of`.
             let wanted = ph2d_asset::AssetId::from_digest(asset);
             let mut q = sim.world_mut().query::<Entity>();
@@ -142,10 +138,6 @@ pub fn drain(
             };
             *select_out = Some(bits);
             let name = crate::instance_verbs::master_named(sim, stable_id)
-                // ⚠️ **O nome de recurso de uma receita sem nome é «prefab»** — este literal ESCAPOU à
-                // unificação de vocabulário porque o censo dela só olha frases (literais com espaço), e
-                // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
-                // dentro de aspas curvas num toast, logo é tela.
                 .unwrap_or_else(|| "prefab".to_string());
             toasts.push(Toast::success(tr_with(
                 "shell.asset_card_verbs.editing_move_a_piece",
@@ -154,9 +146,6 @@ pub fn drain(
             true
         }
         (AssetCardAction::EditPrefab, DragPayload::Image { .. }) => {
-            // ⛔ **A recusa nomeia o FACTO, como as outras três da tabela plana.** Uma imagem não
-            // tem forma que este app autore — quem a edita são as ferramentas de imagem, sobre o
-            // objecto que a desenha, e é por isso que a saída é o *Select users*.
             toasts.push(Toast::info(tr(
                 "shell.asset_card_verbs.an_image_has_no_shape",
             )));
@@ -164,8 +153,6 @@ pub fn drain(
         }
 
         // ── Instanciar ─────────────────────────────────────────────────────────────────────────
-        // ⚠️ **Os dois pelo MESMO braço**, e o verbo é a única diferença: uma segunda cópia deste
-        // bloco divergiria no dia em que a recusa ou a voz mudasse num deles.
         (
             AssetCardAction::Instantiate | AssetCardAction::InstantiateLinked,
             DragPayload::Prefab { stable_id },
@@ -196,9 +183,6 @@ pub fn drain(
             AssetCardAction::Instantiate | AssetCardAction::InstantiateLinked,
             DragPayload::Image { .. },
         ) => {
-            // ⛔ A mesma recusa que o duplo-clique já declara, agora **em voz alta**: no
-            // duplo-clique o silêncio era defensável (ninguém apertou um item que prometia algo);
-            // num item de menu com o nome escrito, não é.
             toasts.push(Toast::info(tr(
                 "shell.asset_card_verbs.drop_an_image_on_an",
             )));
@@ -246,9 +230,6 @@ pub fn drain(
             | AssetCardAction::ReplaceSelectionByTree,
             DragPayload::Image { .. },
         ) => {
-            // ⛔ A quarta recusa da tabela plana, e ela nomeia o facto como as outras três: trocar
-            // é trocar de RECEITA, e uma imagem não é uma. O que o artista quer aqui tem outro
-            // gesto — largá-la sobre o objecto — e a frase manda-o para lá.
             toasts.push(Toast::info(tr("shell.asset_card_verbs.an_image_is_not_a")));
             false
         }
@@ -276,29 +257,14 @@ pub fn drain(
         (AssetCardAction::RemoveFromLibrary, DragPayload::Image { asset: id }) => {
             let n = users_of(sim, asset, atlas_assets).len();
             if n == 0 {
-                // ⭐⭐⭐ **NINGUÉM a usa ⇒ ela SAI** (report do Enio, 2026-08-30, 2.ª ronda:
-                // *«uma sprite que foi deletada do canvas não consegui deletar do painel»*).
-                //
-                // ⛔ A 1.ª versão recusava sempre, e com a sprite apagada a frase virava *«está na
-                // biblioteca porque 0 objecto(s) a usam — mude esses para a tirar»*: um beco sem
-                // saída que manda mudar um conjunto vazio.
+                // Ninguém a usa ⇒ ela sai (report do Enio, 30/08).
                 crate::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest(id));
                 toasts.push(Toast::success(tr(
                     "shell.asset_card_verbs.removed_from_library",
                 )));
-                // ⭐⭐ **`true` desde 2026-08-30, e a inversão é o pedido do Enio** (*«deveria ter
-                // undo/redo no painel inclusive em del»*). A 1.ª versão devolvia `false` com o
-                // motivo *«a biblioteca é memória de SESSÃO e o undo não desfaz isto»* — e era
-                // verdade: o gesto era **irreversível**, porque uma imagem sem utilizadores não
-                // tem quem a re-lembre no quadro seguinte.
-                //
-                // ⇒ hoje o `forget` é uma **lápide** que viaja no `ProjectState`
-                // (`project_library`, na shell), logo isto É uma edição do documento.
+                // Desfazível: o `forget` é uma lápide no `ProjectState` (`project_library`).
                 return true;
             }
-            // ⚠️ **Com utilizadores a recusa CONTINUA certa**, e o número é o corpo dela: tirar a
-            // imagem deixaria aqueles objectos sem pixels, e não há saída sem perda. *O que estava
-            // errado era aplicar esta frase ao caso em que ninguém tem nada a perder.*
             toasts.push(Toast::info(tr_with(
                 "shell.asset_card_verbs.this_image_is_in_the",
                 &[("n", &n)],
@@ -386,8 +352,6 @@ fn replace_selection(
         }
     }
     if done == 0 {
-        // ⚠️ **Cada caminho vazio diz uma coisa DIFERENTE**, e as três são accionáveis: *já é este*
-        // não pede nada, *não é uma cópia* diz o que escolher, e a terceira é o resto.
         toasts.push(Toast::info(if already > 0 {
             tr("shell.asset_card_verbs.those_are_already")
         } else if skipped > 0 {
@@ -397,12 +361,8 @@ fn replace_selection(
         }));
         return false;
     }
-    let name = crate::instance_verbs::master_named(sim, stable_id)
-        // ⚠️ **O nome de recurso de uma receita sem nome é «prefab»** — este literal ESCAPOU à
-        // unificação de vocabulário porque o censo dela só olha frases (literais com espaço), e
-        // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
-        // dentro de aspas curvas num toast, logo é tela.
-        .unwrap_or_else(|| "prefab".to_string());
+    let name =
+        crate::instance_verbs::master_named(sim, stable_id).unwrap_or_else(|| "prefab".to_string());
     let mut say = tr_with(
         "shell.asset_card_verbs.replaced_object_s_with",
         &[("done", &done), ("name", &name), ("kept", &kept)],

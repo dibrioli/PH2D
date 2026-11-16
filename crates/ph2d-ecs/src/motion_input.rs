@@ -28,10 +28,14 @@ pub enum MotionSource {
     Action,
     /// Um campo numérico (`property` = `canonical/serde_key`) de um componente do objecto From.
     Property,
+    /// O par da velocidade linear do corpo do objecto From (a unidade do Speed).
+    Velocity,
+    /// O par `(direita − esquerda, cima − baixo)` das acções `move_*` do Input Map (a leitura do Luau).
+    Move,
 }
 
 impl MotionSource {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::Value,
         Self::Color,
         Self::Health,
@@ -40,6 +44,8 @@ impl MotionSource {
         Self::Grounded,
         Self::Action,
         Self::Property,
+        Self::Velocity,
+        Self::Move,
     ];
 
     #[must_use]
@@ -53,6 +59,8 @@ impl MotionSource {
             Self::Grounded => 5,
             Self::Action => 6,
             Self::Property => 7,
+            Self::Velocity => 8,
+            Self::Move => 9,
         }
     }
 }

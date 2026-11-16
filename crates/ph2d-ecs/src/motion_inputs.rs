@@ -37,6 +37,40 @@ pub enum Valor {
     Numero(f32),
     /// RGBA linear.
     Cor([f32; 4]),
+    /// Um par `(x, y)` (MI-5): o `out` do `value.input` é o TAMANHO dele.
+    Vetor([f32; 2]),
+}
+
+impl Valor {
+    /// O número que o `out` lê: o próprio, a média dos canais da cor, o tamanho do par.
+    #[must_use]
+    pub fn numero(self) -> f32 {
+        match self {
+            Self::Numero(x) => x,
+            Self::Cor(c) => (c[0] + c[1] + c[2]) / 3.0,
+            Self::Vetor(v) => v[0].hypot(v[1]),
+        }
+    }
+
+    /// O par que `xy` lê: o próprio; fora de um par, `(número, 0)`.
+    #[must_use]
+    pub fn par(self) -> [f32; 2] {
+        match self {
+            Self::Vetor(v) => v,
+            o => [o.numero(), 0.0],
+        }
+    }
+}
+
+/// Uma forma de NÚMERO aplicada ao tamanho de um par: a direção fica, e o tamanho `0` fica `0`.
+#[must_use]
+pub fn no_tamanho(v: [f32; 2], forma: impl FnOnce(f32) -> f32) -> [f32; 2] {
+    let l = v[0].hypot(v[1]);
+    if l == 0.0 {
+        return [0.0, 0.0];
+    }
+    let k = forma(l) / l;
+    [v[0] * k, v[1] * k]
 }
 
 #[derive(Resource, Clone, Debug, Default, PartialEq)]
@@ -164,6 +198,19 @@ mod tests {
             vec![Valor::Numero(0.5), Valor::Numero(0.9), Valor::Numero(0.2)],
             "script, depois os objectos pelo nome"
         );
+    }
+
+    /// ⭐ MI-5: a forma age no TAMANHO — a direção fica, o zero fica zero; `out` é o tamanho.
+    #[test]
+    fn a_shape_on_a_pair_keeps_its_direction() {
+        let v = no_tamanho([3.0, 4.0], |l| l / 10.0);
+        assert!(
+            (v[0] - 0.3).abs() < 1e-6 && (v[1] - 0.4).abs() < 1e-6,
+            "{v:?}"
+        );
+        assert_eq!(no_tamanho([0.0, 0.0], |_| 1.0), [0.0, 0.0]);
+        assert_eq!(Valor::Vetor([3.0, 4.0]).numero(), 5.0);
+        assert_eq!(Valor::Numero(0.7).par(), [0.7, 0.0]);
     }
 
     #[test]

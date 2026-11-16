@@ -443,7 +443,7 @@ end"#,
             ),
             (
                 "value",
-                "The number to send; `true` is sent as 1 and `false` as 0. Text, `nil`, infinity or NaN are an error.",
+                "The number to send; `true` is sent as 1 and `false` as 0. A pair `ph2d.vec2(x, y)` sends both: the input's x and y outputs get them, and its main output gets the pair's length. Text, `nil`, infinity or NaN are an error.",
             ),
         ],
         returns: "",
@@ -501,7 +501,7 @@ end"#,
             "input",
             "The name of the input in the Motion graph. An empty name is an error.",
         )],
-        returns: "The number or colour the graph reads for that input, or nil when nothing sends it.",
+        returns: "The number, colour or pair (a `ph2d.vec2`) the graph reads for that input, or nil when nothing sends it.",
         more: "It reads what the graph got at the start of this tick, so a [motion.set] in the same tick shows up in the next one. When several objects or scripts send the same name, it gives the one the graph reads: the first.",
         example: r#"function update(self, dt)
   local health = motion.get("health")

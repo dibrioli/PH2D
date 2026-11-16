@@ -15,6 +15,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.source.5" => "Grounded",
         "panel.inspector.motion_input.source.6" => "Action",
         "panel.inspector.motion_input.source.7" => "Property",
+        "panel.inspector.motion_input.source.8" => "Velocity",
+        "panel.inspector.motion_input.source.9" => "Move",
         "panel.inspector.motion_input.new" => "New\u{2026}",
         "panel.inspector.motion_input.name_label" => "Name",
         "panel.inspector.motion_input.add_health" => "Add Health",

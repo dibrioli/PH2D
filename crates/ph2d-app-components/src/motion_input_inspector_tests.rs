@@ -107,7 +107,11 @@ fn cada_edicao_escreve_o_seu_campo_so_quando_muda() {
         assert!(!apply(&mut sim, bits, edit), "{edit:?} repetida é inerte");
     }
     // Uma fonte fora da faixa e um número não-finito são inertes.
-    assert!(!apply(&mut sim, bits, &E::Source(9)));
+    assert!(!apply(
+        &mut sim,
+        bits,
+        &E::Source(MotionSource::ALL.len() as u8)
+    ));
     assert!(!apply(&mut sim, bits, &E::Value(f32::NAN)));
     assert!(!apply_all(&mut sim, &[(bits, E::Name("vida".into()))]));
     assert!(apply_all(

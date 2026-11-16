@@ -25,6 +25,8 @@ const FONTES: [&str; MOTION_INPUT_SOURCES] = [
     "panel.inspector.motion_input.source.5",
     "panel.inspector.motion_input.source.6",
     "panel.inspector.motion_input.source.7",
+    "panel.inspector.motion_input.source.8",
+    "panel.inspector.motion_input.source.9",
 ];
 
 const _: () = assert!(crate::ids::INSP_MI_SOURCE.len() == MOTION_INPUT_SOURCES);
@@ -96,6 +98,7 @@ fn valor_na_frase(v: MotionInputAoVivo) -> String {
         MotionInputAoVivo::Numero(n) => numero(n),
         MotionInputAoVivo::Cor(_) => tr("panel.inspector.motion_input.a_color").to_string(),
         MotionInputAoVivo::Disparos(n) => n.to_string(),
+        MotionInputAoVivo::Par(p) => format!("{}, {}", numero(p[0]), numero(p[1])),
     }
 }
 

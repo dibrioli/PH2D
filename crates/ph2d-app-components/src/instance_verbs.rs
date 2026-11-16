@@ -41,11 +41,6 @@ pub enum VerbRefusal {
     InsideAMaster,
 }
 
-// ⛔ **Havia um quarto (`MasterIsGone`) e ele saiu**: nenhum verbo o constrói, porque a pergunta
-// *«o mestre ainda existe?»* já é respondida pelo `NotAnInstance` — a raiz de uma instância é *a
-// peça cujo mestre é um `MasterRoot`*, e um mestre apagado deixa de a satisfazer. *Uma variante que
-// nada constrói é uma resposta que o artista nunca lê.*
-
 /// ⭐⭐ **CRIAR COMPONENTE** — a seleção vira **receita**, e uma **instância fica no lugar dela**.
 ///
 /// Devolve `(mestre, instância)`.
@@ -94,11 +89,7 @@ pub(crate) fn make_master(
     let original_name = sim.world().get::<Name>(entity).map(|n| n.0.clone());
 
     sim.world_mut().entity_mut(entity).insert(MasterRoot);
-    // ⚠️ A instância nasce ANTES de a receita ser marcada? Não: ela é a cópia da receita, e a
-    // cópia leva o `MasterRoot` que a porta de instanciar depois tira. A ordem é esta.
-    // ⚠️ **A cópia que fica no lugar tem arte PRÓPRIA** (`Own`): o gesto é *«guarda isto na
-    // biblioteca»*, e o que o artista pintar nela a seguir é dela. Quem quiser o `Alt+D` pede-o
-    // pelo nome, com o *Instantiate Linked*.
+    // A cópia no lugar tem arte própria (`Own`); o `Alt+D` é o *Instantiate Linked*.
     let instance = match crate::instantiate::instantiate_master(
         sim,
         registry,
@@ -118,10 +109,7 @@ pub(crate) fn make_master(
     };
     if let Some(base_id) = base_link {
         let base_name = master_named(sim, base_id).unwrap_or_else(|| "Prefab".to_string());
-        // ⚠️ **O nome é só um NOME** (Enio, 2026-09-01): o sufixo `Variant` é o idioma do Unity e
-        // serve de rótulo do chip. ⛔ **Nada de propriedades aqui** — o mecanismo (`Size = Big`) foi
-        // recusado duas vezes e está adiado para o fim do plano. *Foi pôr a declaração no nome que
-        // obrigou todo gesto a reescrevê-lo, e custou seis reports.*
+        // O nome é só um nome (Enio, 01/09): nada de propriedades aqui.
         let vname =
             ph2d_unique_name::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
         sim.world_mut().entity_mut(entity).insert(Name::new(vname));
@@ -132,9 +120,6 @@ pub(crate) fn make_master(
                 .insert(Name::new(cname));
         }
     }
-    // ⛔ **O espelho MORREU aqui em 2026-09-01.** Ele existia porque a declaração vivia no `Name`
-    // e todo gesto que mexesse no elo tinha de a reescrever — hoje a declaração é um componente da
-    // RECEITA, e mudar o elo de uma cópia não tem nome nenhum a acertar.
     Ok((entity, instance))
 }
 

@@ -24,7 +24,7 @@ use std::collections::{BTreeMap, BTreeSet};
 struct Ponte {
     vida_antes: BTreeMap<u64, f32>,
     /// O valor suavizado do quadro anterior, por objecto (o Smooth).
-    suave: BTreeMap<u64, f32>,
+    suave: BTreeMap<u64, Valor>,
     leitor: Option<SignalReader>,
 }
 
@@ -64,17 +64,26 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
                 .map(|(agora, max)| agora / max)
         };
         let mut fonte_viva = true;
+        let fisica = fontes.physics;
         let numero = match m.source {
             MotionSource::Value => Some(m.value),
             MotionSource::Health => vida(),
-            MotionSource::Speed => alvo.and_then(|a| fonte::velocidade(world, fontes.physics, a)),
-            MotionSource::Grounded => alvo.and_then(|a| fonte::no_chao(world, fontes.physics, a)),
+            MotionSource::Speed => alvo.and_then(|a| fonte::velocidade(world, fisica, a)),
+            MotionSource::Grounded => alvo.and_then(|a| fonte::no_chao(world, fisica, a)),
             MotionSource::Action => fonte::accao(fontes.accoes, &m.action),
+            _ => None,
+        }
+        .map(Valor::Numero)
+        .or_else(|| match m.source {
             MotionSource::Property => {
                 alvo.and_then(|a| fonte::propriedade(fontes.registry, world, a, &m.property))
             }
-            MotionSource::Color | MotionSource::Damage => None,
-        };
+            MotionSource::Velocity => alvo
+                .and_then(|a| fonte::velocidade_par(world, fisica, a))
+                .map(Valor::Vetor),
+            MotionSource::Move => fonte::mover(fontes.accoes).map(Valor::Vetor),
+            _ => None,
+        });
         let o_que = match m.source {
             MotionSource::Color => Publica::Valor(Valor::Cor(m.color)),
             MotionSource::Damage => match vida() {
@@ -93,10 +102,9 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
             },
             _ => match numero {
                 Some(v) => {
-                    let v = fonte::remapeia(&m, v);
-                    let v = fonte::suaviza(ponte.suave.get(&bits).copied(), v, fontes.dt, m.smooth);
+                    let v = fonte::forma(&m, ponte.suave.get(&bits).copied(), v, fontes.dt);
                     suave_agora.insert(bits, v);
-                    Publica::Valor(Valor::Numero(v))
+                    Publica::Valor(v)
                 }
                 None => {
                     fonte_viva = false;

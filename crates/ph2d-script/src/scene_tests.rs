@@ -662,6 +662,30 @@ fn motion_get_reads_what_the_graph_reads_from_the_start_of_the_tick() {
     assert_eq!(x(sim.world(), e), 0.75, "o set do tique anterior");
 }
 
+/// ⭐ MI-5: `motion.set` aceita o par `ph2d.vec2` (chega como `Valor::Vetor`), e `motion.get` devolve-o
+/// no mesmo idioma (`.x`, `.y`) no tique seguinte.
+#[test]
+fn motion_set_and_get_carry_a_pair_as_vec2() {
+    use ph2d_ecs::MotionInputs;
+    use ph2d_ecs::motion_inputs::{Escritor, Valor};
+    let mut host = ScriptHost::new().expect("vm");
+    let mut sim = SimWorld::new();
+    let src = "function update(self, dt)\n  local p = motion.get(\"andar\")\n  \
+               ph2d.set(self.id, \"x\", p and p.x or -1)\n  ph2d.set(self.id, \"y\", p and p.y or -1)\n  \
+               motion.set(\"andar\", ph2d.vec2(3, -4))\nend\n";
+    let e = actor(sim.world_mut(), 1, &script_file("motion_par", src), &[]);
+    let r = frame(&mut host, &mut sim, 1.0 / 60.0);
+    assert!(r.failed.is_empty(), "{:?}", r.failed);
+    let m = sim.world().get_resource::<MotionInputs>().expect("recurso");
+    assert_eq!(
+        m.valor_de("andar", &Escritor::Script),
+        Some(Valor::Vetor([3.0, -4.0]))
+    );
+    frame(&mut host, &mut sim, 1.0 / 60.0);
+    let y = sim.world().get::<Transform>(e).expect("pose").translation.y;
+    assert_eq!((x(sim.world(), e), y), (3.0, -4.0), "o par volta como vec2");
+}
+
 /// ADR-0188: o texto vem da biblioteca do projeto.
 #[path = "scene_library_tests.rs"]
 mod library;

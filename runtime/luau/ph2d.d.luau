@@ -250,14 +250,14 @@ declare ph2d: {
 
 --- Writes the inputs that the Motion graph reads (`value.input`).
 declare motion: {
-    --- Sets a number input of the Motion graph (true/false read as 1/0).
-    set: (input: string, value: number | boolean) -> (),
+    --- Sets an input of the Motion graph: a number (true/false read as 1/0) or a pair `ph2d.vec2(x, y)`.
+    set: (input: string, value: number | boolean | Vec2) -> (),
     --- Sets a colour input of the Motion graph, linear RGBA.
     color: (input: string, r: number, g: number, b: number, a: number?) -> (),
     --- Fires a trigger input of the Motion graph.
     fire: (trigger: string) -> (),
-    --- What the Motion graph reads for an input this tick: a number, a colour, or nil.
-    get: (input: string) -> (number | Color)?,
+    --- What the Motion graph reads for an input this tick: a number, a colour, a pair, or nil.
+    get: (input: string) -> (number | Color | Vec2)?,
 }
 
 -- Engine hooks: global functions of a script that the engine calls.

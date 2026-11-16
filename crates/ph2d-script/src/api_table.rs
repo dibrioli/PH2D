@@ -443,8 +443,8 @@ pub const API: &[ApiEntry] = &[
     ApiEntry {
         table: "motion",
         ident: "set",
-        luau_type: "(input: string, value: number | boolean) -> ()",
-        doc: "Sets a number input of the Motion graph (true/false read as 1/0).",
+        luau_type: "(input: string, value: number | boolean | Vec2) -> ()",
+        doc: "Sets an input of the Motion graph: a number (true/false read as 1/0) or a pair `ph2d.vec2(x, y)`.",
     },
     ApiEntry {
         table: "motion",
@@ -461,8 +461,8 @@ pub const API: &[ApiEntry] = &[
     ApiEntry {
         table: "motion",
         ident: "get",
-        luau_type: "(input: string) -> (number | Color)?",
-        doc: "What the Motion graph reads for an input this tick: a number, a colour, or nil.",
+        luau_type: "(input: string) -> (number | Color | Vec2)?",
+        doc: "What the Motion graph reads for an input this tick: a number, a colour, a pair, or nil.",
     },
 ];
 

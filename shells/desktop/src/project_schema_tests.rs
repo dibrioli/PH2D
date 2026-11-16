@@ -385,7 +385,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`245` em 2026-11-15** (`line/GameEngineFuncional`, GEF 07 RS) — as melhorias do raio. A tripla NÃO vê.
         // ⚠️ **`246` em 2026-11-16** (`line/GameEngineFuncional`, GEF 08 onda 2) — o Motion Input lê de outro objeto. A tripla NÃO vê.
         // ⚠️ **`247` em 2026-11-16** (`line/GameEngineFuncional`, GEF 08 MI-10) — o Motion Input é filho. A tripla NÃO vê.
-        (247, 13, 29),
+        // ⚠️ **`248` em 2026-11-16** (`line/GameEngineFuncional`, GEF 08 MI-5) — Velocity e Move. A tripla NÃO vê.
+        (248, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -217,6 +217,8 @@ pub const INPUT_PREFIX: &str = "$input:";
 pub const INPUT_VALUE: &str = "v";
 /// A coluna da cor (`Vec4`, RGBA linear) de uma entrada publicada.
 pub const INPUT_COLOR: &str = "c";
+/// A coluna do par (`Vec2`) de uma entrada publicada — só quando um escritor manda um par (MI-5).
+pub const INPUT_XY: &str = "xy";
 /// A CONTAGEM de disparos de um gatilho — o que o escritor publica. A bomba deriva dela o pulso
 /// (`INPUT_VALUE = 1` no tique em que a conta mudou), tique a tique, para o pulso não depender de
 /// quantos tiques um quadro coze (doc 128 §3.2).

@@ -3,9 +3,10 @@
 //!
 //! ```lua
 //! motion.set("vida", 0.3)          -- um número (ou true/false)
+//! motion.set("andar", ph2d.vec2(1, 0)) -- um par (MI-5): o `xy` do nó, e o `out` é o tamanho
 //! motion.color("time", 1, 0.2, 0)  -- uma cor, RGBA linear (alpha 1 se faltar)
 //! motion.fire("dano")              -- um disparo de gatilho
-//! local v = motion.get("vida")     -- o que o grafo lê: número, cor ou nil (MI-9)
+//! local v = motion.get("vida")     -- o que o grafo lê: número, cor, par ou nil (MI-9)
 //! ```
 //!
 //! As escritas seguem a lei das do `ph2d.set`: ficam numa fila da VM, drenada no fim de CADA
@@ -22,6 +23,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone, Debug, PartialEq)]
 pub enum MotionWrite {
     Set(String, f32),
+    Vector(String, [f32; 2]),
     Color(String, [f32; 4]),
     Fire(String),
 }
@@ -93,9 +95,20 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
             Value::Boolean(b) => f32::from(u8::from(b)),
             Value::Integer(i) => numero("set", i as f64)?,
             Value::Number(x) => numero("set", x)?,
+            Value::Table(ref t) => {
+                if let Some(crate::props::ScriptValue::Vec2([x, y])) =
+                    crate::valores::tabela_tipada(t)
+                {
+                    let p = [numero("set", x)?, numero("set", y)?];
+                    return push(lua, MotionWrite::Vector(n, p));
+                }
+                return Err(mlua::Error::RuntimeError(format!(
+                    "motion.set: '{n}' got a table — a number, true/false or ph2d.vec2(x, y)"
+                )));
+            }
             other => {
                 return Err(mlua::Error::RuntimeError(format!(
-                    "motion.set: '{n}' got a {} — a number or true/false",
+                    "motion.set: '{n}' got a {} — a number, true/false or ph2d.vec2(x, y)",
                     other.type_name()
                 )));
             }
@@ -133,6 +146,10 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
                 let c = crate::props::ScriptValue::Color(c.map(f64::from));
                 Ok(crate::valores::tabela_de(lua, &c)?.unwrap_or(Value::Nil))
             }
+            Some(Valor::Vetor(p)) => {
+                let p = crate::props::ScriptValue::Vec2(p.map(f64::from));
+                Ok(crate::valores::tabela_de(lua, &p)?.unwrap_or(Value::Nil))
+            }
         }
     })?;
     let t = lua.create_table()?;
@@ -160,6 +177,7 @@ pub(crate) fn apply(world: &mut ph2d_ecs::World, writes: &[MotionWrite]) {
         match w {
             MotionWrite::Set(n, x) => m.set(n, Escritor::Script, Valor::Numero(*x)),
             MotionWrite::Color(n, c) => m.set(n, Escritor::Script, Valor::Cor(*c)),
+            MotionWrite::Vector(n, p) => m.set(n, Escritor::Script, Valor::Vetor(*p)),
             MotionWrite::Fire(n) => m.fire(n, Escritor::Script),
         }
     }

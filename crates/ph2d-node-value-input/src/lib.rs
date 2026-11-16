@@ -16,6 +16,8 @@
 //! | Trigger | `1` no tique do disparo, `0` nos outros | idem |
 //! | Color | a luminosidade OKLab (`L`) | a cor |
 //!
+//! E `xy` (`Vec2`), `x`, `y` (MI-5): o par publicado — com ele, `out` é o TAMANHO; sem ele, `(out, 0)`.
+//!
 //! E `pulse`: a coluna do `out` no tipo da família `pulse.*` — um Trigger liga direto ao
 //! `pulse.adsr` / `pulse.counter`.
 //!
@@ -36,13 +38,16 @@ use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUiHint, ParamWidget, Regi
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::external::{INPUT_COLOR, INPUT_VALUE, input_of};
+use ph2d_nodegraph::external::{INPUT_COLOR, INPUT_VALUE, INPUT_XY, input_of};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 /// O PULSO (o tipo da família `pulse.*`): um gatilho liga direto a um `pulse.adsr`/`counter`.
 const PULSE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Event);
+/// O PAR (MI-5): `xy` em `Vec2`, a coluna do `motion.grid`.
+const PAR: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+const PAR_COL: &str = "P";
 const VALUE_COL: &str = "v";
 const PULSE_COL: &str = "pulse";
 
@@ -91,6 +96,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         PortSpec {
             name: "pulse",
             ty: PULSE,
+        },
+        // MI-5, no FIM (as portas de antes não mudam de índice): o par e as metades dele.
+        PortSpec {
+            name: "xy",
+            ty: PAR,
+        },
+        PortSpec {
+            name: "x",
+            ty: VALUE,
+        },
+        PortSpec {
+            name: "y",
+            ty: VALUE,
         },
     ],
     // Pure: o memo guarda a revisão de cada external lido, então isto volta a cozer exactamente
@@ -175,6 +193,15 @@ pub fn ler(
     }
 }
 
+/// O par de cada linha: o publicado (`xy`), senão `(out, 0)` — um número é o `x`.
+#[must_use]
+pub fn par(publicado: Option<&Stream>, outs: &[f32]) -> Vec<[f32; 2]> {
+    match publicado.and_then(|s| s.get(INPUT_XY)) {
+        Some(Column::Vec2(p)) if p.len() == outs.len() => p.clone(),
+        _ => outs.iter().map(|&x| [x, 0.0]).collect(),
+    }
+}
+
 struct ValueInput;
 
 impl NodeOp for ValueInput {
@@ -206,6 +233,11 @@ impl NodeOp for ValueInput {
         // O pulso viaja na coluna da família `pulse.*`.
         let pulso = linhas.iter().map(|l| l.0).collect();
         ctx.emit(Stream::new(n).with(PULSE_COL, Column::Scalar(pulso)));
+        let outs: Vec<f32> = linhas.iter().map(|l| l.0).collect();
+        let pares = par(publicado, &outs);
+        ctx.emit(Stream::new(n).with(PAR_COL, Column::Vec2(pares.clone())));
+        ctx.emit(col(pares.iter().map(|p| p[0]).collect()));
+        ctx.emit(col(pares.iter().map(|p| p[1]).collect()));
     }
 }
 

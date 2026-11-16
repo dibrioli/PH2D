@@ -5,7 +5,7 @@
 //! tradução é da `ph2d-app-components`, com gate de ida-e-volta.
 
 /// Quantas fontes há — o comprimento de `MotionSource::ALL` (gate na `motion_input_inspector`).
-pub const MOTION_INPUT_SOURCES: usize = 8;
+pub const MOTION_INPUT_SOURCES: usize = 10;
 
 /// Índice da fonte `Value` (o número do campo).
 pub const SOURCE_VALUE: u8 = 0;
@@ -23,6 +23,10 @@ pub const SOURCE_GROUNDED: u8 = 5;
 pub const SOURCE_ACTION: u8 = 6;
 /// Índice da fonte `Property` (um campo numérico de um componente do objecto From).
 pub const SOURCE_PROPERTY: u8 = 7;
+/// Índice da fonte `Velocity` (o par da velocidade do corpo do objecto From).
+pub const SOURCE_VELOCITY: u8 = 8;
+/// Índice da fonte `Move` (o par das acções `move_*` do Input Map).
+pub const SOURCE_MOVE: u8 = 9;
 
 /// Uma edição da secção.
 #[derive(Clone, Debug, PartialEq)]
@@ -108,6 +112,8 @@ pub enum MotionInputAoVivo {
     Cor([f32; 4]),
     /// Quantas vezes disparou neste jogo (fonte `Damage`).
     Disparos(u64),
+    /// Um par `(x, y)` (Velocity, Move, Property de duas faixas).
+    Par([f32; 2]),
 }
 
 /// **Quem escreve este nome ANTES deste objecto** — o grafo lê a primeira linha, e o cartão diz

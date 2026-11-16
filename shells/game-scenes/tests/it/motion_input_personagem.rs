@@ -230,3 +230,33 @@ fn move_sends_the_2d_action_and_remap_keeps_its_direction() {
     quadro(&mut sim, &BTreeMap::new());
     assert_eq!(par(&sim, "andar"), None, "sem move_* a fonte não existe");
 }
+
+/// ⭐ MI-5 Property de campo com DUAS faixas manda o PAR (`Valor::Vetor`), nunca um número:
+/// `ScrollMotion/velocity = (3, −4)` do pai chega inteiro ao `value.input`.
+#[test]
+fn a_property_of_a_two_lane_field_sends_the_pair() {
+    let reg = crate::comp::registo();
+    let mut sim = SimWorld::default();
+    let velocity = [3.0, -4.0];
+    let pai = sim
+        .world_mut()
+        .spawn(ph2d_ecs::ScrollMotion { velocity })
+        .id();
+    let mi = MotionInput {
+        name: "par".into(),
+        source: MotionSource::Property,
+        property: "ph2d::ecs::ScrollMotion/velocity".into(),
+        ..MotionInput::default()
+    };
+    sim.world_mut().spawn((mi, ChildOf(pai)));
+    let accoes = BTreeMap::new();
+    let f = Fontes {
+        dt: 1.0 / 60.0,
+        physics: None,
+        accoes: &accoes,
+        registry: Some(&reg),
+    };
+    frame(&mut sim, &SignalOutbox::new(), &f);
+    assert_eq!(par(&sim, "par"), Some(velocity), "o par inteiro");
+    assert_eq!(numero(&sim, "par"), None, "um par não vira número");
+}

@@ -19,6 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.name_label" => "Name",
         "panel.inspector.motion_input.add_health" => "Add Health",
         "panel.inspector.motion_input.reads_health" => "Reads Health here: {v}",
+        "panel.inspector.motion_input.reads_property" => "Reads {c} here: {v}",
         "panel.inspector.motion_input.sends" => "Sends {v}",
         "panel.inspector.motion_input.a_color" => "this color",
         "panel.inspector.motion_input.fired" => "Fired {n} times",

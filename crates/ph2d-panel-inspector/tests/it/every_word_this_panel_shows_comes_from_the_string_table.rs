@@ -107,6 +107,8 @@ const NOT_LANGUAGE: &[(&str, &str, &str)] = &[
         MOLDE,
     ),
     ("ids/inspector_tag_opts.rs", "insp_phys_tag_opt_{n}", MOLDE),
+    ("ids/inspector_tag_opts.rs", "insp_mi_action_opt_{n}", MOLDE),
+    ("ids/inspector_tag_opts.rs", "insp_mi_property_opt_{n}", MOLDE),
 ];
 
 const MOLDE: &str = "o molde `format!` de um NodeId dentro do `hash_node_id_runtime`: o texto é \

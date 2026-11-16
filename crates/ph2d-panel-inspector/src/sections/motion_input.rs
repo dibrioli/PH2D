@@ -109,6 +109,15 @@ fn frases_ao_vivo(i: &InspectorMotionInputInfo) -> Vec<String> {
             "panel.inspector.motion_input.reads_health",
             &[("v", &numero(v))],
         )),
+        // Parada, a Property lê o campo no alvo (a mesma porta da ponte); o rótulo é o da lista.
+        (SOURCE_PROPERTY, Some(MotionInputAoVivo::Numero(v))) if !i.a_correr => {
+            if let Some((rotulo, _)) = i.campos_do_alvo.iter().find(|(_, k)| *k == i.property) {
+                f.push(tr_with(
+                    "panel.inspector.motion_input.reads_property",
+                    &[("c", rotulo), ("v", &numero(v))],
+                ));
+            }
+        }
         (SOURCE_DAMAGE, Some(MotionInputAoVivo::Disparos(0))) => {
             f.push(tr("panel.inspector.motion_input.not_fired").to_string());
         }

@@ -236,8 +236,7 @@ fn as_predefinicoes_da_curva_sao_o_que_dizem() {
     assert!(f[3][1] < 0.25 && f[3][2] > 0.75, "Smooth {f:?}");
 }
 
-/// ⭐ As fontes novas dizem «Sends …» em Play (o número que a ponte publicou); paradas, nenhuma frase —
-/// a Property incluída (a leitura parada só existe na vida).
+/// ⭐ As fontes novas dizem «Sends …» em Play (o número que a ponte publicou); paradas, nenhum «Sends».
 #[test]
 fn as_fontes_novas_dizem_o_que_mandam_em_play() {
     use super::a_seccao_motion_input_esta_viva::frases;
@@ -263,4 +262,36 @@ fn as_fontes_novas_dizem_o_que_mandam_em_play() {
         let f = frases(i);
         assert!(f.contains(&frase.to_string()), "fonte {source}: {f:?}");
     }
+}
+
+/// ⭐ Parada, a Property diz o que lê no alvo, com o rótulo do campo (o da lista) e duas casas; em Play
+/// a frase vira «Sends …». Campo que o alvo já não tem ⇒ nenhuma leitura (a queixa fala).
+///
+/// **Mutação que deve sangrar:** tirar o braço da Property, trocar o rótulo pela chave, ou o `!a_correr`.
+#[test]
+fn a_property_parada_diz_o_que_le_no_alvo() {
+    use super::a_seccao_motion_input_esta_viva::frases;
+    use ph2d_editor_core::motion_input_edits::MotionInputAoVivo as V;
+    let mut i = info(SOURCE_PROPERTY);
+    i.property = "ph2d::physics::Health/max".into();
+    i.campos_do_alvo = vec![
+        (
+            "Health \u{b7} Current".into(),
+            "ph2d::physics::Health/current".into(),
+        ),
+        ("Health \u{b7} Max".into(), i.property.clone()),
+    ];
+    i.ao_vivo = Some(V::Numero(100.0));
+    let parada = frases(i.clone());
+    assert!(
+        parada.contains(&"Reads Health \u{b7} Max here: 100.00".to_string()),
+        "{parada:?}"
+    );
+    i.a_correr = true;
+    let jogo = frases(i.clone());
+    assert!(!jogo.iter().any(|f| f.starts_with("Reads")), "{jogo:?}");
+    assert!(jogo.contains(&"Sends 100.00".to_string()), "{jogo:?}");
+    i.a_correr = false;
+    i.property = "ph2d::physics::Gone/x".into();
+    assert!(!frases(i).iter().any(|f| f.starts_with("Reads")));
 }

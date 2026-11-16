@@ -11616,6 +11616,7 @@ dependencies = [
  "ph2d-anim",
  "ph2d-ecs",
  "ph2d-node-pulse-signal",
+ "ph2d-node-send-signal",
  "ph2d-node-value-input",
  "ph2d-nodegraph",
  "ph2d-physics-ecs",

@@ -10,6 +10,8 @@ use ph2d_ui_state::StateSets;
 
 /// O tipo do nó do Motion que grita um nome (`ph2d-node-pulse-signal`).
 pub const PULSE_SIGNAL: &str = "pulse.signal";
+/// O tipo do nó do Motion que grita ao cruzar um nível (`ph2d-node-send-signal`).
+pub const SEND_SIGNAL: &str = "value.send_signal";
 /// O tipo do nó do Motion que lê a entrada publicada (`ph2d-node-value-input`).
 pub const VALUE_INPUT: &str = "value.input";
 /// O text param com o nome, nos dois nós.
@@ -83,6 +85,21 @@ pub static FORA: &[Origem] = &[
         read: |f, put| {
             if let Some(g) = f.motion {
                 nomes_de_nos(g, PULSE_SIGNAL, &mut |n| {
+                    if !n.trim().is_empty() {
+                        put(n);
+                    }
+                });
+            }
+        },
+    },
+    // O Send signal publica pelo mesmo `collect_signals`, com o mesmo text param.
+    Origem {
+        doc: "MotionGraph",
+        field: "value.send_signal.name",
+        role: Role::Emit,
+        read: |f, put| {
+            if let Some(g) = f.motion {
+                nomes_de_nos(g, SEND_SIGNAL, &mut |n| {
                     if !n.trim().is_empty() {
                         put(n);
                     }

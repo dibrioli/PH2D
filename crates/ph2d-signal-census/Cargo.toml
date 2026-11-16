@@ -29,4 +29,5 @@ workspace = true
 ph2d-script-doc = { path = "../ph2d-script-doc" }
 ph2d-node-pulse-signal = { path = "../ph2d-node-pulse-signal" }
 ph2d-node-value-input = { path = "../ph2d-node-value-input" }
+ph2d-node-send-signal = { path = "../ph2d-node-send-signal" }
 ph2d-anim = { path = "../ph2d-anim" }

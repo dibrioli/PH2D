@@ -41,6 +41,8 @@ fn estados(sinal: &str) -> StateSets {
 fn as_constantes_sao_as_dos_nos() {
     assert_eq!(fora::NAME_KEY, ph2d_node_pulse_signal::NAME_KEY);
     assert_eq!(fora::NAME_KEY, ph2d_node_value_input::NAME_KEY);
+    assert_eq!(fora::NAME_KEY, ph2d_node_send_signal::NAME_KEY);
+    assert_eq!(fora::SEND_SIGNAL, ph2d_node_send_signal::MANIFEST.name);
 }
 
 #[test]
@@ -48,6 +50,10 @@ fn cada_origem_de_fora_e_contada_no_papel_dela() {
     let g = grafo(&[
         (fora::PULSE_SIGNAL, &n("MotionGraph", "pulse.signal.name")),
         (fora::VALUE_INPUT, &n("MotionGraph", "value.input.name")),
+        (
+            fora::SEND_SIGNAL,
+            &n("MotionGraph", "value.send_signal.name"),
+        ),
         // Controlo negativo: um nó de outro tipo com `name` não conta.
         ("motion.output", "nao_e_sinal"),
     ]);
@@ -63,7 +69,7 @@ fn cada_origem_de_fora_e_contada_no_papel_dela() {
     let c = census(&World::new(), &f);
     // Controlo positivo: um nome por linha, nem mais nem menos.
     assert_eq!(c.names.len(), FORA.len(), "nomes: {:?}", c.names.keys());
-    assert_eq!(FORA.len(), 5);
+    assert_eq!(FORA.len(), 6);
     for o in FORA {
         let e = c.ends(&n(o.doc, o.field));
         let want = match o.role {

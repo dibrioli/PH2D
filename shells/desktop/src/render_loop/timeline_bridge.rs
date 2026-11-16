@@ -60,7 +60,7 @@ impl SignalEmitter {
     fn emit(&mut self, doc: &ph2d_timeline::TimelineDoc, playhead: &Playhead, jumped: bool) {
         self.out.clear();
         let now = playhead.time();
-        if super::clock_forward::clock_is_playing_forward(playhead, jumped) {
+        if playhead.crosses_forward(jumped) {
             for name in ph2d_timeline::signals_crossed(
                 doc.markers(),
                 self.last_time,

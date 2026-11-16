@@ -4,7 +4,7 @@
 //!
 //! O que os gates de unidade ao lado já provam, e portanto o que este NÃO repete: *o que* uma
 //! tomada lê e que **as duas rotas de cook gritam o mesmo** (`signals::tests`, que dirigem as
-//! duas portas de marcha da bomba) e *qual* é a pergunta do relógio (`clock_forward::tests`).
+//! duas portas de marcha da bomba) e *qual* é a pergunta do relógio (`ph2d_core::Playhead::crosses_forward`).
 //! O que sobra é **onde** a pergunta é feita e **quando** a leitura acontece — duas propriedades
 //! de POSIÇÃO, e posição é o que um teste de unidade não vê.
 //!
@@ -61,7 +61,7 @@ fn os_dois_emissores_perguntam_a_mesma_lei() {
     let (r#loop, _, timeline) = sources();
     for (quem, src) in [("motion", r#loop), ("timeline", timeline)] {
         assert!(
-            src.contains("clock_forward::clock_is_playing_forward("),
+            src.contains(".crosses_forward("),
             "o emissor de {quem} tem de perguntar a lei ÚNICA, não re-escrever a condição"
         );
     }
@@ -118,7 +118,7 @@ fn a_leitura_acontece_depois_de_qualquer_rota_e_antes_do_dreno() {
 fn a_publicacao_e_gateada_pela_lei() {
     let (r#loop, _, _) = sources();
     let lei = r#loop
-        .find("if clock_forward::clock_is_playing_forward(")
+        .find("if self.playhead.crosses_forward(")
         .expect("a lei é perguntada antes de ler o livro-razão");
     let leitura = r#loop
         .find("motion_bridge::signals::collect_signals(motion)")

@@ -12,7 +12,7 @@
 //!
 //! ⚠️ **O que NÃO cabe aqui é a LEI do relógio** (*só publica tocando para a frente*): ela mora
 //! no `dispatch`, que exige o `HeroScreen` vivo. Quem a afirma é o par
-//! `clock_forward::tests` (a pergunta) + o arch-gate `the_graph_only_shouts_while_the_clock_plays_forward`
+//! `Playhead::crosses_forward` (a pergunta) + o arch-gate `the_graph_only_shouts_while_the_clock_plays_forward`
 //! (o lugar onde ela é feita).
 
 use super::{collect_signals, signal_nodes};

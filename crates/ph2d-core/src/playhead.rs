@@ -273,6 +273,15 @@ impl Playhead {
         dir > 0.0
     }
 
+    /// ⭐ **«O relógio está TOCANDO para a frente?»** — a lei única dos dois emissores (os markers
+    /// da Timeline e o `Send signal` do Motion): um scrub, uma marcha ré e uma pausa não disparam.
+    /// `jumped` separa tocar de saltar: um seek para a frente com o play ligado é uma
+    /// descontinuidade, não uma travessia (ADR-0143 §3).
+    #[must_use]
+    pub fn crosses_forward(&self, jumped: bool) -> bool {
+        !jumped && self.is_advancing_forward()
+    }
+
     /// The playback-speed multiplier.
     #[must_use]
     pub fn rate(&self) -> f64 {
@@ -490,5 +499,20 @@ mod ping_pong_tests {
             vec![0.25, 0.5, 0.75],
             "nothing to bounce off"
         );
+    }
+
+    /// ⭐ `crosses_forward`: só tocar para a frente dispara; parado, marcha ré e um salto no play
+    /// não (movido de `shells/desktop/src/render_loop/clock_forward.rs`).
+    #[test]
+    fn crosses_forward_only_while_playing_forward_without_a_jump() {
+        let mut p = Playhead::new(1.0 / 60.0);
+        p.play();
+        assert!(p.crosses_forward(false), "tocando para a frente");
+        assert!(!p.crosses_forward(true), "um salto para a frente no play");
+        p.set_rate(-1.0);
+        assert!(!p.crosses_forward(false), "marcha ré");
+        p.set_rate(1.0);
+        p.pause();
+        assert!(!p.crosses_forward(false), "parado");
     }
 }

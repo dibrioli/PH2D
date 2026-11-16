@@ -7860,6 +7860,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-gpu",
+ "ph2d-gpu-cook",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-input",

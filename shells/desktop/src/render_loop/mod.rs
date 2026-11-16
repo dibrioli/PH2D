@@ -54,7 +54,6 @@ mod inspector_strategy;
 // cujos colliders discordam dos que o botão *Add Body* produz. Mesmo alcance do
 // `inspector_joint` logo acima, pelo mesmo motivo.
 /// A lei do relógio, perguntada pelos DOIS emissores de sinal — ver o módulo.
-mod clock_forward;
 /// ⭐ **A sonda de PRESENÇA** das seções do Inspector — a lei da F3 é uma varredura só, e ela
 /// precisa de perguntar aos oito builders pela mesma porta. Ver [`crate::inspector_presence_tests`].
 #[cfg(test)]

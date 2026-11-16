@@ -74,28 +74,67 @@ fn grafo(motion: &mut MotionState) -> NodeId {
     s
 }
 
-/// `segundos` de jogo pela rota de CPU; `toca = false` é o relógio parado (o shell não chama
-/// `collect_signals`). Devolve o que a outbox recebeu.
-fn corre(segundos: f64, toca: bool) -> Vec<Signal> {
+/// Por qual porta a bomba marcha (as duas do `dispatch`): a da CPU (sinks) ou a HÍBRIDA (o prefixo
+/// de CPU até às fronteiras do plano da placa).
+#[derive(Clone, Copy)]
+enum Rota {
+    Cpu,
+    Hibrida,
+}
+
+/// O relógio do quadro, pela lei REAL (`Playhead::crosses_forward`, a pergunta do shell antes de
+/// `collect_signals`).
+#[derive(Clone, Copy)]
+enum Relogio {
+    Toca,
+    Parado,
+    Salta,
+}
+
+/// `segundos` de jogo pela `rota`, com a lei do `relogio`. Devolve o que a outbox recebeu.
+fn corre(segundos: f64, rota: Rota, relogio: Relogio) -> Vec<Signal> {
     let mut motion = MotionState::new();
     grafo(&mut motion);
     motion.signal_taps = signal_nodes(&motion.doc.graph);
     motion.pump.set_taps(&motion.signal_taps);
     motion.pump.clear_tap_fires();
+    let plano = ph2d_gpu_cook::plan(
+        &motion.doc.graph,
+        &motion.registry,
+        &motion.registry,
+        motion.sinks[0],
+    );
+    let fronteiras: Vec<NodeId> = plano.boundaries.iter().map(|(n, _)| *n).collect();
+    let mut playhead = ph2d_core::Playhead::new(1.0 / FPS);
+    match relogio {
+        Relogio::Parado => playhead.pause(),
+        Relogio::Toca | Relogio::Salta => playhead.play(),
+    }
     let scopes = TimeScopes::new();
     let mut outbox = SignalOutbox::new();
     for tick in 0..=((segundos * FPS) as u64) {
-        motion.pump.advance_or_scrub_scoped(
-            &motion.doc.graph,
-            &motion.registry,
-            &motion.sinks,
-            tick,
-            |t| t as f64 / FPS,
-            motion.default_uv_rect,
-            motion.default_size,
-            &scopes,
-        );
-        if toca {
+        let (g, r) = (&motion.doc.graph, &motion.registry);
+        match rota {
+            Rota::Cpu => motion.pump.advance_or_scrub_scoped(
+                g,
+                r,
+                &motion.sinks,
+                tick,
+                |t| t as f64 / FPS,
+                motion.default_uv_rect,
+                motion.default_size,
+                &scopes,
+            ),
+            Rota::Hibrida => motion.pump.advance_or_scrub_to_nodes_scoped(
+                g,
+                r,
+                &fronteiras,
+                tick,
+                |t| t as f64 / FPS,
+                &scopes,
+            ),
+        };
+        if playhead.crosses_forward(matches!(relogio, Relogio::Salta)) {
             collect_signals(&mut motion);
         }
         motion.pump.clear_tap_fires();
@@ -109,15 +148,26 @@ fn corre(segundos: f64, toca: bool) -> Vec<Signal> {
     outbox.read(&mut leitor).cloned().collect()
 }
 
+/// ⭐ Uma queda abaixo do nível = UM sinal, «caiu», com o objecto Motion como origem — pelas DUAS
+/// portas de marcha; relógio parado e salto no play (a lei real) = nada.
 #[test]
 fn send_signal_falls_below_once_and_speaks_for_the_motion_object() {
-    let sinais = corre(2.0, true);
-    assert_eq!(sinais.len(), 1, "uma queda = um sinal: {sinais:?}");
-    assert_eq!(&*sinais[0].name, "caiu");
-    assert_eq!(
-        sinais[0].origin.quem(),
-        Some(EntityBits(BITS)),
-        "a origem é o objecto Motion"
-    );
-    assert!(corre(2.0, false).is_empty(), "relógio parado: nada");
+    for rota in [Rota::Cpu, Rota::Hibrida] {
+        let sinais = corre(2.0, rota, Relogio::Toca);
+        assert_eq!(sinais.len(), 1, "uma queda = um sinal: {sinais:?}");
+        assert_eq!(&*sinais[0].name, "caiu");
+        assert_eq!(
+            sinais[0].origin.quem(),
+            Some(EntityBits(BITS)),
+            "a origem é o objecto Motion"
+        );
+        assert!(
+            corre(2.0, rota, Relogio::Parado).is_empty(),
+            "relógio parado: nada"
+        );
+        assert!(
+            corre(2.0, rota, Relogio::Salta).is_empty(),
+            "um salto no play: nada"
+        );
+    }
 }

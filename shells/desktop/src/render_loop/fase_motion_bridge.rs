@@ -108,7 +108,7 @@ impl crate::App {
         // ⚠️ **A LEI mora aqui junto com a leitura**, pelo mesmo motivo: perguntá-la
         // dentro do dispatch obrigaria cada rota a lembrar-se dela. Um scrub re-cozinha o
         // grafo e não pode gritar — um sinal é travessia de play para a frente.
-        if clock_forward::clock_is_playing_forward(&self.playhead, self.timeline_signals.jumped) {
+        if self.playhead.crosses_forward(self.timeline_signals.jumped) {
             ph2d_app_motion::motion_bridge::signals::collect_signals(motion);
         }
         for sig in motion.signals_out.drain(..) {

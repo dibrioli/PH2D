@@ -27,6 +27,7 @@ ph2d-app-game = { path = "../../crates/ph2d-app-game" }
 ph2d-app-motion = { path = "../../crates/ph2d-app-motion" }
 ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
 ph2d-node-send-signal = { path = "../../crates/ph2d-node-send-signal" }
+ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 # O filtro de `ph2d.raycast` pela porta do script (`jogo_ray_melhorias`): um mapa de nomes.
 serde_json = "1"
 ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }

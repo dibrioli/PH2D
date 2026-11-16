@@ -2,7 +2,7 @@
 
 - Worktree `Worktrees/line-TimelinePrincipal` · branch `line/TimelinePrincipal` · merge-base = `main` = `dc3d4f9fb8` (o rebase foi
   no-op: o `main` não andou). Sem push, nada integrado por esta linha.
-- **10 commits** `38e92274e8..c24de103fb` (`git log --oneline --reverse dc3d4f9fb8..HEAD`). O [handoff anterior](HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-15_RETIME_POR_TRECHO.md)
+- **12 commits** `38e92274e8..` HEAD (10 de código/fotos até `c24de103fb` + este handoff e o §5 do CLAUDE.md, `0634a7c212`) (`git log --oneline --reverse dc3d4f9fb8..HEAD`). O [handoff anterior](HANDOFF_INTEGRACAO_line_TimelinePrincipal_2026-11-15_RETIME_POR_TRECHO.md)
   (23 commits até `ae78635856`/`87bbadf620`) JÁ está no `main` (cadeia `dc3d4f9fb8`); este cobre só o que veio depois.
 - Mecanismo e pesquisa da barra: [`20_barra_do_tempo.md`](../20_barra_do_tempo.md).
 - **Smoke do dono 16/11: OK de tudo** — pontos/undo/conversão (até `169fab7570`), barra, pontas escuras.
@@ -27,6 +27,7 @@
    regrava a chave, −300 → −150, fica após ±1 quadro; Auto Key na sessão: arrastar regrava, «+» grava no Clip 2 sem Done).
    Nota do roteiro: xdotool `--window` é sintético e o app ignora; XTEST + `windowfocus` chega; `type` não entra no campo, `key` sim.
    Fotos `../fotos/teclado_{1,2,3}_*.png`, `barra_sequencia.png` (+ b0..b5), roteiro `fotos_barra_do_tempo.sh`.
+7. `c0131f4994` + `0634a7c212`: este handoff; §5 do CLAUDE.md no tecto (14008 → 13990 B; gates `architecture_claude_md_cabe_no_orcamento`, `architecture_docs_*` ✓ 9).
 6. `c24de103fb` fecho: clippy assign-op no seam, tecto 600 do `stack_lane_paint_tests.rs` (cortado o doc), `LITERAL-PX-OK` no terço da barra.
 
 ## Formato, contratos, superfície de colisão

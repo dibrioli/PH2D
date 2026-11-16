@@ -189,6 +189,29 @@ pub fn paint_field(
         };
         (owned.as_str(), cor)
     };
+    let tinta = if mudado {
+        key_mark::cor_mudado(ink.theme)
+    } else {
+        ink.color(cor)
+    };
+    let edit = focused.then_some((caret, anchor));
+    paint_field_value(scene, text_system, ink, rect, area, texto, tinta, edit);
+}
+
+/// ⭐ **O valor de uma caixa do campo Figma**: o texto em `area` (recortado à caixa `rect`) e, a
+/// escrever (`edit` = `(caret, âncora)`), a selecção e o caret — o desenho do [`paint_field`], pela
+/// mesma porta para quem pinta a caixa à sua maneira (a aba Joint Editor, smoke 16/11).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_field_value(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    ink: CardInk,
+    rect: Rect,
+    area: Rect,
+    texto: &str,
+    tinta: ph2d_vector::Color,
+    edit: Option<(usize, Option<usize>)>,
+) {
     let y = area.y + crate::paint::folga_do_texto(area.h, m::VALUE_PX);
     let clip = ph2d_vector::Rect::new(
         f64::from(area.x),
@@ -197,7 +220,7 @@ pub fn paint_field(
         f64::from(rect.y + rect.h),
     );
     scene.push_clip(&clip);
-    if focused && let Some(a) = anchor.filter(|a| *a != caret) {
+    if let Some((caret, Some(a))) = edit.filter(|(c, a)| a.is_some_and(|a| a != *c)) {
         let (s, e) = (a.min(caret).min(texto.len()), a.max(caret).min(texto.len()));
         let x0 = area.x + text_system.prefix_width(&texto[..s], m::VALUE_PX);
         let w = text_system.prefix_width(&texto[s..e], m::VALUE_PX);
@@ -212,13 +235,9 @@ pub fn paint_field(
         y,
         m::VALUE_PX,
         area.w,
-        if mudado {
-            key_mark::cor_mudado(ink.theme)
-        } else {
-            ink.color(cor)
-        },
+        tinta,
     );
-    if focused {
+    if let Some((caret, _)) = edit {
         let c = caret.min(texto.len());
         let x = area.x + text_system.prefix_width(&texto[..c], m::VALUE_PX);
         paint_field_caret(scene, ink, x, y, m::VALUE_PX);

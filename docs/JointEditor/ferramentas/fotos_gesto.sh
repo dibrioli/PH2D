@@ -4,7 +4,7 @@
 # a 123, e um roteiro de ações do `xdotool` com fotos A MEIO (botão ainda premido, número a ser escrito).
 # Uso (da raiz da worktree, `target/smoke` feito):
 #   CENA=1 bash docs/JointEditor/ferramentas/fotos_gesto.sh <pasta_saida> "<ações>" [espera_s]
-# Ações separadas por `;`: `move X Y` · `down` · `up` · `type TEXTO` · `key TECLA` · `foto NOME` (NOME.png).
+# Ações separadas por `;`: `move X Y` · `down` · `up` · `dclick` (duplo clique) · `type TEXTO` · `key TECLA` · `foto NOME` (NOME.png).
 set -uo pipefail
 OUT=${1:?pasta}
 ACOES=${2:?ações}
@@ -37,6 +37,7 @@ for P in "${PASSOS[@]}"; do
           xdotool mousemove $ARG; sleep 0.3 ;;
     down) xdotool mousedown 1; sleep 0.3 ;;
     up) xdotool mouseup 1; sleep 0.6 ;;
+    dclick) xdotool click --repeat 2 --delay 80 1; sleep 0.6 ;;
     type) xdotool type --delay 120 -- "$ARG"; sleep 0.6 ;;
     key) xdotool key "$ARG"; sleep 0.6 ;;
     foto) sleep 0.4; import -window root -crop 1930x1040+0+0 +repage "$OUT/$ARG.png" && echo "foto: $OUT/$ARG.png" ;;

@@ -11,6 +11,7 @@ mod grab;
 mod input;
 pub mod model;
 pub mod stage;
+mod typing;
 
 pub use doc::{Edit, Focus, Hit, JointEditorDoc};
 

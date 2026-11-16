@@ -8338,7 +8338,9 @@ dependencies = [
 name = "ph2d-joint-editor-doc"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "libm",
+ "ph2d-a11y",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
@@ -8346,6 +8348,7 @@ dependencies = [
  "ph2d-joint-assembly",
  "ph2d-joint-templates",
  "ph2d-physics-ecs",
+ "ph2d-text",
  "ph2d-tokens",
 ]
 

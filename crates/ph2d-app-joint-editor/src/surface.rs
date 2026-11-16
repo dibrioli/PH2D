@@ -99,23 +99,26 @@ impl DocumentSurface for JointEditorTab {
         y: f32,
     ) -> bool {
         self.doc.mods = input.mods;
+        self.doc.now_ns = input.now_ns;
+        let ts = Some(input.text);
         match (kind, button) {
             (PointerKind::Down, PointerButton::Primary) => {
-                self.claim = self.doc.press(x, y);
+                self.claim = self.doc.press(x, y, ts);
                 self.claim
             }
             (PointerKind::Up, _) => {
                 let was = std::mem::take(&mut self.claim);
-                self.doc.release(x, y) || was
+                self.doc.release(x, y, ts) || was
             }
-            (PointerKind::Move, _) => self.doc.motion(x, y),
+            (PointerKind::Move, _) => self.doc.motion(x, y, ts),
             _ => false,
         }
     }
 
     fn pointer_move(&mut self, _id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
         self.doc.mods = input.mods;
-        self.doc.motion(x, y) && (self.claim || self.doc.area.contains(x, y))
+        self.doc.now_ns = input.now_ns;
+        self.doc.motion(x, y, Some(input.text)) && (self.claim || self.doc.area.contains(x, y))
     }
 
     fn pointer_look(&self, _id: u64, x: f32, y: f32) -> Option<PointerLook> {
@@ -201,9 +204,10 @@ impl DocumentSurface for JointEditorTab {
     }
 
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
+        let consumed = self.doc.key(&input);
         KeyOutcome {
-            consumed: self.doc.key(input.key, input.pressed, input.text),
-            copy: None,
+            consumed,
+            copy: self.doc.take_copy(),
         }
     }
 

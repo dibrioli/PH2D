@@ -200,3 +200,150 @@ fn a_espiral_do_motor_passa_da_meia_volta() {
         libm::hypotf(ex - cx, ey - cy)
     );
 }
+
+impl Mesa {
+    /// Um evento do rato no instante `now_ns` (o duplo clique do motor mede o relógio).
+    fn ptr_at(&mut self, kind: PointerKind, x: f32, y: f32, now_ns: u128) {
+        let ts = &mut self.ts;
+        if let Some((f, id)) = self.hero.documents.active_surface_mut() {
+            let input = PointerInput {
+                text: ts,
+                mods: Modifiers::default(),
+                now_ns,
+                primary_held: kind != PointerKind::Up,
+            };
+            f.pointer(id, input, kind, PointerButton::Primary, x, y);
+        }
+        self.frame();
+    }
+
+    /// Um clique no corpo da caixa `f` (à direita do meio, longe da letra) no instante `now_ns`.
+    fn clique_na_caixa(&mut self, f: Field, now_ns: u128) {
+        let r = self.rect(&Hit::Field(f));
+        let (x, y) = (r.x + r.w * 0.75, r.y + r.h * 0.5);
+        self.ptr_at(PointerKind::Down, x, y, now_ns);
+        self.ptr_at(PointerKind::Up, x, y, now_ns);
+    }
+
+    /// O carro com «Breaks On» ligado: a caixa «Break force» à vista. Devolve o número que ela mostra.
+    fn com_a_forca_de_quebra() -> (Self, String) {
+        let mut m = Self::carro();
+        if m.tab()
+            .doc
+            .hits_for(&Hit::Field(Field::BreakForce))
+            .is_none()
+        {
+            m.click(&Hit::Flag(ph2d_app_joint_editor::doc::Flag::Breakable));
+        }
+        let v = m.painted("Break force");
+        (m, v)
+    }
+
+    /// `(texto, caret, âncora)` da caixa a ser escrita.
+    fn escrita(&self, f: Field) -> (String, usize, Option<usize>) {
+        let (t, c, a) = self.tab().doc.editing(f).expect("a caixa a ser escrita");
+        (t.to_owned(), c, a)
+    }
+}
+
+const SEG: u128 = 1_000_000_000;
+
+/// **D.** O 1.º clique seleciona o número todo (como no Inspector): o que se escreve SUBSTITUI, e o Enter
+/// grava 500 — não «100500».
+/// **Mutações que sangram:** o Down sem `focus_number_field`/`init_number_buffer` · a caixa a nascer vazia.
+#[test]
+fn o_primeiro_clique_seleciona_tudo_e_o_que_se_escreve_substitui() {
+    let (mut m, antes) = Mesa::com_a_forca_de_quebra();
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    let (t, c, a) = m.escrita(Field::BreakForce);
+    assert_eq!(t, antes, "a caixa mostra o número que estava");
+    assert_eq!((a, c), (Some(0), t.len()), "o texto todo selecionado");
+    m.escreve("500");
+    assert_eq!(m.painted("Break force"), "500");
+    m.tecla(BoardKey::Enter, None);
+    assert!(m.tab().doc.typing.is_none(), "o Enter fecha a escrita");
+    assert!(
+        (m.joints()[0].break_force - 500.0).abs() < 1e-3,
+        "{}",
+        m.joints()[0].break_force
+    );
+    assert_eq!(m.painted("Break force"), "500");
+}
+
+/// **E.** Com a seleção desfeita (seta à direita), o Backspace apaga o número que se VÊ, carácter a carácter.
+/// **Mutações que sangram:** Backspace num buffer à parte que nasce vazio · a seta sem colapsar a seleção.
+#[test]
+fn o_backspace_apaga_o_numero_que_se_ve() {
+    let (mut m, antes) = Mesa::com_a_forca_de_quebra();
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    m.tecla(BoardKey::Right, None);
+    assert_eq!(
+        m.escrita(Field::BreakForce).2,
+        None,
+        "a seta desfaz a seleção"
+    );
+    for _ in 0..antes.len() {
+        m.tecla(BoardKey::Backspace, None);
+    }
+    assert_eq!(m.painted("Break force"), "", "o número todo apagado");
+    m.escreve("7");
+    m.tecla(BoardKey::Enter, None);
+    assert!((m.joints()[0].break_force - 7.0).abs() < 1e-3);
+    assert_eq!(m.painted("Break force"), "7");
+}
+
+/// **F.** Na caixa a ser escrita, um clique põe o caret (desfaz a seleção) e o duplo clique seleciona
+/// tudo; o que se escreve a seguir substitui.
+/// **Mutações que sangram:** o Down da caixa fora do `dispatch_pointer_with_text` · o relógio do rato
+/// fora do evento (`now_ns`).
+#[test]
+fn o_duplo_clique_na_caixa_seleciona_tudo() {
+    let (mut m, _) = Mesa::com_a_forca_de_quebra();
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    m.clique_na_caixa(Field::BreakForce, 3 * SEG);
+    let (_, c, a) = m.escrita(Field::BreakForce);
+    assert!(
+        a.is_none_or(|a| a == c),
+        "o 2.º clique põe o caret: {a:?} {c}"
+    );
+    m.clique_na_caixa(Field::BreakForce, 5 * SEG);
+    m.clique_na_caixa(Field::BreakForce, 5 * SEG + SEG / 10);
+    let (t, c, a) = m.escrita(Field::BreakForce);
+    assert_eq!((a, c), (Some(0), t.len()), "o duplo clique seleciona tudo");
+    m.escreve("42");
+    m.tecla(BoardKey::Enter, None);
+    assert!((m.joints()[0].break_force - 42.0).abs() < 1e-3);
+}
+
+/// **G.** O Esc devolve o número de antes e não grava nada.
+/// **Mutações que sangram:** o Esc a gravar o que se escrevia · o Esc sem fechar a escrita.
+#[test]
+fn o_esc_repoe_o_numero_de_antes() {
+    let (mut m, antes) = Mesa::com_a_forca_de_quebra();
+    let gravado = m.joints()[0].break_force;
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    m.escreve("999");
+    assert_eq!(m.painted("Break force"), "999");
+    m.tecla(BoardKey::Escape, None);
+    assert!(m.tab().doc.typing.is_none(), "o Esc fecha a escrita");
+    assert_eq!(m.painted("Break force"), antes);
+    assert_eq!(m.joints()[0].break_force, gravado);
+}
+
+/// **H.** A seta ↑ na caixa a ser escrita anda um passo do campo e grava, como no Inspector (100 → 101).
+/// **Mutações que sangram:** ↑/↓ fora do `dispatch_key` · o campo sem o passo (`CardFieldSpec.step`).
+#[test]
+fn a_seta_para_cima_anda_um_passo_e_grava() {
+    let (mut m, antes) = Mesa::com_a_forca_de_quebra();
+    let v0: f32 = antes.parse().expect("um número");
+    m.clique_na_caixa(Field::BreakForce, SEG);
+    m.tecla(BoardKey::Up, None);
+    let v = m.joints()[0].break_force;
+    assert!(
+        (v - (v0 + 1.0)).abs() < 1e-3,
+        "↑ grava um passo: {v0} → {v}"
+    );
+    assert_eq!(m.painted("Break force"), format!("{}", v0 + 1.0));
+    m.tecla(BoardKey::Down, None);
+    assert!((m.joints()[0].break_force - v0).abs() < 1e-3, "↓ volta");
+}

@@ -1,17 +1,18 @@
 //! **O rato, o teclado e a queda** sobre a aba. O premido é nativo (o Down captura, o Up DENTRO dispara);
 //! uma alça e um número começam no Down; uma queda diz o que vai acontecer ANTES de soltar.
 
-use ph2d_editor_core::doc_surface::Key;
+use ph2d_editor_core::doc_surface::{Key, KeyInput};
+use ph2d_host::PointerKind;
+use ph2d_text::TextSystem;
 
 use ph2d_editor_core::interaction::field_scrub::FieldScrub;
 
-use crate::doc::{Drag, DragBy, Dropping, Edit, Field, Hit, JointEditorDoc};
-use crate::format;
+use crate::doc::{Drag, DragBy, Dropping, Edit, Hit, JointEditorDoc};
 use crate::stage::role_at;
 
 impl JointEditorDoc {
-    /// O Down. `true` = era da aba.
-    pub fn press(&mut self, x: f32, y: f32) -> bool {
+    /// O Down. `true` = era da aba. `ts` mede o clique no texto da caixa (o caret).
+    pub fn press(&mut self, x: f32, y: f32, ts: Option<&mut TextSystem>) -> bool {
         if !self.area.contains(x, y) {
             self.finish_typing();
             return false;
@@ -21,8 +22,7 @@ impl JointEditorDoc {
             self.finish_typing();
             return true;
         }
-        if !matches!(hit, Some(Hit::Field(f)) if self.typing.as_ref().is_some_and(|(t, _)| *t == f))
-        {
+        if !matches!(hit, Some(Hit::Field(f)) if self.typing == Some(f)) {
             self.finish_typing();
         }
         match hit {
@@ -40,19 +40,16 @@ impl JointEditorDoc {
                     by,
                 });
             }
-            Some(Hit::Field(f) | Hit::Scrub(f)) if self.menu.is_none() => {
-                if self.typing.is_none() {
-                    self.typing = Some((f, String::new()));
-                }
-            }
+            Some(Hit::Field(f)) if self.menu.is_none() => self.press_box(f, x, y, ts),
+            Some(Hit::Scrub(f)) if self.menu.is_none() => self.start_typing(f),
             other => self.pressed = other,
         }
         true
     }
 
     /// O movimento. `true` = a pintura mudou.
-    pub fn motion(&mut self, x: f32, y: f32) -> bool {
-        if self.grab_move(x, y) {
+    pub fn motion(&mut self, x: f32, y: f32, ts: Option<&mut TextSystem>) -> bool {
+        if self.pointer_box(PointerKind::Move, x, y, ts) || self.grab_move(x, y) {
             return true;
         }
         let before = (self.hover.clone(), self.drag);
@@ -79,14 +76,14 @@ impl JointEditorDoc {
     }
 
     /// O Up: a alça presa escreve; o controlo premido dispara só se o Up for DENTRO dele.
-    pub fn release(&mut self, x: f32, y: f32) -> bool {
-        if self.grab.take().is_some() {
+    pub fn release(&mut self, x: f32, y: f32, ts: Option<&mut TextSystem>) -> bool {
+        if self.pointer_box(PointerKind::Up, x, y, ts) || self.grab.take().is_some() {
             return true;
         }
         if let Some(d) = self.drag.take() {
             match d.by {
                 // Abaixo do limiar a letra foi um clique: abre a escrita, como no Inspector.
-                DragBy::Scrub(s) if !s.moved() => self.typing = Some((d.field, String::new())),
+                DragBy::Scrub(s) if !s.moved() => self.start_typing(d.field),
                 _ => self.commit(d.field, d.value),
             }
             return true;
@@ -167,50 +164,18 @@ impl JointEditorDoc {
         }
     }
 
-    /// Escreve o número que se estava a escrever (vazio = nada muda).
-    pub fn finish_typing(&mut self) {
-        if let Some((f, s)) = self.typing.take()
-            && let Ok(v) = s.trim().replace(',', ".").parse::<f32>()
-        {
-            self.commit(f, v);
-        }
-    }
-
     /// Uma tecla. `true` = tomada.
-    pub fn key(&mut self, key: Key, pressed: bool, text: Option<&str>) -> bool {
-        if !pressed {
-            return self.typing.is_some();
-        }
-        if let Some((_, buf)) = self.typing.as_mut() {
-            if matches!(key, Key::Enter | Key::Tab) {
-                self.finish_typing();
-            } else if key == Key::Escape {
-                self.typing = None;
-            } else if key == Key::Backspace {
-                buf.pop();
-            } else if let Some(t) = text {
-                t.chars().for_each(|c| _ = self.type_char(c));
-            }
+    pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
+        if self.key_box(input) {
             return true;
         }
-        if key == Key::Escape && (self.menu.is_some() || self.drag.is_some()) {
+        if input.pressed && input.key == Key::Escape && (self.menu.is_some() || self.drag.is_some())
+        {
             self.menu = None;
             self.drag = None;
             return true;
         }
         false
-    }
-
-    /// Um carácter escrito, pela tecla ou pelo `Commit` do IME (a shell manda cada um por UM dos dois).
-    /// `true` = havia um campo a ser escrito.
-    pub fn type_char(&mut self, c: char) -> bool {
-        let Some((_, buf)) = self.typing.as_mut() else {
-            return false;
-        };
-        if c.is_ascii_digit() || matches!(c, '.' | ',' | '-') {
-            buf.push(c);
-        }
-        true
     }
 
     /// O papel debaixo de `(x, y)` no desenho.
@@ -248,18 +213,5 @@ impl JointEditorDoc {
         self.dropping = None;
         self.role_under(x, y)
             .is_some_and(|r| self.drop_into(r, names))
-    }
-
-    /// O que o campo mostra enquanto se escreve nele: o valor de antes, até à primeira tecla.
-    #[must_use]
-    pub fn typing_shown(&self, f: Field) -> Option<String> {
-        let (t, s) = self.typing.as_ref()?;
-        (*t == f).then(|| {
-            if s.is_empty() {
-                self.value(f).map_or_else(String::new, format)
-            } else {
-                s.clone()
-            }
-        })
     }
 }

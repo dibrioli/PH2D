@@ -213,7 +213,11 @@ pub struct JointEditorDoc {
     pub hover: Option<Hit>,
     pub pressed: Option<Hit>,
     pub dropping: Option<Dropping>,
-    pub typing: Option<(Field, String)>,
+    /// O campo a ser escrito; o texto, o caret e a seleção moram na caixa do motor (`field_box`).
+    pub typing: Option<Field>,
+    pub(crate) field_box: crate::typing::FieldBox,
+    /// O relógio do último evento do rato (o duplo clique do motor).
+    pub now_ns: u128,
     pub drag: Option<Drag>,
     /// Quantas peças leva o papel de várias no «Make the parts» (`0` = as da fábrica).
     pub count: u16,
@@ -263,6 +267,8 @@ impl Default for JointEditorDoc {
             pressed: None,
             dropping: None,
             typing: None,
+            field_box: crate::typing::FieldBox::default(),
+            now_ns: 0,
             drag: None,
             count: 0,
             draft_edits: Vec::new(),
@@ -388,7 +394,7 @@ impl JointEditorDoc {
             None => {}
         }
         self.menu = None;
-        self.typing = None;
+        self.cancel_typing();
     }
 
     /// O índice da opção de alcance em vigor: o grupo, se está ligado; senão a escolhida.
@@ -504,7 +510,7 @@ impl JointEditorDoc {
         self.draft_edits.clear();
         self.scope.remove(&0);
         self.menu = None;
-        self.typing = None;
+        self.cancel_typing();
         self.note = None;
     }
 

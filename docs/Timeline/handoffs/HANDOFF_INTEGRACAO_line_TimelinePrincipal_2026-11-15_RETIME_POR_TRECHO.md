@@ -135,7 +135,7 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 - ✅ 16/11 `169fab7570` (smoke OK): o 1.º toque numa curva pronta SÓ a converte em Custom; o 2.º cria o ponto
   (`graph_pontos.rs`). Gate `o_primeiro_toque_numa_curva_pronta_converte_e_o_segundo_cria_o_ponto`.
 - ✅ 16/11 barra do tempo com alças de zoom ([20](../20_barra_do_tempo.md), [fotos](../fotos/barra_sequencia.png)):
-  `TimeBar{part}`, geom tira 14 px do pé; 11 testes, 10/10 mutações vermelhas. ⏳ smoke do dono.
+  `TimeBar{part}`, geom tira 14 px do pé; 11 testes, 10/10 mutações vermelhas. Pontas inteiras escuras (`b901b85a76`). Smoke do dono OK 16/11.
 
 ## Perfil do agente (`bash scripts/agent-loop-profile.sh`)
 

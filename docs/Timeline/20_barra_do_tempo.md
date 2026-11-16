@@ -36,7 +36,8 @@
   linhas param por cima; a barra fica só sob a coluna do tempo.
 - **Alvos:** `TimelineHitKind::TimeBar { part }` (0/1 pontas, 2 meio, 3 calha), registados calha → meio →
   pontas (o último ganha); `wants_double_click` inclui a barra; cursor `↔` nas pontas, mão no meio.
-- **Medidas:** `ph2d_tokens::chrome::TIMELINE_BARRA_TEMPO_*` (altura 14, recuo 2, ponta 10, polegar mín. 36).
+- **Medidas:** `ph2d_tokens::chrome::TIMELINE_BARRA_TEMPO_*` (altura 14, recuo 2, ponta 10, polegar mín. 36). As pontas são
+  pintadas inteiras mais escuras, sem risco (dono 16/11).
 
 ## Provas
 

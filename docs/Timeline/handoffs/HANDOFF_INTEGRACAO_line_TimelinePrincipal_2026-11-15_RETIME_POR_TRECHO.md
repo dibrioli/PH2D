@@ -124,14 +124,13 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 ## Aberto
 
 - Ctrl+Z dos gestos de pontos não conferido no Xvfb (o teclado não chega) — coberto pelos testes do passo de undo.
-- Do handoff anterior: smoke do Auto Key na sessão e dos acréscimos 13–14; o campo do Inspector digitado (não medido).
-- ✅ (16/11, sem subir o tecto) Elastic/Bounce In-out convertidos em Custom: o Bounce In-out tinha 12 viradas (6 cantos +
-  6 cristas) > `NOS_MAX` e caía na gulosa às cegas; agora entram só os CANTOS (salto relativo de inclinação > `CANTO`) e
-  o greedy acha o 0,5 ⇒ **exato** (7 nós). Sem cantos e viradas demais (Elastic) entram os picos mais altos. Por fim
-  `afina`: cada trecho escolhe o comprimento das duas alças (mesma direção) contra a curva pronta. Medido (4000 amostras):
-  Bounce ×3, Quad, Cubic, Back exatos · Sine/Expo/Circ/Elastic In/Out ≤ 0,5 % (eram ≤ 1,1 %) · Elastic In-out 1,38 %
-  (era 4,1 %). ≤ 83 ms por curva em debug. Gate `a_curva_pronta_convertida_tem_a_mesma_cara_e_deixa_lugar_ao_ponto`
-  (tectos 0,6 % · 1,45 %), 3 mutações vermelhas (sem `afina`, sem cantos, sem picos).
+- Do handoff anterior: smoke do Auto Key na sessão e dos acréscimos 13–14; o campo do Inspector digitado (não medido; lido 16/11: Enter → `commit_number_buffer` → o MESMO
+  `ValueChanged`/`InspectorTransformEdit` do arrasto, e o Auto Key amostra o mundo — só o teclado do Xvfb falta).
+- ✅ 16/11 `38e9`, sem subir o tecto: curva pronta → Custom com os CANTOS primeiro (Bounce In-out exato) e `afina`
+  (comprimento das alças por trecho). Bounce, Quad, Cubic, Back exatos · Sine/Expo/Circ/Elastic In/Out ≤ 0,5 % ·
+  Elastic In-out 1,38 % (era 4,1 %). Gate `a_curva_pronta_convertida_…`, 3 mutações vermelhas.
+- ✅ 16/11: fotos `r4..r8`, `rv1..rv3` e sequências eram de antes da `87bb`; o rv2 clicava a ponta velha (815→850).
+  Roteiro verde, fotos refeitas.
 
 ## Perfil do agente (`bash scripts/agent-loop-profile.sh`)
 

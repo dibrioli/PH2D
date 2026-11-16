@@ -79,7 +79,7 @@ c 1211 351; c 981 619; xdotool key Escape; sleep 0.6; c 567 479
 c 406 548
 foto pontos_rv1_velocidade_override
 # Puxa o braço de CHEGADA da velocidade: a curva com pontos não se converte (antes apagava os pontos e o ritmo).
-arrasta 815 575 785 598
+arrasta 850 574 820 597
 foto pontos_rv2_braco_de_velocidade_puxado
 confere "$(difere pontos_rv1_velocidade_override pontos_rv2_braco_de_velocidade_puxado && echo s)" "puxar o braço de velocidade não mudou nada"
 # O braço de velocidade do PONTO (dono 15/11): a ponta de saída puxada para cima ⇒ o ponto sai mais rápido;

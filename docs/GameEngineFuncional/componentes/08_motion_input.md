@@ -86,7 +86,10 @@ Cena `PH2D_GPU_COOK_DEMO=134 PH2D_GAME_SMOKE=27` (`ph2d-physics-scene/src/cena_m
   `a_named_request_attaches_that_component_without_opening_the_palette`,
   `the_graph_names_reach_the_world_and_follow_the_graph`.
 
-### Onda 2 (16/11) — aguarda o smoke do dono
+### Onda 2 (16/11) — smoke do dono OK 16/11
+
+Dono: *«faça como achar melhor»* sobre o Tap/Max Health Reader sem nome próprio no grafo 134 → ficam como estão
+(ensinam «quem escreve primeiro»; o grafo 134 aprovado não muda).
 
 Commits `c5b50d97b4` motor · `10eae12679` cartão · `273a2b4a8a` cena/testes · `387590dbeb` leitura parada da
 Property · `28d5302ba1` curas da mutação.

@@ -251,7 +251,7 @@ fn tag(ui: &mut Ui<'_>, s: &str, r: Rect, px: f32, c: Color) {
 }
 
 /// Os pares de formas que cada regra liga, no desenho.
-fn pairs(t: &Template, rule: u16, counts: &[u16]) -> Vec<[u16; 2]> {
+pub(crate) fn pairs(t: &Template, rule: u16, counts: &[u16]) -> Vec<[u16; 2]> {
     let Some(r) = t.rule(rule) else {
         return Vec::new();
     };
@@ -296,6 +296,7 @@ fn live(ui: &Ui<'_>, h: Handle, stored: f32) -> f32 {
 
 fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
     let targets: Vec<u16> = ui.doc.targets().iter().map(|j| j.rule).collect();
+    let rows = ui.doc.rows();
     let (warn, ok, line) = (
         ui.c(ColorToken::Warn),
         ui.c(ColorToken::Success),
@@ -303,10 +304,7 @@ fn paint_joints(ui: &mut Ui<'_>, t: &Template, map: &StageMap, counts: &[u16]) {
     );
     for (ri, rule) in t.joints.iter().enumerate() {
         let ri = u16::try_from(ri).unwrap_or(u16::MAX);
-        let row = ui
-            .doc
-            .assembly()
-            .and_then(|a| a.joints_of(ri).next().cloned());
+        let row = rows.iter().find(|j| j.rule == ri).cloned();
         let info = row.as_ref().and_then(|j| j.info.clone());
         let fab = rule.joint(0.0);
         // A montagem por fazer mostra os números de fábrica na unidade do cartão (graus na dobradiça).

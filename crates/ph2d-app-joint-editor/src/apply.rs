@@ -141,7 +141,8 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
             template,
             counts,
             at,
-        } => make(sim, template, &counts, at, &mut out),
+            edits,
+        } => make(sim, template, &counts, at, &edits, &mut out),
         Edit::Wheelbase { assembly, metres } => {
             if let Some(e) = assembly_entity(sim, assembly) {
                 set_wheelbase(sim, e, metres);
@@ -153,7 +154,14 @@ pub fn apply(sim: &mut SimWorld, edit: Edit) -> Outcome {
 
 /// **«Make the parts»** (plano §W4): as peças de fábrica com o meio delas em `at`, montadas numa montagem
 /// nova; reais, nomeadas, todas selecionadas e anunciadas. Um passo de desfazer (o mesmo quadro).
-fn make(sim: &mut SimWorld, template: u16, counts: &[u16], at: [f32; 2], out: &mut Outcome) {
+fn make(
+    sim: &mut SimWorld,
+    template: u16,
+    counts: &[u16],
+    at: [f32; 2],
+    edits: &[(u16, JointFieldEdit)],
+    out: &mut Outcome,
+) {
     use ph2d_joint_assembly::joint_factory::{make_parts, middle};
     let Some(t) = ph2d_joint_templates::by_id(template) else {
         return;
@@ -183,7 +191,15 @@ fn make(sim: &mut SimWorld, template: u16, counts: &[u16], at: [f32; 2], out: &m
     // Um gabarito que recusa as próprias peças é um defeito de catálogo (o gate `every_template_…`):
     // as peças ficam, soltas e anunciadas.
     if let Ok(a) = joint_assembly::assemble(sim, t, &parts) {
-        out.made = Some(sid_of(sim, a.assembly));
+        let sid = sid_of(sim, a.assembly);
+        // Os números escolhidos no painel de criação, regra a regra, pela porta do cartão Joint.
+        let joints = joint_assembly::joints_of(sim.world_mut(), sid);
+        for &(rule, edit) in edits {
+            for (e, _) in joints.iter().filter(|(_, j)| j.role == rule) {
+                write_joint(sim, e.to_bits(), edit);
+            }
+        }
+        out.made = Some(sid);
     }
     out.line = Some(tr_with(
         "joint_editor.made",

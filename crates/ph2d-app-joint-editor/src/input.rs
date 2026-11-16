@@ -149,10 +149,12 @@ impl JointEditorDoc {
             Hit::Make => {
                 let (template, counts, at) =
                     (self.template().id.0, self.draft_counts(), self.view_centre);
+                let edits = self.draft_edits.clone();
                 self.pending.push(Edit::Make {
                     template,
                     counts,
                     at,
+                    edits,
                 });
             }
             Hit::Inspect => {

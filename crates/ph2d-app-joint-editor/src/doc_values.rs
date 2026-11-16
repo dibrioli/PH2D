@@ -146,11 +146,9 @@ impl JointEditorDoc {
             }
             return;
         }
-        let joints: Vec<u64> = self.targets().iter().map(|j| j.bits).collect();
-        if let Some(edit) = Self::edit_of(f, v)
-            && !joints.is_empty()
-        {
-            self.pending.push(Edit::Joints { joints, edit });
+        let rows = self.targets();
+        if let Some(edit) = Self::edit_of(f, v) {
+            self.write(&rows, edit);
         }
     }
 
@@ -160,23 +158,20 @@ impl JointEditorDoc {
         let Some(info) = t.first().and_then(|j| j.info.clone()) else {
             return;
         };
-        let joints: Vec<u64> = t.iter().map(|j| j.bits).collect();
         let edit = match f {
             Flag::Limits => JointFieldEdit::LimitsEnabled(!info.limits_enabled),
             Flag::Motor => JointFieldEdit::MotorEnabled(!info.motor_enabled),
             Flag::Breakable => JointFieldEdit::BreakEnabled(!info.break_enabled),
         };
-        self.pending.push(Edit::Joints { joints, edit });
+        self.write(&t, edit);
     }
 
     /// As opções do Drive: cada regra de roda, «Both» e «None».
     #[must_use]
     pub fn drive_options(&self) -> Vec<(Drive, String)> {
-        let Some(a) = self.assembly() else {
-            return Vec::new();
-        };
-        let wheels: Vec<u16> = (0..a.template.joints.len())
-            .filter(|&i| a.template.joints[i].kind == JointKind::Wheel)
+        let t = self.template();
+        let wheels: Vec<u16> = (0..t.joints.len())
+            .filter(|&i| t.joints[i].kind == JointKind::Wheel)
             .filter_map(|i| u16::try_from(i).ok())
             .collect();
         if wheels.len() < 2 {
@@ -184,12 +179,7 @@ impl JointEditorDoc {
         }
         let mut out: Vec<(Drive, String)> = wheels
             .iter()
-            .map(|&r| {
-                (
-                    Drive::Rule(r),
-                    a.template.joints[usize::from(r)].name.to_owned(),
-                )
-            })
+            .map(|&r| (Drive::Rule(r), t.joints[usize::from(r)].name.to_owned()))
             .collect();
         out.push((Drive::All, tr("joint_editor.drive.all").to_owned()));
         out.push((Drive::None, tr("joint_editor.drive.none").to_owned()));
@@ -199,15 +189,13 @@ impl JointEditorDoc {
     /// O Drive em vigor, lido das juntas.
     #[must_use]
     pub fn drive(&self) -> Option<Drive> {
-        let a = self.assembly()?;
-        let on: Vec<u16> = a
-            .joints
+        let rows = self.rows();
+        let on: Vec<u16> = rows
             .iter()
             .filter(|j| j.joint.kind == JointKind::Wheel && j.joint.motor_enabled)
             .map(|j| j.rule)
             .collect();
-        let wheels = a
-            .joints
+        let wheels = rows
             .iter()
             .filter(|j| j.joint.kind == JointKind::Wheel)
             .count();
@@ -221,23 +209,19 @@ impl JointEditorDoc {
     /// Escolhe que rodas o motor gira. Uma roda que passa a ser puxada herda a velocidade e a força da
     /// que já puxava (ou as de fábrica do gabarito).
     pub fn set_drive(&mut self, d: Drive) {
-        let Some(a) = self.assembly() else {
-            return;
-        };
-        let from = a
-            .joints
+        let rows = self.rows();
+        let from = rows
             .iter()
             .find(|j| j.joint.motor_enabled)
             .and_then(|j| j.info.as_ref())
             .map(|i| (i.motor_speed_ui, i.motor_max_force))
             .or_else(|| {
-                a.template
+                self.template()
                     .joints
                     .iter()
                     .find_map(|r| r.tune.motor.map(|m| (m.value.to_degrees(), m.max_force)))
             });
-        let mut out = Vec::new();
-        for j in a.joints.iter().filter(|j| j.joint.kind == JointKind::Wheel) {
+        for j in rows.iter().filter(|j| j.joint.kind == JointKind::Wheel) {
             let on = match d {
                 Drive::All => true,
                 Drive::None => false,
@@ -246,27 +230,19 @@ impl JointEditorDoc {
             if on == j.joint.motor_enabled {
                 continue;
             }
-            out.push(Edit::Joints {
-                joints: vec![j.bits],
-                edit: JointFieldEdit::MotorEnabled(on),
-            });
+            let one = std::slice::from_ref(j);
+            self.write(one, JointFieldEdit::MotorEnabled(on));
             if on && let Some((speed, force)) = from {
-                out.push(Edit::Joints {
-                    joints: vec![j.bits],
-                    edit: JointFieldEdit::MotorSpeed(speed),
-                });
-                out.push(Edit::Joints {
-                    joints: vec![j.bits],
-                    edit: JointFieldEdit::MotorMaxForce(force),
-                });
+                self.write(one, JointFieldEdit::MotorSpeed(speed));
+                self.write(one, JointFieldEdit::MotorMaxForce(force));
             }
         }
-        self.pending.extend(out);
     }
 
     /// Escolhe a opção de alcance `i`: o grupo liga «Same as»; uma regra só desliga-o.
     pub fn set_scope(&mut self, i: usize) {
         let Some(a) = self.assembly() else {
+            self.scope.insert(0, i);
             return;
         };
         let opts = scope_options(a.template);

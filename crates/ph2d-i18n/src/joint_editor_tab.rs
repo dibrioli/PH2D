@@ -88,7 +88,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "joint_editor.no_motor" => "This wheel has no motor. Pick it in Drive to make it turn.",
         "joint_editor.draft_title" => "New {template}",
         "joint_editor.empty_panel" => {
-            "Drop a part into the template to make its joint. The settings show up here."
+            "Drop your own parts onto the template, or make new ones. The joints get the settings below."
         }
         "joint_editor.parts_of" => "{name} \u{b7} {n} of {of} parts \u{b7} {joints} joints",
         "joint_editor.open_inspector" => "Open in Inspector",

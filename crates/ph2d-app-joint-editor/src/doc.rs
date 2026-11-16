@@ -8,7 +8,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_joint_templates::{JointKind, Template};
 
-use crate::model::{AssemblyRow, JointRow, Snapshot};
+use crate::model::{AssemblyRow, Snapshot};
 use crate::stage::StageMap;
 
 /// O que a aba mostra no centro.
@@ -157,11 +157,13 @@ pub enum Edit {
     Select { bits: u64 },
     /// Muda o entre-eixos para `metres`.
     Wheelbase { assembly: u64, metres: f32 },
-    /// Faz as peças de fábrica do gabarito (`counts` por papel) com o meio delas em `at` (mundo) e monta-as.
+    /// Faz as peças de fábrica do gabarito (`counts` por papel) com o meio delas em `at` (mundo), monta-as
+    /// e escreve `edits` (regra, edição do cartão) nas juntas de cada regra.
     Make {
         template: u16,
         counts: Vec<u16>,
         at: [f32; 2],
+        edits: Vec<(u16, JointFieldEdit)>,
     },
 }
 
@@ -213,6 +215,8 @@ pub struct JointEditorDoc {
     pub(crate) drag: Option<Drag>,
     /// Quantas peças leva o papel de várias no «Make the parts» (`0` = as da fábrica).
     pub(crate) count: u16,
+    /// As edições da junta feitas no gabarito por fazer, por regra e por ordem: o «Make the parts» leva-as.
+    pub(crate) draft_edits: Vec<(u16, JointFieldEdit)>,
     /// O meio da vista da cena (mundo, metros), onde o «Make the parts» põe as peças.
     pub view_centre: [f32; 2],
     /// O texto que cada caixa pintou neste quadro (o valor acessível do campo).
@@ -259,6 +263,7 @@ impl Default for JointEditorDoc {
             typing: None,
             drag: None,
             count: 0,
+            draft_edits: Vec::new(),
             view_centre: [0.0, 0.0],
             shown: Vec::new(),
             mods: ph2d_host::Modifiers::default(),
@@ -406,22 +411,6 @@ impl JointEditorDoc {
             .unwrap_or(chosen.min(opts.len().saturating_sub(1)))
     }
 
-    /// As juntas a que um número se aplica agora.
-    #[must_use]
-    pub fn targets(&self) -> Vec<&JointRow> {
-        let Some(a) = self.assembly() else {
-            return Vec::new();
-        };
-        let opts = scope_options(a.template);
-        let Some(o) = opts.get(self.scope_index(a, &opts)) else {
-            return Vec::new();
-        };
-        a.joints
-            .iter()
-            .filter(|j| o.rules.contains(&j.rule))
-            .collect()
-    }
-
     /// **O que largar `names` sobre o papel `role` faria** — dito ANTES de soltar.
     #[must_use]
     pub fn verdict(&self, role: u16, names: &[String]) -> (bool, String) {
@@ -510,6 +499,8 @@ impl JointEditorDoc {
     /// Começa uma montagem nova do gabarito escolhido.
     pub fn new_draft(&mut self) {
         self.focus = Focus::Draft;
+        self.draft_edits.clear();
+        self.scope.remove(&0);
         self.menu = None;
         self.typing = None;
         self.note = None;

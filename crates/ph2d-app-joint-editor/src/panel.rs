@@ -119,44 +119,45 @@ fn groups_of(k: JointKind, info: &ph2d_editor_core::screens::hero::InspectorJoin
     out
 }
 
-/// Os cartões da coluna, de cima para baixo.
+/// Os cartões da coluna, de cima para baixo. Por fazer, os cartões da junta mostram a de fábrica e o
+/// «Make the parts» leva o que se mudar neles.
 fn cards(ui: &Ui<'_>) -> Vec<Group> {
     let mut head = vec![Item::Menu(Menu::Kind), Item::Menu(Menu::Template)];
-    let Some(a) = ui.doc.assembly().cloned() else {
-        let t = ui.doc.template().name;
+    let t = ui.doc.template();
+    let asm = ui.doc.assembly().cloned();
+    let info = ui.doc.targets().first().and_then(|j| j.info.clone());
+    if let Some(a) = &asm {
+        let (n, of, joints) = (a.filled_roles(), t.roles.len(), a.joints.len());
+        let parts = [
+            ("name", &a.name as &dyn std::fmt::Display),
+            ("n", &n),
+            ("of", &of),
+            ("joints", &joints),
+        ];
+        head.push(Item::Line(tr_with("joint_editor.parts_of", &parts)));
+        head.push(match info {
+            Some(_) => Item::Inspect,
+            None => Item::Note("joint_editor.no_joint_yet"),
+        });
+    } else {
         head.push(Item::Line(tr_with(
             "joint_editor.draft_title",
-            &[("template", &t)],
+            &[("template", &t.name)],
         )));
         if let Some(i) = ui.doc.row_role() {
-            let name = count_label(ui.doc.template().roles[i].name);
-            head.push(Item::Num(
-                Field::Count,
-                Glyph::Text("joint_editor.glyph.count"),
-                name,
-                "",
-            ));
+            let name = count_label(t.roles[i].name);
+            let glyph = Glyph::Text("joint_editor.glyph.count");
+            head.push(Item::Num(Field::Count, glyph, name, ""));
         }
         head.push(Item::Make);
         head.push(Item::Note("joint_editor.empty_panel"));
-        return vec![Group("joint_editor.group.assembly", head)];
-    };
-    let (n, of, joints) = (a.filled_roles(), a.template.roles.len(), a.joints.len());
-    let parts = [
-        ("name", &a.name as &dyn std::fmt::Display),
-        ("n", &n),
-        ("of", &of),
-        ("joints", &joints),
-    ];
-    head.push(Item::Line(tr_with("joint_editor.parts_of", &parts)));
-    let info = ui.doc.targets().first().and_then(|j| j.info.clone());
-    head.push(match info {
-        Some(_) => Item::Inspect,
-        None => Item::Note("joint_editor.no_joint_yet"),
-    });
-    let opts = scope_options(a.template);
-    if opts.len() > 1 && !a.joints.is_empty() {
-        let cur = ui.doc.scope_index(&a, &opts);
+    }
+    let opts = scope_options(t);
+    if opts.len() > 1 && asm.as_ref().is_none_or(|a| !a.joints.is_empty()) {
+        let cur = asm.as_ref().map_or_else(
+            || ui.doc.scope.get(&0).copied().unwrap_or(0),
+            |a| ui.doc.scope_index(a, &opts),
+        );
         let segs = opts
             .iter()
             .enumerate()

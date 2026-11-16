@@ -184,7 +184,16 @@ pub(crate) fn resolve_drag(
     let Some(mut d) = state.ponto_drag.filter(|d| d.target == target) else {
         return;
     };
-    let curva = trecho(track, d.key).and_then(|(k0, k1)| Some((k0, k1, segment_curve(k0, k1)?)));
+    // Um toque numa curva PRONTA (Ease, Elastic…) converte-a numa Custom com a mesma cara antes de
+    // criar o ponto (dono 15/11) — só aqui, no toque: a conversão custa ~40 ms.
+    let curva = trecho(track, d.key).and_then(|(k0, k1)| {
+        let c = if d.novo {
+            ph2d_timeline::insertable_curve(k0, k1)
+        } else {
+            segment_curve(k0, k1)
+        };
+        Some((k0, k1, c?))
+    });
     let Some((k0, k1, mut c)) = curva else {
         // O trecho deixou de ter curva (apagado, retimado) a meio do gesto: fecha-se.
         state.ponto_drag = None;
@@ -261,24 +270,42 @@ fn regista(ctx: &mut PaintCtx, band: &Band, id: ph2d_a11y::NodeId, kind: Timelin
     ctx.host.hit_index_mut().register(id, r);
 }
 
+/// Os trechos desta banda cuja LINHA cria pontos: os com curva editável e os de curva pronta
+/// (Ease, Elastic…, que o toque converte), de uma chave seleccionada.
+fn trechos_de_linha(track: &TrackView) -> impl Iterator<Item = (&KeyView, &KeyView)> {
+    track.keys.windows(2).filter_map(|w| {
+        let (k0, k1) = (&w[0], &w[1]);
+        let pronta = matches!(k0.interp, ph2d_anim::Interp::Eased(_))
+            && k1.t_seconds > k0.t_seconds
+            && k1.value != k0.value;
+        let sim = (k0.selected || k1.selected) && (pronta || segment_curve(k0, k1).is_some());
+        sim.then_some((k0, k1))
+    })
+}
+
 /// Os pedaços clicáveis da LINHA da curva — registados ANTES das âncoras e das alças, que ganham
 /// a sobreposição (o índice de cliques dá o último registado). Cada pedaço cobre o troço da curva
-/// na sua coluna, `LINHA_HIT` acima e abaixo.
+/// DESENHADA (o amostrador da animação) na sua coluna, `LINHA_HIT` acima e abaixo.
 pub(crate) fn paint_line_hits(ctx: &mut PaintCtx, band: &Band, view: TimeView, track: &TrackView) {
     let target = track.target.get();
-    for (k0, k1, c) in trechos(track) {
+    for (k0, k1) in trechos_de_linha(track) {
         let (xa, xb) = (view.x(k0.t_seconds), view.x(k1.t_seconds));
         let (xa, xb) = (xa.max(band.rect.x), xb.min(band.rect.x + band.rect.w));
+        let par = [k0.clone(), k1.clone()];
         let y_de = |x: f32| {
-            let u = plane_to_unit(k0, k1, view.t(x), 0.0)[0];
-            band.y(unit_to_plane(k0, k1, [0.0, c.eval(f64::from(u)) as f32]).1)
+            let t = view.t(x).clamp(k0.t_seconds, k1.t_seconds); // CLAMP-OK: dentro do trecho
+            band.y(f64::from(
+                ph2d_timeline::sample_keys(&par, t).unwrap_or(k0.value),
+            ))
         };
         let mut x = xa;
         let mut i = 0u64;
         while x < xb {
             let fim = (x + LINHA_PASSO).min(xb);
-            let (ya, yb) = (y_de(x), y_de(fim));
-            let (cima, baixo) = (ya.min(yb) - LINHA_HIT, ya.max(yb) + LINHA_HIT);
+            // As pontas e o meio: uma onda do Elastic cabe num pedaço.
+            let ys = [y_de(x), y_de(0.5 * (x + fim)), y_de(fim)];
+            let cima = ys.iter().copied().fold(f32::INFINITY, f32::min) - LINHA_HIT;
+            let baixo = ys.iter().copied().fold(f32::NEG_INFINITY, f32::max) + LINHA_HIT;
             let id = ids::timeline_curve_line_hit_id(target, k0.id.get(), i);
             let kind = TimelineHitKind::CurveLine {
                 target,

@@ -49,11 +49,13 @@ mod expr_pass;
 mod frame_solve;
 pub mod graph;
 mod graph_pontos;
+mod graph_pontos_pronta;
 pub use graph_pontos::{
     PointSpeedArm, end_handle_keeps_points, end_handle_keeps_rhythm, interp_of_curve,
     plane_to_unit, point_speed_arms, segment_curve, spline_with_point_speed,
     spline_with_speed_handle, unit_to_plane, value_handle_points,
 };
+pub use graph_pontos_pronta::{insertable_curve, preset_as_curve};
 pub mod history;
 mod instancia_acompanha;
 pub mod intent;

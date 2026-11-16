@@ -113,3 +113,9 @@ para 6
 # até a ponta caber na faixa (antes saía por baixo e por cima).
 c 742 790; c 787 630; c 802 837
 foto pontos_r7_elastic_bracos_a_vista
+# Dono 15/11: «permita inserir pontos mesmo se a curva for um easing». Um toque na linha do Elastic Out (sem mexer
+# em alça nenhuma antes) converte-o numa Custom com a mesma cara e cria o ponto ali.
+c 859 479
+c 990 601
+foto pontos_r8_toque_no_elastic_cria_o_ponto
+confere "$(difere pontos_r7_elastic_bracos_a_vista pontos_r8_toque_no_elastic_cria_o_ponto && echo s)" "o toque no Elastic não criou ponto"

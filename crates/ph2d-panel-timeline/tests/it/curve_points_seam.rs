@@ -343,3 +343,52 @@ fn no_override_o_ponto_tem_braco_de_velocidade_que_se_puxa() {
     );
     set_current_timeline(None);
 }
+
+/// Dono 15/11: «permita inserir pontos mesmo se a curva for um easing». Um toque na linha de uma
+/// curva PRONTA (Elastic Out, Quad In-out) cria o ponto debaixo do rato: a curva vira uma Custom
+/// com a mesma cara, sem ter de mexer numa alça antes.
+#[test]
+fn um_toque_numa_curva_pronta_cria_o_ponto_debaixo_do_rato() {
+    use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
+    for interp in [
+        Interp::Eased(Easing::new(F::Elastic, M::Out)),
+        Interp::Eased(Easing::new(F::Quad, M::InOut)),
+    ] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState::default();
+        let regs = pinta(&mut host, &mut st, interp);
+        // Um pedaço da linha que nada cobre (o último registado ganha: braços e âncoras por cima).
+        let livre = (5..80)
+            .map(|i| ids::timeline_curve_line_hit_id(TGT, 1, i))
+            .filter(|id| regs.iter().any(|(w, _)| w == id))
+            .map(|id| (id, centro(&regs, id)))
+            .find(|(id, (x, y))| {
+                let dentro =
+                    |r: &Rect| *x >= r.x && *x <= r.x + r.w && *y >= r.y && *y <= r.y + r.h;
+                regs.iter().rev().find(|(_, r)| dentro(r)).map(|(w, _)| w) == Some(id)
+            });
+        let (_, (x, y)) = livre.expect("um pedaço livre da linha");
+        let _ = drain_intents();
+        let _ = host.click_at(x, y);
+        let _ = pinta(&mut host, &mut st, interp);
+        let todos = drain_intents();
+        let ultima = todos.iter().rev().find_map(|i| match i {
+            TimelineIntent::SetInterp { interp, .. } => Some(*interp),
+            _ => None,
+        });
+        let Some(nova @ Interp::Spline(_)) = ultima else {
+            panic!("{interp:?}: o toque na curva pronta não criou ponto: {todos:?}");
+        };
+        let escolhido = st.ponto_escolhido.expect("o ponto criado fica escolhido");
+        let regs = pinta(&mut host, &mut st, nova);
+        let (px, py) = centro(
+            &regs,
+            ids::timeline_curve_point_hit_id(TGT, 1, escolhido.2 as u8, 0),
+        );
+        assert!(
+            (px - x).abs() < 1.5 && (py - y).abs() < 9.0,
+            "{interp:?}: o ponto nasceu em ({px}, {py}), longe do toque ({x}, {y})"
+        );
+        set_current_timeline(None);
+    }
+}

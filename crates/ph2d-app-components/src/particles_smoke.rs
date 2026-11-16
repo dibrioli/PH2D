@@ -125,12 +125,8 @@ fn cena_um(world: &mut World) -> u64 {
             // ⚠️ Sem gravidade e a sair do CENTRO para fora: é isso que faz o anel abrir-se.
             gravity: [0.0, 0.0],
             spread: 180.0,
-            // ⚠️⚠️ **A ÚNICA coluna com rapidez própria, e a foto é que a impôs:** sem gravidade
-            // uma partícula viaja `v × vida` e não volta — à rapidez das outras (`5 m/s`) o anel
-            // media `6 m` de raio e saía do ecrã por cima. O que as quatro partilham, e que é o
-            // que as torna comparáveis, é a QUANTIDADE e a VIDA.
-            // ⚠️ **E é LENTA de propósito**: o que esta coluna mostra é o sítio onde as partículas
-            // NASCEM, e a qualquer rapidez o anel borra-se num disco em meia vida.
+            // ⚠️ Lenta de propósito: sem gravidade o anel sai do ecrã, e mostra onde as
+            // partículas NASCEM. As quatro colunas partilham quantidade e vida.
             speed: 0.25,
             color: [0.45, 0.80, 1.0, 1.0],
             ..base.clone()

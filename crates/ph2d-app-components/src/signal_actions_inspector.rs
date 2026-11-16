@@ -165,13 +165,7 @@ pub fn apply_action_edit(
         // ⭐⭐⭐ **O alvo por TAG** (TOP-20 #9, W3b).
         ActionFieldEdit::TargetMode(i, modo) => {
             let a = table.0.get_mut(usize::from(*i))?;
-            // ⚠️ **`Tagged(0)` é «por tag, e ainda não escolheu qual»** — o `TagId(0)` nunca é dado
-            // pela árvore, logo a linha alcança ninguém até o artista escolher, e a secção di-lo.
-            // ⛔ Escolher uma tag por ele (a primeira da árvore, digamos) faria um clique num
-            // segmentado mudar a quem a acção acerta.
-            //
-            // ⚠️ **A posição volta a ser modo pela porta do vocabulário** (`from_tag`), que satura
-            // num valor fora da faixa — a mesma lei do verbo, um campo ao lado.
+            // ⚠️ `Tagged(0)` = «por tag, ainda sem escolha» (alcança ninguém); `from_tag` satura.
             a.target_by = match ActionTargetMode::from_tag(*modo) {
                 ActionTargetMode::Name => SignalTarget::Named,
                 ActionTargetMode::Tag => SignalTarget::Tagged(0),

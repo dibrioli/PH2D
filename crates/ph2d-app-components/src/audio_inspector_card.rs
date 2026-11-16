@@ -87,13 +87,8 @@ pub fn build_audio_info(
         is_listener,
         listener_count,
         is_active_listener,
-        // ⚠️ **Os rótulos saem de `AudioBus::ALL`, que é a fonte** — copiá-los para o painel
-        // envelheceria no primeiro barramento novo, e o artista leria o nome errado.
-        //
-        // ⭐ **E desde 2026-09-19 é a CHAVE que sai do motor, não a palavra** — este é o único
-        // sítio onde os quatro barramentos chegam a um pixel, e ele é da shell: o painel não
-        // conhece o enum. *Um rótulo que atravessa a fronteira de crate escapa às 30 réguas do
-        // HR-15 dos dois lados* (gate `a_fronteira_dos_motores`).
+        // ⚠️ Os rótulos saem de `AudioBus::ALL` como CHAVE i18n, nunca palavra
+        // (gate `a_fronteira_dos_motores`).
         bus_labels: AudioBus::ALL
             .iter()
             .map(|b| tr(b.label_key()).to_string())

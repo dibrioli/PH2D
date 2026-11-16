@@ -109,19 +109,10 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
                 return false;
             }
             tweens.0.push(Tween::default());
-            // ⭐⭐⭐ **UM TWEEN NASCE COM RELÓGIO** — report do dono, 2026-09-19 (*«porque usar timer
-            // para isso?»*). Sem esta linha o segundo tween de um objecto nasce **INERTE e calado**,
-            // e o artista tem de descobrir sozinho que a cura vive noutra secção.
-            //
-            // ⚠️ **Só ACRESCENTA, e só até ao índice dele** (o `Timers` já existe: o descritor
-            // declara `requires`, logo a paleta trouxe-o com o `Tweens`). ⛔ E não toca num timer
-            // que já lá esteja — ele pode estar a servir uma cutscene, uma fábrica ou um sinal.
+            // ⭐ Um tween nasce com relógio: só ACRESCENTA timers até ao índice dele, nunca toca
+            // num que já lá esteja.
             let precisa = tweens.0.len();
-            // ⚠️ **O `Tweens` fica LARGADO pela ordem das linhas, nunca por um `drop`** — um
-            // `Option<Mut<_>>` não tem destrutor, logo o empréstimo acaba na ÚLTIMA LEITURA (a
-            // linha acima) e o `drop` explícito é ruído que o clippy recusa (`drop_non_drop`). *A
-            // cerca é verificada pelo compilador, e não por um comentário.* É a mesma lei que o
-            // braço do preset, logo abaixo, já escreve.
+            // ⚠️ O `Tweens` fica largado pela ordem das linhas (`drop` é `drop_non_drop`).
             if let Some(mut ts) = world.get_mut::<ph2d_ecs::Timers>(e)
                 && ts.0.len() < precisa
                 && ts.0.len() < ph2d_ecs::TIMERS_MAX
@@ -170,11 +161,7 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
             t.easing.mode = m;
             true
         }),
-        // ⭐⭐⭐ **O PRESET escreve DUAS coisas, e a segunda é o que o faz um clique.**
-        //
-        // ⚠️ Sem a duração, o artista fica com um *flash* de **um segundo** (o valor de fábrica do
-        // timer) — oito vezes mais lento do que a coisa que ele pediu —, e lê isso como *«o preset
-        // não funcionou»*. ⛔ E ela vai para o `Timers` do MESMO ÍNDICE, que é o relógio dele.
+        // ⭐ O preset escreve o tween E a duração no `Timers` do MESMO índice.
         TweenFieldEdit::Preset(i, tag) => {
             let p = ph2d_tween::Preset::from_tag(*tag);
             let mexeu = campo(&mut tweens, *i, |t| {
@@ -190,12 +177,7 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
                 true
             });
             let dono = tweens.0.get(*i as usize).copied();
-            // ⚠️ **O `Tweens` tem de estar LARGADO antes de pegar no `Timers`** — dois `get_mut`
-            // vivos sobre o mesmo `World` não compilam, e é o compilador a dizer que são dois
-            // componentes. ⛔ **E isso NÃO se escreve com um `drop`**: um `Option<Mut<_>>` não tem
-            // destrutor, logo o empréstimo acaba na ÚLTIMA LEITURA (o `campo` acima) e o `drop`
-            // explícito é só ruído que o clippy recusa (`drop_non_drop`). *A cerca é a ordem das
-            // linhas, e ela é verificada pelo compilador — não por um comentário.*
+            // ⚠️ O `Tweens` fica largado pela ordem das linhas antes do `Timers` (sem `drop`).
             let relogio = world
                 .get_mut::<ph2d_ecs::Timers>(e)
                 .and_then(|mut ts| {

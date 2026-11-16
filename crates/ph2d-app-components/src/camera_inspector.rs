@@ -203,12 +203,8 @@ pub fn apply_camera_edit(
                 }
                 CameraFieldEdit::Offset(v) => c.offset = *v,
                 CameraFieldEdit::Priority(v) => c.priority = *v,
-                // ⛔ **A cerca é do DOMÍNIO DA LEI e não conforto:** em `δ = 1` o plano do mundo
-                // tem tamanho aparente zero, e acima disso a `escala` inverte o sinal — uma cena
-                // com os fundos ESPELHADOS, que nenhum artista pede. A ponta de baixo é a
-                // saturação medida. Ver [`ph2d_ecs::ScrollFactor::escala_do_dolly`].
-                // ⚠️ A faixa é a PORTA partilhada com a pista do painel (auditoria 26, §2.6), e um
-                // valor não-finito não chega a escrever.
+                // ⛔ Domínio da lei ([`ph2d_ecs::ScrollFactor::escala_do_dolly`]); não-finito
+                // não escreve.
                 CameraFieldEdit::Dolly(v) if v.is_finite() => c.dolly = *v,
                 CameraFieldEdit::Dolly(_) => {}
                 CameraFieldEdit::Active(on) => c.active = *on,

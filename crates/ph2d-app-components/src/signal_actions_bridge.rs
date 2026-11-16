@@ -178,13 +178,8 @@ pub fn apply(
                 }
                 None => false,
             },
-            // ⭐⭐⭐ **A CORRIDA RECOMEÇA** — e ele **anuncia** pelo mesmo idioma da morte, que é a
-            // 2.ª vez que ele se usa. ⛔ Ele não toca no mundo: quem sabe rebobinar é a shell, uma
-            // vez por quadro, DEPOIS de todos os produtores.
-            //
-            // ⚠️ **Ele não pode ser inerte, e é a única linha deste `match` que devolve `true`
-            // incondicionalmente:** os outros onze podem não ter onde pegar (um alvo sem relógio,
-            // sem som, sem contador, sem vida), e este não tem alvo nenhum — a corrida existe sempre.
+            // ⭐ Só anuncia (a shell rebobina, uma vez por quadro, depois dos produtores); sem
+            // alvo, nunca é inerte.
             SignalVerb::RestartRun => {
                 report.recomecar = true;
                 true

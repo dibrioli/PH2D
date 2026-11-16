@@ -158,15 +158,8 @@ fn cena_um(world: &mut World) -> Entity {
     );
 
     // ⭐ **VAI-E-VOLTA** — o canal de POSE, e é ele que prova que a pose é CONDUZIDA e não autorada:
-    // o objecto anda o tempo todo e **não enche a fila do desfazer**.
-    //
-    // ⭐⭐⭐ **E é a coluna do PING-PONG** (pedido do dono, 19/09): ela corre com
-    // [`Ciclo::PingPong`], logo vai e volta **suavemente** dentro do mesmo período. ⚠️ **A
-    // comparação é um CLIQUE e não uma quinta coluna**, de propósito: com `Restart` na fileira
-    // *Cycle* ela passa a SALTAR de volta, e é o artista a carregar no chip que vê a diferença —
-    // o que prova, de graça, que o chip está vivo sob o dedo. *Uma quinta coluna também não caberia:
-    // a meia-largura visível é `5,2 m` (medida pelo #18) e cinco passos de `2,6` põem as pontas
-    // fora do ecrã.*
+    // o objecto anda o tempo todo e **não enche a fila do desfazer**. Corre em
+    // [`Ciclo::PingPong`]; `Restart` no chip *Cycle* mostra a diferença.
     let x_desliza = x0 + 2.0 * PASSO_X;
     coluna(
         world,

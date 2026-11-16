@@ -160,12 +160,7 @@ pub fn montar(world: &mut bevy_ecs::world::World) -> (ph2d_ecs::Entity, ph2d_ecs
             Transform::from_translation(Vec2::new(-3.2, 0.0)),
             Sprite::atlas(WHITE_TILE_KEY, [1.6, 1.6], [0.30, 0.55, 0.95, 1.0]),
             Name::new("Heroi"),
-            // ⛔⛔⛔ **A `Visibility` EXPLÍCITA, e ela não é decoração — o gate da corrente apanhou-a.**
-            // O verbo `Hide` lê a visibilidade de ANTES para a declarar ao ledger, logo um alvo **sem**
-            // o componente é **inerte**: a vigia falava, o «morri» chegava, e o herói ficava lá. ⚠️ O
-            // relatório da tabela conta-o como `inert` e **não grita** — de propósito, porque uma
-            // configuração a meio não é uma avaria. ⇒ quem quer ser escondido nasce com o componente,
-            // que é o que a cena irmã do TOP-20 #5 já faz.
+            // ⛔ `Hide` sem `Visibility` no alvo é inerte: quem quer ser escondido nasce com ela.
             Visibility::visible(),
             Counter {
                 name: HEROI.into(),
@@ -222,17 +217,8 @@ pub fn montar(world: &mut bevy_ecs::world::World) -> (ph2d_ecs::Entity, ph2d_ecs
             },
             CounterRuntime { value: VIDAS },
             relogio("golpe_controlo"),
-            // ⛔⛔⛔ **A linha de esconder é a MESMA, e o NOME que ela espera é OUTRO — e isto foi
-            // MEDIDO, não escolhido.** Com os dois à escuta de `"morri"`, o controlo **desaparecia
-            // junto com o herói**: um sinal é **global por NOME** e uma tabela reage a ele venha de
-            // quem vier. ⇒ o controlo espera por `"morri_controlo"`, que **ninguém nesta cena diz** —
-            // porque quem o diria era a vigia que ele não tem.
-            //
-            // ⭐ *É esta a forma certa do controlo:* ele tem tudo o que o herói tem — relógio, contador,
-            // linha de esconder — e o que lhe falta é **quem DIGA que ele morreu**.
-            // ⭐⭐ **A MESMA fiação, palavra por palavra** — três linhas a apagar três luzes e uma a
-            // esconder-se —, e os nomes que elas esperam **ninguém os diz nesta cena**: quem os diria
-            // era a vigia que ele não tem.
+            // ⛔ A mesma fiação do herói, com nomes próprios (um sinal é global por NOME): ninguém
+            // os diz nesta cena, porque quem os diria é a vigia que o controlo não tem.
             SignalActions(vec![
                 tira_uma_vida("golpe_controlo"),
                 apaga(&format!("{CONTROLO_LUZ}3"), "luz3_controlo"),
@@ -248,13 +234,8 @@ pub fn montar(world: &mut bevy_ecs::world::World) -> (ph2d_ecs::Entity, ph2d_ecs
         ))
         .id();
 
-    // ⛔⛔⛔ **NÃO HÁ PLACAR DE TEXTO, e a foto foi quem o decidiu.** Um `UiLabel` **troca o que
-    // um texto MOSTRA; ele não cria o texto** — sem um `VecShape::Text` autorado por baixo, o
-    // rótulo desenha-se como um **anel vazio**, e um anel que ninguém sabe explicar ensina menos
-    // que nada. ⇒ o número vive onde esta wave o pôs: a linha *Now* da secção do Inspector.
-    //
-    // ⭐ E as três LUZES dizem-no sem texto nenhum — que é melhor: elas mostram que uma vigia
-    // dispara **a um limiar**, e um número a descer não mostraria isso.
+    // ⛔ Sem placar de texto (`UiLabel` sem `VecShape::Text` por baixo é um anel vazio): o número
+    // vive na linha *Now* do Inspector, e as três luzes mostram o limiar da vigia.
 
     (heroi, controlo)
 }

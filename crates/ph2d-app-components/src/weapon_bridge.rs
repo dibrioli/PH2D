@@ -106,13 +106,8 @@ pub fn frame(sim: &mut SimWorld, playing: bool, dt_us: u64, fired: &[&str]) -> W
             Municao::default()
         } else {
             let mundo: &bevy_ecs::world::World = sim.world();
-            // ⭐⭐ **PELA PORTA, desde 2026-09-20** ([`ph2d_ecs::counter::soma`] com
-            // [`Ambito::Objecto`]). Ela nasceu a somar a cena inteira e esta ponte escrevia a
-            // leitura por-objecto à mão — *uma lei escrita em dois sítios ainda não é uma lei*, e
-            // a segunda cópia apareceu no dia em que a vigia precisou da mesma pergunta.
-            //
-            // ⚠️ O `cheio` continua a vir do `Counter` **desta** entidade: ele é o `start` da
-            // CONFIG e não um valor vivo, logo não é coisa que uma soma responda.
+            // ⭐ Pela porta [`ph2d_ecs::counter::soma`] com [`Ambito::Objecto`]; o `cheio` é o
+            // `start` da CONFIG do `Counter` desta entidade, não um valor vivo.
             match (
                 mundo.get::<Counter>(e),
                 counter::soma(mundo, alvo, Ambito::Objecto(e)),
@@ -133,11 +128,8 @@ pub fn frame(sim: &mut SimWorld, playing: bool, dt_us: u64, fired: &[&str]) -> W
         };
 
         // 2-bis. ⭐⭐⭐ **O DEPÓSITO** — um contador NOMEADO em qualquer sítio da cena, e não neste
-        // objecto: uma entidade tem **um** `Counter` e o pente já o ocupa.
-        //
-        // ⛔⛔ **Um nome que dois objectos carregam é RECUSADO** (`dono_unico` devolve `None`) e a
-        // arma cai em reserva infinita — *somar dez depósitos é exacto, tirar cinco a dez não é*.
-        // O painel é quem separa este silêncio do de um campo vazio.
+        // objecto: uma entidade tem **um** `Counter` e o pente já o ocupa. ⛔ Nome em dois
+        // objectos é recusado (`dono_unico` = `None`) ⇒ reserva infinita.
         let deposito = cfg.reserve_counter.trim();
         let dono_reserva = (!deposito.is_empty())
             .then(|| counter::dono_unico(sim.world(), deposito))
@@ -174,12 +166,8 @@ pub fn frame(sim: &mut SimWorld, playing: bool, dt_us: u64, fired: &[&str]) -> W
             rt.value = t.municao;
         }
 
-        // 3-bis. O DEPÓSITO, se ele existe e mudou.
-        //
-        // ⚠️ **Ele pode ainda não ter `CounterRuntime`** — o `dono_unico` não o exige, de propósito
-        // (um depósito no 1.º quadro já tem dono). ⇒ escreve-se o componente, como o
-        // `add_to_counter` da tabela de acções já faz. *Duas leituras diferentes do «por estrear»
-        // dariam uma arma que come a primeira recarga.*
+        // 3-bis. O DEPÓSITO, se ele existe e mudou; sem `CounterRuntime` ainda, escreve-se o
+        // componente, como o `add_to_counter` faz.
         if mun.reserva_existe
             && t.reserva != mun.reserva
             && let Some(d) = dono_reserva

@@ -118,23 +118,8 @@ fn cena_um(world: &mut World) -> Entity {
     patio(world);
 
     // ⭐ O HERÓI: anda com as setas, e a câmera segue-o ⇒ **andar é afastar a VISTA da bomba**.
-    //
-    // ⛔⛔⛔ **O CORPO CINEMÁTICO NÃO É DECORAÇÃO — sem ele o passo (2) é IMPOSSÍVEL** (report do
-    // dono, 19/09: *«vc esqueceu de colocar física no jogador»*). A ponte do mover varre
-    // `self.bodies`, logo **quem não tem corpo nunca entra no laço**: a 1.ª redacção desta cena
-    // dava-lhe o componente e mais nada, e a seta segurada movia `0,0000 m`. As três cenas irmãs
-    // que carregam este componente (`topdown_smoke` · `trigger_smoke` · `dano_smoke`) dão-lhe as
-    // três peças; esta dava uma.
-    //
-    // ⚠️⚠️ **E `Kinematic` é LEI e não gosto:** um corpo `Dynamic` é do SOLVER
-    // (`bridge::pose_owner`), logo o mover fica inerte **e** a gravidade leva-o — medido nesta
-    // cena, `y = −492 m` ao fim de dez segundos, com a câmera a segui-lo. *Foi isso que o dono viu
-    // como «travou»: em ~2 s não há um poste no ecrã, e nada do que ele carregue traz o pátio de
-    // volta.* O Inspector diz-no em vermelho na secção *Top-Down Player* — mas o roteiro manda
-    // escolher a BOMBA, logo ele nunca olha para lá.
-    //
-    // ⚠️ O raio é o do sprite (`0,9` de lado ⇒ `0,45`), como nas irmãs: nada nesta cena tem
-    // collider, logo ele não bate em nada — ele existe para o corpo ENTRAR no mundo.
+    // ⛔ O corpo `Kinematic` é lei: sem corpo o mover nunca entra no laço, e um `Dynamic` é do
+    // solver (inerte e cai). O collider existe só para o corpo entrar no mundo.
     let heroi = world
         .spawn((
             Name::new("Heroi"),
@@ -156,11 +141,7 @@ fn cena_um(world: &mut World) -> Entity {
         .id();
 
     // ⭐⭐⭐ **A BOMBA:** o gatilho do #24 publica, e a fonte do #25 ouve — no MESMO objecto.
-    //
-    // ⚠️ **`SignalFrom::Myself` e não `Anyone`**, e não é indiferente: o sinal de um gatilho carrega
-    // o SUJEITO (`SignalOrigin::Action { source }`), logo com `Myself` a distância é medida a
-    // partir **desta** bomba. Com a cerca aberta uma segunda bomba ouviria o estrondo da primeira e
-    // a cena deixaria de ensinar o que ensina.
+    // ⚠️ `SignalFrom::Myself`: a distância mede-se a partir DESTA bomba, não de qualquer uma.
     let bomba = world
         .spawn((
             Name::new("Bomba"),

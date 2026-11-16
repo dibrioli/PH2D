@@ -120,18 +120,8 @@ fn cena_um(world: &mut World, a: &Arvore) -> Option<u64> {
         ("Hero", 3.6, HEROI_RGBA, a.player),
     ] {
         let e = marcado(world, nome, x, cor, tag);
-        // ⭐⭐⭐ **O HERÓI é quem a cena ESCOLHE, e a escolha é medida.**
-        //
-        // ⛔⛔ O smoke desta cena mandava ler a secção *Tags* do Inspector e **isso era impossível**
-        // (report do dono, 2026-09-19: *«não faço ideia do que seja»*): a cena abre sem objecto
-        // escolhido, logo o Inspector mostra o estado vazio e não existe um único chip no ecrã.
-        // *A cena estava certa como DADOS e era impossível como GESTO* — a mesma forma que o #15
-        // pagou, e que o prólogo do #18 já cura trazendo o Inspector à frente.
-        //
-        // ⚠️ **E é o Herói e não um Goblin por MEDIÇÃO:** o cérebro desta cena esconde os cinco
-        // inimigos aos 2 s, logo um deles como sujeito deixaria o artista a olhar para um objecto
-        // que desaparece. O `Statue` e o `Hero` sobrevivem, e o rótulo do Herói (`Player`) é o mais
-        // largo dos dois — é ele que mostra o que a pílula faz.
+        // ⭐ A cena abre com o Herói escolhido (senão o Inspector não mostra chip nenhum); os
+        // inimigos somem aos 2 s, logo o sujeito é o Herói.
         if nome == "Hero" {
             // ⚠️ **Em BITS, como as cenas irmãs** — a `hero.gizmo.selection` é um `u64`, e é o que
             //    a ponte da shell sabe traduzir de volta para uma linha da Hierarquia.

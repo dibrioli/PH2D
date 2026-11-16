@@ -253,13 +253,8 @@ fn cena_um(world: &mut World) {
     placa(world, "Left Open", esq, ABERTA_RGBA, false);
 
     // ── O CONTROLO: as MESMAS acções, SEM cérebro ────────────────────────────
-    //
-    // ⭐⭐⭐ Ele ouve o `botao` directamente — e as três linhas disparam **todas**, na ordem em que
-    // estão escritas. A última ganha, e a porta fica presa. *É a medição do §5.0 posta no ecrã.*
-    //
-    // ⚠️ **Ele tem CORPO pelo mesmo motivo que a irmã** — e é isso que faz o controlo controlar
-    // alguma coisa: o dono escolhe as duas portas e o painel diz, de uma, que ela tem cérebro, e da
-    // outra que não. Sem corpo, «a que não tem» era inalcançável e a comparação não existia.
+    // Ouve o `botao` directamente: as três linhas disparam todas e a última ganha. Tem corpo para
+    // ser escolhível, como a irmã.
     let dir = 4.5;
     let mut controlo = acende("Right Closed", "botao", ["Right Opening", "Right Open"]);
     controlo.extend(acende(

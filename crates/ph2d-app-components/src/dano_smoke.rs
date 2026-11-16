@@ -219,25 +219,8 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
 
     // ⭐ O RELÓGIO que arranca as duas fábricas — ⚠️ `autostart` e SEM repetição: os alvos nascem
     // uma vez, ao entrar a corrida, e o `Reset` da barra de cima devolve a cena ao princípio.
-    //
-    // ⭐⭐⭐ **E o `Reset` SOZINHO chega — a 1.ª redacção deste roteiro mandava carregar em `Pause`
-    // antes dele, e isso era redundante E fazia a frase seguinte MENTIR** (report do dono, 19/09:
-    // *«por que pause? não deveria ser rewind?»*). Medido em [`ph2d_transport::apply`]:
-    //
-    // ```text
-    // TransportCmd::Reset => { playhead.rewind(); playhead.pause(); }
-    // ```
-    //
-    // ⇒ o chip **já pára o relógio** (*«Reset means back to the start, stopped»*), logo o que o
-    // dono vê é a cena a esvaziar-se — e a promessa *«os alvos voltam»* era falsa, porque com o
-    // relógio parado este `Timer` não volta a disparar. ⭐ Quem os traz de volta é o **`Play`**: o
-    // [`ph2d_ecs::rewind_runtime`] faz um `autostart` **nascer a correr** e repõe o
-    // `FactoryRuntime`, logo a corrida repete-se. *Uma instrução que promete o oposto do que
-    // acontece é a espécie que o §5.0 chama de pior que uma cena ausente.*
-    // ⛔ **Nunca o `Home`**: essa tecla é o *frame selection* do editor
-    // ([`handlers_teclas_editor`]), e o roteiro que a mandava carregar movia a CÂMERA e não o
-    // relógio — report do dono, 19/09. O censo `um_roteiro_nunca_rouba_uma_tecla_do_editor` recusa
-    // a recaída.
+    // ⭐ `Reset` já pára o relógio; quem traz os alvos de volta é o `Play` (`rewind_runtime`).
+    // ⛔ Nunca `Home` no roteiro: é o *frame selection* do editor.
     world.spawn((
         Name::new("Arranque"),
         Transform::from_translation(Vec2::new(0.0, 5.0)),

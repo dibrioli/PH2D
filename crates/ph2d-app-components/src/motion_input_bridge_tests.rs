@@ -196,7 +196,8 @@ fn action_publishes_the_strength_of_the_named_action() {
     m.action = "jump".into();
     let e = sim.world_mut().spawn(m).id();
     let mut accoes = BTreeMap::new();
-    for (forca, esperado) in [(1.0, Some(1.0)), (0.0, Some(0.0))] {
+    // A força é ANALÓGICA (gatilho meio apertado = 0.5), nunca o «pressed» digital.
+    for (forca, esperado) in [(1.0, Some(1.0)), (0.5, Some(0.5)), (0.0, Some(0.0))] {
         accoes.insert(
             "jump".to_string(),
             ph2d_ecs::ActionSample {
@@ -328,6 +329,32 @@ fn remap_maps_the_range_to_zero_one_with_clamp() {
     );
 }
 
+/// ⭐ A curva aplica-se DEPOIS do Remap, sobre o `t` em `0..1`: Ease In em 450 de 0..900 é a curva em 0.5
+/// (abaixo da recta), nunca a curva sobre 450 cru (que satura) remapeada.
+#[test]
+fn the_curve_shapes_the_remapped_t_not_the_raw_value() {
+    let ease_in = ph2d_editor_core::motion_input_edits::CURVE_PRESETS[1].1;
+    let c = ph2d_curve::parse(ease_in).expect("Ease In");
+    let m = MotionInput {
+        remap: true,
+        remap_from: 0.0,
+        remap_to: 900.0,
+        curve: ease_in.into(),
+        ..MotionInput::default()
+    };
+    let v = crate::motion_input_fonte::remapeia(&m, 450.0);
+    assert_eq!(v, c.eval(0.5));
+    assert!(v < 0.45, "Ease In fica abaixo da recta em 0.5: {v}");
+}
+
+/// ⭐ O dt do jogo: parado = 0 (o Smooth espera e um scrub parado não o escorre); a andar = passos × passo.
+#[test]
+fn the_game_dt_is_zero_when_stopped() {
+    use crate::motores::Relogio;
+    assert_eq!(Relogio::do_quadro(false, 3, 0.5).dt_de_jogo(), 0.0);
+    assert_eq!(Relogio::do_quadro(true, 3, 0.5).dt_de_jogo(), 1.5);
+}
+
 /// ⭐ Smooth: meia-vida 1 s, de 0 para 1 dá 0.5 depois de 1 s (em vários dt); o 1.º quadro nasce no alvo.
 #[test]
 fn smooth_halves_the_gap_per_half_life_and_is_born_on_target() {
@@ -351,8 +378,11 @@ fn smooth_halves_the_gap_per_half_life_and_is_born_on_target() {
         };
         frame(sim, &out, &f);
     };
+    sim.world_mut().get_mut::<MotionInput>(e).unwrap().value = 0.7;
     passo(&mut sim, 0.1);
-    assert_eq!(numero(&sim, "v"), Some(0.0), "nasce no alvo");
+    assert_eq!(numero(&sim, "v"), Some(0.7), "nasce no alvo (não em 0)");
+    sim.world_mut().get_mut::<MotionInput>(e).unwrap().value = 0.0;
+    passo(&mut sim, 40.0);
     sim.world_mut().get_mut::<MotionInput>(e).unwrap().value = 1.0;
     for dt in [0.25, 0.125, 0.125, 0.5] {
         passo(&mut sim, dt);

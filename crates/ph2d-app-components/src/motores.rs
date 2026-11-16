@@ -57,6 +57,18 @@ impl Relogio {
         self
     }
 
+    /// ⭐ **O tempo de JOGO do quadro** (passos devidos × passo fixo); parado = `0` — o rasto das barras e o
+    /// Smooth do Motion Input esperam, e um scrub parado não os escorre.
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn dt_de_jogo(&self) -> f32 {
+        if self.playing {
+            (f64::from(self.ticks) * self.dt) as f32
+        } else {
+            0.0
+        }
+    }
+
     /// Só os primeiros `ticks` passos (os que correram antes de um script parar no depurador).
     #[must_use]
     pub fn ate(self, ticks: u32) -> Self {
@@ -147,13 +159,8 @@ pub fn correm(
     barras(sim, health_bars, relogio);
     // Ciclo 19 do Motion: as entradas do grafo (o `Motion Input`, a vida, o dano e os sinais) —
     // DEPOIS de todos os que falam, e antes do Motion, que coze neste mesmo quadro.
-    #[allow(clippy::cast_possible_truncation)]
     let fontes = crate::motion_input_fonte::Fontes {
-        dt: if relogio.playing {
-            (f64::from(relogio.ticks) * relogio.dt) as f32
-        } else {
-            0.0
-        },
+        dt: relogio.dt_de_jogo(),
         physics: portas.physics,
         accoes,
         registry: Some(portas.registry),
@@ -171,13 +178,7 @@ pub fn correm(
 /// ⚠️ **O tempo do rasto é o de JOGO** (passos devidos × passo fixo): com o relógio parado o rasto
 /// espera, que é o que faz um scrub parado não o escorrer.
 fn barras(sim: &mut SimWorld, health_bars: &mut HealthBarsState, relogio: &Relogio) {
-    #[allow(clippy::cast_possible_truncation)]
-    let dt = if relogio.playing {
-        (f64::from(relogio.ticks) * relogio.dt) as f32
-    } else {
-        0.0
-    };
-    health_bars.frame(sim, dt);
+    health_bars.frame(sim, relogio.dt_de_jogo());
 }
 
 /// ⭐⭐⭐ **OS SCRIPTS DO ARTISTA** (TOP-20 #16) — o que um script emite chega à tabela de acções

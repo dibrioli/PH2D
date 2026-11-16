@@ -323,3 +323,26 @@ fn o_instantaneo_da_onda_2_nomeia_o_alvo_e_os_campos() {
         i.campos_do_alvo
     );
 }
+
+/// ⭐ O cartão lê a vida do ALVO (o From), não a do próprio: sem vida própria, com o From num Hero a 5/10, o
+/// instantâneo diz «tem vida» e a leitura parada é 0.5 — as mesmas portas da ponte.
+#[test]
+fn o_cartao_le_a_vida_do_from_e_nao_a_propria() {
+    let (mut sim, bits) = cena();
+    let heroi = sim.world_mut().spawn(ph2d_ecs::StableId(77)).id().to_bits();
+    com_vida(&mut sim, heroi, 5.0);
+    {
+        let mut m = sim
+            .world_mut()
+            .get_mut::<MotionInput>(ph2d_ecs::Entity::from_bits(bits))
+            .unwrap();
+        m.source = MotionSource::Health;
+        m.from = 77;
+    }
+    let i = build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new)).unwrap();
+    assert!(i.tem_vida, "a vida é a do Hero");
+    assert_eq!(
+        i.ao_vivo,
+        Some(ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero(0.5))
+    );
+}

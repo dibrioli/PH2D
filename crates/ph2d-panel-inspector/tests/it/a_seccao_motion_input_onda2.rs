@@ -203,6 +203,19 @@ fn as_saidas_das_queixas_novas() {
         "o clique pede o corpo"
     );
 
+    // «Pick object» é a saída do From que não acha ninguém, e só dela: um campo que o alvo perdeu não a mostra.
+    let mut p = info(SOURCE_PROPERTY);
+    p.property = "ph2d::physics::Gone/x".into();
+    assert_eq!(
+        p.queixa(),
+        Some(ph2d_editor_core::motion_input_edits::MotionInputQueixa::CampoAusente)
+    );
+    let (_h, _st, rects) = pinta(p);
+    assert!(
+        rect_de(&rects, ids::INSP_MI_PICK_OBJECT).is_none(),
+        "Pick object só na queixa SemAlvo"
+    );
+
     let mut f = info(SOURCE_HEALTH);
     f.from = "Boss".into();
     f.alvo_achado = false;

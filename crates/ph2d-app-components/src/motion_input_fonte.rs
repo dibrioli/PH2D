@@ -174,3 +174,32 @@ pub fn suaviza(antes: Option<f32>, alvo: f32, dt: f32, s: f32) -> f32 {
         _ => alvo,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_component_desc::{Propagation, Target};
+
+    /// ⭐ A Property aceita um número de UMA faixa; um inteiro que é uma REFERÊNCIA (`View::Named`) não é
+    /// um número que se anime, e um texto também não.
+    #[test]
+    fn so_numeros_que_nao_sao_referencias() {
+        let campo = |kind, view| FieldDesc {
+            field_id: 1,
+            label_key: "",
+            kind,
+            policy: Propagation::Propagate,
+            is_ref: None,
+            name: "x",
+            key: "",
+            view,
+        };
+        assert!(numerico(&campo(FieldKind::Int, View::Same)));
+        assert!(numerico(&campo(FieldKind::Scalar, View::Degrees)));
+        assert!(!numerico(&campo(
+            FieldKind::Int,
+            View::Named(Target::Stable)
+        )));
+        assert!(!numerico(&campo(FieldKind::Text, View::Same)));
+    }
+}

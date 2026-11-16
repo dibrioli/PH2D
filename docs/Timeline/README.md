@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**20 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**22 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -31,6 +31,8 @@
 | 15 |   | [15_plano_redesenho_molde_rive.md](15_plano_redesenho_molde_rive.md) | plano | 15 — Redesenho da Timeline no molde do Rive (linha `line/TimelinePrincipal`) |
 | 16 |   | [16_onda3_containers_arrange.md](16_onda3_containers_arrange.md) | — | 16 — Onda 3: Containers e Arrange no molde do Rive (versão B) |
 | 17 |   | [17_plano_funcoes_novas.md](17_plano_funcoes_novas.md) | plano | 17 — Funções novas da Timeline (linha `line/TimelinePrincipal`) |
+| 18 |   | [18_plano_retime_por_trecho.md](18_plano_retime_por_trecho.md) | plano | 18 — Retime por trecho: a curva de velocidade que NÃO destrói o easing (dono 15/11) |
+| 19 |   | [19_pesquisa_retime.md](19_pesquisa_retime.md) | pesquisa | 19 — Pesquisa: como quem faz «Retime» CERTO o edita (dono 15/11) |
 | — |   | [BUGS_timeline.md](BUGS_timeline.md) | bugs | BUGS da Timeline — os cuja CAUSA enganava |
 | — |   | [smoke_nest.md](smoke_nest.md) | — | O smoke `PH2D_NEST_SMOKE` |
 

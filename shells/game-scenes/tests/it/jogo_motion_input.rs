@@ -251,3 +251,30 @@ fn no_play_a_bola_cruza_o_estado_e_o_leitor_da_barra_vem_primeiro() {
         "assenta no Ledge: {y:?}"
     );
 }
+
+/// ⭐ MI-10: o pick «Motion Input» da paleta (e o «Add …» por nome, a mesma porta `attach_picked`) cria um FILHO
+/// do objeto e anexa lá; o objeto não ganha o componente; o recibo fala do filho; dois picks, dois filhos.
+#[test]
+fn o_pick_da_paleta_cria_a_entrada_como_filha() {
+    let mut sim = SimWorld::new();
+    let dono = sim.world_mut().spawn(Name::new("Hero")).id();
+    let reg = crate::comp::registo();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let pick = Some((dono.to_bits(), "ph2d::ecs::MotionInput".to_string()));
+    for _ in 0..2 {
+        ph2d_app_components::component_attach::attach_picked(
+            pick.as_ref(),
+            &mut sim,
+            &reg,
+            &[],
+            &mut toasts,
+        );
+    }
+    let w = sim.world_mut();
+    let mut q = w.query::<(&MotionInput, &ph2d_ecs::ChildOf)>();
+    assert_eq!(q.iter(w).filter(|(_, c)| c.parent() == dono).count(), 2);
+    assert!(
+        w.get::<MotionInput>(dono).is_none(),
+        "o objeto não leva a entrada"
+    );
+}

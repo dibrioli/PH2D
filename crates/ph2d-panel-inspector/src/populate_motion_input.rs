@@ -56,6 +56,7 @@ pub(crate) fn populate_motion_input(store: &mut WidgetStore) {
             crate::ids::INSP_MI_REMAP,
             crate::ids::INSP_MI_ADD_BODY,
             crate::ids::INSP_MI_PICK_OBJECT,
+            crate::ids::INSP_MI_OPEN_INPUT_MAP,
         ],
     );
     register_button_ids(store, &crate::ids::INSP_MI_CURVE);

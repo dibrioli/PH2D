@@ -35,7 +35,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The command line sets this name first ({v}) \u{2014} the graph reads that."
         }
         "panel.inspector.motion_input.covered_by_object" => {
-            "{o} sets this name first ({v}) \u{2014} the graph reads that."
+            "The Motion Input on {o} sets this name first ({v}) \u{2014} the graph reads that."
         }
         "panel.inspector.motion_input.name_hint" => "input name\u{2026}",
         "panel.inspector.motion_input.empty_name" => {
@@ -48,13 +48,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "No Input node in the Motion graph has this name \u{2014} pick one above."
         }
         "panel.inspector.motion_input.no_health" => {
-            "This object has no Health \u{2014} the graph reads nothing until you add it."
+            "{o} has no Health \u{2014} the graph reads nothing until you add it."
         }
         "panel.inspector.motion_input.no_from" => {
-            "No object has the name in From \u{2014} pick another one, or clear it to read this object."
+            "No object has the name in From \u{2014} pick another one, or clear it to read {o}."
         }
         "panel.inspector.motion_input.no_body" => {
-            "This object has no body to read \u{2014} Speed needs a Rigid Body, Grounded a Platform Player."
+            "{o} has no body to read \u{2014} Speed and Velocity need a Rigid Body, Grounded a Platform Player."
         }
         "panel.inspector.motion_input.unknown_action" => {
             "The Input Map has no action with this name \u{2014} pick one from the list."
@@ -66,10 +66,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This object does not have that field \u{2014} pick one it has."
         }
         // GEF 08 onda 2: From, as listas, o grupo «Shape» e as saídas das queixas.
-        "panel.inspector.motion_input.from_this" => "This object",
+        "panel.inspector.motion_input.from_this" => "{o} (parent)",
+        "panel.inspector.motion_input.the_parent" => "the parent",
+        "panel.inspector.motion_input.parent" => "Parent",
         "panel.inspector.motion_input.from_tip" => {
-            "The object this input reads. Empty reads this object. Type a name or use the eyedropper."
+            "The object this input reads. Empty reads the parent. Type a name or use the eyedropper."
         }
+        "panel.inspector.motion_input.no_move" => {
+            "The Input Map has no move_left, move_right, move_up or move_down action \u{2014} add them in the Input Map."
+        }
+        "panel.inspector.motion_input.reads_move" => "Reads {a} from the Input Map",
+        "panel.inspector.motion_input.reads_pair" => "Reads {c} here: {v}",
+        "panel.inspector.motion_input.pair_field" => "{c}  (x, y)",
         "panel.inspector.motion_input.from_pick_tip" => {
             "Click an object on the stage or in the Hierarchy to read it."
         }
@@ -104,6 +112,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.smooth_s" => "Smooth {s} s",
         "panel.inspector.motion_input.add_body" => "Add Physics Body",
         "panel.inspector.motion_input.pick_object" => "Pick object",
+        "panel.inspector.motion_input.open_input_map" => "Open Input Map",
         "panel.inspector.motion_input.more_names" => {
             "{n} more in the graph \u{2014} type the name you need."
         }

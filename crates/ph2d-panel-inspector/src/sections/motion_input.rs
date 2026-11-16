@@ -10,7 +10,7 @@
 use super::*;
 use ph2d_editor_core::motion_input_edits::{
     InspectorMotionInputInfo, MOTION_INPUT_SOURCES, MotionInputAoVivo, MotionInputOutro,
-    MotionInputQueixa, SOURCE_ACTION, SOURCE_PROPERTY, SOURCE_SPEED,
+    MotionInputQueixa, SOURCE_ACTION, SOURCE_MOVE, SOURCE_PROPERTY, SOURCE_SPEED, SOURCE_VELOCITY,
 };
 use ph2d_editor_core::property_row::{Seccao, paint_choice_row};
 use ph2d_i18n::{tr, tr_with};
@@ -39,6 +39,7 @@ const fn chave_da_queixa(q: MotionInputQueixa) -> &'static str {
         MotionInputQueixa::NomeNaoLido => "panel.inspector.motion_input.name_not_read",
         MotionInputQueixa::SemVida => "panel.inspector.motion_input.no_health",
         MotionInputQueixa::SemAlvo => "panel.inspector.motion_input.no_from",
+        MotionInputQueixa::SemMover => "panel.inspector.motion_input.no_move",
         MotionInputQueixa::SemCorpo => "panel.inspector.motion_input.no_body",
         MotionInputQueixa::AcaoDesconhecida => "panel.inspector.motion_input.unknown_action",
         MotionInputQueixa::CampoVazio => "panel.inspector.motion_input.no_property",
@@ -88,9 +89,14 @@ fn nomes_do_grafo(
     )
 }
 
-/// O número de uma leitura, com duas casas (a régua das frações `0..1`).
+/// O número de uma leitura, com duas casas e o menos tipográfico (U+2212).
 fn numero(v: f32) -> String {
-    format!("{v:.2}")
+    format!("{v:.2}").replace('-', "\u{2212}")
+}
+
+/// O par de uma leitura: «(3.20, −1.00)».
+fn par(p: [f32; 2]) -> String {
+    format!("({}, {})", numero(p[0]), numero(p[1]))
 }
 
 fn valor_na_frase(v: MotionInputAoVivo) -> String {
@@ -98,7 +104,7 @@ fn valor_na_frase(v: MotionInputAoVivo) -> String {
         MotionInputAoVivo::Numero(n) => numero(n),
         MotionInputAoVivo::Cor(_) => tr("panel.inspector.motion_input.a_color").to_string(),
         MotionInputAoVivo::Disparos(n) => n.to_string(),
-        MotionInputAoVivo::Par(p) => format!("{}, {}", numero(p[0]), numero(p[1])),
+        MotionInputAoVivo::Par(p) => par(p),
     }
 }
 
@@ -118,6 +124,22 @@ fn frases_ao_vivo(i: &InspectorMotionInputInfo) -> Vec<String> {
                 f.push(tr_with(
                     "panel.inspector.motion_input.reads_property",
                     &[("c", rotulo), ("v", &numero(v))],
+                ));
+            }
+        }
+        // Parada, o par lido no alvo (Velocity, ou a Property de duas faixas, sob o rótulo da lista).
+        (SOURCE_VELOCITY, Some(MotionInputAoVivo::Par(p))) if !i.a_correr => f.push(tr_with(
+            "panel.inspector.motion_input.reads_pair",
+            &[
+                ("c", &tr(FONTES[usize::from(SOURCE_VELOCITY)])),
+                ("v", &par(p)),
+            ],
+        )),
+        (SOURCE_PROPERTY, Some(MotionInputAoVivo::Par(p))) if !i.a_correr => {
+            if let Some((rotulo, _)) = i.campos_do_alvo.iter().find(|(_, k)| *k == i.property) {
+                f.push(tr_with(
+                    "panel.inspector.motion_input.reads_pair",
+                    &[("c", rotulo), ("v", &par(p))],
                 ));
             }
         }
@@ -176,7 +198,10 @@ fn queixa(
         x,
         w,
         y,
-        tr(chave_da_queixa(q)),
+        &tr_with(
+            chave_da_queixa(q),
+            &[("o", &super::motion_input_linhas::o_alvo(i))],
+        ),
         ColorToken::Warn,
     );
     // A saída de cada queixa que tem uma: Health, o corpo da Speed (o Grounded pede um Player, que não é
@@ -186,9 +211,13 @@ fn queixa(
             crate::ids::INSP_MI_ADD_HEALTH,
             "panel.inspector.motion_input.add_health",
         ),
-        MotionInputQueixa::SemCorpo if i.source == SOURCE_SPEED => (
+        MotionInputQueixa::SemCorpo if matches!(i.source, SOURCE_SPEED | SOURCE_VELOCITY) => (
             crate::ids::INSP_MI_ADD_BODY,
             "panel.inspector.motion_input.add_body",
+        ),
+        MotionInputQueixa::SemMover => (
+            crate::ids::INSP_MI_OPEN_INPUT_MAP,
+            "panel.inspector.motion_input.open_input_map",
         ),
         MotionInputQueixa::SemAlvo => (
             crate::ids::INSP_MI_PICK_OBJECT,
@@ -380,6 +409,19 @@ pub(crate) fn paint_motion_input_section(
             xy,
             i,
             seccao,
+        );
+    }
+    if i.source == SOURCE_MOVE && !i.acoes_de_mover().is_empty() {
+        let a = i.acoes_de_mover().join(" \u{b7} ");
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &tr_with("panel.inspector.motion_input.reads_move", &[("a", &a)]),
+            ColorToken::Text2,
         );
     }
     cur_y = queixa(scene, text_system, theme, hit_index, store, x, w, cur_y, i);

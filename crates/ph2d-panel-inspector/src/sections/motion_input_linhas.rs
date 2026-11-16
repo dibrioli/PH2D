@@ -10,7 +10,7 @@ use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::{Dropdown, paint_dropdown_chip};
 use ph2d_i18n::{tr, tr_with};
 
-/// O From — a linha do «Aim at» do Ray Sensor (caixa pelo nome + conta-gotas); vazio = «This object».
+/// O From — a linha do «Aim at» do Ray Sensor (caixa pelo nome + conta-gotas); vazio = o PAI («Hero (parent)»).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn from(
     scene: &mut VectorScene,
@@ -34,13 +34,34 @@ pub(super) fn from(
         (
             TextKey::new("component.field.motion_input_fields.5"),
             crate::ids::INSP_MI_FROM,
-            TextInput::new(crate::ids::INSP_MI_FROM, "")
-                .placeholder(tr("panel.inspector.motion_input.from_this")),
+            TextInput::new(crate::ids::INSP_MI_FROM, "").placeholder(o_pai(i)),
         ),
         (crate::ids::INSP_MI_FROM_PICK, i.from_pick_armed),
         seccao,
         None,
     )
+}
+
+/// O From vazio diz o pai pelo nome («Hero (parent)»); sem nome, «Parent».
+#[must_use]
+pub(crate) fn o_pai(i: &InspectorMotionInputInfo) -> String {
+    if i.pai.trim().is_empty() {
+        return tr("panel.inspector.motion_input.parent").to_string();
+    }
+    tr_with(
+        "panel.inspector.motion_input.from_this",
+        &[("o", &i.pai.trim())],
+    )
+}
+
+/// O nome do objecto que a fonte lê, para as frases: o From, ou o pai.
+#[must_use]
+pub(crate) fn o_alvo(i: &InspectorMotionInputInfo) -> String {
+    match (i.from.trim(), i.pai.trim()) {
+        ("", "") => tr("panel.inspector.motion_input.the_parent").to_string(),
+        ("", p) => p.to_string(),
+        (f, _) => f.to_string(),
+    }
 }
 
 /// A lista suspensa de `lista` (Action ou Property), com o popover diferido.
@@ -281,6 +302,9 @@ mod tests {
             acoes_do_mapa: Vec::new(),
             property: String::new(),
             campos_do_alvo: Vec::new(),
+            campos_par: Vec::new(),
+            pai: String::new(),
+            alvo_bits: None,
             remap: false,
             remap_from: 0.0,
             remap_to: 900.0,

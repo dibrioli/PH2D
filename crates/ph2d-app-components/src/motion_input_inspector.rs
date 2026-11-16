@@ -1,6 +1,4 @@
-//! **O instantâneo e o dreno da secção MOTION INPUT** (ciclo 19 do Motion).
-//!
-//! A ponte `u8` ⇄ `MotionSource` vive AQUI e só aqui (o painel não vê a `ph2d-ecs`).
+//! **O instantâneo e o dreno da secção MOTION INPUT**; a ponte `u8` ⇄ `MotionSource` vive só aqui.
 
 use crate::motion_input_fonte as fonte;
 use ph2d_ecs::motion_inputs::{Escritor, Valor};
@@ -13,16 +11,13 @@ use ph2d_editor_core::motion_input_edits::{
 
 const _: () = assert!(MotionSource::ALL.len() == MOTION_INPUT_SOURCES);
 
-/// O índice que atravessa a fronteira ⇄ a fonte. Fora da faixa ⇒ `None` (edição inerte).
+/// O índice ⇄ a fonte; fora da faixa ⇒ `None`.
 #[must_use]
 pub fn source_de_u8(v: u8) -> Option<MotionSource> {
     MotionSource::ALL.get(usize::from(v)).copied()
 }
 
-/// ⭐ **Constrói o instantâneo** da entidade escolhida, ou `None` se ela não tem o componente.
-///
-/// `listas` = `(nomes do grafo, acções do Input Map)`, que esta crate não vê (quem as passa é a
-/// shell); só correm quando o componente existe. `reg` dá os campos do From (Property).
+/// ⭐ O instantâneo, ou `None` sem o componente; `listas` = (grafo, acções do Input Map), da shell.
 #[must_use]
 pub fn build_info(
     sim: &SimWorld,
@@ -34,7 +29,6 @@ pub fn build_info(
     let e = ph2d_ecs::Entity::from_bits(bits);
     let world = sim.world();
     let m = world.get::<MotionInput>(e)?;
-    // ⚠️ As MESMAS portas que a ponte lê — senão o painel diria «tem vida» sobre uma que ela ignora.
     let alvo = fonte::alvo(world, e, m.from);
     let vida = alvo.and_then(|a| crate::health_bar_bridge::vida_da_barra(world, a));
     let tem_corpo = alvo.is_some_and(|a| match m.source {
@@ -45,6 +39,15 @@ pub fn build_info(
         (Some(r), Some(a)) => fonte::campos_numericos(r, world, a),
         _ => Vec::new(),
     };
+    let par = |k: &&(String, String)| {
+        alvo.and_then(|a| fonte::propriedade(reg, world, a, &k.1))
+            .is_some_and(|v| matches!(v, Valor::Vetor(_)))
+    };
+    let campos_par = campos_do_alvo
+        .iter()
+        .filter(par)
+        .map(|c| c.1.clone())
+        .collect();
     let (ao_vivo, tapado_por) = ao_vivo(sim, e, m, a_correr, (vida, reg, alvo));
     Some(InspectorMotionInputInfo {
         entity_bits: bits,
@@ -57,12 +60,15 @@ pub fn build_info(
         from: ph2d_ray_sensor::gotas::nomes(world, &[m.from])
             .pop()
             .unwrap_or_default(),
+        pai: nome_de(world, ph2d_ecs::motion_input::dono(world, e)),
+        alvo_bits: alvo.map(ph2d_ecs::Entity::to_bits),
         alvo_achado: alvo.is_some(),
         tem_corpo,
         action: m.action.clone(),
         acoes_do_mapa: (listas.1)(),
         property: m.property.clone(),
         campos_do_alvo,
+        campos_par,
         remap: m.remap,
         remap_from: m.remap_from,
         remap_to: m.remap_to,
@@ -76,6 +82,13 @@ pub fn build_info(
     })
 }
 
+fn nome_de(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> String {
+    world
+        .get::<Name>(e)
+        .map(|n| n.0.clone())
+        .unwrap_or_default()
+}
+
 const fn ao_vivo_de(v: Valor) -> AoVivo {
     match v {
         Valor::Numero(n) => AoVivo::Numero(n),
@@ -84,9 +97,7 @@ const fn ao_vivo_de(v: Valor) -> AoVivo {
     }
 }
 
-/// MI-11: o que este objecto manda agora e, em Play, quem o tapa. A vida lê-se também parada (é a
-/// mesma razão que a ponte publica); o resto só existe com o jogo a correr, pelo recurso que o grafo
-/// lê — nunca uma segunda conta.
+/// MI-11: o que manda agora e, em Play, quem o tapa (Health e Property leem-se também paradas).
 fn ao_vivo(
     sim: &SimWorld,
     e: ph2d_ecs::Entity,
@@ -100,10 +111,7 @@ fn ao_vivo(
 ) -> (Option<AoVivo>, Option<(Outro, AoVivo)>) {
     let world = sim.world();
     let eu = Escritor::Objeto {
-        nome: world
-            .get::<Name>(e)
-            .map(|n| n.0.clone())
-            .unwrap_or_default(),
+        nome: nome_de(world, ph2d_ecs::motion_input::dono(world, e)),
         bits: e.to_bits(),
     };
     let jogo = world.get_resource::<MotionInputs>().filter(|_| a_correr);
@@ -145,9 +153,7 @@ fn ao_vivo(
     (proprio, tapado)
 }
 
-/// ⭐ **A semente do nome** (anexar): o primeiro nome do grafo que nenhum outro `Motion Input` usa
-/// (senão o primeiro do grafo; sem grafo, fica o de fábrica). Só troca o nome de FÁBRICA — nunca o
-/// que o artista escreveu.
+/// ⭐ **A semente do nome**: o primeiro nome do grafo que nenhum outro `Motion Input` usa; só troca o de fábrica.
 pub fn semeia_o_nome(sim: &mut SimWorld, bits: u64) {
     let e = ph2d_ecs::Entity::from_bits(bits);
     let world = sim.world_mut();
@@ -177,17 +183,14 @@ pub fn semeia_o_nome(sim: &mut SimWorld, bits: u64) {
     }
 }
 
-/// Aplica uma edição. `true` = o mundo mudou (escrever o MESMO valor não é mudança: o undo é por
-/// diff).
+/// Aplica uma edição. `true` = o mundo mudou (o MESMO valor não é mudança: o undo é por diff).
 pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
     let e = ph2d_ecs::Entity::from_bits(bits);
     if let E::PickFrom(arma) = edit {
-        // ⭐ O conta-gotas é da SESSÃO: armar não muda o documento (nenhum passo de desfazer).
         ph2d_ray_sensor::gotas_from::arma(sim.world_mut(), bits, *arma);
         return false;
     }
     if let E::From(nome) = edit {
-        // O NOME vira `StableId` pela porta do conta-gotas do Ray Sensor; ninguém com ele = inerte.
         let Some(id) = ph2d_ray_sensor::gotas::resolve(sim.world(), nome) else {
             return false;
         };

@@ -80,3 +80,5 @@ pub const INSP_MI_SMOOTH: NodeId = hash_node_id("insp_mi_smooth");
 pub const INSP_MI_ADD_BODY: NodeId = hash_node_id("insp_mi_add_body");
 /// A saída da queixa «From não acha ninguém»: arma o conta-gotas do From.
 pub const INSP_MI_PICK_OBJECT: NodeId = hash_node_id("insp_mi_pick_object");
+/// A saída da queixa «sem acções move_*» (fonte Move): abre a aba do Input Map.
+pub const INSP_MI_OPEN_INPUT_MAP: NodeId = hash_node_id("insp_mi_open_input_map");

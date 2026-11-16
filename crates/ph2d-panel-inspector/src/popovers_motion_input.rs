@@ -63,7 +63,18 @@ impl Lista {
                     .iter()
                     .zip(ids)
                     .enumerate()
-                    .map(|(n, ((rotulo, _), id))| DropdownOption::new(id, n, rotulo.as_str()))
+                    .map(|(n, ((rotulo, k), id))| {
+                        // O campo que manda um PAR diz-o na linha («Transform · Position  (x, y)»).
+                        let rotulo = if i.campos_par.contains(k) {
+                            ph2d_i18n::tr_with(
+                                "panel.inspector.motion_input.pair_field",
+                                &[("c", rotulo)],
+                            )
+                        } else {
+                            rotulo.clone()
+                        };
+                        DropdownOption::new(id, n, rotulo)
+                    })
                     .collect(),
                 i.campos_do_alvo.iter().position(|(_, k)| *k == i.property),
             ),
@@ -78,6 +89,22 @@ thread_local! {
 /// O chip aberto guarda-se aqui no passe normal.
 pub(crate) fn set_pending(v: Option<(Lista, Rect)>) {
     PENDING_MI_DD.with(|c| c.set(v));
+}
+
+/// Quantas linhas a lista tem de mostrar abaixo do chip antes de preferir abrir para cima.
+const LINHAS_ABAIXO: u8 = 5;
+
+/// ⭐ **A lista abre ABAIXO do chip e rola** (a lista longa da Property cobria o topo do Inspector): a região
+/// começa no chip enquanto couberem [`LINHAS_ABAIXO`] linhas por baixo; senão, a região inteira (abre para cima,
+/// também com rolagem). A altura nunca passa do que a região tem.
+pub(crate) fn abaixo_do_chip(chip: Rect, region: Rect) -> Rect {
+    let fundo = region.y + region.h;
+    let abaixo = fundo - (chip.y + chip.h);
+    if abaixo >= chip.h * f32::from(LINHAS_ABAIXO) {
+        Rect::new(region.x, chip.y, region.w, fundo - chip.y)
+    } else {
+        region
+    }
 }
 
 /// Pinta a lista aberta (se houver) no passe diferido.
@@ -103,7 +130,7 @@ pub(super) fn paint_deferred(
     paint_open_popover(
         &dd,
         chip,
-        region,
+        abaixo_do_chip(chip, region),
         store,
         scene,
         text_system,

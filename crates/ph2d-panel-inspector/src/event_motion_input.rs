@@ -12,6 +12,8 @@ pub(crate) fn apply_motion_input_event(host: &mut dyn PanelHostInternal, ev: Wid
         return false;
     };
     let bits = info.entity_bits;
+    // As saídas anexam no objecto que a fonte LÊ (o pai, ou o From) — nunca no filho «Motion Input».
+    let alvo = info.alvo_bits.unwrap_or(bits);
     let linha = |tabela: &[ph2d_a11y::NodeId], id| tabela.iter().position(|&o| o == id);
 
     if let WidgetEvent::Click(id) = ev {
@@ -28,7 +30,7 @@ pub(crate) fn apply_motion_input_event(host: &mut dyn PanelHostInternal, ev: Wid
             // A saída do aviso: a mesma porta da paleta (cascata, recibo, Undo), sem a abrir.
             host.bus_mut()
                 .push(EditorAction::InspectorAddComponentRequested {
-                    entity_bits: bits,
+                    entity_bits: alvo,
                     component: Some("ph2d::physics::Health"),
                 });
             None
@@ -36,9 +38,13 @@ pub(crate) fn apply_motion_input_event(host: &mut dyn PanelHostInternal, ev: Wid
             // A saída da queixa «sem corpo» da Speed: a mesma porta, com o Rigid Body.
             host.bus_mut()
                 .push(EditorAction::InspectorAddComponentRequested {
-                    entity_bits: bits,
+                    entity_bits: alvo,
                     component: Some("ph2d::physics::RigidBody"),
                 });
+            None
+        } else if id == crate::ids::INSP_MI_OPEN_INPUT_MAP {
+            // A saída da queixa do Move: a aba do Input Map, pela porta do menu Settings.
+            host.store_mut().request_input_map_tab();
             None
         } else if id == crate::ids::INSP_MI_FROM_PICK || id == crate::ids::INSP_MI_PICK_OBJECT {
             // O conta-gotas (o da linha arma ou desarma; o da queixa só arma).

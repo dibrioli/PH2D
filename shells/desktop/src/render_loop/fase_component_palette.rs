@@ -58,8 +58,7 @@ impl crate::App {
             *component_palette_target,
             &has_animation,
         );
-        // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
-        // `AppGfx` em vez de num local deste laço.
+        // O pick chega noutro quadro: o alvo vive no `AppGfx`.
         super::fase_component_add_smoke::escolhe(hero);
         let animation_for = ph2d_app_components::component_attach::take_animation_pick(
             hero,
@@ -67,8 +66,7 @@ impl crate::App {
         );
         let picked =
             ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
-        // ⭐ A COMPOSIÇÃO entrega as sementes das famílias donas (auditoria A1): a da física e a cerca da
-        // câmera no contorno do nível (GEF 20 C6).
+        // As sementes das famílias donas: a da física e a cerca da câmera (GEF 20 C6).
         if picked.is_some() || hero.store.has_component_resets() {
             let seeds = [
                 ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
@@ -83,11 +81,13 @@ impl crate::App {
                 &seeds,
                 toasts,
             );
+            if let Some(filho) = ph2d_app_components::motion_input_filho::toma_o_novo() {
+                hero.gizmo.replace_selection(Some(filho));
+            }
             #[cfg(feature = "panel-inspector")]
             if let Some((bits, frase)) = _recibo {
                 ph2d_panel_inspector::recibo::mostra(bits, frase);
             }
-            // O ↺ dos cartões (T60) repõe com as mesmas sementes.
             ph2d_app_components::component_attach::reset_asked(
                 hero,
                 sim,

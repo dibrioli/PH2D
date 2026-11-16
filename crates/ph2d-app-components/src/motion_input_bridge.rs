@@ -1,16 +1,6 @@
-//! ⭐ **A ponte do `Motion Input`** (ciclo 19, doc 128 §3.6) — por quadro, o que cada objecto com
-//! o componente publica, e os sinais do runtime, vão para o recurso [`MotionInputs`] que a
-//! `ph2d-app-motion` publica para o grafo antes de cozer (no mesmo quadro: a simulação corre antes).
-//!
-//! - **Valor / Cor**: o campo do componente.
-//! - **Vida**: `agora ÷ máximo` do `Health` do objecto From (a mesma leitura das barras).
-//! - **Dano**: um DISPARO cada vez que essa razão desce.
-//! - **Speed · Grounded · Action · Property** (onda 2): [`crate::motion_input_fonte`]; depois o
-//!   Remap (e a curva) e o Smooth, só nos números.
-//! - **Sinais**: um sinal do runtime dispara o gatilho com o nome dele.
-//!
-//! O estado da ponte (a vida do quadro anterior, o cursor dos sinais) é um recurso do mundo que
-//! ninguém regista — fora do save e do undo, como o `HealthBarsState`.
+//! ⭐ **A ponte do `Motion Input`** (doc 128 §3.6): por quadro, o que cada objecto publica e os sinais do
+//! runtime vão para [`MotionInputs`]; as fontes em [`crate::motion_input_fonte`]. O estado da ponte é um
+//! recurso fora do save e do undo, como o `HealthBarsState`.
 
 use crate::motion_input_fonte::{self as fonte, Fontes};
 use bevy_ecs::prelude::Resource;

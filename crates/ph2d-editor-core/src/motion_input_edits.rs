@@ -93,6 +93,8 @@ pub enum MotionInputQueixa {
     SemVida,
     /// O From nomeia um objecto que não existe.
     SemAlvo,
+    /// A fonte é Move e o Input Map não tem nenhuma das acções `move_*`.
+    SemMover,
     /// A fonte é Speed (sem corpo) ou Grounded (sem personagem de plataforma).
     SemCorpo,
     /// A fonte é Action e o Input Map não tem acção com esse nome.
@@ -145,8 +147,12 @@ pub struct InspectorMotionInputInfo {
     pub nomes_do_grafo: Vec<String>,
     /// O objecto From tem `Health`? (As fontes `Health` e `Damage` leem-na.)
     pub tem_vida: bool,
-    /// O objecto From pelo NOME (`""` = este objecto).
+    /// O objecto From pelo NOME (`""` = o pai, MI-10).
     pub from: String,
+    /// O nome do PAI (o dono da entrada, que o From vazio lê); `""` sem nome.
+    pub pai: String,
+    /// Os bits do objecto que a fonte lê (onde «Add Health» e «Add Physics Body» anexam).
+    pub alvo_bits: Option<u64>,
     /// O From acha um objecto (`""` acha sempre: é este).
     pub alvo_achado: bool,
     /// O From tem o que a fonte Speed (corpo) ou Grounded (personagem de plataforma) lê.
@@ -159,6 +165,8 @@ pub struct InspectorMotionInputInfo {
     pub property: String,
     /// Os campos numéricos dos componentes do From: `(rótulo «Health · Max», "canonical/serde_key")`.
     pub campos_do_alvo: Vec<(String, String)>,
+    /// As chaves dos campos que mandam um PAR `(x, y)` (sufixo na lista).
+    pub campos_par: Vec<String>,
     /// A caixa «Remap» e a faixa que vira `0..1`.
     pub remap: bool,
     pub remap_from: f32,
@@ -217,7 +225,10 @@ impl InspectorMotionInputInfo {
         }
         match self.source {
             SOURCE_HEALTH | SOURCE_DAMAGE if !self.tem_vida => Some(Q::SemVida),
-            SOURCE_SPEED | SOURCE_GROUNDED if !self.tem_corpo => Some(Q::SemCorpo),
+            SOURCE_SPEED | SOURCE_GROUNDED | SOURCE_VELOCITY if !self.tem_corpo => {
+                Some(Q::SemCorpo)
+            }
+            SOURCE_MOVE if self.acoes_de_mover().is_empty() => Some(Q::SemMover),
             SOURCE_ACTION if !self.acoes_do_mapa.iter().any(|a| *a == self.action) => {
                 Some(Q::AcaoDesconhecida)
             }
@@ -229,12 +240,27 @@ impl InspectorMotionInputInfo {
         }
     }
 
+    /// As acções `move_*` que o Input Map tem (o que a fonte Move lê), na ordem direita, esquerda, cima, baixo.
+    #[must_use]
+    pub fn acoes_de_mover(&self) -> Vec<&'static str> {
+        use ph2d_input::{PLAYER_MOVE_DOWN, PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP};
+        [PLAYER_MOVE_RIGHT, PLAYER_MOVE_LEFT, PLAYER_MOVE_UP, PLAYER_MOVE_DOWN]
+            .into_iter()
+            .filter(|n| self.acoes_do_mapa.iter().any(|a| a == n))
+            .collect()
+    }
+
     /// A fonte lê um OBJECTO (o From)? Value, Color e Action não leem ninguém.
     #[must_use]
     pub fn le_from(&self) -> bool {
         matches!(
             self.source,
-            SOURCE_HEALTH | SOURCE_DAMAGE | SOURCE_SPEED | SOURCE_GROUNDED | SOURCE_PROPERTY
+            SOURCE_HEALTH
+                | SOURCE_DAMAGE
+                | SOURCE_SPEED
+                | SOURCE_GROUNDED
+                | SOURCE_PROPERTY
+                | SOURCE_VELOCITY
         )
     }
 
@@ -259,12 +285,15 @@ mod tests {
             nomes_do_grafo: nomes.iter().map(|s| (*s).to_string()).collect(),
             tem_vida,
             from: String::new(),
+            pai: String::new(),
+            alvo_bits: None,
             alvo_achado: true,
             tem_corpo: false,
             action: String::new(),
             acoes_do_mapa: vec!["jump".into()],
             property: String::new(),
             campos_do_alvo: vec![("Health · Max".into(), "Health/max".into())],
+            campos_par: Vec::new(),
             remap: false,
             remap_from: 0.0,
             remap_to: 1.0,
@@ -324,6 +353,14 @@ mod tests {
         p.property = "Health/max".into();
         assert_eq!(p.queixa(), None);
         assert!(p.le_numero() && !info("a", SOURCE_COLOR, &[], false).le_numero());
+        let mut v = info("hp", SOURCE_VELOCITY, &["hp"], false);
+        assert!(v.le_from() && v.queixa() == Some(Q::SemCorpo));
+        v.tem_corpo = true;
+        assert_eq!(v.queixa(), None);
+        let mut m = info("hp", SOURCE_MOVE, &["hp"], false);
+        assert!(!m.le_from() && m.queixa() == Some(Q::SemMover));
+        m.acoes_do_mapa = vec!["move_left".into()];
+        assert_eq!(m.queixa(), None);
     }
 
     /// Só a fonte que lê um campo o mostra.

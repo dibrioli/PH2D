@@ -14,8 +14,6 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
-// The display face a row is built in. `default()` is what the APP ships
-// (Pixels, 100 px/m), so a fixture reads the same numbers the artist does.
 use ph2d_editor_core::ProjectSettings;
 
 /// A selected `motion.expression` resolves to a **Formula** text row that carries the
@@ -43,7 +41,6 @@ fn selected_expression_node_yields_a_formula_text_row() {
         }
         other => panic!("first row should be the Formula text field, got {other:?}"),
     }
-    // The a..d coefficients remain scalar rows below the formula.
     assert!(
         snap.rows
             .iter()
@@ -64,11 +61,6 @@ fn selected_field_remap_yields_an_interactive_curve_row() {
     use crate::ParamRow;
     let mut motion = MotionState::new();
     let rm = motion.doc.graph.add_node("field.remap");
-    // ⚠️ **O contorno é ESCOLHIDO, e isso é a reconciliação que a cerca do nó nomeava.**
-    // Desde 2026-08-24 o editor de curva é gateado a `contour = Curve`: ele deixou de ser
-    // oferecido nos contornos que não o lêem, que é o que o report do `motion.oscillator`
-    // mostrou ser lido como «não está funcionando». Sem esta linha a fixture pergunta pelo
-    // editor num modo em que ele já não existe — e isso é produto correcto, não regressão.
     motion.doc.graph.set_param(rm, "contour", 4.0);
     motion
         .doc
@@ -88,7 +80,6 @@ fn selected_field_remap_yields_an_interactive_curve_row() {
         }
         other => panic!("first row should be the interactive Curve editor, got {other:?}"),
     }
-    // The Contour enum + the scalar knobs remain below the curve.
     assert!(
         snap.rows
             .iter()
@@ -121,9 +112,6 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
             _ => None,
         })
         .expect("channel is a named Enum row, not a slider");
-    // ⚠️ A `EnumRow` carrega CHAVES por desenho (a fronteira não pode reconstruir o array —
-    // ele vive num `ParamUiHint` que é `Copy`), logo o gate lê pela tabela e passa a medir o
-    // que o artista LÊ, e não como duas listas estão escritas.
     let palavras: Vec<&str> = channel.labels.iter().map(|l| ph2d_i18n::tr(l)).collect();
     assert_eq!(palavras, ["X", "Y", "Rotation", "Size"]);
     let ease = snap
@@ -134,20 +122,11 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
             _ => None,
         })
         .expect("ease_curve is a named Enum row");
-    // The rich curve family set (Penner minus the transcendental ones).
     let eases: Vec<&str> = ease.labels.iter().map(|l| ph2d_i18n::tr(l)).collect();
     assert!(
         eases.contains(&"Bounce") && eases.contains(&"Back"),
         "{eases:?}"
     );
-    // ⚠️ **Com a curva em `Linear` — o estado em que o nó nasce — a DIREÇÃO não aparece**, e é
-    // a cura de 2026-08-22 (doc 90 §2): o `Linear` devolve `t` antes de olhar para a direção,
-    // logo In/Out/In-Out davam a mesma saída ao bit.
-    //
-    // ⚠️ O assunto deste teste é o WIDGET (*"um enum vira um seletor nomeado, não um slider de
-    // passos a decorar"*). Ele perguntava com a curva no default e, sem querer, fixava a
-    // visibilidade defeituosa — *um teste pode pinar um bug de desenho enquanto prova outra
-    // coisa, e continua verde a fazê-lo.*
     assert!(
         !snap
             .rows
@@ -189,11 +168,6 @@ fn every_row_range_contains_its_value_for_every_node_and_param() {
     use ph2d_nodegraph::cook::OpResolver;
     let mut motion = MotionState::new();
 
-    // EVERY registered node type — the real registry, not a stub list, and no prefix
-    // filter. This used to keep only `motion.*`, which quietly excluded `sim.*`,
-    // `value.*`, `force.*` and `pulse.*` from a gate whose name promised "every node
-    // and param" — so the entire `sim.*` family shipped with no hints and a runaway
-    // slider range, under a green test. A filter inside a gate is a hole in it.
     let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
     assert!(
         types.len() >= 80,
@@ -203,7 +177,6 @@ fn every_row_range_contains_its_value_for_every_node_and_param() {
     for ty in types {
         for extreme in [-9999.0f32, 9999.0] {
             let node = motion.doc.graph.add_node(ty);
-            // Shove the extreme onto EVERY declared param of this node.
             let params: Vec<&'static str> = motion
                 .registry
                 .resolve(motion.doc.graph.node(node).unwrap().type_id())
@@ -225,7 +198,6 @@ fn every_row_range_contains_its_value_for_every_node_and_param() {
                     ParamRow::Scalar(r) => (r.name, r.value, r.min, r.max),
                     ParamRow::Angle(r) => (r.name, r.deg, r.min_deg, r.max_deg),
                     ParamRow::Seed(r) => (r.name, r.value, r.min, r.max),
-                    // Color / Toggle / Enum carry no continuous range.
                     _ => continue,
                 };
                 assert!(
@@ -260,7 +232,6 @@ fn angle_params_resolve_to_degree_rows() {
             .unwrap_or_else(|| panic!("{who} has no Angle row"))
     };
 
-    // motion.rotate feeds the `rot` column: a full-circle range in degrees.
     let rot = motion.doc.graph.add_node("motion.rotate");
     ph2d_panel_motion_graph::set_graph_selection(vec![rot.0]);
     let a = angle_row(&motion, "rotate");
@@ -271,7 +242,6 @@ fn angle_params_resolve_to_degree_rows() {
     );
     assert_eq!(a.deg, 0.0, "default 0 deg");
 
-    // motion.orbit's polar angle: the same unit, a wider range.
     let orbit = motion.doc.graph.add_node("motion.orbit");
     ph2d_panel_motion_graph::set_graph_selection(vec![orbit.0]);
     let a = angle_row(&motion, "orbit");
@@ -281,7 +251,6 @@ fn angle_params_resolve_to_degree_rows() {
         "degrees, not turns"
     );
 
-    // Setting 90 deg on the doc reads back as 90 in the row — no conversion.
     motion.doc.graph.set_param(orbit, "angle", 90.0);
     assert_eq!(angle_row(&motion, "orbit").deg, 90.0);
 
@@ -399,7 +368,6 @@ fn the_look_at_picks_its_target_and_offers_the_picker_only_in_object_mode() {
             .expect("resolvable")
             .rows
     };
-    // The mode is a NAMED choice, not an index the artist has to decode.
     let modes = rows(&motion)
         .into_iter()
         .find_map(|r| match r {
@@ -410,8 +378,6 @@ fn the_look_at_picks_its_target_and_offers_the_picker_only_in_object_mode() {
     let modes: Vec<&str> = modes.iter().map(|l| ph2d_i18n::tr(l)).collect();
     assert_eq!(modes, ["Point", "Object", "Cursor"]);
 
-    // The offset is DEGREES and says so — an `Angle` row, which no unit table can
-    // contradict (doc 88).
     assert!(
         rows(&motion)
             .iter()
@@ -424,7 +390,6 @@ fn the_look_at_picks_its_target_and_offers_the_picker_only_in_object_mode() {
             .iter()
             .any(|r| matches!(r, ParamRow::Source(s) if s.param == "target"))
     };
-    // Default (Point): no object to name.
     assert!(!has_picker(&motion), "Point aims at the value inputs");
     motion.doc.graph.set_param(la, "mode", 1.0);
     assert!(has_picker(&motion), "Object mode offers the name picker");

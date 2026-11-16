@@ -184,7 +184,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
             display_key: "node.value.send_signal.name",
-            category: ph2d_node_registry::NodeUiCategory::Utility,
+            category: ph2d_node_registry::NodeUiCategory::Output,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );

@@ -18,10 +18,6 @@ use ph2d_i18n::TextKey;
 /// intents so the edit lands this frame. A click and an Enter on the palette both arrive here, so they
 /// route identically.
 pub(super) fn route_palette_pick(hero: &mut HeroScreen, motion: &mut MotionState) {
-    // ⚠️ CONDICIONAL, e é o que torna a ordem dos drenos irrelevante. O canal do pick tem DOIS
-    // consumidores desde a paleta de comandos global (`hero::global_palette`); um `take`
-    // incondicional aqui engoliria um comando do chrome e devolveria `None` a quem o soubesse
-    // executar, com o sintoma a ser *«às vezes não faz nada»*.
     let known = |id| {
         motion
             .registry
@@ -69,17 +65,7 @@ pub(super) fn build_catalog(
     use ph2d_panel_motion_graph::NodeChoice;
     let mut v: Vec<NodeChoice> = registry
         .manifests()
-        // ⚠️ **As FIXTURAS não são oferecidas** (doc 89, folha 17): o `debug.const` (o "1º
-        // nó" do W1.T3) e o `debug.wave` (o template de fan-out) existem para o motor e
-        // apareciam na paleta com o nome cru do tipo. Quem responde é o REGISTO, por
-        // opt-in — uma lista escrita aqui seria a segunda resposta à mesma pergunta, e a
-        // que envelhece é sempre a que o artista vê.
         .filter(|m| !registry.is_fixture(m.id))
-        // ⚠️ **E os RETIRADOS também não** (doc 115 W6) — outra bandeira, de propósito.
-        // Uma fixtura NUNCA foi para o artista; um retirado ERA, e o dono fechou-lhe a
-        // porta enquanto o motor fica vivo para outro consumidor. Fundir as duas numa
-        // só apagaria essa diferença, e é ela que diz à próxima pessoa se o que falta
-        // é um fio (morto) ou uma decisão (retirado).
         .filter(|m| !registry.is_out_of_catalogue(m.id))
         .map(|m| {
             let ui = registry.ui_manifest(m.id);
@@ -87,10 +73,7 @@ pub(super) fn build_catalog(
                 type_name: m.name,
                 display: ui.map(|u| ph2d_i18n::tr(u.display_key)).unwrap_or(m.name),
                 category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
-                // Straight off the manifest (`&'static`), so the panel can filter
-                // the smart-connect menu by what each type can actually take.
                 inputs: m.inputs,
-                // O espelho, para a paleta aberta de uma ENTRADA — ver o campo.
                 outputs: m.outputs,
             }
         })
@@ -196,7 +179,6 @@ pub(super) fn build_palette_model(
     PaletteModel {
         title: ph2d_i18n::tr("panel.motion_graph.library.add_node").to_string(),
         groups,
-        // A biblioteca de nós não tem caixa nenhuma — ver `PaletteModel::toggle`.
         toggle: None,
         tips: Vec::new(),
         select: None,
@@ -279,16 +261,6 @@ mod tests {
                 nc.type_name
             );
         }
-        // E o REGISTO tem-nos: o catálogo é que os esconde, não o registo que os perdeu.
-        //
-        // ⚠️⚠️ **A PREMISSA DESTA CONTA MORREU na W6 do doc 115, e o número não se
-        // corrige — a conta é que passa a ter DUAS parcelas.** Ela dizia *«exactamente
-        // as duas fixturas ficam de fora»* e lia `manifests − catálogo == 2`, o que era
-        // verdade enquanto **ser fixtura** fosse a única razão para não ser oferecido.
-        // Hoje há uma segunda, e oposta: um nó RETIRADO (`is_out_of_catalogue`), que o
-        // artista já teve e o dono fechou. *Somar as duas num literal apagaria a
-        // diferença que as duas bandeiras existem para guardar* — e a próxima pessoa
-        // leria «faltam 3 fixturas».
         let fixturas = reg.manifests().filter(|m| reg.is_fixture(m.id)).count();
         let retirados = reg
             .manifests()
@@ -296,9 +268,6 @@ mod tests {
             .count();
         assert_eq!(fixturas, 2, "exactamente as duas fixturas se declaram");
         assert_eq!(retirados, 1, "exactamente um tipo foi RETIRADO (o colisor)");
-        // ⭐ E o total é DERIVADO das duas parcelas, nunca escrito à mão: quem
-        // acrescentar uma terceira razão de esconder tem de a somar aqui, e um nó que
-        // se esconda sem bandeira nenhuma faz esta linha reprovar por diferença.
         assert_eq!(
             reg.manifests().count() - cat.len(),
             fixturas + retirados,

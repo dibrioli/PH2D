@@ -38,9 +38,9 @@ mod edit_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_library_tests.rs"]
 mod library_tests;
-/// O selector de MOLDES do `source.lsystem` — a resposta ao *"Axiom e Rules não são nada
-/// intuitivos"* (Enio, 2026-08-28).
-/// A costura da queixa: uma regra que o parser deita fora chega à row do painel.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_send_signal_ui_tests.rs"]
+mod send_signal_ui_tests;
 #[path = "motion_bridge_lsystem_complaint_tests.rs"]
 mod lsystem_complaint_tests;
 /// Toda queixa da linha de leitura de um cartão cabe inteira (doc 132 §5, no cartão).

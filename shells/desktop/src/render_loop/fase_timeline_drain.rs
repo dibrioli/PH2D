@@ -28,6 +28,7 @@ impl crate::App {
             crate::vec_text_ride::recook(sim, vec_scene, &self.vec.entities, id, e);
         }
         ph2d_app_components::canais_objeto::aplicar(sim, &mut self.preview_drive);
+        ph2d_app_components::folder_lock::sync(sim, component_registry);
         let pd = &mut self.preview_drive;
         ph2d_app_components::canais_componente::aplicar(sim, component_registry, pd, tags);
         let dd = (&mut self.preview_drive, &self.timeline.doc);

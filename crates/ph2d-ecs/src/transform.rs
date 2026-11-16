@@ -289,9 +289,9 @@ pub struct GroupedChildren;
 impl SimComponent for GroupedChildren {}
 
 /// Marker: o cadeado DESTE objecto vale para tudo o que está dentro dele — uma PASTA sem arte
-/// própria (a montagem de juntas: dono 15/11, «o cadeado não protegeu»). Derivado por
-/// `#[require]` do componente que o pede, nunca gravado. Nos outros objectos o cadeado continua
-/// a travar só o próprio (Enio 2026-05-26).
+/// própria (dono 15/11: o vazio e a montagem de juntas). Derivado, nunca gravado: `#[require]` do
+/// `JointAssembly` e `ph2d_app_components::folder_lock::sync` a cada quadro. Num objecto com arte
+/// o cadeado continua a travar só o próprio (Enio 2026-05-26).
 #[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct LockCoversChildren;
 

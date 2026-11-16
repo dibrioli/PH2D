@@ -247,9 +247,15 @@ fn locking_the_assembly_locks_the_whole_machine() {
         None,
         "a click cannot take it"
     );
-    // Um objecto comum continua com a regra de 26/05: o cadeado trava só ele.
+    // Um objecto COM arte continua com a regra de 26/05: o cadeado trava só ele (o vazio é pasta).
     let w = sim.world_mut();
-    let plain = w.spawn((Transform::IDENTITY, ph2d_ecs::Locked)).id();
+    let plain = w
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            ph2d_ecs::Locked,
+        ))
+        .id();
     let kid = w
         .spawn((Transform::IDENTITY, ph2d_ecs::ChildOf(plain)))
         .id();

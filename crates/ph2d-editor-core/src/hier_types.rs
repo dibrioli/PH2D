@@ -69,6 +69,13 @@ impl ObjectType {
         Self::MotionInput,
     ];
 
+    /// **Uma PASTA**: sem arte própria, o cadeado dela tranca o conteúdo (dono 15/11) — o vazio
+    /// («use it as a folder», Add ▸ Empty) e a montagem de juntas.
+    #[must_use]
+    pub const fn is_folder(self) -> bool {
+        matches!(self, Self::Empty | Self::Assembly)
+    }
+
     /// O glifo — um por tipo, nenhum repetido.
     #[must_use]
     pub const fn icon(self) -> IconId {

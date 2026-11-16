@@ -278,3 +278,49 @@ fn probe_crate_density_against_bridge_sag() {
         println!("density {d:>6} plank5 end {p5:+.3} lowest {low:+.3} crate y {cy:+.3}");
     }
 }
+
+/// **A ponte APANHA a caixa, não a atira** — e isso não depende de 1 mm de onde ela cai.
+///
+/// A caixa de 10 kg cai de 3 m sobre a emenda das duas árvores (`ph2d_physics::world::chains`). Com a emenda
+/// rígida ela subia 0,7–2 m e caía onde calhasse (às vezes no chão): o «segura» da cena era sorte do fim.
+/// Nove quedas a ±4 mm: depois de tocar, a caixa nunca sobe mais de 10 cm acima do repouso (1,30), e acaba
+/// sobre a ponte, perto de onde caiu.
+#[test]
+fn the_bridge_catches_a_dropped_crate_without_throwing_it() {
+    const REST: f32 = 1.30;
+    for k in -4i32..=4 {
+        let dx = k as f32 * 1e-3;
+        let mut sim = SimWorld::new();
+        scene::build(sim.world_mut());
+        {
+            let mut q = sim.world_mut().query::<(&Name, &mut Transform)>();
+            for (n, mut t) in q.iter_mut(sim.world_mut()) {
+                if n.as_str() == "Crate" {
+                    t.translation.x += dx;
+                }
+            }
+        }
+        let mut bridge = PhysicsBridge::new();
+        let (mut touched, mut peak) = (false, f32::MIN);
+        for t in 1..=300 {
+            bridge.dispatch(&mut sim, false, t);
+            let y = y_of(&mut sim, "Crate").translation.y;
+            touched |= y < REST + 0.1;
+            if touched {
+                peak = peak.max(y);
+            }
+        }
+        let end = y_of(&mut sim, "Crate").translation;
+        assert!(
+            peak < REST + 0.1,
+            "dx {dx:+.3}: the bridge threw the crate {:.2} m up",
+            peak - REST
+        );
+        assert!(
+            end.y > 1.2 && (end.x - 7.0 - dx).abs() < 0.3,
+            "dx {dx:+.3}: the crate ended at ({:.2}, {:.2})",
+            end.x,
+            end.y
+        );
+    }
+}

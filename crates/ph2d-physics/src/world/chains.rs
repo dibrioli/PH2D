@@ -20,10 +20,23 @@
 
 use super::PhysicsWorld;
 use super::joint_desc::{JointDesc, JointKind};
-use rapier2d::dynamics::{GenericJoint, ImpulseJointHandle, MultibodyJointHandle, RigidBodyHandle};
+use rapier2d::dynamics::{
+    GenericJoint, ImpulseJointHandle, MultibodyJointHandle, RigidBodyHandle, SpringCoefficients,
+};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 type Key = (u32, u32);
+
+/// **A emenda (a aresta que fecha as árvores) corrige o erro como mola criticamente amortecida.**
+///
+/// Com a rigidez de fábrica do rapier (1e6 rad/s) a emenda devolve num sub-passo o erro que o impacto
+/// abriu nela (15 cm entre duas árvores de tábuas de 0,05 kg) — a ponte vira catapulta: caixa de 10 kg
+/// caindo de 3 m sobe 0,7–2 m e cai onde calhar (caótico a 1e-6 m). Medido (cena 123, 18 perturbações):
+/// 1e6 → ressalto 2,0 m, 14/18 · 240 → 1,0 m · 60 → 0,30 m · **15 → 0,03 m, 18/18**.
+const SEAM_SOFTNESS: SpringCoefficients<f32> = SpringCoefficients {
+    natural_frequency: 15.0,
+    damping_ratio: 1.0,
+};
 
 fn joint_key(h: ImpulseJointHandle) -> Key {
     h.0.into_raw_parts()
@@ -74,6 +87,14 @@ impl PhysicsWorld {
                 self.chains.members.remove(&k);
             }
             self.chains.dirty = true;
+            return;
+        }
+        // Uma emenda reafinada (o `retune` refez o `data`) continua mola.
+        if was
+            && !self.chains.twins.contains_key(&k)
+            && let Some(live) = self.impulse_joints.get_mut(handle, true)
+        {
+            live.data.softness = SEAM_SOFTNESS;
             return;
         }
         // Mesma pertença: o número novo vai ao gémeo, e o impulso continua desligado.
@@ -127,6 +148,12 @@ impl PhysicsWorld {
                 && let Some(j) = self.impulse_joints.get_mut(ih, true)
             {
                 j.data.set_enabled(true);
+            }
+        }
+        let defaults = SpringCoefficients::joint_defaults();
+        for &ih in self.chains.members.values() {
+            if let Some(j) = self.impulse_joints.get_mut(ih, false) {
+                j.data.softness = defaults;
             }
         }
         let ij = &self.impulse_joints;
@@ -188,6 +215,13 @@ impl PhysicsWorld {
         for &(ih, ..) in &grown {
             if let Some(j) = self.impulse_joints.get_mut(ih, true) {
                 j.data.set_enabled(false);
+            }
+        }
+        for (k, &ih) in &self.chains.members {
+            if !self.chains.twins.contains_key(k)
+                && let Some(j) = self.impulse_joints.get_mut(ih, true)
+            {
+                j.data.softness = SEAM_SOFTNESS;
             }
         }
         self.seed_chains(&grown);

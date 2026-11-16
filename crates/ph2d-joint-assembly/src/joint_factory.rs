@@ -43,7 +43,8 @@ pub fn shift(t: &Template, counts: &[u16], i: usize) -> [f32; 2] {
 }
 
 /// **O centro da `n`-ésima peça do papel `i`**, com o `(0, 0)` do desenho em `origin` (metros).
-/// ⚠️ A ordem da conta é a da cena 123 de antes da porta: a ponte dela é sensível a 1e-6 m na 7.ª tábua.
+/// A ponte já não depende da ordem da conta: a emenda das correntes é mola amortecida (`chains.rs`,
+/// gate `the_bridge_catches_a_dropped_crate_without_throwing_it`).
 #[must_use]
 pub fn centre_at(t: &Template, counts: &[u16], i: usize, n: u16, origin: [f32; 2]) -> [f32; 2] {
     let Some(role) = t.roles.get(i) else {

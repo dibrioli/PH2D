@@ -125,7 +125,13 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 
 - Ctrl+Z dos gestos de pontos não conferido no Xvfb (o teclado não chega) — coberto pelos testes do passo de undo.
 - Do handoff anterior: smoke do Auto Key na sessão e dos acréscimos 13–14; o campo do Inspector digitado (não medido).
-- Elastic/Bounce In-out convertidos em Custom desviam ~4,5 % (tecto `SPLINE_MAX_POINTS` = 8): subir o tecto é decisão de formato.
+- ✅ (16/11, sem subir o tecto) Elastic/Bounce In-out convertidos em Custom: o Bounce In-out tinha 12 viradas (6 cantos +
+  6 cristas) > `NOS_MAX` e caía na gulosa às cegas; agora entram só os CANTOS (salto relativo de inclinação > `CANTO`) e
+  o greedy acha o 0,5 ⇒ **exato** (7 nós). Sem cantos e viradas demais (Elastic) entram os picos mais altos. Por fim
+  `afina`: cada trecho escolhe o comprimento das duas alças (mesma direção) contra a curva pronta. Medido (4000 amostras):
+  Bounce ×3, Quad, Cubic, Back exatos · Sine/Expo/Circ/Elastic In/Out ≤ 0,5 % (eram ≤ 1,1 %) · Elastic In-out 1,38 %
+  (era 4,1 %). ≤ 83 ms por curva em debug. Gate `a_curva_pronta_convertida_tem_a_mesma_cara_e_deixa_lugar_ao_ponto`
+  (tectos 0,6 % · 1,45 %), 3 mutações vermelhas (sem `afina`, sem cantos, sem picos).
 
 ## Perfil do agente (`bash scripts/agent-loop-profile.sh`)
 

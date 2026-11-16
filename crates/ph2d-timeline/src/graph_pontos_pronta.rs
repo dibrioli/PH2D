@@ -2,7 +2,8 @@
 //! um easing»). Um Ease/Elastic/Bounce… não tem alças: o toque converte-o numa Custom com a MESMA
 //! cara — nós escolhidos onde a cúbica mais erra (até [`NOS_MAX`], deixando lugar ao ponto do
 //! artista), cada um no valor exato da curva e com as alças na inclinação dela de cada lado (Corner
-//! onde ela quebra, como no Bounce) — e o ponto nasce onde se tocou.
+//! onde ela quebra, como no Bounce), o comprimento de cada alça afinado trecho a trecho — e o
+//! ponto nasce onde se tocou.
 
 use ph2d_anim::{EaseSpline, HandleKind, Interp, SPLINE_MAX_POINTS, SplineSide};
 
@@ -26,6 +27,15 @@ const CANDIDATOS: usize = 64;
 const H: f64 = 1.0e-6;
 /// O passo do sinal na bissecção de um canto (bem abaixo de `H`, para o canto não sair desviado).
 const BISSECAO_H: f64 = 1.0e-11;
+/// O salto relativo de inclinação acima do qual uma virada é um CANTO (o ressalto do Bounce: a
+/// inclinação troca de sinal de uma vez; no pico liso do Elastic os dois lados quase coincidem).
+const CANTO: f64 = 0.05;
+/// O comprimento da alça (fração do trecho em `x`) que a Hermite usa: exato numa cúbica.
+const TERCO: f64 = 1.0 / 3.0;
+/// Os comprimentos de alça que a afinação experimenta, em `1/AFINA_PASSOS` do trecho.
+const AFINA_PASSOS: u32 = 30;
+/// Amostras do erro dentro de um trecho, na afinação.
+const AFINA_AMOSTRAS: u32 = 48;
 
 /// A curva que um toque na linha do trecho edita: a Custom dele, ou a curva pronta convertida
 /// ([`preset_as_curve`]). `None` onde não se cria ponto (Hold, Nearest, parado, sem duração).
@@ -78,12 +88,44 @@ pub fn preset_as_curve(interp: Interp) -> Option<EaseSpline> {
     }
     cands.extend(&viradas);
     // Os lugares onde a curva VIRA entram primeiro, se cabem: são os nós que a forma pede (um
-    // passo de cada vez nunca os acha — cada um sozinho ajuda menos que um ponto da grelha).
+    // passo de cada vez nunca os acha — cada um sozinho ajuda menos que um ponto da grelha). Se
+    // não cabem todos, entram só os CANTOS (onde a inclinação salta: cada ressalto do Bounce) —
+    // entre dois cantos o Bounce é uma parábola, que a cúbica desenha exata.
+    let cantos: Vec<f64> = viradas
+        .iter()
+        .copied()
+        .filter(|&x| {
+            let (sl, sr) = lados(interp, x);
+            (sl - sr).abs() > CANTO * (1.0 + sl.abs().max(sr.abs()))
+        })
+        .collect();
     let mut xs = vec![0.0, 1.0];
     if viradas.len() <= NOS_MAX {
         xs.extend(&viradas);
-        xs.sort_by(f64::total_cmp);
+    } else if !cantos.is_empty() && cantos.len() <= NOS_MAX {
+        xs.extend(&cantos);
+    } else {
+        // As ondas do Elastic: os picos MAIS ALTOS (o quanto cada um sobe/desce dos vizinhos).
+        let v = |i: usize| {
+            viradas
+                .get(i)
+                .map_or(e(if i == 0 { 0.0 } else { 1.0 }), |&x| e(x))
+        };
+        let mut altura: Vec<(f64, f64)> = (0..viradas.len())
+            .map(|i| {
+                let antes = if i == 0 { e(0.0) } else { v(i - 1) };
+                let depois = if i + 1 == viradas.len() {
+                    e(1.0)
+                } else {
+                    v(i + 1)
+                };
+                ((v(i) - antes).abs() + (depois - v(i)).abs(), viradas[i])
+            })
+            .collect();
+        altura.sort_by(|a, b| b.0.total_cmp(&a.0));
+        xs.extend(altura.iter().take(NOS_MAX).map(|a| a.1));
     }
+    xs.sort_by(f64::total_cmp);
     let c = monta(interp, &xs);
     let mut erro = erro_de(&c);
     let (mut melhor_erro, mut melhor_c) = (erro, c);
@@ -123,7 +165,69 @@ pub fn preset_as_curve(interp: Interp) -> Option<EaseSpline> {
             }
         }
     }
-    Some(melhor_c)
+    Some(afina(interp, melhor_c))
+}
+
+/// Cada trecho escolhe o comprimento das duas alças dele (na mesma direção, a da curva pronta) que
+/// mais cola na curva: a Hermite de ⅓ é exata numa cúbica, mas um lóbulo do Elastic pede alças mais
+/// longas. Os trechos não se tocam (a alça Smooth do outro lado guarda o comprimento dela).
+fn afina(interp: Interp, c: EaseSpline) -> EaseSpline {
+    let xs: Vec<f64> = std::iter::once(0.0)
+        .chain(c.points().iter().map(|p| f64::from(p.p[0])))
+        .chain([1.0])
+        .collect();
+    let mut c = c;
+    for j in 0..xs.len() - 1 {
+        let (a, b) = (xs[j], xs[j + 1]);
+        let erro = |c: &EaseSpline| {
+            (1..AFINA_AMOSTRAS)
+                .map(|i| a + (b - a) * f64::from(i) / f64::from(AFINA_AMOSTRAS))
+                .map(|x| (c.eval(x) - interp.remap(x)).abs())
+                .fold(0.0, f64::max)
+        };
+        let mut melhor = erro(&c);
+        for _ in 0..3 {
+            for lado in [SplineSide::Out, SplineSide::In] {
+                for i in 1..=AFINA_PASSOS {
+                    let f = f64::from(i) / f64::from(AFINA_PASSOS);
+                    let no = if lado == SplineSide::Out { j } else { j + 1 };
+                    let t = com_alca(interp, &xs, c, no, lado, f);
+                    let e = erro(&t);
+                    if e < melhor {
+                        (melhor, c) = (e, t);
+                    }
+                }
+            }
+        }
+    }
+    c
+}
+
+/// `c` com a alça `lado` do nó `no` na inclinação da curva pronta e `f` do trecho de comprimento.
+fn com_alca(
+    interp: Interp,
+    xs: &[f64],
+    mut c: EaseSpline,
+    no: usize,
+    lado: SplineSide,
+    f: f64,
+) -> EaseSpline {
+    let fim = xs.len() - 1;
+    let ponto = |x: f64| [x, interp.remap(x)];
+    let (sl, sr) = lados(interp, xs[no]);
+    let h = match lado {
+        SplineSide::Out => alca(ponto(xs[no]), ponto(xs[no + 1]), sr, 1.0, f),
+        SplineSide::In => alca(ponto(xs[no]), ponto(xs[no - 1]), sl, -1.0, f),
+    };
+    let (out0, in1) = c.end_handles();
+    match (no, lado) {
+        (0, _) => c.with_end_handles(h, in1),
+        (n, _) if n == fim => c.with_end_handles(out0, h),
+        _ => {
+            c.move_handle(no, lado, h[0], h[1]);
+            c
+        }
+    }
 }
 
 /// A inclinação da curva pronta à esquerda e à direita de `x`, cada uma lida SÓ desse lado e sem
@@ -142,14 +246,14 @@ fn lados(interp: Interp, x: f64) -> (f64, f64) {
 /// A alça de Hermite a partir de `p` na inclinação `s` (para `lado` = ±1): ⅓ da distância em `x`
 /// até `q` (exato numa cúbica). Uma tangente quase VERTICAL (o fim do Circ) não tem ⅓ em `x` que
 /// sirva: a alça vai na direção dela com [`ARCO`] da corda, a do arco de círculo.
-fn alca(p: [f64; 2], q: [f64; 2], s: f64, lado: f64) -> [f32; 2] {
+fn alca(p: [f64; 2], q: [f64; 2], s: f64, lado: f64, f: f64) -> [f32; 2] {
     if s.abs() > VERTICAL {
-        let corda = ((q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2)).sqrt() * ARCO;
+        let corda = ((q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2)).sqrt() * ARCO * f / TERCO;
         let n = (1.0 + s * s).sqrt();
         let (dx, dy) = (corda / n, s * corda / n);
         return [(p[0] + lado * dx) as f32, (p[1] + lado * dy) as f32];
     }
-    let dx = (q[0] - p[0]).abs() / 3.0;
+    let dx = (q[0] - p[0]).abs() * f;
     [(p[0] + lado * dx) as f32, (p[1] + lado * s * dx) as f32]
 }
 
@@ -173,8 +277,8 @@ fn monta(interp: Interp, xs: &[f64]) -> EaseSpline {
     for j in 1..fim {
         let (x, p) = (xs[j], ponto(xs[j]));
         let (sl, sr) = lados(interp, x);
-        let hi = alca(p, ponto(xs[j - 1]), sl, -1.0);
-        let ho = alca(p, ponto(xs[j + 1]), sr, 1.0);
+        let hi = alca(p, ponto(xs[j - 1]), sl, -1.0, TERCO);
+        let ho = alca(p, ponto(xs[j + 1]), sr, 1.0, TERCO);
         c.move_handle(j, SplineSide::In, hi[0], hi[1]);
         c.move_handle(j, SplineSide::Out, ho[0], ho[1]);
         if (sl - sr).abs() <= 1.0e-3 * (1.0 + sl.abs()) {
@@ -183,8 +287,8 @@ fn monta(interp: Interp, xs: &[f64]) -> EaseSpline {
     }
     let (_, s0) = lados(interp, 0.0);
     let (s1, _) = lados(interp, 1.0);
-    let out = alca(ponto(0.0), ponto(xs[1]), s0, 1.0);
-    let inn = alca(ponto(1.0), ponto(xs[fim - 1]), s1, -1.0);
+    let out = alca(ponto(0.0), ponto(xs[1]), s0, 1.0, TERCO);
+    let inn = alca(ponto(1.0), ponto(xs[fim - 1]), s1, -1.0, TERCO);
     c.with_end_handles(out, inn)
 }
 

@@ -1,10 +1,10 @@
 use super::*;
 use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
 
-/// Cada curva pronta convertida tem a cara dela e deixa lugar ao ponto do artista. Medido 15/11
-/// (erro máximo no quadrado unitário): Quad, Cubic, Back e Bounce In/Out exatos; Sine, Expo,
-/// Circ e Elastic In/Out ≤ 1,1 %; Elastic e Bounce In-out ~4,5 % — ondas a mais para os
-/// `SPLINE_MAX_POINTS` (o tecto de memória da `Interp`).
+/// Cada curva pronta convertida tem a cara dela e deixa lugar ao ponto do artista. Medido 16/11
+/// (erro máximo no quadrado unitário, alças afinadas por trecho): Quad, Cubic, Back e Bounce (os
+/// três modos) exatos; Sine, Expo, Circ e Elastic In/Out ≤ 0,5 %; Elastic In-out 1,4 % (antes
+/// 4,1 %; o Bounce In-out era 4,7 % — os cantos não cabiam junto com as cristas).
 #[test]
 fn a_curva_pronta_convertida_tem_a_mesma_cara_e_deixa_lugar_ao_ponto() {
     for fam in [
@@ -28,10 +28,10 @@ fn a_curva_pronta_convertida_tem_a_mesma_cara_e_deixa_lugar_ao_ponto() {
                 .map(|i| f64::from(i) / 400.0)
                 .map(|x| (c.eval(x) - interp.remap(x)).abs())
                 .fold(0.0, f64::max);
-            let teto = if matches!((fam, modo), (F::Elastic | F::Bounce, M::InOut)) {
-                0.05
+            let teto = if (fam, modo) == (F::Elastic, M::InOut) {
+                0.0145
             } else {
-                0.012
+                0.006
             };
             assert!(erro < teto, "{fam:?} {modo:?}: erro {erro}");
         }
@@ -40,6 +40,8 @@ fn a_curva_pronta_convertida_tem_a_mesma_cara_e_deixa_lugar_ao_ponto() {
         (F::Quad, M::InOut),
         (F::Back, M::InOut),
         (F::Bounce, M::Out),
+        (F::Bounce, M::In),
+        (F::Bounce, M::InOut),
     ];
     for (fam, modo) in exatas {
         let interp = Interp::Eased(Easing::new(fam, modo));

@@ -85,3 +85,22 @@ Cena `PH2D_GPU_COOK_DEMO=134 PH2D_GAME_SMOKE=27` (`ph2d-physics-scene/src/cena_m
 - Gates: `a_seccao_motion_input_esta_viva` (6), `motion_input` da app-components (10),
   `a_named_request_attaches_that_component_without_opening_the_palette`,
   `the_graph_names_reach_the_world_and_follow_the_graph`.
+
+### Onda 2 (16/11) — aguarda o smoke do dono
+
+Commits `c5b50d97b4` motor · `10eae12679` cartão · `273a2b4a8a` cena/testes · `387590dbeb` leitura parada da
+Property · `28d5302ba1` curas da mutação.
+
+- **Motor** (`motion_input_fonte.rs`): fontes Speed/Grounded/Action/Property; `from` = StableId (0 = este; o painel
+  edita pelo nome); Remap (clamp) → curva (`ph2d-curve`) → Smooth (`value.follow::passo` Smooth); `dt` de jogo
+  (`Relogio::dt_de_jogo`, 0 parado). `PROJECT_SCHEMA` 245 → 246. `ActionSample.strength` (a mesma do Luau).
+- **Cartão:** Source em 8 chips (duas fileiras); From com conta-gotas (`ph2d-ray-sensor/src/gotas_from.rs`);
+  listas Action/Property (`popovers_motion_input.rs`); grupo Shape fechado com resumo; saídas «Add Physics Body»
+  (Speed sem corpo) e «Pick object» (From sem alvo); «Reads <campo> here» parado para a Property.
+- **Cena 27:** + Health Bar Reader (From), Speed Reader (bola, Remap 0→6, Smooth 0.3 → «estado»), Max Health
+  Reader (Property) e Tap Reader (Action) — estes dois escrevem em «vida» atrás do Health Bar Reader (o grafo 134
+  não tem nome numérico livre); o cartão diz quem escreve primeiro. Jump Glow (Grounded) fora: provado em teste.
+- **Mutação:** 32; 23 sangraram à primeira, 8 sobreviventes curadas por assert, 1 equivalente (#18, s<=0).
+- ⚠️ **Para o integrador:** para caber nas catracas, o motor cortou ~482 linhas de comentário `//` histórico em 11
+  ficheiros de outras áreas da `ph2d-app-components` (`instance_*`, `instantiate`, `asset_*`, `camera_2d`,
+  `parallax_bridge`) e 29 em `shells/desktop/src/render_loop/bgremoval_preview_gpu.rs` — só comentário, zero código.

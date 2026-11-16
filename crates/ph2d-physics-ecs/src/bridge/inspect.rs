@@ -50,6 +50,13 @@ impl PhysicsBridge {
         ))
     }
 
+    /// **A velocidade linear que o solver tem para o corpo desta entidade**, em mundo/s; `None`
+    /// sem corpo (a fonte `Speed` do `Motion Input`).
+    #[must_use]
+    pub fn body_velocity(&self, entity: Entity) -> Option<[f32; 2]> {
+        self.world.body_velocity(self.bodies.get(&entity)?.handle)
+    }
+
     /// **A massa que o solver tem para o corpo desta entidade**, em kg; `None` sem corpo.
     #[must_use]
     pub fn body_mass(&self, entity: Entity) -> Option<f32> {

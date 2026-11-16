@@ -11,6 +11,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.source.1" => "Color",
         "panel.inspector.motion_input.source.2" => "Health",
         "panel.inspector.motion_input.source.3" => "Damage",
+        "panel.inspector.motion_input.source.4" => "Speed",
+        "panel.inspector.motion_input.source.5" => "Grounded",
+        "panel.inspector.motion_input.source.6" => "Action",
+        "panel.inspector.motion_input.source.7" => "Property",
         "panel.inspector.motion_input.new" => "New\u{2026}",
         "panel.inspector.motion_input.name_label" => "Name",
         "panel.inspector.motion_input.add_health" => "Add Health",
@@ -42,6 +46,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.motion_input.no_health" => {
             "This object has no Health \u{2014} the graph reads nothing until you add it."
+        }
+        "panel.inspector.motion_input.no_from" => {
+            "No object has the name in From \u{2014} pick another one, or clear it to read this object."
+        }
+        "panel.inspector.motion_input.no_body" => {
+            "This object has no body to read \u{2014} Speed needs a Rigid Body, Grounded a Platform Player."
+        }
+        "panel.inspector.motion_input.unknown_action" => {
+            "The Input Map has no action with this name \u{2014} pick one from the list."
+        }
+        "panel.inspector.motion_input.no_property" => {
+            "No property chosen \u{2014} pick a component and a field to read."
+        }
+        "panel.inspector.motion_input.property_gone" => {
+            "This object does not have that field \u{2014} pick one it has."
         }
         "panel.inspector.motion_input.more_names" => {
             "{n} more in the graph \u{2014} type the name you need."

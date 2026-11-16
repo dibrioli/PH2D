@@ -38,6 +38,7 @@ pub fn amostras_das_accoes(
                     pressed: input.pressed(&a.name),
                     just_pressed: input.just_pressed(&a.name),
                     just_released: input.just_released(&a.name),
+                    strength: input.strength(&a.name),
                 },
             )
         })

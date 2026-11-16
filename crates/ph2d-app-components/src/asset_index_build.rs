@@ -198,23 +198,6 @@ pub(crate) fn build(
     for (stable_id, entity) in masters {
         let name = master_label(sim, entity, stable_id);
         let pieces = subtree(sim, entity);
-        // As dependências: as texturas que as peças desta receita usam. É a metade guardada; o
-        // sentido inverso (*quem usa esta textura?*) é derivado pelo índice.
-        //
-        // ⛔⛔⛔ **PELA PORTA** ([`texture_of`]) — e esta linha foi a **QUARTA** vez que a mesma
-        // pergunta de duas formas foi respondida com a metade errada (report do Enio, 2026-09-02:
-        // *«não conseguiu listar os ítens»*, sobre um prefab de três texturas).
-        //
-        // Ela perguntava só por `SpritePixels`, que é o carimbo — a **minoria**. Toda imagem
-        // importada e toda tela nova é uma sprite de **átlas**, logo `deps` nascia VAZIO para o
-        // caminho normal, e o *«Show what it uses»* respondia *«This asset uses nothing else»*.
-        // ⚠️ E como o sentido `Owners` é **derivado por inversão** desta lista, a mesma linha
-        // calava os DOIS sentidos de uma vez.
-        //
-        // ⛔ A porta estava **quinze linhas abaixo**, já a ser usada pelo retrato, com um
-        // doc-comment a dizer *«uma terceira forma amanhã entra aqui e não volta a partir o
-        // cartão»*. *Uma porta que o vizinho não chama ainda não é uma porta — é uma função.*
-        // O censo `the_index_asks_the_texture_door` fecha-a.
         let mut deps: Vec<AssetRef> = pieces
             .iter()
             .flat_map(|&p| ph2d_render::images_of(sim.world(), p, atlas_assets))
@@ -231,37 +214,12 @@ pub(crate) fn build(
         // sem loja própria. O detalhe fica o das peças: ler famílias e duração pediria descodificar
         // a gravação a cada quadro.
         entry.receita_de_macro = sim.world().get::<ph2d_ecs::Macro>(entity).is_some();
-        // ⭐⭐ **A cor e a miniatura de um Prefab saem da MESMA peça** (auditoria de 2026-08-30,
-        // achado nº 2).
-        //
-        // ⛔ A 1.ª versão tirava a cor de `deps.first()` — o **menor digest blake3**, que não tem
-        // relação nenhuma com o que o artista vê — e a miniatura da peça maior. Num prefab de duas
-        // peças com texturas diferentes, o fundo que transparece pela alfa da miniatura era a cor
-        // média de **outra** textura, e o doc do pintor afirmava que era a mesma.
-        //
-        // ⚠️ Uma receita sem pixels nenhuns fica com a cor neutra do construtor, e isso é honesto:
-        // *ela não tem cor*.
         let face = largest_piece_texture(sim, &pieces, atlas_assets);
         if let Some(id) = face
             && let Some(rgba) = swatch_for(db, id, swatches)
         {
             entry.swatch = rgba;
         }
-        // ⭐⭐⭐ **O RETRATO de um Prefab são as PEÇAS dele, compostas** (wave A6, 2026-09-01).
-        //
-        // ⛔⛔ **O bloqueio que esta nota declarava DISSOLVEU-SE, e a razão é onde os pixels
-        // vivem.** Ela dizia: *«o retrato a sério é um render offscreen da sub-árvore, e ele está
-        // BLOQUEADO — esta função corre sem `gpu`, sem `renderer` e sem `vello_pass` em mãos»*.
-        // Verdade sobre o render, e **irrelevante para o retrato**: as peças são sprites, os
-        // pixels delas já estão descodificados, e a miniatura por textura já os reduziu. ⇒ o
-        // retrato **compõe-se** ([`crate::asset_card_portrait`]), e não se renderiza.
-        //
-        // ⚠️ **A composição não descodifica nada de novo** — ela lê as miniaturas que a cache já
-        // tem, pela porta do `thumb_for`. Um prefab de N peças custa N acertos de memo.
-        //
-        // ⚠️ **E a queda para a PEÇA MAIOR fica**, para quando não há retrato (nenhuma peça com
-        // pixels em cache neste quadro, porque o orçamento acabou): *um cartão que perde a imagem
-        // que já mostrava é uma regressão visível.*
         entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, ppm, |p| {
             // ⭐⭐⭐ **A PORTA ÚNICA resolve a textura da peça** — e é ela que sabe as DUAS formas
             // (átlas e `SpritePixels`). O retrato não as conhece, de propósito: uma terceira forma
@@ -276,37 +234,6 @@ pub(crate) fn build(
         index.push(entry);
     }
 
-    // ── Fonte 2: as TEXTURAS ───────────────────────────────────────────────────────────────────
-    //
-    // ⛔⛔ **O `AssetDb` NÃO é a lista de assets do artista, e a 1.ª versão tratava-o como se
-    // fosse.** Report do Enio, 2026-08-30: *«o painel de assets apareceu e está com várias sprites
-    // que ninguém colocou lá»* — eram as 16 do átlas de demonstração que o ARRANQUE carrega de
-    // `./assets/sprites`. Elas estão no `AssetDb` porque o boot as pôs lá, não porque alguém as
-    // trouxe. ⇒ o `tracked_paths()` deixou de ser fonte de ENTRADAS e passou a ser só fonte de
-    // NOMES para as que qualificam.
-    //
-    // ⇒ **Uma textura é um asset quando uma ENTIDADE a referencia.**
-    //
-    // ⛔⛔⛔ **E «referencia» tem DUAS formas, não uma — a 1.ª versão só conhecia a segunda, e o
-    // resultado foi o report do Enio de 2026-08-30: *«as imagens não aparecem no painel nem
-    // importando nem criando as imagens no app»*.**
-    //
-    // | forma | quem a tem | o carimbo |
-    // |---|---|---|
-    // | **atlas** | o caminho NORMAL de todo import e de todo canvas novo | `Sprite { source: Atlas { key } }` + o `atlas_asset_map[key]` |
-    // | **individual** | só o que não coube no atlas (16 bits, sobredimensionado) ou foi promovido | `SpritePixels(AssetId)` |
-    //
-    // ⚠️ **O `SpritePixels` é o carimbo da MINORIA**, e o `spawn_sprite` di-lo por escrito: ele só o
-    // insere no ramo `PackedSource::Individual`, porque *«uma sprite de atlas grava-se pelo
-    // `atlas_asset_map`; um `SpritePixels` a mais fá-la-ia ser gravada duas vezes»*. Eu li aquele
-    // carimbo como *«o artista trouxe isto»* quando ele significa *«esta sprite tem textura
-    // própria»* — e o caso comum não tem.
-    //
-    // ⭐⭐ **E o `atlas_asset_map` é a resposta EXACTA à pergunta que a 1.ª cura fazia**, sem o
-    // efeito colateral: ele é preenchido pelo **import**, pelo **canvas novo** e pelo **load do
-    // projecto**, e ⛔ **nunca pelo arranque** — as 16 do átlas de demonstração entram no `AssetDb`
-    // pelo `atlas_loader` e **não** neste mapa. *A cura anterior acertava no sintoma pelo
-    // predicado errado; esta acerta pela proveniência, que é o que a pergunta sempre foi.*
     let mut loose: Vec<(u64, Entity, AssetId)> = {
         // As folhas extra de um Animated Sprite também estão em uso (GEF 26 F4): `images_of`.
         let (mut q, w) = (sim.world_mut().query::<Entity>(), sim.world());
@@ -340,20 +267,6 @@ pub(crate) fn build(
         remembered.remember(id, texture_entry(db, id, name, swatches, &mut budget));
     }
 
-    // ⭐⭐ **E a BIBLIOTECA LEMBRA.** Report do Enio, 2026-08-30: *«ao deletar o objeto do canvas, o
-    // do painel assets foi deletado»*.
-    //
-    // ⚠️ **Uma textura não é um objecto da cena — ela é CONTEÚDO** (bytes endereçados por blake3).
-    // Derivá-la do mundo a cada quadro fazia da biblioteca um espelho da cena: apagar a sprite que
-    // a usava apagava o asset. *Uma biblioteca que perde o que o artista trouxe não é uma
-    // biblioteca.*
-    //
-    // ⛔ E a memória é **união, nunca subtracção AUTOMÁTICA**: o que entrou fica até alguém o mandar
-    // sair. ⭐ A porta de o mandar sair é o [`forget_texture`], e ela nasceu do report seguinte do
-    // Enio — *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
-    // ⭐ O que o projecto trouxe está na biblioteca mesmo sem ninguém a usar (a fábrica, uma imagem
-    // importada cuja sprite se apagou) — é o que o seletor oferece (plano GEF 12, o *Project* da Unity).
-    // E as normais em uso (P14e): a do import nasce fora do átlas.
     let normais = ph2d_sprite_edit::normais::em_uso();
     for id in atlas_assets.values().chain(&normais) {
         if !live.contains(id) && !remembered.is_forgotten(id) {

@@ -79,7 +79,7 @@ impl ActionEdge {
 /// ⚠️ Ela existe para a lei ser **pura**: a `ph2d-ecs` não depende da `ph2d-input`, e quem constrói
 /// isto é a ponte da shell, que tem o mapa e o estado na mão. *Um `use ph2d_input` aqui ligaria o
 /// modelo de dados do projecto ao vocabulário de um dispositivo.*
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Amostra {
     /// Está premida agora.
     pub pressed: bool,
@@ -87,6 +87,8 @@ pub struct Amostra {
     pub just_pressed: bool,
     /// Passou de premida a solta **neste** tique.
     pub just_released: bool,
+    /// A força `0..1` (o `Input::strength`, a mesma do Luau `action_strength`).
+    pub strength: f32,
 }
 
 /// **Uma linha:** *quando a acção `action` `edge`, diz `signal`.*

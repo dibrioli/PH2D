@@ -147,7 +147,18 @@ pub fn correm(
     barras(sim, health_bars, relogio);
     // Ciclo 19 do Motion: as entradas do grafo (o `Motion Input`, a vida, o dano e os sinais) —
     // DEPOIS de todos os que falam, e antes do Motion, que coze neste mesmo quadro.
-    crate::motion_input_bridge::frame(sim, signals);
+    #[allow(clippy::cast_possible_truncation)]
+    let fontes = crate::motion_input_fonte::Fontes {
+        dt: if relogio.playing {
+            (f64::from(relogio.ticks) * relogio.dt) as f32
+        } else {
+            0.0
+        },
+        physics: portas.physics,
+        accoes,
+        registry: Some(portas.registry),
+    };
+    crate::motion_input_bridge::frame(sim, signals, &fontes);
     mortes
 }
 

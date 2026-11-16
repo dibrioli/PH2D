@@ -122,18 +122,6 @@ fn reconcile_one(
         .into_iter()
         .filter_map(|e| sim.world().get::<StableId>(e).map(|s| (s.0, e)))
         .collect();
-    // ⭐⭐⭐ **As peças que ESTA cópia recusou** (F5.10) — o *Removed GameObject* do Unity.
-    //
-    // ⚠️ **A decisão entra nas DUAS metades do passe, e é isso que a torna barata:** uma peça
-    // recusada deixa de contar como *«a instância tem»* (logo cai no ramo das que SOBRAM, que já
-    // sepulta as excepções dela e a despawna) e sai da lista das que FALTAM (logo nunca volta). ⇒ o
-    // gesto escreve **um id** e o passe faz o resto, pela mesma maquinaria que o mestre a apagar já
-    // usava — incluindo o `entomb`/`exhume`, que é o que faz o *Put back* devolver a excepção junto
-    // com a peça.
-    //
-    // ⛔ **A LEI do passe não mudou:** apagar uma peça **por fora** (um `despawn` cru, sem esta
-    // marca) continua a ser desfeito no quadro seguinte, e há gate a afirmá-lo. *A guarda vive no
-    // gesto; a lei fica no passe.*
     let removed = sim
         .world()
         .get::<ph2d_ecs::ObjectInstance>(root)
@@ -196,40 +184,6 @@ fn reconcile_one(
         }
     }
 
-    // ── as que estão no SÍTIO ERRADO ─────────────────────────────────────────────────────────
-    //
-    // ⭐⭐⭐ **A TERCEIRA metade da forma** (F5.12). O passe sabia materializar o que falta e
-    // despawnar o que sobra, e **não sabia mover**: uma peça que o artista arrastasse para outro
-    // pai dentro da receita ficava, em toda cópia, pendurada no pai antigo — para sempre e em
-    // silêncio. *A peça existe, desenha, tem os bytes certos, e só a árvore está errada.*
-    //
-    // ⚠️ **O `ChildOf` NÃO é componente registado**, e é isso que torna esta metade obrigatória:
-    // ele nunca propaga (bem — propagar os bytes dele poria a peça da cópia debaixo do pai do
-    // MESTRE) e nunca vira excepção. ⇒ a árvore não tem outro dono senão este bloco.
-    //
-    // ⚠️⚠️ **A ORDEM NÃO IMPORTA, e a 1.ª redacção deste comentário dizia o contrário.** Ela
-    // afirmava que a pré-ordem do mestre *«é o que impede um ciclo»*; a prova de mutação inverteu a
-    // travessia e **nada reprovou**. O motivo é a forma do bloco, não a ordem: os alvos são
-    // calculados a partir do MESTRE **antes** de qualquer escrita, logo as atribuições são
-    // independentes e o estado final é o mesmo em qualquer ordem. Um ciclo pode existir **entre
-    // dois `insert`** — e ninguém o observa, porque nenhuma travessia corre no meio.
-    //
-    // ⇒ *é por isto que este bloco não precisa de verificação de ciclo*, e não por causa da ordem.
-    // ⛔ Quem um dia trocar o «recolher e depois aplicar» por «aplicar enquanto percorre» reabre a
-    // pergunta — e aí a ordem passa a ser load-bearing a sério.
-    //
-    // ⛔ **A RAIZ nunca entra** — ela tem elo como qualquer peça (aponta para o `MasterRoot`), e um
-    // bloco que a incluísse arrastaria a cópia para dentro da biblioteca. É o `ROOT_IS_ITS_OWN` um
-    // nível acima: a pose **e o lugar** da raiz são dela.
-    //
-    // ⚠️⚠️ **E a linha é REDUNDANTE hoje — a prova de mutação disse-o, e ela fica como CERCA.**
-    // Tirá-la não muda nada porque o pai da raiz do mestre **nunca** está no `have`: ele fica
-    // *acima* do mestre, e o mapa só tem peças de *dentro* dele. ⇒ quem de facto recusa é o
-    // `None => continue` do `match` abaixo. A guarda fica por ser o sítio onde alguém **leria** a
-    // lei, e a redundância está escrita em vez de silenciosa.
-    //
-    // ⛔ **E uma peça que o artista ACRESCENTOU não é tocada** — ela não está no `have` (não tem
-    // elo), que é a mesma linha por que o passe não a apaga.
     let root_sid = master_root_sid(sim, master_root);
     let mut moves: Vec<(Entity, Entity)> = Vec::new();
     for m in subtree(sim, master_root) {

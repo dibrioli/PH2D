@@ -173,17 +173,6 @@ pub fn update(
         rt.velocity = [0.0, 0.0];
         rt.settled = true;
     } else if let Some(f) = follow.as_ref() {
-        // ⚠️⚠️ **UM QUADRO SEM TEMPO NÃO TOCA EM NADA QUE SEJA POR-TEMPO.**
-        //
-        // ⛔ Foi o terceiro defeito do report de 2026-09-10, e o maior dos três: com `ticks == 0` o
-        // `sample_dt` é zero, a amostra de velocidade devolve `[0, 0]` (não há tempo de onde a
-        // tirar) e o `damp_axis` — cujo braço de `dt <= 0` significa **instantâneo** — adoptava-a.
-        // ⇒ **cada quadro perdido ZERAVA a velocidade suavizada**, e com dois em dez ela nunca
-        // subia: medida, ela lia `0,78 m/s` sobre um herói a `8,00`. *A antecipação estava dez
-        // vezes fraca, e a causa não era a lei — era um quadro sem tempo a responder a uma pergunta
-        // sobre tempo.*
-        //
-        // ⚠️ **A velocidade é ESTADO**, e estado não se re-deriva num instante em que nada passou.
         if ticks > 0 {
             // ⚠️ **Uma vez por quadro, fora do laço** — ela é propriedade da AMOSTRA, e o laço
             // percorre os passos que couberam entre duas amostras. Recalculá-la lá dentro leria a

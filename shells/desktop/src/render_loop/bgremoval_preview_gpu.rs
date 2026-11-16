@@ -20,35 +20,6 @@ pub(super) fn upload_preview(
     renderer: &mut SpriteRenderer,
     toasts: &mut ToastQueue,
 ) {
-    // ── GPU lifecycle for the live-preview texture (Lens F, 2026-05-26) ──
-    // Replaces the old Vello image draw of the preview RGBA. Owns a
-    // transient `IndividualTextureStore` slot; uploads the
-    // premultiplied preview pixels into it whenever the CPU-side
-    // cache gets a fresh `Arc` (or the selection drifts to a
-    // different sprite, or the size changes). NEXT frame's
-    // `sim_extract` reads `bgremoval_preview_gpu` directly to emit a
-    // `PreviewOverride` — the sprite pipeline samples from THIS
-    // texture instead of the source sprite's original binding, so
-    // the live preview goes through the SAME wgpu sprite shader as
-    // Apply (`Rgba8UnormSrgb` + premul blend) → byte-for-byte parity,
-    // no Vello-internal gamma/blend divergence.
-    //
-    // Premultiplication: byte-space `premultiply_rgba8` mirrors
-    // EXACTLY what the Apply path does in
-    // `SpriteImage::into_premultiplied`. Both produce identical bytes
-    // that, when uploaded to `Rgba8UnormSrgb`, the GPU decodes to
-    // identical linear values for the sprite shader's bilinear
-    // sample. The gamma-correct variant from earlier (Fix C) is
-    // intentionally NOT used here — its job was to compensate for
-    // Vello's `Rgba8Unorm` raw-byte interpretation, which no longer
-    // applies once the preview leaves the Vello path entirely.
-    //
-    // The 1-frame lag introduced by reading `bgremoval_preview_gpu`
-    // on the NEXT frame's extract (this dispatch runs after the
-    // current frame's `sim_extract`) is imperceptible: the live
-    // preview is a continuous animation and a single ~16ms delay
-    // between parameter change and visible response is below the
-    // human flicker threshold.
     match bgremoval_preview.as_ref() {
         Some(preview) => {
             let cache_token = Arc::as_ptr(&preview.rgba) as usize;

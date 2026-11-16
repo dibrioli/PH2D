@@ -301,30 +301,6 @@ pub fn swap(
             .collect();
     }
 
-    // ── ⭐⭐⭐ o ECO das peças do mestre NOVO é ESQUECIDO ───────────────────────────────────────
-    //
-    // ⚠️ **Sem isto a troca é um no-op visível, e o mecanismo é o mesmo do REVERT.** No passe
-    // seguinte a peça difere do mestre novo e o mestre novo não mexeu — que é exactamente a
-    // assinatura de *«a instância mexeu-se»*. A instância capturava um override com o valor do
-    // mestre **velho** e ficava surda ao novo para sempre. Medido: trocar da variante de volta
-    // para a base deixava o corpo vermelho.
-    //
-    // ⇒ esquecer faz o passe cair na regra do 1.º encontro — *o mestre ganha* —, que já estava
-    // escrita e justificada. ⭐ E as excepções do artista **sobrevivem à mesma**, porque a regra
-    // (1) do passe (*«a instância possui este componente»*) corta antes da escada.
-    //
-    // ⚠️ **O eco é do MESTRE, logo isto alcança as instâncias IRMÃS** — e a colateral está
-    // medida e é aceitável: uma irmã cuja peça já bate com o mestre sai por `want == have`, e uma
-    // cuja peça o artista acabou de editar **neste mesmo quadro, antes de o passe correr** perdia
-    // essa edição. São dois gestos no mesmo quadro em duas cópias diferentes — inalcançável por
-    // mão. *Nomeado por ser o preço, não por ser um risco.*
-    //
-    // ⚠️⚠️ **A RAIZ do mestre novo está SEMPRE entre estes valores**, nos três modos de
-    // emparelhamento e no mapa derivado — e é ela que este bloco mais precisa de alcançar. Sem a
-    // raiz aqui, o componente que ela herda da receita cai exactamente no defeito descrito acima:
-    // difere do mestre novo, o mestre novo não mexeu, e o passe lê *«a instância mexeu-se»*. A lei
-    // que a garante vive em [`crate::instance_swap_match`] (*«a chave da raiz não tem sepultador»*),
-    // e é ela que torna esta linha um percurso simples.
     for piece in map.values() {
         echo.master.retain(|&(p, _), _| p != *piece);
     }

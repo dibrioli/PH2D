@@ -3,13 +3,16 @@
 //! `ph2d-app-motion` publica para o grafo antes de cozer (no mesmo quadro: a simulação corre antes).
 //!
 //! - **Valor / Cor**: o campo do componente.
-//! - **Vida**: `agora ÷ máximo` do `Health` do próprio objecto (a mesma leitura das barras).
+//! - **Vida**: `agora ÷ máximo` do `Health` do objecto From (a mesma leitura das barras).
 //! - **Dano**: um DISPARO cada vez que essa razão desce.
+//! - **Speed · Grounded · Action · Property** (onda 2): [`crate::motion_input_fonte`]; depois o
+//!   Remap (e a curva) e o Smooth, só nos números.
 //! - **Sinais**: um sinal do runtime dispara o gatilho com o nome dele.
 //!
 //! O estado da ponte (a vida do quadro anterior, o cursor dos sinais) é um recurso do mundo que
 //! ninguém regista — fora do save e do undo, como o `HealthBarsState`.
 
+use crate::motion_input_fonte::{self as fonte, Fontes};
 use bevy_ecs::prelude::Resource;
 use ph2d_ecs::motion_inputs::{Escritor, Valor};
 use ph2d_ecs::{MotionInput, MotionInputs, MotionSource, Name, SimWorld};
@@ -19,6 +22,8 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Resource, Default)]
 struct Ponte {
     vida_antes: BTreeMap<u64, f32>,
+    /// O valor suavizado do quadro anterior, por objecto (o Smooth).
+    suave: BTreeMap<u64, f32>,
     leitor: Option<SignalReader>,
 }
 
@@ -30,13 +35,14 @@ enum Publica {
 }
 
 /// Corre UMA vez por quadro, depois da física (o `HealthNow`) e antes do Motion.
-pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
+pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
     let world = sim.world_mut();
     let mut ponte = world.remove_resource::<Ponte>().unwrap_or_default();
     // `bool` = a fonte existe neste quadro; sem ela a linha SAI (o `value.input` volta ao número
     // dele), nunca fica presa no último valor.
     let mut linhas: Vec<(Escritor, String, Publica, bool)> = Vec::new();
     let mut vida_agora = BTreeMap::new();
+    let mut suave_agora = BTreeMap::new();
     let mut q = world.query::<(bevy_ecs::entity::Entity, &MotionInput, Option<&Name>)>();
     let lidos: Vec<_> = q
         .iter(world)
@@ -48,19 +54,25 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
             nome: nome_obj,
             bits,
         };
-        let vida =
-            || crate::health_bar_bridge::vida_da_barra(world, e).map(|(agora, max)| agora / max);
+        let alvo = fonte::alvo(world, e, m.from);
+        let vida = || {
+            alvo.and_then(|a| crate::health_bar_bridge::vida_da_barra(world, a))
+                .map(|(agora, max)| agora / max)
+        };
         let mut fonte_viva = true;
+        let numero = match m.source {
+            MotionSource::Value => Some(m.value),
+            MotionSource::Health => vida(),
+            MotionSource::Speed => alvo.and_then(|a| fonte::velocidade(world, fontes.physics, a)),
+            MotionSource::Grounded => alvo.and_then(|a| fonte::no_chao(world, fontes.physics, a)),
+            MotionSource::Action => fonte::accao(fontes.accoes, &m.action),
+            MotionSource::Property => {
+                alvo.and_then(|a| fonte::propriedade(fontes.registry, world, a, &m.property))
+            }
+            MotionSource::Color | MotionSource::Damage => None,
+        };
         let o_que = match m.source {
-            MotionSource::Value => Publica::Valor(Valor::Numero(m.value)),
             MotionSource::Color => Publica::Valor(Valor::Cor(m.color)),
-            MotionSource::Health => vida().map_or_else(
-                || {
-                    fonte_viva = false;
-                    Publica::Nada
-                },
-                |r| Publica::Valor(Valor::Numero(r)),
-            ),
             MotionSource::Damage => match vida() {
                 Some(r) => {
                     vida_agora.insert(bits, r);
@@ -69,6 +81,18 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
                     } else {
                         Publica::Nada
                     }
+                }
+                None => {
+                    fonte_viva = false;
+                    Publica::Nada
+                }
+            },
+            _ => match numero {
+                Some(v) => {
+                    let v = fonte::remapeia(&m, v);
+                    let v = fonte::suaviza(ponte.suave.get(&bits).copied(), v, fontes.dt, m.smooth);
+                    suave_agora.insert(bits, v);
+                    Publica::Valor(Valor::Numero(v))
                 }
                 None => {
                     fonte_viva = false;
@@ -98,6 +122,7 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
         m.fire(&s, Escritor::Sinal);
     }
     ponte.vida_antes = vida_agora;
+    ponte.suave = suave_agora;
     world.insert_resource(ponte);
 }
 

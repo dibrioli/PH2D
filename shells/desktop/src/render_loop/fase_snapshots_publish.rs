@@ -203,7 +203,8 @@ impl crate::App {
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
         // ⭐⭐ As secções que o `publish` NÃO pode calcular (VM, relógio, partículas): fase-filha.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
-        let s = tardios::Sessao::nova(sel, self.playhead.is_playing(), &hero.input_map, motion);
+        let mr = (&*motion, &*component_registry);
+        let s = tardios::Sessao::nova(sel, self.playhead.is_playing(), &hero.input_map, mr);
         tardios::publica(sim, tags, script.as_ref(), particles, &s);
         let filed = self.recovery.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
@@ -228,7 +229,7 @@ impl crate::App {
         let doc = ph2d_editor_core::DocPx::of(&hero.project);
         ph2d_panel_inspector::com_cada_preso(&pins, |b| {
             let um = (Some(b), 1);
-            let s = tardios::Sessao::nova(um, playhead.is_playing(), &hero.input_map, motion);
+            let s = tardios::Sessao::nova(um, playhead.is_playing(), &hero.input_map, mr);
             tardios::publica(sim, tags, script.as_ref(), particles, &s);
             let _ = ultimas(sim, um);
             ph2d_host_presos::publica(b, sim, vec_scene, &self.vec.entities, &hero.store, doc);

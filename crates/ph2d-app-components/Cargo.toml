@@ -28,6 +28,9 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # `[workspace.dependencies]`, e herdar dele não compila.
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# Motion Input onda 2: a curva do Remap e a lei do Smooth do `value.follow` (sem segunda conta).
+ph2d-curve = { path = "../ph2d-curve" }
+ph2d-node-value-follow = { path = "../ph2d-node-value-follow" }
 # As cenas do smoke do editor de scripts (saíram de `code_smoke.rs`, fecho da Onda D).
 ph2d-code-scenes = { path = "../ph2d-code-scenes" }
 # A cena 15 (crate própria: a `ph2d-code-scenes` está no tecto da catraca).

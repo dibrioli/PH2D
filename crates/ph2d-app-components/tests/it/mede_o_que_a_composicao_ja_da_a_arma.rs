@@ -117,6 +117,7 @@ fn mede_o_que_a_composicao_ja_da_a_arma() {
         pressed: true,
         just_pressed: false,
         just_released: false,
+        strength: 1.0,
     };
     let linha = ActionTriggerRow {
         item: Default::default(),

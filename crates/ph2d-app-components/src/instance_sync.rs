@@ -99,18 +99,6 @@ const ROOT_IS_ITS_OWN: &[&str] = &[
     "ph2d::ecs::Name",
     "ph2d::ecs::RootOrder",
     "ph2d::ecs::SiblingOrder",
-    // ⚠️⚠️ **A `Visibility` entrou na F4.5 por uma razão que MORREU, e fica por outra.**
-    //
-    // A razão original — *«a receita fica escondida com `Visibility`, e sem esta linha o `hidden`
-    // dela propagava»* — assentava numa premissa falsa: `Visibility` é per-entidade neste motor e
-    // não desce aos descendentes, pelo que esconder a raiz nunca escondeu uma receita que fosse um
-    // GRUPO. Quem não desenha uma receita passou a ser o extract, pela marca derivada
-    // `MasterPiece` (2026-08-26), e o gesto já não escreve visibilidade nenhuma.
-    //
-    // ⇒ ela fica pela razão que sempre foi a dela: **esconder UMA cópia é sobre aquela cópia**. O
-    // olho da Hierarquia sobre uma instância não pode apagar as irmãs.
-    //
-    // ⛔ É da RAIZ, e não do tipo: esconder uma PEÇA dentro da receita é autoria, e propaga.
     "ph2d::ecs::Visibility",
 ];
 
@@ -273,25 +261,6 @@ pub fn sync_instances(
                 }
                 let have = (entry.serialize)(sim.world(), inst).unwrap_or_default();
 
-                // ⚠️⚠️ **Para quem carrega REFERÊNCIA, a comparação por bytes não é decidível
-                // aqui** — e isto foi medido, não previsto: a junta do mestre nomeia os corpos do
-                // mestre e a da instância nomeia os dela, **de propósito**. Comparar os bytes dá
-                // *«diferente»* para sempre, e o passe reescrevia a junta todo o quadro.
-                //
-                // ⛔⛔ **E por isso eles PROPAGAM mas nunca CAPTURAM override** — medido, não
-                // suposto: o solver **escreve dentro do `PhysicsJoint`** (ele semeia `local_a`/
-                // `local_b` e vira o `anchored` no 1.º reconcile), e do lado de fora isso é
-                // indistinguível de o artista ter mexido na junta. A 1.ª versão capturava, e
-                // **toda instância com uma junta ganhava um override no primeiro tique** —
-                // ficando surda à receita para sempre.
-                //
-                // ⚠️ É a família do `pose_owner` um nível acima: *o runtime escreve mais do que a
-                // pose de um corpo*. A porta da ponte responde por um corpo, e não por um campo
-                // derivado dentro de um componente de config (ADR-0131 diz *«config, nunca estado
-                // vivo»*, e o `anchored` é a excepção que esta wave encontrou).
-                //
-                // ⇒ **DECLARADO:** editar a junta de uma instância vale até o mestre mexer na
-                // dele. São dois tipos hoje (`PhysicsJoint`, `PulleyWheel`).
                 if crate::instance_refs::carries_object_ref(name) {
                     if !master_moved && echo.master.contains_key(&echo_key) {
                         continue;
@@ -316,26 +285,6 @@ pub fn sync_instances(
                 // Aí o mestre ganha: inventar um override a partir de um estado que ninguém viu
                 // mudar seria congelar contra a receita algo que o artista nunca pediu.
                 if !master_moved && echo.master.contains_key(&echo_key) {
-                    // ⭐⭐⭐ **Numa cópia LIGADA, TUDO sobe — não só a arte** (report do Enio,
-                    // 2026-08-27: *«várias propriedades dos objetos inclusos nos componentes (como
-                    // posição e rot) ao serem modificados nas instâncias linkadas não são
-                    // transferidos para outras instâncias»*).
-                    //
-                    // ⛔ **A minha 1.ª versão limitou o modo à ARTE, citando o `Alt+D` do Blender —
-                    // e o referencial certo era outro.** O que o artista tem aqui é uma
-                    // *collection instance*: o componente é um CONJUNTO, e no Blender editar o que
-                    // está dentro da coleção muda todas as instâncias dela. *Um referencial escolhido
-                    // pela peça errada dá uma fronteira que o artista não reconhece.*
-                    //
-                    // ⚠️ **A raiz continua a ser dela** (`ROOT_IS_ITS_OWN`, filtrado acima): pose,
-                    // nome, ordem e o olho de uma cópia são daquela cópia — senão arrastar uma
-                    // instância arrastava todas, que é o oposto do que uma cópia é. É a mesma
-                    // fronteira do Blender: o objeto da instância é dela, o conteúdo é partilhado.
-                    //
-                    // ⚠️ E o **eco fica como está**, pela razão medida no irmão
-                    // ([`crate::instance_sync_docs::sync_one`]): atualizá-lo aqui faria o quadro
-                    // seguinte concluir *«o mestre não se mexeu»* e as irmãs capturavam excepções
-                    // falsas em vez de receberem.
                     if sim.world().get::<ph2d_ecs::LinkedArt>(inst).is_some() {
                         match &have {
                             Some(bytes) => {

@@ -5,7 +5,7 @@
 //! tradução é da `ph2d-app-components`, com gate de ida-e-volta.
 
 /// Quantas fontes há — o comprimento de `MotionSource::ALL` (gate na `motion_input_inspector`).
-pub const MOTION_INPUT_SOURCES: usize = 4;
+pub const MOTION_INPUT_SOURCES: usize = 8;
 
 /// Índice da fonte `Value` (o número do campo).
 pub const SOURCE_VALUE: u8 = 0;
@@ -15,6 +15,14 @@ pub const SOURCE_COLOR: u8 = 1;
 pub const SOURCE_HEALTH: u8 = 2;
 /// Índice da fonte `Damage` (um disparo quando a vida desce).
 pub const SOURCE_DAMAGE: u8 = 3;
+/// Índice da fonte `Speed` (o módulo da velocidade do corpo do objecto From).
+pub const SOURCE_SPEED: u8 = 4;
+/// Índice da fonte `Grounded` (`1` no chão, `0` no ar).
+pub const SOURCE_GROUNDED: u8 = 5;
+/// Índice da fonte `Action` (a força `0..1` de uma acção do Input Map).
+pub const SOURCE_ACTION: u8 = 6;
+/// Índice da fonte `Property` (um campo numérico de um componente do objecto From).
+pub const SOURCE_PROPERTY: u8 = 7;
 
 /// Uma edição da secção.
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +35,22 @@ pub enum MotionInputFieldEdit {
     Value(f32),
     /// A cor publicada (fonte `Color`), RGBA linear.
     Color([f32; 4]),
+    /// O objecto From pelo NOME (`""` = este); um nome que ninguém tem não escreve.
+    From(String),
+    /// O nome da acção do Input Map (fonte `Action`).
+    Action(String),
+    /// O campo lido, `"<canonical>/<serde_key>"` (fonte `Property`).
+    Property(String),
+    /// A caixa «Remap».
+    Remap(bool),
+    /// O número que vira `0`.
+    RemapFrom(f32),
+    /// O número que vira `1`.
+    RemapTo(f32),
+    /// A curva depois do remap, texto de `ph2d-curve` (`""` = linear).
+    Curve(String),
+    /// A meia-vida da suavização, em segundos (`0` = desligada).
+    Smooth(f32),
 }
 
 /// O que a secção diz antes dos campos — a causa de *«o grafo não lê nada»*.
@@ -40,6 +64,16 @@ pub enum MotionInputQueixa {
     NomeNaoLido,
     /// A fonte é a vida (ou o dano) e o objecto não tem `Health`.
     SemVida,
+    /// O From nomeia um objecto que não existe.
+    SemAlvo,
+    /// A fonte é Speed (sem corpo) ou Grounded (sem personagem de plataforma).
+    SemCorpo,
+    /// A fonte é Action e o Input Map não tem acção com esse nome.
+    AcaoDesconhecida,
+    /// A fonte é Property e nenhum campo foi escolhido.
+    CampoVazio,
+    /// A fonte é Property e o objecto From não tem o campo escolhido.
+    CampoAusente,
 }
 
 /// **O que o objecto manda AGORA** — a linha viva do cartão (MI-11).
@@ -80,8 +114,30 @@ pub struct InspectorMotionInputInfo {
     pub color: [f32; 4],
     /// Os nomes que o grafo do Motion LÊ (um por `value.input`, sem repetir, em ordem).
     pub nomes_do_grafo: Vec<String>,
-    /// O objecto tem `Health`? (As fontes `Health` e `Damage` leem-na.)
+    /// O objecto From tem `Health`? (As fontes `Health` e `Damage` leem-na.)
     pub tem_vida: bool,
+    /// O objecto From pelo NOME (`""` = este objecto).
+    pub from: String,
+    /// O From acha um objecto (`""` acha sempre: é este).
+    pub alvo_achado: bool,
+    /// O From tem o que a fonte Speed (corpo) ou Grounded (personagem de plataforma) lê.
+    pub tem_corpo: bool,
+    /// O nome da acção (fonte `Action`).
+    pub action: String,
+    /// Os nomes das acções do Input Map do jogo, na ordem dele.
+    pub acoes_do_mapa: Vec<String>,
+    /// O campo lido, `"<canonical>/<serde_key>"` (fonte `Property`).
+    pub property: String,
+    /// Os campos numéricos dos componentes do From: `(rótulo «Health · Max», "canonical/serde_key")`.
+    pub campos_do_alvo: Vec<(String, String)>,
+    /// A caixa «Remap» e a faixa que vira `0..1`.
+    pub remap: bool,
+    pub remap_from: f32,
+    pub remap_to: f32,
+    /// A curva depois do remap (`""` = linear).
+    pub curve: String,
+    /// A meia-vida da suavização, em segundos (`0` = desligada).
+    pub smooth: f32,
     /// Quantos objectos estão escolhidos (a edição aplica-se ao activo).
     pub selected_count: usize,
     /// O jogo está a correr (as leituras do que chega ao grafo só existem em Play).
@@ -111,8 +167,8 @@ impl InspectorMotionInputInfo {
         let nome = self.name.trim();
         if nome.is_empty() {
             Some(MotionInputQueixa::NomeVazio)
-        } else if matches!(self.source, SOURCE_HEALTH | SOURCE_DAMAGE) && !self.tem_vida {
-            Some(MotionInputQueixa::SemVida)
+        } else if let Some(q) = self.queixa_da_fonte() {
+            Some(q)
         } else if self.nomes_do_grafo.is_empty() {
             Some(MotionInputQueixa::GrafoSemEntradas)
         } else if !self.nomes_do_grafo.iter().any(|n| n == nome) {
@@ -120,6 +176,36 @@ impl InspectorMotionInputInfo {
         } else {
             None
         }
+    }
+
+    /// A queixa da FONTE (o objecto From e o que ela lê dele), por ordem de cura.
+    fn queixa_da_fonte(&self) -> Option<MotionInputQueixa> {
+        use MotionInputQueixa as Q;
+        let le_from = matches!(
+            self.source,
+            SOURCE_HEALTH | SOURCE_DAMAGE | SOURCE_SPEED | SOURCE_GROUNDED | SOURCE_PROPERTY
+        );
+        if le_from && !self.alvo_achado {
+            return Some(Q::SemAlvo);
+        }
+        match self.source {
+            SOURCE_HEALTH | SOURCE_DAMAGE if !self.tem_vida => Some(Q::SemVida),
+            SOURCE_SPEED | SOURCE_GROUNDED if !self.tem_corpo => Some(Q::SemCorpo),
+            SOURCE_ACTION if !self.acoes_do_mapa.iter().any(|a| *a == self.action) => {
+                Some(Q::AcaoDesconhecida)
+            }
+            SOURCE_PROPERTY if self.property.trim().is_empty() => Some(Q::CampoVazio),
+            SOURCE_PROPERTY if !self.campos_do_alvo.iter().any(|(_, k)| *k == self.property) => {
+                Some(Q::CampoAusente)
+            }
+            _ => None,
+        }
+    }
+
+    /// A fonte publica um NÚMERO (o Remap e o Smooth só valem aí).
+    #[must_use]
+    pub fn le_numero(&self) -> bool {
+        !matches!(self.source, SOURCE_COLOR | SOURCE_DAMAGE)
     }
 }
 
@@ -136,6 +222,18 @@ mod tests {
             color: [1.0; 4],
             nomes_do_grafo: nomes.iter().map(|s| (*s).to_string()).collect(),
             tem_vida,
+            from: String::new(),
+            alvo_achado: true,
+            tem_corpo: false,
+            action: String::new(),
+            acoes_do_mapa: vec!["jump".into()],
+            property: String::new(),
+            campos_do_alvo: vec![("Health · Max".into(), "Health/max".into())],
+            remap: false,
+            remap_from: 0.0,
+            remap_to: 1.0,
+            curve: String::new(),
+            smooth: 0.0,
             selected_count: 1,
             a_correr: false,
             ao_vivo: None,
@@ -165,6 +263,30 @@ mod tests {
             info("hq", SOURCE_VALUE, &["hp"], false).queixa(),
             Some(Q::NomeNaoLido)
         );
+    }
+
+    /// As queixas das fontes novas nomeiam a causa, e a do From vem primeiro.
+    #[test]
+    fn as_queixas_das_fontes_novas_nomeiam_a_causa() {
+        use MotionInputQueixa as Q;
+        let mut i = info("hp", SOURCE_SPEED, &["hp"], true);
+        assert_eq!(i.queixa(), Some(Q::SemCorpo));
+        i.tem_corpo = true;
+        assert_eq!(i.queixa(), None);
+        i.alvo_achado = false;
+        assert_eq!(i.queixa(), Some(Q::SemAlvo));
+        let mut a = info("hp", SOURCE_ACTION, &["hp"], false);
+        a.alvo_achado = false; // a acção não lê o From
+        assert_eq!(a.queixa(), Some(Q::AcaoDesconhecida));
+        a.action = "jump".into();
+        assert_eq!(a.queixa(), None);
+        let mut p = info("hp", SOURCE_PROPERTY, &["hp"], false);
+        assert_eq!(p.queixa(), Some(Q::CampoVazio));
+        p.property = "Health/current".into();
+        assert_eq!(p.queixa(), Some(Q::CampoAusente));
+        p.property = "Health/max".into();
+        assert_eq!(p.queixa(), None);
+        assert!(p.le_numero() && !info("a", SOURCE_COLOR, &[], false).le_numero());
     }
 
     /// Só a fonte que lê um campo o mostra.

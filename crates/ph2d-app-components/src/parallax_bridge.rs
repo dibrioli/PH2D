@@ -92,21 +92,6 @@ pub fn drive_parallax(
             continue;
         }
         let autorada = base_autorada(drive, entity, era);
-        // ⭐⭐ **A REPETIÇÃO envolve a posição RELATIVA À VISTA** (auditoria 26, §1.1): a correcção
-        // é um número INTEIRO de ladrilhos, e o que ela mantém limitado é onde a camada aparece no
-        // ECRÃ — não a pose no mundo. ⚠️ A 1.ª redacção envolvia o deslocamento `c·(1−k)`, e isso
-        // prendia a camada a meio ladrilho da pose autorada no MUNDO: a fileira saía da vista.
-        //
-        // ⚠️ **Sem o componente a composição é a IDENTIDADE**, e não um caso à parte: a ausência é
-        // «não repete», que é o que quase todo objecto com paralaxe faz.
-        // ⭐⭐ **A ORDEM é CONFINAR e depois ENVOLVER:** o confinamento escolhe o centro que a
-        // camada vê, e a repetição reduz o resultado por um inteiro de ladrilhos. ⚠️ Os dois juntos
-        // são uma cena que se contradiz — um fundo que repete não tem borda para esconder —, e a
-        // repetição, que vem por último, ganha.
-        // ⭐⭐⭐ **O DOLLY é uma ESCALA à volta do centro da vista** (W5, corrigido na auditoria
-        // 26, §1.4). ⛔ Com a câmera a ATRAVESSAR a camada (ou no plano focal) não há resposta, e
-        // o objecto é LARGADO na pose autorada pela varredura do fim — *um clamp ali entregaria um
-        // número plausível para uma cena impossível*.
         let Some(esc) = cfg.escala(dolly) else {
             continue;
         };
@@ -160,17 +145,6 @@ pub fn drive_parallax(
         if escreveu && let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
             *t = agora;
         }
-        // ⚠️⚠️ **O `before` é o AUTORADO e nunca o vivo.** Esta é a diferença de fundo para a
-        // ponte do HUD, que passa `era`: ali a pose é função PURA da vista e o autorado nunca é
-        // lido, aqui ele é a ENTRADA da lei — declarar o vivo escreveria a pose deslocada no
-        // documento, e no quadro seguinte o fundo saltaria o deslocamento outra vez.
-        //
-        // ⚠️ E a condição é `escreveu || still_driving`, não `if/else`: o `still_driving` NUNCA
-        // cria uma entrada (ver o doc dele), logo com a câmera na origem e nada escrito não nasce
-        // condução nenhuma — o fundo está exactamente onde o artista o pôs. Mas se já havia
-        // condução, ela tem de ser MANTIDA mesmo num quadro em que a vista não andou: esta ponte é
-        // um condutor PERSISTENTE, e para ele *«não mudou»* e *«acabou»* são factos diferentes com
-        // a mesma forma.
         if escreveu || drive.still_driving(entity, Driver::ParallaxPose) {
             drive.driven(
                 entity,

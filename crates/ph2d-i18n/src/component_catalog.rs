@@ -7,14 +7,8 @@
 //! Medido antes de escrever a primeira linha: `display_name` coincide com a derivação do
 //! `canonical_name` em **46 de 80** ⇒ *o texto NÃO é derivável* (`FlipObjectRef` mostra-se como
 //! *Flip Object*, `PaintedDoc` como *Painted Document*) e tem de ser autorado. A **chave**, essa, é
-//! — e por isso não é um segundo literal que alguém possa escrever errado:
-//!
-//! | população | esquema | conta |
-//! |---|---|---:|
-//! | o nome de um componente | `component.<snake(tipo)>.name` | 162 |
-//! | o rótulo de um campo | `component.field.<snake(CONST)>.<field_id>` | 128 |
-//! | a família na paleta | `component.category.<snake>` | 16 |
-//! | o tipo de objecto no filtro | `component.object_kind.<snake>` | 5 (eram 7: o 3D saiu, ADR-0179) |
+//! — e por isso não é um segundo literal que alguém possa escrever errado
+//! (`component.<snake(tipo)>.name`, `component.field.<snake(CONST)>.<field_id>`).
 
 /// A tradução de uma chave `component.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
@@ -262,6 +256,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.motion_input_fields.2" => "Source",
         "component.field.motion_input_fields.3" => "Value",
         "component.field.motion_input_fields.4" => "Color",
+        "component.field.motion_input_fields.5" => "From",
+        "component.field.motion_input_fields.6" => "Action",
+        "component.field.motion_input_fields.7" => "Property",
+        "component.field.motion_input_fields.8" => "Remap",
+        "component.field.motion_input_fields.9" => "Remap from",
+        "component.field.motion_input_fields.10" => "Remap to",
+        "component.field.motion_input_fields.11" => "Curve",
+        "component.field.motion_input_fields.12" => "Smooth",
         "component.field.limits_fields.0" => "Min",
         "component.field.limits_fields.1" => "Max",
         "component.field.luz_fields.0" => "Type",

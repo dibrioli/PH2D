@@ -99,15 +99,6 @@ pub fn revert_all_overrides(
         })
         .unwrap_or_default();
     let mut out = Reverted::default();
-    // ⭐⭐⭐ **Na RAIZ, o Revert também traz de volta as peças que a cópia recusou** (F5.10).
-    //
-    // ⚠️ **Só na raiz, e a razão é a mesma dos overrides:** o escopo é o que a mão aponta, e uma
-    // peça recusada **não está na cena** — não há linha nela para clicar, logo o único sujeito que
-    // a alcança é a instância inteira. *Devolver o rig inteiro porque o artista pediu um braço
-    // seria apagar trabalho que ele não mandou apagar*, e aqui ele pediu a cópia inteira.
-    //
-    // ⛔ Isto **não** contradiz a nota da pose logo acima: ali o verbo recusa-se a TELETRANSPORTAR
-    // o que está na cena; aqui ele repõe o que a cópia não tem. São perguntas diferentes.
     if scope.is_none()
         && let Some(mut inst) = sim.world().get::<ObjectInstance>(root).cloned()
         && !inst.removed.is_empty()

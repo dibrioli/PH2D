@@ -21,6 +21,10 @@ const FONTES: [&str; MOTION_INPUT_SOURCES] = [
     "panel.inspector.motion_input.source.1",
     "panel.inspector.motion_input.source.2",
     "panel.inspector.motion_input.source.3",
+    "panel.inspector.motion_input.source.4",
+    "panel.inspector.motion_input.source.5",
+    "panel.inspector.motion_input.source.6",
+    "panel.inspector.motion_input.source.7",
 ];
 
 const _: () = assert!(crate::ids::INSP_MI_SOURCE.len() == MOTION_INPUT_SOURCES);
@@ -32,6 +36,11 @@ const fn chave_da_queixa(q: MotionInputQueixa) -> &'static str {
         MotionInputQueixa::GrafoSemEntradas => "panel.inspector.motion_input.graph_has_no_input",
         MotionInputQueixa::NomeNaoLido => "panel.inspector.motion_input.name_not_read",
         MotionInputQueixa::SemVida => "panel.inspector.motion_input.no_health",
+        MotionInputQueixa::SemAlvo => "panel.inspector.motion_input.no_from",
+        MotionInputQueixa::SemCorpo => "panel.inspector.motion_input.no_body",
+        MotionInputQueixa::AcaoDesconhecida => "panel.inspector.motion_input.unknown_action",
+        MotionInputQueixa::CampoVazio => "panel.inspector.motion_input.no_property",
+        MotionInputQueixa::CampoAusente => "panel.inspector.motion_input.property_gone",
     }
 }
 

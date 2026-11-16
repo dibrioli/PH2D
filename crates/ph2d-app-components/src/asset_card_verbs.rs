@@ -88,18 +88,6 @@ pub(crate) fn users_of(
         }
     }
     .into_iter()
-    // ⛔⛔ **UMA PEÇA DE RECEITA NÃO É UM UTILIZADOR** (auditoria de 2026-08-30, achado nº 1).
-    //
-    // As peças de uma receita carregam `SpritePixels` como qualquer outra, então a varredura crua
-    // contava-as — e elas **não estão na cena**: o extract salta-as e a Hierarquia não lhes dá
-    // linha. Consequência medida: com uma imagem usada só por uma receita, o `Select users` dizia
-    // *«Selected 1 object(s)»* e **nada acendia**. É a espécie *«o consumidor que PROJECTA o valor
-    // fora»* do §5.0 — o fio estava completo e o consumidor descartava.
-    //
-    // ⚠️ **A pergunta tem UMA porta nesta casa** ([`ph2d_entity_visibility::off_canvas`]), e ela é a
-    // mesma que o extract e a lista da Hierarquia consomem. ⛔ Escrever aqui um segundo predicado
-    // seria a lei em dois sítios — e o segundo envelheceria no dia em que o modo de edição de
-    // mestre mudasse.
     .filter(|&e| !ph2d_entity_visibility::off_canvas::is_unedited_recipe(sim.world(), e))
     // A ordem é do `StableId` e não da consulta: a primeira da lista vira a selecção primária, e a
     // ordem de arquétipo do `bevy_ecs` faria o gizmo aterrar noutro objecto entre corridas.
@@ -145,18 +133,6 @@ pub fn drain(
         // D17 — um documento (Kanban, Quadro) não tem verbo de receita; os dele (abrir, apagar)
         // são o duplo-clique e a fase 1b.
         (_, DragPayload::Kanban { .. } | DragPayload::Board { .. }) => false,
-        // ── Editar a receita ───────────────────────────────────────────────────────────────────
-        //
-        // ⭐⭐⭐ **Ele SELECCIONA, e mais nada** (report do Enio, 2026-09-05: *«não tem como editar
-        // o componente»*). A receita não está na cena e **volta enquanto está seleccionada** — a
-        // marca derivada `MasterEditing` do [`crate::master_editing`] —, então o verbo
-        // que faltava não era um modo nem uma janela: era um **acesso**. Pôr a selecção na raiz do
-        // mestre acende o canvas, arma o gizmo, enche o Inspector e faz cada peça mexida chegar a
-        // todas as cópias no mesmo quadro.
-        //
-        // ⛔ **A biblioteca era read-only para a FORMA**: listava, instanciava e respondia quem usa
-        // o quê, e não tinha como abrir um componente. *Um catálogo de onde não se edita o conteúdo
-        // é uma vitrina.*
         (AssetCardAction::EditPrefab, DragPayload::Prefab { stable_id }) => {
             let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
                 toasts.push(Toast::warning(tr(
@@ -258,15 +234,6 @@ pub fn drain(
             false
         }
 
-        // ── Trocar o que está escolhido por este componente ────────────────────────────────────
-        //
-        // ⭐⭐⭐ **O único verbo deste menu cujo sujeito NÃO é o cartão** (plano F5, o último
-        // critério): o cartão é o *objecto* da frase e a **selecção** é o sujeito. É por isso que os
-        // três rótulos a nomeiam — um item que age sobre outra coisa que a apontada tem de o dizer.
-        //
-        // ⚠️ **Três verbos e não um com um modo dentro.** Sem antepassado comum não existe mapa
-        // derivado, só palpite, e o plano manda que o palpite seja **pedido pelo gesto**. Ver
-        // [`crate::instance_swap_match`].
         (
             AssetCardAction::ReplaceSelection
             | AssetCardAction::ReplaceSelectionByName

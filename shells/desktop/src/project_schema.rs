@@ -507,4 +507,11 @@
 ///
 /// No FIM do `RaySensor` (que deixa de ser `Copy`): `enabled`, `thickness`, `cone`, `aim_at: u64` e `also_ignore: Vec<u64>`
 /// (`StableId`s), e `shape: RayShape` (Line · Thick · Cone: só o número da forma activa conta). SEM leitura dos anteriores (§0.11). Gate: `ray_sensor_melhorias`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 245;
+///
+/// # `245 → 246` — **o Motion Input lê de outro objeto** (`line/GameEngineFuncional`, GEF 08 onda 2, 2026-11-16)
+///
+/// `MotionSource` ganha `Speed`, `Grounded`, `Action`, `Property` no FIM; `MotionInput` ganha no FIM `from: u64`
+/// (`StableId`, `0` = este), `action`, `property` (`canonical/serde_key`), `remap`, `remap_from`, `remap_to`, `curve` e
+/// `smooth`. SEM leitura dos anteriores (§0.11). Gates: `motion_input_bridge::` (from/action/property/speed/remap/smooth).
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 246;

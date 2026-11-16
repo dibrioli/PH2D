@@ -20,10 +20,27 @@ pub enum MotionSource {
     Health,
     /// Um DISPARO cada vez que a vida desce (um gatilho).
     Damage,
+    /// O módulo da velocidade do corpo do objecto From, em unidades do mundo por segundo.
+    Speed,
+    /// `1` no chão, `0` no ar — o personagem do objecto From.
+    Grounded,
+    /// A força `0..1` da acção `action` do Input Map (a mesma leitura do Luau `action_strength`).
+    Action,
+    /// Um campo numérico (`property` = `canonical/serde_key`) de um componente do objecto From.
+    Property,
 }
 
 impl MotionSource {
-    pub const ALL: [Self; 4] = [Self::Value, Self::Color, Self::Health, Self::Damage];
+    pub const ALL: [Self; 8] = [
+        Self::Value,
+        Self::Color,
+        Self::Health,
+        Self::Damage,
+        Self::Speed,
+        Self::Grounded,
+        Self::Action,
+        Self::Property,
+    ];
 
     #[must_use]
     pub fn index(self) -> u8 {
@@ -32,6 +49,10 @@ impl MotionSource {
             Self::Color => 1,
             Self::Health => 2,
             Self::Damage => 3,
+            Self::Speed => 4,
+            Self::Grounded => 5,
+            Self::Action => 6,
+            Self::Property => 7,
         }
     }
 }
@@ -44,6 +65,20 @@ pub struct MotionInput {
     pub value: f32,
     /// RGBA linear.
     pub color: [f32; 4],
+    /// De que objecto ler (Health, Damage, Speed, Grounded, Property), pelo `StableId`; `0` = este.
+    pub from: u64,
+    /// O nome da acção do Input Map (fonte `Action`).
+    pub action: String,
+    /// `"<canonical>/<serde_key>"` do campo lido (fonte `Property`).
+    pub property: String,
+    /// Leva o número de `remap_from..remap_to` a `0..1` (com clamp), e depois a `curve`.
+    pub remap: bool,
+    pub remap_from: f32,
+    pub remap_to: f32,
+    /// Texto de `ph2d-curve` aplicado depois do remap; `""` = linear.
+    pub curve: String,
+    /// Meia-vida da suavização, em segundos (a lei do `value.follow` Smooth); `0` = desligada.
+    pub smooth: f32,
 }
 
 impl Default for MotionInput {
@@ -53,6 +88,14 @@ impl Default for MotionInput {
             source: MotionSource::Value,
             value: 0.0,
             color: [1.0; 4],
+            from: 0,
+            action: String::new(),
+            property: String::new(),
+            remap: false,
+            remap_from: 0.0,
+            remap_to: 1.0,
+            curve: String::new(),
+            smooth: 0.0,
         }
     }
 }

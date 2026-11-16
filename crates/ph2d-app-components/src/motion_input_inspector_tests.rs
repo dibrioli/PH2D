@@ -33,8 +33,14 @@ fn o_instantaneo_reflecte_o_componente() {
         m.value = 0.25;
         m.color = [0.1, 0.2, 0.3, 0.4];
     }
-    let info =
-        build_info(&sim, bits, 2, false, || vec!["hp".into(), "speed".into()]).expect("info");
+    let info = build_info(
+        &sim,
+        bits,
+        (2, false),
+        None,
+        (|| vec!["hp".into(), "speed".into()], Vec::new),
+    )
+    .expect("info");
     assert_eq!(info.entity_bits, bits);
     assert_eq!(info.name, "hp");
     assert_eq!(info.source, MotionSource::Color.index());
@@ -53,7 +59,7 @@ fn o_instantaneo_reflecte_o_componente() {
             ..Default::default()
         });
     assert!(
-        build_info(&sim, bits, 1, false, Vec::new)
+        build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new))
             .expect("info")
             .tem_vida
     );
@@ -64,9 +70,16 @@ fn o_instantaneo_reflecte_o_componente() {
 fn sem_componente_nao_ha_seccao() {
     let mut sim = SimWorld::default();
     let bits = sim.world_mut().spawn_empty().id().to_bits();
-    let info = build_info(&sim, bits, 1, false, || {
-        panic!("o grafo não se varre sem o componente")
-    });
+    let info = build_info(
+        &sim,
+        bits,
+        (1, false),
+        None,
+        (
+            || -> Vec<String> { panic!("o grafo não se varre sem o componente") },
+            Vec::new,
+        ),
+    );
     assert!(info.is_none());
 }
 
@@ -144,13 +157,20 @@ fn o_cartao_le_o_que_chega_ao_grafo() {
         m.source = MotionSource::Health;
     }
     com_vida(&mut sim, bits, 7.5);
-    let parado = build_info(&sim, bits, 1, false, Vec::new).unwrap();
+    let parado = build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new)).unwrap();
     assert_eq!(parado.ao_vivo, Some(V::Numero(0.75)));
     assert_eq!(parado.tapado_por, None);
 
     let out = ph2d_runtime::SignalOutbox::new();
-    crate::motion_input_bridge::frame(&mut sim, &out);
-    let jogo = build_info(&sim, bits, 1, true, Vec::new).unwrap();
+    let accoes = std::collections::BTreeMap::new();
+    let f = crate::motion_input_fonte::Fontes {
+        dt: 0.0,
+        physics: None,
+        accoes: &accoes,
+        registry: None,
+    };
+    crate::motion_input_bridge::frame(&mut sim, &out, &f);
+    let jogo = build_info(&sim, bits, (1, true), None, (Vec::new, Vec::new)).unwrap();
     assert_eq!(
         jogo.ao_vivo,
         Some(V::Numero(0.75)),
@@ -165,17 +185,19 @@ fn o_cartao_le_o_que_chega_ao_grafo() {
             ph2d_ecs::motion_inputs::Escritor::Script,
             ph2d_ecs::motion_inputs::Valor::Numero(0.2),
         );
-    let tapado = build_info(&sim, bits, 1, true, Vec::new).unwrap();
+    let tapado = build_info(&sim, bits, (1, true), None, (Vec::new, Vec::new)).unwrap();
     assert_eq!(tapado.tapado_por, Some((O::Script, V::Numero(0.2))));
 
     sim.world_mut()
         .get_mut::<MotionInput>(ph2d_ecs::Entity::from_bits(bits))
         .unwrap()
         .source = MotionSource::Damage;
-    let dano = build_info(&sim, bits, 1, true, Vec::new).unwrap();
+    let dano = build_info(&sim, bits, (1, true), None, (Vec::new, Vec::new)).unwrap();
     assert_eq!(dano.ao_vivo, Some(V::Disparos(0)));
     assert_eq!(
-        build_info(&sim, bits, 1, false, Vec::new).unwrap().ao_vivo,
+        build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new))
+            .unwrap()
+            .ao_vivo,
         None,
         "o dano parado não tem leitura"
     );
@@ -226,4 +248,78 @@ fn anexar_pela_porta_da_o_nome_do_grafo() {
     crate::component_attach::attach_by_name(&mut sim, &reg, &[], bits, "ph2d::ecs::MotionInput")
         .expect("anexa");
     assert_eq!(comp(&sim, bits).name, "wind");
+}
+
+/// ⭐ Onda 2: cada edição nova escreve o SEU campo, e só quando muda; From pelo NOME (ninguém = inerte).
+#[test]
+fn as_edicoes_da_onda_2_escrevem_o_seu_campo_so_quando_mudam() {
+    let (mut sim, bits) = cena();
+    sim.world_mut()
+        .spawn((ph2d_ecs::Name("Hero".into()), ph2d_ecs::StableId(41)));
+    let m = |sim: &SimWorld| {
+        sim.world()
+            .get::<MotionInput>(ph2d_ecs::Entity::from_bits(bits))
+            .unwrap()
+            .clone()
+    };
+    for e in [
+        E::From("Hero".into()),
+        E::Action("jump".into()),
+        E::Property("Health/max".into()),
+        E::Remap(true),
+        E::RemapFrom(10.0),
+        E::RemapTo(900.0),
+        E::Curve("c1 0 0 1 1 1 1".into()),
+        E::Smooth(0.5),
+    ] {
+        assert!(apply(&mut sim, bits, &e), "{e:?} muda");
+        assert!(!apply(&mut sim, bits, &e), "{e:?} igual não muda");
+    }
+    let f = m(&sim);
+    assert_eq!(f.from, 41);
+    assert_eq!(f.action, "jump");
+    assert_eq!(f.property, "Health/max");
+    assert!(f.remap);
+    assert_eq!((f.remap_from, f.remap_to, f.smooth), (10.0, 900.0, 0.5));
+    assert_eq!(f.curve, "c1 0 0 1 1 1 1");
+    assert!(
+        !apply(&mut sim, bits, &E::From("Ninguém".into())),
+        "nome sem objecto: inerte"
+    );
+    assert!(
+        apply(&mut sim, bits, &E::From(String::new())),
+        "vazio = este objecto"
+    );
+    assert_eq!(m(&sim).from, 0);
+    assert!(!apply(&mut sim, bits, &E::RemapTo(f32::NAN)));
+}
+
+/// ⭐ Onda 2: o instantâneo diz se o From acha objecto e lista os campos numéricos dele.
+#[test]
+fn o_instantaneo_da_onda_2_nomeia_o_alvo_e_os_campos() {
+    let (mut sim, bits) = cena();
+    let reg = crate::component_registry_for_tests::registo();
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    sim.world_mut().get_mut::<MotionInput>(e).unwrap().from = 99;
+    let i = build_info(
+        &sim,
+        bits,
+        (1, false),
+        Some(&reg),
+        (Vec::new, || vec!["jump".into()]),
+    )
+    .unwrap();
+    assert!(!i.alvo_achado);
+    assert_eq!(i.acoes_do_mapa, vec!["jump".to_string()]);
+    sim.world_mut().get_mut::<MotionInput>(e).unwrap().from = 0;
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_physics_ecs::Health::default());
+    let i = build_info(&sim, bits, (1, false), Some(&reg), (Vec::new, Vec::new)).unwrap();
+    assert!(i.alvo_achado);
+    assert!(
+        i.campos_do_alvo.iter().any(|(_, k)| k.ends_with("/max")),
+        "a vida do objecto oferece Max: {:?}",
+        i.campos_do_alvo
+    );
 }

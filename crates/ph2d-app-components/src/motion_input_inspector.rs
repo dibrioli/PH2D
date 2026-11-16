@@ -2,7 +2,9 @@
 //!
 //! A ponte `u8` ⇄ `MotionSource` vive AQUI e só aqui (o painel não vê a `ph2d-ecs`).
 
+use crate::motion_input_fonte as fonte;
 use ph2d_ecs::motion_inputs::{Escritor, Valor};
+use ph2d_ecs::scene::registry::ComponentRegistry;
 use ph2d_ecs::{MotionInput, MotionInputs, MotionSource, Name, SimWorld};
 use ph2d_editor_core::motion_input_edits::{
     InspectorMotionInputInfo, MOTION_INPUT_SOURCES, MotionInputAoVivo as AoVivo,
@@ -19,30 +21,53 @@ pub fn source_de_u8(v: u8) -> Option<MotionSource> {
 
 /// ⭐ **Constrói o instantâneo** da entidade escolhida, ou `None` se ela não tem o componente.
 ///
-/// `nomes_do_grafo` só corre quando o componente existe — é a varredura do grafo do Motion, que esta
-/// crate não vê (quem a passa é a shell).
+/// `listas` = `(nomes do grafo, acções do Input Map)`, que esta crate não vê (quem as passa é a
+/// shell); só correm quando o componente existe. `reg` dá os campos do From (Property).
 #[must_use]
 pub fn build_info(
     sim: &SimWorld,
     bits: u64,
-    selected_count: usize,
-    a_correr: bool,
-    nomes_do_grafo: impl FnOnce() -> Vec<String>,
+    (selected_count, a_correr): (usize, bool),
+    reg: Option<&ComponentRegistry>,
+    listas: (impl FnOnce() -> Vec<String>, impl FnOnce() -> Vec<String>),
 ) -> Option<InspectorMotionInputInfo> {
     let e = ph2d_ecs::Entity::from_bits(bits);
     let world = sim.world();
     let m = world.get::<MotionInput>(e)?;
-    let vida = crate::health_bar_bridge::vida_da_barra(world, e);
-    let (ao_vivo, tapado_por) = ao_vivo(sim, e, m, a_correr, vida);
+    // ⚠️ As MESMAS portas que a ponte lê — senão o painel diria «tem vida» sobre uma que ela ignora.
+    let alvo = fonte::alvo(world, e, m.from);
+    let vida = alvo.and_then(|a| crate::health_bar_bridge::vida_da_barra(world, a));
+    let tem_corpo = alvo.is_some_and(|a| match m.source {
+        MotionSource::Grounded => fonte::personagem(world, a).is_some(),
+        _ => fonte::corpo(world, a).is_some(),
+    });
+    let campos_do_alvo = match (reg, alvo) {
+        (Some(r), Some(a)) => fonte::campos_numericos(r, world, a),
+        _ => Vec::new(),
+    };
+    let (ao_vivo, tapado_por) = ao_vivo(sim, e, m, a_correr, (vida, reg, alvo));
     Some(InspectorMotionInputInfo {
         entity_bits: bits,
         name: m.name.clone(),
         source: m.source.index(),
         value: m.value,
         color: m.color,
-        nomes_do_grafo: nomes_do_grafo(),
-        // ⚠️ A MESMA porta que a ponte lê — senão o painel diria «tem vida» sobre uma que ela ignora.
+        nomes_do_grafo: (listas.0)(),
         tem_vida: vida.is_some(),
+        from: ph2d_ray_sensor::gotas::nomes(world, &[m.from])
+            .pop()
+            .unwrap_or_default(),
+        alvo_achado: alvo.is_some(),
+        tem_corpo,
+        action: m.action.clone(),
+        acoes_do_mapa: (listas.1)(),
+        property: m.property.clone(),
+        campos_do_alvo,
+        remap: m.remap,
+        remap_from: m.remap_from,
+        remap_to: m.remap_to,
+        curve: m.curve.clone(),
+        smooth: m.smooth,
         selected_count,
         a_correr,
         ao_vivo,
@@ -65,7 +90,11 @@ fn ao_vivo(
     e: ph2d_ecs::Entity,
     m: &MotionInput,
     a_correr: bool,
-    vida: Option<(f32, f32)>,
+    (vida, reg, alvo): (
+        Option<(f32, f32)>,
+        Option<&ComponentRegistry>,
+        Option<ph2d_ecs::Entity>,
+    ),
 ) -> (Option<AoVivo>, Option<(Outro, AoVivo)>) {
     let world = sim.world();
     let eu = Escritor::Objeto {
@@ -85,9 +114,17 @@ fn ao_vivo(
         MotionSource::Damage => {
             jogo.map(|j| AoVivo::Disparos(j.disparos_de(nome, &eu).unwrap_or(0)))
         }
-        MotionSource::Value | MotionSource::Color => {
-            jogo.and_then(|j| j.valor_de(nome, &eu)).map(ao_vivo_de)
-        }
+        MotionSource::Property => match jogo {
+            Some(j) => j.valor_de(nome, &eu).map(ao_vivo_de),
+            None => alvo
+                .and_then(|a| fonte::propriedade(reg, world, a, &m.property))
+                .map(AoVivo::Numero),
+        },
+        MotionSource::Value
+        | MotionSource::Color
+        | MotionSource::Speed
+        | MotionSource::Grounded
+        | MotionSource::Action => jogo.and_then(|j| j.valor_de(nome, &eu)).map(ao_vivo_de),
     };
     let tapado = jogo
         .and_then(|j| j.primeira_linha(nome))
@@ -140,6 +177,20 @@ pub fn semeia_o_nome(sim: &mut SimWorld, bits: u64) {
 /// diff).
 pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
     let e = ph2d_ecs::Entity::from_bits(bits);
+    if let E::From(nome) = edit {
+        // O NOME vira `StableId` pela porta do conta-gotas do Ray Sensor; ninguém com ele = inerte.
+        let Some(id) = ph2d_ray_sensor::gotas::resolve(sim.world(), nome) else {
+            return false;
+        };
+        let Some(mut m) = sim.world_mut().get_mut::<MotionInput>(e) else {
+            return false;
+        };
+        if m.from == id {
+            return false;
+        }
+        m.from = id;
+        return true;
+    }
     let Some(mut m) = sim.world_mut().get_mut::<MotionInput>(e) else {
         return false;
     };
@@ -171,7 +222,36 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
             }
             m.color = *c;
         }
+        E::From(_) => return false, // resolvido acima
+        E::Action(t) => return troca(&mut m.action, t),
+        E::Property(t) => return troca(&mut m.property, t),
+        E::Curve(t) => return troca(&mut m.curve, t),
+        E::Remap(b) => {
+            if m.remap == *b {
+                return false;
+            }
+            m.remap = *b;
+        }
+        E::RemapFrom(v) => return troca_numero(&mut m.remap_from, *v),
+        E::RemapTo(v) => return troca_numero(&mut m.remap_to, *v),
+        E::Smooth(v) => return troca_numero(&mut m.smooth, v.max(0.0)),
     }
+    true
+}
+
+fn troca(campo: &mut String, t: &str) -> bool {
+    if campo == t {
+        return false;
+    }
+    t.clone_into(campo);
+    true
+}
+
+fn troca_numero(campo: &mut f32, v: f32) -> bool {
+    if !v.is_finite() || campo.to_bits() == v.to_bits() {
+        return false;
+    }
+    *campo = v;
     true
 }
 

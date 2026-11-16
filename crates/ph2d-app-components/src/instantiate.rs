@@ -150,20 +150,6 @@ fn instantiate_copies(
     let nomes = ph2d_unique_name::unique_names(sim, &base, n as usize);
     let mut saida: Vec<Entity> = Vec::with_capacity(n as usize);
     for (copy, nome) in copias.into_iter().zip(nomes) {
-        // ⭐⭐ **Os DOCUMENTOS possuídos** (F4.6) — a cópia profunda salta-os de propósito, e sem esta
-        // metade uma peça vetorial nasce **sem geometria nenhuma**: uma linha na Hierarquia que não
-        // desenha um pixel. Ver [`crate::instance_docs`], onde a lista dos quatro está declarada.
-        // ⭐⭐ **A cópia nasce SEM excepções, e isto só passou a importar com as VARIANTES** (F5).
-        //
-        // A cópia profunda leva o `ObjectInstance` verbatim, e num mestre comum ele não existe. Numa
-        // **variante** existe — são as excepções dela contra a base, chaveadas pelas peças da BASE. A
-        // cópia é instância da variante, e as peças dela ligam-se às peças da VARIANTE: aquelas chaves
-        // não alcançam nada e ficariam a acumular em toda instância de toda variante. ⚠️ Inertes, mas
-        // é lixo com cara de excepção — o cartão do Inspector lê aquele conjunto.
-        //
-        // ⛔ **E não é «herdar»**: o valor que a variante autorou já está nos componentes das peças
-        // dela, e a cópia leva-o pelos bytes. A excepção é a pergunta *«de quem é este componente»*, e
-        // numa cópia recém-nascida a resposta é *da receita*, para todos.
         sim.world_mut()
             .entity_mut(copy.root)
             .remove::<ph2d_ecs::ObjectInstance>();
@@ -174,15 +160,6 @@ fn instantiate_copies(
         }
         let pieces = copy.copies();
 
-        // ⚠️⚠️ **A ORDEM destes dois passos é load-bearing, e o erro é silencioso.**
-        //
-        // O mapa contém `mestre → cópia do mestre` (tem de conter: uma junta ancorada na raiz da
-        // receita precisa dele). Se o `InstanceOf` fosse inserido ANTES, o remapeador dele — que é
-        // uma linha da mesma tabela — reescreveria o elo para a identidade da **própria cópia**, e a
-        // instância passaria a dizer-se instância de si mesma. O sync da F4.3 leria isso como *"o
-        // mestre sou eu"* e nunca mais propagaria nada.
-        //
-        // ⇒ remapear primeiro, ligar depois. Gate: `the_instance_points_at_the_master_not_at_itself`.
         crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
 
         // ⭐⭐ **CADA PEÇA guarda de que peça do mestre nasceu** (F4.3), e não só a raiz.
@@ -217,21 +194,6 @@ fn instantiate_copies(
         saida.push(copy.root);
     }
 
-    // ⚠️⚠️ **As três FORA do laço** — é isto que a porta em lote é. Cada uma varre o mundo, e as
-    // três são idempotentes: corrê-las uma vez no fim deixa o mesmo mundo que corrê-las por cópia.
-    //
-    // ⚠️⚠️ **Com UMA divergência medida, e ela é da casa, não do lote: a ORDEM DE RAIZ entre as
-    // cópias.** A `assign_missing_root_order` numera as raízes sem ordem pela ordem de
-    // `Entity::to_bits()` — que **não é a ordem de criação** nesta versão do `bevy_ecs` —, e no
-    // lote as `n` cópias estão todas sem ordem ao mesmo tempo: elas saem `(3), (2), (1)` onde a
-    // porta de um dá `(1), (2), (3)`. *A porta de série nunca exercitou esse desempate porque
-    // nunca teve duas raízes sem ordem ao mesmo tempo.*
-    //
-    // ⛔ **Não é observável no produto de hoje** (uma cópia de fábrica é transiente e não aparece
-    // na Hierarquia; o *Instantiate* do artista é `n = 1`), e o gate afirma-o pelo que é
-    // verdadeiro: as ordens são **distintas e contíguas**, que é a lei que a casa de facto exige
-    // (*«não se escolhe um desempate melhor, não se tem empate»*). ⏳ Quem puser cópias de fábrica
-    // na Hierarquia tem de decidir esta ordem primeiro.
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
     ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
     // As peças da cópia deixam de ser peças de mestre no mesmo quadro em que nascem — sem isto
@@ -310,23 +272,6 @@ pub fn duplicate_subtree(
     // ⭐⭐⭐ **A cópia não é uma receita** — ver o doc. É a mesma linha que o `instantiate_master`
     // já dava à instância, e pela mesma razão: com o marcador ela nasce fora da cena.
     sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
-    // ⭐⭐⭐ **E o duplicado de uma PEÇA DA RECEITA é um objecto NOVO, não um segundo pretendente à
-    // mesma peça do mestre** (achado pelo smoke da F5.11, 2026-09-06).
-    //
-    // ⛔ O `InstanceOf` é componente **registado**, logo a cópia profunda levava-o verbatim: o
-    // duplicado nascia a dizer-se a mesma peça da receita que o original. O passe põe os dois no
-    // mesmo balde (`have` é um mapa `StableId → entidade`, e o segundo tapa o primeiro), e o sync
-    // reescreve **os dois** com os bytes do mestre — o duplicado era um **sósia que não se deixa
-    // mover**, e nada na tela dizia porquê. *A cópia rasa de outrora acertava nisto por acidente,
-    // porque não copiava o elo.*
-    //
-    // ⚠️ **A pergunta é a PORTA ESTREITA, e a largura dela é load-bearing:** duplicar a RAIZ de uma
-    // cópia tem de continuar a dar uma segunda cópia (o elo fica), e duplicar uma cópia ANINHADA
-    // também (ela é a raiz da cópia dela). ⛔ Um `remove` incondicional transformaria o *Duplicate*
-    // de uma instância num *Detach* silencioso.
-    //
-    // ⭐ É exactamente o *Added GameObject* do Unity: duplicar um filho de uma instância dá um
-    // objecto acrescentado, que o cartão lista e o botão dá à receita.
     if crate::instance_verbs::is_a_recipe_given_piece(sim, src) {
         for e in copy.copies() {
             sim.world_mut().entity_mut(e).remove::<InstanceOf>();

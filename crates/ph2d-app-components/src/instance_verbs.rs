@@ -81,18 +81,6 @@ pub(crate) fn make_master(
     if ph2d_ecs::master_root_of(sim.world(), entity).is_some() {
         return Err(VerbRefusal::InsideAMaster);
     }
-    // ⚠️ A pergunta é sobre a entidade **e os ancestrais dela**: uma peça no meio de uma cópia
-    // também está «dentro de uma instância».
-    //
-    // ⭐⭐⭐ **A RAIZ de uma instância é a excepção, e é ela que faz uma VARIANTE** (F5, critério
-    // 2). Marcar a raiz de uma cópia como receita deixa-a `MasterRoot` **e** `InstanceOf` ao mesmo
-    // tempo: ela continua a seguir a base e passa a ser a receita das cópias dela — que é a
-    // *Prefab Variant* do Unity e o `IsA` do flecs. O sync já a alcança sem uma linha nova (ele
-    // procura *toda* entidade cujo elo aponta para um mestre vivo), e a sonda de 2026-08-27 mediu
-    // a cadeia inteira a fechar **num passe**.
-    //
-    // ⛔ Uma peça **no meio** continua recusada, e pela razão de sempre: um `MasterRoot` a meio de
-    // uma cópia viva encurta a sub-árvore de edição e some da tela.
     if belongs_to_an_instance(sim, entity) && instance_root_of(sim, entity) != Some(entity) {
         return Err(VerbRefusal::InsideAnInstance);
     }
@@ -128,39 +116,6 @@ pub(crate) fn make_master(
             return Err(VerbRefusal::AlreadyAMaster);
         }
     };
-    // ⚠️ **A POSE já veio, e uma prova de mutação foi precisa para o dizer.** A 1.ª versão
-    // reescrevia aqui o `Transform` da receita na instância *«porque a pose é `InstanceLocal` e o
-    // sync nunca a traria»* — verdade sobre o sync, e **irrelevante**: a cópia profunda leva o
-    // `Transform` verbatim, então a instância **nasce** no lugar. A mutação que apagava a linha
-    // não matou gate nenhum, e foi assim que ela se revelou morta.
-    //
-    //
-    // ⚠️⚠️ **E a `Visibility` SAIU daqui em 2026-08-26.** A 1.ª versão escondia a raiz da receita
-    // com `Visibility { hidden: true }` e depois devolvia à instância o valor que a seleção tinha.
-    // A premissa era **falsa**: `Visibility` é per-entidade neste motor e **não desce aos
-    // descendentes** (o `sim_extract` diz-no pelo nome), então uma receita que fosse um GRUPO
-    // continuava a desenhar as peças — o artista via **dois objetos empilhados**, que é o defeito
-    // que a nota dizia ter evitado. ⇒ hoje quem não desenha uma receita é o extract, pela marca
-    // **derivada** `MasterPiece`, e este gesto não toca em autoria nenhuma de visibilidade.
-    // ⭐⭐⭐ **Uma VARIANTE ganha um nome que diz o que ela é, e a cópia FICA com o nome do
-    // artista** (report do Enio, 2026-08-27: *«a mensagem [diz] Instance of "ele mesmo"»*).
-    //
-    // # O que ele viu, e porque lia como auto-referência
-    //
-    // O gesto promove o objeto ESCOLHIDO a receita e põe uma cópia no lugar. No caso comum isso
-    // lê-se bem — `Badge` vira receita e a cópia `Badge (1)` diz *«Instance of "Badge"»*. Sobre
-    // uma **instância** já não: o promovido chamava-se `Badge (1)`, a cópia nova ficava
-    // `Badge (2)`, e o cartão dizia *«Instance of "Badge (1)"»* — o nome que estava na linha que
-    // ele acabara de clicar. *A identidade mudou de dono e o nome não, então o cartão parecia
-    // apontar para o próprio objeto.*
-    //
-    // ⇒ é a **biblioteca** que ganha o nome novo (`"<base> Variant"`, o idioma do Unity) e o que
-    // fica na tela **mantém o nome que o artista lhe deu**. ⚠️ A ordem é load-bearing: renomear a
-    // variante PRIMEIRO liberta o nome original, e só então a cópia o pode reclamar.
-    //
-    // ⚠️ E é o de tela que fica com o nome **de propósito**: a referência durável entre objetos
-    // deste app é o `stable_name_id` (o hash do `Name`), então um binding de timeline apontado ao
-    // nome antigo passa a resolver para a cópia — que é o objeto que continua na cena.
     if let Some(base_id) = base_link {
         let base_name = master_named(sim, base_id).unwrap_or_else(|| "Prefab".to_string());
         // ⚠️ **O nome é só um NOME** (Enio, 2026-09-01): o sufixo `Variant` é o idioma do Unity e
@@ -242,15 +197,6 @@ pub(crate) fn apply_to_master(
     clicked: Entity,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Result<usize, VerbRefusal> {
-    // ⭐⭐⭐ **Uma peça que a receita NÃO DEU só tem uma coisa a aplicar: ela própria** (F5.11).
-    //
-    // ⚠️ **Sem esta rota o item do menu era um NO-OP com legenda:** um *Add Child* ou um *Duplicate*
-    // dentro de uma cópia não tem excepção nenhuma (não há par no mestre de que discordar), logo o
-    // verbo respondia *«Nothing overridden here»* sobre a peça em que o gesto que falta é
-    // precisamente este. *Um verbo que responde a pergunta errada no endereço certo lê-se como
-    // morto.*
-    //
-    // ⚠️ **O sujeito real é o TOPO da cadeia acrescentada**, e quem normaliza é a porta.
     if crate::instance_added::is_added(sim, clicked) {
         return crate::instance_added::promote(sim, registry, docs, clicked)
             .map(|p| p.pieces)
@@ -358,19 +304,6 @@ pub fn drain(
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     // O passo da cascata, em unidades de MUNDO — ver [`cascade`].
     place_step: [f32; 2],
-    // ⭐⭐⭐ **PARA ONDE A SELEÇÃO TEM DE IR** depois do verbo, se para algum lado.
-    //
-    // ⛔⛔ Report do Enio, 2026-08-30: *«ao deletar o objeto do canvas, o do painel assets foi
-    // deletado»* e *«mudei o hide no objeto da cena e o objeto do painel foi modificado»*. **Os
-    // dois são o MESMO defeito, e não são sobre apagar nem sobre esconder.**
-    //
-    // O *Make Component* marca a entidade ESCOLHIDA como receita e põe uma cópia no lugar. Uma
-    // receita **não se desenha** (o extract salta o `MasterPiece` derivado) ⇒ o artista fica a
-    // olhar para a cópia… **com a receita ainda seleccionada**. Todo gesto seguinte que age sobre
-    // *«a selecção»* — apagar, o olho, o Inspector — acerta no objecto invisível.
-    //
-    // ⇒ a selecção passa a seguir para a **CÓPIA**, que é o que ele vê e continua a editar. É o que
-    // o Figma e a Unity fazem: criar o componente deixa-te a trabalhar na instância.
     select_out: &mut Option<u64>,
 ) -> bool {
     use ph2d_editor_core::Toast;
@@ -426,56 +359,11 @@ pub fn drain(
             } else {
                 crate::instantiate::ArtLink::Own
             };
-            // ⭐⭐⭐ **A cópia herda o PAI da receita** (auditoria §1.3, 2026-08-27).
-            //
-            // Este ramo passava `None` LITERAL enquanto os outros dois chamadores da cópia profunda
-            // — o `make_master` (:70) e o `duplicate_subtree` — derivam o pai da fonte. ⇒ com uma
-            // receita aninhada num grupo deslocado, o *Instantiate* largava a cópia na RAIZ da cena
-            // com a pose LOCAL do mestre: medido, mundo (9,3) escala 2× ⇒ (0.5,0) escala 1×. O que
-            // se perdia não era a translação, era o transform de mundo INTEIRO do pai — a cópia
-            // saía noutro sítio, **com outro tamanho e outro ângulo**.
-            //
-            // ⚠️ **E a metade pior era o `ChildOf` que faltava, não a pose:** a cópia nº1 (a que o
-            // *Make Component* deixa no lugar) fica dentro do grupo e as nº2..n ficavam na raiz da
-            // cena ⇒ **mover o grupo passava a mover uma instância e não as outras**, e arrastar a
-            // perdida de volta à mão não curava. *Uma discordância entre irmãos, não um erro do
-            // motor de cópia.*
-            // ⭐⭐⭐ **O SUJEITO é a receita, e a linha clicada pode ser uma CÓPIA dela**
-            // (report do Enio, 2026-08-31: *«me mostre o fluxo inteiro de criar variações»*).
-            //
-            // # ⛔⛔ Duas decisões deliberadas deste mesmo ficheiro desfaziam-se uma à outra
-            //
-            // O *Make Prefab* **move a selecção para a cópia** de propósito — é o que o artista vê
-            // e continua a editar, e o doc do `select_out` explica porquê (Figma e Unity fazem o
-            // mesmo). Depois disso, o gesto seguinte da fila — *Instantiate* — **recusava**, porque
-            // pedia a receita: *«Not a prefab — pick the prefab row»*.
-            //
-            // ⇒ o app punha o artista numa linha e o verbo seguinte só funcionava noutra. Medido no
-            // fluxo (`PH2D_BUILD_SMOKE=80`, passo 3): `mudou=false` **no caminho normal**, com as
-            // duas linhas a lerem-se quase igual na Hierarquia (`Casa` e `Casa (1)`).
-            //
-            // ⚠️ **A cerca não caiu, mudou de sítio:** *Instantiate* continua a ser sobre a
-            // RECEITA — só que agora ele sabe achá-la a partir de uma cópia dela, que é a mesma
-            // resolução que os outros quatro verbos já faziam (`instance_root_of`). ⛔ Uma linha
-            // que não é nem receita nem cópia continua a recusar, com a mesma voz.
             let subject = crate::instance_verbs_walk::master_subject(sim, entity);
             let parent = sim.world().get::<ph2d_ecs::ChildOf>(subject).map(|c| c.0);
             match crate::instantiate::instantiate_master(sim, registry, subject, parent, docs, link)
             {
                 Ok(inst) => {
-                    // ⭐ A cópia não aterra em cima do mestre nem das irmãs — ver [`cascade`].
-                    //
-                    // ⛔⛔⛔ **O id é o do SUJEITO, e não o da linha clicada** (report do Enio,
-                    // 2026-09-06: *«instantiate não desloca a cópia, deixa exatamente sobre a
-                    // outra»*). A cascata conta *quantas cópias esta receita já tem*; com o
-                    // `entity` a ser uma **cópia** — que é o caminho normal desde que o *Make*
-                    // move a selecção para ela — `instances_of` contava as instâncias **da
-                    // cópia**, que são **zero**, e o passo saía `0 × step`.
-                    //
-                    // ⚠️ **A linha estava certa quando foi escrita**, e envelheceu por baixo: ela
-                    // é anterior ao `master_subject`, quando o verbo só aceitava a receita. *Quem
-                    // alarga a lente de um verbo tem de reconferir tudo o que lia o sujeito
-                    // antigo* — e o resto deste braço já usa `subject`, só esta linha ficou.
                     if let Some(id) = sim.world().get::<StableId>(subject).map(|s| s.0) {
                         cascade(sim, inst, id, place_step);
                     }

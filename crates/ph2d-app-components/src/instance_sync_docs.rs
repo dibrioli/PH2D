@@ -96,34 +96,6 @@ pub(super) fn sync_one(
     // ganha, como no resto do passe: inventar um override a partir de um estado que ninguém viu
     // mudar seria congelar contra a receita algo que o artista nunca pediu.
     if !master_moved && echo.contains_key(&echo_key) {
-        // ⭐⭐⭐ **A cópia LIGADA responde ao contrário, e é o `Alt+D`** (Enio, 2026-08-27): a
-        // edição dela não é uma excepção **dela**, é uma edição da receita feita a partir dela.
-        // Sobe, e o passe seguinte leva-a às irmãs.
-        //
-        // ⚠️ **A peça já existia** — é o mesmo `apply_one` do verbo *Apply to Master*. O modo
-        // ligado não é uma segunda lei de propagação: é a lei que já havia, escolhida no gesto em
-        // vez de num clique posterior.
-        //
-        // ⛔⛔ **E o ECO FICA COMO ESTAVA — a 1.ª versão escrevia aqui o valor NOVO e isso era o
-        // defeito** (report do Enio, 2026-08-27: *«nem todas as instâncias aceitam a edição dos
-        // pontos»*). Medido por sonda, com três cópias:
-        //
-        // ```
-        // editei a LIGADA -> mestre=-2.0  copias=[-1.0, -1.0, -2.0]  overrides=[0, 0, 0]
-        //    +1 quadro:      mestre=-2.0  copias=[-1.0, -1.0, -2.0]   ← as irmãs NUNCA recebem
-        //    e a seguir:                                overrides=[1, 1, 0] ← e ficam SURDAS
-        // ```
-        //
-        // O eco é *«o que o mestre era da última vez»*, e é ele que responde **quem se mexeu**.
-        // Ensiná-lo o valor novo no mesmo passe faz o quadro seguinte concluir *«o mestre não se
-        // mexeu»* — e então cada irmã, que ainda tem a forma velha, lê-se como *«só a instância
-        // mexeu»* e captura uma excepção que ninguém pediu. Uma subida que atualiza o eco é uma
-        // subida que **ninguém vê**.
-        //
-        // ⇒ deixá-lo velho é o que faz o passe seguinte dizer *«o mestre mexeu-se»* e levar a
-        // forma às irmãs. A cópia que subiu já a tem (`want == have`), logo não é reescrita, e o
-        // ponto fixo chega no 3.º passe. *O eco não é um cache do mestre: é a memória de quem
-        // mexeu.*
         if sim.world().get::<ph2d_ecs::LinkedArt>(inst).is_some() {
             if apply_one(sim, docs, inst, master) {
                 diag.doc_wrote += 1;

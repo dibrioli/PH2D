@@ -135,9 +135,24 @@ const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
             "color" => Color @ "panel.inspector.motion_input.source.1",
             "health" => Health @ "panel.inspector.motion_input.source.2",
             "damage" => Damage @ "panel.inspector.motion_input.source.3",
+            "speed" => Speed @ "panel.inspector.motion_input.source.4",
+            "grounded" => Grounded @ "panel.inspector.motion_input.source.5",
+            "action" => Action @ "panel.inspector.motion_input.source.6",
+            "property" => Property @ "panel.inspector.motion_input.source.7",
         ]),
     f(3, "component.field.motion_input_fields.3", K::Scalar).named("value"),
     f(4, "component.field.motion_input_fields.4", K::Color).named("color"),
+    // Onda 2: o objecto From é um `StableId` lido e escrito pelo NOME (`0` = este).
+    f(5, "component.field.motion_input_fields.5", K::Text)
+        .named("from")
+        .viewed(crate::View::Named(crate::Target::Stable)),
+    f(6, "component.field.motion_input_fields.6", K::Text).named("action"),
+    f(7, "component.field.motion_input_fields.7", K::Text).named("property"),
+    f(8, "component.field.motion_input_fields.8", K::Toggle).named("remap"),
+    f(9, "component.field.motion_input_fields.9", K::Scalar).named("remap_from"),
+    f(10, "component.field.motion_input_fields.10", K::Scalar).named("remap_to"),
+    f(11, "component.field.motion_input_fields.11", K::Text).named("curve"),
+    f(12, "component.field.motion_input_fields.12", K::Scalar).named("smooth"),
 ];
 
 /// O campo do fora-do-ecrã: a folga, em metros, antes de a morte valer.

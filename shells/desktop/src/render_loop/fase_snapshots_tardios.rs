@@ -24,12 +24,8 @@ use ph2d_script::ScriptHost;
 /// derivado do mundo pela MESMA porta que o desenho usa (`ph2d_ecs::hud::texto`), e uma consulta
 /// do `bevy` pede `&mut World`. *Uma segunda conta aqui seria a segunda resposta a «o que este
 /// rótulo diz?», e as duas divergiriam no dia em que uma fonte nova entrasse.*
-/// **O que o EDITOR sabe e o mundo não** — o sujeito escolhido, o relógio e o mapa de acções.
-///
-/// ⚠️ **Ela existe porque a lista de argumentos cresceu para OITO** ao ganhar o mapa (o gatilho
-/// precisa de saber se a acção que uma linha nomeia existe), e o corte não é de estilo: os quatro
-/// primeiros argumentos do [`publica`] são o MUNDO e estes quatro são a SESSÃO. *Duas naturezas,
-/// dois grupos.* ⛔ Um `#[allow]` teria calado o diagnóstico sem responder à pergunta dele.
+/// **O que o EDITOR sabe e o mundo não** — o sujeito escolhido, o relógio, o mapa de acções, o
+/// Motion e o registo. Os argumentos do [`publica`] são o MUNDO; estes são a SESSÃO.
 pub(super) struct Sessao<'a> {
     /// Quem está escolhido (`None` = ninguém ⇒ nenhuma das duas secções existe, ADR-0166).
     pub(super) escolhido: Option<u64>,
@@ -41,6 +37,8 @@ pub(super) struct Sessao<'a> {
     pub(super) mapa: &'a ph2d_input::InputMap,
     /// O Motion — para o Inspector oferecer os nomes que o grafo lê (o cartão do `Motion Input`).
     pub(super) motion: &'a ph2d_app_motion::motion_state::MotionState,
+    /// O registo — os campos do objecto From do `Motion Input`.
+    pub(super) reg: &'a ph2d_ecs::scene::ComponentRegistry,
 }
 
 impl<'a> Sessao<'a> {
@@ -49,7 +47,10 @@ impl<'a> Sessao<'a> {
         (escolhido, quantos): (Option<u64>, usize),
         a_correr: bool,
         mapa: &'a ph2d_input::InputMap,
-        motion: &'a ph2d_app_motion::motion_state::MotionState,
+        (motion, reg): (
+            &'a ph2d_app_motion::motion_state::MotionState,
+            &'a ph2d_ecs::scene::ComponentRegistry,
+        ),
     ) -> Self {
         Self {
             escolhido,
@@ -57,6 +58,7 @@ impl<'a> Sessao<'a> {
             a_correr,
             mapa,
             motion,
+            reg,
         }
     }
 }
@@ -74,6 +76,7 @@ pub(super) fn publica(
         a_correr,
         mapa,
         motion,
+        reg,
     } = *s;
     // O que cada script declara, para o canal das propriedades dele (F27 E).
     ph2d_app_components::canais_script::publicar_declaracoes(sim, script);
@@ -129,10 +132,16 @@ pub(super) fn publica(
         ph2d_app_components::shake_inspector::build_info_emitter(sim, b, a_correr, quantos)
     }));
     // O MOTION INPUT (ciclo 19): os nomes do grafo vêm do Motion, que não é o mundo.
+    let acoes = || mapa.actions().iter().map(|a| a.name.clone()).collect();
     ph2d_panel_inspector::set_current_inspector_motion_input(escolhido.and_then(|b| {
-        ph2d_app_components::motion_input_inspector::build_info(sim, b, quantos, a_correr, || {
-            ph2d_app_motion::motion_entradas::nomes_que_o_grafo_le(motion)
-        })
+        let grafo = || ph2d_app_motion::motion_entradas::nomes_que_o_grafo_le(motion);
+        ph2d_app_components::motion_input_inspector::build_info(
+            sim,
+            b,
+            (quantos, a_correr),
+            Some(reg),
+            (grafo, acoes),
+        )
     }));
     ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
         let mut i = ph2d_app_components::action_trigger_inspector::build_info(

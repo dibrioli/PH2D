@@ -6,11 +6,15 @@ use ph2d_tool_registry::hash_node_id;
 /// O campo do NOME da entrada.
 pub const INSP_MI_NAME: NodeId = hash_node_id("insp_mi_name");
 /// O segmentado da FONTE, pela ordem de `MotionSource::ALL` (gate de comprimento no teste da secção).
-pub const INSP_MI_SOURCE: [NodeId; 4] = [
+pub const INSP_MI_SOURCE: [NodeId; 8] = [
     hash_node_id("insp_mi_source_0"),
     hash_node_id("insp_mi_source_1"),
     hash_node_id("insp_mi_source_2"),
     hash_node_id("insp_mi_source_3"),
+    hash_node_id("insp_mi_source_4"),
+    hash_node_id("insp_mi_source_5"),
+    hash_node_id("insp_mi_source_6"),
+    hash_node_id("insp_mi_source_7"),
 ];
 /// O número publicado (fonte `Value`).
 pub const INSP_MI_VALUE: NodeId = hash_node_id("insp_mi_value");

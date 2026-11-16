@@ -8,24 +8,28 @@ const SEGURADA: Amostra = Amostra {
     pressed: true,
     just_pressed: false,
     just_released: false,
+    strength: 1.0,
 };
 /// O quadro em que ela desceu.
 const DESCEU: Amostra = Amostra {
     pressed: true,
     just_pressed: true,
     just_released: false,
+    strength: 1.0,
 };
 /// O quadro em que ela subiu.
 const SUBIU: Amostra = Amostra {
     pressed: false,
     just_pressed: false,
     just_released: true,
+    strength: 0.0,
 };
 /// Solta há muito.
 const SOLTA: Amostra = Amostra {
     pressed: false,
     just_pressed: false,
     just_released: false,
+    strength: 0.0,
 };
 
 fn linha(edge: ActionEdge) -> ActionTriggerRow {

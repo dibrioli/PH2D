@@ -146,8 +146,27 @@ elos; a peça seguinte é a raiz livre de outra árvore, presa por uma emenda (`
 linha reta. ⛔ Recusa medida: K = 8 e 16 (mais baratos, mas a ponte de 64 desaba — as emendas cedem).
 
 No app, com trechos (o mesmo `dispatch`): 64 → 3,6 ms · 128 7,5 · 192 11,8 · 224 13,0 · **256 15,8** · 320 20,2 · 512 32,4
-(antes 302 ms a 256). **Tecto `MAX_ROW_PARTS = 256`:** o recurso é o quadro — o passo de UMA ponte cabe num quadro a
-60 Hz (16,7 ms) nesta estação. Gates: `a_long_bridge_is_cut_into_trees_and_a_short_one_is_the_old_chain`,
+(antes 302 ms a 256). **Tecto `MAX_ROW_PARTS = 128`** (era 256 até o 2.º smoke do dono, 16/11: «simulando com 256
+peças travou o app»). O recurso é o quadro INTEIRO, não só o tique: quando tique + desenho passam de 16,7 ms, o passo
+fixo (`FixedStep`, `DEFAULT_MAX_SUBSTEPS = 8`) fica a dever tiques e paga 2, 4… até 8 por quadro — a espiral; o app
+deixa de responder. Medido no app (perfil smoke, Xvfb, cena 123 + `PH2D_JOINT_EDITOR_SMOKE=14`, «Planks» N, Make,
+Play, `PH2D_FLUID_PROFILE=1`, janela de 120 quadros):
+
+| tábuas | quadro em Play | simulação por quadro (média · pico) | aviso `dropped … (max_substeps cap)` |
+|---|---|---|---|
+| — (antes do Play) | 31,6–32,1 ms (a base do Xvfb) | 0,6 · 1,2 ms | — |
+| **128** | **33,7–37,2 ms** | 13,2 · 37 ms (2 tiques por quadro) | não |
+| 256 | **104,7 ms (~10 fps)** | 28 · **95,7 ms** (a espiral) | sim (0,25 s) |
+
+Com 128 o quadro fica na base e a simulação cabe com folga de 2× (7,5 ms por tique). ⛔ Recusa medida: 256 (o tique
+de 15,8 ms sozinho já enche o quadro de 60 Hz; somado ao desenho, a espiral). A espiral em si é do passo fixo do app
+inteiro (toda cena pesada a tem); não é desta linha.
+
+Para onde vai a CPU em Play com 128 tábuas (`perf record -F 499`, 6 s, binário smoke com `STRIP=none`, carga ~9 na
+máquina; amostras na função folha): física 47 % (`Multibody::update_mass_matrix` e o `nalgebra` dela) · os canais de
+componente da cena (`ph2d_app_components::canais_componente`, `serde_json`, `BTreeMap<FieldKey>`) 16 % · alocação
+10 % · o resto espalhado; o Joint Editor < 1 %. Os canais custam por objecto e por quadro no app inteiro, e também não
+são desta linha. Gates: `a_long_bridge_is_cut_into_trees_and_a_short_one_is_the_old_chain`,
 `planks_para_no_tecto_medido_da_fila`. Quem mudar o K ou a física da corrente reconfere esta tabela.
 
 O travamento do PC do dono (16/11 ~15:31) **não se reproduziu** com o gesto dele (8 tábuas, Breaks On, 500 N, Make,

@@ -8,6 +8,7 @@ use ph2d_editor_core::motion_input_edits::{
     InspectorMotionInputInfo, MOTION_INPUT_SOURCES, MotionInputAoVivo as AoVivo,
     MotionInputFieldEdit as E, MotionInputOutro as Outro,
 };
+use ph2d_physics_ecs::PhysicsBridge;
 
 const _: () = assert!(MotionSource::ALL.len() == MOTION_INPUT_SOURCES);
 
@@ -17,13 +18,14 @@ pub fn source_de_u8(v: u8) -> Option<MotionSource> {
     MotionSource::ALL.get(usize::from(v)).copied()
 }
 
-/// ⭐ O instantâneo, ou `None` sem o componente; `listas` = (grafo, acções do Input Map), da shell.
+/// ⭐ O instantâneo, ou `None` sem o componente; `listas` = (grafo, acções do Input Map), da shell;
+/// `fisica` dá a Velocity parada (a mesma leitura da fonte).
 #[must_use]
 pub fn build_info(
     sim: &SimWorld,
     bits: u64,
     (selected_count, a_correr): (usize, bool),
-    reg: Option<&ComponentRegistry>,
+    (reg, fisica): (Option<&ComponentRegistry>, Option<&PhysicsBridge>),
     listas: (impl FnOnce() -> Vec<String>, impl FnOnce() -> Vec<String>),
 ) -> Option<InspectorMotionInputInfo> {
     let e = ph2d_ecs::Entity::from_bits(bits);
@@ -48,7 +50,7 @@ pub fn build_info(
         .filter(par)
         .map(|c| c.1.clone())
         .collect();
-    let (ao_vivo, tapado_por) = ao_vivo(sim, e, m, a_correr, (vida, reg, alvo));
+    let (ao_vivo, tapado_por) = ao_vivo(sim, e, m, a_correr, (vida, reg, alvo, fisica));
     Some(InspectorMotionInputInfo {
         entity_bits: bits,
         name: m.name.clone(),
@@ -103,10 +105,11 @@ fn ao_vivo(
     e: ph2d_ecs::Entity,
     m: &MotionInput,
     a_correr: bool,
-    (vida, reg, alvo): (
+    (vida, reg, alvo, fisica): (
         Option<(f32, f32)>,
         Option<&ComponentRegistry>,
         Option<ph2d_ecs::Entity>,
+        Option<&PhysicsBridge>,
     ),
 ) -> (Option<AoVivo>, Option<(Outro, AoVivo)>) {
     let world = sim.world();
@@ -130,6 +133,12 @@ fn ao_vivo(
                 .and_then(|a| fonte::propriedade(reg, world, a, &m.property))
                 .map(ao_vivo_de),
         },
+        // Parada, o corpo não anda: sem leitura do solver, (0, 0).
+        MotionSource::Velocity if jogo.is_none() => alvo
+            .and_then(|a| {
+                fonte::velocidade_par(world, fisica, a).or(fonte::corpo(world, a).map(|_| [0.0; 2]))
+            })
+            .map(AoVivo::Par),
         MotionSource::Value
         | MotionSource::Color
         | MotionSource::Speed

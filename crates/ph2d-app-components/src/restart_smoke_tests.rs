@@ -66,7 +66,6 @@ fn a_corrente_dos_sinais_casa_dos_dois_lados() {
     let vigia = sim.world().get::<CounterWatch>(h).unwrap().0.clone();
     let relogios = sim.world().get::<Timers>(h).unwrap().0.clone();
 
-    // quem GRITA cada nome
     let mut ditos: Vec<String> = vigia.iter().map(|r| r.signal.clone()).collect();
     ditos.extend(relogios.iter().map(|t| t.signal.clone()));
     ditos.push(GOLPE.to_owned()); // o espinho
@@ -78,12 +77,6 @@ fn a_corrente_dos_sinais_casa_dos_dois_lados() {
             l.on
         );
     }
-    // ⭐⭐⭐ **E O SENTIDO CONTRÁRIO — cada sinal DITO tem de ter quem o OUÇA.**
-    //
-    // ⚠️⚠️ **Esta metade nasceu de uma MUTAÇÃO SOBREVIVENTE:** apagar a linha
-    // `morri → StartTimer` deixava o gate VERDE, porque o laço acima só pergunta *«alguém diz o
-    // que esta linha ouve?»* — e um sinal que ninguém ouve passa despercebido. *Uma corrente
-    // medida num sentido só não é uma corrente: é uma lista.*
     let ouvidos: Vec<&str> = tabela.iter().map(|l| l.on.as_str()).collect();
     for dito in &ditos {
         assert!(
@@ -91,7 +84,6 @@ fn a_corrente_dos_sinais_casa_dos_dois_lados() {
             "alguém diz «{dito}» e ninguém nesta cena o ouve — a corrente parte aqui"
         );
     }
-    // ⭐ E a corrente acaba no verbo desta wave.
     let fim = tabela
         .iter()
         .find(|l| l.verb == SignalVerb::RestartRun)
@@ -101,7 +93,6 @@ fn a_corrente_dos_sinais_casa_dos_dois_lados() {
         fim.target.is_empty(),
         "o `Restart Run` não tem alvo: o sujeito dele é a CORRIDA"
     );
-    // ⛔ **E a batida existe**: sem ela a última luz apaga e reacende no MESMO quadro.
     assert!(
         relogios
             .iter()
@@ -109,14 +100,6 @@ fn a_corrente_dos_sinais_casa_dos_dois_lados() {
         "o relógio da batida tem de dizer «{RECOMECA}» e NÃO arrancar sozinho"
     );
 }
-
-// ⛔⛔⛔ **O gate `o_jogo_perde_se_e_recomeca` foi SUBSTITUÍDO pelo
-// [`o_jogo_joga_se_recomeca_e_as_luzes_voltam`]**, e a razão é o report do dono de 19/09.
-//
-// Ele montava o estado à mão (três `AddToCounter`, um `Hide`, o pedido) e **não corria o `settle`
-// do fim do quadro** ⇒ o ledger guardava o autorado para sempre e a devolução acendia as luzes
-// sozinha. *Um arnês que não corre o que o quadro corre não afirma nada sobre o quadro* — e foi
-// exactamente essa a diferença entre o gate verde e o dono a ver as luzes apagadas.
 
 /// ⭐⭐ **O herói ANDA** — a lição que o dono devolveu em 19/09, na cena irmã do abanão.
 ///
@@ -200,7 +183,6 @@ fn tudo_o_que_a_cena_monta_esta_dentro_da_banda() {
     let fora: Vec<(String, f32)> = mundo
         .query::<(&Name, &Transform, &Sprite)>()
         .iter(mundo)
-        // ⚠️ **O chão fica de fora**: ele é maior que a vista de propósito, e mede-se pelo CENTRO.
         .filter(|(n, _, _)| n.0 != "Ground")
         .map(|(n, t, _)| (n.0.clone(), t.translation.y))
         .filter(|(_, y)| *y > BANDA_ACIMA || *y < -BANDA_ABAIXO)
@@ -210,8 +192,6 @@ fn tudo_o_que_a_cena_monta_esta_dentro_da_banda() {
         "estas peças ficam FORA DO ECRÃ (a banda vai de −{BANDA_ABAIXO} a +{BANDA_ACIMA} m): \
          {fora:?}"
     );
-    // ⛔ **E o CONTROLO: a cena tem mesmo peças** — sem ele um `montar` que não montasse nada
-    // passaria por vácuo.
     let mundo = sim.world_mut();
     let pecas = mundo.query::<&Sprite>().iter(mundo).count();
     assert!(pecas >= 7, "piso de população: a cena monta {pecas} peças");
@@ -274,7 +254,6 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
     let mut apagou_todas = false;
 
     for q in 0..QUADROS {
-        // (a) o tique dos relógios — o que o [`crate::timer_tick::tick_timers`] faz.
         ph2d_ecs::reconcile_timers(sim.world_mut());
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let dt_us = (DT * 1e6) as u64;
@@ -290,16 +269,13 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
         }
         fila.extend(disparos_timer);
 
-        // (b) a vigia dos contadores.
         let vf = crate::counter_watch_bridge::frame(&mut sim, true, 1);
         fila.extend(vf.disparos.into_iter().map(|(_, _, nome)| nome));
 
-        // (c) o dono a tocar num espinho — um por quadro, os três primeiros.
         if q < u32::try_from(ESPINHOS).unwrap() {
             fila.push(GOLPE.to_owned());
         }
 
-        // (d) a tabela.
         if !fila.is_empty() {
             let disparos: Vec<Disparo<'_>> = fila
                 .iter()
@@ -314,15 +290,6 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
             if !efeitos.is_empty() {
                 let r = apply(&mut sim, &efeitos, 0.0, &mut drive, &mut mudo);
                 if r.recomecar {
-                    // O que a shell faz ao servir — ver a `fase_fabrica_e_morte`.
-                    //
-                    // ⛔⛔⛔ **E o que ela NÃO faz, com a medição ao lado:** a 1.ª redacção desta
-                    // wave devolvia aqui TODAS as conduções ao autorado. Ela **lutava contra o
-                    // artista**: as três linhas `Show` do mesmo sinal já tinham corrido, e o valor
-                    // «autorado» que o ledger guardava por baixo delas era o **apagado** (o `Hide`
-                    // já era documento) ⇒ a devolução **desfazia o `Show`** e a luz ficava às
-                    // escuras. *Uma porta que devolve «o que estava antes» não sabe distinguir o
-                    // que a corrida escreveu do que o artista acabou de mandar escrever.*
                     ph2d_ecs::rewind_runtime::rewind_runtime_state(
                         sim.world_mut(),
                         ph2d_ecs::rewind_runtime::Renascimento::Recomecar,
@@ -333,20 +300,8 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
             fila.clear();
         }
 
-        // ⭐⭐⭐ **O `settle` DO FIM DO QUADRO, e sem ele este gate media OUTRO PROGRAMA.**
-        //
-        // ⛔⛔ **Uma mutação SOBREVIVENTE apanhou-o:** apagar as três linhas `Show` deixava o gate
-        // **verde** — porque sem o `settle` o ledger guardava o valor autorado para sempre e a
-        // devolução do recomeço acendia as luzes sozinha. *É exactamente a diferença entre o arnês
-        // e a app*, e é ela que explica porque o gate passava enquanto o dono via as luzes
-        // apagadas: no quadro a sério o `post_frame_undo` corre isto **todo quadro**, e um `Hide`
-        // sobrevive **dois** quadros antes de ser documento.
-        //
-        // ⚠️ *Um arnês que não corre o que o quadro corre não afirma nada sobre o quadro.*
         drive.settle();
 
-        // ⭐ **O CONTROLO de meio caminho:** as três luzes CHEGAM a apagar-se. Sem ele, uma cena em
-        // que nada acontecesse e um `Show` que nunca fosse preciso dariam o mesmo verde.
         if !recomecou
             && luzes
                 .iter()
@@ -369,7 +324,6 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
         VIDAS_INICIAIS,
         "as vidas não voltaram ao princípio"
     );
-    // ⭐⭐⭐ **E A METADE DO REPORT:** as luzes voltam a acender.
     for (i, e) in luzes.iter().enumerate() {
         assert!(
             !sim.world().get::<Visibility>(*e).is_some_and(|v| v.hidden),

@@ -126,7 +126,7 @@ fn a_property_parada_le_o_campo_e_em_play_o_que_a_ponte_publicou() {
             s,
             bits,
             (1, j),
-            Some(&reg),
+            (Some(&reg), None),
             (Vec::new, Vec::new),
         )
         .unwrap()

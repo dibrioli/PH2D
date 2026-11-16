@@ -23,14 +23,12 @@
 //! OKLab) responde a outra pergunta e fica para quando alguém a precise; o campo `swatch` é o
 //! mesmo nos dois casos, então trocar a lei não mexe no modelo.
 
+pub(crate) use crate::asset_card_art::{CardArt, dimensions, swatch_for, thumb_for};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_asset_index::{AssetEntry, AssetIndex, AssetRef};
+use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, SpritePixels, StableId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_render::texture_of;
-// ⚠️ **A memória do que um cartão DESENHA** mudou-se para o irmão `asset_card_art` — ver o
-// cabeçalho de lá. Re-exportada para os gates e os chamadores a nomearem como sempre.
-pub(crate) use crate::asset_card_art::{CardArt, dimensions, swatch_for, thumb_for};
-use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, SpritePixels, StableId};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -84,10 +82,8 @@ pub fn publish_for_frame(
     db: &AssetDb,
     atlas_assets: &BTreeMap<u32, AssetId>,
     catalogs: &ph2d_asset_index::CatalogTree,
-    // Ver o parâmetro homónimo do [`build`].
     ppm: f32,
     visible: bool,
-    // D17 — os Kanbans e os Quadros do projecto (`Documents::asset_listing`).
     documents: &[(
         ph2d_editor_core::interaction::drag_payload::DragPayload,
         String,
@@ -159,32 +155,15 @@ pub(crate) fn push_documents(
 pub(crate) fn build(
     sim: &mut SimWorld,
     db: &AssetDb,
-    // ⭐⭐ `célula do atlas → AssetId`, preenchido pelo import / canvas novo / load — **nunca pelo
-    // arranque**. É o que separa *«o artista trouxe isto»* de *«o boot pôs isto no `AssetDb`»*.
     atlas_assets: &BTreeMap<u32, AssetId>,
-    // ⭐⭐ **A TAXONOMIA** (wave A3) — é ela que dá a cada entrada o catálogo a que pertence.
-    //
-    // ⛔⛔ **Sem isto o filtro da coluna não tinha efeito nenhum, e a suíte ficava verde**: a
-    // árvore guardava a atribuição, o painel expandia o escopo certo, e as entradas do índice
-    // chegavam todas com `catalog: None` — a consulta não casava nenhuma. *O fio estava completo
-    // dos dois lados e não se tocava no meio.* Quem o achou foi o roteiro de ponteiro, ao contar
-    // os cartões que a grade de facto desenha.
     catalogs: &ph2d_asset_index::CatalogTree,
     swatches: &mut CardArt,
     remembered: &mut TextureLibrary,
-    // ⭐ Pixels por metro do projecto — o `Sprite::resolve_anchor` converte o `offset` autorado
-    // com ele, e o retrato de um prefab precisa do pivô para pôr a peça onde a tela a põe.
     ppm: f32,
 ) -> AssetIndex {
     let mut index = AssetIndex::new();
-    // O orçamento é POR QUADRO — ver [`THUMB_BUDGET_PX`].
     let mut budget = THUMB_BUDGET_PX;
 
-    // ── Fonte 1: os COMPONENTES ────────────────────────────────────────────────────────────────
-    //
-    // ⚠️ Ordenado por `StableId`, e não pela ordem de iteração do ECS: a ordem de arquétipo muda
-    // com um `insert` qualquer, e uma grade que se reordena sozinha entre quadros é uma grade em
-    // que o cartão debaixo do dedo deixa de ser o que o artista mirou.
     let mut masters: Vec<(u64, Entity)> = {
         let mut q = sim
             .world_mut()
@@ -210,9 +189,6 @@ pub(crate) fn build(
 
         let mut entry = AssetEntry::new(AssetRef::Component { stable_id }, name);
         entry.detail = piece_count_label(pieces.len());
-        // ⭐ A receita guardada do objecto Macro (W18) mostra-se como Macro — derivado do mundo,
-        // sem loja própria. O detalhe fica o das peças: ler famílias e duração pediria descodificar
-        // a gravação a cada quadro.
         entry.receita_de_macro = sim.world().get::<ph2d_ecs::Macro>(entity).is_some();
         let face = largest_piece_texture(sim, &pieces, atlas_assets);
         if let Some(id) = face
@@ -221,10 +197,6 @@ pub(crate) fn build(
             entry.swatch = rgba;
         }
         entry.thumb = crate::asset_card_portrait::compose(sim, entity, &pieces, ppm, |p| {
-            // ⭐⭐⭐ **A PORTA ÚNICA resolve a textura da peça** — e é ela que sabe as DUAS formas
-            // (átlas e `SpritePixels`). O retrato não as conhece, de propósito: uma terceira forma
-            // amanhã entra aqui e não volta a partir o cartão.
-            // A imagem do quadro na tela, da folha dele (GEF 26 F6).
             let id = ph2d_render::drawn_texture(sim.world(), p, atlas_assets)?;
             thumb_for(db, id, swatches, &mut budget)
         })
@@ -235,7 +207,6 @@ pub(crate) fn build(
     }
 
     let mut loose: Vec<(u64, Entity, AssetId)> = {
-        // As folhas extra de um Animated Sprite também estão em uso (GEF 26 F4): `images_of`.
         let (mut q, w) = (sim.world_mut().query::<Entity>(), sim.world());
         let mut v: Vec<(u64, Entity, AssetId)> = q
             .iter(w)
@@ -251,14 +222,10 @@ pub(crate) fn build(
     };
     loose.dedup_by_key(|(_, _, id)| *id);
 
-    // ⭐⭐ **Quem o mundo usa AGORA** — a lista que faz uma lápide ceder sem ninguém editar o
-    // documento (ver [`TextureLibrary::entries`]).
     let live: std::collections::BTreeSet<AssetId> = loose.iter().map(|(_, _, id)| *id).collect();
 
     let paths = crate::library_names::paths_of(db);
     for (_, entity, id) in loose {
-        // ⚠️ O nome de FICHEIRO ganha ao da entidade quando ele existe — é o que o artista
-        // reconhece. A entrada guarda o nome-BASE; o único sai do `library_names` abaixo.
         let name = paths
             .get(&id)
             .and_then(|p| crate::library_names::stem(p))
@@ -276,7 +243,6 @@ pub(crate) fn build(
             );
         }
     }
-    // ⭐ O nome ÚNICO, o mesmo que o script escreve (`sprite.image`, doc CodeEditor 08 d4).
     let names = crate::library_names::library(sim, db, atlas_assets, remembered);
     for entry in remembered.entries(&live) {
         let mut e = entry.clone();
@@ -285,9 +251,6 @@ pub(crate) fn build(
         {
             e.name.clone_from(n);
         }
-        // ⚠️ **O catálogo NÃO é lembrado com a entrada, e é de propósito:** a `TextureLibrary` é
-        // memória de SESSÃO e a taxonomia é do PROJECTO. Guardá-lo no clone faria a atribuição
-        // sobreviver a um `Open Project` que a não tem.
         e.catalog = catalogs.catalog_of(&e.key);
         index.push(e);
     }
@@ -311,7 +274,6 @@ pub fn image_card(
     )?;
     let mut budget = THUMB_BUDGET_PX;
     let thumb = SWATCHES.with(|sw| thumb_for(db, id, &mut sw.borrow_mut(), &mut budget))?;
-    // O nome é a biblioteca inteira a ordenar: só se recalcula quando a imagem muda.
     let name = CARD_NAME.with(|c| {
         if let Some((cached, n)) = c.borrow().as_ref()
             && *cached == id
@@ -523,15 +485,8 @@ fn largest_piece_texture(
     pieces: &[Entity],
     atlas_assets: &BTreeMap<u32, AssetId>,
 ) -> Option<AssetId> {
-    // `(área em micro-unidades, id de desempate, textura)`. ⚠️ O cast `f64 -> u64` **satura** em
-    // Rust, então duas peças acima de ~1,8e13 empatam no topo — e o desempate resolve-o. E
-    // `f64::max(NaN, 0.0) == 0.0`, então uma `size` inválida pontua zero em vez de estourar.
     let mut best: Option<(u64, u64, AssetId)> = None;
     for &p in pieces {
-        // ⛔⛔ **PELA PORTA ÚNICA** (report do Enio, 2026-09-01): ler `SpritePixels` directamente
-        // via só a MINORIA das peças — o caminho normal é o átlas —, e um prefab de sprites de
-        // átlas ficava sem cor **e** sem retrato. É a 3.ª vez que este ficheiro paga a mesma
-        // lição; o doc do [`texture_of`] já a tinha escrita.
         let Some(id) = texture_of(
             sim.world().get::<SpritePixels>(p),
             sim.world().get::<ph2d_render::Sprite>(p),
@@ -542,9 +497,6 @@ fn largest_piece_texture(
         let area = sim.world().get::<ph2d_render::Sprite>(p).map_or(0.0, |s| {
             f64::from(s.size[0].abs()) * f64::from(s.size[1].abs())
         });
-        // A ordem é sobre `f64`, que não é `Ord`; a chave inteira mantém a comparação total **e**
-        // determinística — um `partial_cmp` com `NaN` devolveria `None` e o `max_by` escolheria ao
-        // acaso.
         let key = (area.max(0.0) * 1e6) as u64;
         let tie = sim.world().get::<StableId>(p).map_or(u64::MAX, |s| s.0);
         let cand = (key, tie, id);

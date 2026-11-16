@@ -37,7 +37,7 @@ fn o_instantaneo_reflecte_o_componente() {
         &sim,
         bits,
         (2, false),
-        None,
+        (None, None),
         (|| vec!["hp".into(), "speed".into()], Vec::new),
     )
     .expect("info");
@@ -59,7 +59,7 @@ fn o_instantaneo_reflecte_o_componente() {
             ..Default::default()
         });
     assert!(
-        build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new))
+        build_info(&sim, bits, (1, false), (None, None), (Vec::new, Vec::new))
             .expect("info")
             .tem_vida
     );
@@ -74,7 +74,7 @@ fn sem_componente_nao_ha_seccao() {
         &sim,
         bits,
         (1, false),
-        None,
+        (None, None),
         (
             || -> Vec<String> { panic!("o grafo não se varre sem o componente") },
             Vec::new,
@@ -161,7 +161,7 @@ fn o_cartao_le_o_que_chega_ao_grafo() {
         m.source = MotionSource::Health;
     }
     com_vida(&mut sim, bits, 7.5);
-    let parado = build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new)).unwrap();
+    let parado = build_info(&sim, bits, (1, false), (None, None), (Vec::new, Vec::new)).unwrap();
     assert_eq!(parado.ao_vivo, Some(V::Numero(0.75)));
     assert_eq!(parado.tapado_por, None);
 
@@ -174,7 +174,7 @@ fn o_cartao_le_o_que_chega_ao_grafo() {
         registry: None,
     };
     crate::motion_input_bridge::frame(&mut sim, &out, &f);
-    let jogo = build_info(&sim, bits, (1, true), None, (Vec::new, Vec::new)).unwrap();
+    let jogo = build_info(&sim, bits, (1, true), (None, None), (Vec::new, Vec::new)).unwrap();
     assert_eq!(
         jogo.ao_vivo,
         Some(V::Numero(0.75)),
@@ -189,17 +189,17 @@ fn o_cartao_le_o_que_chega_ao_grafo() {
             ph2d_ecs::motion_inputs::Escritor::Script,
             ph2d_ecs::motion_inputs::Valor::Numero(0.2),
         );
-    let tapado = build_info(&sim, bits, (1, true), None, (Vec::new, Vec::new)).unwrap();
+    let tapado = build_info(&sim, bits, (1, true), (None, None), (Vec::new, Vec::new)).unwrap();
     assert_eq!(tapado.tapado_por, Some((O::Script, V::Numero(0.2))));
 
     sim.world_mut()
         .get_mut::<MotionInput>(ph2d_ecs::Entity::from_bits(bits))
         .unwrap()
         .source = MotionSource::Damage;
-    let dano = build_info(&sim, bits, (1, true), None, (Vec::new, Vec::new)).unwrap();
+    let dano = build_info(&sim, bits, (1, true), (None, None), (Vec::new, Vec::new)).unwrap();
     assert_eq!(dano.ao_vivo, Some(V::Disparos(0)));
     assert_eq!(
-        build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new))
+        build_info(&sim, bits, (1, false), (None, None), (Vec::new, Vec::new))
             .unwrap()
             .ao_vivo,
         None,
@@ -309,7 +309,7 @@ fn o_instantaneo_da_onda_2_nomeia_o_alvo_e_os_campos() {
         &sim,
         bits,
         (1, false),
-        Some(&reg),
+        (Some(&reg), None),
         (Vec::new, || vec!["jump".into()]),
     )
     .unwrap();
@@ -319,7 +319,14 @@ fn o_instantaneo_da_onda_2_nomeia_o_alvo_e_os_campos() {
     sim.world_mut()
         .entity_mut(e)
         .insert(ph2d_physics_ecs::Health::default());
-    let i = build_info(&sim, bits, (1, false), Some(&reg), (Vec::new, Vec::new)).unwrap();
+    let i = build_info(
+        &sim,
+        bits,
+        (1, false),
+        (Some(&reg), None),
+        (Vec::new, Vec::new),
+    )
+    .unwrap();
     assert!(i.alvo_achado);
     assert!(
         i.campos_do_alvo.iter().any(|(_, k)| k.ends_with("/max")),
@@ -343,10 +350,58 @@ fn o_cartao_le_a_vida_do_from_e_nao_a_propria() {
         m.source = MotionSource::Health;
         m.from = 77;
     }
-    let i = build_info(&sim, bits, (1, false), None, (Vec::new, Vec::new)).unwrap();
+    let i = build_info(&sim, bits, (1, false), (None, None), (Vec::new, Vec::new)).unwrap();
     assert!(i.tem_vida, "a vida é a do Hero");
     assert_eq!(
         i.ao_vivo,
         Some(ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero(0.5))
+    );
+}
+
+/// Velocity parada: a leitura da fonte (o solver), e (0, 0) num corpo parado sem leitura.
+#[test]
+fn velocity_parada_le_o_corpo_e_zero_sem_movimento() {
+    use ph2d_editor_core::motion_input_edits::MotionInputAoVivo as A;
+    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
+    let mut sim = SimWorld::new();
+    let corpo = (
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.5 },
+            ..Collider::default()
+        },
+        ph2d_ecs::Transform::IDENTITY,
+    );
+    let mi = MotionInput {
+        source: MotionSource::Velocity,
+        ..MotionInput::default()
+    };
+    let bits = sim.world_mut().spawn((corpo, mi)).id().to_bits();
+    let ler = |s: &SimWorld, f: Option<&PhysicsBridge>| {
+        build_info(s, bits, (1, false), (None, f), (Vec::new, Vec::new))
+            .unwrap()
+            .ao_vivo
+    };
+    assert_eq!(
+        ler(&sim, None),
+        Some(A::Par([0.0, 0.0])),
+        "parado, sem solver: (0, 0)"
+    );
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=30u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let Some(A::Par(v)) = ler(&sim, Some(&bridge)) else {
+        panic!("um par")
+    };
+    assert_eq!(
+        Some(v),
+        bridge.body_velocity(ph2d_ecs::Entity::from_bits(bits))
+    );
+    assert!(
+        v[1].abs() > 1.0,
+        "a mesma velocidade que a fonte lê (a cair): {v:?}"
     );
 }

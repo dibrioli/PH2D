@@ -39,6 +39,8 @@ pub(super) struct Sessao<'a> {
     pub(super) motion: &'a ph2d_app_motion::motion_state::MotionState,
     /// O registo — os campos do objecto From do `Motion Input`.
     pub(super) reg: &'a ph2d_ecs::scene::ComponentRegistry,
+    /// A física — a Velocity do `Motion Input` com o jogo parado.
+    pub(super) fisica: &'a ph2d_physics_ecs::PhysicsBridge,
 }
 
 impl<'a> Sessao<'a> {
@@ -47,9 +49,10 @@ impl<'a> Sessao<'a> {
         (escolhido, quantos): (Option<u64>, usize),
         a_correr: bool,
         mapa: &'a ph2d_input::InputMap,
-        (motion, reg): (
+        (motion, reg, fisica): (
             &'a ph2d_app_motion::motion_state::MotionState,
             &'a ph2d_ecs::scene::ComponentRegistry,
+            &'a ph2d_physics_ecs::PhysicsBridge,
         ),
     ) -> Self {
         Self {
@@ -59,6 +62,7 @@ impl<'a> Sessao<'a> {
             mapa,
             motion,
             reg,
+            fisica,
         }
     }
 }
@@ -77,6 +81,7 @@ pub(super) fn publica(
         mapa,
         motion,
         reg,
+        fisica,
     } = *s;
     // O que cada script declara, para o canal das propriedades dele (F27 E).
     ph2d_app_components::canais_script::publicar_declaracoes(sim, script);
@@ -117,14 +122,6 @@ pub(super) fn publica(
     ph2d_panel_inspector::set_current_inspector_counter_watch(escolhido.and_then(|b| {
         ph2d_app_components::counter_watch_inspector::build_info(sim, b, a_correr, quantos)
     }));
-    // ⭐⭐⭐ **O GATILHO** (suplente #24) — e ele cabe aqui pela MESMA razão das irmãs: a coluna
-    // *«existe uma acção com este nome?»* está no **Input Map**, que não é o mundo. ⚠️ Sem ela,
-    // uma linha com `fier` em vez de `fire` lê-se exactamente como uma que funciona — e o silêncio
-    // dela é DUPLO, porque a lei do motor também cala uma acção que o mapa não conhece.
-    // ⭐⭐⭐ **O ABANÃO** (suplente #25) — as duas cabem aqui pela MESMA razão das irmãs, e a do
-    // EMISSOR é a mais forte de todas: a coluna *«existe uma câmera que treme?»* é uma varredura do
-    // MUNDO sobre **outro objecto**. ⚠️ Sem ela, um emissor perfeitamente ligado numa cena sem
-    // `CameraShake` lê-se exactamente como um partido — e a causa está onde o artista não olha.
     ph2d_panel_inspector::set_current_inspector_shake(escolhido.and_then(|b| {
         ph2d_app_components::shake_inspector::build_info_camera(sim, b, a_correr, quantos)
     }));
@@ -139,7 +136,7 @@ pub(super) fn publica(
             sim,
             b,
             (quantos, a_correr),
-            Some(reg),
+            (Some(reg), Some(fisica)),
             (grafo, acoes),
         )
     }));

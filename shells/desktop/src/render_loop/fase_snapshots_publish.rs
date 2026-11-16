@@ -81,6 +81,7 @@ impl crate::App {
             toasts,
             motion,
             ui_states,
+            physics,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -203,7 +204,7 @@ impl crate::App {
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
         // ⭐⭐ As secções que o `publish` NÃO pode calcular (VM, relógio, partículas): fase-filha.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
-        let mr = (&*motion, &*component_registry);
+        let mr = (&*motion, &*component_registry, &*physics);
         let s = tardios::Sessao::nova(sel, self.playhead.is_playing(), &hero.input_map, mr);
         tardios::publica(sim, tags, script.as_ref(), particles, &s);
         let filed = self.recovery.project_path.is_some();

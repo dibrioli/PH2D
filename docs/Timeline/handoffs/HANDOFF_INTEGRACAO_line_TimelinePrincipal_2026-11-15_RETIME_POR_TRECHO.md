@@ -123,9 +123,11 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 
 ## Aberto
 
-- Ctrl+Z dos gestos de pontos não conferido no Xvfb (o teclado não chega) — coberto pelos testes do passo de undo.
-- Do handoff anterior: smoke do Auto Key na sessão e dos acréscimos 13–14; o campo do Inspector digitado (não medido; lido 16/11: Enter → `commit_number_buffer` → o MESMO
-  `ValueChanged`/`InspectorTransformEdit` do arrasto, e o Auto Key amostra o mundo — só o teclado do Xvfb falta).
+- ✅ 16/11 no app com teclado ([`fotos_teclado.sh`](../ferramentas/fotos_teclado.sh): `xdotool --window` é sintético e o app
+  ignora-o; XTEST + `windowfocus` chega; `type` não, `key` sim): Ctrl+Z tira o ponto, Ctrl+Shift+Z repõe
+  ([foto](../fotos/teclado_1_ctrlz_dos_pontos.png)); valor DIGITADO no Inspector regrava a chave (−300 → −150, fica
+  depois de ±1 quadro, [foto](../fotos/teclado_3_valor_digitado_regrava.png)); Auto Key na sessão: arrastar regrava e o
+  «+» grava no Clip 2 sem Done ([foto](../fotos/teclado_2_autokey_na_sessao.png)). Acréscimos 13–14: smoke do dono 15–16/11.
 - ✅ 16/11, sem subir o tecto: curva pronta → Custom com os CANTOS primeiro (Bounce In-out exato), `afina` (alças
   por trecho) e nós a ≥ `ESPACO_MIN` = 5 %: Bounce/Quad/Cubic/Back exatos, outros ≤ 0,8 %, Elastic In-out 2,8 % (era 4,1).
 - ✅ 16/11 (smoke OK + 2 pedidos): undo/redo MANTÉM a seleção (`keep_living_selection`; antes `clear()`); alças só do

@@ -94,16 +94,27 @@ pub(crate) fn set_pending(v: Option<(Lista, Rect)>) {
 /// Quantas linhas a lista tem de mostrar abaixo do chip antes de preferir abrir para cima.
 const LINHAS_ABAIXO: u8 = 5;
 
+/// Quantas linhas a lista mostra no máximo quando abre PARA CIMA (o resto rola), como um menu nativo: a lista
+/// nunca sobe até o topo do Inspector.
+const LINHAS_ACIMA: u8 = 8;
+
 /// ⭐ **A lista abre ABAIXO do chip e rola** (a lista longa da Property cobria o topo do Inspector): a região
-/// começa no chip enquanto couberem [`LINHAS_ABAIXO`] linhas por baixo; senão, a região inteira (abre para cima,
-/// também com rolagem). A altura nunca passa do que a região tem.
+/// começa no chip enquanto couberem [`LINHAS_ABAIXO`] linhas por baixo; senão abre PARA CIMA, numa região que
+/// acaba no chip e sobe no máximo [`LINHAS_ACIMA`] linhas (com rolagem). Nunca passa da região.
 pub(crate) fn abaixo_do_chip(chip: Rect, region: Rect) -> Rect {
     let fundo = region.y + region.h;
     let abaixo = fundo - (chip.y + chip.h);
     if abaixo >= chip.h * f32::from(LINHAS_ABAIXO) {
         Rect::new(region.x, chip.y, region.w, fundo - chip.y)
     } else {
-        region
+        let alto = chip.h * f32::from(LINHAS_ACIMA + 1);
+        let topo = (chip.y - alto).max(region.y);
+        Rect::new(
+            region.x,
+            topo,
+            region.w,
+            (chip.y + chip.h).min(fundo) - topo,
+        )
     }
 }
 

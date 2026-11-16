@@ -218,3 +218,64 @@ fn a_lista_longa_abre_abaixo_do_chip_e_rola() {
         vec![E::Property("ph2d::x::X/f1".into())]
     );
 }
+
+/// ⭐ Com o chip no FUNDO do Inspector (cartão rolado ao fim), a lista abre PARA CIMA, não sobe até o topo do
+/// Inspector, e a roda do rato rola até a última opção, que se escolhe por clique real.
+///
+/// **Mutação que deve sangrar:** o ramo de cima de `abaixo_do_chip` devolver a `region` inteira.
+#[test]
+fn sem_espaco_abaixo_a_lista_abre_para_cima_e_rola_ate_a_ultima() {
+    const N: usize = 60;
+    let mut p = info(ph2d_editor_core::motion_input_edits::SOURCE_PROPERTY);
+    p.campos_do_alvo = (0..N)
+        .map(|n| (format!("Field {n}"), format!("ph2d::x::X/f{n}")))
+        .collect();
+    let (_, _, alto) = pinta(p.clone());
+    let chip = rect_de(&alto, ids::INSP_MI_PROPERTY).expect("chip");
+    // O Inspector acaba logo abaixo do chip: o que o cartão rolado ao fundo dá.
+    let vp = ph2d_editor_core::zones::Rect::new(
+        VIEWPORT.x,
+        VIEWPORT.y,
+        VIEWPORT.w,
+        chip.y + chip.h * 2.0,
+    );
+    let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<InspectorPanel>();
+    ph2d_panel_inspector::set_current_inspector_motion_input(Some(p));
+    let mut st = ph2d_panel_inspector::InspectorState::default();
+    let rects = h.paint::<InspectorPanel>(&mut st, vp);
+    assert_eq!(
+        rect_de(&rects, ids::INSP_MI_PROPERTY),
+        Some(chip),
+        "o chip mexeu"
+    );
+    let _ = clica(&mut h, &mut st, &rects, ids::INSP_MI_PROPERTY);
+    let mut rects = h.paint::<InspectorPanel>(&mut st, vp);
+    let (_, lista) = h.store().dropdown_popover().expect("a lista abriu");
+    assert!(
+        lista.y + lista.h <= chip.y,
+        "abre para cima: {lista:?} × chip {chip:?}"
+    );
+    // O topo do Inspector = a primeira linha que ele pinta.
+    let topo = alto.iter().map(|(_, r)| r.y).fold(f32::MAX, f32::min);
+    assert!(
+        lista.y >= topo,
+        "a lista cobre o topo do Inspector ({topo}): {lista:?}"
+    );
+    let ultima = ids::INSP_MI_PROPERTY_OPT.id(N - 1);
+    for _ in 0..12 {
+        if rect_de(&rects, ultima).is_some() {
+            break;
+        }
+        let _ = h.wheel_at(lista.x + lista.w * 0.5, lista.y + lista.h * 0.5, -20000.0);
+        rects = h.paint::<InspectorPanel>(&mut st, vp);
+    }
+    let r = rect_de(&rects, ultima).expect("a roda do rato chega à última opção");
+    assert!(
+        r.y >= lista.y && r.y + r.h <= lista.y + lista.h + 1.0,
+        "{r:?} fora de {lista:?}"
+    );
+    assert_eq!(
+        clica(&mut h, &mut st, &rects, ultima),
+        vec![E::Property(format!("ph2d::x::X/f{}", N - 1))]
+    );
+}

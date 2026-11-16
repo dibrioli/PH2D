@@ -109,3 +109,7 @@ arrasta 1000 502 640 502
 import -window root -crop 940x420+340+470 +repage "$SAIDA/pontos_r6_miniaturas_viradas_quando_desce.png"
 echo "foto: $SAIDA/pontos_r6_miniaturas_viradas_quando_desce.png"
 para 6
+# Dono 15/11 («alças fora de vista»): Elastic Out na mesma chave (sai inclinado) — o braço da curva pronta encurta na direção dela
+# até a ponta caber na faixa (antes saía por baixo e por cima).
+c 742 790; c 787 630; c 802 837
+foto pontos_r7_elastic_bracos_a_vista

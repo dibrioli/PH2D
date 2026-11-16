@@ -160,6 +160,32 @@ pub fn segment_handle_points(k0: &KeyView, k1: &KeyView) -> [(f64, f64); 2] {
             handle_point(t0, v0, t1, v1, h_in),
         ]
     };
+    // A DERIVED arm (a preset's tangent: Elastic, Back, Bounce…; or anything retimed) has no
+    // control point to honour: it is the direction of what plays, and its tip must stay where it
+    // can be seen and grabbed (dono 15/11, «alças fora de vista»). Exact control points
+    // (`Bezier`/`BezierW`/`Spline`) are what the band fits instead (`drawn_extent`).
+    let exato = matches!(
+        k0.interp,
+        Interp::Bezier { .. } | Interp::BezierW { .. } | Interp::Spline(_)
+    );
+    if k0.retime.is_none() && !exato {
+        let caixa = segment_value_range(k0, k1);
+        let (len0, len1) = (pts[0].0 - t0, t1 - pts[1].0);
+        if len0 > 0.0 {
+            let s = (pts[0].1 - v0) / len0;
+            let x = arm_inside(len0, s, v0, caixa);
+            if x < len0 {
+                pts[0] = (t0 + x, v0 + s * x);
+            }
+        }
+        if len1 > 0.0 {
+            let s = (v1 - pts[1].1) / len1;
+            let x = arm_inside(len1, -s, v1, caixa);
+            if x < len1 {
+                pts[1] = (t1 - x, v1 - s * x);
+            }
+        }
+    }
     if k0.retime.is_some() {
         let toca = [0u8, 1].map(|w| crate::speed::segment_endpoint_speed(k0, k1, w));
         let caixa = segment_value_range(k0, k1);
@@ -449,6 +475,45 @@ mod tests {
             "a saída tem tangente finita"
         );
         assert!(!segment_handle_drawn(&k0, &k1, 1), "a chegada é vertical");
+    }
+
+    /// Dono 15/11 («alças fora de vista»): o braço de uma curva pronta (Elastic, Back…) é a
+    /// direção do que toca; a ponta encurta NESSA direção até caber nos valores que o trecho toca
+    /// — a faixa os contém (`drawn_extent` amostra a curva), por isso a ponta nunca sai dela.
+    #[test]
+    fn o_braco_de_uma_curva_pronta_fica_dentro_do_que_o_trecho_toca() {
+        use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
+        for fam in [F::Elastic, F::Back, F::Bounce, F::Expo, F::Circ] {
+            for modo in [M::In, M::Out, M::InOut] {
+                let interp = Interp::Eased(Easing::new(fam, modo));
+                let (mut k0, k1) = (key(0.0, 0.0, interp), key(1.0, 10.0, Interp::Linear));
+                k0.selected = true;
+                let (lo, hi) = drawn_extent(&[k0.clone(), k1.clone()], 0.0, 1.0, 256).unwrap();
+                let (h0, h1) = interp.tangent_handles();
+                let cruas = [
+                    handle_point(0.0, 0.0, 1.0, 10.0, h0),
+                    handle_point(0.0, 0.0, 1.0, 10.0, h1),
+                ];
+                for (w, (t, v)) in segment_handle_points(&k0, &k1).into_iter().enumerate() {
+                    let c = cruas[w];
+                    let (a0, a1) = if w == 0 {
+                        ((0.0, 0.0), c)
+                    } else {
+                        ((1.0, 10.0), c)
+                    };
+                    assert!(
+                        v as f32 >= lo - 1e-3 && v as f32 <= hi + 1e-3,
+                        "{fam:?} {modo:?} lado {w}: ponta {v} fora de {lo}..{hi}"
+                    );
+                    // A mesma direção do braço cru (a velocidade não muda, só o alcance).
+                    let cruz = (c.0 - a0.0) * (v - a0.1) - (c.1 - a0.1) * (t - a0.0);
+                    assert!(
+                        cruz.abs() < 1e-6 * (1.0 + a1.1.abs()),
+                        "{fam:?} {modo:?}: direção mudou"
+                    );
+                }
+            }
+        }
     }
 
     /// Puxar uma alça de um trecho retimado reconstrói o trecho (Override, o chamador tira o

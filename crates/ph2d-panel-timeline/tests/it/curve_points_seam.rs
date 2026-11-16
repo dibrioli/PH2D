@@ -344,11 +344,33 @@ fn no_override_o_ponto_tem_braco_de_velocidade_que_se_puxa() {
     set_current_timeline(None);
 }
 
-/// Dono 15/11: «permita inserir pontos mesmo se a curva for um easing». Um toque na linha de uma
-/// curva PRONTA (Elastic Out, Quad In-out) cria o ponto debaixo do rato: a curva vira uma Custom
-/// com a mesma cara, sem ter de mexer numa alça antes.
+/// Um pedaço da linha do trecho que nada cobre (o último registado ganha: braços e âncoras por cima).
+fn linha_livre(regs: &[(ph2d_a11y::NodeId, Rect)]) -> (f32, f32) {
+    (5..80)
+        .map(|i| ids::timeline_curve_line_hit_id(TGT, 1, i))
+        .filter(|id| regs.iter().any(|(w, _)| w == id))
+        .map(|id| (id, centro(regs, id)))
+        .find(|(id, (x, y))| {
+            let dentro = |r: &Rect| *x >= r.x && *x <= r.x + r.w && *y >= r.y && *y <= r.y + r.h;
+            regs.iter().rev().find(|(_, r)| dentro(r)).map(|(w, _)| w) == Some(id)
+        })
+        .expect("um pedaço livre da linha")
+        .1
+}
+
+fn ultima_interp(todos: &[TimelineIntent]) -> Option<Interp> {
+    todos.iter().rev().find_map(|i| match i {
+        TimelineIntent::SetInterp { interp, .. } => Some(*interp),
+        _ => None,
+    })
+}
+
+/// Dono 15/11: «permita inserir pontos mesmo se a curva for um easing»; dono 16/11: «o primeiro
+/// clique numa curva com um easing aplicado deve transformar a curva em pontos e não criar um
+/// ponto novo». O 1.º toque na linha de uma curva PRONTA (Elastic Out, Quad In-out) só a converte
+/// numa Custom com a mesma cara; o 2.º cria o ponto debaixo do rato.
 #[test]
-fn um_toque_numa_curva_pronta_cria_o_ponto_debaixo_do_rato() {
+fn o_primeiro_toque_numa_curva_pronta_converte_e_o_segundo_cria_o_ponto() {
     use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
     for interp in [
         Interp::Eased(Easing::new(F::Elastic, M::Out)),
@@ -357,27 +379,26 @@ fn um_toque_numa_curva_pronta_cria_o_ponto_debaixo_do_rato() {
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut st = TimelinePanelState::default();
         let regs = pinta(&mut host, &mut st, interp);
-        // Um pedaço da linha que nada cobre (o último registado ganha: braços e âncoras por cima).
-        let livre = (5..80)
-            .map(|i| ids::timeline_curve_line_hit_id(TGT, 1, i))
-            .filter(|id| regs.iter().any(|(w, _)| w == id))
-            .map(|id| (id, centro(&regs, id)))
-            .find(|(id, (x, y))| {
-                let dentro =
-                    |r: &Rect| *x >= r.x && *x <= r.x + r.w && *y >= r.y && *y <= r.y + r.h;
-                regs.iter().rev().find(|(_, r)| dentro(r)).map(|(w, _)| w) == Some(id)
-            });
-        let (_, (x, y)) = livre.expect("um pedaço livre da linha");
+        let (x, y) = linha_livre(&regs);
         let _ = drain_intents();
         let _ = host.click_at(x, y);
         let _ = pinta(&mut host, &mut st, interp);
-        let todos = drain_intents();
-        let ultima = todos.iter().rev().find_map(|i| match i {
-            TimelineIntent::SetInterp { interp, .. } => Some(*interp),
-            _ => None,
-        });
-        let Some(nova @ Interp::Spline(_)) = ultima else {
-            panic!("{interp:?}: o toque na curva pronta não criou ponto: {todos:?}");
+        let Some(convertida @ Interp::Spline(c)) = ultima_interp(&drain_intents()) else {
+            panic!("{interp:?}: o 1.º toque não converteu a curva");
+        };
+        assert_eq!(
+            Some(convertida),
+            ph2d_timeline::preset_as_curve(interp).map(Interp::Spline),
+            "{interp:?}: o 1.º toque só converte — nenhum ponto a mais"
+        );
+        assert_eq!(st.ponto_escolhido, None, "{interp:?}: {c:?}");
+
+        let regs = pinta(&mut host, &mut st, convertida);
+        let (x, y) = linha_livre(&regs);
+        let _ = host.click_at(x, y);
+        let _ = pinta(&mut host, &mut st, convertida);
+        let Some(nova @ Interp::Spline(_)) = ultima_interp(&drain_intents()) else {
+            panic!("{interp:?}: o 2.º toque não criou ponto");
         };
         let escolhido = st.ponto_escolhido.expect("o ponto criado fica escolhido");
         let regs = pinta(&mut host, &mut st, nova);

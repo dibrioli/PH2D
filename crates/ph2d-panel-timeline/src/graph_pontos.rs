@@ -185,22 +185,30 @@ pub(crate) fn resolve_drag(
     let Some(mut d) = state.ponto_drag.filter(|d| d.target == target) else {
         return;
     };
-    // Um toque numa curva PRONTA (Ease, Elastic…) converte-a numa Custom com a mesma cara antes de
-    // criar o ponto (dono 15/11) — só aqui, no toque: a conversão custa ~40 ms.
+    // O primeiro toque numa curva PRONTA (Ease, Elastic…) só a converte numa Custom com a mesma
+    // cara, sem ponto novo (dono 16/11); o toque seguinte cria. A conversão custa ~40 ms.
     let curva = trecho(track, d.key).and_then(|(k0, k1)| {
+        let propria = segment_curve(k0, k1);
+        let pronta = d.novo && propria.is_none();
         let c = if d.novo {
             ph2d_timeline::insertable_curve(k0, k1)
         } else {
-            segment_curve(k0, k1)
+            propria
         };
-        Some((k0, k1, c?))
+        Some((k0, k1, c?, pronta))
     });
-    let Some((k0, k1, mut c)) = curva else {
+    let Some((k0, k1, mut c, pronta)) = curva else {
         // O trecho deixou de ter curva (apagado, retimado) a meio do gesto: fecha-se.
         state.ponto_drag = None;
         push_intent(TimelineIntent::EndEdit);
         return;
     };
+    if pronta {
+        grava(track, k0, c);
+        state.ponto_drag = None;
+        push_intent(TimelineIntent::EndEdit);
+        return;
+    }
     let [x, y] = plane_to_unit(k0, k1, view.t(d.x), band.value(d.y));
     if d.novo {
         let Some(i) = c.insert(f64::from(x)) else {

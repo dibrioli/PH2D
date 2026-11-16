@@ -11,7 +11,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.source.1" => "Color",
         "panel.inspector.motion_input.source.2" => "Health",
         "panel.inspector.motion_input.source.3" => "Damage",
-        "panel.inspector.motion_input.graph_reads" => "Graph Reads",
+        "panel.inspector.motion_input.new" => "New\u{2026}",
+        "panel.inspector.motion_input.name_label" => "Name",
+        "panel.inspector.motion_input.add_health" => "Add Health",
+        "panel.inspector.motion_input.reads_health" => "Reads Health here: {v}",
+        "panel.inspector.motion_input.sends" => "Sends {v}",
+        "panel.inspector.motion_input.a_color" => "this color",
+        "panel.inspector.motion_input.fired" => "Fired {n} times",
+        "panel.inspector.motion_input.not_fired" => {
+            "Not fired yet \u{2014} it fires each time Health drops."
+        }
+        "panel.inspector.motion_input.covered_by_script" => {
+            "A script sets this name first ({v}) \u{2014} the graph reads that."
+        }
+        "panel.inspector.motion_input.covered_by_line" => {
+            "The command line sets this name first ({v}) \u{2014} the graph reads that."
+        }
+        "panel.inspector.motion_input.covered_by_object" => {
+            "{o} sets this name first ({v}) \u{2014} the graph reads that."
+        }
         "panel.inspector.motion_input.name_hint" => "input name\u{2026}",
         "panel.inspector.motion_input.empty_name" => {
             "No name \u{2014} the graph reads nothing from this object."
@@ -20,7 +38,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The Motion graph has no Input node yet \u{2014} add one with this name."
         }
         "panel.inspector.motion_input.name_not_read" => {
-            "No Input node in the Motion graph has this name \u{2014} pick one below."
+            "No Input node in the Motion graph has this name \u{2014} pick one above."
         }
         "panel.inspector.motion_input.no_health" => {
             "This object has no Health \u{2014} the graph reads nothing until you add it."

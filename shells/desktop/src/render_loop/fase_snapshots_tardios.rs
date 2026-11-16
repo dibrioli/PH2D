@@ -130,7 +130,7 @@ pub(super) fn publica(
     }));
     // O MOTION INPUT (ciclo 19): os nomes do grafo vêm do Motion, que não é o mundo.
     ph2d_panel_inspector::set_current_inspector_motion_input(escolhido.and_then(|b| {
-        ph2d_app_components::motion_input_inspector::build_info(sim, b, quantos, || {
+        ph2d_app_components::motion_input_inspector::build_info(sim, b, quantos, a_correr, || {
             ph2d_app_motion::motion_entradas::nomes_que_o_grafo_le(motion)
         })
     }));

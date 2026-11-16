@@ -42,6 +42,29 @@ pub enum MotionInputQueixa {
     SemVida,
 }
 
+/// **O que o objecto manda AGORA** — a linha viva do cartão (MI-11).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MotionInputAoVivo {
+    /// Um número (a vida lida, ou o valor publicado).
+    Numero(f32),
+    /// Uma cor, RGBA linear.
+    Cor([f32; 4]),
+    /// Quantas vezes disparou neste jogo (fonte `Damage`).
+    Disparos(u64),
+}
+
+/// **Quem escreve este nome ANTES deste objecto** — o grafo lê a primeira linha, e o cartão diz
+/// quem a tapa (senão o artista mexe num valor que ninguém lê).
+#[derive(Clone, Debug, PartialEq)]
+pub enum MotionInputOutro {
+    /// Um script Luau (`motion.set`).
+    Script,
+    /// A linha de comando (`PH2D_MOTION_INPUTS`).
+    Linha,
+    /// Outro objecto, pelo nome.
+    Objeto(String),
+}
+
 /// **O que o painel mostra** — o instantâneo que a shell publica por quadro.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorMotionInputInfo {
@@ -61,6 +84,12 @@ pub struct InspectorMotionInputInfo {
     pub tem_vida: bool,
     /// Quantos objectos estão escolhidos (a edição aplica-se ao activo).
     pub selected_count: usize,
+    /// O jogo está a correr (as leituras do que chega ao grafo só existem em Play).
+    pub a_correr: bool,
+    /// O que o objecto manda agora (a vida lida também com o jogo parado).
+    pub ao_vivo: Option<MotionInputAoVivo>,
+    /// Em Play: quem escreve este nome primeiro, e o que escreve — `None` quando é este objecto.
+    pub tapado_por: Option<(MotionInputOutro, MotionInputAoVivo)>,
 }
 
 impl InspectorMotionInputInfo {
@@ -108,6 +137,9 @@ mod tests {
             nomes_do_grafo: nomes.iter().map(|s| (*s).to_string()).collect(),
             tem_vida,
             selected_count: 1,
+            a_correr: false,
+            ao_vivo: None,
+            tapado_por: None,
         }
     }
 

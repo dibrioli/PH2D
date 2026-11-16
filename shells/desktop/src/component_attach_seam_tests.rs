@@ -37,7 +37,7 @@ fn picking_an_item_leaves_the_component_in_the_scene() {
         &mut hero,
         &sim,
         &reg,
-        Some(bits),
+        Some((bits, None)),
         &mut target,
         &|_| false,
     );
@@ -162,7 +162,14 @@ fn um_clique_destaca_dois_adicionam_e_o_recibo_desfaz_tudo_ate_ao_bit() {
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
     let mut toasts = ph2d_editor_core::ToastQueue::default();
-    ca::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
+    ca::open_palette_if_asked(
+        &mut hero,
+        &sim,
+        &reg,
+        Some((bits, None)),
+        &mut target,
+        &|_| false,
+    );
     assert_eq!(
         hero.store.command_palette_highlight(),
         Some(item_id("ph2d::physics::RigidBody")),
@@ -282,7 +289,14 @@ fn add_component_dois_cliques_reais_adicionam_e_fecham() {
     let reg = registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
-    ca::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
+    ca::open_palette_if_asked(
+        &mut hero,
+        &sim,
+        &reg,
+        Some((bits, None)),
+        &mut target,
+        &|_| false,
+    );
     let nav = item_id("ph2d::physics::NavAgent");
     assert!(
         dois_apertos_reais(&mut hero, nav),

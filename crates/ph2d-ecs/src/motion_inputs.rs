@@ -45,6 +45,12 @@ pub struct MotionInputs {
     disparos: BTreeMap<String, BTreeMap<Escritor, u64>>,
 }
 
+/// **Os nomes que o grafo do Motion LÊ** (um por `value.input`, sem repetir, por ordem alfabética),
+/// publicados no mundo pela `ph2d-app-motion` a cada quadro — para quem não vê o grafo (o nome
+/// inicial de um `Motion Input` acabado de anexar). Fora do save e do undo.
+#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
+pub struct MotionGraphNames(pub Vec<String>);
+
 fn nome_limpo(nome: &str) -> Option<String> {
     let n = nome.trim();
     (!n.is_empty()).then(|| n.to_string())
@@ -107,6 +113,23 @@ impl MotionInputs {
     #[must_use]
     pub fn valor_de(&self, nome: &str, escritor: &Escritor) -> Option<Valor> {
         self.valores.get(nome.trim())?.get(escritor).copied()
+    }
+
+    /// A PRIMEIRA linha de `nome` — a que o grafo lê (o `value.input` lê o campo; um param dirigido
+    /// lê a primeira) — e quem a escreveu.
+    #[must_use]
+    pub fn primeira_linha(&self, nome: &str) -> Option<(&Escritor, Valor)> {
+        self.valores
+            .get(nome.trim())?
+            .iter()
+            .next()
+            .map(|(e, v)| (e, *v))
+    }
+
+    /// Quantas vezes `escritor` disparou `nome`, se disparou.
+    #[must_use]
+    pub fn disparos_de(&self, nome: &str, escritor: &Escritor) -> Option<u64> {
+        self.disparos.get(nome.trim())?.get(escritor).copied()
     }
 
     /// Esquece tudo (um documento novo, o fim do jogo).

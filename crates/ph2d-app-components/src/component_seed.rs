@@ -57,10 +57,21 @@ pub fn seed_after_attach(
     entity_bits: u64,
     canonical_name: &str,
 ) {
-    if let Some((_, seed)) = seeds.iter().find(|(n, _)| *n == canonical_name) {
+    if let Some((_, seed)) = PROPRIAS
+        .iter()
+        .chain(seeds)
+        .find(|(n, _)| *n == canonical_name)
+    {
         seed(sim, entity_bits);
     }
 }
+
+/// As sementes dos componentes DESTA família (lei 3: a tabela mora com o dono). A injectada é das
+/// outras famílias.
+const PROPRIAS: SeedTable<'static> = &[(
+    "ph2d::ecs::MotionInput",
+    crate::motion_input_inspector::semeia_o_nome,
+)];
 
 #[cfg(test)]
 mod tests {

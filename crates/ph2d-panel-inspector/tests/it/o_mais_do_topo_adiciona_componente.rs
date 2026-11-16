@@ -57,7 +57,8 @@ fn the_plus_at_the_top_of_the_list_adds_a_component() {
         matches!(
             a,
             EditorAction::InspectorAddComponentRequested {
-                entity_bits: 0xABCD_1234
+                entity_bits: 0xABCD_1234,
+                component: None
             }
         )
     });

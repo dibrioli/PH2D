@@ -1289,7 +1289,7 @@ fn arma_o_top20() {
             .collect(),
     }));
     // O MOTION INPUT (ciclo 19) — no estado que pinta MAIS linhas: a queixa do nome que o grafo
-    // não lê, os chips dos nomes do grafo e a linha do número.
+    // não lê, os chips, a caixa do nome novo, a linha do número e as duas leituras de Play.
     insp::set_current_inspector_motion_input(Some(InspectorMotionInputInfo {
         entity_bits: BITS,
         name: "speed".to_string(),
@@ -1303,6 +1303,12 @@ fn arma_o_top20() {
         ],
         tem_vida: false,
         selected_count: selecionados(),
+        a_correr: true,
+        ao_vivo: Some(ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero(0.5)),
+        tapado_por: Some((
+            ph2d_editor_core::motion_input_edits::MotionInputOutro::Script,
+            ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero(0.2),
+        )),
     }));
     // A MACRO (ADR-0186, W5d) — no estado que pinta MAIS linhas: o resumo, a «editada desde» e um
     // erro com detalhe (a frase mais comprida do cartão).

@@ -107,3 +107,40 @@ fn a_runtime_signal_fires_the_trigger_of_its_name() {
         "um sinal, um disparo (lido uma vez)"
     );
 }
+
+/// ⭐ MI-12: a fonte some em Play (tiram a `Health`) ⇒ a linha do objecto SAI, e o `value.input`
+/// volta ao número dele próprio — nunca fica preso no último valor. Trocar a fonte também limpa.
+#[test]
+fn a_source_that_disappears_stops_publishing_instead_of_freezing() {
+    let mut sim = SimWorld::new();
+    let out = SignalOutbox::new();
+    let e = com_vida(&mut sim, entrada("vida", MotionSource::Health, 0.0));
+    frame(&mut sim, &out);
+    assert_eq!(valor(&sim, "vida"), vec![Valor::Numero(1.0)]);
+    sim.world_mut()
+        .entity_mut(e)
+        .remove::<(Health, HealthNow)>();
+    frame(&mut sim, &out);
+    assert_eq!(
+        valor(&sim, "vida"),
+        Vec::<Valor>::new(),
+        "sem Health, nada fica preso"
+    );
+
+    let d = com_vida(&mut sim, entrada("golpe", MotionSource::Damage, 0.0));
+    sim.world_mut().get_mut::<HealthNow>(d).unwrap().pontos = 4.0;
+    frame(&mut sim, &out);
+    frame(&mut sim, &out);
+    sim.world_mut().get_mut::<HealthNow>(d).unwrap().pontos = 2.0;
+    frame(&mut sim, &out);
+    assert_eq!(
+        disparos(&sim, "golpe"),
+        vec![1],
+        "com a vida presente o dano conta"
+    );
+    sim.world_mut()
+        .entity_mut(d)
+        .remove::<(Health, HealthNow)>();
+    frame(&mut sim, &out);
+    assert_eq!(disparos(&sim, "golpe"), Vec::<u64>::new());
+}

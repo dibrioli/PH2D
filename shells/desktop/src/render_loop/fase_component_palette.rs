@@ -8,7 +8,10 @@ use super::*;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
-    pub(super) fn fase_component_palette(&mut self, add_component_for: Option<u64>) {
+    pub(super) fn fase_component_palette(
+        &mut self,
+        add_component_for: Option<(u64, Option<&'static str>)>,
+    ) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         // A Animação de um objecto vive na Timeline, não no mundo (doc ObjectsAndComponents 01 §6).
         let doc = &self.timeline.doc;
@@ -30,8 +33,9 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        let add_component_for = add_component_for
-            .or_else(|| super::fase_component_add_smoke::abre(hero, sim, component_registry));
+        let add_component_for = add_component_for.or_else(|| {
+            super::fase_component_add_smoke::abre(hero, sim, component_registry).map(|b| (b, None))
+        });
         // ⚠️ DEPOIS do dreno do pivot do joint (o gate `the_position_commit_reseats_the_anchor_
         // through_the_door` lê a janela de 3000 bytes a seguir à captura; ver o cabeçalho).
         // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem

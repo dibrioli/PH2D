@@ -377,6 +377,9 @@ pub enum EditorAction {
     /// tem essas três respostas é a shell — o painel só diz *quem* perguntou.
     InspectorAddComponentRequested {
         entity_bits: u64,
+        /// `Some(nome canónico)` = a saída de um aviso («Add Health»): anexa ESSE, pela mesma porta
+        /// da paleta (cascata, sementes, recibo com Undo), sem a abrir.
+        component: Option<&'static str>,
     },
 
     /// ⭐ **O botão Key do cartão do Trigger** (dono 09/11): cria a acção se faltar e arma a escuta que

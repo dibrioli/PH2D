@@ -62,6 +62,7 @@ pub fn publica_o_mundo(motion: &mut MotionState, cena: Cena<'_>) {
         cena.split,
         cena.janela,
     );
+    crate::motion_entradas::publica_os_nomes(motion, cena.sim);
     motion.mundo = MundoDaCena::de(motion);
 }
 

@@ -90,7 +90,7 @@ pub fn le_do_jogo(motion: &mut MotionState, sim: &SimWorld) {
         .unwrap_or_default();
 }
 
-/// **Os nomes que o grafo LÊ** (cada `value.input`, sem repetir, em ordem) — o que o cartão do
+/// **Os nomes que o grafo LÊ** (cada `value.input`, sem repetir, por ordem alfabética) — o que o cartão do
 /// `Motion Input` no Inspector oferece, para o artista não ter de adivinhar o nome.
 #[must_use]
 pub fn nomes_que_o_grafo_le(motion: &MotionState) -> Vec<String> {
@@ -109,6 +109,16 @@ pub fn nomes_que_o_grafo_le(motion: &MotionState) -> Vec<String> {
         .filter(|n| !n.is_empty())
         .collect();
     nomes.into_iter().collect()
+}
+
+/// Publica [`nomes_que_o_grafo_le`] no mundo ([`ph2d_ecs::MotionGraphNames`]) — só quando mudam,
+/// para quem não vê o grafo (o nome inicial de um `Motion Input` acabado de anexar).
+pub fn publica_os_nomes(motion: &MotionState, sim: &mut SimWorld) {
+    let nomes = ph2d_ecs::MotionGraphNames(nomes_que_o_grafo_le(motion));
+    let w = sim.world_mut();
+    if w.get_resource::<ph2d_ecs::MotionGraphNames>() != Some(&nomes) {
+        w.insert_resource(nomes);
+    }
 }
 
 /// ⭐ O disparo de TESTE: cada mudança do `fire` de um `value.input` Trigger é um disparo no

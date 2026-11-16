@@ -91,7 +91,7 @@ pub mod particle_emitter;
 pub mod pixel_sprite;
 pub use motion_input::{MotionInput, MotionSource};
 pub mod motion_inputs;
-pub use motion_inputs::MotionInputs;
+pub use motion_inputs::{MotionGraphNames, MotionInputs};
 pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 /// ⭐⭐⭐ **O canal de qualquer propriedade** (plano 35) — o endereço e os dois quadros de dados.
 pub mod canal;

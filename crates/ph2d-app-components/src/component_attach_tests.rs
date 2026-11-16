@@ -77,7 +77,7 @@ fn the_whole_gesture_opens_filters_and_reveals() {
         &mut hero,
         &sim,
         &reg,
-        Some(bits),
+        Some((bits, None)),
         &mut target,
         &|_| false,
     );
@@ -140,7 +140,7 @@ fn the_box_goes_both_ways() {
         &mut hero,
         &sim,
         &reg,
-        Some(bits),
+        Some((bits, None)),
         &mut target,
         &|_| false,
     );
@@ -170,7 +170,7 @@ fn a_pick_that_is_not_mine_is_left_alone() {
         &mut hero,
         &sim,
         &reg,
-        Some(bits),
+        Some((bits, None)),
         &mut target,
         &|_| false,
     );
@@ -202,7 +202,7 @@ fn a_animacao_e_oferecida_a_quem_nao_a_tem_e_o_pick_e_da_timeline() {
         &mut hero,
         &sim,
         &reg,
-        Some(bits),
+        Some((bits, None)),
         &mut target,
         &|_| true,
     );
@@ -216,7 +216,7 @@ fn a_animacao_e_oferecida_a_quem_nao_a_tem_e_o_pick_e_da_timeline() {
         &mut hero,
         &sim,
         &reg,
-        Some(bits),
+        Some((bits, None)),
         &mut target,
         &|_| false,
     );
@@ -360,4 +360,40 @@ fn resetting_the_player_leaves_the_body_it_needs() {
         Some(BodyKind::Static),
         "o corpo fica"
     );
+}
+
+/// ⭐ A saída de um aviso («Add Health» no Motion Input): o pedido com NOME não abre a paleta —
+/// arma o pick desse componente, e o `route_pick` → `attach_picked` anexa-o com a cascata (o
+/// `RigidBody` que a `Health` exige) e o recibo.
+#[test]
+fn a_named_request_attaches_that_component_without_opening_the_palette() {
+    let mut sim = SimWorld::new();
+    let bits = vazio(&mut sim);
+    let reg = registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    let mut target: Option<u64> = None;
+    crate::component_attach::open_palette_if_asked(
+        &mut hero,
+        &sim,
+        &reg,
+        Some((bits, Some("ph2d::physics::Health"))),
+        &mut target,
+        &|_| false,
+    );
+    assert!(
+        !hero.store.command_palette_open(),
+        "a saída não abre a paleta"
+    );
+    let picked = crate::component_attach::route_pick(&mut hero, &mut target);
+    assert_eq!(picked, Some((bits, "ph2d::physics::Health".to_string())));
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let recibo =
+        crate::component_attach::attach_picked(picked.as_ref(), &mut sim, &reg, &[], &mut toasts);
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    assert!(sim.world().get::<ph2d_physics_ecs::Health>(e).is_some());
+    assert!(
+        sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some(),
+        "a cascata"
+    );
+    assert!(recibo.is_some(), "o recibo diz o que veio junto");
 }

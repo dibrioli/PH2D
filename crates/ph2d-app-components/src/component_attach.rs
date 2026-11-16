@@ -60,7 +60,9 @@ pub fn open_palette_if_asked(
     hero: &mut HeroScreen,
     sim: &SimWorld,
     registry: &ComponentRegistry,
-    asked_for: Option<u64>,
+    // `Some(nome)` = a saída de um aviso: o pick desse componente, sem abrir a paleta (o mesmo
+    // `route_pick` → `attach_picked` anexa, com o recibo e o Undo).
+    asked_for: Option<(u64, Option<&'static str>)>,
     // ⚠️ **Quem pediu, LEMBRADO** — e não re-derivado da seleção no momento do pick. O modal tem
     // scrim, então hoje a seleção não pode mudar entre abrir e escolher; mas *"não pode mudar"* é
     // um invariante que ninguém impõe, e o precedente da casa (a biblioteca do Motion guarda o
@@ -69,7 +71,7 @@ pub fn open_palette_if_asked(
     // Quem já tem Animação na Timeline (a paleta não volta a oferecê-la).
     has_animation: &dyn Fn(u64) -> bool,
 ) {
-    let Some(bits) = asked_for else {
+    let Some((bits, component)) = asked_for else {
         return;
     };
     let Some(entity) = ph2d_ecs::Entity::try_from_bits(bits) else {
@@ -82,8 +84,18 @@ pub fn open_palette_if_asked(
     // ⚠️ **A paleta abre com o *Show all* DESLIGADO**, sempre: o inaplicável é contexto, e um
     // artista que a abre para pôr um componente quer ver o que serve. O estado da caixa não
     // sobrevive ao fecho de propósito.
-    hero.store
-        .open_command_palette(model_for(sim, registry, bits, false, !has_animation(bits)));
+    if let Some(name) = component {
+        hero.store
+            .set_command_pick(crate::component_palette::item_id(name));
+    } else {
+        hero.store.open_command_palette(model_for(
+            sim,
+            registry,
+            bits,
+            false,
+            !has_animation(bits),
+        ));
+    }
     *target = Some(bits);
 }
 

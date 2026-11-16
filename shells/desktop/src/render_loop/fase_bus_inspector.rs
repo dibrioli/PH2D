@@ -237,8 +237,11 @@ impl crate::App {
             // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
             // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
             // sabe construir.
-            EditorAction::InspectorAddComponentRequested { entity_bits } => {
-                pd.add_component_for = Some(entity_bits);
+            EditorAction::InspectorAddComponentRequested {
+                entity_bits,
+                component,
+            } => {
+                pd.add_component_for = Some((entity_bits, component));
             }
             // ⛔ A linha Key do gatilho cria a acção que falta: NÃO é `ComponentEdit`, o mapa é do EDITOR.
             EditorAction::ListenForTriggerKey { name } => {

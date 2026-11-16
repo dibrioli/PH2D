@@ -226,7 +226,10 @@ fn add_component_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> boo
         return false;
     };
     host.bus_mut()
-        .push(EditorAction::InspectorAddComponentRequested { entity_bits: bits });
+        .push(EditorAction::InspectorAddComponentRequested {
+            entity_bits: bits,
+            component: None,
+        });
     true
 }
 

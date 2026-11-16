@@ -110,3 +110,32 @@ fn the_command_line_reads_numbers_booleans_and_colours() {
     publica(&mut m, 0.0);
     assert_eq!(valor(&m, "vida", INPUT_VALUE), Some(vec![0.25]));
 }
+
+/// ⭐ Os nomes do grafo chegam ao MUNDO (para o nome inicial de um `Motion Input` novo), e só se
+/// reescrevem quando mudam.
+#[test]
+fn the_graph_names_reach_the_world_and_follow_the_graph() {
+    let mut m = MotionState::new();
+    let mut sim = SimWorld::new();
+    publica_os_nomes(&m, &mut sim);
+    let nomes = |sim: &SimWorld| {
+        sim.world()
+            .get_resource::<ph2d_ecs::MotionGraphNames>()
+            .cloned()
+    };
+    assert_eq!(nomes(&sim), Some(ph2d_ecs::MotionGraphNames(vec![])));
+    for nome in ["wind", "hurt"] {
+        let n = m.doc.graph.add_node("value.input");
+        m.doc
+            .graph
+            .set_text_param(n, ph2d_node_value_input::NAME_KEY, nome);
+    }
+    publica_os_nomes(&m, &mut sim);
+    assert_eq!(
+        nomes(&sim),
+        Some(ph2d_ecs::MotionGraphNames(vec![
+            "hurt".into(),
+            "wind".into()
+        ]))
+    );
+}

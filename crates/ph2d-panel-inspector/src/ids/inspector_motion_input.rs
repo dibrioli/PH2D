@@ -40,3 +40,8 @@ pub const INSP_MI_GRAFO: [NodeId; 16] = [
     hash_node_id("insp_mi_grafo_14"),
     hash_node_id("insp_mi_grafo_15"),
 ];
+
+/// O chip «New…» no fim dos nomes do grafo: esvazia o nome e abre a caixa para um nome novo.
+pub const INSP_MI_NEW: NodeId = hash_node_id("insp_mi_new");
+/// A saída do aviso «sem Health»: anexa a `Health` (com o corpo que ela exige), com Undo.
+pub const INSP_MI_ADD_HEALTH: NodeId = hash_node_id("insp_mi_add_health");

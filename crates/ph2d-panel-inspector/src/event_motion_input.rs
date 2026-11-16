@@ -20,6 +20,18 @@ pub(crate) fn apply_motion_input_event(host: &mut dyn PanelHostInternal, ev: Wid
         } else if let Some(i) = linha(&crate::ids::INSP_MI_GRAFO, id) {
             // O chip ESCREVE o nome que o grafo lê — o artista não adivinha.
             info.nomes_do_grafo.get(i).cloned().map(E::Name)
+        } else if id == crate::ids::INSP_MI_NEW {
+            // «New…»: o nome esvazia (a caixa aparece, com o foco) — o Undo devolve o de antes.
+            focus_o_nome(host);
+            Some(E::Name(String::new()))
+        } else if id == crate::ids::INSP_MI_ADD_HEALTH {
+            // A saída do aviso: a mesma porta da paleta (cascata, recibo, Undo), sem a abrir.
+            host.bus_mut()
+                .push(EditorAction::InspectorAddComponentRequested {
+                    entity_bits: bits,
+                    component: Some("ph2d::physics::Health"),
+                });
+            None
         } else if id == crate::ids::INSP_MI_COLOR {
             // A amostra ABRE o selector partilhado, semeado com a cor do documento; a escolha volta
             // pela semente (`sync_motion_input`).
@@ -69,6 +81,20 @@ fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
         entity_bits,
         edit: ComponentEdit::MotionInput(edit),
     });
+}
+
+/// O foco na caixa do nome, já a escrever (o padrão do nome da paleta do Blender).
+fn focus_o_nome(host: &mut dyn PanelHostInternal) {
+    let id = crate::ids::INSP_MI_NAME;
+    host.store_mut().set_focus(Some(id));
+    if let Some(InteractiveState::TextInput {
+        state, text, caret, ..
+    }) = host.store_mut().get_mut(id)
+    {
+        text.clear();
+        *caret = 0;
+        *state = ph2d_editor_core::widget::TextInputState::Focused;
+    }
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

@@ -536,7 +536,7 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) inspector_queue_dirty: bool,
     pub(in crate::render_loop) action_edits: Vec<(u64, ph2d_editor_core::ActionFieldEdit)>,
     // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
-    pub(in crate::render_loop) add_component_for: Option<u64>,
+    pub(in crate::render_loop) add_component_for: Option<(u64, Option<&'static str>)>,
     // ⭐⭐ **Acções do Input Map que a fileira do GATILHO mandou criar** (suplente #24).
     //
     // ⚠️ **Um `Vec` e não um `Option`:** o painel tem N fileiras e o artista pode carregar em duas

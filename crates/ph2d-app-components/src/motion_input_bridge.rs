@@ -33,7 +33,9 @@ enum Publica {
 pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
     let world = sim.world_mut();
     let mut ponte = world.remove_resource::<Ponte>().unwrap_or_default();
-    let mut linhas: Vec<(Escritor, String, Publica)> = Vec::new();
+    // `bool` = a fonte existe neste quadro; sem ela a linha SAI (o `value.input` volta ao número
+    // dele), nunca fica presa no último valor.
+    let mut linhas: Vec<(Escritor, String, Publica, bool)> = Vec::new();
     let mut vida_agora = BTreeMap::new();
     let mut q = world.query::<(bevy_ecs::entity::Entity, &MotionInput, Option<&Name>)>();
     let lidos: Vec<_> = q
@@ -48,12 +50,17 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
         };
         let vida =
             || crate::health_bar_bridge::vida_da_barra(world, e).map(|(agora, max)| agora / max);
+        let mut fonte_viva = true;
         let o_que = match m.source {
             MotionSource::Value => Publica::Valor(Valor::Numero(m.value)),
             MotionSource::Color => Publica::Valor(Valor::Cor(m.color)),
-            MotionSource::Health => {
-                vida().map_or(Publica::Nada, |r| Publica::Valor(Valor::Numero(r)))
-            }
+            MotionSource::Health => vida().map_or_else(
+                || {
+                    fonte_viva = false;
+                    Publica::Nada
+                },
+                |r| Publica::Valor(Valor::Numero(r)),
+            ),
             MotionSource::Damage => match vida() {
                 Some(r) => {
                     vida_agora.insert(bits, r);
@@ -63,18 +70,21 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox) {
                         Publica::Nada
                     }
                 }
-                None => Publica::Nada,
+                None => {
+                    fonte_viva = false;
+                    Publica::Nada
+                }
             },
         };
-        linhas.push((escritor, m.name.trim().to_string(), o_que));
+        linhas.push((escritor, m.name.trim().to_string(), o_que, fonte_viva));
     }
     let leitor = ponte.leitor.get_or_insert_with(|| SignalReader::at(outbox));
     let sinais: Vec<String> = outbox.read(leitor).map(|s| s.name.to_string()).collect();
 
     let mut m = world.get_resource_or_insert_with(MotionInputs::default);
     let mut vivos: BTreeSet<(u64, String)> = BTreeSet::new();
-    for (escritor, nome, o_que) in linhas {
-        if let Escritor::Objeto { bits, .. } = &escritor {
+    for (escritor, nome, o_que, fonte_viva) in linhas {
+        if let (Escritor::Objeto { bits, .. }, true) = (&escritor, fonte_viva) {
             vivos.insert((*bits, nome.clone()));
         }
         match o_que {

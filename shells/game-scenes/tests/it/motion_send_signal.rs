@@ -307,3 +307,46 @@ end
         );
     }
 }
+
+/// ⭐ O cartão MOTION (MI-8) lê os «Send signal» DO objecto, com o nome e as vezes desta corrida;
+/// parado, outro objecto ou sem nome = nada. **Mutação que deve sangrar:** tirar o filtro do dono.
+#[test]
+fn o_cartao_motion_le_os_envios_do_objecto_nesta_corrida() {
+    use ph2d_app_motion::motion_objeto::origem::envios_do_objeto;
+    let mut motion = MotionState::new();
+    let s = grafo(&mut motion, BITS);
+    motion.envios.corrida(true);
+    let l = send::Leitura {
+        v: 0.0,
+        when: send::WHEN_PULSE,
+        level: 0.5,
+        pulsos: 1,
+    };
+    motion.envios.passo(s, 1, &l);
+    motion.envios.passo(s, 2, &l);
+    let info = envios_do_objeto(&motion, BITS, true).expect("em Play há cartão");
+    assert_eq!(info.entity_bits, BITS);
+    let lido: Vec<_> = info
+        .sent
+        .iter()
+        .map(|e| (e.signal.as_str(), e.times))
+        .collect();
+    assert_eq!(lido, [("caiu", 2)]);
+    assert!(
+        envios_do_objeto(&motion, BITS, false).is_none(),
+        "parado: sem cartão"
+    );
+    assert!(
+        envios_do_objeto(&motion, BITS + 1, true).is_none(),
+        "outro objecto"
+    );
+    motion.envios.corrida(false);
+    motion.envios.corrida(true);
+    let zero = envios_do_objeto(&motion, BITS, true).expect("cartão");
+    assert_eq!(zero.sent[0].times, 0, "o Play seguinte começa do zero");
+    motion.doc.graph.set_text_param(s, send::NAME_KEY, "  ");
+    assert!(
+        envios_do_objeto(&motion, BITS, true).is_none(),
+        "sem nome não envia"
+    );
+}

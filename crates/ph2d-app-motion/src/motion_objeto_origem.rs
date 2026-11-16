@@ -48,6 +48,36 @@ pub fn dono_do_no(motion: &MotionState, no: NodeId) -> Option<&super::Dono> {
         .and_then(|o| motion.objeto.donos.get(&o))
 }
 
+/// O cartão MOTION (MI-8): os «Send signal» com nome do objecto `bits` e as vezes desta corrida;
+/// `None` parado ou sem nenhum.
+#[must_use]
+pub fn envios_do_objeto(
+    motion: &MotionState,
+    bits: u64,
+    a_correr: bool,
+) -> Option<ph2d_editor_core::motion_sent::InspectorMotionSentInfo> {
+    use ph2d_node_send_signal as send;
+    let g = &motion.doc.graph;
+    let sent: Vec<_> = (g.nodes().iter())
+        .filter(|n| n.type_name == send::MANIFEST.name)
+        .filter(|n| dono_do_no(motion, n.id).is_some_and(|d| d.entity == bits))
+        .filter_map(|n| {
+            let t = g
+                .node_text_param_overrides(n.id)?
+                .get(send::NAME_KEY)?
+                .trim();
+            let times = motion.envios.vezes(n.id);
+            let signal = t.to_string();
+            (!t.is_empty()).then_some(ph2d_editor_core::motion_sent::MotionSent { signal, times })
+        })
+        .collect();
+    let info = ph2d_editor_core::motion_sent::InspectorMotionSentInfo {
+        entity_bits: bits,
+        sent,
+    };
+    (a_correr && !info.sent.is_empty()).then_some(info)
+}
+
 /// ⭐ A afim local → mundo do que `no` gera: a do dono dele, identidade sem dono vivo. Porta única —
 /// os sinks (aqui) e as legendas das demos (`motion_demo_legend`) leem a mesma.
 #[must_use]

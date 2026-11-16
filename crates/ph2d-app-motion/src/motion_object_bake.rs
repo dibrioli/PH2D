@@ -240,22 +240,9 @@ impl ObjectBake {
         surface_format: wgpu::TextureFormat,
         sim: &SimWorld,
     ) {
-        // The drawings to store this frame, keyed by VecPathId → the artist's name
-        // (`None` for an unnamed group child): named ∪ group-referenced (see
-        // `select_present`). Keying by id — not name — is what lets an unnamed group
-        // child get a handle and a rename keep it.
         let world = sim.world();
         let present = select_present(world, map);
 
-        // Drop the ids that vanished (deleted, or an unnamed shape no group references
-        // any more). O tile É libertado e a geometria É esquecida — os dois recursos
-        // que um bake adquire saem pela mesma porta.
-        //
-        // ⚠️ **O `store.forget` foi acrescentado em 2026-08-21, e a linha que ele
-        // substitui dizia o defeito em voz alta:** *"the store slot goes dead but is
-        // not reclaimed (no eviction)"*. A chave do bake inclui a TRANSFORMAÇÃO, então
-        // girar ou escalar um objeto deixava um `VecPath` morto **por quadro**. Numa
-        // engine cujo laço corre horas, «não reclamado» é «fuga» (Enio, 2026-08-21).
         let gone: Vec<VecPathId> = self
             .cache
             .keys()
@@ -269,8 +256,6 @@ impl ObjectBake {
             }
         }
 
-        // Store the new + changed. A cache hit is a `VecPath`/xform equality — no
-        // store push, no thumbnail render.
         for (id, name) in present {
             let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
                 continue;

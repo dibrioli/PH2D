@@ -171,6 +171,10 @@ pub const INSP_LIVE_LUZ_SEM_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_sem_l
 pub const INSP_LIVE_MOTION_INPUT_SECTION: NodeId = hash_node_id("insp_live_motion_input_section");
 /// A pega de arrasto da secção MOTION INPUT.
 pub const INSP_LIVE_MOTION_INPUT_GRIP: NodeId = hash_node_id("insp_live_motion_input_grip");
+/// O cabeçalho dobrável do cartão MOTION — os sinais que o grafo do objecto enviou (GEF 08 MI-8).
+pub const INSP_LIVE_MOTION_SECTION: NodeId = hash_node_id("insp_live_motion_section");
+/// A pega de arrasto do cartão MOTION.
+pub const INSP_LIVE_MOTION_GRIP: NodeId = hash_node_id("insp_live_motion_grip");
 /// O cabeçalho dobrável da secção MACRO — a gravação do objecto (ADR-0186, W5d).
 pub const INSP_LIVE_MACRO_SECTION: NodeId = hash_node_id("insp_live_macro_section");
 /// A pega de arrasto da secção MACRO.

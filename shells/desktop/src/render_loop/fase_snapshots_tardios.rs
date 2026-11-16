@@ -140,6 +140,9 @@ pub(super) fn publica(
             (grafo, acoes),
         )
     }));
+    ph2d_panel_inspector::set_current_inspector_motion_sent(escolhido.and_then(|b| {
+        ph2d_app_motion::motion_objeto::origem::envios_do_objeto(motion, b, a_correr)
+    }));
     ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
         let mut i = ph2d_app_components::action_trigger_inspector::build_info(
             sim,

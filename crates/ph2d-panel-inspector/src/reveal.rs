@@ -13,7 +13,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetStore;
 
 /// O componente que cada secção EDITA (o principal, quando são vários) — um por [`ids::LIVE_SECTIONS`].
-pub(crate) const SECTION_COMPONENT: [(NodeId, &str); 52] = [
+pub(crate) const SECTION_COMPONENT: [(NodeId, &str); 53] = [
     (ids::INSP_LIVE_NAME_SECTION, "ph2d::ecs::Name"),
     (ids::INSP_LIVE_VISIBILITY_SECTION, "ph2d::ecs::Visibility"),
     (ids::INSP_LIVE_TRANSFORM_SECTION, "ph2d::ecs::Transform"),
@@ -95,6 +95,7 @@ pub(crate) const SECTION_COMPONENT: [(NodeId, &str); 52] = [
         "ph2d::light2d::NaoRecebeLuz",
     ),
     (ids::INSP_LIVE_MACRO_SECTION, "ph2d::ecs::Macro"),
+    (ids::INSP_LIVE_MOTION_SECTION, "ph2d::ecs::MotionGenerator"),
     (
         ids::INSP_LIVE_CONSTRAINTS_SECTION,
         "ph2d::constraints::Constraints",

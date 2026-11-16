@@ -88,3 +88,19 @@ fn it_registers_with_a_name_and_its_params() {
     assert_eq!(MANIFEST.param_default(LEVEL), Some(0.5));
     assert_eq!(MANIFEST.param_default(WHEN), Some(0.0));
 }
+
+#[test]
+fn a_contagem_zera_a_cada_play_e_nao_ao_parar() {
+    let mut e = Envios::default();
+    let n = NodeId(7);
+    e.corrida(true);
+    e.passo(n, 1, &l(0.0, WHEN_PULSE, 1));
+    e.passo(n, 2, &l(0.0, WHEN_PULSE, 1));
+    assert_eq!(e.vezes(n), 2);
+    e.corrida(true);
+    assert_eq!(e.vezes(n), 2, "a correr, o quadro seguinte não zera");
+    e.corrida(false);
+    assert_eq!(e.vezes(n), 2, "parar guarda o número da corrida");
+    e.corrida(true);
+    assert_eq!(e.vezes(n), 0, "o Play seguinte começa do zero");
+}

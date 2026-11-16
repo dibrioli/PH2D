@@ -100,14 +100,11 @@ impl crate::App {
         // própria (o `toasts` tem de continuar vivo lá).
         // ⚠️ **A LEITURA acontece AQUI, e não dentro do dispatch, porque este é o ponto
         // onde TODA rota de cook converge.** Ela morava no laço de tiques da bomba de
-        // CPU — correto, e mudo: a rota da GPU **híbrida** marcha por outra porta e
-        // devolve `Handled`, então aquele laço nem roda. Medido na cena `=26`, que planeja
-        // híbrida (boundaries `[5, 4]`, 4 estágios): o grafo cozinhava, desenhava e não
-        // gritava nada — com a suíte verde, porque todo gate dirigia a porta de sinks.
-        //
+        // CPU — correto, e mudo: a rota da GPU **híbrida** marcha por outra porta.
         // ⚠️ **A LEI mora aqui junto com a leitura**, pelo mesmo motivo: perguntá-la
         // dentro do dispatch obrigaria cada rota a lembrar-se dela. Um scrub re-cozinha o
         // grafo e não pode gritar — um sinal é travessia de play para a frente.
+        motion.envios.corrida(self.playhead.is_playing());
         if self.playhead.crosses_forward(self.timeline_signals.jumped) {
             ph2d_app_motion::motion_bridge::signals::collect_signals(motion);
         }

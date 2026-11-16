@@ -351,6 +351,21 @@ pub(crate) fn push_familia_logica_cont<'a>(
         header_h,
         snaps.motion_input_info.as_ref(),
     );
+    if let Some(info) = snaps.motion_sent_info.as_ref() {
+        crate::plano::emoldurada(
+            plano,
+            ph2d_editor_core::ids::INSP_LIVE_MOTION_SECTION,
+            store,
+            inner_x,
+            inner_w,
+            header_h,
+            move |c, t, y| {
+                crate::sections::motion_sent::paint_motion_sent_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info,
+                )
+            },
+        );
+    }
 }
 
 /// ⭐ **ÁUDIO** (`12`) · **CÂMERA** (`13`) · **SCRIPT** (`14`) — as três últimas famílias que o

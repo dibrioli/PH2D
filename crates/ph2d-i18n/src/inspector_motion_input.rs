@@ -25,6 +25,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.sends" => "Sends {v}",
         "panel.inspector.motion_input.a_color" => "this color",
         "panel.inspector.motion_input.fired" => "Fired {n} times",
+        // O cartão do objecto Motion (MI-8): um nó «Send signal» por linha, nesta corrida.
+        "panel.inspector.motion.sent" => "Sent {s} {n} times",
+        "panel.inspector.motion.sent_once" => "Sent {s} once",
+        "panel.inspector.motion.not_sent" => "{s} not sent yet",
         "panel.inspector.motion_input.not_fired" => {
             "Not fired yet \u{2014} it fires each time Health drops."
         }

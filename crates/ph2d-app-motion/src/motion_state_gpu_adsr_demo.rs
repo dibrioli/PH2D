@@ -124,7 +124,6 @@ fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<Node
     let beat = g.add_node("pulse.beat");
     g.set_param(beat, "period", BEAT);
 
-    // O DIVISOR: conta as batidas e só o `carry` (a saída 1) sai a cada volta.
     let count = g.add_node("pulse.counter");
     g.set_param(count, "count_max", DIVIDE_BY);
     g.set_param(count, "mode", 0.0); // Wrap — a única que completa voltas.
@@ -136,8 +135,6 @@ fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<Node
     g.set_param(env, "hold", HOLD);
     g.set_param(env, "release", RELEASE);
 
-    // O ramo do PULO: o MESMO metrônomo, sem passar pelo contador. É ele que dá ao olho o
-    // relógio de entrada contra o qual contar o dividido.
     let hop = g.add_node("pulse.adsr");
     g.set_param(hop, "attack", HOP_ATTACK);
     g.set_param(hop, "decay", HOP_DECAY);
@@ -156,9 +153,6 @@ fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<Node
     g.set_param(drive, "scale", SWELL);
     let out = g.add_node("motion.output");
 
-    // As TOMADAS (`=26`). Cada uma nomeia o relógio em que está: um medidor em SÉRIE, no fio,
-    // e não um ramo pendurado — é por isso que o nó tem porta de saída do mesmo tipo da de
-    // entrada, e é o que deixa nomear um pulso sem deixar de usá-lo.
     let tap_ids = taps.then(|| {
         let tic = g.add_node("pulse.signal");
         g.set_text_param(tic, ph2d_node_pulse_signal::NAME_KEY, TIC);
@@ -191,7 +185,6 @@ fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<Node
 
     let mut wires: Vec<(NodeId, u16, NodeId, u16)> = vec![
         (grid, 0u16, scale, 0u16),
-        // O metrônomo lê o mesmo stream, só pela contagem de linhas.
         (scale, 0, beat, 0),
         (beat, 0, count, 0),
         (scale, 0, drive_y, 0),
@@ -200,13 +193,6 @@ fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<Node
         (env, 0, drive, 1),
         (drive, 0, out, 0),
     ];
-    // Os dois fios que a tomada ATRAVESSA — o ramo CRU (o pulo sai do metrônomo, antes do
-    // divisor) e o `carry`.
-    //
-    // ⚠️ **A porta de saída 1**: o `carry`, não a contagem — e ligar a `0` é **INEXPRIMÍVEL**,
-    // medido: a contagem é um VALOR (relógio `Frame`) e este porto pede um PULSO (`Event`),
-    // então o tipo recusa e o documento nem se monta. O erro que este fio PODE cometer é outro
-    // — um `count_max` errado —, e é esse que o gate da razão pega.
     match tap_ids {
         Some((tic, bar)) => wires.extend([
             (beat, 0, tic, 0),
@@ -224,7 +210,6 @@ fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<Node
         })
         .ok()?;
     }
-    // Os quatro `pre` self-loops (memória de borda / idade dos envelopes).
     for (n, port) in [(beat, 1u16), (count, 1), (env, 1), (hop, 1)] {
         g.connect(Edge {
             from: (n, 0),

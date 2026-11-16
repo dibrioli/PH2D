@@ -121,6 +121,7 @@ pub fn ler(stream: &Stream) -> Option<Leitura> {
 pub struct Envios {
     antes: BTreeMap<NodeId, (u64, f32)>,
     vezes: BTreeMap<NodeId, u64>,
+    a_correr: bool,
 }
 
 impl Envios {
@@ -149,6 +150,16 @@ impl Envios {
     #[must_use]
     pub fn vezes(&self, node: NodeId) -> u64 {
         self.vezes.get(&node).copied().unwrap_or(0)
+    }
+
+    /// O relógio do jogo neste quadro: ao dar Play (parado → a correr) a contagem e a borda zeram —
+    /// o «Sent N times» é desta corrida, como o contador de execução de um depurador.
+    pub fn corrida(&mut self, a_correr: bool) {
+        if a_correr && !self.a_correr {
+            self.antes.clear();
+            self.vezes.clear();
+        }
+        self.a_correr = a_correr;
     }
 
     /// Esquece os nós que saíram do grafo.

@@ -187,6 +187,8 @@ pub mod macro_etapas;
 pub mod macro_tutorial;
 /// O vocabulário da secção MOTION INPUT (ciclo 19 do Motion).
 pub mod motion_input_edits;
+/// O cartão do objecto MOTION: «Sent <signal> N times» (GEF 08 MI-8).
+pub mod motion_sent;
 /// ⭐⭐⭐ O vocabulário das secções NAV REGION e NAV AGENT (plano 30, W4).
 pub mod nav_edits;
 /// ⭐⭐⭐ **O vocabulário do RAIO** (suplente #21) — ver o cabeçalho dele.

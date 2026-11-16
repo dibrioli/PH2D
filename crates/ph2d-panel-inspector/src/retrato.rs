@@ -129,6 +129,8 @@ retrato! {
         c::current_inspector_macro(), c::set_current_inspector_macro;
     motion_input: Option<mi::InspectorMotionInputInfo> =
         c::current_inspector_motion_input(), c::set_current_inspector_motion_input;
+    motion_sent: Option<ph2d_editor_core::motion_sent::InspectorMotionSentInfo> =
+        c::current_inspector_motion_sent(), c::set_current_inspector_motion_sent;
     script: Option<script_edits::InspectorScriptInfo> =
         c::current_inspector_script(), c::set_current_inspector_script;
     slot: Option<SlotImage> = slot_image::atual(), slot_image::set_current_slot_image;

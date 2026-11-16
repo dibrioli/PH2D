@@ -364,6 +364,7 @@ pub use state_components::{
     set_current_inspector_corpo_luz, set_current_inspector_counter_watch,
     set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
     set_current_inspector_luz, set_current_inspector_macro, set_current_inspector_motion_input,
+    set_current_inspector_motion_sent,
     set_current_inspector_nav, set_current_inspector_parallax, set_current_inspector_particles,
     set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
     set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,

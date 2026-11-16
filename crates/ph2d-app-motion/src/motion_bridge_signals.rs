@@ -1,9 +1,6 @@
-//! **O que o grafo GRITA** — as duas metades do lado de Motion da fronteira `pulse.* ↔
-//! ph2d-runtime` (folha 12 do doc 89), irmãs do `motion_bridge` pelo teto de LOC do shell.
-//!
-//! ⚠️ Nada aqui conhece a `ph2d-runtime`: a ponte deixa um FATO em `MotionState.signals_out` e
-//! quem o transforma num `Signal` é o shell, que já é dono da outbox e já drena as outras duas
-//! fontes. O produtor não chama ninguém (ADR-0075).
+//! **O que o grafo GRITA** — o lado de Motion da fronteira `pulse.* ↔ ph2d-runtime` (doc 89
+//! folha 12). Nada aqui conhece a `ph2d-runtime`: a ponte deixa um FATO em
+//! `MotionState.signals_out` e o shell o publica (ADR-0075).
 
 use crate::motion_state::MotionState;
 
@@ -54,13 +51,15 @@ pub fn collect_signals(motion: &mut MotionState) {
         else {
             continue;
         };
-        motion
-            .signals_out
-            .push(crate::motion_state::MotionSignalOut {
-                name: name.to_string(),
-                tick,
-                rows,
-            });
+        let source = crate::motion_objeto::origem::dono_do_no(motion, *node).map(|d| d.entity);
+        let name = name.to_string();
+        let out = crate::motion_state::MotionSignalOut {
+            name,
+            source,
+            tick,
+            rows,
+        };
+        motion.signals_out.push(out);
     }
 }
 

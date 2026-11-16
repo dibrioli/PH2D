@@ -16,6 +16,8 @@
 pub struct MotionSignalOut {
     /// O nome autorado no text param do nó.
     pub name: String,
+    /// Os bits do objecto Motion dono do nó (`None` = sem dono vivo) — a origem do sinal.
+    pub source: Option<u64>,
     /// O tique fixo do cook em que ele disparou.
     pub tick: u64,
     /// Quantas LINHAS dispararam nesse tique — o que o colapso por-quadro descartaria.

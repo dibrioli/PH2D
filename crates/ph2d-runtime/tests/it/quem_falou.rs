@@ -3,7 +3,7 @@
 //!
 //! # ⛔⛔ Porque ela é uma porta e não um `match` no consumidor
 //!
-//! São **catorze** origens e **onze** carregam `source`. Um `match` escrito no consumidor esquece a
+//! São **catorze** origens e **doze** carregam `source`. Um `match` escrito no consumidor esquece a
 //! décima quinta **em silêncio**: ela cai no braço `_`, o sinal dela passa a nascer sem sujeito, e
 //! isso lê-se exactamente como *«esta origem não tem sujeito»*. O `match` da porta é EXAUSTIVO ⇒ uma
 //! variante nova **não compila** até alguém responder.
@@ -22,7 +22,7 @@ fn todas() -> Vec<(&'static str, Signal)> {
         ("timeline", Signal::from_timeline("a", 1.0)),
         ("contact", Signal::from_contact("a", 11, 22)),
         ("control", Signal::from_control("a")),
-        ("motion", Signal::from_motion("a", 3, 4)),
+        ("motion", Signal::from_motion("a", Some(144), 3, 4)),
         ("animation", Signal::from_animation("a", 33, 1)),
         ("timer", Signal::from_timer("a", 44, 1, true)),
         ("state_machine", Signal::from_state_machine("a", 55)),
@@ -36,15 +36,15 @@ fn todas() -> Vec<(&'static str, Signal)> {
     ]
 }
 
-/// ⭐⭐⭐ **As TRÊS que não têm sujeito são exactamente estas, e as outras onze têm.**
+/// ⭐⭐⭐ **As DUAS que não têm sujeito são exactamente estas, e as outras doze têm.**
 ///
 /// ⚠️ **A lista negativa é NOMEADA e não derivada**: derivá-la do próprio `quem()` faria o gate
 /// concordar com qualquer resposta, que é a forma clássica de um espelho.
 ///
 /// **Mutação que deve sangrar:** o braço do `Timer` a devolver `None`.
 #[test]
-fn as_tres_origens_sem_sujeito_sao_estas_e_as_outras_onze_tem_um() {
-    const SEM: [&str; 3] = ["timeline", "control", "motion"];
+fn as_duas_origens_sem_sujeito_sao_estas_e_as_outras_doze_tem_um() {
+    const SEM: [&str; 2] = ["timeline", "control"];
     let corpus = todas();
     assert_eq!(corpus.len(), 14, "o censo das origens mudou de tamanho");
     let mut com = 0;
@@ -57,7 +57,7 @@ fn as_tres_origens_sem_sujeito_sao_estas_e_as_outras_onze_tem_um() {
             com += 1;
         }
     }
-    assert_eq!(com, 11, "a populacao das origens com sujeito mudou");
+    assert_eq!(com, 12, "a populacao das origens com sujeito mudou");
 }
 
 /// ⭐⭐ **O contacto é o ÚNICO com dois lados, e eles não se trocam.**
@@ -93,6 +93,16 @@ fn so_o_contacto_tem_o_outro_lado_e_os_dois_nao_se_trocam() {
 fn a_porta_nao_julga_os_bits_que_devolve() {
     let s = Signal::from_timer("a", 0, 1, true);
     assert_eq!(s.origin.quem(), Some(EntityBits(0)));
+}
+
+/// ⭐ **O Motion fala pelo objecto dono do nó** (GEF 08 MI-8) — sem dono vivo, ninguém.
+#[test]
+fn o_motion_fala_pelo_objecto_dono_e_sem_dono_e_ninguem() {
+    assert_eq!(
+        Signal::from_motion("a", Some(7), 1, 1).origin.quem(),
+        Some(EntityBits(7))
+    );
+    assert_eq!(Signal::from_motion("a", None, 1, 1).origin.quem(), None);
 }
 
 /// **E ela é `const`** — um `const fn` não pode ler estado nem alocar, que é o que a torna segura

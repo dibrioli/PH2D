@@ -31,7 +31,7 @@ impl crate::App {
                     ph2d_runtime::SignalOrigin::UiButton { source } => {
                         eprintln!("[signal] {} <- botao do HUD {}", sig.name, source.0);
                     }
-                    ph2d_runtime::SignalOrigin::Motion { tick, rows } => {
+                    ph2d_runtime::SignalOrigin::Motion { tick, rows, .. } => {
                         eprintln!(
                             "[signal] {} <- grafo motion, tique {tick}, {rows} linha(s)",
                             sig.name

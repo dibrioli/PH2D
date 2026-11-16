@@ -113,7 +113,7 @@ impl crate::App {
         }
         for sig in motion.signals_out.drain(..) {
             self.signals.publish(ph2d_runtime::Signal::from_motion(
-                &sig.name, sig.tick, sig.rows,
+                &sig.name, sig.source, sig.tick, sig.rows,
             ));
         }
     }

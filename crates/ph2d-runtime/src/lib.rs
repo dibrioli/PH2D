@@ -95,6 +95,8 @@ pub enum SignalOrigin {
     /// dispararam devolve a informação sem multiplicar o sinal, e é o que deixa um consumidor
     /// futuro escalar um volume pela intensidade em vez de adivinhar.
     Motion {
+        /// O objecto Motion dono do nó (`None` = nó sem dono vivo, um grafo de demo).
+        source: Option<EntityBits>,
         /// O tique fixo do cook em que o pulso saiu.
         tick: u64,
         /// Quantas LINHAS dispararam nesse tique (sempre ≥ 1 — zero não publica).
@@ -259,7 +261,7 @@ impl SignalOrigin {
     ///
     /// # ⛔⛔ Porque ela é UMA porta e não um `match` na shell
     ///
-    /// São **quinze** origens e **doze** carregam `source`. Um `match` escrito no consumidor
+    /// São **quinze** origens e **treze** carregam `source`. Um `match` escrito no consumidor
     /// esquece a décima sexta **em silêncio** — ela cai no braço `_` e o sinal dela passa a
     /// nascer sem sujeito, o que se lê exactamente como *«esta origem não tem sujeito»*. Aqui o
     /// `match` é EXAUSTIVO, e uma variante nova **não compila** até alguém responder.
@@ -269,9 +271,10 @@ impl SignalOrigin {
     #[must_use]
     pub const fn quem(&self) -> Option<EntityBits> {
         match self {
-            // ⛔ As três SEM sujeito, nomeadas uma a uma: a régua da timeline é um instante, um
-            // aperto de botão do painel não tem detalhe nenhum, e o Motion fala por TIQUE do cook.
-            Self::Timeline { .. } | Self::Control | Self::Motion { .. } => None,
+            // ⛔ As duas SEM sujeito: a régua da timeline é um instante e um aperto de botão do
+            // painel não tem detalhe nenhum. O Motion fala pelo objecto dono do nó, se vivo.
+            Self::Timeline { .. } | Self::Control => None,
+            Self::Motion { source, .. } => *source,
             Self::Contact { source, .. }
             | Self::Animation { source, .. }
             | Self::Timer { source, .. }
@@ -368,10 +371,14 @@ impl Signal {
     /// ao arrastar a régua, então o shell só publica quando o playhead está TOCANDO para a
     /// frente — a mesma lei, pela mesma porta, que o emissor de markers da timeline usa.
     #[must_use]
-    pub fn from_motion(name: &str, tick: u64, rows: usize) -> Self {
+    pub fn from_motion(name: &str, source: Option<u64>, tick: u64, rows: usize) -> Self {
         Self {
             name: Arc::from(name),
-            origin: SignalOrigin::Motion { tick, rows },
+            origin: SignalOrigin::Motion {
+                source: source.map(EntityBits),
+                tick,
+                rows,
+            },
         }
     }
 

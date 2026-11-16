@@ -23,6 +23,10 @@ ph2d-app-audio = { path = "../../crates/ph2d-app-audio" }
 ph2d-audio = { path = "../../crates/ph2d-audio" }
 ph2d-app-components = { path = "../../crates/ph2d-app-components", features = ["test-support"] }
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
+# O nó «Send signal» de ponta a ponta: `motion_send_signal.rs`.
+ph2d-app-motion = { path = "../../crates/ph2d-app-motion" }
+ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
+ph2d-node-send-signal = { path = "../../crates/ph2d-node-send-signal" }
 # O filtro de `ph2d.raycast` pela porta do script (`jogo_ray_melhorias`): um mapa de nomes.
 serde_json = "1"
 ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }

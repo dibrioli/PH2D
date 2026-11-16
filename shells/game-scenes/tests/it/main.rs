@@ -38,6 +38,7 @@ mod jogo_ray_topo;
 mod jogo_smoke;
 mod jogo_topdown;
 mod motion_input_personagem;
+mod motion_send_signal;
 mod plataforma_alargada;
 mod receitas;
 mod sound_set;

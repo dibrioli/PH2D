@@ -11042,6 +11042,7 @@ dependencies = [
  "ph2d-physics-outline",
  "ph2d-render",
  "ph2d-shape-handles",
+ "ph2d-tool-registry",
  "ph2d-topdown",
 ]
 

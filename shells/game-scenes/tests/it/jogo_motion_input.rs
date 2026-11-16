@@ -84,3 +84,144 @@ fn no_play_as_balas_tiram_a_vida_dos_dois_alvos() {
         assert!(!agora.morta && (r - 0.2).abs() < 1e-3, "acaba em 20 %: {r}");
     }
 }
+
+/// ⭐ **Onda 2**: os quatro leitores com a fonte, o nome e o desenho da tabela; o «Health Bar Reader» lê do «Health
+/// Dummy» pelo From (sem Health próprio) e o «Max Health Reader» do «Hit Dummy»; a bola tem corpo Dynamic que quica e é a única no `estado`.
+#[test]
+fn a_cena_27_monta_os_leitores_da_onda_2() {
+    let mut sim = SimWorld::new();
+    crate::comp::montar(&mut sim, cena::CENA);
+    let sid = |sim: &mut SimWorld, n: &str| {
+        let e = um(sim, n);
+        sim.world().get::<ph2d_ecs::StableId>(e).expect(n).0
+    };
+    let (dummy, golpe) = (
+        sid(&mut sim, cena::ALVO_VIDA),
+        sid(&mut sim, cena::ALVO_GOLPE),
+    );
+    let casos = [
+        (
+            cena::LEITOR_VIDA,
+            MotionSource::Health,
+            cena::ENTRADA_VIDA,
+            dummy,
+        ),
+        (
+            cena::LEITOR_CAMPO,
+            MotionSource::Property,
+            cena::ENTRADA_VIDA,
+            golpe,
+        ),
+        (
+            cena::LEITOR_ACCAO,
+            MotionSource::Action,
+            cena::ENTRADA_VIDA,
+            0,
+        ),
+        (
+            cena::LEITOR_RAPIDEZ,
+            MotionSource::Speed,
+            cena::ENTRADA_ESTADO,
+            0,
+        ),
+    ];
+    for (nome, fonte, entrada, from) in casos {
+        let e = um(&mut sim, nome);
+        let mi = sim.world().get::<MotionInput>(e).expect(nome).clone();
+        assert_eq!(
+            (mi.source, mi.name.as_str(), mi.from),
+            (fonte, entrada, from),
+            "{nome}"
+        );
+        assert!(
+            sim.world().get::<Health>(e).is_none(),
+            "{nome}: lê de fora, sem vida própria"
+        );
+    }
+    let (ec, ea) = (
+        um(&mut sim, cena::LEITOR_CAMPO),
+        um(&mut sim, cena::LEITOR_ACCAO),
+    );
+    let campo = sim.world().get::<MotionInput>(ec).cloned().expect("campo");
+    assert_eq!(
+        (campo.property.as_str(), campo.remap, campo.remap_to),
+        (cena::CAMPO, true, 200.0)
+    );
+    assert_eq!(
+        sim.world()
+            .get::<MotionInput>(ea)
+            .map(|m| m.action.clone())
+            .as_deref(),
+        Some(cena::ACCAO)
+    );
+    let bola = um(&mut sim, cena::LEITOR_RAPIDEZ);
+    let w = sim.world();
+    let mi = w.get::<MotionInput>(bola).expect("bola");
+    assert_eq!(
+        (mi.remap, mi.remap_to, mi.smooth),
+        (true, cena::RAPIDEZ_TIPICA, cena::SUAVE_S)
+    );
+    assert_eq!(
+        w.get::<RigidBody>(bola).map(|r| r.kind),
+        Some(BodyKind::Dynamic)
+    );
+    assert!(ph2d_physics_ecs::tem_forma(w, bola));
+    // A ordem que o cartão mostra: o leitor da barra passa à frente do Health Dummy, a bola à frente do Tap Reader.
+    assert!(cena::LEITOR_VIDA < cena::ALVO_VIDA && cena::ALVO_VIDA < cena::LEITOR_CAMPO);
+    assert!(cena::LEITOR_CAMPO < cena::LEITOR_ACCAO);
+    // O `estado` tem UM só escritor: o Toggle lê o campo inteiro, e dois desarrumavam a grelha (foto de 16/11).
+    let estado = casos.iter().filter(|c| c.2 == cena::ENTRADA_ESTADO).count();
+    assert_eq!(estado, 1);
+}
+
+/// ⭐ **Em Play a bola cruza a grelha e volta**: a ponte publica no `estado` (1.ª linha = o «Speed Reader») um valor
+/// que passa de 0,5 (o anel) a cair, e volta abaixo de 0,5 quando a bola assenta no «Ledge»; a `vida` tem como 1.ª
+/// linha o «Health Bar Reader» com a vida do «Health Dummy». (Mutação: sem Dynamic ⇒ nunca passa de 0,5 e RED.)
+#[test]
+fn no_play_a_bola_cruza_o_estado_e_o_leitor_da_barra_vem_primeiro() {
+    use ph2d_app_components::motion_input_fonte::Fontes;
+    use ph2d_ecs::motion_inputs::{Escritor, Valor};
+    let mut sim = SimWorld::new();
+    crate::comp::montar(&mut sim, cena::CENA);
+    let mut bridge = PhysicsBridge::new();
+    let out = ph2d_runtime::SignalOutbox::new();
+    let accoes = std::collections::BTreeMap::new();
+    let (mut anel, mut volta) = (false, false);
+    for tick in 1..=600_u64 {
+        bridge.dispatch(&mut sim, true, tick);
+        let gastas: Vec<Entity> = bridge.damage_spent().to_vec();
+        for b in gastas {
+            sim.world_mut().despawn(b);
+        }
+        let f = Fontes {
+            dt: 1.0 / 60.0,
+            physics: Some(&bridge),
+            accoes: &accoes,
+            registry: None,
+        };
+        ph2d_app_components::motion_input_bridge::frame(&mut sim, &out, &f);
+        let m = sim.world().resource::<ph2d_ecs::MotionInputs>();
+        let (quem, v) = m.primeira_linha(cena::ENTRADA_ESTADO).expect("estado");
+        assert!(matches!(quem, Escritor::Objeto { nome, .. } if nome == cena::LEITOR_RAPIDEZ));
+        let Valor::Numero(v) = v else {
+            panic!("número")
+        };
+        anel |= v >= 0.5;
+        volta |= anel && v < 0.5;
+        if tick == 2 {
+            let (quem, _) = m.primeira_linha(cena::ENTRADA_VIDA).expect("vida");
+            assert!(matches!(quem, Escritor::Objeto { nome, .. } if nome == cena::LEITOR_VIDA));
+        }
+    }
+    let bola = um(&mut sim, cena::LEITOR_RAPIDEZ);
+    let y = sim
+        .world()
+        .get::<ph2d_ecs::Transform>(bola)
+        .map(|t| t.translation.y);
+    println!("[motion-input-27] anel {anel} volta {volta} y {y:?}");
+    assert!(anel && volta, "a grelha cruza para o anel e volta");
+    assert!(
+        y.is_some_and(|y| y > cena::PARAPEITO_AT.0[1]),
+        "assenta no Ledge: {y:?}"
+    );
+}

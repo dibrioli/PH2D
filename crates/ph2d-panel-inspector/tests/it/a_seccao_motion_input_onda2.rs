@@ -235,3 +235,32 @@ fn as_predefinicoes_da_curva_sao_o_que_dizem() {
     );
     assert!(f[3][1] < 0.25 && f[3][2] > 0.75, "Smooth {f:?}");
 }
+
+/// ⭐ As fontes novas dizem «Sends …» em Play (o número que a ponte publicou); paradas, nenhuma frase —
+/// a Property incluída (a leitura parada só existe na vida).
+#[test]
+fn as_fontes_novas_dizem_o_que_mandam_em_play() {
+    use super::a_seccao_motion_input_esta_viva::frases;
+    use ph2d_editor_core::motion_input_edits::MotionInputAoVivo as V;
+    for (source, v, frase) in [
+        (SOURCE_SPEED, 3.25, "Sends 3.25"),
+        (SOURCE_GROUNDED, 1.0, "Sends 1.00"),
+        (SOURCE_ACTION, 0.5, "Sends 0.50"),
+        (SOURCE_PROPERTY, 10.0, "Sends 10.00"),
+    ] {
+        let mut i = info(source);
+        i.tem_corpo = true;
+        i.action = "jump".into();
+        i.acoes_do_mapa = vec!["jump".into()];
+        i.property = "ph2d::physics::Health/max".into();
+        i.campos_do_alvo = vec![("Health · Max".into(), i.property.clone())];
+        i.ao_vivo = Some(V::Numero(v));
+        assert!(
+            !frases(i.clone()).iter().any(|f| f.starts_with("Sends")),
+            "parado, a fonte {source} não manda nada"
+        );
+        i.a_correr = true;
+        let f = frases(i);
+        assert!(f.contains(&frase.to_string()), "fonte {source}: {f:?}");
+    }
+}

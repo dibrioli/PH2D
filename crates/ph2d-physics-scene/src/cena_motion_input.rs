@@ -10,7 +10,9 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, MotionInput, MotionSource, Name, SimWorld, Transform};
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::{NodeId, ids};
-use ph2d_physics_ecs::{Collider, ColliderShape, Damage, Health, OnHit, ProjectileMotion};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, Damage, Health, OnHit, ProjectileMotion, RigidBody,
+};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 pub const CENA: u32 = 27;
@@ -39,6 +41,38 @@ pub const OBJETOS: [(&str, [f32; 2], MotionSource, &str); 3] = [
         ENTRADA_GOLPE,
     ),
 ];
+/// Onda 2 — as fontes novas, sem script. O grafo lê a PRIMEIRA linha de um nome, e as linhas vão pela ordem
+/// alfabética do objecto: «Health Bar Reader» (From = «Health Dummy») passa à frente do «Health Dummy» na `vida`
+/// (o mesmo número: o From só muda QUEM lê); o «Max Health Reader» e o «Tap Reader» escrevem em 2.º e 3.º na `vida`
+/// (a barra lê a 1.ª linha). O `estado` fica SÓ com o «Speed Reader»: o Toggle lê o campo INTEIRO, e dois
+/// escritores ali desarrumavam a grelha (foto de 16/11). O cartão de cada um diz quem escreve primeiro.
+pub const LEITOR_VIDA: &str = "Health Bar Reader";
+pub const LEITOR_RAPIDEZ: &str = "Speed Reader";
+pub const LEITOR_ACCAO: &str = "Tap Reader";
+pub const LEITOR_CAMPO: &str = "Max Health Reader";
+pub const PARAPEITO: &str = "Ledge";
+pub const ENTRADA_ESTADO: &str = "estado";
+/// A acção de fábrica do Input Map que o «Tap Reader» lê.
+pub const ACCAO: &str = "jump";
+/// O campo que o «Max Health Reader» lê do «Hit Dummy».
+pub const CAMPO: &str = "ph2d::physics::Health/max";
+/// A rapidez típica da bola (m/s): o Remap leva `0..6` a `0..1`; o `estado` vira anel a partir de 3 m/s.
+pub const RAPIDEZ_TIPICA: f32 = 6.0;
+pub const SUAVE_S: f32 = 0.3;
+/// A bola cai de 5,5 m sobre o parapeito e quica (restitution), à direita da galáxia.
+pub const BOLA: ([f32; 2], f32) = ([8.8, 6.3], 0.3);
+pub const RESTITUICAO: f32 = 0.8;
+pub const PARAPEITO_AT: ([f32; 2], [f32; 2]) = ([8.8, 0.8], [1.0, 0.15]);
+/// Onde moram os três leitores sem corpo: a coluna à esquerda da grelha.
+pub const LEITORES_AT: [(&str, [f32; 2]); 3] = [
+    (LEITOR_VIDA, [-7.4, 2.6]),
+    (LEITOR_CAMPO, [-7.4, 1.2]),
+    (LEITOR_ACCAO, [-7.4, -0.2]),
+];
+const LEITOR_RGBA: [f32; 4] = [0.45, 0.70, 0.95, 1.0];
+const BOLA_RGBA: [f32; 4] = [0.40, 0.85, 0.55, 1.0];
+const PARAPEITO_RGBA: [f32; 4] = [0.45, 0.42, 0.38, 1.0];
+
 /// `(alvo, direcção do voo, distâncias ao alvo)`: as do «Health Dummy» caem de cima; as do «Hit Dummy» vêm da
 /// direita, meio segundo depois.
 pub const BALAS: [(&str, [f32; 2], [f32; 4]); 2] = [
@@ -79,6 +113,9 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     let quer = match foto(pedida().as_deref()) {
         Some(Foto::Lamp) => LAMPADA,
         Some(Foto::Hit) => ALVO_GOLPE,
+        Some(Foto::Speed | Foto::SpeedPlay) => LEITOR_RAPIDEZ,
+        Some(Foto::Action) => LEITOR_ACCAO,
+        Some(Foto::Property) => LEITOR_CAMPO,
         None => ALVO_VIDA,
     };
     let mut escolhido = None;
@@ -147,8 +184,20 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
             }
         }
     }
+    for e in onda2(sim, &p) {
+        let w = sim.world();
+        if w.get::<Name>(e).is_some_and(|n| n.0 == quer) {
+            escolhido = Some(e);
+        }
+    }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
+    println!(
+        "[game-smoke] =27 onda 2: «Health Bar Reader» lê a vida do «Health Dummy» (From) e passa à frente dele \
+         na «vida»; a bola «Speed Reader» quica no «Ledge» — a velocidade (Remap 0–6, Smooth 0.3 s) cruza a grelha \
+         para o anel no «estado»; «Tap Reader» lê a acção «jump» (3.º na «vida»); «Max Health Reader» lê o \
+         Health · Max do «Hit Dummy» (2.º na «vida»)."
+    );
     println!(
         "[game-smoke] =27 Motion Input: o «Health Dummy» (selecionado) manda a vida ao grafo pelo nome «vida» — a \
          barra de cima; o «Hit Dummy» manda um disparo «boom» a cada golpe — a galáxia gira mais. A «Lamp» pede vida \
@@ -158,6 +207,102 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     escolhido.expect("o objecto escolhido está na tabela")
 }
 
+/// Os três leitores sem corpo, a bola que quica e o parapeito; devolve os quatro leitores.
+fn onda2(sim: &mut SimWorld, p: &Pecas<'_>) -> Vec<Entity> {
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let sid = |sim: &mut SimWorld, nome: &str| {
+        let w = sim.world_mut();
+        let mut q = w.query::<(&Name, &ph2d_ecs::StableId)>();
+        q.iter(w).find(|(n, _)| n.0 == nome).map_or(0, |(_, s)| s.0)
+    };
+    let (dummy, golpe) = (sid(sim, ALVO_VIDA), sid(sim, ALVO_GOLPE));
+    let mut leitores = Vec::new();
+    for (nome, at) in LEITORES_AT {
+        let e = (p.imagem)(sim);
+        arruma(
+            sim,
+            e,
+            nome,
+            at,
+            Sprite::atlas(WHITE_TILE_KEY, [2.0 * MEIO_ALVO; 2], LEITOR_RGBA),
+        );
+        let mi = match nome {
+            LEITOR_VIDA => MotionInput {
+                name: ENTRADA_VIDA.into(),
+                source: MotionSource::Health,
+                from: dummy,
+                ..MotionInput::default()
+            },
+            LEITOR_CAMPO => MotionInput {
+                name: ENTRADA_VIDA.into(),
+                source: MotionSource::Property,
+                from: golpe,
+                property: CAMPO.into(),
+                remap: true,
+                remap_from: 0.0,
+                remap_to: 200.0,
+                ..MotionInput::default()
+            },
+            _ => MotionInput {
+                name: ENTRADA_VIDA.into(),
+                source: MotionSource::Action,
+                action: ACCAO.into(),
+                ..MotionInput::default()
+            },
+        };
+        anexa(sim, p, e, "ph2d::ecs::MotionInput");
+        sim.world_mut().entity_mut(e).insert(mi);
+        leitores.push(e);
+    }
+    let (c, h) = PARAPEITO_AT;
+    let ledge = (p.estatico)(sim);
+    arruma(
+        sim,
+        ledge,
+        PARAPEITO,
+        c,
+        Sprite::atlas(WHITE_TILE_KEY, [2.0 * h[0], 2.0 * h[1]], PARAPEITO_RGBA),
+    );
+    forma(
+        sim,
+        ledge,
+        ColliderShape::Cuboid {
+            half_x: h[0],
+            half_y: h[1],
+        },
+    );
+    let (at, radius) = BOLA;
+    let bola = (p.estatico)(sim);
+    arruma(
+        sim,
+        bola,
+        LEITOR_RAPIDEZ,
+        at,
+        Sprite::atlas(WHITE_TILE_KEY, [2.0 * radius; 2], BOLA_RGBA),
+    );
+    forma(sim, bola, ColliderShape::Ball { radius });
+    let w = sim.world_mut();
+    if let Some(mut rb) = w.get_mut::<RigidBody>(bola) {
+        rb.kind = BodyKind::Dynamic;
+    }
+    let f = ph2d_physics_ecs::forma_para_editar(w, bola).unwrap_or(bola);
+    if let Some(mut col) = w.get_mut::<Collider>(f) {
+        col.restitution = RESTITUICAO;
+    }
+    anexa(sim, p, bola, "ph2d::ecs::MotionInput");
+    sim.world_mut().entity_mut(bola).insert(MotionInput {
+        name: ENTRADA_ESTADO.into(),
+        source: MotionSource::Speed,
+        remap: true,
+        remap_from: 0.0,
+        remap_to: RAPIDEZ_TIPICA,
+        smooth: SUAVE_S,
+        ..MotionInput::default()
+    });
+    leitores.push(bola);
+    leitores
+}
+
 /// O instante das fotos do cartão (`PH2D_GAME_SMOKE_FOTO`); sem a variável a cena é a do dono.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Foto {
@@ -165,16 +310,29 @@ pub enum Foto {
     Lamp,
     /// `motion_input_hit`: o «Hit Dummy» escolhido (Source Damage).
     Hit,
+    /// `motion_input_speed`: o «Speed Reader» com o grupo Shape aberto.
+    Speed,
+    /// `motion_input_action`: o «Tap Reader» com a lista Action aberta.
+    Action,
+    /// `motion_input_property`: o «Max Health Reader» com a lista Property aberta.
+    Property,
+    /// `motion_input_speed_play`: o «Speed Reader» em Play (o «Sends …» e a grelha a cruzar).
+    SpeedPlay,
 }
 
 /// Os nomes que [`foto`] aceita (censo em `ph2d_game_smoke_fotos::nomes`).
-pub const NOMES: &str = "motion_input_lamp motion_input_hit";
+pub const NOMES: &str = "motion_input_lamp motion_input_hit motion_input_speed motion_input_action \
+                         motion_input_property motion_input_speed_play";
 
 #[must_use]
 pub fn foto(nome: Option<&str>) -> Option<Foto> {
     match nome?.trim() {
         "motion_input_lamp" => Some(Foto::Lamp),
         "motion_input_hit" => Some(Foto::Hit),
+        "motion_input_speed" => Some(Foto::Speed),
+        "motion_input_action" => Some(Foto::Action),
+        "motion_input_property" => Some(Foto::Property),
+        "motion_input_speed_play" => Some(Foto::SpeedPlay),
         _ => None,
     }
 }
@@ -183,10 +341,50 @@ fn pedida() -> Option<String> {
     std::env::var("PH2D_GAME_SMOKE_FOTO").ok()
 }
 
+/// Os ids do cartão Motion Input (os de `ph2d-panel-inspector::ids::inspector_motion_input`, pelo mesmo hash).
+pub const FOLD_SHAPE: NodeId = ph2d_tool_registry::hash_node_id("insp_mi_fold_shape");
+pub const LISTA_ACCAO: NodeId = ph2d_tool_registry::hash_node_id("insp_mi_action");
+pub const LISTA_CAMPO: NodeId = ph2d_tool_registry::hash_node_id("insp_mi_property");
+
+/// As gavetas da [`Foto`]: `(id, fechada)`; o grupo Shape abre na foto da velocidade.
+#[must_use]
+pub fn gavetas(foto: Option<Foto>, cartao: NodeId) -> Vec<(NodeId, bool)> {
+    let mut v = vec![
+        (cartao, false),
+        (ids::INSP_LIVE_MOTION_INPUT_SECTION, false),
+    ];
+    if matches!(foto, Some(Foto::Speed | Foto::SpeedPlay)) {
+        v.push((FOLD_SHAPE, false));
+    }
+    v
+}
+
+/// A lista que a [`Foto`] abre (Action ou Property).
+#[must_use]
+pub fn lista_aberta(foto: Option<Foto>) -> Option<NodeId> {
+    match foto? {
+        Foto::Action => Some(LISTA_ACCAO),
+        Foto::Property => Some(LISTA_CAMPO),
+        _ => None,
+    }
+}
+
 /// O cartão da família e o Motion Input abertos, e o Inspector rola até ao Motion Input de `escolhido`.
 pub fn arruma_o_inspector(store: &mut WidgetStore, cartao: NodeId, escolhido: u64) {
-    store.set_collapsed(cartao, false);
-    store.set_collapsed(ids::INSP_LIVE_MOTION_INPUT_SECTION, false);
+    let f = foto(pedida().as_deref());
+    for (id, fechada) in gavetas(f, cartao) {
+        store.set_collapsed(id, fechada);
+    }
+    if let Some(id) = lista_aberta(f) {
+        store.register(
+            id,
+            ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                state: ph2d_editor_core::widget::DropdownState::Normal,
+                open: true,
+                selected_index: None,
+            },
+        );
+    }
     store.request_inspector_section(ids::INSP_LIVE_MOTION_INPUT_SECTION, escolhido);
 }
 

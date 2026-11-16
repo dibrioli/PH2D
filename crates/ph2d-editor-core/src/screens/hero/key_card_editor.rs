@@ -6,7 +6,7 @@
 //! Curve shape, que a Custom não usa.
 
 use super::*;
-use crate::interaction::key_card_alvo::{TIPOS, alvos, linear};
+use crate::interaction::key_card_alvo::{TIPOS, alvos, linear, mostra_alcas};
 use crate::interaction::state::{BezAlvo, BezArea};
 use ph2d_anim::HandleKind;
 
@@ -87,9 +87,10 @@ pub(super) fn paint(
     linha(scene, [0.0, 0.0], [1.0, 1.0], 1.0, fg.with_alpha(GUIDE_A));
 
     let curva = store.key_card_curve().unwrap_or_else(linear);
+    let escolhido = store.key_card_bez_escolhido();
     // Os braços das alças, debaixo de tudo.
     let n = curva.node_count();
-    for i in 0..n {
+    for i in (0..n).filter(|&i| mostra_alcas(&curva, escolhido, i)) {
         let no = curva.node(i);
         if i > 0 {
             linha(scene, no.p, no.h_in, BRACO_W, fg.with_alpha(BRACO_A));
@@ -110,9 +111,8 @@ pub(super) fn paint(
         fill_circle(scene, x, y, DOT_R * 1.5, fg); // LITERAL-PX-OK: a alça é o ponto vezes uma razão, não uma medida nova
     }
     let agarrado = store.key_card_bez_alvo();
-    let escolhido = store.key_card_bez_escolhido();
     let fundo = ink.color(ColorToken::CardField);
-    for (a, q) in alvos(&curva) {
+    for (a, q) in alvos(&curva, escolhido) {
         let (x, y) = area.tela(q[0], q[1]);
         let preso = agarrado == Some(a);
         match a {

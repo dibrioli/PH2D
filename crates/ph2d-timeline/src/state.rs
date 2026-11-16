@@ -98,6 +98,11 @@ impl Selection {
         self.keys.clear();
     }
 
+    /// Keep only the keys for which `keep` holds.
+    pub fn retain(&mut self, keep: impl FnMut(&SelectedKey) -> bool) {
+        self.keys.retain(keep);
+    }
+
     /// The selected key ids for one track (for a bulk op on that track).
     #[must_use]
     pub fn ids_for(&self, target: AnimTarget) -> Vec<KeyId> {
@@ -311,22 +316,32 @@ impl TimelineState {
     }
 
     /// Undo one document step (returns `true` if something was undone). The
-    /// selection is cleared, since undone keys may no longer exist.
+    /// selection keeps every key that still exists (dono 16/11: «undo/redo
+    /// desseleciona o key — não permita»).
     pub fn undo(&mut self) -> bool {
         if let Some(prev) = self.history.undo(&self.doc) {
             self.doc = prev;
-            self.selection.clear();
+            self.keep_living_selection();
             true
         } else {
             false
         }
     }
 
+    fn keep_living_selection(&mut self) {
+        let clip = self.doc.active_clip();
+        self.selection.retain(|s| {
+            clip.track(s.target)
+                .and_then(|t| t.index_of(s.key))
+                .is_some()
+        });
+    }
+
     /// Redo one document step (returns `true` if something was redone).
     pub fn redo(&mut self) -> bool {
         if let Some(next) = self.history.redo(&self.doc) {
             self.doc = next;
-            self.selection.clear();
+            self.keep_living_selection();
             true
         } else {
             false

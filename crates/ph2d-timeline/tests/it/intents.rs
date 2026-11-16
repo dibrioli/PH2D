@@ -2193,3 +2193,48 @@ fn scrub_exact_lands_off_the_frame_grid_and_is_a_seek() {
     assert!(I::ScrubExact(1.0).is_seek() && I::Scrub(1.0).is_seek() && I::SeekFrame(1).is_seek());
     assert!(!I::Play.is_seek());
 }
+
+/// Dono 16/11: «undo/redo desseleciona o key — não permita». A chave que ainda existe depois do
+/// Ctrl+Z / Ctrl+Shift+Z continua selecionada; a que o undo apaga sai da seleção.
+#[test]
+fn undo_and_redo_keep_the_selected_key_that_still_exists() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 5.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.5, 9.0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let ids: Vec<_> = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+    let primeira = SelectedKey {
+        target,
+        key: ids[0],
+    };
+    apply_intent(&mut st, &mut ph, I::SelectSingle(primeira));
+    set_interp(&mut st, &mut ph, Interp::Hold);
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert!(
+        st.selection.contains(primeira),
+        "o undo desselecionou a chave"
+    );
+    apply_intent(&mut st, &mut ph, I::Redo);
+    assert!(
+        st.selection.contains(primeira),
+        "o redo desselecionou a chave"
+    );
+    // Desfazer o Hold e a 2.ª chave: a 2.ª, selecionada, deixa de existir e sai da seleção.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    let segunda = SelectedKey {
+        target,
+        key: ids[1],
+    };
+    apply_intent(&mut st, &mut ph, I::SelectSingle(segunda));
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert!(
+        !st.selection.contains(segunda),
+        "chave apagada ficou na seleção"
+    );
+    assert!(st.selection.is_empty());
+}

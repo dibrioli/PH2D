@@ -236,13 +236,16 @@ fn sem_lugar_carregar_na_linha_nao_muda_nada() {
 }
 
 fn pinta(tr: &TrackView) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+    pinta_com(tr, &TimelinePanelState::default())
+}
+
+fn pinta_com(tr: &TrackView, st: &TimelinePanelState) -> Vec<(ph2d_a11y::NodeId, Rect)> {
     use ph2d_editor_core::screens::hero::HeroLayout;
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
     let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 800.0, 400.0));
-    let st = TimelinePanelState::default();
     host.paint_fn(&layout, |ctx| {
         paint_line_hits(ctx, &band(), VIEW, tr);
-        paint_points(ctx, Theme::Forge, &st, &band(), VIEW, tr);
+        paint_points(ctx, Theme::Forge, st, &band(), VIEW, tr);
     })
 }
 
@@ -281,4 +284,49 @@ fn trecho_retimado_tem_pontos_e_sem_selecao_nao_tem_nada() {
         k.selected = false;
     }
     assert!(pinta(&tr).is_empty(), "sem seleção");
+}
+
+/// Dono 16/11 (a conversão de uma curva pronta deixa pontos colados): as alças são SÓ do ponto
+/// escolhido, como no Illustrator, Inkscape, Figma e After Effects, e ganham o clique ao vizinho
+/// colado; sem ponto escolhido nenhuma alça se regista.
+#[test]
+fn so_o_ponto_escolhido_tem_alcas_e_elas_ganham_ao_vizinho_colado() {
+    let mut c = EaseSpline::from_bezier(1.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0);
+    assert_eq!(c.insert(0.5), Some(1));
+    assert_eq!(c.insert(0.53), Some(2));
+    let tr = track(Interp::Spline(c));
+    let alca = |node: u8, part: u8| ids::timeline_curve_point_hit_id(9, 1, node, part);
+    let regs = pinta(&tr);
+    for node in [1, 2] {
+        for part in [1, 2] {
+            assert!(
+                regs.iter().all(|(id, _)| *id != alca(node, part)),
+                "sem escolha: alça {node}/{part} registada"
+            );
+        }
+    }
+    let st = TimelinePanelState {
+        ponto_escolhido: Some((9, 1, 1)),
+        ..TimelinePanelState::default()
+    };
+    let regs = pinta_com(&tr, &st);
+    assert!(
+        regs.iter()
+            .all(|(id, _)| *id != alca(2, 1) && *id != alca(2, 2))
+    );
+    // A alça de saída do ponto 1 (ecrã x = 100·u, y = 100 − 100·v) fica entre os dois pontos,
+    // colada ao ponto 2: o clique nela é da alça.
+    let h = c.node(1).h_out;
+    let (x, y) = (100.0 * h[0], 100.0 - 100.0 * h[1]);
+    let p2 = c.node(2).p;
+    let (x2, y2) = (100.0 * p2[0], 100.0 - 100.0 * p2[1]);
+    assert!(
+        (x - x2).abs() < 3.0 && (y - y2).abs() < 3.0,
+        "a alça não está colada: {x},{y} × {x2},{y2}"
+    );
+    assert_eq!(apanha(&regs, x, y), Some(alca(1, 2)));
+    // O centro do ponto escolhido continua dele (a alça curta não o tapa).
+    let p1 = c.node(1).p;
+    let (x1, y1) = (100.0 * p1[0], 100.0 - 100.0 * p1[1]);
+    assert_eq!(apanha(&regs, x1, y1), Some(alca(1, 0)));
 }

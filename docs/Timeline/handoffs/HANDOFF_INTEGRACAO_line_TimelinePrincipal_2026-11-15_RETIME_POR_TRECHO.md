@@ -126,11 +126,12 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 - Ctrl+Z dos gestos de pontos não conferido no Xvfb (o teclado não chega) — coberto pelos testes do passo de undo.
 - Do handoff anterior: smoke do Auto Key na sessão e dos acréscimos 13–14; o campo do Inspector digitado (não medido; lido 16/11: Enter → `commit_number_buffer` → o MESMO
   `ValueChanged`/`InspectorTransformEdit` do arrasto, e o Auto Key amostra o mundo — só o teclado do Xvfb falta).
-- ✅ 16/11 `38e9`, sem subir o tecto: curva pronta → Custom com os CANTOS primeiro (Bounce In-out exato) e `afina`
-  (comprimento das alças por trecho). Bounce, Quad, Cubic, Back exatos · Sine/Expo/Circ/Elastic In/Out ≤ 0,5 % ·
-  Elastic In-out 1,38 % (era 4,1 %). Gate `a_curva_pronta_convertida_…`, 3 mutações vermelhas.
-- ✅ 16/11: fotos `r4..r8`, `rv1..rv3` e sequências eram de antes da `87bb`; o rv2 clicava a ponta velha (815→850).
-  Roteiro verde, fotos refeitas.
+- ✅ 16/11, sem subir o tecto: curva pronta → Custom com os CANTOS primeiro (Bounce In-out exato), `afina` (alças
+  por trecho) e nós a ≥ `ESPACO_MIN` = 5 %: Bounce/Quad/Cubic/Back exatos, outros ≤ 0,8 %, Elastic In-out 2,8 % (era 4,1).
+- ✅ 16/11 (smoke OK + 2 pedidos): undo/redo MANTÉM a seleção (`keep_living_selection`; antes `clear()`); alças só do
+  ponto escolhido no gráfico e no cartão (`mostra_alcas`, a regra do Illustrator/Inkscape/AE), registadas depois dos
+  outros pontos e antes do escolhido, partido na mediana. Fotos refeitas (o rv2 clicava a ponta pré-`87bb`, 815→850).
+  Gates `a_curva_pronta_convertida_…`, `undo_and_redo_keep_…`, `so_o_ponto_escolhido_…`; 8 mutações vermelhas.
 
 ## Perfil do agente (`bash scripts/agent-loop-profile.sh`)
 

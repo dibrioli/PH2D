@@ -36,6 +36,8 @@ const LINHA_PASSO: f32 = 6.0; // LITERAL-PX-OK: passo dos pedaços de clique ao 
 const PONTO_R: f32 = HANDLE_R * 1.2; // LITERAL-PX-OK: razão do cartão (PONTO_R / ALCA_R)
 /// O miolo da alça (anel): a fração do raio que fica vazia.
 const ANEL: f32 = 0.55; // LITERAL-PX-OK: fração do raio, não uma medida
+/// Uma alça recolhida a menos do que isto do ponto não parte o clique dele: o ponto fica inteiro.
+const MEDIANA_MIN: f32 = 0.5; // LITERAL-PX-OK: meio píxel, o limiar de «em cima do ponto»
 
 /// Um gesto em curso sobre um ponto (ou numa alça dele), ou o ponto que um carregar na linha da
 /// curva vai criar. Resolve-se no `paint`, que conhece a banda.
@@ -328,8 +330,10 @@ pub(crate) fn paint_line_hits(ctx: &mut PaintCtx, band: &Band, view: TimeView, t
     }
 }
 
-/// Os pontos do meio e as alças deles, sobre a curva — o ponto escolhido no acento, um Corner
-/// quadrado (como no cartão). As alças registam-se antes dos pontos: o ponto ganha a sobreposição.
+/// Os pontos do meio sobre a curva — o escolhido no acento, um Corner quadrado (como no cartão) —
+/// e as alças SÓ do ponto escolhido, pintadas e registadas depois dos outros pontos (ganham o
+/// clique a um vizinho colado) e antes do escolhido (uma alça curta não tapa o próprio ponto) (a regra do Illustrator, Inkscape, Figma e After Effects; dono 16/11: a conversão de uma
+/// curva pronta deixa pontos próximos e as alças de todos tapavam os pontos).
 pub(crate) fn paint_points(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -347,26 +351,21 @@ pub(crate) fn paint_points(
     let cor = resolve(ColorToken::TimelineHandle, theme);
     let acento = resolve(ColorToken::TimelineKeyActive, theme);
     let miolo = resolve(ColorToken::BgElev, theme);
+    let mut alcas = None;
     for (k0, k1, c) in trechos(track) {
         let key = k0.id.get();
         for node in 1..c.node_count() - 1 {
             let no = c.node(node);
             let p = tela(k0, k1, no.p);
-            for (part, h) in [(1u8, no.h_in), (2, no.h_out)] {
-                let a = tela(k0, k1, h);
-                stroke_polyline(ctx.scene, &[p, a], StrokeToken::Thin.px(), braco);
-                fill_circle(ctx.scene, a.0, a.1, HANDLE_R, cor);
-                fill_circle(ctx.scene, a.0, a.1, HANDLE_R * ANEL, miolo);
-                let id = ids::timeline_curve_point_hit_id(target, key, node as u8, part);
-                let kind = TimelineHitKind::CurvePoint {
-                    target,
-                    key,
-                    node: node as u8,
-                    part,
-                };
-                regista(ctx, band, id, kind, quadrado(a, HANDLE_HIT_R));
-            }
             let escolhido = state.ponto_escolhido == Some((target, key, node));
+            if escolhido {
+                alcas = Some((
+                    key,
+                    node,
+                    p,
+                    [tela(k0, k1, no.h_in), tela(k0, k1, no.h_out)],
+                ));
+            }
             let tinta = if escolhido { acento } else { cor };
             if c.kind(node) == Some(HandleKind::Corner) {
                 let r = quadrado(p, PONTO_R);
@@ -374,111 +373,52 @@ pub(crate) fn paint_points(
             } else {
                 fill_circle(ctx.scene, p.0, p.1, PONTO_R, tinta);
             }
-            let id = ids::timeline_curve_point_hit_id(target, key, node as u8, 0);
-            let kind = TimelineHitKind::CurvePoint {
-                target,
-                key,
-                node: node as u8,
-                part: 0,
-            };
-            regista(ctx, band, id, kind, quadrado(p, HANDLE_HIT_R));
+            if !escolhido {
+                regista_ponto(ctx, band, (target, key, node, 0), p);
+            }
         }
     }
+    let Some((key, node, p, hs)) = alcas else {
+        return;
+    };
+    for (part, a) in [(1u8, hs[0]), (2, hs[1])] {
+        stroke_polyline(ctx.scene, &[p, a], StrokeToken::Thin.px(), braco);
+        fill_circle(ctx.scene, a.0, a.1, HANDLE_R, cor);
+        fill_circle(ctx.scene, a.0, a.1, HANDLE_R * ANEL, miolo);
+        regista_ponto(ctx, band, (target, key, node, part), a);
+    }
+    // O escolhido por último, com o quadrado partido na mediana até cada alça dele (vence a mais
+    // perto, como as alças da caixa do Retime): nem a alça curta tapa o ponto, nem o ponto a alça.
+    let meia = hs
+        .iter()
+        .map(|a| 0.5 * (a.0 - p.0).abs().max((a.1 - p.1).abs()))
+        .filter(|d| *d >= MEDIANA_MIN)
+        .fold(HANDLE_HIT_R, f32::min);
+    let id = ids::timeline_curve_point_hit_id(target, key, node as u8, 0);
+    let kind = TimelineHitKind::CurvePoint {
+        target,
+        key,
+        node: node as u8,
+        part: 0,
+    };
+    regista(ctx, band, id, kind, quadrado(p, meia));
 }
 
-/// Na vista de VELOCIDADE (Override), cada ponto do meio é uma chave sem chave: a velocidade dele
-/// de cada lado, com o braço horizontal da influência e a ponta que se agarra (o mesmo gesto das
-/// chaves: vertical = velocidade, horizontal = influência). Corner num quadrado, como no valor.
-pub(crate) fn paint_speed_arms(
+/// O alvo de clique de um ponto (`part` 0) ou de uma alça dele.
+fn regista_ponto(
     ctx: &mut PaintCtx,
-    theme: Theme,
-    state: &TimelinePanelState,
     band: &Band,
-    view: TimeView,
-    track: &TrackView,
+    (target, key, node, part): (u64, u64, usize, u8),
+    p: (f32, f32),
 ) {
-    let target = track.target.get();
-    let braco = resolve(ColorToken::TimelineHandleLine, theme);
-    let cor = resolve(ColorToken::TimelineHandle, theme);
-    let acento = resolve(ColorToken::TimelineKeyActive, theme);
-    let miolo = resolve(ColorToken::BgElev, theme);
-    for (k0, k1, c) in trechos(track) {
-        let key = k0.id.get();
-        for a in ph2d_timeline::point_speed_arms(k0, k1) {
-            let (ax, px, py) = (view.x(a.t), view.x(a.tip_t), band.y(a.speed));
-            stroke_polyline(
-                ctx.scene,
-                &[(ax, py), (px, py)],
-                StrokeToken::Thin.px(),
-                braco,
-            );
-            let escolhido = state.ponto_escolhido == Some((target, key, a.node));
-            let tinta = if escolhido { acento } else { cor };
-            if c.kind(a.node) == Some(HandleKind::Corner) {
-                fill_rounded_rect(ctx.scene, quadrado((ax, py), PONTO_R), 0.0, tinta);
-            } else {
-                fill_circle(ctx.scene, ax, py, PONTO_R, tinta);
-            }
-            fill_circle(ctx.scene, px, py, HANDLE_R, cor);
-            fill_circle(ctx.scene, px, py, HANDLE_R * ANEL, miolo);
-            if py < band.rect.y || py > band.rect.y + band.rect.h {
-                continue;
-            }
-            let node = a.node as u8;
-            let id = ids::timeline_curve_point_hit_id(target, key, node, a.part);
-            let kind = TimelineHitKind::CurvePoint {
-                target,
-                key,
-                node,
-                part: a.part,
-            };
-            regista(ctx, band, id, kind, quadrado((px, py), HANDLE_HIT_R));
-        }
-    }
-}
-
-/// Resolve neste quadro o arrasto de um braço de velocidade de um ponto (vista de velocidade).
-pub(crate) fn resolve_speed_drag(
-    state: &mut TimelinePanelState,
-    band: &Band,
-    view: TimeView,
-    track: &TrackView,
-) {
-    let target = track.target.get();
-    let Some(mut d) = state.ponto_drag.filter(|d| d.target == target) else {
-        return;
+    let id = ids::timeline_curve_point_hit_id(target, key, node as u8, part);
+    let kind = TimelineHitKind::CurvePoint {
+        target,
+        key,
+        node: node as u8,
+        part,
     };
-    let Some((k0, k1)) = trecho(track, d.key) else {
-        state.ponto_drag = None;
-        push_intent(TimelineIntent::EndEdit);
-        return;
-    };
-    if d.part != 0 {
-        let par = (d.node, d.part);
-        let corner = d.corner.then(|| {
-            let mut c = segment_curve(k0, k1)?;
-            c.set_kind(d.node, HandleKind::Corner).then_some(c)
-        });
-        let base = match corner.flatten() {
-            Some(c) => {
-                let mut k = k0.clone();
-                k.interp = interp_of_curve(c);
-                k
-            }
-            None => k0.clone(),
-        };
-        d.corner = false;
-        let (t, v) = (view.t(d.x), band.value(d.y));
-        if let Some(c) = ph2d_timeline::spline_with_point_speed(&base, k1, par, t, v) {
-            grava(track, k0, c);
-        }
-    }
-    if d.ending || d.part == 0 {
-        state.ponto_drag = None;
-        push_intent(TimelineIntent::EndEdit);
-    } else {
-        state.ponto_drag = Some(d);
-    }
+    regista(ctx, band, id, kind, quadrado(p, HANDLE_HIT_R));
 }
 
 fn quadrado((x, y): (f32, f32), r: f32) -> Rect {
@@ -563,6 +503,10 @@ pub(crate) fn apply_event(state: &mut TimelinePanelState, ev: WidgetEvent) -> Op
     state.ponto_tipo = Some(tipo);
     Some(EventOutcome::Consumed)
 }
+
+#[path = "graph_pontos_velocidade.rs"]
+mod velocidade;
+pub(crate) use velocidade::{paint_speed_arms, resolve_speed_drag};
 
 #[cfg(test)]
 #[path = "graph_pontos_tests.rs"]

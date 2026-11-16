@@ -128,6 +128,20 @@ fn the_handle_kind_buttons_change_the_chosen_point_in_one_undo_step() {
 fn alt_grabbing_a_handle_breaks_the_point_into_a_corner() {
     let (mut store, curva) = cartao();
     let h = curva.node(1).h_out;
+    // As alças de um ponto só existem com ele escolhido (dono 16/11): primeiro o toque no ponto.
+    assert_eq!(
+        crate::interaction::key_card_alvo::alvo_em(&curva, None, &AREA, tela(h).0, tela(h).1),
+        None,
+        "sem escolha, a alça não é alvo"
+    );
+    down(
+        &mut store,
+        c::CTX_MENU_TL_KEY_BEZ_AREA,
+        tela(curva.node(1).p),
+        PointerButton::Primary,
+    );
+    store.end_key_card_bez();
+    drena(&mut store);
     // Sem Alt: o ponto continua Smooth.
     down(
         &mut store,

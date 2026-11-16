@@ -67,7 +67,7 @@ fn editor(store: &mut WidgetStore, kind: ContextMenuKind, id: NodeId, ev: Pointe
         return false;
     };
     let mut curva = store.key_card_curve().unwrap_or_else(ed::linear);
-    let alvo = ed::alvo_em(&curva, &area, ev.x, ev.y);
+    let alvo = ed::alvo_em(&curva, store.key_card_bez_escolhido(), &area, ev.x, ev.y);
     match ev.button {
         PointerButton::Primary => {
             if let Some(a) = alvo {

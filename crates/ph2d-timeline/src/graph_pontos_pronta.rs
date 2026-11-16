@@ -12,6 +12,11 @@ use crate::snapshot::KeyView;
 
 /// Nós que a conversão pode usar: um lugar fica para o ponto que o toque cria.
 const NOS_MAX: usize = SPLINE_MAX_POINTS - 1;
+/// A menor distância em `x` entre dois nós que a conversão escolhe (dono 16/11: pontos colados
+/// dificultam o ajuste). Medido 16/11: 1 % deixava nós a 1,6 % (5 px num trecho de 300 px) e o pior
+/// erro 1,4 %; 5 % ⇒ nós a ≥ 4,5 % e o pior erro 2,8 % (Elastic In-out), os outros ≤ 0,8 %; 8 % ⇒
+/// Elastic Out 5,6 %.
+pub(crate) const ESPACO_MIN: f64 = 0.05;
 /// O erro (no quadrado unitário) abaixo do qual a forma já é a da curva pronta.
 const ERRO_MAX: f64 = 0.004;
 /// Amostras da medida do erro.
@@ -132,7 +137,7 @@ pub fn preset_as_curve(interp: Interp) -> Option<EaseSpline> {
     while erro >= ERRO_MAX && xs.len() - 2 < NOS_MAX {
         let melhor = cands
             .iter()
-            .filter(|x| xs.iter().all(|q| (q - **x).abs() > 0.01))
+            .filter(|x| xs.iter().all(|q| (q - **x).abs() > ESPACO_MIN))
             .map(|&x| {
                 let mut ys = xs.clone();
                 ys.push(x);
@@ -151,7 +156,7 @@ pub fn preset_as_curve(interp: Interp) -> Option<EaseSpline> {
     for _ in 0..2 {
         for j in 1..xs.len() - 1 {
             for &x in &cands {
-                if xs.iter().any(|q| (q - x).abs() <= 0.01) {
+                if xs.iter().any(|q| (q - x).abs() <= ESPACO_MIN) {
                     continue;
                 }
                 let mut ys = xs.clone();

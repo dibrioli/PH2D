@@ -67,13 +67,21 @@ pub(crate) fn linear() -> EaseSpline {
     EaseSpline::from_bezier(x1, y1, x2, y2)
 }
 
+/// `true` se as alças do nó `i` aparecem: as das pontas (a Curve de duas alças) sempre; as de um
+/// ponto do meio só com ele escolhido — a regra do Illustrator, Inkscape, Figma e After Effects
+/// (dono 16/11: a conversão de uma curva pronta deixa pontos colados e as alças tapavam-nos).
+#[must_use]
+pub(crate) fn mostra_alcas(c: &EaseSpline, escolhido: Option<usize>, i: usize) -> bool {
+    i == 0 || i == c.node_count() - 1 || escolhido == Some(i)
+}
+
 /// Os alvos que se desenham, na ordem em que se procuram: primeiro os pontos, depois as alças.
-pub(crate) fn alvos(c: &EaseSpline) -> Vec<(BezAlvo, [f32; 2])> {
+pub(crate) fn alvos(c: &EaseSpline, escolhido: Option<usize>) -> Vec<(BezAlvo, [f32; 2])> {
     let n = c.node_count();
     let mut v: Vec<(BezAlvo, [f32; 2])> = (1..n - 1)
         .map(|i| (BezAlvo::Ponto(i), c.node(i).p))
         .collect();
-    for i in 0..n {
+    for i in (0..n).filter(|&i| mostra_alcas(c, escolhido, i)) {
         let no = c.node(i);
         if i > 0 {
             v.push((BezAlvo::Alca(i, SplineSide::In), no.h_in));
@@ -87,8 +95,14 @@ pub(crate) fn alvos(c: &EaseSpline) -> Vec<(BezAlvo, [f32; 2])> {
 
 /// O que está sob `(x, y)` no editor: o ponto ou a alça mais perto, dentro de [`ALVO_R`].
 #[must_use]
-pub(crate) fn alvo_em(c: &EaseSpline, area: &BezArea, x: f32, y: f32) -> Option<BezAlvo> {
-    alvos(c)
+pub(crate) fn alvo_em(
+    c: &EaseSpline,
+    escolhido: Option<usize>,
+    area: &BezArea,
+    x: f32,
+    y: f32,
+) -> Option<BezAlvo> {
+    alvos(c, escolhido)
         .into_iter()
         .map(|(a, q)| {
             let (px, py) = area.tela(q[0], q[1]);

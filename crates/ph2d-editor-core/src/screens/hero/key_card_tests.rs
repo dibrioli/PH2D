@@ -201,7 +201,7 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
     let i = curva.insert(u).unwrap();
     use crate::interaction::state::BezAlvo;
     assert_eq!(
-        crate::interaction::key_card_alvo::alvo_em(&curva, &area, x + 2.0, y),
+        crate::interaction::key_card_alvo::alvo_em(&curva, None, &area, x + 2.0, y),
         Some(BezAlvo::Ponto(i))
     );
     let (hx, hy) = {
@@ -209,12 +209,26 @@ fn the_custom_editor_takes_the_place_of_ease_and_shape() {
         area.tela(q[0], q[1])
     };
     assert_eq!(
-        crate::interaction::key_card_alvo::alvo_em(&curva, &area, hx, hy),
+        crate::interaction::key_card_alvo::alvo_em(&curva, None, &area, hx, hy),
         Some(BezAlvo::Alca(0, ph2d_anim::SplineSide::Out))
     );
     assert_eq!(
-        crate::interaction::key_card_alvo::alvo_em(&curva, &area, 290.0, 60.0),
+        crate::interaction::key_card_alvo::alvo_em(&curva, None, &area, 290.0, 60.0),
         None
+    );
+    // Dono 16/11: as alças de um ponto do meio só existem com ele escolhido (as das pontas sempre).
+    let (px, py) = {
+        let q = curva.node(i).h_out;
+        area.tela(q[0], q[1])
+    };
+    assert_ne!(
+        crate::interaction::key_card_alvo::alvo_em(&curva, None, &area, px, py),
+        Some(BezAlvo::Alca(i, ph2d_anim::SplineSide::Out)),
+        "sem escolha, a alça do ponto não é alvo"
+    );
+    assert_eq!(
+        crate::interaction::key_card_alvo::alvo_em(&curva, Some(i), &area, px, py),
+        Some(BezAlvo::Alca(i, ph2d_anim::SplineSide::Out))
     );
 }
 

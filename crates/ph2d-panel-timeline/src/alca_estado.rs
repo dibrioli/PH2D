@@ -93,7 +93,7 @@ pub(crate) fn acento(theme: Theme) -> Color {
     tinta(TimelineTinta::ChaveEscolhida, theme)
 }
 
-fn mistura(a: Color, b: Color, t: f32) -> Color {
+pub(crate) fn mistura(a: Color, b: Color, t: f32) -> Color {
     let (x, y) = (a.components, b.components);
     Color::new([
         x[0] + (y[0] - x[0]) * t,

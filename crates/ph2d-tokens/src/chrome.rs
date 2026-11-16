@@ -257,3 +257,6 @@ pub const TIMELINE_BARRA_TEMPO_RECUO_PX: f32 = 2.0; // LITERAL-PX-OK: recuo do p
 pub const TIMELINE_BARRA_TEMPO_ALCA_PX: f32 = 10.0; // LITERAL-PX-OK: alvo da ponta do polegar
 /// O polegar nunca fica mais estreito que isto (as duas pontas e um meio para agarrar).
 pub const TIMELINE_BARRA_TEMPO_POLEGAR_MIN_PX: f32 = 36.0; // LITERAL-PX-OK: largura mínima do polegar
+/// As pontas do polegar inteiras mais escuras (dono 16/11: «em vez de um risco, a ponta toda mais
+/// escura»): a fracção da mistura do cinza do polegar para o fundo da fita.
+pub const TIMELINE_BARRA_TEMPO_PONTA_ESCURA: f32 = 0.4; // LITERAL-PX-OK: fracção da mistura para o escuro

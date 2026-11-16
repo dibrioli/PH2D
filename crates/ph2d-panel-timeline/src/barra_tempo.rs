@@ -246,14 +246,23 @@ pub(crate) fn paint(
     let repouso = folha_tinta::tinta(TimelineTinta::TextoValor, theme);
     let cor_polegar = alca_estado::cor(e_meio, repouso, theme);
     fill_rounded_rect(ctx.scene, polegar_r, raio, cor_polegar);
-    // As pontas: um traço vertical dentro de cada uma, a dizer «agarre aqui para o zoom».
+    // As pontas inteiras mais escuras (dono 16/11), a dizer «agarre aqui para o zoom»: o canto de fora
+    // redondo como o polegar, o de dentro reto contra o meio.
     let traco = alca_estado::tinta_sobre(cor_polegar, theme);
+    let escura = alca_estado::mistura(
+        repouso,
+        folha_tinta::tinta(TimelineTinta::FitaPropriedade, theme),
+        ph2d_tokens::chrome::TIMELINE_BARRA_TEMPO_PONTA_ESCURA,
+    );
     let pontas = alvos_das_pontas(polegar_r);
-    for (e, r) in [(e_esq, pontas[0]), (e_dir, pontas[1])] {
-        let w = StrokeToken::Thin.px() * 2.0 + e.cresce();
-        let h = corpo.h * 0.7;
-        let fio = Rect::new(r.x + (r.w - w) * 0.5, corpo.y + (corpo.h - h) * 0.5, w, h);
-        fill_rounded_rect(ctx.scene, fio, w * 0.5, alca_estado::cor(e, traco, theme));
+    for (e, r, dentro_x) in [
+        (e_esq, pontas[0], pontas[0].x + pontas[0].w * 0.5),
+        (e_dir, pontas[1], pontas[1].x),
+    ] {
+        let cor = alca_estado::cor(e, escura, theme);
+        fill_rounded_rect(ctx.scene, r, raio.min(r.w * 0.5), cor);
+        let reto = Rect::new(dentro_x, r.y, r.w * 0.5, r.h);
+        fill_rounded_rect(ctx.scene, reto, 0.0, cor);
     }
     pinta_marcas(ctx, theme, corpo, (a, b), traco, mapa, snap);
     pinta_playhead(ctx, theme, bar, mapa, snap);

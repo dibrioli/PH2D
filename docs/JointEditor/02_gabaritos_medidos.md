@@ -87,8 +87,21 @@ impulso; «Product» = `spawn_joint` com Pins `one_chain` (`world/chains.rs`), q
 TreeRope (árvore + Rope de impulso no fecho): a ponte desaba (caixa 0,35) em todas as linhas. O Product reproduz o
 TwoTrees bit a bit em 5 das 6 linhas; a 2000:1 · 4 o encontro cai noutra emenda (o caso é caótico) e fica melhor.
 
-Na cena 123 (ponte real, `probe_plank_density_against_bridge_sag`, 300 ticks): tábuas 1 → caixa **1,288**, tábua do
-meio no fim 0,992, mais baixo 0,723 (era 0,750 · 0,046); tábuas 0,1 → mais baixo 0,465 (era −0,036).
+⚠️ **Corrigido 15/11 (`51051dde4f`):** a linha da cena 123 que aqui dizia «caixa **1,288**» lia uma caixa ATIRADA
+pela emenda que voltou a cair por sorte — a ponte nunca cedeu. A emenda (a única junta de impulso entre as duas
+árvores) com a rigidez de fábrica do rapier devolvia num sub-passo o erro do impacto. Medido (cena 123, 18 quedas
+perturbadas, ressalto máximo da caixa · quedas que ficam na ponte):
+
+| emenda | ressalto | ficam |
+|---|---|---|
+| rigidez de fábrica (1e6) | 2,0 m | 14/18 |
+| mola 240 Hz | 1,04 m | — |
+| mola 60 Hz | 0,30 m | — |
+| **mola 15 Hz, amortecimento crítico (`SEAM_SOFTNESS`)** | **0,028 m** | **18/18** |
+| emenda num poste | 1,92 m | 11/18 |
+
+⛔ Recusa medida: todas as juntas a 60 Hz (moveu a porta). Gate `the_bridge_catches_a_dropped_crate_without_throwing_it`
+(`ph2d-app-physics`, 9 quedas ±4 mm).
 
 **Escolhido: o gabarito Bridge passa a Pins `one_chain` no meio de cada folga.** Gates: `ph2d-physics one_chain::`
 (segura 200:1 contra o controlo de Pins sem corrente, rebobina bit-exato, apagar uma junta refaz as árvores, só o Pin
@@ -101,6 +114,46 @@ não tem Rope em coordenadas reduzidas).
 
 Limites declarados: o gémeo reduzido não tem reação medida (o Inspector não lê carga de uma junta na corrente); refazer a
 árvore a meio do Play zera a velocidade dos elos; Pin com motor ou quebrável fica de impulso (não medido).
+
+### A corrente em trechos e o tecto do «Planks» (16/11, smoke do dono: «Make the parts» travou)
+
+O rapier resolve cada árvore multibody com a matriz de massa inteira: o passo custa ~n³ nos elos. Medido (perfil
+smoke, esta estação, a ponte do Joint Editor por «Make the parts», um `PhysicsBridge::dispatch`):
+
+| tábuas | numa árvore por poste: passo | 1.º passo | as mesmas juntas quebráveis (impulso) |
+|---|---|---|---|
+| 64 | 5,5 ms | 6,5 ms | 0,29 ms |
+| 128 | 32 ms | 54 ms | 0,52 ms |
+| 256 | 302 ms | 286 ms | 1,0 ms |
+| 384 | 1 366 ms | 934 ms | 1,6 ms |
+| 1 024 | 46 ms (já NaN) | **29 s** | — |
+
+O campo aceitava até 65 535: um número grande parava o app. **Cura:** cada árvore cresce no máximo `SEGMENT_LINKS`
+elos; a peça seguinte é a raiz livre de outra árvore, presa por uma emenda (`SEAM_SOFTNESS`). Sonda
+`long_bridge(n, k)` (`ph2d-physics` `tests/it/one_chain.rs`, rapier puro, caixa 10 kg, 400 ticks):
+
+| tábuas · K | passo (mín.) | caixa no fim | finito |
+|---|---|---|---|
+| 8 · qualquer K | 3,5–4,5 µs | 1,252 (todos iguais) | sim |
+| 64 · 8 | 0,82 ms | 0,347 (desaba ao chão) | sim |
+| 64 · 16 | 1,5 ms | 0,354 (desaba) | sim |
+| **64 · 32** | **4,0 ms** | **1,039 = sem trechos** | sim |
+| 64 · sem trechos | 4,1 ms | 1,039 | sim |
+| 256 · 8 / 16 / **32** | 3,6 / 6,8 / **17,8 ms** | 0,347 (a ponte de 133 m pousa no chão) | sim |
+| 256 · 64 / sem trechos | — | — | **não (explode)** |
+
+**Escolhido K = 32:** até 64 tábuas a ponte é a de antes bit a bit; as longas deixam de explodir; o custo cresce em
+linha reta. ⛔ Recusa medida: K = 8 e 16 (mais baratos, mas a ponte de 64 desaba — as emendas cedem).
+
+No app, com trechos (o mesmo `dispatch`): 64 → 3,6 ms · 128 7,5 · 192 11,8 · 224 13,0 · **256 15,8** · 320 20,2 · 512 32,4
+(antes 302 ms a 256). **Tecto `MAX_ROW_PARTS = 256`:** o recurso é o quadro — o passo de UMA ponte cabe num quadro a
+60 Hz (16,7 ms) nesta estação. Gates: `a_long_bridge_is_cut_into_trees_and_a_short_one_is_the_old_chain`,
+`planks_para_no_tecto_medido_da_fila`. Quem mudar o K ou a física da corrente reconfere esta tabela.
+
+O travamento do PC do dono (16/11 ~15:31) **não se reproduziu** com o gesto dele (8 tábuas, Breaks On, 500 N, Make,
+Play: CPU e memória planas, placa < 26 %, no Xvfb com a mesma placa). O journal só mostra o compositor pendurado
+e, no mesmo minuto, três outras linhas a compilar e a correr apps. O número grande no «Planks» é o único caminho
+medido que pára o app; está fechado.
 
 ## O que esta tabela NÃO mede
 

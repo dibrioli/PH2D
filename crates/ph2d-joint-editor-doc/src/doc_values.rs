@@ -3,6 +3,7 @@
 
 use ph2d_editor_core::JointFieldEdit;
 use ph2d_i18n::tr;
+use ph2d_joint_assembly::joint_factory::MAX_ROW_PARTS;
 use ph2d_joint_templates::JointKind;
 
 use crate::doc::{Drive, Edit, Field, Flag, JointEditorDoc, scope_options};
@@ -96,7 +97,7 @@ impl JointEditorDoc {
             Field::RestLength | Field::Wheelbase => (CM, (0.0, BIG / 10.0)),
             Field::MaxLength => (CM, (CM / 10.0, BIG / 10.0)),
             Field::BreakForce | Field::BreakTorque => (1.0, (0.0, BIG)),
-            Field::Count => (1.0, (1.0, f64::from(u16::MAX))),
+            Field::Count => (1.0, (1.0, f64::from(MAX_ROW_PARTS))),
         }
     }
 
@@ -144,8 +145,8 @@ impl JointEditorDoc {
         }
         if f == Field::Count {
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            // preso a 1..=u16::MAX
-            let n = v.round().clamp(1.0, f32::from(u16::MAX)) as u16; // CLAMP-OK: o tipo do contador
+            // preso a 1..=MAX_ROW_PARTS
+            let n = v.round().clamp(1.0, f32::from(MAX_ROW_PARTS)) as u16; // CLAMP-OK: o tecto medido da fila
             match self.assembly().map(|a| a.sid) {
                 Some(assembly) => self.pending.push(Edit::Rows { assembly, n }),
                 None => self.count = n,

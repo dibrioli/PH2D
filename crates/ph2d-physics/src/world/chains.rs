@@ -52,7 +52,16 @@ pub struct Chains {
     members: BTreeMap<Key, ImpulseJointHandle>,
     twins: BTreeMap<Key, MultibodyJointHandle>,
     dirty: bool,
+    /// O tecto de elos por árvore; `None` = [`SEGMENT_LINKS`].
+    segment: Option<u16>,
 }
+
+/// **Quantos elos uma árvore cresce antes de a peça seguinte abrir uma árvore nova** (presa à anterior por
+/// uma emenda de impulso, [`SEAM_SOFTNESS`]). O rapier resolve cada árvore com a matriz de massa inteira:
+/// o passo custa ~n³ nos elos dela. Medido (16/11, perfil smoke, um passo, ponte do Joint Editor sem
+/// trechos): 64 tábuas 5,5 ms · 128 32 ms · 256 302 ms · 384 1,37 s; as mesmas juntas soltas 0,29 → 1,6 ms.
+/// Com trechos o custo cresce em linha reta. Tabela de `K`: `docs/JointEditor/02_gabaritos_medidos.md`.
+pub const SEGMENT_LINKS: u16 = 32;
 
 /// **Este joint entra numa corrente?** Um Pin ligado, inquebrável e sem motor.
 ///
@@ -136,6 +145,12 @@ impl PhysicsWorld {
         self.chains.twins.contains_key(&joint_key(handle))
     }
 
+    /// Muda o tecto de elos por árvore ([`SEGMENT_LINKS`]); as árvores refazem-se no próximo passo.
+    pub fn set_chain_segment_links(&mut self, links: u16) {
+        self.chains.segment = Some(links.max(1));
+        self.chains.dirty = true;
+    }
+
     /// Refaz as árvores, se a estrutura mudou. Chamado no início de cada passo.
     pub(super) fn refresh_chains(&mut self) {
         if !self.chains.dirty {
@@ -176,7 +191,10 @@ impl PhysicsWorld {
                 }
             }
         }
-        // Em largura, de todas as raízes ao mesmo tempo: cada tábua pendura-se no fixo mais perto.
+        // Em largura, de todas as raízes ao mesmo tempo: cada tábua pendura-se no fixo mais perto. Uma
+        // árvore com `segment` elos fecha: a peça seguinte é a raiz (livre) de outra, e a aresta fica emenda.
+        let segment = self.chains.segment.unwrap_or(SEGMENT_LINKS);
+        let mut depth: BTreeMap<Key, u16> = roots.iter().map(|&k| (k, 0)).collect();
         let mut seen: BTreeSet<Key> = roots.clone();
         let mut queue: VecDeque<RigidBodyHandle> = roots.iter().map(|k| handles[k]).collect();
         let mut used: BTreeSet<Key> = BTreeSet::new();
@@ -195,6 +213,13 @@ impl PhysicsWorld {
                 if seen.contains(&body_key(o)) || !dynamic(o) {
                     continue;
                 }
+                let d = depth.get(&body_key(p)).copied().unwrap_or(0);
+                if d >= segment {
+                    seen.insert(body_key(o));
+                    depth.insert(body_key(o), 0);
+                    queue.push_back(o);
+                    continue;
+                }
                 let Some(j) = self.impulse_joints.get(ih) else {
                     continue;
                 };
@@ -206,6 +231,7 @@ impl PhysicsWorld {
                 if let Some(mh) = self.multibody_joints.insert(p, o, data, true) {
                     used.insert(k);
                     seen.insert(body_key(o));
+                    depth.insert(body_key(o), d + 1);
                     queue.push_back(o);
                     grown.push((ih, mh, p, o));
                     self.chains.twins.insert(k, mh);
@@ -268,6 +294,9 @@ impl PhysicsWorld {
                     && let Some(&(_, mut d)) = per_body.get(&body_key(l.rigid_body_handle()))
                 {
                     let tau = std::f32::consts::TAU;
+                    if !d.is_finite() {
+                        d = 0.0;
+                    }
                     while d > std::f32::consts::PI {
                         d -= tau;
                     }

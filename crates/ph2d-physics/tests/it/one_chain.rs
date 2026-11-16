@@ -334,3 +334,62 @@ fn a_chain_born_crooked_keeps_its_pose() {
         );
     }
 }
+
+/// A ponte de `n` tábuas (o mesmo passo da de 8), com árvores de no máximo `k` elos.
+fn long_bridge(n: usize, k: u16) -> Bridge {
+    let mut w = PhysicsWorld::new();
+    w.set_chain_segment_links(k);
+    let span = 0.26 * n as f32;
+    body(&mut w, RigidBodyType::Fixed, [0.0, -0.5, 0.0], [span + 2.0, 0.5], 1.0);
+    let x0 = -0.26 * (n as f32 - 1.0);
+    let left = body(&mut w, RigidBodyType::Fixed, [x0 - 0.42, 0.6, 0.0], [0.15, 0.5], 1.0);
+    let right = body(&mut w, RigidBodyType::Fixed, [-x0 + 0.42, 0.6, 0.0], [0.15, 0.5], 1.0);
+    let planks: Vec<Handle> = (0..n)
+        .map(|i| body(&mut w, RigidBodyType::Dynamic, [x0 + 0.52 * i as f32, 1.0, 0.0], [0.25, 0.05], 1.0))
+        .collect();
+    let load = body(&mut w, RigidBodyType::Dynamic, [0.0, 3.0, 0.0], [0.25, 0.25], 40.0);
+    let mut pairs = vec![(left, planks[0], [0.16, 0.4], [-0.26, 0.0])];
+    for i in 0..n - 1 {
+        pairs.push((planks[i], planks[i + 1], [0.26, 0.0], [-0.26, 0.0]));
+    }
+    pairs.push((planks[n - 1], right, [0.26, 0.0], [-0.16, 0.4]));
+    let joints = pairs
+        .into_iter()
+        .map(|(a, b, la, lb)| {
+            let d = JointDesc { kind: JointKind::Pin, anchor_a: la, anchor_b: lb, max_length: 0.0, one_chain: true, ..JointDesc::default() };
+            w.spawn_joint(a, b, d).expect("joint")
+        })
+        .collect();
+    Bridge { world: w, planks, load, joints }
+}
+
+/// ⭐ **A corrente em trechos** (16/11, smoke do dono: «Make the parts» com muitas tábuas travava o app). Uma
+/// árvore de n elos custa ~n³ por passo; com árvores de no máximo `SEGMENT_LINKS` elos o custo cresce em linha
+/// reta (tabela no doc 02). Uma ponte que cabe nos trechos é a corrente de antes, BIT A BIT; a longa fica
+/// finita, partida em árvores presas por emendas (a de 256 numa árvore só dava números inválidos, medido).
+/// **Mutações que sangram:** sem o corte (`d >= segment` nunca) · o corte sem abrir raiz nova (a peça fica de fora).
+#[test]
+fn a_long_bridge_is_cut_into_trees_and_a_short_one_is_the_old_chain() {
+    let hash = |k: u16| {
+        let mut b = long_bridge(40, k);
+        run(&mut b, 60);
+        b.world.deterministic_hash()
+    };
+    assert_eq!(hash(ph2d_physics::SEGMENT_LINKS), hash(u16::MAX), "40 tábuas cabem em dois trechos de 32");
+
+    let mut cut = long_bridge(40, 8);
+    run(&mut cut, 60);
+    let seams = cut.joints.iter().filter(|&&j| !cut.world.joint_is_in_one_chain(j)).count();
+    // 41 juntas: cada poste cresce 8 elos e abre uma raiz livre; cada uma cresce 8 e abre outra; as do meio
+    // encontram-se por uma junta. 4 emendas de trecho + a do encontro.
+    assert_eq!(seams, 5, "uma emenda por trecho");
+
+    let mut long = long_bridge(96, ph2d_physics::SEGMENT_LINKS);
+    for _ in 0..40 {
+        long.world.step();
+    }
+    assert!(
+        long.planks.iter().all(|&p| y(&long.world, p).is_finite()),
+        "a ponte de 96 tábuas não explode"
+    );
+}

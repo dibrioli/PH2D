@@ -76,7 +76,7 @@ pub fn set_row_count(
     let (role, many) = (u16::try_from(ri).ok()?, t.roles[ri].many?);
     let row: Vec<u64> = asm.bodies_of(role).filter(|&b| b != 0).collect();
     let k = u16::try_from(row.len()).ok()?;
-    let n = n.max(1);
+    let n = n.clamp(1, crate::joint_factory::MAX_ROW_PARTS);
     if k == 0 || n == k {
         return None;
     }

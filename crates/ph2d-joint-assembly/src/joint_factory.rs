@@ -13,12 +13,18 @@ pub const PART: [f32; 4] = [0.95, 0.62, 0.25, 1.0];
 pub const SCENERY: [f32; 4] = [0.62, 0.62, 0.68, 1.0];
 pub const TYRE: [f32; 4] = [0.22, 0.22, 0.26, 1.0];
 
-/// Quantas peças o papel `i` leva: `counts[i]` se maior que zero, senão as da fábrica.
+/// **O tecto de peças numa fila** (as tábuas da ponte): o RECURSO é o quadro — o passo da física de UMA
+/// ponte cabe num quadro a 60 Hz (16,7 ms). Medido 16/11 (perfil smoke, esta estação, corrente em trechos de
+/// `SEGMENT_LINKS` elos): 64 tábuas 3,6 ms · 128 7,5 · 192 11,8 · 224 13,0 · **256 15,8** · 320 20,2 · 512 32,4.
+/// Tabela inteira: `docs/JointEditor/02_gabaritos_medidos.md`.
+pub const MAX_ROW_PARTS: u16 = 256;
+
+/// Quantas peças o papel `i` leva: `counts[i]` se maior que zero (até [`MAX_ROW_PARTS`]), senão as da fábrica.
 #[must_use]
 pub fn count_of(role: &Role, counts: &[u16], i: usize) -> u16 {
     let factory = role.many.map_or(1, |m| m.count);
     match (role.many, counts.get(i).copied()) {
-        (Some(_), Some(n)) if n > 0 => n,
+        (Some(_), Some(n)) if n > 0 => n.min(MAX_ROW_PARTS),
         _ => factory,
     }
 }

@@ -395,3 +395,28 @@ fn planks_numa_ponte_feita_refaz_as_copias() {
         .unwrap_or_default();
     assert!(toast.contains("Made 7 copies"), "{toast}");
 }
+
+/// ⭐ **O tecto medido da fila** (smoke do dono 16/11: um número grande no «Planks» travava o app — a corrente de
+/// n tábuas custava ~n³ por passo). O campo aceita até `MAX_ROW_PARTS` (uma ponte cabe num quadro a 60 Hz,
+/// tabela no doc 02) e o «Make the parts» faz exatamente essas.
+/// **Mutações que sangram:** o campo sem o tecto · `count_of` sem o tecto.
+#[test]
+fn planks_para_no_tecto_medido_da_fila() {
+    let max = ph2d_joint_assembly::joint_factory::MAX_ROW_PARTS;
+    let mut m = Mesa::draft(JointKind::Pin, "Bridge");
+    m.click(&Hit::Field(Field::Count));
+    m.escreve("9999");
+    m.tecla(
+        ph2d_editor_core::screens::hero::board_keys::BoardKey::Enter,
+        None,
+    );
+    assert_eq!(m.tab().doc.value(Field::Count), Some(f32::from(max)));
+    m.click(&Hit::Make);
+    m.object(&format!("Plank {max}"));
+    let w = m.sim.world_mut();
+    let over = format!("Plank {}", max + 1);
+    assert!(
+        w.query::<&Name>().iter(w).all(|n| n.as_str() != over),
+        "nem uma tábua acima do tecto"
+    );
+}

@@ -638,9 +638,9 @@ fn motion_get_reads_what_the_graph_reads_from_the_start_of_the_tick() {
     use ph2d_ecs::motion_inputs::{Escritor, Valor};
     let mut host = ScriptHost::new().expect("vm");
     let mut sim = SimWorld::new();
-    let src = "function update(self, dt)\n  ph2d.set(self.id, \"x\", motion.get(\"eco\") or -1)\n  \
-               local c = motion.get(\"cor\")\n  ph2d.set(self.id, \"y\", c and c.g or -1)\n  \
-               motion.set(\"eco\", 0.75)\nend\n";
+    let src = "function update(self, dt)\n  motion.set(\"eco\", 0.75)\n  \
+               ph2d.set(self.id, \"x\", motion.get(\"eco\") or -1)\n  \
+               local c = motion.get(\"cor\")\n  ph2d.set(self.id, \"y\", c and c.g or -1)\nend\n";
     let path = script_file("motion_get", src);
     let e = actor(sim.world_mut(), 1, &path, &[]);
     let mut m = MotionInputs::default();
@@ -649,6 +649,11 @@ fn motion_get_reads_what_the_graph_reads_from_the_start_of_the_tick() {
         bits: 1,
     };
     m.set("cor", lamp, Valor::Cor([1.0, 0.5, 0.0, 1.0]));
+    let zed = Escritor::Objeto {
+        nome: "Zed".into(),
+        bits: 2,
+    };
+    m.set("cor", zed, Valor::Cor([0.0, 0.0, 0.0, 1.0]));
     sim.world_mut().insert_resource(m);
     let r = frame(&mut host, &mut sim, 1.0 / 60.0);
     assert!(r.failed.is_empty(), "{:?}", r.failed);
@@ -656,7 +661,7 @@ fn motion_get_reads_what_the_graph_reads_from_the_start_of_the_tick() {
     assert_eq!(
         (x(sim.world(), e), y(sim.world())),
         (-1.0, 0.5),
-        "nil no 1.º tique; a cor"
+        "nil no 1.º tique (mesmo depois do set); a cor da 1.ª linha"
     );
     frame(&mut host, &mut sim, 1.0 / 60.0);
     assert_eq!(x(sim.world(), e), 0.75, "o set do tique anterior");

@@ -6,7 +6,6 @@
 //! é medida nesse rectângulo — a proporção dele — e escrita na da janela com a mesma escala e o centro
 //! deslocado. Com o canvas a ocupar a janela (o palco) é a identidade.
 
-// A caixa do jogo e o palco que alarga moram com a moldura e as tarjas (Input Map, 11/11).
 pub use ph2d_camera_frame::palco::{area_do_palco, caixa_do_jogo, centro_no_palco};
 
 /// O tamanho com que a janela do jogo abre (pontos lógicos): o formato ampliado até caber em [`CAIXA_DA_JANELA`];

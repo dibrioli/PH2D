@@ -293,9 +293,13 @@ pub const HORARIO_24: [(u32, Gesto); 11] = [
     (480, Gesto::Salta(false)),
     (560, Gesto::Para),
 ];
-/// A cena 28: parado sob as pedras, depois corre à direita (o rastro de estrelas vira para lá).
-pub const HORARIO_28: [(u32, Gesto); 2] =
-    [(420, Gesto::Direita(true)), (500, Gesto::Direita(false))];
+/// A cena 28: parado sob as pedras, corre à direita e volta à esquerda, dentro do quadro (o rastro vira).
+pub const HORARIO_28: [(u32, Gesto); 4] = [
+    (420, Gesto::Direita(true)),
+    (455, Gesto::Direita(false)),
+    (470, Gesto::Esquerda(true)),
+    (525, Gesto::Esquerda(false)),
+];
 /// Onde o salto do nível 2 sai (afinado pelo gate `o_nivel_2_anda_salta_cai_e_anima`).
 pub const QUADRO_DO_SALTO: u32 = 190;
 

@@ -155,8 +155,7 @@ impl FocoDoJogo {
             self.do_jogo &= !bit;
             return so;
         }
-        // O botão do meio é a navegação da vista (o pan): o jogo vê-o, mas ele nunca é SÓ do jogo
-        // (report do dono 27/10 — com o Play o pan morria).
+        // O botão do meio é a navegação da vista (o pan): o jogo vê-o, mas ele nunca é SÓ do jogo.
         let so = self.premido(input, cena, na_cena)
             && (botao != ph2d_host::PointerButton::Middle || cena.palco);
         if so {
@@ -179,8 +178,7 @@ impl FocoDoJogo {
 
     /// ⛔ Perder a posse LARGA tudo: uma seta presa ao pausar ou ao clicar num painel deixava o personagem a andar.
     fn assenta(&mut self, input: &mut InputState, cena: Cena) {
-        // Tapar a cena (uma aba, a paleta, um menu, um campo de texto) tira o foco ao jogo: destapá-la não lho devolve
-        // sem um clique ou um Play (Godot, Unity).
+        // Tapar a cena tira o foco ao jogo: destapá-la não lho devolve sem um clique ou um Play (Godot, Unity).
         if !cena.a_vista {
             self.focado = false;
         }

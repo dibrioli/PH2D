@@ -28,12 +28,25 @@ const DOOR: &[&str] = &[
 
 /// Quem pode ler o conjunto directo fora da porta, e PORQUÊ. ⚠️ Entrada nova = uma razão de
 /// MOSTRAR, nunca de decidir.
-const READERS: &[(&str, &str)] = &[(
-    "shells/desktop/src/render_loop/inspector_tags.rs",
-    "MOSTRA os chips da secção Tags do Inspector: ele desenha as tags que o objecto tem, e nunca \
+const READERS: &[(&str, &str)] = &[
+    (
+        "shells/desktop/src/render_loop/inspector_tags.rs",
+        "MOSTRA os chips da secção Tags do Inspector: ele desenha as tags que o objecto tem, e nunca \
      responde «pertence?» — essa pergunta, no filtro da física e no alvo de um sinal, passa por \
      `belongs`/`tagged`.",
-)];
+    ),
+    (
+        "crates/ph2d-ray-sensor/src/gotas.rs",
+        "MOSTRA o «material» do acerto do Ray Sensor (RS-4, dono 15/11): os rótulos das tags DIRECTAS \
+         da Collision Shape acertada, juntos por vírgula na gota de leitura — é texto pintado, nunca \
+         responde «pertence?».",
+    ),
+    (
+        "crates/ph2d-ray-sensor/src/script.rs",
+        "ENTREGA ao Luau as tags directas da forma acertada como CAMINHOS completos (`Ground/Ice`): o \
+         caminho já carrega a subárvore, e o script pergunta por prefixo — a ponte não decide pertença.",
+    ),
+];
 
 /// O que se procura, já sem comentários nem textos.
 const NEEDLE: &str = "direct_ids";

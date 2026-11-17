@@ -107,3 +107,24 @@ fn a_contagem_zera_a_cada_play_e_nao_ao_parar() {
     e.corrida(true);
     assert_eq!(e.vezes(n), 0, "o Play seguinte começa do zero");
 }
+
+#[test]
+fn the_level_itself_counts_as_crossed_only_on_the_arrival_side() {
+    assert_eq!(serie(WHEN_FALLS, &[0.9, 0.5, 0.1, 0.5, 0.1]), vec![1]);
+    assert_eq!(serie(WHEN_RISES, &[0.1, 0.5, 0.9, 0.5, 0.9]), vec![1]);
+}
+
+#[test]
+fn the_play_edge_baseline_does_not_survive_a_stop() {
+    let mut e = Envios::default();
+    let n = NodeId(2);
+    e.corrida(true);
+    assert_eq!(e.passo(n, 5, &l(0.9, WHEN_FALLS, 0)), 0);
+    e.corrida(false);
+    e.corrida(true);
+    assert_eq!(
+        e.passo(n, 6, &l(0.1, WHEN_FALLS, 0)),
+        0,
+        "o Play zera a base"
+    );
+}

@@ -71,8 +71,8 @@ fn familia(canonico: &str) -> usize {
         .expect("toda categoria está na ALL")
 }
 
-/// As secções na ordem em que são PINTADAS.
-fn ordem_pintada() -> Vec<String> {
+/// As secções na ordem em que são PINTADAS, com o Inspector armado por `arma`.
+fn ordem_pintada(arma: fn()) -> Vec<String> {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mapa = super::o_que_o_artista_nao_alcanca::nomes_de(
         &[
@@ -88,7 +88,7 @@ fn ordem_pintada() -> Vec<String> {
             .iter_mut()
             .find(|p| p.manifest.id == "inspector")
             .expect("inspector");
-        super::o_inspector_armado::arma_tudo();
+        arma();
         let mut host = MockPanelHost::new();
         painel.populate(host.store_mut());
         abre_tudo(host.store_mut());
@@ -127,9 +127,14 @@ const PISO: usize = 20;
 /// ⇒ o que se compra com isso está dito: um artista que queira o `Ray` antes do `Projectile`
 /// mexe numa linha e nenhum gate o impede. *O que os gates defendem é o AGRUPAMENTO, que é o que
 /// o report do dono nomeia.*
+///
+/// ⚠️ Mede-se com o filho **Motion Input** escolhido ([`super::o_inspector_armado::arma_o_motion_input`]):
+/// é o único estado em que as 25 opcionais pintam juntas. O `arma_tudo` não arma o Motion Input
+/// (o filho não tem lugar e tiraria Transform, corpo e Player do resto, GEF 08 MI-10), e o filho
+/// só esconde secções FIXAS — as opcionais continuam todas.
 #[test]
 fn as_seccoes_opcionais_saem_por_familia_na_ordem_da_paleta() {
-    let pintadas = ordem_pintada();
+    let pintadas = ordem_pintada(super::o_inspector_armado::arma_o_motion_input);
     assert!(
         pintadas.len() >= PISO,
         "a varredura leu {} cabeçalhos (piso {PISO}) — ela deixou de alcançar o painel, e uma \
@@ -198,7 +203,7 @@ fn a_regua_distingue_as_familias() {
 /// ela exista** — no dia em que alguém a desfizer, este teste reprova e a nota sai com ela.
 #[test]
 fn a_inversao_do_bloco_fixo_esta_nomeada() {
-    let pintadas = ordem_pintada();
+    let pintadas = ordem_pintada(super::o_inspector_armado::arma_tudo);
     let pos = |n: &str| pintadas.iter().position(|s| s == n);
     let (Some(imagem), Some(ordem)) = (
         pos("insp_live_render_section"),

@@ -231,7 +231,7 @@ pub fn grid_cols(n: usize, avail: f32) -> usize {
 }
 
 /// O nome do gabarito no seletor: o «Custom» é a palavra da casa, os outros o nome do catálogo.
-fn tr_template(t: &ph2d_joint_templates::Template) -> &'static str {
+pub(crate) fn tr_template(t: &ph2d_joint_templates::Template) -> &'static str {
     if t.hand_made {
         tr("joint_editor.custom")
     } else {

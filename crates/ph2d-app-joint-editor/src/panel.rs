@@ -151,7 +151,7 @@ fn cards(ui: &Ui<'_>) -> Vec<Group> {
     } else {
         head.push(Item::Line(tr_with(
             "joint_editor.draft_title",
-            &[("template", &t.name)],
+            &[("template", &crate::paint::tr_template(t))],
         )));
         if let Some(i) = ui.doc.row_role() {
             let name = count_label(t.roles[i].name);
@@ -467,7 +467,11 @@ fn item(ui: &mut Ui<'_>, b: Rect, it: &Item, at: &mut [Rect; 2]) {
                     tr(kind_key(t.kind)),
                     "joint_editor.joint_tip",
                 ),
-                Menu::Template => ("joint_editor.template", t.name, "joint_editor.template_tip"),
+                Menu::Template => (
+                    "joint_editor.template",
+                    crate::paint::tr_template(t),
+                    "joint_editor.template_tip",
+                ),
             };
             let (label, h) = (tr(label), Hit::OpenMenu(*menu));
             let bx = labelled(ui, b, label);

@@ -113,6 +113,13 @@ outro PH2D le-o para escolher o meio, e traduzi-lo faria o mesmo ficheiro recusa
 mostra o meio pelo `PaintMedia::name_key`.",
     ),
     (
+        "ph2d-joint-templates",
+        "catalog/custom.rs",
+        "⭐ e' `\"Custom\"`, o NOME de catalogo do gabarito feito a mao (JointEditor W4j): a chave de `by_name` e o \
+nome que a montagem GRAVA na Hierarchy (`joint_assembly.rs`, «Custom 1»), como o `\"Car\"` e o `\"Bridge\"` dos \
+irmaos. DOCUMENTO, nao rotulo: todo pintor o mostra pelo `tr_template` (`joint_editor.custom`, `Template::hand_made`).",
+    ),
+    (
         "ph2d-i18n",
         "*",
         "esta crate E' a tabela de strings: todo literal dela e' o texto de chegada de uma chave. \

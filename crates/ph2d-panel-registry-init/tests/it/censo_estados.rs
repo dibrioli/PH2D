@@ -147,6 +147,13 @@ pub const ESTADOS: &[Estado] = &[
         arma: audio::com_clip,
         desarma: audio::limpa,
     },
+    // O filho MOTION INPUT escolhido (GEF 08 MI-10): sem lugar, não cabe no `arma_tudo`.
+    #[cfg(feature = "panel-inspector")]
+    Estado {
+        painel: "inspector",
+        arma: super::o_inspector_armado::arma_o_motion_input,
+        desarma: super::o_inspector_armado::desarma_tudo,
+    },
 ];
 
 #[cfg(feature = "panel-flip-frames")]

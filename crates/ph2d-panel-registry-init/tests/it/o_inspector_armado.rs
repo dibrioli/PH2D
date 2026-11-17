@@ -1288,6 +1288,49 @@ fn arma_o_top20() {
             })
             .collect(),
     }));
+    // ⛔ O MOTION INPUT NÃO se arma aqui: é um filho sem lugar (GEF 08 MI-10) — com ele escolhido o
+    //    Inspector tira Transform, corpo, juntas, roda e Player, e «armar tudo» deixaria de pintar o
+    //    resto. A armação dele é a [`arma_o_motion_input`].
+    // O cartão MOTION (GEF 08 MI-8) — dois «Send signal» com o jogo a correr, um de nome comprido.
+    insp::set_current_inspector_motion_sent(Some(
+        ph2d_editor_core::motion_sent::InspectorMotionSentInfo {
+            entity_bits: BITS,
+            sent: vec![
+                ph2d_editor_core::motion_sent::MotionSent {
+                    signal: "player_reached_the_checkpoint".to_string(),
+                    times: 12,
+                },
+                ph2d_editor_core::motion_sent::MotionSent {
+                    signal: "jump".to_string(),
+                    times: 1,
+                },
+            ],
+        },
+    ));
+    // A MACRO (ADR-0186, W5d) — no estado que pinta MAIS linhas: o resumo, a «editada desde» e um
+    // erro com detalhe (a frase mais comprida do cartão).
+    insp::set_current_inspector_macro(Some(InspectorMacroInfo {
+        entity_bits: BITS,
+        modo: 1,
+        gravacao: MacroGravacao::Lida {
+            trilhas: vec![("painter".to_string(), 12), ("motion".to_string(), 4)],
+            duracao_us: 12_500_000,
+        },
+        selected_count: selecionados(),
+        etapas: 16,
+        editada_desde: Some(3),
+        erro: Some(ErroDaMacroView {
+            chave: "panel.macros.error.missing_preset",
+            detalhe: Some("Wet Paint \u{b7} Soft Round Watercolor".to_string()),
+        }),
+    }));
+}
+
+/// **O filho MOTION INPUT escolhido** (GEF 08 MI-10): [`arma_tudo`] e, por cima, o instantâneo do
+/// Motion Input — no estado que pinta MAIS linhas. Com ele o Inspector não pinta Transform, corpo,
+/// juntas, roda nem Player (o filho não tem lugar), por isso é um estado à parte.
+pub fn arma_o_motion_input() {
+    arma_tudo();
     // O MOTION INPUT (ciclo 19) — no estado que pinta MAIS linhas: a queixa do nome que o grafo
     // não lê, os chips, a caixa do nome novo, a linha do número e as duas leituras de Play.
     insp::set_current_inspector_motion_input(Some(InspectorMotionInputInfo {
@@ -1326,23 +1369,6 @@ fn arma_o_top20() {
             ph2d_editor_core::motion_input_edits::MotionInputAoVivo::Numero(0.2),
         )),
     }));
-    // A MACRO (ADR-0186, W5d) — no estado que pinta MAIS linhas: o resumo, a «editada desde» e um
-    // erro com detalhe (a frase mais comprida do cartão).
-    insp::set_current_inspector_macro(Some(InspectorMacroInfo {
-        entity_bits: BITS,
-        modo: 1,
-        gravacao: MacroGravacao::Lida {
-            trilhas: vec![("painter".to_string(), 12), ("motion".to_string(), 4)],
-            duracao_us: 12_500_000,
-        },
-        selected_count: selecionados(),
-        etapas: 16,
-        editada_desde: Some(3),
-        erro: Some(ErroDaMacroView {
-            chave: "panel.macros.error.missing_preset",
-            detalhe: Some("Wet Paint \u{b7} Soft Round Watercolor".to_string()),
-        }),
-    }));
 }
 
 /// **Desarma as 29 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
@@ -1366,6 +1392,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_vida(None);
     insp::set_current_inspector_nav(None);
     insp::set_current_inspector_motion_input(None);
+    insp::set_current_inspector_motion_sent(None);
     insp::set_current_inspector_macro(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
@@ -1489,6 +1516,9 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("nav", || insp::set_current_inspector_nav(None)),
     ("motion_input", || {
         insp::set_current_inspector_motion_input(None)
+    }),
+    ("motion_sent", || {
+        insp::set_current_inspector_motion_sent(None)
     }),
     ("macro", || insp::set_current_inspector_macro(None)),
 ];

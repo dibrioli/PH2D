@@ -1,6 +1,6 @@
 # Motion Input
 
-**Estado: `em obra`** (15/11). Leva um valor do jogo (número, cor, vida, dano) a um efeito do Motion: o nó
+**Estado: `em obra` — ondas 1–3 feitas, onda 3 à espera do smoke do dono** (16/11). Leva um valor do jogo (número, cor, vida, dano) a um efeito do Motion: o nó
 `value.input` com o mesmo nome o lê. Crítica: `critica_ph2d.html#motioninput` (§1–§8, a tabela «O que falta
 fazer» com 21 capacidades e MI-1..MI-12). Oráculo Godot 4.7.2 corrido pela crítica:
 `GameEngineSamples/fonte_critica/oraculo_motioninput/` (6 casos: o Godot só liga valor a efeito por código,
@@ -32,10 +32,10 @@ Velocidade e «no chão» não estão nem no Luau.
 | 6 | ação do Input Map | só script | 2: MI-4 Action |
 | 11 | faixa | só no grafo | 2: MI-6 From · To · curva |
 | 12 | suavizar | só no grafo | 2: MI-7 Smooth |
-| 9 | vetor | não | 3: MI-5 Vector |
-| 15 | script lê | não | 3: MI-9 `motion.get` |
-| 17 | várias entradas | um por objeto | 3: MI-10 |
-| 13 | o grafo avisa o jogo | não | 3: MI-8 nó Send signal |
+| 9 | vetor | **sim** | 3: MI-5 Vector |
+| 15 | script lê | **sim** | 3: MI-9 `motion.get` |
+| 17 | várias entradas | **sim** | 3: MI-10 |
+| 13 | o grafo avisa o jogo | **sim** | 3: MI-8 nó Send signal |
 
 ## Ondas (cada uma fecha com smoke do dono)
 
@@ -130,3 +130,21 @@ Property · `28d5302ba1` curas da mutação.
 - ⚠️ **Para o integrador:** para caber nas catracas, o motor cortou ~482 linhas de comentário `//` histórico em 11
   ficheiros de outras áreas da `ph2d-app-components` (`instance_*`, `instantiate`, `asset_*`, `camera_2d`,
   `parallax_bridge`) e 29 em `shells/desktop/src/render_loop/bgremoval_preview_gpu.rs` — só comentário, zero código.
+
+### Onda 3 (16/11) — à espera do smoke do dono
+
+Cena `PH2D_GPU_COOK_DEMO=143 PH2D_GAME_SMOKE=28` («o herói manda»), fotos `fotos_08/onda3_*`. Handoff:
+[HANDOFF_CONTINUACAO_2026-11-16_08_MI_ONDA3.md](../handoffs/HANDOFF_CONTINUACAO_2026-11-16_08_MI_ONDA3.md).
+
+- **MI-10** `af790020b2` (cartão `9b51d1b354`; filho sem Transform/Ordering `3f765643c7` + `c69314500a`, cabeçalho
+  `95f0e83f27`, sem gizmo `35bd76f8a2`): o `MotionInput` mora só num filho; `from = 0` = o pai
+  (`ph2d_ecs::motion_input::dono`); ícone Gamepad `obj-motion-input`.
+- **MI-9** `b0251b2323`: `motion.get(nome)` (1.ª linha, espelho do tique anterior, `nil` sem escritor).
+- **MI-5** `58addc13df`: `Valor::Vetor([f32;2])`, `value.input` ganha `xy`/`x`/`y`; fontes Velocity e Move.
+  `PROJECT_SCHEMA` 246 → 248. `e6ea70e412`: a Property só oferece o que lê.
+- **MI-8** `aa36d90ac5` + `b073f8511c`: nó `value.send_signal` (crate `ph2d-node-send-signal`); `SignalOrigin::Motion`;
+  cartão «Sent X N times» `e2c6a75c57`; censo `e435e7e849`.
+- **Cook GPU** `2d3867782e`: fronteira CPU→GPU por (nó, porta).
+- **Mutação:** 47 mutantes, 38 sangraram (4 commits de cura), 3 só de placa sangraram à mão, 2 equivalentes.
+- ⚠️ **Para o integrador:** a onda cortou só comentário `//` histórico (zero código) em várias crates (lista no handoff);
+  3 testes de paridade GPU×CPU já vermelhos ANTES da onda (conferir contra o main).

@@ -281,7 +281,7 @@ fn sem_espaco_abaixo_a_lista_abre_para_cima_e_rola_ate_a_ultima() {
 }
 
 /// ⭐ MI-10: o filho «Motion Input» não tem lugar no espaço — o Inspector dele não pinta Transform nem Ordering
-/// (nem corpo), só o cartão Motion Input; sem ele, as mesmas fotos pintam a Transform (controlo).
+/// (nem corpo), só o cabeçalho do objecto e o cartão Motion Input; sem ele, as mesmas fotos pintam a Transform (controlo).
 ///
 /// **Mutação que deve sangrar:** `com_lugar = true` em `LiveSnapshots::fetch`.
 #[test]
@@ -309,6 +309,7 @@ fn a_seccao_motion_input_do_filho_nao_tem_transform() {
         let tem = |id| rect_de(&rects, id).is_some();
         let mi = tem(core::INSP_LIVE_MOTION_INPUT_SECTION);
         let filho = tem(transform);
+        let cabecalho = !cartoes || tem(ph2d_panel_inspector::CARD_OBJECT);
         ph2d_panel_inspector::set_current_inspector_motion_input(None);
         let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<InspectorPanel>();
         let mut st = ph2d_panel_inspector::InspectorState::default();
@@ -318,6 +319,7 @@ fn a_seccao_motion_input_do_filho_nao_tem_transform() {
         ph2d_panel_inspector::set_cards_on(false);
         assert!(mi, "o cartão Motion Input (cartões {cartoes})");
         assert!(!filho, "Transform no filho (cartões {cartoes})");
+        assert!(cabecalho, "o cabeçalho com o nome, o olho e o cadeado fica");
         assert!(
             controlo,
             "controlo: sem Motion Input a Transform pinta (cartões {cartoes})"

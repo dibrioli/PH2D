@@ -319,11 +319,9 @@ pub fn set_current_inspector_transform(info: Option<InspectorTransformInfo>) {
     CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow_mut() = info);
 }
 
-/// GEF 08 MI-10: o filho «Motion Input» é uma entrada do grafo, sem lugar no espaço — sem Transform nem Ordering.
+/// O objecto publicado (o filho «Motion Input» também: o cabeçalho é dele; o cartão Transform não).
 pub(crate) fn current_inspector_transform() -> Option<InspectorTransformInfo> {
-    CURRENT_INSPECTOR_TRANSFORM
-        .with(|c| *c.borrow())
-        .filter(|_| !crate::state_components::entrada_do_motion_escolhida())
+    CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow())
 }
 
 pub fn set_current_inspector_visibility(info: Option<InspectorVisibilityInfo>) {

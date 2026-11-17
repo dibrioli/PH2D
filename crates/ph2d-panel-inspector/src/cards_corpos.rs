@@ -31,7 +31,8 @@ pub(crate) fn cards(store: &WidgetStore) -> Vec<CardDef<'static>> {
     out.extend(crate::cards_objeto::do_topo(store));
     // O Animated vazio espera pela imagem (Crítica B1): sem Transform nem Ordering.
     let vazia = crate::cards_objeto::animada_vazia();
-    if !vazia {
+    // GEF 08 MI-10: o filho «Motion Input» não tem lugar no espaço.
+    if !vazia && !crate::state_components::entrada_do_motion_escolhida() {
         out.push(transform());
     }
     if let Some(a) = appearance::current_appearance() {

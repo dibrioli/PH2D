@@ -12,6 +12,8 @@ use ph2d_ecs::{
     Entity, MotionInput, MotionSource, Name, SignalAction, SignalActions, SignalVerb, SimWorld,
     Transform, Visibility,
 };
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_physics_ecs::{Collider, ColliderShape, Damage, Health, OnHit, ProjectileMotion};
 use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 
@@ -26,6 +28,8 @@ pub const PEDRA: &str = "Rock";
 pub const ENTRADA_VIDA: &str = "vida";
 pub const ENTRADA_RASTRO: &str = "rastro";
 pub const SINAL: &str = "low_health";
+/// O campo de duas medidas que a foto da Property escolhe (Transform · Position).
+pub const CAMPO_PAR: &str = "ph2d::ecs::Transform/position";
 /// `(entrada, fonte)` dos filhos do «Hero», pela ordem em que nascem.
 pub const FILHOS: [(&str, MotionSource); 2] = [
     (ENTRADA_VIDA, MotionSource::Health),
@@ -116,9 +120,20 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
     for (nome, source) in FILHOS {
         let e = ph2d_physics_ecs::pendura_entrada(sim.world_mut(), None, Some(heroi), "");
         anexa(sim, &p, e, "ph2d::ecs::MotionInput");
+        let e_rastro = nome == ENTRADA_RASTRO;
+        let source = match foto(pedida().as_deref()) {
+            Some(Foto::Property) if e_rastro => MotionSource::Property,
+            Some(Foto::Move) if e_rastro => MotionSource::Move,
+            _ => source,
+        };
         let mi = MotionInput {
             name: nome.to_owned(),
             source,
+            property: if source == MotionSource::Property {
+                CAMPO_PAR.into()
+            } else {
+                String::new()
+            },
             ..MotionInput::default()
         };
         sim.world_mut().entity_mut(e).insert(mi);
@@ -173,4 +188,78 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
          é o motion.get(\"vida\")). Use com PH2D_GPU_COOK_DEMO=143 (o grafo)."
     );
     rastro.expect("o filho rastro nasceu")
+}
+
+/// O instante das fotos da cena (`PH2D_GAME_SMOKE_FOTO`); sem a variável a cena é a do dono.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Foto {
+    /// `heroi_property`: o «rastro» com Source Property e a lista aberta.
+    Property,
+    /// `heroi_move`: o «rastro» com Source Move.
+    Move,
+    /// `heroi_motion_sent`: o objecto «Motion» seleccionado em Play (o cartão «Sent low_health once»).
+    MotionSent,
+    /// `heroi_send_signal`: o objecto «Motion» em Edit (o editor de nós e o «Send signal»).
+    SendSignal,
+}
+
+/// Os nomes que [`foto`] aceita (censo em `ph2d_game_smoke_fotos::nomes`; os dois do «Motion» lê-os
+/// `ph2d_app_motion::motion_objeto::smoke::FOTOS_DO_HEROI`).
+pub const NOMES: &str = "heroi_property heroi_move heroi_motion_sent heroi_send_signal";
+
+#[must_use]
+pub fn foto(nome: Option<&str>) -> Option<Foto> {
+    match nome?.trim() {
+        "heroi_property" => Some(Foto::Property),
+        "heroi_move" => Some(Foto::Move),
+        "heroi_motion_sent" => Some(Foto::MotionSent),
+        "heroi_send_signal" => Some(Foto::SendSignal),
+        _ => None,
+    }
+}
+
+fn pedida() -> Option<String> {
+    std::env::var("PH2D_GAME_SMOKE_FOTO").ok()
+}
+
+/// As gavetas do Motion Input abertas sobre `escolhido`; na foto da Property, a lista dela aberta.
+pub fn arruma_o_inspector(store: &mut WidgetStore, cartao: NodeId, escolhido: u64) {
+    use crate::cena_motion_input as mi;
+    for (id, fechada) in mi::gavetas(None, cartao) {
+        store.set_collapsed(id, fechada);
+    }
+    if foto(pedida().as_deref()) == Some(Foto::Property) {
+        store.register(
+            mi::LISTA_CAMPO,
+            ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                state: ph2d_editor_core::widget::DropdownState::Normal,
+                open: true,
+                selected_index: None,
+            },
+        );
+    }
+    store.request_inspector_section(
+        ph2d_editor_core::ids::INSP_LIVE_MOTION_INPUT_SECTION,
+        escolhido,
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cada nome declarado é aceite, e só os da cena 28.
+    #[test]
+    fn as_fotos_da_cena_28_aceitam_os_nomes_declarados() {
+        let todas: Vec<_> = NOMES.split_whitespace().map(|n| foto(Some(n))).collect();
+        let quer = [
+            Foto::Property,
+            Foto::Move,
+            Foto::MotionSent,
+            Foto::SendSignal,
+        ]
+        .map(Some);
+        assert_eq!(todas, quer);
+        assert_eq!(foto(Some("motion_input_property")), None);
+    }
 }

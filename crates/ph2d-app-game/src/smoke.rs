@@ -18,8 +18,7 @@ use std::sync::OnceLock;
 /// A última cena: 6..=`input_map::ULTIMA` = o Input Map, depois Top-Down, Projectile, Ray, Motion Input (27, 28).
 pub const CENAS: u32 = 28;
 const _: () = assert!(CENAS == heroi::CENA && CENAS == motion_input::CENA + 1);
-const _: () = assert!(motion_input::CENA == ray::CENA + 1);
-const _: () = assert!(ray::CENA == projectile::CENA + 1);
+const _: () = assert!(motion_input::CENA == ray::CENA + 1 && ray::CENA == projectile::CENA + 1);
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 const _: () = assert!(projectile::CENA == topdown::CENA + 1);
 pub use ph2d_input_map_scene as input_map;
@@ -54,8 +53,10 @@ pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
 
 /// Arruma as gavetas do Inspector da cena `nivel` e pede o cartão dela à vista sobre `heroi`.
 pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
-    if nivel == motion_input::CENA || nivel == heroi::CENA {
+    if nivel == motion_input::CENA {
         motion_input::arruma_o_inspector(store, cartao, heroi);
+    } else if nivel == heroi::CENA {
+        heroi::arruma_o_inspector(store, cartao, heroi);
     } else if nivel == ray::CENA {
         ray::arruma_o_inspector(store, cartao, heroi);
     } else if nivel == projectile::CENA {
@@ -624,7 +625,6 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
             .unwrap_or_else(|e| panic!("Camera: {e}")),
     );
     arruma(sim, camara, "Camera", [-8.0, 2.0], [1.0, 1.0]);
-    // Mais perto que os 10 m de fábrica: o boneco desenhado lê-se (~110 px de altura numa janela de 900).
     if let Some(mut c) = sim.world_mut().get_mut::<GameCamera>(camara) {
         c.height_world = 8.0;
     }

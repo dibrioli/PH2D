@@ -76,9 +76,52 @@ fn enxame(g: &mut Graph) -> Vec<NodeId> {
     nos
 }
 
+/// Os nomes de `PH2D_GAME_SMOKE_FOTO` da cena 28 que pedem o objecto «Motion» (declarados em
+/// `ph2d_physics_scene::cena_heroi_sinal::NOMES`): o 1.º o selecciona, o 2.º também o põe em Edit.
+pub const FOTOS_DO_HEROI: [&str; 2] = ["heroi_motion_sent", "heroi_send_signal"];
+static FOTO_FEITA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// A foto da cena 28 sobre o objecto «Motion» que a adopção cria na abertura: espera-o (e o «Hero», que o
+/// smoke do jogo selecciona ao montar) e selecciona-o uma vez.
+fn foto_do_heroi(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    let Some(i) = std::env::var("PH2D_GAME_SMOKE_FOTO")
+        .ok()
+        .and_then(|f| FOTOS_DO_HEROI.iter().position(|n| *n == f.trim()))
+    else {
+        return;
+    };
+    let nome = ph2d_i18n::tr("object_add.motion");
+    let w = cx.sim.world_mut();
+    let mut q = w.query::<(ph2d_ecs::Entity, &Name, Option<&MotionGenerator>)>();
+    let mut achado = |n: &str, motion: bool| {
+        q.iter(w)
+            .find(|(_, m, g)| m.0 == n && (!motion || g.is_some()))
+            .map(|(e, ..)| e)
+    };
+    let (Some(motion), Some(_)) = (achado(&nome, true), achado("Hero", false)) else {
+        return;
+    };
+    if FOTO_FEITA.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    if i == 1 {
+        cx.motion.objeto.editing = w.get::<StableId>(motion).map(|s| s.0);
+        let _ = cx
+            .tools
+            .set_active(&ph2d_editor_core::ToolId::new("motion"));
+        cx.motion.open_library = Some(crate::motion_state::LibraryOpen::default());
+    }
+    if let Some(hero) = cx.hero.as_mut() {
+        hero.gizmo.replace_selection(Some(motion.to_bits()));
+        hero.store
+            .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_MOTION_SECTION, false);
+    }
+}
+
 /// Ver o cabeçalho do módulo.
 pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     super::smoke_particula::cena_12(cx);
+    foto_do_heroi(cx);
     // A cena da ordem (`PH2D_ORDEM_SMOKE`, GEF 19 — `ph2d_app_game::ordem_smoke`) usa o `=1` daqui.
     let ordem = || std::env::var_os("PH2D_ORDEM_SMOKE").map(|_| "1".to_owned());
     let Some(nivel) = std::env::var("PH2D_MOTION_OBJETO_SMOKE")

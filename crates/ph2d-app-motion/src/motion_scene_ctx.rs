@@ -54,22 +54,11 @@ pub struct MotionSceneCtx<'a> {
     /// isto, não o `FlipState` inteiro, que é da família Flip: uma família não depende de outra
     /// (auditoria de arquitectura A1, 2026-09-12).
     pub flip_entities: &'a ph2d_flip_entities::entities::FlipEntityMap,
-    /// ⚠️⚠️ **`&mut`, e a 1.ª redacção deste ficheiro dizia o contrário.** Eu escrevi *«só
-    /// LEITURA: o relógio é do transporte, e uma cena que o escrevesse lutaria com ele»* — e a
-    /// cena `=7` do `motion_object_smoke` chama `playhead.play()` **de propósito**, com a razão
-    /// escrita ao lado: *«um offset de tempo só é visível numa animação que CORRE; uma cena
-    /// parada mostraria dois desenhos diferentes e não diria se a diferença é de FASE»*.
-    /// *Uma cena de smoke não é um observador — ela ENCENA, e encenar inclui carregar no play.*
+    /// `&mut`: uma cena de smoke ENCENA, e encenar inclui carregar no play (a `=7` do `motion_object_smoke`).
     pub playhead: &'a mut Playhead,
     /// Para as cenas que AUTORAM uma track — a mesma porta que a física abriu.
     pub timeline: &'a mut ph2d_timeline::TimelineState,
-    /// ⚠️ **O 11.º campo, e ele não estava na 1.ª redacção deste ficheiro.** A régua do fecho
-    /// listou-o (`.hero_screen 1 f`) e eu li a linha como *«uma coisa que o `AppGfx` segura»*
-    /// em vez de *«uma coisa que uma CENA toca»* — foi o compilador que o apanhou, em dois
-    /// sítios do `motion_path_smoke`, os dois a fazer `hero.gizmo.replace_selection(..)`.
-    /// *Uma tabela de campos ordenada por frequência põe o caso raro no fim, e o fim é onde
-    /// se deixa de ler.*
-    ///
+    /// A selecção que uma cena põe (`hero.gizmo.replace_selection`).
     /// `Option` porque um smoke pode correr antes de haver ecrã.
     pub hero: Option<&'a mut ph2d_editor_core::HeroScreen>,
 }

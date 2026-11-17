@@ -1,27 +1,27 @@
 //! **Os nomes do smoke do jogo**: cada leitor de `PH2D_GAME_SMOKE_FOTO` declara os `NOMES`; o arranque recusa ALTO o resto.
+use ph2d_physics_scene::cena_heroi_sinal as heroi;
 use ph2d_physics_scene::cena_motion_input as mi;
-use ph2d_physics_scene::{cena_projectile, cena_ray, cena_topdown, fotos_dos_cartoes};
+use ph2d_physics_scene::{
+    cena_projectile as proj, cena_ray, cena_topdown as td, fotos_dos_cartoes,
+};
 
 /// Um leitor: os nomes que declara (separados por espaço) e a porta que diz se aceita um nome.
 pub type Leitor = (&'static str, fn(&str) -> bool);
 
-/// Os sete leitores de `PH2D_GAME_SMOKE_FOTO`: a lista de cada um e a sua porta.
-pub const LEITORES: [Leitor; 7] = [
+/// Os oito leitores de `PH2D_GAME_SMOKE_FOTO`: a lista de cada um e a sua porta.
+pub const LEITORES: [Leitor; 8] = [
     (fotos_dos_cartoes::NOMES, |n| {
         fotos_dos_cartoes::caso(n).is_some()
     }),
     (crate::foto::NOMES, |n| crate::foto::foto_de(n).is_some()),
-    (cena_topdown::NOMES, |n| {
-        cena_topdown::foto(Some(n)).is_some()
-    }),
+    (td::NOMES, |n| td::foto(Some(n)).is_some()),
     (ph2d_sprite_anim_scene::NOMES, |n| {
         ph2d_sprite_anim_scene::foto_de(n).is_some()
     }),
-    (cena_projectile::NOMES, |n| {
-        cena_projectile::foto(Some(n)).is_some()
-    }),
+    (proj::NOMES, |n| proj::foto(Some(n)).is_some()),
     (cena_ray::NOMES, |n| cena_ray::foto(Some(n)).is_some()),
     (mi::NOMES, |n| mi::foto(Some(n)).is_some()),
+    (heroi::NOMES, |n| heroi::foto(Some(n)).is_some()),
 ];
 
 /// O nome de foto que algum leitor aceita.

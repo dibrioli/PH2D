@@ -7,6 +7,7 @@ use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::motion_input_edits::{
     InspectorMotionInputInfo, MotionInputAoVivo as V, MotionInputFieldEdit as E,
     MotionInputOutro as O, SOURCE_COLOR, SOURCE_DAMAGE, SOURCE_HEALTH, SOURCE_VALUE,
+    SOURCE_VELOCITY,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -307,4 +308,16 @@ fn em_play_a_vida_moldada_e_o_que_manda_nao_o_que_le() {
     let f = frases(vida);
     assert!(f.contains(&"Sends 0.75".to_string()), "{f:?}");
     assert!(!f.iter().any(|s| s.starts_with("Reads Health")), "{f:?}");
+}
+
+/// O par lido: o zero sem sinal («−0.00» não existe) e o menos tipográfico.
+#[test]
+fn o_par_lido_nao_mostra_menos_zero() {
+    let mut v = info(SOURCE_VELOCITY);
+    v.ao_vivo = Some(V::Par([-0.0, -1.0]));
+    let f = frases(v);
+    assert!(
+        f.contains(&"Reads Velocity here: (0.00, \u{2212}1.00)".to_string()),
+        "{f:?}"
+    );
 }

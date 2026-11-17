@@ -89,14 +89,18 @@ fn nomes_do_grafo(
     )
 }
 
-/// O número de uma leitura, com duas casas e o menos tipográfico (U+2212).
+/// O número de uma leitura, com duas casas e o menos tipográfico (U+2212); `-0.00` lê-se `0.00`.
 fn numero(v: f32) -> String {
-    format!("{v:.2}").replace('-', "\u{2212}")
+    ph2d_editor_core::widget::format_number_com_casas(f64::from(v), Some(2))
+        .replace('-', "\u{2212}")
 }
 
 /// O par de uma leitura: «(3.20, −1.00)».
 fn par(p: [f32; 2]) -> String {
-    format!("({}, {})", numero(p[0]), numero(p[1]))
+    tr_with(
+        "panel.inspector.motion_input.pair",
+        &[("x", &numero(p[0])), ("y", &numero(p[1]))],
+    )
 }
 
 fn valor_na_frase(v: MotionInputAoVivo) -> String {

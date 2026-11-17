@@ -129,7 +129,8 @@ fn nome_da_curva(curve: &str) -> Option<&'static str> {
 
 fn numero_curto(v: f32) -> String {
     let s = format!("{v:.2}");
-    s.trim_end_matches('0').trim_end_matches('.').to_string()
+    let s = s.trim_end_matches('0').trim_end_matches('.');
+    ph2d_editor_core::widget::zero_sem_sinal(s).replace('-', "\u{2212}")
 }
 
 /// ⭐ **O resumo do grupo fechado**: «Off» de fábrica; senão a faixa, a curva (se não é a Linear) e o Smooth.
@@ -137,10 +138,12 @@ fn numero_curto(v: f32) -> String {
 pub(crate) fn resumo(i: &InspectorMotionInputInfo) -> String {
     let mut partes: Vec<String> = Vec::new();
     if i.remap {
-        partes.push(format!(
-            "{}\u{2013}{} \u{2192} 0\u{2013}1",
-            numero_curto(i.remap_from),
-            numero_curto(i.remap_to)
+        partes.push(tr_with(
+            "panel.inspector.motion_input.remap_summary",
+            &[
+                ("a", &numero_curto(i.remap_from)),
+                ("b", &numero_curto(i.remap_to)),
+            ],
         ));
         match nome_da_curva(&i.curve) {
             Some(_) if i.curve.trim().is_empty() => {}
@@ -329,5 +332,12 @@ mod tests {
         assert!(resumo(&i).contains("Custom curve"));
         i.remap = false;
         assert_eq!(resumo(&i), "Smooth 0.3 s", "sem Remap a curva não decide");
+        // Um zero não tem sinal; o menos é o tipográfico.
+        i.remap = true;
+        i.smooth = 0.0;
+        i.curve = String::new();
+        i.remap_from = -0.001;
+        i.remap_to = -5.0;
+        assert_eq!(resumo(&i), "0\u{2013}\u{2212}5 \u{2192} 0\u{2013}1");
     }
 }

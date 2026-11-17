@@ -83,6 +83,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.reads_move" => "Reads {a} from the Input Map",
         "panel.inspector.motion_input.reads_pair" => "Reads {c} here: {v}",
         "panel.inspector.motion_input.pair_field" => "{c}  (x, y)",
+        "panel.inspector.motion_input.pair" => "({x}, {y})",
+        "panel.inspector.motion_input.remap_summary" => "{a}\u{2013}{b} \u{2192} 0\u{2013}1",
         "panel.inspector.motion_input.from_pick_tip" => {
             "Click an object on the stage or in the Hierarchy to read it."
         }

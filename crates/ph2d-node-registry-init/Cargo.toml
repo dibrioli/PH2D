@@ -114,6 +114,7 @@ ph2d-node-rig-ik-2bone = { path = "../ph2d-node-rig-ik-2bone" }
 ph2d-node-rig-rubber-hose = { path = "../ph2d-node-rig-rubber-hose" }
 ph2d-node-rig-skeleton = { path = "../ph2d-node-rig-skeleton" }
 ph2d-node-rig-skin-deformer = { path = "../ph2d-node-rig-skin-deformer" }
+ph2d-node-send-signal = { path = "../ph2d-node-send-signal" }
 ph2d-node-sim-collide = { path = "../ph2d-node-sim-collide" }
 ph2d-node-sim-lifetime = { path = "../ph2d-node-sim-lifetime" }
 ph2d-node-sim-spawn = { path = "../ph2d-node-sim-spawn" }
@@ -132,7 +133,6 @@ ph2d-node-value-follow = { path = "../ph2d-node-value-follow" }
 ph2d-node-value-gain = { path = "../ph2d-node-value-gain" }
 ph2d-node-value-input = { path = "../ph2d-node-value-input" }
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
-ph2d-node-send-signal = { path = "../ph2d-node-send-signal" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }

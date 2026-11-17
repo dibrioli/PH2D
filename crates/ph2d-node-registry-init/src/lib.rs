@@ -114,6 +114,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_rig_rubber_hose::register(reg)?;
     ph2d_node_rig_skeleton::register(reg)?;
     ph2d_node_rig_skin_deformer::register(reg)?;
+    ph2d_node_send_signal::register(reg)?;
     ph2d_node_sim_collide::register(reg)?;
     ph2d_node_sim_lifetime::register(reg)?;
     ph2d_node_sim_spawn::register(reg)?;
@@ -131,7 +132,6 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_value_follow::register(reg)?;
     ph2d_node_value_gain::register(reg)?;
     ph2d_node_value_input::register(reg)?;
-    ph2d_node_send_signal::register(reg)?;
     ph2d_node_value_instance_field::register(reg)?;
     ph2d_node_value_lfo::register(reg)?;
     ph2d_node_value_map_range::register(reg)?;

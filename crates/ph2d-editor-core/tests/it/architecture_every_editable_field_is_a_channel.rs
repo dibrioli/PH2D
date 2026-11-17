@@ -423,6 +423,14 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/motion_input_linhas.rs::lista",
+        NaoAnimavel,
+        &[],
+        "a escolha da AÇÃO e da PROPRIEDADE do Motion Input é fiação por identidade (qual entrada move qual canal), \
+         como a tag do alvo: o valor que anda no tempo é o canal ligado, não a ligação (D17)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/anim_rules.rs::rule_rows",
         NaoAnimavel,
         &[],

@@ -293,5 +293,18 @@ fn o_cartao_diz_o_que_chega_ao_grafo() {
     let mut dano = info(SOURCE_DAMAGE);
     dano.a_correr = true;
     dano.ao_vivo = Some(V::Disparos(3));
-    assert!(frases(dano).contains(&"Fired 3 times".to_string()));
+    assert!(frases(dano.clone()).contains(&"Fired 3 times".to_string()));
+    dano.ao_vivo = Some(V::Disparos(1));
+    assert!(frases(dano).contains(&"Fired once".to_string()));
+}
+
+/// Em Play a vida chega ao grafo já moldada (Remap/curva/Smooth): «Reads Health here» mentiria.
+#[test]
+fn em_play_a_vida_moldada_e_o_que_manda_nao_o_que_le() {
+    let mut vida = info(SOURCE_HEALTH);
+    vida.ao_vivo = Some(V::Numero(0.75));
+    vida.a_correr = true;
+    let f = frases(vida);
+    assert!(f.contains(&"Sends 0.75".to_string()), "{f:?}");
+    assert!(!f.iter().any(|s| s.starts_with("Reads Health")), "{f:?}");
 }

@@ -25,6 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.motion_input.sends" => "Sends {v}",
         "panel.inspector.motion_input.a_color" => "this color",
         "panel.inspector.motion_input.fired" => "Fired {n} times",
+        "panel.inspector.motion_input.fired_once" => "Fired once",
         // O cartão do objecto Motion (MI-8): um nó «Send signal» por linha, nesta corrida.
         "panel.inspector.motion.sent" => "Sent {s} {n} times",
         "panel.inspector.motion.sent_once" => "Sent {s} once",
@@ -87,11 +88,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.motion_input.action_pick" => "Pick an action",
         "panel.inspector.motion_input.action_tip" => {
-            "The Input Map action this sends: 1 while held, 0 when let go."
+            "The Input Map action this sends: 0 when let go, up to 1 when fully pressed (a stick sends the part in between)."
         }
         "panel.inspector.motion_input.property_pick" => "Pick a field",
         "panel.inspector.motion_input.property_tip" => {
-            "The number field this reads from the From object, every frame."
+            "The field this reads from the From object, every frame: a number, or a pair like Position."
         }
         "panel.inspector.motion_input.shape" => "Shape",
         "panel.inspector.motion_input.shape_tip" => {
@@ -99,7 +100,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.motion_input.shape_off" => "Off",
         "panel.inspector.motion_input.remap_tip" => {
-            "Map From to 0 and To to 1. Numbers outside stay at 0 or 1."
+            "Map Remap from to 0 and Remap to to 1. Numbers outside stay at 0 or 1."
         }
         "panel.inspector.motion_input.remap_range_tip" => {
             "The number that becomes 0, and the one that becomes 1."

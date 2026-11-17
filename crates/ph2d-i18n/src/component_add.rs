@@ -34,7 +34,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "It travels along a drawn path: a lift, a moving platform, a guard on patrol."
         }
         "component_add.tip.motion_input" => {
-            "Sends a number from the game (health, damage, or a value you set) into a Motion graph, so the effect reacts to it."
+            "Adds a Motion Input object under this one. It sends a number from the game (health, speed, velocity, a key or stick move) into a Motion graph, so the effect reacts to it."
         }
         // Find a path
         "component_add.tip.nav_agent" => "Walks to a goal on its own, going around walls.",

@@ -114,7 +114,8 @@ fn frases_ao_vivo(i: &InspectorMotionInputInfo) -> Vec<String> {
     use ph2d_editor_core::motion_input_edits::{SOURCE_DAMAGE, SOURCE_HEALTH};
     let mut f = Vec::new();
     match (i.source, i.ao_vivo) {
-        (SOURCE_HEALTH, Some(MotionInputAoVivo::Numero(v))) => f.push(tr_with(
+        // Parada, a vida crua; em Play já vem moldada (Remap/curva/Smooth) e cai em «Sends».
+        (SOURCE_HEALTH, Some(MotionInputAoVivo::Numero(v))) if !i.a_correr => f.push(tr_with(
             "panel.inspector.motion_input.reads_health",
             &[("v", &numero(v))],
         )),
@@ -145,6 +146,9 @@ fn frases_ao_vivo(i: &InspectorMotionInputInfo) -> Vec<String> {
         }
         (SOURCE_DAMAGE, Some(MotionInputAoVivo::Disparos(0))) => {
             f.push(tr("panel.inspector.motion_input.not_fired").to_string());
+        }
+        (SOURCE_DAMAGE, Some(MotionInputAoVivo::Disparos(1))) => {
+            f.push(tr("panel.inspector.motion_input.fired_once").to_string());
         }
         (SOURCE_DAMAGE, Some(MotionInputAoVivo::Disparos(n))) => f.push(tr_with(
             "panel.inspector.motion_input.fired",
@@ -411,6 +415,23 @@ pub(crate) fn paint_motion_input_section(
             seccao,
         );
     }
+    cur_y = rodape(scene, text_system, theme, hit_index, store, x, w, cur_y, i);
+    fold.finish(store, scene, hit_index, cur_y)
+}
+
+/// O pé do cartão: o que o Move lê, a queixa, as frases ao vivo e os nomes que não couberam.
+#[allow(clippy::too_many_arguments)]
+fn rodape(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut cur_y: f32,
+    i: &InspectorMotionInputInfo,
+) -> f32 {
     if i.source == SOURCE_MOVE && !i.acoes_de_mover().is_empty() {
         let a = i.acoes_de_mover().join(" \u{b7} ");
         cur_y = super::rows::aviso(
@@ -456,5 +477,5 @@ pub(crate) fn paint_motion_input_section(
             ColorToken::Text3,
         );
     }
-    fold.finish(store, scene, hit_index, cur_y)
+    cur_y
 }

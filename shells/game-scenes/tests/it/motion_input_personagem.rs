@@ -218,14 +218,14 @@ fn move_sends_the_2d_action_and_remap_keeps_its_direction() {
     };
     quadro(&mut sim, &accoes);
     assert_eq!(par(&sim, "andar"), Some([1.0, 1.0]));
-    (mi.remap, mi.remap_from, mi.remap_to) = (true, 0.0, 2.0 * 2f32.sqrt());
+    (mi.remap, mi.remap_from, mi.remap_to) = (true, 1.0, 3.0);
     sim.world_mut().entity_mut(e).insert(mi);
     quadro(&mut sim, &accoes);
     let v = par(&sim, "andar").expect("par");
-    let k = 0.5 / 2f32.sqrt();
+    let k = ((2f32.sqrt() - 1.0) / 2.0) / 2f32.sqrt();
     assert!(
         (v[0] - k).abs() < 1e-6 && (v[1] - k).abs() < 1e-6,
-        "tamanho ½, a 45°: {v:?}"
+        "o tamanho remapeado, a 45°: {v:?}"
     );
     quadro(&mut sim, &BTreeMap::new());
     assert_eq!(par(&sim, "andar"), None, "sem move_* a fonte não existe");
@@ -259,4 +259,52 @@ fn a_property_of_a_two_lane_field_sends_the_pair() {
     frame(&mut sim, &SignalOutbox::new(), &f);
     assert_eq!(par(&sim, "par"), Some(velocity), "o par inteiro");
     assert_eq!(numero(&sim, "par"), None, "um par não vira número");
+}
+
+/// ⭐ MI-5: o Smooth de um par é POR COMPONENTE (cada um parte do seu valor anterior) e o estado de
+/// cada filho Motion Input é o dele, mesmo com o pai em comum.
+#[test]
+fn the_pair_smooths_per_component_and_each_child_keeps_its_own_state() {
+    use ph2d_app_components::motion_input_fonte::forma;
+    let mut m = MotionInput::default();
+    m.smooth = 1.0;
+    let r = forma(
+        &m,
+        Some(Valor::Vetor([0.0, 10.0])),
+        Valor::Vetor([10.0, 0.0]),
+        1.0,
+    );
+    assert_eq!(
+        r,
+        Valor::Vetor([5.0, 5.0]),
+        "meia-vida de 1 s, 1 s de passo"
+    );
+
+    let mut sim = SimWorld::default();
+    let pai = sim.world_mut().spawn(Transform::default()).id();
+    let filho = |sim: &mut SimWorld, nome: &str, v: f32| {
+        let mi = MotionInput {
+            name: nome.into(),
+            value: v,
+            smooth: 1.0,
+            ..MotionInput::default()
+        };
+        sim.world_mut().spawn((mi, ChildOf(pai))).id()
+    };
+    let (a, b) = (filho(&mut sim, "a", 10.0), filho(&mut sim, "b", 0.0));
+    let accoes = BTreeMap::new();
+    let f = Fontes {
+        dt: 1.0,
+        physics: None,
+        accoes: &accoes,
+        registry: None,
+    };
+    frame(&mut sim, &SignalOutbox::new(), &f);
+    sim.world_mut().get_mut::<MotionInput>(a).unwrap().value = 0.0;
+    sim.world_mut().get_mut::<MotionInput>(b).unwrap().value = 10.0;
+    frame(&mut sim, &SignalOutbox::new(), &f);
+    assert_eq!(
+        (numero(&sim, "a"), numero(&sim, "b")),
+        (Some(5.0), Some(5.0))
+    );
 }

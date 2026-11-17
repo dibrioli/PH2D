@@ -246,9 +246,10 @@ fn o_ray_sensor_renomeia_e_abre_a_aba_pelos_botoes_do_collider() {
     );
     let rename = y(INSP_RAY_LAYER_RENAME);
     assert_eq!(rename, y(INSP_RAY_EDIT_MATRIX), "os dois na mesma linha");
+    // Grupo «Layers» (dono 15/11, 07_auditoria_arrumacao): Layer, logo o Sees, depois os botões.
     assert!(
-        y(INSP_RAY_LAYER) < rename && rename < y(INSP_RAY_SEES[0]),
-        "abaixo de Layer, acima de «Sees»"
+        y(INSP_RAY_LAYER) < y(INSP_RAY_SEES[0]) && y(INSP_RAY_SEES[0]) < rename,
+        "abaixo de Layer e de «Sees»"
     );
     let aba = clica(
         &mut host,

@@ -350,9 +350,9 @@ fn pedida() -> Option<String> {
 }
 
 /// Os ids do cartão Motion Input (os de `ph2d-panel-inspector::ids::inspector_motion_input`, pelo mesmo hash).
-pub const FOLD_SHAPE: NodeId = ph2d_tool_registry::hash_node_id("insp_mi_fold_shape");
-pub const LISTA_ACCAO: NodeId = ph2d_tool_registry::hash_node_id("insp_mi_action");
-pub const LISTA_CAMPO: NodeId = ph2d_tool_registry::hash_node_id("insp_mi_property");
+pub const FOLD_SHAPE: NodeId = ph2d_editor_core::ids::INSP_MI_FOLD_SHAPE;
+pub const LISTA_ACCAO: NodeId = ph2d_editor_core::ids::INSP_MI_ACTION;
+pub const LISTA_CAMPO: NodeId = ph2d_editor_core::ids::INSP_MI_PROPERTY;
 
 /// As gavetas da [`Foto`]: `(id, fechada)`; o grupo Shape abre na foto da velocidade.
 #[must_use]

@@ -99,11 +99,9 @@ pub fn frame(
         if smoke::level() == Some(10) {
             hero.panel_visibility.insert("inspector", true);
             hero.panel_visibility.insert("physics", false);
-            // A dobra «Joint» do cartão Body (o mesmo slug do `ids::INSP_PHYS_FOLD_JOINT` do Inspector).
-            hero.store.set_collapsed(
-                ph2d_editor_core::registry::hash_node_id("insp_phys_fold_joint"),
-                false,
-            );
+            // A dobra «Joint» do cartão Body.
+            hero.store
+                .set_collapsed(ph2d_editor_core::ids::INSP_PHYS_FOLD_JOINT, false);
         }
     }
 }

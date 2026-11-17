@@ -56,12 +56,10 @@ pub const INSP_MI_ADD_HEALTH: NodeId = hash_node_id("insp_mi_add_health");
 pub const INSP_MI_FROM: NodeId = hash_node_id("insp_mi_from");
 /// O conta-gotas do From (a porta `ph2d-app-components::conta_gotas`).
 pub const INSP_MI_FROM_PICK: NodeId = hash_node_id("insp_mi_from_pick");
-/// A lista da acção do Input Map (fonte Action); as opções são o [`super::INSP_MI_ACTION_OPT`].
-pub const INSP_MI_ACTION: NodeId = hash_node_id("insp_mi_action");
-/// A lista do campo lido (fonte Property); as opções são o [`super::INSP_MI_PROPERTY_OPT`].
-pub const INSP_MI_PROPERTY: NodeId = hash_node_id("insp_mi_property");
-/// O grupo dobrável «Shape» (Remap, Curve, Smooth) — só com uma fonte que publica número.
-pub const INSP_MI_FOLD_SHAPE: NodeId = hash_node_id("insp_mi_fold_shape");
+/// A lista da acção do Input Map (fonte Action; opções [`super::INSP_MI_ACTION_OPT`]), a do campo lido
+/// (fonte Property; [`super::INSP_MI_PROPERTY_OPT`]) e o grupo «Shape» (Remap, Curve, Smooth): na fundação,
+/// que a cena de smoke também vê.
+pub use ph2d_editor_core::ids::{INSP_MI_ACTION, INSP_MI_FOLD_SHAPE, INSP_MI_PROPERTY};
 /// A caixa «Remap».
 pub const INSP_MI_REMAP: NodeId = hash_node_id("insp_mi_remap");
 /// O número que vira `0` e o que vira `1` (a mesma linha).

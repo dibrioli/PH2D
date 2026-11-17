@@ -44,6 +44,13 @@ pub const INSP_RAY_FOLD_SIGNALS: NodeId = hash_node_id("insp_ray_fold_signals");
 pub const INSP_RAY_FOLD_FILTER: NodeId = hash_node_id("insp_ray_fold_filter");
 /// O grupo «Layers» do Ray Sensor (Layer + Sees juntos, dono 15/11) — nasce ABERTO.
 pub const INSP_RAY_FOLD_LAYERS: NodeId = hash_node_id("insp_ray_fold_layers");
+/// O cartão Motion Input (GEF 08): a lista da acção, a do campo lido e o grupo «Shape» — aqui porque a
+/// cena de smoke da `ph2d-physics-scene` os abre para a foto, e o painel os pinta.
+pub const INSP_MI_ACTION: NodeId = hash_node_id("insp_mi_action");
+pub const INSP_MI_PROPERTY: NodeId = hash_node_id("insp_mi_property");
+pub const INSP_MI_FOLD_SHAPE: NodeId = hash_node_id("insp_mi_fold_shape");
+/// A dobra «Joint» do cartão Body — aqui porque a `ph2d-app-joint-editor` a abre na cena 10.
+pub const INSP_PHYS_FOLD_JOINT: NodeId = hash_node_id("insp_phys_fold_joint");
 /// O cabeçalho dobrável da secção STATE MACHINE (TOP-20 #15).
 pub const INSP_LIVE_SM_SECTION: NodeId = hash_node_id("insp_live_sm_section");
 /// O cabeçalho dobrável da secção SCRIPT (TOP-20 #16).

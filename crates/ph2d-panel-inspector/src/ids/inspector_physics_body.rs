@@ -96,7 +96,7 @@ pub const INSP_PHYS_REMOVED_UNDO: NodeId = hash_node_id("insp_phys_removed_undo"
 /// As dobras com nome dos cartões Body e Shape.
 pub const INSP_PHYS_FOLD_START: NodeId = hash_node_id("insp_phys_fold_start");
 pub const INSP_PHYS_FOLD_ADVANCED: NodeId = hash_node_id("insp_phys_fold_advanced");
-pub const INSP_PHYS_FOLD_JOINT: NodeId = hash_node_id("insp_phys_fold_joint");
+pub use ph2d_editor_core::ids::INSP_PHYS_FOLD_JOINT;
 pub const INSP_PHYS_FOLD_BAKE: NodeId = hash_node_id("insp_phys_fold_bake");
 pub const INSP_PHYS_FOLD_OFFSET: NodeId = hash_node_id("insp_phys_fold_offset");
 pub const INSP_PHYS_FOLD_MATERIAL: NodeId = hash_node_id("insp_phys_fold_material");

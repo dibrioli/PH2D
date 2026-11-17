@@ -78,7 +78,7 @@ controle; checkbox em moldura; rótulo que não cabe = «…»; catracas de LOC 
   ou par, no mesmo tipo que `motion.set` aceita. Espelho num recurso que o `World` do Luau vê.
 - **MI-5 par (x, y)**: `Valor::Vetor([f32;2])` em `MotionInputs`; o `value.input` ganha saídas `xy` (Vec2), `x`, `y`
   NO FIM do manifesto (portas existentes não mudam de índice); `out` = tamanho do vetor. Origens novas no FIM de
-  `MotionSource`: **Velocity** (velocidade linear do corpo do pai) e **Move** (ação 2D do Input Map); Property de
+  `MotionSource`: **Velocity** (velocidade linear do corpo do pai) e **Move** (o par `(move_right − move_left, move_up − move_down)` das quatro ações do Input Map — não há ação 2D); Property de
   campo com 2 faixas manda o par. Remap e curva agem no TAMANHO (a direção fica); Smooth por componente.
   `motion.set` aceita o par (no idioma de vetor que o `ph2d.d.luau` já usa).
 - **MI-8 nó «Send signal»**: drop-crate `ph2d-node-*` nova (não muda NodeOp/OpResolver/NodeManifest — gate

@@ -397,3 +397,30 @@ fn a_named_request_attaches_that_component_without_opening_the_palette() {
     );
     assert!(recibo.is_some(), "o recibo diz o que veio junto");
 }
+
+/// ⭐ D5: o pick do `Motion Input` cria o filho ANTES de anexar; se o registo não tem o tipo, o filho
+/// sai e a seleção não salta para um objeto vazio.
+///
+/// Mutação que deve sangrar: não chamar o `desfaz_se_novo` no erro do `attach_picked`.
+#[test]
+fn motion_input_pick_without_the_type_in_the_registry_leaves_no_empty_child() {
+    let mut sim = SimWorld::new();
+    let bits = vazio(&mut sim);
+    let reg = ph2d_ecs::scene::ComponentRegistry::new();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let pick = (bits, "ph2d::ecs::MotionInput".to_string());
+    let recibo =
+        crate::component_attach::attach_picked(Some(&pick), &mut sim, &reg, &[], &mut toasts);
+    assert!(recibo.is_none(), "a anexação falhou");
+    let filhos = sim
+        .world_mut()
+        .query::<&ph2d_ecs::ChildOf>()
+        .iter(sim.world())
+        .count();
+    assert_eq!(filhos, 0, "nenhum filho vazio");
+    assert_eq!(
+        crate::motion_input_filho::toma_o_novo(),
+        None,
+        "a seleção fica"
+    );
+}

@@ -15,10 +15,7 @@ use ph2d_editor_core::{HeroScreen, Toast};
 /// ⚠️ A ordem importa e é a de [`ObjectKind::ALL`](ph2d_component_desc::ObjectKind::ALL): a
 /// imagem pintada tem `Sprite` **e** `PaintedDoc`, e é uma IMAGEM (pintar é um modo dela, escolha
 /// 1 do dono no spec/06). O primeiro que casar manda.
-///
-/// ⛔ Até 03/10 esta função não conhecia todos os marcadores: um desenho Flip e uma imagem
-/// pintada sem `Sprite` liam-se como VAZIO. O gate `every_marker_derives_its_kind` cobre todos
-/// contra o [`ObjectKind::marker`].
+/// Gate `every_marker_derives_its_kind`.
 #[must_use]
 pub fn kind_of(
     world: &ph2d_ecs::World,
@@ -63,10 +60,7 @@ pub fn open_palette_if_asked(
     // `Some(nome)` = a saída de um aviso: o pick desse componente, sem abrir a paleta (o mesmo
     // `route_pick` → `attach_picked` anexa, com o recibo e o Undo).
     asked_for: Option<(u64, Option<&'static str>)>,
-    // ⚠️ **Quem pediu, LEMBRADO** — e não re-derivado da seleção no momento do pick. O modal tem
-    // scrim, então hoje a seleção não pode mudar entre abrir e escolher; mas *"não pode mudar"* é
-    // um invariante que ninguém impõe, e o precedente da casa (a biblioteca do Motion guarda o
-    // `library_open`) é guardar o contexto. Um dia em que o scrim mude, isto continua certo.
+    // ⚠️ Quem pediu, LEMBRADO — nunca re-derivado da seleção no momento do pick.
     target: &mut Option<u64>,
     // Quem já tem Animação na Timeline (a paleta não volta a oferecê-la).
     has_animation: &dyn Fn(u64) -> bool,
@@ -81,9 +75,7 @@ pub fn open_palette_if_asked(
     if world.get_entity(entity).is_err() {
         return;
     }
-    // ⚠️ **A paleta abre com o *Show all* DESLIGADO**, sempre: o inaplicável é contexto, e um
-    // artista que a abre para pôr um componente quer ver o que serve. O estado da caixa não
-    // sobrevive ao fecho de propósito.
+    // ⚠️ A paleta abre sempre com o *Show all* DESLIGADO.
     if let Some(name) = component {
         hero.store
             .set_command_pick(crate::component_palette::item_id(name));
@@ -101,9 +93,7 @@ pub fn open_palette_if_asked(
 
 /// O modelo da paleta para `bits`, com a caixa no estado `show_all`.
 ///
-/// ⚠️ **Uma porta só**, chamada ao abrir **e** ao virar a caixa: duas construções do modelo seriam
-/// duas respostas a *"o que este objeto pode receber?"*, e a que o artista vê depois de clicar na
-/// caixa seria a que envelhece.
+/// ⚠️ Uma porta só, chamada ao abrir **e** ao virar a caixa.
 fn model_for(
     sim: &SimWorld,
     registry: &ComponentRegistry,
@@ -115,9 +105,7 @@ fn model_for(
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let kind = kind_of(world, entity);
     let present = present_on(world, entity, registry);
-    // ⚠️ **O que o registo sabe CONSTRUIR** — sem `insert_default` a paleta não tem valor inicial, e
-    // um item que aceita o clique e não anexa nada é o defeito que o `+` existe para não ter. É o
-    // registo que responde, não uma lista à mão.
+    // ⚠️ O que o registo sabe CONSTRUIR (`insert_default`), nunca uma lista à mão.
     let can_build = |name: &str| {
         registry
             .get_by_id(ph2d_ecs::scene::stable_type_id(name))
@@ -143,12 +131,8 @@ pub fn take_animation_pick(hero: &mut HeroScreen, target: &mut Option<u64>) -> O
 
 /// ⭐ **A caixa *Show all* foi virada ⇒ reconstrói o modelo** (ADR-0166 / F3).
 ///
-/// ⚠️ **O widget vira o estado dele e AVISA; quem reconstrói é quem abriu** — o `command_palette` é
-/// genérico e não sabe o que *"mostrar tudo"* significa, exatamente como não sabe o que um item
-/// significa. É a mesma costura do `command_pick`, um controlo mais acima.
-///
-/// ⚠️ **A busca sobrevive** (`set_command_palette_model`, e não `open_command_palette`): ligar a
-/// caixa depois de escrever «rigid» não pode apagar o que foi escrito.
+/// ⚠️ O widget vira o estado dele e AVISA; quem reconstrói é quem abriu. A busca sobrevive
+/// (`set_command_palette_model`, e não `open_command_palette`).
 pub fn refresh_palette_on_toggle(
     hero: &mut HeroScreen,
     sim: &SimWorld,
@@ -174,10 +158,7 @@ pub fn refresh_palette_on_toggle(
 
 /// **Drena o pick da paleta** e devolve `(entidade, nome canónico)`.
 ///
-/// ⚠️ **O dreno é CONDICIONAL** (`take_command_pick_if`), e é o que torna a ordem dos drenos
-/// irrelevante: este canal já tinha DOIS consumidores (a biblioteca do Motion e o `Ctrl+K`
-/// global), e um `take` incondicional engoliria o pick de outro e devolveria `None` a quem o
-/// soubesse executar — com o sintoma a ser *«às vezes não faz nada»*.
+/// ⚠️ O dreno é CONDICIONAL (`take_command_pick_if`): o canal tem outros consumidores.
 #[must_use]
 pub fn route_pick(hero: &mut HeroScreen, target: &mut Option<u64>) -> Option<(u64, String)> {
     let bits = (*target)?;
@@ -191,14 +172,8 @@ pub fn route_pick(hero: &mut HeroScreen, target: &mut Option<u64>) -> Option<(u6
 
 /// **Anexa o que a paleta escolheu**, no ponto NEUTRO do tipo.
 ///
-/// ⚠️ **Escreve DIRETO no mundo, e não pelo `EditorCommandQueue`** — e a razão é o que o
-/// `insert_default` é: um construtor type-erased (`fn(&mut World, Entity)`), não bytes. Pô-lo na
-/// fila exigiria serializar o `Default` só para o desserializar do outro lado, e o registo não
-/// expõe esses bytes.
-///
-/// ⚠️ **O desfazer não depende da fila.** Ele nasce do DIFF do fim do quadro
-/// (`App::post_frame_undo`), então uma escrita direta é capturada como qualquer outra — e anexar
-/// é INERTE por construção (o ponto neutro do tipo), o que torna o passo um `add component` puro.
+/// ⚠️ Escreve DIRETO no mundo (o `insert_default` é um construtor type-erased, não bytes); o
+/// desfazer nasce do DIFF do fim do quadro (`App::post_frame_undo`).
 pub fn attach_picked(
     picks: Option<&(u64, String)>,
     sim: &mut SimWorld,
@@ -207,11 +182,13 @@ pub fn attach_picked(
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Option<(u64, String)> {
     let (bits, name) = picks?;
-    let bits = &crate::motion_input_filho::alvo_do_pick(sim, *bits, name);
+    let pai = *bits;
+    let bits = &crate::motion_input_filho::alvo_do_pick(sim, pai, name);
     let ja = ph2d_ecs::Entity::try_from_bits(*bits)
         .map(|e| present_on(sim.world(), e, registry))
         .unwrap_or_default();
     if let Err(msg) = attach_by_name(sim, registry, seeds, *bits, name) {
+        crate::motion_input_filho::desfaz_se_novo(sim, pai, *bits);
         toasts.push(Toast::error(msg));
         return None;
     }
@@ -221,9 +198,7 @@ pub fn attach_picked(
 /// ⭐ **A PORTA de anexar um componente pelo nome canónico** — o ponto neutro do tipo, e depois o
 /// seed. Devolve a mensagem de erro quando não dá.
 ///
-/// ⚠️ **É `pub(crate)` de propósito:** os gates que provam *"o gesto inteiro chega a algum lugar"*
-/// têm de atravessar **esta** função, e não encenar um `world.insert()` à mão — foi assim que a
-/// autoria de física por gestos passou a ser medida depois de a face vazia da §11 morrer.
+/// ⚠️ Os gates do gesto inteiro atravessam **esta** função, nunca um `world.insert()` à mão.
 pub fn attach_by_name(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
@@ -232,14 +207,8 @@ pub fn attach_by_name(
     name: &str,
 ) -> Result<(), String> {
     // ⭐ **A CASCATA primeiro** (ADR-0166 / F3): o que este componente não funciona sem.
-    //
-    // ⚠️ **Antes dele, e não depois** — o seed de um dependente pode ler o que a dependência traz
-    // (o `PlatformPlayer` mede o `Collider` para saber a que altura pairar). Na ordem inversa ele
-    // leria um mundo sem collider e nasceria tangente.
-    //
-    // ⚠️ **A recursão termina** porque `attach_one` é no-op sobre o que já está lá, e o gate
-    // `the_require_graph_has_no_cycles` afirma que o grafo é acíclico — um ciclo no catálogo faria
-    // isto recorrer para sempre em vez de falhar alto.
+    // Antes dele: o seed de um dependente lê o que a dependência traz. Termina: `attach_one` é
+    // no-op sobre o que já está lá, e `the_require_graph_has_no_cycles`.
     if let Some(desc) = ph2d_component_desc::desc_for(name) {
         for dep in desc.requires {
             attach_by_name(sim, registry, seeds, entity_bits, dep)?;
@@ -266,18 +235,14 @@ fn attach_one(
             &[("name", &name)],
         )
     })?;
-    // ⚠️ Inalcançável pela paleta (ela só oferece o que se constrói), e por isso mesmo vale uma
-    // mensagem em vez de um `return` mudo: chegar aqui significa que a paleta e o registo
-    // discordam, e isso é um defeito de programa.
+    // Inalcançável pela paleta: chegar aqui é a paleta e o registo a discordar.
     let insert = entry.insert_default.ok_or_else(|| {
         ph2d_i18n::tr_with(
             "app.components.component_attach.has_no_default_to_attach",
             &[("name", &name)],
         )
     })?;
-    // ⚠️ **Já lá está ⇒ NO-OP.** É o que faz a cascata terminar e o que impede que anexar
-    // *Platform Player* num corpo que já existe rebaixe esse corpo ao ponto neutro — o `insert` do
-    // bevy substitui, não funde.
+    // ⚠️ Já lá está ⇒ NO-OP (o `insert` do bevy substitui, não funde).
     if matches!((entry.serialize)(sim.world(), entity), Ok(Some(_))) {
         return Ok(());
     }
@@ -288,10 +253,7 @@ fn attach_one(
         )
     })?;
     // ⭐ **E o SEED, se este componente tiver um** (ADR-0166 / F3 · a emenda medida na F0).
-    //
-    // ⚠️ **Depois do `insert_default`, nunca em vez dele:** o valor gravado continua a ser *o ponto
-    // neutro do tipo, corrigido pelo contexto*. Uma construção alternativa aqui seria a segunda
-    // porta que apodrece quando o tipo ganha campos. Ver [`crate::component_seed`].
+    // Depois do `insert_default`, nunca em vez dele ([`crate::component_seed`]).
     crate::component_seed::seed_after_attach(seeds, sim, entity_bits, name);
     Ok(())
 }
@@ -346,13 +308,8 @@ pub fn reset_by_name(
 
 /// ⭐ **A roda sobre a paleta aberta é DELA** (F3 / ADR-0166) — devolve `true` quando consumiu.
 ///
-/// ⚠️ **Consome enquanto ela estiver ABERTA, e não «quando o cursor está sobre o cartão»**: ao
-/// contrário da janela do Input Map, esta é um modal de **tela cheia com scrim** — não há «por
-/// fora dela». Uma roda que atravessasse o scrim daria zoom no canvas escurecido por baixo, que é
-/// o gesto errado com a mão no sítio certo.
-///
-/// ⚠️ O sinal é o do `dispatch_wheel` (roda para cima ⇒ o deslocamento DIMINUI), porque a lei é a
-/// mesma função.
+/// ⚠️ Consome enquanto ela estiver ABERTA (modal de tela cheia com scrim); o sinal é o do
+/// `dispatch_wheel`.
 pub fn palette_wheel(hero: &mut HeroScreen, dy: f32) -> bool {
     if !hero.store.command_palette_open() {
         return false;

@@ -27,3 +27,15 @@ thread_local! {
 pub fn toma_o_novo() -> Option<u64> {
     NOVO.with(std::cell::Cell::take)
 }
+
+/// A anexação falhou: o filho que [`alvo_do_pick`] criou para `pai` sai, e a seleção não salta para ele.
+pub fn desfaz_se_novo(sim: &mut SimWorld, pai: u64, alvo: u64) {
+    if alvo == pai {
+        return;
+    }
+    if toma_o_novo().is_some_and(|novo| novo == alvo)
+        && let Some(e) = Entity::try_from_bits(alvo)
+    {
+        sim.world_mut().despawn(e);
+    }
+}

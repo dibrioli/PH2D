@@ -1,11 +1,5 @@
-//! ⭐ **O JOGO DE PLATAFORMA do smoke** (`PH2D_GAME_SMOKE`, plano 03): o nível que cresce a cada onda.
-//!
-//! - **1** (J1): um nível — chão com um vão, plataformas, paredes, a meta —, o jogador de plataforma, a câmara e
-//!   cinco moedas com o `moeda.luau`. A cena nasce PARADA: o Play abre o jogo e o Stop devolve tudo.
-//! - **2** (J2 + J3, `05_N1_plano.md` §5): o mesmo nível montado SÓ com os objectos do menu Add
-//!   ([`crate::object_add`]), com a arte de fábrica (`ph2d_render::FACTORY_ART`, plano 06).
-//! - **3** (plano 09): o nível 2 com a regra «Crouching → fall» no topo e o condutor a agachar sob o
-//!   «Low Ceiling» (← e ↓), a soltar ↓ lá debaixo e a sair para a direita.
+//! ⭐ **O JOGO DE PLATAFORMA do smoke** (`PH2D_GAME_SMOKE`, plano 03): **1** o nível com moedas; **2** o mesmo
+//! pelo menu Add ([`crate::object_add`]); **3** «Crouching → fall»; as seguintes no seu módulo ([`CENAS`]).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -21,14 +15,15 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-/// A última cena do roteiro: 6..=`input_map::ULTIMA` = a aba Input Map (a tabela: `input_map`); a seguinte = o
-/// Top-Down Player, e depois o Projectile Motion. Contada: uma cena nova sem empurrar as seguintes não compila.
-pub const CENAS: u32 = 27;
-const _: () = assert!(CENAS == motion_input::CENA && CENAS == ray::CENA + 1);
+/// A última cena: 6..=`input_map::ULTIMA` = o Input Map, depois Top-Down, Projectile, Ray, Motion Input (27, 28).
+pub const CENAS: u32 = 28;
+const _: () = assert!(CENAS == heroi::CENA && CENAS == motion_input::CENA + 1);
+const _: () = assert!(motion_input::CENA == ray::CENA + 1);
 const _: () = assert!(ray::CENA == projectile::CENA + 1);
 const _: () = assert!(topdown::CENA == input_map::ULTIMA + 1);
 const _: () = assert!(projectile::CENA == topdown::CENA + 1);
 pub use ph2d_input_map_scene as input_map;
+pub use ph2d_physics_scene::cena_heroi_sinal as heroi;
 pub use ph2d_physics_scene::cena_motion_input as motion_input;
 pub use ph2d_physics_scene::niveis::{
     BLOCOS, BLOCOS_2, CENTRO_DO_INICIO, CEU_COR, CEU_TAMANHO, MOEDAS, MOEDAS_2, PAREDE_INVISIVEL,
@@ -43,7 +38,7 @@ pub use ph2d_physics_scene::{
 pub fn abre_no_jogador(nivel: u32) -> bool {
     matches!(
         nivel,
-        2 | 4 | 5 | topdown::CENA | projectile::CENA | ray::CENA | motion_input::CENA
+        2 | 4 | 5 | topdown::CENA | projectile::CENA | ray::CENA | motion_input::CENA | heroi::CENA
     )
 }
 
@@ -59,7 +54,7 @@ pub fn foco(nivel: u32) -> ph2d_editor_core::ViewFocusKind {
 
 /// Arruma as gavetas do Inspector da cena `nivel` e pede o cartão dela à vista sobre `heroi`.
 pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, heroi: u64) {
-    if nivel == motion_input::CENA {
+    if nivel == motion_input::CENA || nivel == heroi::CENA {
         motion_input::arruma_o_inspector(store, cartao, heroi);
     } else if nivel == ray::CENA {
         ray::arruma_o_inspector(store, cartao, heroi);
@@ -70,9 +65,7 @@ pub fn arruma_o_inspector(store: &mut WidgetStore, nivel: u32, cartao: NodeId, h
     }
 }
 
-/// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
-/// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
-/// A cena 5: as da 4 e as duas folhas de «Two Sheets» (plano GEF 26 V6, `arte/duas_folhas.py`).
+/// A cena 4: o herói azul e os montes na biblioteca (`arte_trocar.py`); a 5: + as folhas de «Two Sheets».
 pub const IMAGENS_5: [&str; 4] = [
     IMAGENS_4[0],
     IMAGENS_4[1],
@@ -231,16 +224,15 @@ pub fn conducao() -> Option<GameStage> {
     *C.get_or_init(|| conducao_in(|k| std::env::var(k).ok()))
 }
 
-/// O horário. Nível 1: joga ao 60, corre para a direita (as duas primeiras moedas), pára ao 420. Nível 2:
-/// corre, salta para a plataforma baixa, sai a cair, aterra e pára — as quatro animações por esta ordem.
+/// O horário. Nível 1: joga ao 60, corre à direita, pára ao 420. Nível 2: corre, salta, cai, aterra e pára.
 #[must_use]
 pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gesto> {
     let horario: &[(u32, Gesto)] = match nivel {
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
         topdown::CENA => &HORARIO_24, // ↗ e desliza, depois só ←, só ↓ e só ↑
-        projectile::CENA | motion_input::CENA => &[], // só o Play: as balas partem sozinhas
-        ray::CENA => &HORARIO_26,     // anda para a direita até à beirada
+        projectile::CENA | motion_input::CENA | heroi::CENA => &[], // só o Play: as balas partem sozinhas
+        ray::CENA => &HORARIO_26, // anda para a direita até à beirada
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
         _ => &HORARIO_1,
@@ -283,10 +275,8 @@ pub const HORARIO_5: [(u32, Gesto); 5] = [
     (270, Gesto::Esquerda(false)),
     (1500, Gesto::Para),
 ];
-/// A cena 24: ↗ até à parede de cima e desliza ao canto; só ← ao longo dela; só ↓ para abrir espaço; só ↑ de
-/// volta à parede (o gate `o_horario_do_play_anda_so_para_cima_e_so_para_a_esquerda` mede cada trecho).
-/// Cena 26: anda para a direita (a parede entra no raio), pára à beirada (o chão acaba no outro raio).
-/// Fica de pé até ao 360 (o «Eye Ray» vê o Enemy já no Play e os avisos somem), depois anda até à beirada.
+/// A cena 24: ↗ à parede de cima e ao canto; só ←; só ↓; só ↑ (gate `o_horario_do_play_anda_so_para_cima_…`).
+/// Cena 26: de pé até ao 360 (o «Eye Ray» vê o Enemy), depois anda à direita até à beirada.
 pub const HORARIO_26: [(u32, Gesto); 2] =
     [(360, Gesto::Direita(true)), (570, Gesto::Direita(false))];
 
@@ -394,6 +384,16 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
                 _ => motion_input::montar(sim, p),
             }
         }
+        heroi::CENA => heroi::montar(
+            sim,
+            heroi::Pecas {
+                estatico: &|s| do_menu(s, portas, crate::object_add::STATIC_BODY),
+                imagem: &|s| do_menu(s, portas, crate::object_add::SPRITE),
+                heroi: &|s| do_menu(s, portas, crate::object_add::CHARACTER),
+                anexa: portas.menu.anexa,
+                script: &|s, e, nome, fonte| poe_script(s, e, nome, fonte),
+            },
+        ),
         ray::CENA => ray::montar(
             sim,
             ray::Pecas {
@@ -412,18 +412,20 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
                     Entity::from_bits(bits)
                 },
                 marca: portas.marca,
-                script: &|s, e, nome, fonte| {
-                    let w = s.world_mut();
-                    let id = w
-                        .get_resource_or_init::<ProjectScripts>()
-                        .insert(nome, fonte);
-                    w.entity_mut(e).insert(LuauScript::library(id));
-                },
+                script: &|s, e, nome, fonte| poe_script(s, e, nome, fonte),
             },
         ),
         n if input_map::codigo(n).is_some() => input_map::leitores(sim, n, |s| nivel_2(s, portas)),
         _ => nivel_1(sim.world_mut()),
     }
+}
+
+fn poe_script(s: &mut SimWorld, e: Entity, nome: &str, fonte: &str) {
+    let w = s.world_mut();
+    let id = w
+        .get_resource_or_init::<ProjectScripts>()
+        .insert(nome, fonte);
+    w.entity_mut(e).insert(LuauScript::library(id));
 }
 
 fn nivel_1(world: &mut ph2d_ecs::World) -> Entity {
@@ -503,9 +505,7 @@ pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [
         -1,
     ),
 ];
-/// Veste um bloco com o azulejo de fábrica do seu papel em *Tiled* ao tamanho do bloco, escala 1 e a caixa do
-/// collider igual ao desenho (plano GEF 14 D6: o que o artista faz no Inspector — a imagem, Draw Mode Tiled e
-/// a Largura/Altura).
+/// Veste um bloco com o azulejo do seu papel em *Tiled*, escala 1 e a caixa do collider igual ao desenho (GEF 14 D6).
 fn azulejo(sim: &mut SimWorld, e: Entity, nome: &str, meia: [f32; 2]) {
     let art = match nome {
         "Platform Low" | "Platform High" => PLATFORM_TILE,

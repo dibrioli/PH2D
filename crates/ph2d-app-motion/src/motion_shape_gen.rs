@@ -39,8 +39,6 @@ use crate::motion_state::MotionState;
 #[path = "motion_shape_store.rs"]
 mod store;
 
-// ⭐ A MISTURA EM GRUPO (doc 118) — o arranjo de camadas por corrida, irmão pelo tecto de LOC e
-// por ASSUNTO: este ficheiro diz QUE forma é desenhada, aquele diz COMO ela pousa no que já está.
 #[path = "motion_shape_mistura.rs"]
 pub(crate) mod mistura;
 pub use store::VecPathStore;
@@ -65,11 +63,6 @@ pub fn manifest_default(name: &str) -> f32 {
         .unwrap_or(0.0)
 }
 
-// ⚠️ O `read_params` (o leitor por-`Option<&BTreeMap>`) MORREU aqui: o `publish`
-// e os gates passaram a ler pelo mesmo GETTER que a chave usa, e um `pub`
-// sem chamador não é código morto silencioso — é uma SEGUNDA porta esperando
-// alguém a chamar, e ela leria os params sem a chave concordar.
-
 /// **The translation** — this node's kind to the vector library's, and the box and
 /// values `cook` wants. The ONE place the two orders meet.
 ///
@@ -88,59 +81,19 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
     let s = f64::from(p.size.max(0.01));
     let ry = s * f64::from(p.aspect.clamp(0.05, 20.0));
     let sides = f64::from(p.sides.clamp(3, 32));
-    // `corner` is a FRACTION of the size -> a world-unit radius that scales.
     let corner = f64::from(p.corner.clamp(0.0, 1.0)) * s;
     let sq = ([-s, -s], [s, s]);
     let box_ = ([-s, -ry], [s, ry]);
-    // ⭐⭐⭐ **A CAIXA DOS SÍMBOLOS DE RIG COMEÇA NA ORIGEM** — ordem do dono (2026-09-19):
-    // *«EM skeleton deveríamos ter um offset do centro para os bones; os ossos estão rotacionando
-    // a partir do centro e não da cabeça dos ossos»*.
-    //
-    // ⚠️⚠️ **O eixo desta lei é o [`instance_pose`]**, e ela não custa uma linha de plumbing: o
-    // ponto local `q` de uma forma vai para `P + basis·(anchor + q·size)`, logo **a origem local
-    // É o pivô**. Toda a outra forma do catálogo é cortada de `[−s, s]`, ficando com a origem no
-    // MEIO — que é o que um carimbo quer. Um osso não é um carimbo: ele é um MEMBRO, e um membro
-    // pendura-se da junta. Cortá-lo de `[0, 2s]` põe a cabeça em `q = (0, 0)` e deixa-o afilar
-    // para `+X`, que é a direcção que o `fk` publica.
-    //
-    // ⚠️ **O COMPRIMENTO não muda**: `[−s, s]` e `[0, 2s]` medem os mesmos `2s`, e o `ry` nem é
-    // tocado ⇒ um osso do mesmo `size` continua do mesmo tamanho, só que pendurado noutro ponto.
-    // *Era a única forma de obedecer sem redefinir o que `size` quer dizer.*
-    //
-    // ⛔ **O segmento de corda entra pela MESMA porta**, e não por simetria de gosto: o gizmo que
-    // ele substituiu punha *«uma marca em cada nó»*, e um segmento centrado põe os dois nós a
-    // meio caminho ENTRE as posições. Pendurado na origem, ele vai do nó `i` ao nó `i+1` e as
-    // marcas caem onde o gizmo as punha.
-    //
-    // ⚠️ E ela é lida pelo `fit` do catálogo, que força a bbox da forma a preencher exactamente
-    // esta caixa — logo não há como uma silhueta «esquecer» de a honrar.
-    //
-    // ⭐⭐ **E desde 19/09 ela é o PIVÔ NATURAL destas duas espécies, não a lei inteira:** o
-    // `param::PIVOT_X` do cartão desloca-se a partir daqui. *É por isso que o controlo se chama
-    // **offset** — o `0` dele não quer dizer «no centro», quer dizer «onde esta forma se pendura
-    // por natureza», e quem declara isso é esta caixa.*
     let rig_box = ([0.0, -ry], [2.0 * s, ry]);
-    // ⚠️ **A SENTINELA do `sweep`** (doc 89 folha 14): `0` quer dizer *"como a forma nasce"*,
-    // e não *"uma fatia de zero graus"*. Sem ela o default não reduz — o círculo passa `0`
-    // (que a biblioteca lê como volta inteira) e a `Pie` passa o ângulo canónico dela.
     let swept = |k: VecKind, i: usize| {
         let v = f64::from(p.sweep);
         if v == 0.0 { k.defaults()[i] } else { v }
     };
     let start = f64::from(p.start);
     let inner = f64::from(p.inner.clamp(0.0, 0.99));
-    // Os três desvios por canto, em unidades de MUNDO como o `corner` — a fracção é a
-    // mesma escada, então mexer no `size` leva os quatro juntos.
     let off = |k: usize| f64::from(p.corner_offsets[k].clamp(-1.0, 1.0)) * s;
     let smoothing = f64::from(p.smoothing.clamp(0.0, 1.0));
     let (k, a, b, v) = match p.kind {
-        // ——— the eight that shipped, reproduced exactly ———
-        // `ellipse_sweep` with sweep/start/inner all zero is the plain ellipse: the
-        // sweep field reads "unset" as a full turn, which is what makes the legacy
-        // circle survive the move.
-        // ⚠️ O `defaults()[0]` da `Ellipse` é a volta INTEIRA, e a receita passava `0` —
-        // que a biblioteca lê como o mesmo. A sentinela devolve `0` aqui, então o círculo
-        // de todo documento anterior cozinha os MESMOS bits.
         ShapeKind::Circle => (
             VecKind::Ellipse,
             sq.0,
@@ -169,9 +122,6 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 inner,
             ],
         ),
-        // The three per-corner offsets and the smoothing were APPENDED to the
-        // round-rect's values and are all neutral at zero, so `[r, 0, 0, 0, 0]` is
-        // the uniform round-rect the node always built.
         ShapeKind::Square => (
             VecKind::RoundRect,
             sq.0,
@@ -212,7 +162,6 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 f64::from(p.hole.clamp(0.0, 1.0)),
             ],
         ),
-        // ——— the catalogue, at the library's own proportions ———
         other => {
             let k = match other {
                 ShapeKind::Pie => VecKind::Pie,
@@ -252,16 +201,8 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 ShapeKind::IsoPyramid => VecKind::IsoPyramid,
                 ShapeKind::Bone => VecKind::Bone,
                 ShapeKind::RopeSegment => VecKind::RopeSegment,
-                // The eight above are handled by name; this arm cannot be reached
-                // for them, and the compiler is what keeps that true when a kind is
-                // appended.
                 _ => unreachable!("as oito primeiras tem braco proprio"),
             };
-            // ⚠️ **A pizza e a corda deixam de correr no default.** Elas são a MESMA forma
-            // da elipse com outros números (`ellipse_sweep`/`ellipse_chord`), e a folha 14
-            // dizia exactamente isto: *"a FORMA chegou, o CONTROLO não"*. A `Segment` não
-            // tem miolo — a corda não o computa —, então o `inner` fica de fora dela e é o
-            // gate da tabela que o prova, mexendo no número.
             let mut v = k.defaults().to_vec();
             match k {
                 VecKind::Pie => {
@@ -273,38 +214,11 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                     v[0] = swept(k, 0);
                     v[1] = start;
                 }
-                // ⚠️ **O raio de quina do balão vem em unidades de MUNDO, e é o ÚNICO do
-                // catálogo assim** (medido: `the_unit_geometry_scaled_is_the_geometry_at_the_
-                // authored_size` percorre as 43 espécies e só esta divergia, por 23%). Todos
-                // os outros `defaults()` que a receita passa verbatim são frações, ângulos ou
-                // contagens — livres de escala. Sem esta multiplicação a quina do balão não
-                // acompanha o `size`: enorme num balão pequeno, imperceptível num grande. O
-                // `0,12` da biblioteca é tomado sobre o semi-eixo unitário, então em `size = 1`
-                // isto é byte-idêntico ao que sempre saiu.
                 VecKind::SpeechRect => v[0] *= s,
-                // ⭐ **O OSSO e o SEGMENTO DE CORDA** (ordem do dono, 2026-09-19: *«no caso dos
-                // ossos e segmentos de corda, criaremos no nó shape formas similares»*), e os
-                // knobs que eles lêem são os que a semântica já tinha:
-                //
-                // - o `hole` é o OLHO da junta — a mesma pergunta que ele faz à engrenagem
-                //   (*«que fracção do miolo é furo?»*), e é ele que devolve o ANEL que o gizmo
-                //   desenhava na junta;
-                // - o `inner` é a espessura do CORDÃO — *«o raio interno como fracção do
-                //   externo»*, que é à letra o que separa o fio do nó.
-                //
-                // ⚠️ **O `head` do segmento fica no valor da biblioteca**: um segundo knob aqui
-                // seria um editor de corda, e o pedido era *«formas similares»* às que havia.
                 VecKind::Bone => v[0] = f64::from(p.hole.clamp(0.0, 1.0)),
-                // ⚠️⚠️ **A SENTINELA, e ela é obrigatória aqui:** o `inner` de fábrica é `0`, e
-                // um cordão de espessura zero é um segmento com dois nós e NENHUM fio entre
-                // eles — a forma de fábrica sairia degenerada. `0` quer dizer *«como a forma
-                // nasce»*, que é exactamente a lei que o `sweep` desta receita já carrega (ver
-                // o `swept`, e o gate `the_seven_new_knobs_are_neutral_at_their_defaults`, que
-                // é quem a cobra).
                 VecKind::RopeSegment if p.inner != 0.0 => v[0] = inner,
                 _ => {}
             }
-            // ⭐ O osso e o segmento de corda penduram-se na CABEÇA (ver `rig_box`).
             let caixa = match k {
                 VecKind::Bone | VecKind::RopeSegment => rig_box,
                 _ => box_,
@@ -312,29 +226,6 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
             (k, caixa.0, caixa.1, v)
         }
     };
-    // ⭐⭐⭐ **O DESLOCAMENTO DO PIVÔ, e ele é a ÚLTIMA coisa que acontece à caixa** — ordem do
-    // dono (2026-09-19): *«crie no nó Shape o offset do Pivot»*.
-    //
-    // ⚠️⚠️ **Ele mora aqui, depois do `match`, de propósito:** a receita escolhe a caixa em
-    // TRINTA E CINCO sítios (as oito por nome mais a rota genérica), e um offset aplicado lá
-    // dentro seria trinta e cinco oportunidades de esquecer um. *Uma lei escrita em N sítios
-    // ainda não é uma lei.*
-    //
-    // ⚠️ **A fracção é da EXTENSÃO REAL da caixa escolhida**, nunca do `s`: as espécies quadradas
-    // são cortadas de `[−s, s]` nos dois eixos e as outras de `[−s, −ry]..[s, ry]` — usar o `s`
-    // daria um pivô que desliza de forma diferente conforme o `aspect`, no mesmo número.
-    //
-    // ⚠️ **E deslocar a CAIXA desloca a forma, não a deforma:** o `fit` do catálogo reescala toda
-    // silhueta para a caixa que recebe, e uma translação preserva a extensão ⇒ os mesmos bits,
-    // noutro sítio. É isso que faz `0` ser no-op BYTE-IDÊNTICO.
-    // ⚠️⚠️ **A unidade é o SEMI-eixo — o `Size` que o cartão mostra —, e não a extensão inteira**
-    // (ordem do dono, 2026-09-19: *«o pivot deve ser relativo ao tamanho da shape»*). O `size`
-    // deste nó é, por declaração, *«radius for round kinds, half-extent for boxes»*: **`1` é a
-    // ARESTA**, `0` é o pivô natural, e `2` põe-no uma forma inteira para fora.
-    //
-    // ⛔ A 1.ª redacção usava a extensão CHEIA, e aí a aresta caía em `0,5` — com a faixa do
-    // slider em `±1`, os dois extremos dele não correspondiam a nada que se veja na forma.
-    // *Uma faixa cujos extremos não nomeiam nada é uma faixa que o artista lê como arbitrária.*
     let desloca = |f: f32, lo: f64, hi: f64| f64::from(f) * (hi - lo) * 0.5;
     let (dx, dy) = (
         desloca(p.pivot[0], a[0], b[0]),
@@ -374,46 +265,18 @@ const CORNER_IN_THE_RECIPE: &[ShapeKind] = &[
 pub fn build_shape_path(p: &ShapeParams) -> VecPath {
     let (kind, a, b, v) = vec_recipe(p);
     let mut path = cook(kind, a, b, &v);
-    // ⚠️ **O ARREDONDAMENTO GERAL** — a mesma máquina das Live Corners (ADR-0121), aplicada
-    // depois do `cook` para as espécies cuja receita não tem onde receber um raio.
-    //
-    // ⚠️ **O raio é carimbado em TODOS os vértices, e isso é DERIVADO, não descuido:** o
-    // `corner_setback` recusa uma quina colinear, e um vértice do meio de um arco é colinear
-    // por construção — medido, a rosquinha e a elipse inteira saem com **zero** quinas
-    // arredondadas enquanto a seta ganha 7 e a cruz 12. Uma lista de índices por espécie
-    // apodreceria na primeira forma nova; esta regra não tem o que envelhecer.
-    //
-    // F14: é a porta do «Corner round» do Vetor (`round_shape_corners`) — a mesma lei, que também
-    // arredonda os sub-contornos fechados e leva as linhas sobre a face com o contorno.
     if !CORNER_IN_THE_RECIPE.contains(&p.kind) {
         let r = f64::from(p.corner.clamp(0.0, 1.0)) * f64::from(p.size.max(0.01));
         path = ph2d_vec_scene::round_shape_corners(path, r);
     }
-    // ⚠️ **O TRAÇO** (doc 89 folha 14, P0). O renderer já o desenha — o
-    // `tessellate_shape_instance` ramifica em `fill.is_some() || stroke.is_some()`
-    // desde sempre —, e o que faltava era o shell PÔ-LO aqui: o `cook` devolve o
-    // caminho com os dois em `None`. `stroke_width = 0` ⇒ `None` ⇒ a forma que
-    // sempre shipou, byte-idêntica.
     if let Some(st) = p.stroke {
         let mut spec = ph2d_vec_scene::StrokeSpec::new(rgba8(st.rgba), f64::from(st.width));
-        // ⚠️ **O TRACEJADO, a PONTA e a JUNTA já moram no `StrokeSpec`** (doc 89 folha 14, doc 121
-        // §9.19 (3)): o que faltava era o nó ter onde dizê-los. `dash <= 0` é contínuo.
         spec.dash = p
             .dash
             .map(|(d, g)| ph2d_vec_scene::DashPattern::single(f64::from(d), f64::from(g.max(0.0))));
         (spec.cap, spec.join) = mistura::traco::ponta_e_junta(st);
         path.stroke = Some(spec);
     }
-    // ⚠️ **O TRIM entra na PILHA de efeitos do caminho, nunca na geometria** (doc 89 folha
-    // 14, a linha do *trim/dash*). O `cooked()` — que é quem o renderer já chama — corre a
-    // pilha, então isto alcança de uma vez os contornos compostos (o furo da engrenagem, o
-    // anel) sem uma linha de fiação por espécie. E o neutro `{0, 1, 0}` faz `run_stack`
-    // devolver `None` ⇒ `Cow::Borrowed` ⇒ a forma de sempre, byte-idêntica.
-    //
-    // ⚠️ **NÃO é o `marker::trim_path`**, que a célula da folha 14 apontava: aquele recua as
-    // pontas em unidades de MUNDO para dar lugar às setas e devolve um caminho FECHADO
-    // intocado — inerte em 42 das 47 formas da biblioteca. Este mede por arco exato e ABRE
-    // o contorno, que é o que faz um traço correr em torno de um círculo.
     let trim = ph2d_vec_scene::fx_trim::TrimSpec {
         start: f64::from(p.trim[0].clamp(0.0, 1.0)),
         end: f64::from(p.trim[1].clamp(0.0, 1.0)),
@@ -485,18 +348,8 @@ pub fn publish(motion: &mut MotionState, seconds: f64) {
         .filter(|n| n.type_name == MANIFEST.name)
         .map(|n| n.id)
         .collect();
-    // Collect the (key, params) jobs first so the graph borrow drops before we
-    // mutate the store and the cook (three disjoint fields of `MotionState`).
     let mut jobs: Vec<(String, ShapeParams, f32)> = Vec::with_capacity(ids.len());
     for id in ids {
-        // ⚠️ A chave e o descritor leem pelo MESMO getter — é o que faz a
-        // chave do shell e a do nó serem os mesmos bits. E os dois passam pela
-        // NORMALIZAÇÃO (`unit_value`), então a chave nomeia a geometria em raio 1
-        // que o `build_shape_path` de facto constrói.
-        // ⚠️ **A escada é a MESMA do `EvalCtx::param`: conduzido → override → default**, e
-        // desde 2026-08-28 ela vem de UMA porta ([`super::motion_externals::resolved_params`]):
-        // estava copiada aqui e no texto, e as outras duas membranas do grupo nunca a
-        // herdaram — uma lei escrita duas vezes ainda não é uma lei.
         let resolved = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let (unit, scale) = ShapeParams::read_unit(get);
@@ -504,20 +357,6 @@ pub fn publish(motion: &mut MotionState, seconds: f64) {
     }
     for (key, p, scale) in jobs {
         let handle = motion.shape_store.intern(&key, || build_shape_path(&p));
-        // One-row instance at the origin, carrying the geometry handle. The
-        // duplicator/deformers move, rotate, scale and tint it downstream; a bare
-        // shape is white at the origin. `rot`/`tint` are absent ⇒ their stream
-        // defaults (0 / white).
-        //
-        // ⚠️ **O `size` É a coluna** (doc 89 folha 14): a geometria interna vive em raio
-        // 1 e o tamanho autorado viaja aqui, onde o `lower_to_vector_instances_onto` já o
-        // lê (`vec2_at(size, i, [1, 1])`) e a pose da instância o aplica. Duas
-        // consequências, e as duas eram o item: animar o `size` deixa de internar um
-        // `VecPath` por valor visitado, e um `value.attribute("size")` a jusante passa a
-        // VER o tamanho da forma — antes a coluna não existia.
-        // ⭐ **A caixa envolvente desta geometria** (doc 109 §5) — o nó DECLARA a caixa ou o
-        // círculo pelos params dele e retira as duas colunas. Elas não são a declaração: esta
-        // chave é partilhada por toda forma com a mesma geometria.
         let fit = motion.shape_store.collider_fit(handle);
         let stream = Stream::new(1)
             .with("P", Column::Vec2(vec![[0.0, 0.0]]))
@@ -565,28 +404,6 @@ pub fn encode(
     filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
-    // ⭐⭐⭐ **A TERCEIRA MÉDIA, e a ORDEM é o ponto** (report do Enio, 2026-08-30, três vezes:
-    // *"Leaves in front ainda não funciona quando a folha é IMG"*).
-    //
-    // Uma instância com `texture_id > 0`… ou com `geometry_id == 0` e textura, é um **quad
-    // texturado desenhado NESTA cena** — a mesma em que a planta vive —, e por isso ela pode
-    // ficar por cima de uma forma. O que decide é a ORDEM das linhas, como em toda esta lista.
-    //
-    // ⚠️ **As formas continuam a ir em LOTE** (o cache de tesselação por quadro que o
-    // `draw_shared_instances` guarda): só uma imagem no meio o quebra, e o lote recomeça a
-    // seguir. Sem imagem nenhuma, isto é **uma** chamada com tudo — byte-idêntico ao que havia.
-    // ⭐⭐⭐ **A MISTURA EM GRUPO** (doc 118, ordem do dono: *«todas as opções possíveis sem excluir
-    // nenhuma, com seletor de modo no nó»*). A lista parte-se em CORRIDAS de linhas consecutivas
-    // com a mesma chave de mistura, e cada corrida recebe o arranjo de camadas do alcance dela.
-    //
-    // ⚠️ **A chave é CARIMBADA na instância pela bomba, e não uma faixa de índices**: os passes de
-    // LOD a jusante fazem `retain` sobre a lista, e uma faixa guardada à parte apontaria para as
-    // linhas erradas no quadro em que uma cópia sai. *A marca que viaja com a linha não pode
-    // desalinhar-se dela.*
-    //
-    // ⚠️ **Toda linha sem camada partilha a chave `None`**, e é isso que faz o caminho de sempre
-    // sair BYTE-IDÊNTICO: sem nenhum sink misturado a lista inteira é UMA corrida, e ela vai ao
-    // mesmo lote de antes.
     let mut traco = mistura::traco::TracoDaPlaca::default();
     let mut i = 0;
     while i < insts.len() {
@@ -623,19 +440,6 @@ pub(crate) fn instance_pose(inst: &VectorInstance, cam: Affine) -> Affine {
             let [sx, sy] = inst.size;
             let [px, py] = inst.world_pos;
             let [ax, ay] = inst.anchor;
-            // world pose = translate(P) · R(basis) · translate(anchor) · scale(size);
-            // kurbo Affine coeffs [a,b,c,d,e,f] = matrix [[a,c,e],[b,d,f]] ⇒ linear = R·S,
-            // translation = P + R·anchor.
-            //
-            // ⚠️ **O PIVÔ ENTRA ENTRE O `basis` E O `size`, e é aí que ele tem de entrar**
-            // (doc 89, folha 17 — o veredito do Enio de 2026-08-25). O ponto local `q` da
-            // forma vai para `P + basis · (anchor + q · size)`, que é EXACTAMENTE o que o
-            // shader da sprite calcula (`local = anchor + quad·size`, depois `basis`).
-            // Somá-lo depois do `basis` faria a peça girar no centro e apenas deslocar-se
-            // — o mesmo desenho para todo ângulo, que é precisamente o que um pivô NÃO é.
-            //
-            // ⚠️ E ele já vem em METROS: a conversão fracção→tamanho vive numa função só
-            // (`SinkStyle::anchor_for`), do lado do lowering, partilhada com a sprite.
             let pose = Affine::new([
                 f64::from(b0 * sx),
                 f64::from(b1 * sx),
@@ -653,7 +457,6 @@ pub(crate) fn instance_pose(inst: &VectorInstance, cam: Affine) -> Affine {
 #[path = "motion_shape_gen_tests.rs"]
 mod tests;
 
-// ⚠️ Irmão do `tests` pelo tecto de LOC e por PERGUNTA — ver o cabeçalho dele.
 #[cfg(test)]
 #[path = "motion_shape_gen_pivot_tests.rs"]
 mod pivot_tests;

@@ -49,8 +49,6 @@ pub(crate) fn aplica_e_grava(
     split: &mut CenterSplit,
     intents: Vec<ph2d_panel_motion_graph::GraphIntent>,
 ) {
-    // A macro grava o lote já resolvido (ADR-0186) — antes de o aplicar, que é quando os ids de
-    // vista ainda dizem o que o painel viu.
     motion.macro_lote_de_grafo(&intents);
     apply_graph_batch(motion, playhead, toasts, split, intents);
     motion.macro_fecha();
@@ -78,20 +76,11 @@ pub(crate) fn apply_graph_batch(
 ) {
     use ph2d_nodegraph::graph::{NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
-    // ADR-0155 W2 — the heal fires only after a batch that COMPLETES a setup (adds a
-    // node/wire) and removes nothing, so deleting the integrator to rewire is never
-    // fought. Classified before the loop consumes the intents.
     let heal_ok = intents.iter().any(super::heal::is_constructive)
         && !intents.iter().any(super::heal::is_destructive);
     for intent in intents {
         match intent {
             GraphIntent::BeginDrag => motion.history.begin(&motion.doc),
-            // A drag can carry cards and nodes together (they are both just cards on
-            // the canvas). The id says which — and a CARD carries everything inside
-            // it, at every depth, or entering it would land the artist on empty
-            // canvas a screen away from the card they just dragged.
-            // ⭐ Mover é ARRUMAR À MÃO: o dono de cada nó movido fica marcado (`arrumados_a_mao`),
-            // e o arrumar ao abrir o projecto deixa-o como o artista o gravou.
             GraphIntent::MoveNodes { nodes, dx, dy } => {
                 for id in nodes {
                     let alvo = subgraph::target(id);
@@ -114,20 +103,11 @@ pub(crate) fn apply_graph_batch(
                     }
                 }
             }
-            // ── Subgraphs (doc 57) — a fold in the VIEW. Grouping and ungrouping are
-            // document edits (undoable) but the GRAPH is untouched, so none of them
-            // re-cooks: `mark_dirty` is deliberately absent, exactly as it is for the
-            // backdrops. Navigation is not even a document edit.
             GraphIntent::GroupSelection { nodes } => subgraph::group(motion, nodes),
             GraphIntent::Ungroup { id } => subgraph::ungroup(motion, id),
             GraphIntent::EnterSubgraph { id } => subgraph::set_level(motion, Some(id)),
             GraphIntent::GoToLevel { level } => subgraph::set_level(motion, level),
             GraphIntent::EndDrag => motion.history.commit_if_changed(&motion.doc),
-            // A wire endpoint may land on a CARD's socket — which stands for a real
-            // port inside the group (`subgraph::resolve_port`, the same derivation
-            // that drew it). Resolved HERE, so everything downstream — the connect
-            // authority, the plumbing, the toasts — goes on speaking about real
-            // nodes and never learns that a fold exists.
             GraphIntent::Connect {
                 from_node,
                 from_port,
@@ -144,9 +124,6 @@ pub(crate) fn apply_graph_batch(
                     }
                 }
             }
-            // **A wire that lands on a PARAMETER** (doc 58) — it has no port, so it cannot
-            // be a `Connect`. The source may itself be a card's socket, which resolves to
-            // the real port inside exactly as it does for a wire.
             GraphIntent::DriveParam {
                 from_node,
                 from_port,
@@ -156,16 +133,12 @@ pub(crate) fn apply_graph_batch(
                 if let Some((f, fp)) = subgraph::resolve_port(motion, from_node, from_port, false)
                     && let Some(t) = match subgraph::target(to_node) {
                         subgraph::Target::Node(n) => Some(n),
-                        // A param inside a CLOSED group: the card's body offered it, so the
-                        // menu row already names the real node inside.
                         subgraph::Target::Card(_) => None,
                     }
                 {
                     subgraph::drive(motion, toasts, (f, fp), t, param);
                 }
             }
-            // **Um fio solto no CORPO de um nó que não o aceita** (smoke da `=141`, 13/10): diz
-            // porquê, e nada se liga nem se abre.
             GraphIntent::DropRefused {
                 from_node,
                 from_port,
@@ -177,18 +150,6 @@ pub(crate) fn apply_graph_batch(
                     )));
                 }
             }
-            // ⭐⭐ **O ARTISTA ARRASTOU UM PARAM NO CARTÃO** (ciclo 1, doc 103).
-            //
-            // ⚠️ **Não aplica aqui: reencaminha para a fila do PAINEL.** O
-            // `apply_param_edits` tem leis que uma segunda cópia perderia — a troca de
-            // `channel` que repõe a magnitude no default daquele canal, os limites duros, o
-            // toast de recusa —, e ele corre mais à frente NESTE mesmo quadro
-            // (`params::publish`, depois de `apply_graph_intents`). *Um aplicador, dois
-            // canais* — a mesma lei que faz o cartão e o painel concordarem sobre o que é
-            // visível.
-            // ⭐ **Dobrar/abrir uma secção do cartão** — estado de EDITOR, sem passo de undo
-            // (como o pan, o zoom e a selecção). Guarda só o que o artista TOCOU: ausente é o
-            // que o registry declarou.
             GraphIntent::ToggleParamSection { node, section } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
                     let aberta = motion
@@ -217,32 +178,10 @@ pub(crate) fn apply_graph_batch(
                     });
                 }
             }
-            // ⭐ **O cartão pede um ficheiro pela MESMA porta que a row do painel** — a shell
-            // não tem um segundo caminho para abrir um diálogo, e é isso que garante que
-            // escolher pelo cartão recarrega a tabela, repara os fios órfãos e conta um passo
-            // de undo exactamente como escolher pelo painel.
-            // ⭐⭐⭐ **O BOTÃO «USE SELECTED PATH»** (ordem do dono, 2026-09-08: *«um botão para
-            // selecionar um path no canvas ou na hierarchy»*). O cartão emitiu o nó e o param;
-            // quem tem o mundo é esta metade, e a resposta já está resolvida no
-            // [`MotionState::selected_shape`] — o mesmo passe que publica as formas decide qual
-            // é, então o botão nunca pode ligar o nó a algo que o grafo não vê.
-            //
-            // ⚠️ **Sem nada seleccionável ele FALA em vez de não fazer nada.** Um botão que
-            // engole o clique é indistinguível de um avariado, e o report que volta é
-            // *«não funciona»* — a mesma lei que os dois knobs do `motion.mirror` cobraram no
-            // mesmo dia. O aviso diz as três condições que uma forma tem de cumprir, porque
-            // *«nada seleccionado»* e *«a forma não tem nome»* são defeitos diferentes com a
-            // mesma cara.
             GraphIntent::PickSelection { node, param } => {
                 let subgraph::Target::Node(n) = subgraph::target(node) else {
                     continue;
                 };
-                // ⚠️ **Pela MESMA porta que a row do painel usa** (`Graph::set_text_param` +
-                // `mark_dirty`) — o undo, o memo do cook e os limites são os mesmos nas duas
-                // superfícies, e um segundo caminho de escrita seria onde as duas divergiriam.
-                // ⚠️ **Cada recusa diz a SUA razão** — ver [`FormaEscolhida`]. A frase única
-                // de antes nomeava *«precisa de um nome»*, condição que **nenhum desenho deste
-                // app pode falhar** (todos nascem `Path {id}`), e calava a que de facto mordia.
                 match motion.selected_shape.clone() {
                     FormaEscolhida::Nome(nome) => {
                         motion.doc.graph.set_text_param(n, param, nome.clone());
@@ -281,24 +220,16 @@ pub(crate) fn apply_graph_batch(
                     motion.encaminha_param(crate::MotionParamIntent::PickFile { node: n.0, param });
                 }
             }
-            // ⭐⭐ **UMA SETA DE UM SELECTOR** — o cartão pede *«a anterior»* / *«a seguinte»*,
-            // e a shell, que possui a lista viva, resolve qual é e escreve pelas mesmas portas
-            // que a chip do painel usa. ⚠️ Com nada publicado não há o que escolher, e o clique
-            // não escreve — um valor inventado seria pior que um clique mudo.
             GraphIntent::StepChoice { node, param, delta } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
                     super::params::step_choice(motion, n, param, delta);
                 }
             }
-            // ⭐⭐ **UMA LINHA DA LISTA** (o dropdown do report de 07/09) — o índice é contra a
-            // lista que a shell publicou e o popup desenhou, resolvido pela MESMA porta.
             GraphIntent::PickChoice { node, param, index } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
                     super::params::pick_choice(motion, n, param, index);
                 }
             }
-            // ⭐ O texto escrito no cartão sai pela porta de texto do painel — a mesma que a
-            // chip de uma fonte e o campo de uma fórmula usam.
             GraphIntent::SetTextParam { node, param, value } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
                     motion.encaminha_param(crate::MotionParamIntent::SetTextParam {
@@ -313,9 +244,6 @@ pub(crate) fn apply_graph_batch(
                     apply_disconnect(motion, toasts, t.0, tp);
                 }
             }
-            // Ask to open the full-screen palette: stash the spawn + wire context here (the store lives in
-            // the bridge's `HeroScreen`, out of reach of this fn) — the bridge takes `open_library` after
-            // this loop and opens it, filtered to `compatible`. UI-only, no undo step.
             GraphIntent::OpenLibrary {
                 x,
                 y,
@@ -336,10 +264,6 @@ pub(crate) fn apply_graph_batch(
                 let pre = motion.doc.clone();
                 let id = motion.doc.graph.add_node(type_name);
                 motion.doc.graph.set_pos(id, Pos { x, y });
-                // Sequential-node template (docs/Motion Nodes/03): a feedback
-                // host (`state`/`forces` input) lands with its `pre` self-loop
-                // already plumbed, so integrate/spring arrive alive instead of
-                // frozen at their seed.
                 reconcile(motion, &pre.graph);
                 motion.history.push_undo(pre);
                 motion.pump.mark_dirty();
@@ -347,10 +271,6 @@ pub(crate) fn apply_graph_batch(
             GraphIntent::DeleteSelection { nodes } => {
                 apply_delete_selection(motion, nodes, toasts);
             }
-            // F2 — Ctrl+D and the knife (both in `motion_bridge_edit`). A duplicated
-            // CARD duplicates its contents (Unreal, on collapsed graphs: "if you copy
-            // the collapsed node, it duplicates the internal graph") — the nodes are
-            // copied by the ordinary duplicate, the NESTING by `duplicate_nesting`.
             GraphIntent::DuplicateSelection { nodes } => {
                 let cards: Vec<u32> = nodes
                     .iter()
@@ -374,15 +294,10 @@ pub(crate) fn apply_graph_batch(
                 }
                 let copy_of = edit::duplicate(motion, sources);
                 if !copy_of.is_empty() {
-                    // Same undo step: `duplicate` snapshotted the doc BEFORE any of it.
                     let selection = subgraph::duplicate_nesting(motion, &cards, &copy_of);
                     motion.pede_selecao(selection);
                 }
             }
-            // Ctrl+C — snapshot the selection into the graph clipboard. A card
-            // expands to its member nodes (copying a group copies its contents),
-            // exactly as the duplicate's source half does; the NESTING is not
-            // captured (paste lands them flat — named in `edit::paste`).
             GraphIntent::CopySelection { nodes } => {
                 let cards: Vec<u32> = nodes
                     .iter()
@@ -404,11 +319,8 @@ pub(crate) fn apply_graph_batch(
                         .map(|n| n.0),
                     );
                 }
-                // `cards` carries the copied groups' subtrees into the clip, so Ctrl+V
-                // rebuilds the nesting exactly as Ctrl+D keeps it (`duplicate_nesting`).
                 edit::copy_selection(motion, sources, cards);
             }
-            // Ctrl+V — replay the clipboard into the current level (one undo step).
             GraphIntent::Paste => edit::paste(motion),
             GraphIntent::CutWires { targets } => {
                 let targets: Vec<(u32, u16)> = targets
@@ -419,8 +331,6 @@ pub(crate) fn apply_graph_batch(
                     .collect();
                 edit::cut_wires(motion, toasts, targets);
             }
-            // F2 — rewiring (doc 45). Both are one undo step and both re-cook: a reroute is
-            // a NODE, and a moved wire is a changed graph.
             GraphIntent::SpliceReroute {
                 to_node,
                 to_port,
@@ -431,7 +341,6 @@ pub(crate) fn apply_graph_batch(
                     rewire::splice_reroute(motion, toasts, t.0, tp, x, y);
                 }
             }
-            // The same insert, but the artist NAMED the node (R-press a wire → the add-menu).
             GraphIntent::SpliceNode {
                 to_node,
                 to_port,
@@ -452,9 +361,6 @@ pub(crate) fn apply_graph_batch(
             } => {
                 let src = subgraph::resolve_port(motion, from_node, from_port, false);
                 let old = subgraph::resolve_port(motion, old_to_node, old_to_port, true);
-                // `None` landing = unplugged (the wire was dropped on empty canvas);
-                // a landing that will not resolve is a slot an earlier intent in this
-                // same batch took away, and there is nothing to plug into.
                 let land = match new_to {
                     Some((n, p)) => {
                         subgraph::resolve_port(motion, n, p, true).map(|(n, p)| Some((n.0, p)))
@@ -476,17 +382,6 @@ pub(crate) fn apply_graph_batch(
                     edit::smart_connect(motion, toasts, f.0, fp, to_type, x, y);
                 }
             }
-            // The probe is a READOUT: it points at a node and reads what that node
-            // already cooks. No document edit, no undo step, no `mark_dirty`. Probing
-            // a CARD reads what the group EMITS (its first output's source) — the
-            // question a closed door can still answer.
-            // ⭐⭐⭐ **AS DUAS LEITURAS DE UMA CARTA LARGADA** (ordem do dono, 2026-09-19). As duas
-            // vêm DENTRO do parênteses `BeginDrag`/`EndDrag` que o arrasto abriu, logo nenhuma
-            // empurra undo próprio — o `EndDrag` comita o gesto inteiro como **um** passo.
-            //
-            // ⛔ Um cartão dobrado não chega aqui (o painel não o oferece como sujeito nem como
-            // alvo), e esta guarda é a segunda porta: um id com o bit de subgrafo não é um
-            // `NodeId`, e tratá-lo como um apagaria o nó que por acaso tem aquele número.
             GraphIntent::SwapInChain {
                 a,
                 b,
@@ -510,8 +405,6 @@ pub(crate) fn apply_graph_batch(
                     rewire::splice_existing_into_wire(motion, toasts, node, t.0, tp);
                 }
             }
-            // ⭐⭐ O espelho do acima: a ENTRADA é que está solta, e o nó escolhido nasce a
-            // alimentá-la (ordem do dono, 2026-09-19).
             GraphIntent::SmartConnectBack {
                 to_node,
                 to_port,
@@ -527,16 +420,9 @@ pub(crate) fn apply_graph_batch(
                 motion.probe = node.and_then(|v| subgraph::probe_target(motion, v));
                 motion.probe_ring.clear();
             }
-            // The ⚠ inert badge was clicked (ADR-0155): the shell has the graph, so it
-            // decides — fix a forgotten integrator (one undo step, even after a destructive
-            // gesture, because the click IS the ask), or explain a choice only the artist can
-            // make. `FixInert` is neither constructive nor destructive, so it never triggers
-            // the batch `heal_setup` at the tail — the scoped `heal_one` is the whole action.
             GraphIntent::FixInert { node } => {
                 super::heal::heal_one(motion, toasts, ph2d_nodegraph::graph::NodeId(node));
             }
-            // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
-            // fraction; orientation flips preserve it.
             GraphIntent::SetSplit { t } => {
                 if split.is_split() {
                     *split = split.with_t(t);
@@ -549,33 +435,19 @@ pub(crate) fn apply_graph_batch(
                     split.to_horizontal()
                 };
             }
-            // Transport play/pause (Space) — no doc edit / undo. Toggles the
-            // EDITOR's clock (W4.T7), so pausing the graph pauses the timeline
-            // and vice versa; the cook simply follows wherever the playhead is.
             GraphIntent::TogglePlay => {
                 playhead.toggle_play();
             }
-            // The node-help toggle (ADR-0155): the shell owns the flag; the panel sent
-            // the absolute value it wants. UI-only — no undo step, no re-cook.
             GraphIntent::SetNodeHelp(on) => {
                 motion.node_help_enabled = on;
             }
-            // Backdrops (F2) — document state, so undoable, but UI-only, so NONE
-            // of these re-cooks (`mark_dirty` is deliberately absent: a cook
-            // cannot depend on decoration). Details in `motion_bridge_backdrops`.
             GraphIntent::AddBackdrop { x, y, w, h } => backdrops::add(motion, x, y, w, h),
             GraphIntent::MoveBackdrop { id, dx, dy } => backdrops::translate(motion, id, dx, dy),
             GraphIntent::ResizeBackdrop { id, left, dx, dy } => {
                 backdrops::resize(motion, id, left, dx, dy)
             }
             GraphIntent::DeleteBackdrop { id } => backdrops::delete(motion, id),
-            // **One gesture, three targets** (doc 61). The name lands wherever that kind of
-            // thing keeps its name — the node's label channel, the subgraph's title, the
-            // backdrop's title — and each is one undo step.
             GraphIntent::Rename { target, name } => rename(motion, target, name),
-            // The palette (doc 62) commits ONCE, on the pick — so the undo step is pushed HERE,
-            // not inside `set_color`: the params-panel path into the same setter has its own
-            // session bracket, and a push in the setter would count that one twice.
             GraphIntent::SetBackdropColor { id, color } => {
                 let pre = motion.doc.clone();
                 backdrops::set_color(motion, id, color);
@@ -583,13 +455,6 @@ pub(crate) fn apply_graph_batch(
                     motion.history.push_undo(pre);
                 }
             }
-            // **Auto-arrange** (the Hierarchy chip) — the subgraph-aware layered
-            // layout, laying the root and every group's interior out left-to-right.
-            // Positions are UI-only (they never touch the cook, like a node drag), so
-            // this is ONE undo step and deliberately does NOT `mark_dirty`. The push
-            // is guarded on an actual change: arranging an already-tidy graph is not
-            // an edit, and an undo queue that fills with those is one the artist
-            // cannot use (the same rule as `SetBackdropColor` above).
             GraphIntent::ArrangeLayout => {
                 let pre = motion.doc.clone();
                 crate::motion_arrumar::arrumar(motion);
@@ -597,19 +462,8 @@ pub(crate) fn apply_graph_batch(
                     motion.history.push_undo(pre);
                 }
             }
-            // **Bypass / mute** (H). Semantic — a muted node cooks a passthrough — so it marks the
-            // cook dirty and pushes ONE undo step for the whole batch. Only REAL nodes are muted:
-            // a subgraph CARD's id is tagged (`SUBGRAPH_VIEW_TAG`), and a bypass on a phantom id
-            // would emit a `y` record the loader rejects. Guarded on an actual change, like the
-            // arrange above.
             GraphIntent::SetBypass { nodes, on } => {
                 let pre = motion.doc.clone();
-                // A CARD is muted AS A UNIT — the group short-circuits input[0] → output[0] and
-                // its interior is skipped (`group_bypass` does it on a throwaway cook clone). This
-                // is the Blender/Nuke idiom: muting a group is NOT muting each member (enter the
-                // group and mute nodes for that). A real node id mutes that node, as ever. The
-                // `find` guard keeps a phantom card id (its group cut this frame) out of the
-                // `bypassed_subgraphs` set — a phantom would emit a `yg` the loader rejects.
                 for id in nodes {
                     match subgraph::subgraph_of(id) {
                         Some(sid)
@@ -634,8 +488,6 @@ pub(crate) fn apply_graph_batch(
             }
         }
     }
-    // ADR-0155 W2 — after a constructive gesture, wire any inert force chain that
-    // reaches a sink through the integrator it forgot (its own undo step, toasted).
     if heal_ok {
         super::heal::heal_setup(motion, toasts);
     }

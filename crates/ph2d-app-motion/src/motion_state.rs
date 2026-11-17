@@ -148,6 +148,8 @@ mod acabamento_demo;
 mod jogo_demo;
 #[cfg(test)]
 pub(crate) use jogo_demo::arranca_carimbos;
+#[path = "motion_state_heroi_demo.rs"]
+mod heroi_demo;
 
 /// A cena `=136` — vida e dano num objecto (doc 131 §3, D.13). Ver o cabeçalho dela.
 #[path = "motion_state_dano_demo.rs"]

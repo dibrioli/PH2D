@@ -19,7 +19,7 @@ use ph2d_nodegraph::graph::NodeId;
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
 const CICLOS: &[&str] = &[
     "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "130", "131", "132",
-    "133", "134", "135", "136", "137", "138", "139", "140", "141", "142",
+    "133", "134", "135", "136", "137", "138", "139", "140", "141", "142", "143",
 ];
 
 /// Este nível é uma cena de ciclo?
@@ -242,6 +242,13 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::imagens_scene_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::imagens_scene_demo::captions());
             super::imagens_scene_demo::announce();
+            sinks
+        }
+        // ⭐ **O HERÓI MANDA** (GEF 08 MI onda 3, `PH2D_GAME_SMOKE=28`): a vida com `Send signal` e o rastro.
+        "143" => {
+            let sinks = super::heroi_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::heroi_demo::captions());
+            super::heroi_demo::announce();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

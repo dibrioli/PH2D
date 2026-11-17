@@ -194,7 +194,7 @@ pub(super) fn no_em(y0: f32) -> impl Fn(&mut Graph, &str, f32, f32) -> NodeId {
 }
 
 /// ── A BARRA: 24 peças que crescem em cascata — o tempo dela é a `vida`.
-fn barra(g: &mut Graph) -> Option<(NodeId, NodeId, NodeId)> {
+pub(super) fn barra(g: &mut Graph) -> Option<(NodeId, NodeId, NodeId)> {
     let no = no_em(0.0);
     let grade = no(g, "motion.grid", -660.0, 0.0);
     g.set_param(grade, "rows", 1.0);

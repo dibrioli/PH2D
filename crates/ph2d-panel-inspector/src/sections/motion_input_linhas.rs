@@ -113,6 +113,10 @@ pub(super) fn lista(
         dd.select(n);
     }
     paint_dropdown_chip(&dd, linha.control, scene, text_system, theme);
+    // A escolha da ação/propriedade não se anima: a coluna leva o ponto, e no cartão nada (D17).
+    if ph2d_editor_core::widget::card_ink::card_body().is_none() {
+        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
+    }
     if aberto {
         set_pending(Some((lista, linha.control)));
     }

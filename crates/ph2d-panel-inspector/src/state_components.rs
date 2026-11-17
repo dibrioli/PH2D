@@ -444,6 +444,11 @@ pub fn set_current_inspector_motion_input(info: Option<InspectorMotionInputInfo>
     CURRENT_INSPECTOR_MOTION_INPUT.with(|c| *c.borrow_mut() = info);
 }
 
+/// Há um filho «Motion Input» escolhido (sem clonar o instantâneo).
+pub(crate) fn entrada_do_motion_escolhida() -> bool {
+    CURRENT_INSPECTOR_MOTION_INPUT.with(|c| c.borrow().is_some())
+}
+
 pub(crate) fn current_inspector_motion_input() -> Option<InspectorMotionInputInfo> {
     CURRENT_INSPECTOR_MOTION_INPUT.with(|c| c.borrow().clone())
 }

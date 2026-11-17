@@ -297,23 +297,30 @@ fn a_seccao_motion_input_do_filho_nao_tem_transform() {
             skew_rad: [0.0, 0.0],
         }));
     };
-    poe();
-    let (_, _, rects) = pinta(info(SOURCE_VELOCITY));
-    let tem = |id| rect_de(&rects, id).is_some();
-    assert!(
-        tem(core::INSP_LIVE_MOTION_INPUT_SECTION),
-        "o cartão Motion Input"
-    );
-    assert!(
-        !tem(core::INSP_LIVE_TRANSFORM_SECTION),
-        "Transform no filho"
-    );
-    ph2d_panel_inspector::set_current_inspector_motion_input(None);
-    poe();
-    let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<InspectorPanel>();
-    let mut st = ph2d_panel_inspector::InspectorState::default();
-    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    let controlo = rect_de(&rects, core::INSP_LIVE_TRANSFORM_SECTION).is_some();
-    ph2d_panel_inspector::set_current_inspector_transform(None);
-    assert!(controlo, "controlo: sem Motion Input a Transform pinta");
+    for cartoes in [false, true] {
+        let transform = if cartoes {
+            core::CARD_INSP_TRANSFORM
+        } else {
+            core::INSP_LIVE_TRANSFORM_SECTION
+        };
+        ph2d_panel_inspector::set_cards_on(cartoes);
+        poe();
+        let (_, _, rects) = pinta(info(SOURCE_VELOCITY));
+        let tem = |id| rect_de(&rects, id).is_some();
+        let mi = tem(core::INSP_LIVE_MOTION_INPUT_SECTION);
+        let filho = tem(transform);
+        ph2d_panel_inspector::set_current_inspector_motion_input(None);
+        let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<InspectorPanel>();
+        let mut st = ph2d_panel_inspector::InspectorState::default();
+        let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        let controlo = rect_de(&rects, transform).is_some();
+        ph2d_panel_inspector::set_current_inspector_transform(None);
+        ph2d_panel_inspector::set_cards_on(false);
+        assert!(mi, "o cartão Motion Input (cartões {cartoes})");
+        assert!(!filho, "Transform no filho (cartões {cartoes})");
+        assert!(
+            controlo,
+            "controlo: sem Motion Input a Transform pinta (cartões {cartoes})"
+        );
+    }
 }

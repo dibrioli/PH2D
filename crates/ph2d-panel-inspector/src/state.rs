@@ -319,8 +319,11 @@ pub fn set_current_inspector_transform(info: Option<InspectorTransformInfo>) {
     CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow_mut() = info);
 }
 
+/// GEF 08 MI-10: o filho «Motion Input» é uma entrada do grafo, sem lugar no espaço — sem Transform nem Ordering.
 pub(crate) fn current_inspector_transform() -> Option<InspectorTransformInfo> {
-    CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow())
+    CURRENT_INSPECTOR_TRANSFORM
+        .with(|c| *c.borrow())
+        .filter(|_| !crate::state_components::entrada_do_motion_escolhida())
 }
 
 pub fn set_current_inspector_visibility(info: Option<InspectorVisibilityInfo>) {
@@ -402,7 +405,9 @@ pub fn set_current_inspector_ordering(info: Option<InspectorOrderingInfo>) {
 }
 
 pub(crate) fn current_inspector_ordering() -> Option<InspectorOrderingInfo> {
-    CURRENT_INSPECTOR_ORDERING.with(|c| *c.borrow())
+    CURRENT_INSPECTOR_ORDERING
+        .with(|c| *c.borrow())
+        .filter(|_| !crate::state_components::entrada_do_motion_escolhida())
 }
 
 pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {

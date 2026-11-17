@@ -152,11 +152,8 @@ impl LiveSnapshots {
         let vida_info = crate::state_components::current_inspector_vida();
         let nav_info = crate::state_components::current_inspector_nav();
         let motion_input_info = crate::state_components::current_inspector_motion_input();
-        // GEF 08 MI-10: o filho «Motion Input» é uma entrada do grafo, sem lugar no espaço — nem
-        // Transform, nem Ordering, nem corpo (o cartão dele é só o Motion Input).
+        // GEF 08 MI-10: o filho «Motion Input» não tem corpo (Transform e Ordering: `state`).
         let com_lugar = motion_input_info.is_none();
-        let transform_info = transform_info.filter(|_| com_lugar);
-        let ordering_info = ordering_info.filter(|_| com_lugar);
         let sampling_info = sampling_info.filter(|_| com_lugar);
         let blend_info = blend_info.filter(|_| com_lugar);
         let (physics_info, joint_info, wheel_info, player_info) = if com_lugar {

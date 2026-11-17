@@ -28,8 +28,9 @@ fn o_quadro_corre_as_barras() {
         "o `correm` já não chama as barras — a ponte tem a lei e a tela não a vê"
     );
     assert!(
-        MOTORES.contains("health_bars.frame(sim, dt)"),
-        "a função `barras` já não entrega o quadro à ponte"
+        // O dt é o do JOGO (`Relogio::dt_de_jogo`, parado = 0, GEF 08): a barra não anda com o jogo parado.
+        MOTORES.contains("health_bars.frame(sim, relogio.dt_de_jogo())"),
+        "a função `barras` já não entrega o quadro (o dt do jogo) à ponte"
     );
 }
 

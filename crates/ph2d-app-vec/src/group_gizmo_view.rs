@@ -56,6 +56,8 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
         // ⭐ a **CÂMERA** tem o ícone, a moldura e as alças dela (`ph2d_camera_frame`, 17b A9): o anel e a
         // caixa do vazio eram um segundo alvo do clique, de outro tamanho que o ícone pintado.
         || w.get::<ph2d_ecs::GameCamera>(e).is_some()
+        // GEF 08 MI-10: a entrada do Motion não tem lugar no espaço — nem anel, nem caixa, nem clique.
+        || w.get::<ph2d_ecs::MotionInput>(e).is_some()
 }
 
 /// ⭐ **«Este objeto é um VAZIO?»** — a pergunta que TODOS os consumidores fazem.

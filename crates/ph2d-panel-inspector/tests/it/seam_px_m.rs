@@ -265,6 +265,17 @@ fn fixturas() -> Vec<Fixtura> {
             }),
         ),
         (
+            // O raio GROSSO: o Thickness (metros) só se pinta com a forma Thick (GEF 07 RS).
+            "ray thick",
+            Box::new(|| {
+                set_current_inspector_ray(Some(ph2d_editor_core::ray_edits::InspectorRayInfo {
+                    shape: ph2d_editor_core::ray_edits::RayShapeKind::Thick,
+                    thickness: 0.25,
+                    ..crate::a_seccao_ray_sensor_esta_viva::olho()
+                }))
+            }),
+        ),
+        (
             "nav",
             Box::new(|| {
                 set_current_inspector_nav(Some(nav::info(
@@ -567,7 +578,7 @@ const SECCOES_DE_MUNDO: [&str; 34] = [
     "physics_rows.rs",
     "player_rows.rs",
     "projectile.rs",
-    "ray.rs",
+    "ray_rumo.rs",
     "shake.rs",
     "shake_emitter.rs",
     "slice_nine.rs",

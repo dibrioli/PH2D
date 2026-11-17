@@ -78,7 +78,7 @@ const WRITERS: [&str; 19] = [
     // oferece — *«ou não o registre ainda»* — foi a que se tomou: o registo, o degrau de schema e
     // as entradas do catálogo **esperaram uma wave inteira** pela secção. *É a falha alta a
     // funcionar pela terceira vez nesta lista, e a segunda em que ela ANTECIPOU a wave de autoria.*
-    "../../crates/ph2d-app-components/src/ray_inspector.rs",
+    "../../crates/ph2d-ray-sensor/src/inspector.rs",
     // ⭐ A VIDA e o DANO (plano 28, W3): o dreno das duas secções do Inspector.
     "../../crates/ph2d-app-components/src/vida_inspector.rs",
     // ⭐ A NAVEGAÇÃO (plano 30, W4): o dreno das secções NAV REGION e NAV AGENT — registados no

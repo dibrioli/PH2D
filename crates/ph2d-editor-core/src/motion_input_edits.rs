@@ -244,10 +244,15 @@ impl InspectorMotionInputInfo {
     #[must_use]
     pub fn acoes_de_mover(&self) -> Vec<&'static str> {
         use ph2d_input::{PLAYER_MOVE_DOWN, PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP};
-        [PLAYER_MOVE_RIGHT, PLAYER_MOVE_LEFT, PLAYER_MOVE_UP, PLAYER_MOVE_DOWN]
-            .into_iter()
-            .filter(|n| self.acoes_do_mapa.iter().any(|a| a == n))
-            .collect()
+        [
+            PLAYER_MOVE_RIGHT,
+            PLAYER_MOVE_LEFT,
+            PLAYER_MOVE_UP,
+            PLAYER_MOVE_DOWN,
+        ]
+        .into_iter()
+        .filter(|n| self.acoes_do_mapa.iter().any(|a| a == n))
+        .collect()
     }
 
     /// A fonte lê um OBJECTO (o From)? Value, Color e Action não leem ninguém.

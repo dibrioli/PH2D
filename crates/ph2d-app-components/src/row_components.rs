@@ -140,7 +140,10 @@ mod tests {
         let mi = world.spawn(ph2d_ecs::MotionInput::default()).id().to_bits();
         let rows = RowComponents::of(&world, &registry);
         assert_eq!(rows.object_type(&world, mi), ObjectType::MotionInput);
-        assert_eq!(ObjectType::MotionInput.icon(), ph2d_editor_core::icons::IconId::Gamepad);
+        assert_eq!(
+            ObjectType::MotionInput.icon(),
+            ph2d_editor_core::icons::IconId::Gamepad
+        );
         assert_eq!(rows.object_type(&world, caixa), ObjectType::Collider);
         assert_eq!(rows.object_type(&world, camera), ObjectType::Camera);
         assert_eq!(rows.object_type(&world, vazio), ObjectType::Empty);

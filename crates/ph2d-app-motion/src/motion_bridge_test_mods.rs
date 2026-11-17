@@ -38,14 +38,14 @@ mod edit_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_library_tests.rs"]
 mod library_tests;
-#[cfg(all(test, feature = "panel-motion-graph"))]
-#[path = "motion_bridge_send_signal_ui_tests.rs"]
-mod send_signal_ui_tests;
 #[path = "motion_bridge_lsystem_complaint_tests.rs"]
 mod lsystem_complaint_tests;
 /// Toda queixa da linha de leitura de um cartão cabe inteira (doc 132 §5, no cartão).
 #[path = "motion_bridge_queixas_cabem_tests.rs"]
 mod queixas_cabem_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_send_signal_ui_tests.rs"]
+mod send_signal_ui_tests;
 
 #[path = "motion_bridge_lsystem_preset_tests.rs"]
 mod lsystem_preset_tests;

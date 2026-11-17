@@ -375,7 +375,11 @@ impl<'s> CardCtx<'s> {
             }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
             _ => (TextInputState::Normal, None, 0, None),
         };
-        let sufixo = crate::widget::field_suffix::de(id, text.unwrap_or(""));
+        let sufixo = crate::widget::field_suffix::se_couber(
+            self.text_system,
+            crate::widget::field_suffix::de(id, text.unwrap_or("")),
+            r.w - m::FIELD_PAD_R * 2.0 - reserva,
+        );
         let reserva = reserva
             + sufixo.as_ref().map_or(0.0, |s| {
                 crate::widget::field_suffix::largura(self.text_system, s)

@@ -552,7 +552,11 @@ pub fn paint_text_row<'a>(
         }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
         _ => (crate::widget::TextInputState::Normal, None, 0, None),
     };
-    let sufixo = crate::widget::field_suffix::de(id, text.unwrap_or(""));
+    let sufixo = crate::widget::field_suffix::se_couber(
+        text_system,
+        crate::widget::field_suffix::de(id, text.unwrap_or("")),
+        cw - crate::widget::field_pad_x() * 2.0 - input.reserva_direita,
+    );
     let reserva = input.reserva_direita
         + sufixo.as_ref().map_or(0.0, |s| {
             crate::widget::field_suffix::largura(text_system, s)

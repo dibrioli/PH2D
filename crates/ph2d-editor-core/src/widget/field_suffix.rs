@@ -43,6 +43,17 @@ pub fn tamanho() -> f32 {
     TypeToken::Sm.px()
 }
 
+/// ⭐ O sufixo só se pinta se o NOME guardar pelo menos a largura que ele tira: numa caixa estreita a
+/// dica de quem ouve é a parte secundária e sai, nunca o nome (integ 16/11: «idle_done» ficava em
+/// 6,1 px ao lado de «nobody listens»). `util` é a largura do texto sem o sufixo.
+#[must_use]
+pub fn se_couber(text_system: &mut TextSystem, s: Option<Sufixo>, util: f32) -> Option<Sufixo> {
+    s.filter(|s| {
+        let w = largura(text_system, s);
+        util - w >= w
+    })
+}
+
 /// A largura que o sufixo tira ao texto: a dele mais um vão.
 #[must_use]
 pub fn largura(text_system: &mut TextSystem, s: &Sufixo) -> f32 {

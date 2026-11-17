@@ -279,3 +279,41 @@ fn sem_espaco_abaixo_a_lista_abre_para_cima_e_rola_ate_a_ultima() {
         vec![E::Property(format!("ph2d::x::X/f{}", N - 1))]
     );
 }
+
+/// ⭐ MI-10: o filho «Motion Input» não tem lugar no espaço — o Inspector dele não pinta Transform nem Ordering
+/// (nem corpo), só o cartão Motion Input; sem ele, as mesmas fotos pintam a Transform (controlo).
+///
+/// **Mutação que deve sangrar:** `com_lugar = true` em `LiveSnapshots::fetch`.
+#[test]
+fn a_seccao_motion_input_do_filho_nao_tem_transform() {
+    use ph2d_editor_core::ids as core;
+    use ph2d_editor_core::screens::hero::InspectorTransformInfo;
+    let poe = || {
+        ph2d_panel_inspector::set_current_inspector_transform(Some(InspectorTransformInfo {
+            entity_bits: super::a_seccao_motion_input_esta_viva::BITS,
+            translation: [0.0, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+            skew_rad: [0.0, 0.0],
+        }));
+    };
+    poe();
+    let (_, _, rects) = pinta(info(SOURCE_VELOCITY));
+    let tem = |id| rect_de(&rects, id).is_some();
+    assert!(
+        tem(core::INSP_LIVE_MOTION_INPUT_SECTION),
+        "o cartão Motion Input"
+    );
+    assert!(
+        !tem(core::INSP_LIVE_TRANSFORM_SECTION),
+        "Transform no filho"
+    );
+    ph2d_panel_inspector::set_current_inspector_motion_input(None);
+    poe();
+    let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<InspectorPanel>();
+    let mut st = ph2d_panel_inspector::InspectorState::default();
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let controlo = rect_de(&rects, core::INSP_LIVE_TRANSFORM_SECTION).is_some();
+    ph2d_panel_inspector::set_current_inspector_transform(None);
+    assert!(controlo, "controlo: sem Motion Input a Transform pinta");
+}

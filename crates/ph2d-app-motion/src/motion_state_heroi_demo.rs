@@ -144,12 +144,12 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         ficha(
             -0.65,
             y,
-            "vida: Hero's health; under 0.25 it sends low_health",
+            "Life: Hero's health; under 0.25 it sends low_health",
         ),
         ficha(
             RASTRO_AT[0],
             RASTRO_AT[1] + 0.9,
-            "rastro: Hero's velocity (x, y) is the wind: the stars fly the way he runs",
+            "Trail: Hero's velocity (x, y) is the wind: the stars fly the way he runs",
         ),
         ficha(
             LAMPADA_AT[0],
@@ -159,7 +159,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         ficha(
             MEDIDOR_AT[0] + 0.3,
             MEDIDOR_AT[1] - 0.5,
-            "Script Meter: Luau reads motion.get(\"vida\"), grows on low_health",
+            "Script Meter: Luau reads the Life value (motion.get), grows on low_health",
         ),
     ]
 }

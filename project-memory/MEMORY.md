@@ -154,3 +154,5 @@
 - ⭐⭐ [Dono 15/11: melhorias do Ray Sensor — tags como material, Shape em dropdown, cartão por pergunta, Also ignore por lista, desligar dispara On Exit](project_ray_sensor_improvements_owner_decisions_2026_11_15.md)
 - ⛔⛔ [Dono 15/11: crítica que conta CAMPOS esconde o que falta FAZER — tabela de capacidades antes das maquetes](feedback_a_critique_that_counts_fields_hides_the_capability_gap.md)
 - ⭐⭐ [Dono 15/11: Motion Input = maquete B + três ondas (consertos · origens sem script · vetor/get/lista/sinal); onda 3 = filhos · nó Send signal · a origem decide o par](project_motion_input_plan_b_three_waves_2026_11_15.md)
+- ⭐⭐ [Dono 15/11: Ray Sensor = versão B e vira OBJETO filho na Hierarquia, como o Collision Shape](project_ray_sensor_is_a_child_object_2026_11_15.md)
+- ⭐ [Dono 15/11: cadeado de pasta COMUM tranca tudo dentro (Figma)](project_folder_lock_locks_its_contents_2026_11_15.md)

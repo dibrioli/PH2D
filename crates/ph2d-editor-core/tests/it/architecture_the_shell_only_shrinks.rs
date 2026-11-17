@@ -242,6 +242,7 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-scenes", 666),      // 566
     ("ph2d-code-smoke", 614),       // 514
     ("ph2d-code-viewmodel", 304),   // 204
+    ("ph2d-folder-lock", 226), // 126 (integ 16/11: o cadeado da pasta comum, JE W4o, saiu da `ph2d-app-components`, que estava 98 acima do tecto)
     ("ph2d-game-smoke-fotos", 1_077), // 977 (12/11: as fotos e a mão saíram da `ph2d-app-game`, com o miolo de `janela_do_jogo_smoke.rs` da shell)
     ("ph2d-joint-editor-apply", 528), // 428 (16/11: as edições da aba no mundo, vindas da `ph2d-app-joint-editor`)
     ("ph2d-joint-editor-doc", 2_223), // 2_123 (16/11: o desenho em metros, `stage`, foi para a `ph2d-joint-factory`; o tecto desce) · 2_153 (15/11 W4n: o documento, o retrato, o desenho em metros e o rato da aba, vindos da `ph2d-app-joint-editor`)

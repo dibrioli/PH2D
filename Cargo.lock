@@ -7425,6 +7425,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-folder-lock"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-physics-ecs",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-frac"
 version = "0.0.0"
 dependencies = [
@@ -7703,6 +7714,7 @@ dependencies = [
  "ph2d-flip",
  "ph2d-flip-entities",
  "ph2d-flip-render",
+ "ph2d-folder-lock",
  "ph2d-gpu",
  "ph2d-gpu-cook",
  "ph2d-guides",

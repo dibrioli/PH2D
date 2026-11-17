@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-folder-lock"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O cadeado de uma PASTA tranca o conteúdo (JE W4o, dono 15/11). Saiu da `ph2d-app-components`
+# (no tecto da catraca, integ 16/11): o tipo da linha vem por fecho, a shell compõe com o `RowComponents`.
+[dependencies]
+bevy_ecs = "0.20"
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
+[dev-dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-render = { path = "../ph2d-render" }
+
+[lints]
+workspace = true

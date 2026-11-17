@@ -105,3 +105,70 @@ fn a_regra_da_lampada_mostra_a_ao_ouvir_low_health() {
         );
     }
 }
+
+/// ⭐ O script da «Script Meter» CORRE (motores do quadro): a largura segue `motion.get("vida")` e, ao ouvir
+/// `low_health`, a barra engorda. Controlo: outro sinal ⇒ a largura segue, a altura não muda.
+#[test]
+fn o_script_da_script_meter_le_a_vida_e_engorda_ao_ouvir_low_health() {
+    use ph2d_app_components::motores;
+    use ph2d_ecs::MotionInputs;
+    use ph2d_ecs::motion_inputs::{Escritor, Valor};
+    use ph2d_runtime::{Signal, SignalOutbox, SignalReader};
+    for (sinal, alto) in [(cena::SINAL, 2.0), ("other", 1.0)] {
+        let mut sim = SimWorld::new();
+        crate::comp::montar(&mut sim, cena::CENA);
+        let medidor = um(&mut sim, cena::MEDIDOR);
+        let mut m = MotionInputs::default();
+        m.set(cena::ENTRADA_VIDA, Escritor::Script, Valor::Numero(0.2));
+        sim.world_mut().insert_resource(m);
+        let mut outbox = SignalOutbox::new();
+        outbox.publish(Signal::from_motion(sinal, None, 1, 1));
+        let reg = crate::comp::registo();
+        let tags = ph2d_tags::TagTree::new();
+        let (mut vec, mut mapa) = ph2d_app_components::instance_docs::empty_docs();
+        let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
+            registry: &reg,
+            tags: &tags,
+            docs: ph2d_app_components::instance_docs::OwnedDocs {
+                vec_scene: &mut vec,
+                vec_entities: &mut mapa,
+            },
+            tick: 1,
+            images: ph2d_app_components::script_image::ImageLibrary::none(),
+            physics: None,
+        };
+        let mut host = Some(ph2d_script::ScriptHost::new().expect("vm"));
+        let (mut r_script, mut r_part, mut r_arma) = (
+            SignalReader::new(),
+            SignalReader::new(),
+            SignalReader::new(),
+        );
+        motores::correm(
+            &mut sim,
+            &mut host,
+            &mut ph2d_app_components::particles_bridge::ParticlesState::new(),
+            &mut ph2d_app_components::health_bar_bridge::HealthBarsState::new(),
+            &ph2d_ecs::sort_key::SortScratch::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
+            &mut outbox,
+            motores::Leitores {
+                script: &mut r_script,
+                particles: &mut r_part,
+                weapon: &mut r_arma,
+            },
+            &motores::Relogio::do_quadro(true, 1, 1.0 / 60.0),
+            &std::collections::BTreeMap::new(),
+            &mut portas,
+        );
+        let t = sim
+            .world()
+            .get::<ph2d_ecs::Transform>(medidor)
+            .expect("pose");
+        assert!(
+            (t.scale.x - 0.2).abs() < 1e-6,
+            "{sinal}: largura = motion.get(\"vida\") ({})",
+            t.scale.x
+        );
+        assert_eq!(t.scale.y, alto, "{sinal}: a altura");
+    }
+}

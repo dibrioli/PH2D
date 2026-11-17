@@ -3,7 +3,7 @@
 //! vive *o que um nó é* (elegível, a caminhada, as colunas); aqui vive *que saídas se pedem e
 //! quando o laço recua*.
 
-use super::{DrivenParams, GpuPlan, GpuSource, Walk, eligible};
+use super::{DrivenParams, GpuPlan, Walk, eligible};
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::KernelResolver;
 use ph2d_nodegraph::graph::{Graph, NodeId};

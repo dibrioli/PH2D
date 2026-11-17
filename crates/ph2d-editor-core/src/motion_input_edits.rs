@@ -229,7 +229,7 @@ impl InspectorMotionInputInfo {
                 Some(Q::SemCorpo)
             }
             SOURCE_MOVE if self.acoes_de_mover().is_empty() => Some(Q::SemMover),
-            SOURCE_ACTION if !self.acoes_do_mapa.iter().any(|a| *a == self.action) => {
+            SOURCE_ACTION if !self.acoes_do_mapa.contains(&self.action) => {
                 Some(Q::AcaoDesconhecida)
             }
             SOURCE_PROPERTY if self.property.trim().is_empty() => Some(Q::CampoVazio),

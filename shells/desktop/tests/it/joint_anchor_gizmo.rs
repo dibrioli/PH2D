@@ -167,7 +167,8 @@ fn the_generic_translate_does_not_reseed_a_joints_anchors() {
 /// **The Inspector's Position commit re-seats the A anchor through the door.**
 ///
 /// A joint's Position IS its A anchor, so committing one has to reach the anchor
-/// state — and through `set_joint_anchor_world`, not the joint-wide sentinel, for
+/// state — and through `set_joint_pivot_local` (W4h: the joint lives inside body A, so the Position is
+/// a LOCAL that the door re-seats as the A anchor via `set_joint_anchor_world`), not the joint-wide sentinel, for
 /// the same reason as the gate above. Typing an X for the pivot must not reset
 /// body B's end.
 #[test]
@@ -190,14 +191,20 @@ fn the_position_commit_reseats_the_anchor_through_the_door() {
     // o `set_joint_anchor_world` saiu da janela. O gate reprovou sobre um `render_loop` correcto,
     // acusando uma junta que ninguém tinha tocado. *Um gate que parseia o fonte tem de delimitar o
     // ITEM de que fala; uma janela de bytes mede a vizinhança.*
-    let block = bloco_do_consumo(&src, "if let Some((bits, world)) = joint_pivot_commit {");
+    let block = bloco_do_consumo(&src, "if let Some((bits, local)) = joint_pivot_commit {");
     assert!(
-        block.contains("set_joint_anchor_world"),
+        block.contains("set_joint_pivot_local"),
         "the committed pivot never reaches the bridge's anchor door"
     );
+    // A porta do pivô LOCAL (W4h) compõe com o pai e escreve a âncora A em mundo — o lado diz-se lá.
+    let ponte = include_str!("../../../../crates/ph2d-physics-ecs/src/bridge/anchors.rs");
+    let porta = &ponte[ponte
+        .find("pub fn set_joint_pivot_local(")
+        .expect("the local pivot door exists")..];
+    let porta = &porta[..porta.find("\n    }\n").expect("the door closes")];
     assert!(
-        block.contains("JointSide::A"),
-        "the Position field is the A anchor; the commit must say so"
+        porta.contains("set_joint_anchor_world") && porta.contains("JointSide::A"),
+        "the Position field is the A anchor; the local door must re-seat it as A"
     );
     let commits =
         fs::read_to_string("src/render_loop/inspector_commits.rs").expect("inspector_commits.rs");

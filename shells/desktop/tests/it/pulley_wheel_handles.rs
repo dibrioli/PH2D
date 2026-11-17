@@ -44,7 +44,7 @@ fn dragging_a_wheel_centre_reseats_a_mounted_axle() {
 ///
 /// Dois gestos que dizem a mesma coisa não podem discordar sobre o que ela
 /// significa — e uma regra escrita uma vez por chamador é a regra que o terceiro
-/// chamador nasce sem. O sítio do joint (`set_joint_anchor_world`) está
+/// chamador nasce sem. O sítio do joint (`set_joint_pivot_local`) está
 /// imediatamente acima, e o da roldana tem de estar no mesmo bloco.
 #[test]
 fn committing_a_wheel_position_reseats_the_same_axle() {
@@ -52,7 +52,7 @@ fn committing_a_wheel_position_reseats_the_same_axle() {
     // `line/render-loop` (2026-09-12) este bloco sai do `render_loop/mod.rs` para uma fase.
     let src = crate::frame_text::render_frame();
     let start = src
-        .find("if let Some((bits, world)) = joint_pivot_commit {")
+        .find("if let Some((bits, local)) = joint_pivot_commit {")
         .expect("o bloco de commit de pivô sumiu");
     let block = &src[start..start + 1400];
     assert!(

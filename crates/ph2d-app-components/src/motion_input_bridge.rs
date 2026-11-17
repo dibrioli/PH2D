@@ -108,10 +108,11 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
     let sinais: Vec<String> = outbox.read(leitor).map(|s| s.name.to_string()).collect();
 
     let mut m = world.get_resource_or_insert_with(MotionInputs::default);
-    let mut vivos: BTreeSet<(u64, String)> = BTreeSet::new();
+    // Vivo = (dono, bits, entrada): renomear o dono deixa a linha do nome velho de fora.
+    let mut vivos: BTreeSet<(String, u64, String)> = BTreeSet::new();
     for (escritor, nome, o_que, fonte_viva) in linhas {
-        if let (Escritor::Objeto { bits, .. }, true) = (&escritor, fonte_viva) {
-            vivos.insert((*bits, nome.clone()));
+        if let (Escritor::Objeto { nome: dono, bits }, true) = (&escritor, fonte_viva) {
+            vivos.insert((dono.clone(), *bits, nome.clone()));
         }
         match o_que {
             Publica::Valor(v) => m.set(&nome, escritor, v),
@@ -119,7 +120,7 @@ pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
             Publica::Nada => {}
         }
     }
-    m.retem_objetos(|_, bits, nome| vivos.contains(&(bits, nome.to_string())));
+    m.retem_objetos(|dono, bits, nome| vivos.contains(&(dono.to_string(), bits, nome.to_string())));
     for s in sinais {
         m.fire(&s, Escritor::Sinal);
     }

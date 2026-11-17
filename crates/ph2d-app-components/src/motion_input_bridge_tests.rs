@@ -431,3 +431,29 @@ fn a_motion_input_child_reads_its_parent_and_siblings_keep_their_own_state() {
     let rotulo = sim.world().get::<Name>(vida).map(|n| n.0.clone());
     assert_eq!(rotulo.as_deref(), Some("Motion Input \u{b7} vida"));
 }
+
+/// ⭐ D1: renomear o PAI a meio do Play deixa UMA linha, com o valor novo — a do nome velho («Hero»
+/// vem antes de «Player») não fica congelada como a 1.ª linha que o `value.input` lê.
+///
+/// Mutação que deve sangrar: o `retem_objetos` da ponte ignorar o nome do dono.
+#[test]
+fn motion_input_renaming_the_parent_mid_play_leaves_one_row_with_the_new_value() {
+    let mut sim = SimWorld::new();
+    let out = SignalOutbox::new();
+    let pai = sim.world_mut().spawn(Name("Hero".into())).id();
+    let e = ph2d_physics_ecs::pendura_entrada(sim.world_mut(), None, Some(pai), "");
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(entrada("vel", MotionSource::Value, 1.0));
+    quadro(&mut sim, &out);
+    sim.world_mut()
+        .entity_mut(pai)
+        .insert(Name("Player".into()));
+    sim.world_mut().get_mut::<MotionInput>(e).unwrap().value = 2.0;
+    quadro(&mut sim, &out);
+    assert_eq!(valor(&sim, "vel"), vec![Valor::Numero(2.0)]);
+    let m = sim.world().get_resource::<MotionInputs>().unwrap();
+    assert!(
+        matches!(m.primeira_linha("vel"), Some((Escritor::Objeto { nome, .. }, _)) if nome == "Player")
+    );
+}

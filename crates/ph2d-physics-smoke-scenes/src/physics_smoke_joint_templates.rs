@@ -100,3 +100,7 @@ pub fn build(world: &mut World) {
     }
     std::mem::swap(sim.world_mut(), world);
 }
+
+#[cfg(test)]
+#[path = "physics_smoke_joint_templates_tests.rs"]
+mod tests;

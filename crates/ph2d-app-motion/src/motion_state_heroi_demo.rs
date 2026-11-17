@@ -147,8 +147,9 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
             "Life: Hero's health; under 0.25 it sends low_health",
         ),
         ficha(
+            // Abaixo do emissor: a +0,9 as estrelas que sobem com o vento tapavam-na (régua tapa, 17/11).
             RASTRO_AT[0],
-            RASTRO_AT[1] + 0.9,
+            RASTRO_AT[1] - 1.6,
             "Trail: Hero's velocity (x, y) is the wind: the stars fly the way he runs",
         ),
         ficha(

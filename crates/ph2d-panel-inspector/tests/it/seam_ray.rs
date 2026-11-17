@@ -393,3 +393,31 @@ fn a_tag_do_filtro_escolhe_se_na_lista_da_arvore() {
     });
     ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
+
+/// ⭐ O Cone devolve SEMPRE todos os que vê: com Shape = Cone a caixa «See all hits» não se pinta (não
+/// decide nada); com Line e Thick ela está lá. Nos cartões e fora deles, com o Filter aberto.
+///
+/// **Mutação que deve sangrar:** pintar as três caixas em qualquer forma.
+#[test]
+fn no_cone_a_caixa_see_all_hits_nao_existe() {
+    use ph2d_editor_core::ray_edits::RayShapeKind as F;
+    nos_dois_modos(|c| {
+        for (forma, cone, existe) in [
+            (F::Line, 0.0, true),
+            (F::Thick, 0.0, true),
+            (F::Cone, 60.0, false),
+        ] {
+            let mut info = raio();
+            info.shape = forma;
+            info.cone = cone;
+            let (_, _, r) = assente_com(&info, c, true);
+            assert!(achado(&r, i::INSP_RAY_HIT_TRIGGERS).is_some(), "{forma:?}");
+            assert_eq!(
+                achado(&r, i::INSP_RAY_ALL_HITS).is_some(),
+                existe,
+                "{forma:?} (cartões {c})"
+            );
+        }
+        set_current_inspector_ray(None);
+    });
+}

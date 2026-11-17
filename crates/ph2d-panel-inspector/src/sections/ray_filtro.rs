@@ -39,6 +39,11 @@ fn nome_da_tag(tag: u64) -> Option<String> {
     })
 }
 
+/// O Cone devolve SEMPRE todos os que vê (o lance não lê `all_hits`): «See all hits» não decide nada.
+fn o_cone_ve_todos(i: &InspectorRayInfo) -> bool {
+    i.shape == ph2d_editor_core::ray_edits::RayShapeKind::Cone && i.cone.is_finite() && i.cone > 0.0
+}
+
 /// ⭐ **O resumo do grupo fechado** — só o que foge do de fábrica; de fábrica diz «Ignores me».
 #[must_use]
 pub(crate) fn resumo(i: &InspectorRayInfo) -> String {
@@ -69,7 +74,10 @@ pub(crate) fn resumo(i: &InspectorRayInfo) -> String {
         (!i.ignore_parts, "panel.inspector.ray.filter_sees_my_parts"),
         (i.hit_triggers, "panel.inspector.ray.filter_sees_triggers"),
         (i.starts_inside, "panel.inspector.ray.filter_from_inside"),
-        (i.all_hits, "panel.inspector.ray.filter_all_hits"),
+        (
+            i.all_hits && !o_cone_ve_todos(i),
+            "panel.inspector.ray.filter_all_hits",
+        ),
     ] {
         if liga {
             partes.push(tr(chave).to_string());
@@ -410,6 +418,24 @@ pub(super) fn grupo_do_filtro(
             seccao,
         );
     }
+    let caixas = [
+        caixa(
+            crate::ids::INSP_RAY_HIT_TRIGGERS,
+            "component.field.ray_sensor.9",
+            i.hit_triggers,
+        ),
+        caixa(
+            crate::ids::INSP_RAY_STARTS_INSIDE,
+            "component.field.ray_sensor.10",
+            i.starts_inside,
+        ),
+        caixa(
+            crate::ids::INSP_RAY_ALL_HITS,
+            "component.field.ray_sensor.11",
+            i.all_hits,
+        ),
+    ];
+    let n = if o_cone_ve_todos(i) { 2 } else { 3 };
     cur_y = ph2d_editor_core::property_row::paint_check_rows(
         scene,
         text_system,
@@ -419,23 +445,7 @@ pub(super) fn grupo_do_filtro(
         x,
         w,
         cur_y,
-        &[
-            caixa(
-                crate::ids::INSP_RAY_HIT_TRIGGERS,
-                "component.field.ray_sensor.9",
-                i.hit_triggers,
-            ),
-            caixa(
-                crate::ids::INSP_RAY_STARTS_INSIDE,
-                "component.field.ray_sensor.10",
-                i.starts_inside,
-            ),
-            caixa(
-                crate::ids::INSP_RAY_ALL_HITS,
-                "component.field.ray_sensor.11",
-                i.all_hits,
-            ),
-        ],
+        &caixas[..n],
         seccao,
     );
     g.fecha(store, scene, hit_index, cur_y)
@@ -528,6 +538,14 @@ mod tests {
         let mut lista = de_fabrica();
         lista.also_ignore = vec!["Crate".into(), "Box".into()];
         assert_eq!(resumo(&lista), "Also ignores 2");
+        // O Cone já é todos: «All hits» não se diz (com cone 0 ele é uma linha e volta a dizer-se).
+        let mut cone = de_fabrica();
+        cone.all_hits = true;
+        cone.shape = ph2d_editor_core::ray_edits::RayShapeKind::Cone;
+        cone.cone = 60.0;
+        assert_eq!(resumo(&cone), "Ignores me");
+        cone.cone = 0.0;
+        assert_eq!(resumo(&cone), "All hits");
         crate::state::set_current_tag_tree(Vec::new());
     }
 }

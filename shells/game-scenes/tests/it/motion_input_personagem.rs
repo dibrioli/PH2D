@@ -266,8 +266,10 @@ fn a_property_of_a_two_lane_field_sends_the_pair() {
 #[test]
 fn the_pair_smooths_per_component_and_each_child_keeps_its_own_state() {
     use ph2d_app_components::motion_input_fonte::forma;
-    let mut m = MotionInput::default();
-    m.smooth = 1.0;
+    let m = MotionInput {
+        smooth: 1.0,
+        ..MotionInput::default()
+    };
     let r = forma(
         &m,
         Some(Valor::Vetor([0.0, 10.0])),

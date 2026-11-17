@@ -411,7 +411,7 @@ mod tests {
             assert!((par[1] - par[0] - 1.0).abs() < 0.01, "{par:?}");
         }
         assert!(vida.iter().zip(&golpe).all(|(a, b)| (a - b).abs() > 0.2));
-        assert!(GOLPE * 4.0 < 100.0, "acaba viva");
+        const { assert!(GOLPE * 4.0 < 100.0, "acaba viva") };
         assert_eq!(foto(Some("motion_input_lamp")), Some(Foto::Lamp));
         assert_eq!(foto(Some("ray_filter")), None);
     }

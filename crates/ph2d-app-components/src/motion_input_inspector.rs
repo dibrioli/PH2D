@@ -99,18 +99,21 @@ const fn ao_vivo_de(v: Valor) -> AoVivo {
     }
 }
 
+/// Vida (agora, máx), registo, alvo do From e a física — o que se lê também parado.
+type Leituras<'a> = (
+    Option<(f32, f32)>,
+    Option<&'a ComponentRegistry>,
+    Option<ph2d_ecs::Entity>,
+    Option<&'a PhysicsBridge>,
+);
+
 /// MI-11: o que manda agora e, em Play, quem o tapa (Health e Property leem-se também paradas).
 fn ao_vivo(
     sim: &SimWorld,
     e: ph2d_ecs::Entity,
     m: &MotionInput,
     a_correr: bool,
-    (vida, reg, alvo, fisica): (
-        Option<(f32, f32)>,
-        Option<&ComponentRegistry>,
-        Option<ph2d_ecs::Entity>,
-        Option<&PhysicsBridge>,
-    ),
+    (vida, reg, alvo, fisica): Leituras<'_>,
 ) -> (Option<AoVivo>, Option<(Outro, AoVivo)>) {
     let world = sim.world();
     let eu = Escritor::Objeto {

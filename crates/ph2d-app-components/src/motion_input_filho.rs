@@ -14,7 +14,7 @@ pub fn alvo_do_pick(sim: &mut SimWorld, bits: u64, name: &str) -> u64 {
         return bits;
     }
     let base = ph2d_game_dicas::add::MOTION_INPUT.key.tr();
-    let filho = ph2d_physics_ecs::pendura_entrada(world, None, Some(pai), &base).to_bits();
+    let filho = ph2d_physics_ecs::pendura_entrada(world, None, Some(pai), base).to_bits();
     NOVO.with(|c| c.set(Some(filho)));
     filho
 }

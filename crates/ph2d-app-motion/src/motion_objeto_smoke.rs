@@ -98,7 +98,7 @@ fn foto_do_heroi(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
             .find(|(_, m, g)| m.0 == n && (!motion || g.is_some()))
             .map(|(e, ..)| e)
     };
-    let (Some(motion), Some(_)) = (achado(&nome, true), achado("Hero", false)) else {
+    let (Some(motion), Some(_)) = (achado(nome, true), achado("Hero", false)) else {
         return;
     };
     if FOTO_FEITA.swap(true, std::sync::atomic::Ordering::Relaxed) {

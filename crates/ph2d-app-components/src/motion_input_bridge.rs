@@ -28,7 +28,7 @@ enum Publica {
 /// Corre UMA vez por quadro, depois da física (o `HealthNow`) e antes do Motion.
 pub fn frame(sim: &mut SimWorld, outbox: &SignalOutbox, fontes: &Fontes<'_>) {
     let world = sim.world_mut();
-    ph2d_ecs::motion_input::rotula_entradas(world, &MOTION_INPUT.key.tr());
+    ph2d_ecs::motion_input::rotula_entradas(world, MOTION_INPUT.key.tr());
     let mut ponte = world.remove_resource::<Ponte>().unwrap_or_default();
     // `bool` = a fonte existe neste quadro; sem ela a linha SAI (o `value.input` volta ao número
     // dele), nunca fica presa no último valor.

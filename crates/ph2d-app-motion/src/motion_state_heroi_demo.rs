@@ -27,11 +27,7 @@ pub(crate) const PORTAS_XY: [u16; 2] = [7, 8];
 #[cfg_attr(not(test), expect(dead_code, reason = "lidos pelos gates da cena"))]
 pub(crate) struct Cena {
     pub barra: NodeId,
-    pub vida: NodeId,
-    pub sinal: NodeId,
     pub remap: NodeId,
-    pub rastro: NodeId,
-    pub ventos: [NodeId; 2],
     pub saida_rastro: NodeId,
 }
 
@@ -127,15 +123,11 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
     liga(g, (vida, 0), sinal, 0, false)?;
     g.drive_param(remap, ph2d_nodegraph::time::TIME_DRIVE_PARAM, (sinal, 0))
         .ok()?;
-    let (saida_rastro, rastro, ventos) = trilha(g)?;
+    let (saida_rastro, ..) = trilha(g)?;
     g.validate(reg).ok()?;
     Some(Cena {
         barra,
-        vida,
-        sinal,
         remap,
-        rastro,
-        ventos,
         saida_rastro,
     })
 }

@@ -25,12 +25,13 @@ fn ao_abrir_a_sprite_vem_destacada() {
     );
 }
 
-/// ⭐⭐ **As 19 entradas nos quatro grupos da maquete B, na ordem dela** (Crítica `#addobject`, dono 07/11)
+/// ⭐⭐ **As 21 entradas nos quatro grupos da maquete B, na ordem dela** (Crítica `#addobject`, dono 07/11;
+/// Ray Sensor e Motion Input, objetos filhos, GEF 07/08 de 15–16/11)
 /// — sem Physics Body nem Ambient Light, que saíram.
 ///
 /// (Mutação: ordenar pela ordem das famílias em vez de `AddEntry::order` ⇒ RED.)
 #[test]
-fn as_dezanove_entradas_nos_quatro_grupos_da_maquete() {
+fn as_vinte_e_uma_entradas_nos_quatro_grupos_da_maquete() {
     let model = build(FAMILIES, &|_| None, None);
     let got: Vec<(String, Vec<String>)> = model
         .groups
@@ -72,7 +73,9 @@ fn as_dezanove_entradas_nos_quatro_grupos_da_maquete() {
                 "Character",
                 "Static Body",
                 "Collision Shape",
+                "Ray Sensor",
                 "Camera",
+                "Motion Input",
                 "Sound",
                 "HUD",
                 "Light",
@@ -90,7 +93,7 @@ fn as_dezanove_entradas_nos_quatro_grupos_da_maquete() {
         })
         .collect();
     assert_eq!(got, want);
-    assert_eq!(model.item_count(), 19);
+    assert_eq!(model.item_count(), 21);
 }
 
 /// ⭐⭐ **Toda entrada tem dica com desenho** (decisão do dono de 25/10: nome simples + explicação com

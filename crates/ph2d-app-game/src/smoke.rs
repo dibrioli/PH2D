@@ -100,7 +100,6 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
     }
 }
 
-// As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), folha própria pelo tecto de LOC.
 pub use ph2d_game_smoke_fotos::{
     CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, FotoDaCamera, ONDE_LARGA, PassoDoDono, PlanoDaFoto,
     QUADROS_POR_USO, foto, plano_da_foto, tempo_da_chave, uso_no_quadro, usos_do_dono,
@@ -231,7 +230,8 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
         topdown::CENA => &HORARIO_24, // ↗ e desliza, depois só ←, só ↓ e só ↑
-        projectile::CENA | motion_input::CENA | heroi::CENA => &[], // só o Play: as balas partem sozinhas
+        projectile::CENA | motion_input::CENA => &[], // só o Play: as balas partem sozinhas
+        heroi::CENA => &HORARIO_28,
         ray::CENA => &HORARIO_26, // anda para a direita até à beirada
         3 => &HORARIO_3,
         n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
@@ -293,6 +293,9 @@ pub const HORARIO_24: [(u32, Gesto); 11] = [
     (480, Gesto::Salta(false)),
     (560, Gesto::Para),
 ];
+/// A cena 28: parado sob as pedras, depois corre à direita (o rastro de estrelas vira para lá).
+pub const HORARIO_28: [(u32, Gesto); 2] =
+    [(420, Gesto::Direita(true)), (500, Gesto::Direita(false))];
 /// Onde o salto do nível 2 sai (afinado pelo gate `o_nivel_2_anda_salta_cai_e_anima`).
 pub const QUADRO_DO_SALTO: u32 = 190;
 
@@ -567,7 +570,6 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
             chao_direito = Some((e, c, h));
         }
     }
-    // A parede do fim: uma forma DENTRO do chão, de escala 1 — o tamanho é a caixa do collider.
     let (chao, c, _) = chao_direito.expect("o chão da direita");
     let parede = crate::object_add::add(COLLISION_SHAPE, sim, portas.menu, Some(chao.to_bits()));
     let parede = Entity::from_bits(parede.and_then(Result::ok).expect("a parede nasce"));
@@ -581,7 +583,6 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     );
     let w = sim.world_mut();
     caixa(w, parede, meia);
-    // O céu é uma Sprite com a Parallax a 0 (parada no ecrã); as nuvens e os montes são Background Layers.
     let ceu = do_menu(sim, portas, SPRITE);
     arruma(sim, ceu, "Sky", [0.0, 0.0], CEU_TAMANHO);
     sim.world_mut()
@@ -605,7 +606,6 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     let meta = do_menu(sim, portas, ANIMATED_SPRITE);
     arruma(sim, meta, "Goal", [15.5, 1.0], [1.0, 2.0]);
     folha(sim, meta, FLAG_SHEET, "wave", FLAG_FRAME_MS);
-    // J5 (GEF 21): cada moeda montada com as peças, e o HUD com o contador — ver `smoke_moedas`.
     for (i, at) in MOEDAS_2.into_iter().enumerate() {
         let e = do_menu(sim, portas, ANIMATED_SPRITE);
         arruma(sim, e, &format!("Coin {}", i + 1), at, [0.5, 0.5]);

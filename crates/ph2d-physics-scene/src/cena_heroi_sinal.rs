@@ -40,8 +40,8 @@ pub const PEDRAS: [f32; 4] = [1.6, 2.6, 3.6, 4.6];
 const RAIO: f32 = 0.15;
 pub const CHAO_AT: ([f32; 2], [f32; 2]) = ([0.0, -3.0], [8.0, 0.25]);
 /// A «Warning Lamp» e a «Script Meter» à esquerda da barra (y 2,6) do grafo `=143`.
-pub const LAMPADA_AT: [f32; 2] = [-5.2, 2.6];
-pub const MEDIDOR_AT: [f32; 2] = [-5.2, 1.4];
+pub const LAMPADA_AT: [f32; 2] = [-4.6, 2.6];
+pub const MEDIDOR_AT: [f32; 2] = [-4.6, 1.4];
 pub const SCRIPT_NOME: &str = "meter.luau";
 /// O script: a largura segue o que o grafo lê em «vida»; ao ouvir `low_health` engorda e escreve no Output.
 pub const SCRIPT: &str = r#"function update(self, dt)

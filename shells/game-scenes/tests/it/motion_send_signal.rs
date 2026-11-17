@@ -315,6 +315,12 @@ fn o_cartao_motion_le_os_envios_do_objecto_nesta_corrida() {
     use ph2d_app_motion::motion_objeto::origem::envios_do_objeto;
     let mut motion = MotionState::new();
     let s = grafo(&mut motion, BITS);
+    let outro = motion.doc.graph.add_node(send::MANIFEST.name);
+    motion
+        .doc
+        .graph
+        .set_text_param(outro, send::NAME_KEY, "outro");
+    motion.doc.set_owner(outro, SID);
     motion.envios.corrida(true);
     let l = send::Leitura {
         v: 0.0,
@@ -331,7 +337,7 @@ fn o_cartao_motion_le_os_envios_do_objecto_nesta_corrida() {
         .iter()
         .map(|e| (e.signal.as_str(), e.times))
         .collect();
-    assert_eq!(lido, [("caiu", 2)]);
+    assert_eq!(lido, [("caiu", 2), ("outro", 0)], "cada nó conta o seu");
     assert!(
         envios_do_objeto(&motion, BITS, false).is_none(),
         "parado: sem cartão"
@@ -345,6 +351,7 @@ fn o_cartao_motion_le_os_envios_do_objecto_nesta_corrida() {
     let zero = envios_do_objeto(&motion, BITS, true).expect("cartão");
     assert_eq!(zero.sent[0].times, 0, "o Play seguinte começa do zero");
     motion.doc.graph.set_text_param(s, send::NAME_KEY, "  ");
+    motion.doc.graph.set_text_param(outro, send::NAME_KEY, "  ");
     assert!(
         envios_do_objeto(&motion, BITS, true).is_none(),
         "sem nome não envia"

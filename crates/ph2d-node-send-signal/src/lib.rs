@@ -9,7 +9,9 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamGate, ParamHardMax, ParamHardMin, ParamUiHint, ParamWidget, RegistryError,
+};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -55,9 +57,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
+        // Falls below: ligado só pelo valor já envia (Pulse sem fio no `pulse` nunca enviaria).
         ParamSpec {
             name: WHEN,
-            default: 0.0,
+            default: 2.0,
         },
         ParamSpec {
             name: LEVEL,
@@ -141,12 +144,12 @@ impl Envios {
             _ => l.pulsos,
         };
         if linhas > 0 {
-            *self.vezes.entry(node).or_default() += 1;
+            *self.vezes.entry(node).or_default() += linhas as u64;
         }
         linhas
     }
 
-    /// Quantas vezes este nó enviou o sinal nesta sessão.
+    /// Quantos sinais este nó publicou nesta corrida (um Pulse de várias linhas conta cada uma).
     #[must_use]
     pub fn vezes(&self, node: NodeId) -> u64 {
         self.vezes.get(&node).copied().unwrap_or(0)
@@ -201,6 +204,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_hard_max(MANIFEST.id, LEVEL_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, LEVEL_HARD_MIN);
     Ok(())
 }
 
@@ -208,6 +213,18 @@ static PARAM_GATES: &[ParamGate] = &[ParamGate {
     param: LEVEL,
     when: WHEN,
     values: &[WHEN_RISES, WHEN_FALLS],
+}];
+
+/// O Level compara o que chegar (Speed, Velocity.x, Property crua): o arrasto é a faixa SUAVE 0..1 e o
+/// número digitado vai até onde um passo inteiro do `f32` ainda é exacto (2^24), nos dois sentidos.
+const LEVEL_TECTO: f32 = 16_777_216.0;
+static LEVEL_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: LEVEL,
+    max: LEVEL_TECTO,
+}];
+static LEVEL_HARD_MIN: &[ParamHardMin] = &[ParamHardMin {
+    param: LEVEL,
+    min: -LEVEL_TECTO,
 }];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

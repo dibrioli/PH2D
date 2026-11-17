@@ -54,8 +54,8 @@ fn send_signal_esta_na_paleta_em_output_e_os_params_editam_por_clique() {
     let p = mostra(&m);
     assert!(p.iter().any(|x| x == send::NAME_KEY), "{p:?}");
     assert!(
-        !p.iter().any(|x| x == send::LEVEL),
-        "Pulse esconde o Level: {p:?}"
+        p.iter().any(|x| x == send::LEVEL),
+        "nasce em Falls below, com o Level: {p:?}"
     );
 
     for (when, level) in [

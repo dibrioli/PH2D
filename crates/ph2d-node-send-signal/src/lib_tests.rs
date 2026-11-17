@@ -56,7 +56,8 @@ fn pulse_sends_on_every_firing_and_counts() {
     assert_eq!(e.passo(NodeId(3), 0, &l(0.0, WHEN_PULSE, 0)), 0);
     assert_eq!(e.passo(NodeId(3), 1, &l(0.0, WHEN_PULSE, 2)), 2);
     assert_eq!(e.passo(NodeId(3), 5, &l(0.0, WHEN_PULSE, 1)), 1);
-    assert_eq!(e.vezes(NodeId(3)), 2);
+    // Conta o que se publica: duas linhas no mesmo quadro são dois sinais.
+    assert_eq!(e.vezes(NodeId(3)), 3);
     e.retem(&[]);
     assert_eq!(e.vezes(NodeId(3)), 0);
 }
@@ -89,7 +90,11 @@ fn it_registers_with_a_name_and_its_params() {
     let mut reg = NodeRegistry::new();
     register(&mut reg).expect("regista");
     assert_eq!(MANIFEST.param_default(LEVEL), Some(0.5));
-    assert_eq!(MANIFEST.param_default(WHEN), Some(0.0));
+    assert_eq!(MANIFEST.param_default(WHEN), Some(WHEN_FALLS as f32));
+    // O Level arrasta 0..1 mas digita-se sem tecto prático (Speed, Velocity.x negativa).
+    let id = MANIFEST.id;
+    assert_eq!(reg.param_hard_max(id, LEVEL), Some(LEVEL_TECTO));
+    assert_eq!(reg.param_hard_min(id, LEVEL), Some(-LEVEL_TECTO));
 }
 
 #[test]

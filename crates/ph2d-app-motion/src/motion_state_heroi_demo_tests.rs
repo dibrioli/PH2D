@@ -109,7 +109,8 @@ fn the_trail_points_where_the_hero_runs() {
         centro([0.0, 4.0]),
     );
     eprintln!("rastro: parado {parado:?} direita {direita:?} esquerda {esquerda:?} cima {cima:?}");
-    assert!(parado[0].hypot(parado[1]) < 0.2, "{parado:?}");
+    // A boca é um disco de 0.8: o centro das estrelas fica dentro de um quarto de metro.
+    assert!(parado[0].hypot(parado[1]) < 0.25, "{parado:?}");
     assert!(direita[0] > 0.3 && direita[1].abs() < 0.2, "{direita:?}");
     assert!(esquerda[0] < -0.3, "{esquerda:?}");
     assert!(cima[1] > 0.3 && cima[0].abs() < 0.2, "{cima:?}");

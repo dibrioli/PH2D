@@ -5,7 +5,7 @@
 //! - **`rastro`** (o par Velocity do herói, portas `x`/`y`) → dois `Wind` (um por eixo) sobre um rastro
 //!   SIMULADO de estrelas que um emissor solta: o rastro aponta para onde o herói corre.
 
-use super::jogo_demo::{carimbo, entrada, liga, no_em};
+use super::jogo_demo::{entrada, liga, no_em};
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Graph, NodeId};
@@ -19,7 +19,7 @@ pub(crate) const RAPIDEZ_MAX: f32 = 6.0;
 /// Onde o rastro nasce no mundo: ao lado do Hero da cena 28, por onde ele corre.
 pub(crate) const RASTRO_AT: [f32; 2] = [0.3, -1.7];
 /// A «Warning Lamp» e a «Script Meter» da cena 28 (`cena_heroi_sinal::LAMPADA_AT`/`MEDIDOR_AT`), para as legendas.
-const LAMPADA_AT: [f32; 2] = [-3.9, 2.6];
+const LAMPADA_AT: [f32; 2] = [-4.5, 2.6];
 const MEDIDOR_AT: [f32; 2] = [-3.9, 1.4];
 /// As portas `x` e `y` do `value.input` (MI-5, no fim do manifesto).
 pub(crate) const PORTAS_XY: [u16; 2] = [7, 8];
@@ -39,12 +39,19 @@ fn trilha(g: &mut Graph) -> Option<(NodeId, NodeId, [NodeId; 2])> {
     let no = no_em(660.0);
     let emissor = no(g, "motion.emitter", -880.0, 0.0);
     for (chave, v) in [
-        ("rate", 30.0),
-        ("life", 1.6),
-        ("max", 64.0),
-        ("size", 0.2),
+        // Em rajadas desde t = 0: parado já há estrelas a pairar ao lado do Hero.
+        ("emit_mode", 1.0),
+        ("burst_count", 6.0),
+        ("burst_period", 0.6),
+        // Num disco (`shape_mode` 1 = Disc): a rajada do t = 0 não nasce empilhada num ponto.
+        ("shape_mode", 1.0),
+        ("shape_w", 0.8),
+        ("shape_h", 0.8),
+        ("life", 2.0),
+        ("max", 24.0),
+        ("size", 0.14),
         ("size_random", 0.3),
-        ("speed", 0.5),
+        ("speed", 0.3),
         ("speed_random", 0.5),
         ("spread", 360.0),
         ("seed", 7.0),
@@ -87,7 +94,18 @@ fn trilha(g: &mut Graph) -> Option<(NodeId, NodeId, [NodeId; 2])> {
         (de, pre, ventos[i]) = ((vento, 0), false, vento);
     }
     liga(g, de, integra, 1, false)?;
-    let estrelas = carimbo(g, [1.0, 0.75, 0.25], 0.0, 760.0)?;
+    let estrela = super::jogo_demo::forma(
+        g,
+        &no,
+        ph2d_node_motion_shape::ShapeKind::Star,
+        super::jogo_demo::MEIO_LADO_UNITARIO,
+        [1.0, 0.8, 0.3],
+        0.0,
+        110.0,
+    )?;
+    let estrelas = no(g, "motion.duplicator", 0.0, 0.0);
+    g.set_param(estrelas, "point_scale", 1.0);
+    liga(g, (estrela, 0), estrelas, 0, false)?;
     liga(g, (integra, 0), estrelas, 1, false)?;
     let lugar = no(g, "motion.transform", 220.0, 100.0);
     g.set_param(lugar, "offset_x", RASTRO_AT[0]);
@@ -139,7 +157,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         ficha(
             RASTRO_AT[0],
             RASTRO_AT[1] + 0.9,
-            "rastro: Hero's velocity (x, y) blows the stars (Wind)",
+            "rastro: Hero's velocity (x, y) is the wind: the stars fly the way he runs",
         ),
         ficha(
             LAMPADA_AT[0],

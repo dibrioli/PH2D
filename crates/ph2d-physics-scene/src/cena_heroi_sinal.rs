@@ -13,7 +13,7 @@ use ph2d_ecs::{
     Transform, Visibility,
 };
 use ph2d_physics_ecs::{Collider, ColliderShape, Damage, Health, OnHit, ProjectileMotion};
-use ph2d_render::{Sprite, WHITE_TILE_KEY};
+use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 
 pub const CENA: u32 = 28;
 
@@ -39,8 +39,8 @@ pub const HEROI_AT: [f32; 2] = [-1.5, -2.0];
 pub const PEDRAS: [f32; 4] = [1.6, 2.6, 3.6, 4.6];
 const RAIO: f32 = 0.15;
 pub const CHAO_AT: ([f32; 2], [f32; 2]) = ([0.0, -3.0], [8.0, 0.25]);
-/// A «Warning Lamp» e a «Script Meter» à esquerda da barra (y 2,6) do grafo `=143`.
-pub const LAMPADA_AT: [f32; 2] = [-3.9, 2.6];
+/// A «Warning Lamp» (redonda, longe da ponta da barra) e a «Script Meter» à esquerda da barra (y 2,6) do grafo `=143`.
+pub const LAMPADA_AT: [f32; 2] = [-4.5, 2.6];
 pub const MEDIDOR_AT: [f32; 2] = [-3.9, 1.4];
 pub const SCRIPT_NOME: &str = "meter.luau";
 /// O script: a largura segue o que o grafo lê em «vida»; ao ouvir `low_health` engorda e escreve no Output.
@@ -154,7 +154,7 @@ pub fn montar(sim: &mut SimWorld, p: Pecas<'_>) -> Entity {
         ..SignalAction::default()
     };
     sim.world_mut().entity_mut(lampada).insert((
-        Sprite::atlas(WHITE_TILE_KEY, [0.7; 2], LAMPADA_RGBA),
+        Sprite::atlas(DISC_TILE_KEY, [0.7; 2], LAMPADA_RGBA),
         Visibility::hidden(),
         SignalActions(vec![regra]),
     ));

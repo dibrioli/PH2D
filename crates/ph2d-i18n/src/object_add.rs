@@ -119,7 +119,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "raycast, ray, detect, sense, see ahead, line of sight, ground check, edge, wall check"
         }
         "object_add.game.motion_input.keywords" => {
-            "motion, input, graph, drive, value, parameter, send to motion, animate by health, speed"
+            "motion, input, graph, drive, value, parameter, send to motion, animate from gameplay, speed"
         }
         "object_add.game.camera.keywords" => "view, viewport, screen, follow, look",
         "object_add.game.sound.keywords" => {

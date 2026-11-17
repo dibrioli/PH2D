@@ -75,10 +75,7 @@ pub use formas::GpuFormas;
 pub mod passe_na_placa;
 pub mod plan;
 pub mod reduce;
-// PUBLIC for one reason, written here so it is not "tidied" back: the naga sweep
-// needs `reduce_stage::map_module` to parse+validate the `value` expression of
-// every registered `ReduceSpec` WITHOUT a device. Before that gate existed those
-// expressions only ever met a compiler on a machine with an adapter.
+// PUBLIC: the naga sweep validates every `ReduceSpec` via `reduce_stage::map_module`, deviceless.
 pub mod reduce_stage;
 pub mod ring;
 mod saidas;
@@ -166,12 +163,7 @@ impl GpuCook {
         clock: CookClock,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
-        // ⭐⭐ **O ESTILO DE CADA SAÍDA**, um por [`GpuPlan::sinks`] e na mesma ordem (doc 119 W3).
-        // The sink's STYLE — lowering decisions the HOST owns, like the two
-        // defaults above. It comes from the one door, `sink_style`; the why is
-        // written there (this crate keeps `ph2d-eval-motion` a DEV dep on
-        // purpose, so it cannot ask that door itself — daí o tipo viver no
-        // `ph2d-render`, que é de quem os quatro campos são).
+        // O estilo de cada saída, um por [`GpuPlan::sinks`] (doc 119 W3), da porta `sink_style`.
         styles: &[ph2d_render::SinkStyle],
     ) -> Result<u32, GpuCookError> {
         let CookClock { playhead, tick } = clock;
@@ -185,19 +177,14 @@ impl GpuCook {
         if want != got || falta_porta {
             return Err(GpuCookError::BoundaryMismatch);
         }
-        // D5 — the scrub ring: `prev` right now IS the state this tick cooks
-        // from, so record it BEFORE the cook overwrites it. Free in time (a map
-        // of refcounts); the cost is the VRAM it pins, which is what the ring
-        // caps. A stateless plan has no `tick` and records nothing.
+        // D5 — the scrub ring records `prev` (this tick's input) BEFORE the cook overwrites it.
         if let Some(t) = tick
             && plan.drives_a_loop()
             && self.ring.should_record(t)
         {
             self.ring.record(t, &self.prev, self.last_playhead);
         }
-        // The ROOT clock's step — the same expression as the CPU's `EvalCtx::dt`
-        // (`prev_playhead.map_or(0.0, |p| playhead - p)`), for the count laws
-        // that need one (`sim.spawn`, ADR-0136).
+        // The ROOT clock's step — the CPU's `EvalCtx::dt` (ADR-0136).
         let dt = self.last_playhead.map_or(0.0, |p| playhead - p);
         // Drop the previous frame's tap hold BEFORE reclaiming, or its refcount
         // would keep every intermediate out of the pool for one extra frame.

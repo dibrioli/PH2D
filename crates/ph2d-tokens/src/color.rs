@@ -3,11 +3,7 @@
 //! Pipeline: OKLCH design tokens (`docs/design/tokens.json`) →
 //! `Color::from_oklch` → sRGB 8-bit → consumed by widgets.
 //!
-//! ### Why OKLCH at the source
-//!
-//! - Perceptually uniform (same `L` ⇒ same perceived brightness across hues).
-//! - Easy theme variants (keep structure, change `H`).
-//! - WCAG contrast still computed in linear sRGB space (per spec).
+//! OKLCH at the source: perceptually uniform, easy theme variants; WCAG contrast in linear sRGB.
 //!
 //! **Source-of-truth: `docs/design/tokens.json`**, turned into per-theme tables by `build.rs`.
 

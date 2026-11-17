@@ -139,6 +139,8 @@ const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
             "grounded" => Grounded @ "panel.inspector.motion_input.source.5",
             "action" => Action @ "panel.inspector.motion_input.source.6",
             "property" => Property @ "panel.inspector.motion_input.source.7",
+            "velocity" => Velocity @ "panel.inspector.motion_input.source.8",
+            "move" => Move @ "panel.inspector.motion_input.source.9",
         ]),
     f(3, "component.field.motion_input_fields.3", K::Scalar).named("value"),
     f(4, "component.field.motion_input_fields.4", K::Color).named("color"),

@@ -119,14 +119,32 @@ pub fn dono(
         .map_or(e, crate::ChildOf::parent)
 }
 
-/// O rótulo da linha da Hierarquia: `«<base> · <nome>»` (`base` = «Motion Input», traduzido por quem chama).
+/// O rótulo da linha da Hierarquia: `«<base> · <nome>»` (`base` = «Motion Input», traduzido por quem chama);
+/// nome vazio ⇒ só a `base`.
 #[must_use]
 pub fn rotulo(base: &str, nome: &str) -> String {
-    format!("{base} \u{b7} {}", nome.trim())
+    match nome.trim() {
+        "" => base.to_owned(),
+        nome => format!("{base} \u{b7} {nome}"),
+    }
 }
 
-/// A linha da Hierarquia segue o nome da entrada: todo objeto com `MotionInput` cujo `Name` ainda começa
-/// por `base` (o artista não o renomeou) passa a `rotulo(base, nome)`. Só escreve quando muda.
+/// O `Name` ainda é o AUTOMÁTICO: vazio, a `base`, a base com o número de um nome livre («Motion Input 2»)
+/// ou um [`rotulo`] («<base> · <qualquer>»). Qualquer outro foi o artista que o escreveu.
+#[must_use]
+pub fn nome_automatico(base: &str, atual: &str) -> bool {
+    let Some(resto) = atual.strip_prefix(base) else {
+        return atual.is_empty();
+    };
+    resto.is_empty()
+        || resto.starts_with(" \u{b7}")
+        || resto
+            .strip_prefix(' ')
+            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// A linha da Hierarquia segue o nome da entrada: todo objeto com `MotionInput` cujo `Name` ainda é o
+/// [`nome_automatico`] passa a `rotulo(base, nome)`. Só escreve quando muda.
 pub fn rotula_entradas(world: &mut bevy_ecs::world::World, base: &str) {
     let mut q = world.query::<(bevy_ecs::entity::Entity, &MotionInput, Option<&crate::Name>)>();
     let trocar: Vec<_> = q
@@ -134,10 +152,14 @@ pub fn rotula_entradas(world: &mut bevy_ecs::world::World, base: &str) {
         .filter_map(|(e, m, n)| {
             let quer = rotulo(base, &m.name);
             let atual = n.map_or("", |n| n.as_str());
-            (atual != quer && (atual.is_empty() || atual.starts_with(base))).then_some((e, quer))
+            (atual != quer && nome_automatico(base, atual)).then_some((e, quer))
         })
         .collect();
     for (e, quer) in trocar {
         world.entity_mut(e).insert(crate::Name::new(quer));
     }
 }
+
+#[cfg(test)]
+#[path = "motion_input_tests.rs"]
+mod tests;

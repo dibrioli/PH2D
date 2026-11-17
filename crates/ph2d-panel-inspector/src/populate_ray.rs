@@ -29,7 +29,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
-use ph2d_editor_core::widget::TextInputState;
+use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 
 /// `(id, valor de partida, mínimo, máximo, passo)`.
 ///
@@ -128,17 +128,30 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
     ] {
         store.set_tooltip(id, ph2d_i18n::tr(dica));
     }
+    // As caixas de marcar são CAIXAS (o padrão da casa, como Bounce/Homing do Projectile): despacham
+    // por `Toggled`, e o valor pintado vem do snapshot.
+    for id in [
+        ids::INSP_RAY_ENABLED,
+        ids::INSP_RAY_TURNS,
+        ids::INSP_RAY_IGNORE_BODY,
+        ids::INSP_RAY_IGNORE_PARTS,
+        ids::INSP_RAY_WALLS_BLOCK,
+        ids::INSP_RAY_HIT_TRIGGERS,
+        ids::INSP_RAY_STARTS_INSIDE,
+        ids::INSP_RAY_ALL_HITS,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
     crate::populate::register_button_ids(
         store,
         &[
-            ids::INSP_RAY_IGNORE_BODY,
-            ids::INSP_RAY_IGNORE_PARTS,
-            ids::INSP_RAY_WALLS_BLOCK,
-            ids::INSP_RAY_HIT_TRIGGERS,
-            ids::INSP_RAY_STARTS_INSIDE,
-            ids::INSP_RAY_ALL_HITS,
             ids::INSP_RAY_UP_TO_PICK,
-            ids::INSP_RAY_ENABLED,
             ids::INSP_RAY_AIM_PICK,
             ids::INSP_RAY_IGNORE_PICK,
         ],
@@ -155,7 +168,6 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
             selected_index: None,
         },
     );
-    crate::populate::register_button_ids(store, &[ids::INSP_RAY_TURNS]);
     store.set_tooltip(
         ids::INSP_RAY_TURNS,
         ph2d_i18n::tr("panel.inspector.ray.turns_tip"),

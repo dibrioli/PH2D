@@ -51,23 +51,13 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         if crate::sections::physics_colide::clique_da_fila(host, id, quem, a, true) {
             return true;
         }
-        if id == crate::ids::INSP_RAY_TURNS {
-            ph2d_editor_core::panel::seam_reset_button(host, id);
-            push(
-                host,
-                bits,
-                RayFieldEdit::TurnsWithFacing(!info.turns_with_facing),
-            );
-            return true;
-        }
-        if let Some(edit) = clique_do_filtro(id, &info) {
+        if let Some(edit) = clique_do_filtro(id) {
             ph2d_editor_core::panel::seam_reset_button(host, id);
             push(host, bits, edit);
             return true;
         }
-        // RS-6 «Enabled» e os conta-gotas do «Aim at» e do «Also ignore»; o «×» de um chip tira-o.
+        // Os conta-gotas do «Aim at» e do «Also ignore»; o «×» de um chip tira-o.
         let mais = match id {
-            crate::ids::INSP_RAY_ENABLED => Some(RayFieldEdit::Enabled(!info.enabled)),
             crate::ids::INSP_RAY_AIM_PICK => Some(RayFieldEdit::PickAimAt(!info.aim_pick_armed)),
             crate::ids::INSP_RAY_IGNORE_PICK => {
                 Some(RayFieldEdit::PickIgnore(!info.ignore_pick_armed))
@@ -94,6 +84,16 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
                 .push(EditorAction::LayerMatrixOpen { layer: a });
             return true;
         }
+    }
+
+    // As caixas de marcar (RS-6 «Enabled», «Turns with facing» e as seis do «Filter»): cada uma
+    // escreve o CONTRÁRIO do snapshot, como as caixas do Projectile.
+    if let WidgetEvent::Toggled(id) = ev {
+        let Some(edit) = caixa_marcada(id, &info) else {
+            return false;
+        };
+        push(host, bits, edit);
+        return true;
     }
 
     if let WidgetEvent::TextChanged(id) = ev {
@@ -129,32 +129,37 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
     false
 }
 
-/// O grupo «Filter»: cada caixa escreve o CONTRÁRIO do snapshot; as peças, o modo; as opções, a tag.
-fn clique_do_filtro(
+/// As caixas de marcar do cartão: cada uma escreve o CONTRÁRIO do snapshot.
+fn caixa_marcada(
     id: ph2d_a11y::NodeId,
     i: &ph2d_editor_core::ray_edits::InspectorRayInfo,
 ) -> Option<RayFieldEdit> {
     use crate::ids as d;
-    let caixa = match id {
+    Some(match id {
+        d::INSP_RAY_ENABLED => RayFieldEdit::Enabled(!i.enabled),
+        d::INSP_RAY_TURNS => RayFieldEdit::TurnsWithFacing(!i.turns_with_facing),
         d::INSP_RAY_IGNORE_BODY => RayFieldEdit::IgnoreBody(!i.ignore_body),
         d::INSP_RAY_IGNORE_PARTS => RayFieldEdit::IgnoreParts(!i.ignore_parts),
         d::INSP_RAY_WALLS_BLOCK => RayFieldEdit::WallsBlock(!i.walls_block),
         d::INSP_RAY_HIT_TRIGGERS => RayFieldEdit::HitTriggers(!i.hit_triggers),
         d::INSP_RAY_STARTS_INSIDE => RayFieldEdit::StartsInside(!i.starts_inside),
         d::INSP_RAY_ALL_HITS => RayFieldEdit::AllHits(!i.all_hits),
-        _ => {
-            if let Some(n) = d::INSP_RAY_ONLY_SEE.iter().position(|&o| o == id) {
-                return Some(RayFieldEdit::OnlySee(
-                    crate::sections::ray_filtro::MODOS[n].0,
-                ));
-            }
-            let n = d::INSP_RAY_SEE_TAG_OPT.posicao(id, crate::state::current_tag_tree_len())?;
-            return crate::sections::ray_filtro::opcoes_da_tag()
-                .get(n)
-                .map(|o| RayFieldEdit::SeeTag(o.value));
-        }
-    };
-    Some(caixa)
+        _ => return None,
+    })
+}
+
+/// O grupo «Filter» por clique: as peças, o modo; as opções, a tag.
+fn clique_do_filtro(id: ph2d_a11y::NodeId) -> Option<RayFieldEdit> {
+    use crate::ids as d;
+    if let Some(n) = d::INSP_RAY_ONLY_SEE.iter().position(|&o| o == id) {
+        return Some(RayFieldEdit::OnlySee(
+            crate::sections::ray_filtro::MODOS[n].0,
+        ));
+    }
+    let n = d::INSP_RAY_SEE_TAG_OPT.posicao(id, crate::state::current_tag_tree_len())?;
+    crate::sections::ray_filtro::opcoes_da_tag()
+        .get(n)
+        .map(|o| RayFieldEdit::SeeTag(o.value))
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: RayFieldEdit) {

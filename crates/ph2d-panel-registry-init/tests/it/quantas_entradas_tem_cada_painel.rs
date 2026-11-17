@@ -1135,7 +1135,13 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⬆️ `104 → 105` em 2026-11-13 (`line/GameEngineFuncional`, GEF 06 versão B, escolhida pelo dono) — **capacidade
     //    nova**: o conta-gotas do Target da bala (`INSP_PJ_TARGET_PICK`), o mesmo gesto do da câmera. As caixas
     //    Bounce e Homing são toggles, não comandos.
-    ("inspector", 105),
+    // ⬆️ `105 → 109` na integração de 2026-11-16 (`line/GameEngineFuncional` cartão Ray Sensor, dono 15/11; e
+    //    `line/JointEditor` W1–W3) — **capacidade nova**: os três conta-gotas do Ray (`INSP_RAY_AIM_PICK` do
+    //    «Aim at», `INSP_RAY_IGNORE_PICK` do «Also ignore», `INSP_RAY_UP_TO_PICK` do «Ignore up to»), o mesmo
+    //    gesto do da câmera e do da bala, e o «Open in Joint Editor» do corpo (`INSP_BODY_OPEN_JOINT_EDITOR`), que
+    //    abre a aba. ⛔ A árvore combinada media `116`: as oito caixas do Ray (Enabled, Turns with facing e as seis
+    //    do Filter) estavam registadas como BOTÃO; passaram a caixas de marcar da casa (`Toggled`) e não contam.
+    ("inspector", 109),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     // ⬆️ `4 → 5` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21).

@@ -128,6 +128,12 @@ const ALWAYS_READ: &[(&str, &str, &str)] = &[
         "o nome do sinal emitido, lido em todo disparo",
     ),
     (
+        "value.send_signal",
+        "name",
+        "o nome do sinal publicado: o `eval` lê-o em todo `when` (entra na impressão digital do cook) \
+         e a ponte publica-o em todo disparo",
+    ),
+    (
         "motion.time_remap",
         "curve",
         "o remapeamento É a curva; sem ela o nó é a identidade e não tem outro modo",

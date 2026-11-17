@@ -165,7 +165,8 @@ pub(crate) fn paint_boolean_mark(
             let recuo = Spacing::Xs.px();
             let lado = box_size.min(campo.h - 2.0 * recuo).max(1.0);
             let centro = centro_y.unwrap_or(campo.y + campo.h * 0.5);
-            let topo = (centro - lado * 0.5).clamp(campo.y, campo.y + campo.h - lado);
+            let topo =
+                crate::math::safe_clamp(centro - lado * 0.5, campo.y, campo.y + campo.h - lado);
             Rect::new(campo.x + recuo, topo, lado, lado)
         }
         (true, None) => Rect::new(

@@ -96,7 +96,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.area_narrower_than_body" => {
             "Narrower than the body that walks it (radius {radius} m) \u{2014} it never fits inside, so nobody takes it. Make it wider."
         }
-        "panel.inspector.nav.exit_object_name_u" => "exit object name\u{2026}",
+        "panel.inspector.nav.exit_object_name_u" => "object name\u{2026}",
         "panel.inspector.nav.signal_when_an_agent_crosses_u" => {
             "signal when an agent crosses\u{2026}"
         }

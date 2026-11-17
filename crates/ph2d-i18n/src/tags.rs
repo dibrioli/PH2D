@@ -19,7 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // uma palavra do app, só uma PORTA é* (a lei que o `chrome.rs` já escreve, com quatro
         // duplicados medidos). Foi o `hr15_no_hardcoded_ui_strings` que os apanhou.
         "panel.tags.pick" => "Pick a tag\u{2026}",
-        "panel.tags.new_or_search" => "New tag or search\u{2026}",
+        "panel.tags.new_or_search" => "name or find\u{2026}",
         // ⚠️ **O `(any)` faz parte da frase**, e não é decoração: sem filtro escolhido a armadilha
         // dispara para TODOS, e o campo vazio tem de o dizer (a §7.3 do plano).
         "panel.tags.only_for" => "Only for tag\u{2026}  (any)",

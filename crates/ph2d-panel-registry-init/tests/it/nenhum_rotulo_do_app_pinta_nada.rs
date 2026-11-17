@@ -297,6 +297,10 @@ const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
     ("inspector", "Always show anchors"),
     ("inspector", "Corner Look-ahead"),
     ("inspector", "Foot Ray Spread"),
+    // ⬆️ integração 16/11 (GEF, cartão Ray, filtro C8): a caixa de marcar mais longa do Filter, na coluna
+    //    única do painel (`124,2 px`). Medido: pôr os nomes do Filter no `Seccao::medida` do Ray (auditoria
+    //    U7) NÃO a cura — quem manda é a coluna do painel. O nome é o da spec aprovada (07_ray_sensor.md).
+    ("inspector", "Ignore my other parts"),
     ("inspector", "Lifetime Randomness"),
     ("inspector", "Mask Alpha Cutoff"),
     ("inspector", "Mask Source (Mask2D)"),
@@ -643,7 +647,18 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    Sheet» (o «onde» foi para o balão) — cortava no cartão Animation da foto do dono.
     // ⬇️ `80 → 74` em 12/11b: medido, seis cortes a menos no Inspector da árvore combinada (não vêm da
     //    coluna do Player: A/B com ela desligada dá o mesmo `74`; origem por atribuir). A catraca desce ao medido.
-    ("inspector", 74),
+    // ⬆️ `74 → 103` na integração de 16/11 (GEF), MEDIDO contra o main `dc3d4f9fb8` (74, mesma fixtura) —
+    //    os `29` novos, nenhum antigo saiu:
+    //    · `22` são TEXTO DENTRO DE CAIXA (valor do artista ou espaço reservado) que já não cabia: desde
+    //      `8a0b7e55de` (GEF 07) a caixa em repouso elide com «…» até à reserva em vez de recortar a seco, e
+    //      a régua passou a vê-los (`Ammo Box` · `Hero` · `bob.luau` · `burst_done` · `door_closed` ·
+    //      `door_opening` · `enemies` · `explosion` · `footsteps.ogg` · `idle_done` · `idle_loop` · `no_path`
+    //      · `respawn` · `respawn_done` · `on death…` · `on exhausted…` · `on signal…` · `on spawned…` ·
+    //      `recipe name…` · `name or find…` · `object name…` · `tag name…`). Na largura de FÁBRICA os três
+    //      espaços reservados que cortavam foram ENCURTADOS (curados); no degrau estreito a caixa tem ~70 px.
+    //    · `7` do cartão Ray (GEF 07/C8): `Ignore my body` · `Ignore my other parts` · `Turns with facing`
+    //      (caixas na coluna do painel) e `Auto` · `Line` · `None` · `Nothing else` (chips/escolhas).
+    ("inspector", 103),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
@@ -752,7 +767,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
     // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
     // ⬇️ `78 → 72` em 12/11b: os mesmos seis da irmã (medido).
-    ("inspector", 72),
+    // ⬆️ `72 → 101` na integração de 16/11: os MESMOS `29` da irmã (`74 → 103`), medido contra o main.
+    ("inspector", 101),
     // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
     //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0), e os botões do
     //    Audio Editor (`grupo::fileiras`, 7→0) e o Sync do Painter (1→0) também.

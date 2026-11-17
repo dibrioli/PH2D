@@ -17,7 +17,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // artista tenta escrever um número.
         "panel.factory.recipe" => "recipe name\u{2026}",
         "panel.factory.on_signal" => "on signal\u{2026}",
-        "panel.factory.tag" => "spawn point tag\u{2026}",
+        "panel.factory.tag" => "tag name\u{2026}",
         "panel.factory.on_spawned" => "on spawned\u{2026}",
         "panel.factory.on_exhausted" => "on exhausted\u{2026}",
         "panel.factory.on_death" => "on death\u{2026}",

@@ -39,8 +39,6 @@ ignore = [
     "RUSTSEC-2024-0436",
     "RUSTSEC-2023-0089",
     "RUSTSEC-2026-0192",
-    "RUSTSEC-2026-0194",
-    "RUSTSEC-2026-0195",
     "RUSTSEC-2026-0217",
     "RUSTSEC-2026-0319",
     # RUSTSEC-2026-0391/0398/0403 (zstd 0.13 / zstd-safe 7): RESOLVIDAS 30/10 — asset-cooker no ctt 0.6.1 (zstd 0.14).
